@@ -1455,3 +1455,41 @@ class VolumeApi(RemoveableBulkModuleApi):
             )
             tasks.append(task)
         await asyncio.gather(*tasks)
+
+    def rename(
+        self,
+        id: int,
+        name: str,
+    ) -> VolumeInfo:
+        """Renames Volume with given ID and name.
+
+        :param id: Volume ID in Supervisely.
+        :type id: int
+        :param name: New Volume name.
+        :type name: str
+        :return: Information about updated Volume.
+        :rtype: :class:`VolumeInfo`
+
+        :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            api = sly.Api.from_env()
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+
+            volume_id = 123456
+            new_volume_name = "3333_new.nrrd"
+
+            api.volume.rename(id=volume_id, name=new_volume_name)
+        """
+
+        data = {
+            ApiField.ID: id,
+            ApiField.NAME: name,
+        }
+
+        response = self._api.post("images.editInfo", data)
+        return self._convert_json_info(response.json())
