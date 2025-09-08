@@ -1,4 +1,3 @@
-
 from typing import List, Union, Dict, Tuple
 from pathlib import Path
 from collections import defaultdict
@@ -73,12 +72,11 @@ def predictions_to_video_annotation(
             
             video_object = video_objects[track_id]
             rect = sly.Rectangle(top=top, left=left, bottom=bottom, right=right)
-            frame_figures.append(sly.VideoFigure(video_object, rect, frame_idx, track_id=str(track_id)))
+            frame_figures.append(sly.VideoFigure(video_object, rect, frame_idx, track_id=str(track_id), nn_created=True))
         
         frames.append(sly.Frame(frame_idx, frame_figures))
 
-    objects = list(video_objects.values())
-    
+    objects = list(video_objects.values()) 
     return VideoAnnotation(
         img_size=frame_shape,
         frames_count=len(predictions),
