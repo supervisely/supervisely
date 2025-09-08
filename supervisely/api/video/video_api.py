@@ -2616,7 +2616,7 @@ class VideoApi(RemoveableBulkModuleApi):
         id: int,
         name: str,
     ) -> VideoInfo:
-        """Renames Video with given ID and name.
+        """Renames Video with given ID to a new name.
 
         :param id: Video ID in Supervisely.
         :type id: int

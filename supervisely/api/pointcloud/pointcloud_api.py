@@ -1437,7 +1437,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
         id: int,
         name: str,
     ) -> PointcloudInfo:
-        """Renames Pointcloud with given ID and name.
+        """Renames Pointcloud with given ID to a new name.
 
         :param id: Pointcloud ID in Supervisely.
         :type id: int

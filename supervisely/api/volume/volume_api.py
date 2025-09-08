@@ -1461,7 +1461,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         id: int,
         name: str,
     ) -> VolumeInfo:
-        """Renames Volume with given ID and name.
+        """Renames Volume with given ID to a new name.
 
         :param id: Volume ID in Supervisely.
         :type id: int
