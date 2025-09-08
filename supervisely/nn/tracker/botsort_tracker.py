@@ -239,7 +239,7 @@ class BotSortTracker(BaseTracker):
                 
                 video_object = video_objects[track_id]
                 rect = sly.Rectangle(top=y1, left=x1, bottom=y2, right=x2)
-                frame_figures.append(sly.VideoFigure(video_object, rect, frame_idx, track_id=str(track_id)))
+                frame_figures.append(sly.VideoFigure(video_object, rect, frame_idx, track_id=str(track_id), nn_created=True))
             
             frames.append(sly.Frame(frame_idx, frame_figures))
 

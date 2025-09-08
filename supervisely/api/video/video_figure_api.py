@@ -26,6 +26,7 @@ class VideoFigureApi(FigureApi):
         geometry_type: str,
         track_id: Optional[int] = None,
         meta: Optional[dict] = None,
+        nn_created: Optional[bool] = False,
     ) -> int:
         """
         Create new VideoFigure for given frame in given video ID.
@@ -42,6 +43,10 @@ class VideoFigureApi(FigureApi):
         :type geometry_type: str
         :param track_id: int, optional.
         :type track_id: int, optional
+        :param meta: Meta data for VideoFigure.
+        :type meta: dict, optional
+        :param nn_created: Whether the VideoFigure was created by a neural network.
+        :type nn_created: bool, optional
         :return: New figure ID
         :rtype: :class:`int`
         :Usage example:
@@ -64,10 +69,13 @@ class VideoFigureApi(FigureApi):
         """
         if meta is None:
             meta = {}
+        # set nnCreated flag on creation
+        meta = {**(meta or {}), ApiField.FRAME: frame_index}
+        meta[ApiField.NN_CREATED] = nn_created
         return super().create(
             video_id,
             object_id,
-            {**meta, ApiField.FRAME: frame_index},
+            meta,
             geometry_json,
             geometry_type,
             track_id,
@@ -115,13 +123,15 @@ class VideoFigureApi(FigureApi):
 
         self._append_bulk(video_id, figures_json, keys, key_id_map)
 
-    def update(self, figure_id: int, geometry: Geometry) -> None:
+    def update(self, figure_id: int, geometry: Geometry, by_nn: Optional[bool] = False) -> None:
         """Updates figure feometry with given ID in Supervisely with new Geometry object.
 
         :param figure_id: ID of the figure to update
         :type figure_id: int
         :param geometry: Supervisely Gepmetry object
         :type geometry: Geometry
+        :param by_nn: Whether the figure was updated by a neural network.
+        :type by_nn: bool, optional
         :Usage example:
 
          .. code-block:: python
@@ -141,13 +151,13 @@ class VideoFigureApi(FigureApi):
 
             api.video.figure.update(figure_id, new_geometry)
         """
-        self._api.post(
-            "figures.editInfo",
-            {
-                ApiField.ID: figure_id,
-                ApiField.GEOMETRY: geometry.to_json(),
-            },
-        )
+        payload = {
+            ApiField.ID: figure_id,
+            ApiField.GEOMETRY: geometry.to_json(),
+        }
+        if by_nn:
+            payload[ApiField.NN_UPDATED] = True
+        self._api.post("figures.editInfo", payload)
 
     def download(
         self, dataset_id: int, video_ids: List[int] = None, skip_geometry: bool = False, **kwargs
@@ -161,7 +171,6 @@ class VideoFigureApi(FigureApi):
         :type video_ids: List[int], optional
         :param skip_geometry: Skip the download of figure geometry. May be useful for a significant api request speed increase in the large datasets.
         :type skip_geometry: bool
-
         :return: A dictionary where keys are video IDs and values are lists of figures.
         :rtype: :class: `Dict[int, List[FigureInfo]]`
         """

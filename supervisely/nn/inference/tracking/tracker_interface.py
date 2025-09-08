@@ -166,6 +166,8 @@ class TrackerInterface:
                     ApiField.GEOMETRY: geometry.to_json(),
                     ApiField.META: {ApiField.FRAME: frame_index},
                     ApiField.TRACK_ID: self.track_id,
+                    ApiField.NN_CREATED: True,
+                    ApiField.NN_UPDATED: False,
                 }
                 for geometry, frame_index in geometries_frame_indexes
             ]
@@ -195,6 +197,8 @@ class TrackerInterface:
             geometry.to_json(),
             geometry.geometry_name(),
             self.track_id,
+            nn_created=True,
+            nn_updated=False,
         )
         self.logger.debug(f"Added {geometry.geometry_name()} to frame #{frame_ind}")
         if notify:
