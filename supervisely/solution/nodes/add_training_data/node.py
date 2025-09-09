@@ -110,6 +110,18 @@ class AddTrainingDataNode(BaseCardNode):
         src_dataset_ids = settings_data["dataset_ids"]
         src_workspace_id = settings_data["workspace_id"]
         src_team_id = settings_data["team_id"]
+        replicate_structure = settings_data.get("replicate_structure", False)
+        destination = None
+        if replicate_structure:
+            selected_ids_to_parents = settings_data.get("selected_ids_to_parents", {})
+            for dataset_names in selected_ids_to_parents.values():
+                parent_id = None
+                for dataset_name in dataset_names:
+                    ds_info = self.api.dataset.get_or_create(
+                        dst_project_id, dataset_name, parent_id=parent_id
+                    )
+                    parent_id = ds_info.id
+                destination = parent_id
 
         dst_project_id = self.project_id
 
@@ -138,6 +150,8 @@ class AddTrainingDataNode(BaseCardNode):
                 },
             }
         }
+        if destination is not None:
+            params["state"]["destination"]["dataset"] = {"id": destination}
         agent = self.api.agent.get_list_available(team_id, True)[0]
         task_info_json = self.api.task.start(
             agent_id=agent.id,
