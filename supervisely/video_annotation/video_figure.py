@@ -133,7 +133,6 @@ class VideoFigure:
         self.track_id = track_id
         self._smart_tool_input = smart_tool_input
         self._priority = priority
-        # default status is manual
         self._status = LabelingStatus.MANUALLY_LABELED
         self._nn_created, self._nn_updated = self._status.value
 
