@@ -2626,7 +2626,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         src_project_id: int,
         dst_project_id: Optional[int] = None,
         dst_project_name: Optional[str] = None,
-    ) -> Tuple[List[DatasetInfo], List[DatasetInfo]]:
+    ) -> List[Tuple[DatasetInfo, DatasetInfo]]:
         """This method can be used to recreate a project with hierarchial datasets (without the data itself).
 
         :param src_project_id: Source project ID
@@ -2636,8 +2636,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param dst_project_name: Name of the destination project. If `dst_project_id` is None, a new project will be created with this name. If `dst_project_id` is provided, this parameter will be ignored.
         :type dst_project_name: str, optional
 
-        :return: Destination project ID
-        :rtype: int
+        :return: List of tuples of source and destination DatasetInfo objects
+        :rtype: List[Tuple[DatasetInfo], Tuple[DatasetInfo]]
 
         :Usage example:
 
@@ -2650,8 +2650,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             src_project_id = 123
             dst_project_name = "New Project"
 
-            dst_project_id = api.project.recreate_structure(src_project_id, dst_project_name=dst_project_name)
-            print(f"Recreated project {src_project_id} -> {dst_project_id}")
+            infos = api.project.recreate_structure(src_project_id, dst_project_name=dst_project_name)
+            print(f"Recreated project {src_project_id}")
         """
         infos = []
         for src_info, dst_info in self.recreate_structure_generator(
