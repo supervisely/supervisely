@@ -69,7 +69,7 @@ class SemanticSegmentation(Inference):
                     f"Class {class_name} not found in model classes {self.get_classes()}"
                 )
             geometry = Bitmap(class_mask, extra_validation=False)
-            label = Label(geometry, obj_class, nn_created=True, nn_updated=False)
+            label = Label(geometry, obj_class)
             labels.append(label)
         return labels
 

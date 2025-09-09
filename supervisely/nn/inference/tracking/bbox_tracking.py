@@ -565,7 +565,7 @@ class BBoxTracking(BaseTracking):
 
     def _create_label(self, dto: PredictionBBox) -> Rectangle:
         geometry = self._to_sly_geometry(dto)
-        return Label(geometry, ObjClass("", Rectangle), nn_created=True, nn_updated=False)
+        return Label(geometry, ObjClass("", Rectangle))
 
     def _get_obj_class_shape(self):
         return Rectangle

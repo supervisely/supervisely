@@ -9,6 +9,7 @@ from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 from PIL.ImageFont import FreeTypeFont
+from enum import Enum
 
 from supervisely._utils import take_with_default
 from supervisely.annotation.json_geometries_map import GET_GEOMETRY_FROM_STR
@@ -51,6 +52,25 @@ class LabelJsonFields:
     """"""
 
 
+class LabelingStatus(Enum):
+    """
+    Represents how a label was produced/modified.
+
+    Values encode a pair of flags: (nn_created, nn_updated).
+    """
+
+    NN_LABELED = (True, True)
+    MANUALLY_LABELED = (False, False)
+    MANUALLY_CORRECTED = (True, False)
+
+    @classmethod
+    def from_flags(cls, nn_created: bool, nn_updated: bool) -> "LabelingStatus":
+        for status in cls:
+            if status.value == (nn_created, nn_updated):
+                return status
+        return cls.MANUALLY_LABELED
+
+
 class LabelBase:
     """
     Labeling object for :class:`Annotation<supervisely.annotation.annotation.Annotation>`. :class:`Label<Label>` object is immutable.
@@ -69,10 +89,6 @@ class LabelBase:
     :type smart_tool_input: dict, optional
     :param sly_id: Label unique identifier.
     :type sly_id: int, optional
-    :param nn_created: Label created by NN.
-    :type nn_created: bool, optional
-    :param nn_updated: Label updated by NN.
-    :type nn_updated: bool, optional
 
     :Usage example:
 
@@ -107,8 +123,6 @@ class LabelBase:
         binding_key: Optional[str] = None,
         smart_tool_input: Optional[Dict] = None,
         sly_id: Optional[int] = None,
-        nn_created: Optional[bool] = False,
-        nn_updated: Optional[bool] = False,
     ):
         self._geometry = geometry
         self._obj_class = obj_class
@@ -124,8 +138,9 @@ class LabelBase:
         self._smart_tool_input = smart_tool_input
 
         self._sly_id = sly_id
-        self._nn_created = nn_created
-        self._nn_updated = nn_updated
+
+        self._status = LabelingStatus.MANUALLY_LABELED
+        self._nn_created, self._nn_updated = self._status.value
 
     def _validate_geometry(self):
         """
@@ -370,7 +385,7 @@ class LabelBase:
         binding_key = data.get(LabelJsonFields.INSTANCE_KEY)
         smart_tool_input = data.get(LabelJsonFields.SMART_TOOL_INPUT)
 
-        return cls(
+        label = cls(
             geometry=geometry,
             obj_class=obj_class,
             tags=TagCollection.from_json(data[LabelJsonFields.TAGS], project_meta.tag_metas),
@@ -378,9 +393,17 @@ class LabelBase:
             binding_key=binding_key,
             smart_tool_input=smart_tool_input,
             sly_id=data.get(LabelJsonFields.ID),
-            nn_created=data.get(LabelJsonFields.NN_CREATED, False),
-            nn_updated=data.get(LabelJsonFields.NN_UPDATED, False),
         )
+        
+        # Set status
+        status = LabelingStatus.from_flags(
+            data.get(LabelJsonFields.NN_CREATED, False),
+            data.get(LabelJsonFields.NN_UPDATED, False),
+        )
+        label._status = status
+        label._nn_created, label._nn_updated = status.value
+        # ------------------------------------------------ #
+        return label
 
     @property
     def sly_id(self) -> Optional[int]:
@@ -461,8 +484,6 @@ class LabelBase:
         description: Optional[str] = None,
         binding_key: Optional[str] = None,
         smart_tool_input: Optional[Dict] = None,
-        nn_created: Optional[bool] = None,
-        nn_updated: Optional[bool] = None,
     ) -> LabelBase:
         """
         Makes a copy of Label with new fields, if fields are given, otherwise it will use fields of the original Label.
@@ -479,10 +500,6 @@ class LabelBase:
         :type binding_key: str, optional
         :param smart_tool_input: Smart Tool parameters that were used for labeling.
         :type smart_tool_input: dict, optional
-        :param nn_created: Label created by NN.
-        :type nn_created: bool, optional
-        :param nn_updated: Label updated by NN.
-        :type nn_updated: bool, optional
         :return: New instance of Label
         :rtype: :class:`Label<LabelBase>`
         :Usage example:
@@ -520,16 +537,16 @@ class LabelBase:
             clone_label_dog = label_dog.clone(sly.Label(sly.Bitmap(mask_bool), class_dog))
             # In this case RuntimeError will be raised
         """
-        return self.__class__(
+        new_label = self.__class__(
             geometry=take_with_default(geometry, self.geometry),
             obj_class=take_with_default(obj_class, self.obj_class),
             tags=take_with_default(tags, self.tags),
             description=take_with_default(description, self.description),
             binding_key=take_with_default(binding_key, self.binding_key),
             smart_tool_input=take_with_default(smart_tool_input, self._smart_tool_input),
-            nn_created=take_with_default(nn_created, self._nn_created),
-            nn_updated=take_with_default(nn_updated, self._nn_updated),
         )
+        new_label.set_status(self._status)
+        return new_label
 
     def crop(self, rect: Rectangle) -> List[LabelBase]:
         """
@@ -899,6 +916,20 @@ class LabelBase:
     @property
     def nn_updated(self) -> bool:
         return self._nn_updated
+
+    @property
+    def status(self) -> LabelingStatus:
+        return self._status
+
+    def set_status(self, status: LabelingStatus) -> LabelBase:
+        """Return a cloned Label with updated labeling status and synchronized flags.
+
+        The Label is immutable; this method returns a new instance.
+        """
+        new_label = self.clone()
+        new_label._status = status
+        new_label._nn_created, new_label._nn_updated = status.value
+        return new_label
 
     @classmethod
     def _to_pixel_coordinate_system_json(cls, data: Dict, image_size: List[int]) -> Dict:

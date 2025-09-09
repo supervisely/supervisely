@@ -1,7 +1,7 @@
 import supervisely as sly
 from supervisely.nn.tracker.base_tracker import BaseTracker
 from supervisely import Annotation, VideoAnnotation
-
+from supervisely.video_annotation.video_figure import LabelingStatus
 from dataclasses import dataclass
 from types import SimpleNamespace
 from typing import List, Dict, Tuple, Any, Optional
@@ -239,7 +239,9 @@ class BotSortTracker(BaseTracker):
                 
                 video_object = video_objects[track_id]
                 rect = sly.Rectangle(top=y1, left=x1, bottom=y2, right=x2)
-                frame_figures.append(sly.VideoFigure(video_object, rect, frame_idx, track_id=str(track_id), nn_created=True))
+                frame_figure = sly.VideoFigure(video_object, rect, frame_idx, track_id=str(track_id))
+                frame_figure.set_status(LabelingStatus.NN_LABELED)
+                frame_figures.append(frame_figure)
             
             frames.append(sly.Frame(frame_idx, frame_figures))
 

@@ -45,7 +45,7 @@ from supervisely._utils import (
     rand_str,
 )
 from supervisely.annotation.annotation import Annotation
-from supervisely.annotation.label import Label
+from supervisely.annotation.label import Label, LabelingStatus
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.tag_collection import TagCollection
 from supervisely.annotation.tag_meta import TagMeta, TagValueType
@@ -1447,7 +1447,7 @@ class Inference:
         # Add NN flags to created labels
         fixed_labels = []
         for lb in labels:
-            lb = lb.clone(nn_created=True, nn_updated=False)
+            lb = lb.set_status(LabelingStatus.NN_LABELED)
             fixed_labels.append(lb)
 
         # create annotation with correct image resolution
@@ -2647,7 +2647,7 @@ class Inference:
         def add_nn_flags_to_ann(ann: Annotation) -> Annotation:
             nn_labels = []
             for label in ann.labels:
-                nn_label = label.clone(nn_created=True, nn_updated=False)
+                nn_label = label.set_status(LabelingStatus.NN_LABELED)
                 nn_labels.append(nn_label)
             return ann.clone(labels=nn_labels)
 

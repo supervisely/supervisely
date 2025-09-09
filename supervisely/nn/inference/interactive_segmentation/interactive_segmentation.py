@@ -86,7 +86,7 @@ class InteractiveSegmentation(Inference):
             logger.debug(f"Mask of class {dto.class_name} is empty and will be skipped")
             return None
         geometry = Bitmap(dto.mask, extra_validation=False)
-        label = Label(geometry, obj_class, nn_created=True, nn_updated=False)
+        label = Label(geometry, obj_class)
         return label
 
     def predict(

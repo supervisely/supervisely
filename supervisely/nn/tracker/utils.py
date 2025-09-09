@@ -5,6 +5,7 @@ import numpy as np
 
 import supervisely as sly
 from supervisely.nn.model.prediction import Prediction
+from supervisely.video_annotation.video_figure import LabelingStatus
 from supervisely import VideoAnnotation
 from supervisely import logger
 
@@ -72,7 +73,9 @@ def predictions_to_video_annotation(
             
             video_object = video_objects[track_id]
             rect = sly.Rectangle(top=top, left=left, bottom=bottom, right=right)
-            frame_figures.append(sly.VideoFigure(video_object, rect, frame_idx, track_id=str(track_id), nn_created=True))
+            frame_figure = sly.VideoFigure(video_object, rect, frame_idx, track_id=str(track_id))
+            frame_figure.set_status(LabelingStatus.NN_LABELED)
+            frame_figures.append(frame_figure)
         
         frames.append(sly.Frame(frame_idx, frame_figures))
 
