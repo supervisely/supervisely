@@ -545,7 +545,8 @@ class LabelBase:
             binding_key=take_with_default(binding_key, self.binding_key),
             smart_tool_input=take_with_default(smart_tool_input, self._smart_tool_input),
         )
-        new_label.set_status(self._status)
+        new_label._status = self._status
+        new_label._nn_created, new_label._nn_updated = self._status.value
         return new_label
 
     def crop(self, rect: Rectangle) -> List[LabelBase]:

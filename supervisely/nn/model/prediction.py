@@ -339,5 +339,5 @@ class Prediction:
         if isinstance(objects, list):
             for obj in objects:
                 obj["nnCreated"] = True
-                obj["nnUpdated"] = False
+                obj["nnUpdated"] = True
         return annotation_json
