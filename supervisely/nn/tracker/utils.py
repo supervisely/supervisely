@@ -74,7 +74,7 @@ def predictions_to_video_annotation(
             video_object = video_objects[track_id]
             rect = sly.Rectangle(top=top, left=left, bottom=bottom, right=right)
             frame_figure = sly.VideoFigure(video_object, rect, frame_idx, track_id=str(track_id))
-            frame_figure.set_status(LabelingStatus.NN_LABELED)
+            frame_figure = frame_figure.set_status(LabelingStatus.NN_LABELED)
             frame_figures.append(frame_figure)
         
         frames.append(sly.Frame(frame_idx, frame_figures))
