@@ -251,42 +251,5 @@ class ServingGUITemplate(ServingGUI):
         if runtime not in non_conversion_runtimes:
             return
 
-        if self.model_source == ModelSource.PRETRAINED:
-            self._export_msg.set(
-                "Checkpoint will be converted before deployment.",
-                "info",
-            )
-            self._export_msg.show()
-            return
-
-        checkpoint_name = None
-        if self.model_source == ModelSource.CUSTOM and self.experiment_selector is not None:
-            selected_experiment_info = self.experiment_selector.get_selected_experiment_info()
-            if selected_experiment_info is None:
-                return
-            checkpoint_name = self.experiment_selector.get_selected_checkpoint_name()
-            if checkpoint_name is None:
-                return
-
-        model_info = self.model_info or {}
-        export_info = model_info.get("export", {})
-        available = False
-        if isinstance(export_info, dict):
-            for key in export_info.keys():
-                if key.lower().startswith(runtime.lower()):
-                    available = True
-                    break
-            if checkpoint_name != selected_experiment_info.best_checkpoint:
-                available = False
-
-        if available:
-            self._export_msg.set(
-                "Runtime checkpoint exists – no conversion needed.",
-                "info",
-            )
-        else:
-            self._export_msg.set(
-                "Checkpoint will be converted before deployment.",
-                "info",
-            )
+        self._export_msg.set(f"Checkpoint will be converted to {runtime} before deployment.", "info")
         self._export_msg.show()
