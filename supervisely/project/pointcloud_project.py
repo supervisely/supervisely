@@ -1216,8 +1216,14 @@ def upload_pointcloud_project(
         log_progress = False
 
     key_id_map = KeyIdMap()
-    for dataset_fs in project_fs:
-        dataset = api.dataset.create(project.id, dataset_fs.name, change_name_if_conflict=True)
+    name_to_dsinfo = {}
+    for dataset_fs in sorted(project_fs, key=lambda ds: len(ds.parents)):
+        parent_name = dataset_fs.name.removesuffix(dataset_fs.short_name).rstrip("/")
+        parent_id = name_to_dsinfo.get(parent_name)
+        dataset = api.dataset.create(
+            project.id, dataset_fs.short_name, change_name_if_conflict=True, parent_id=parent_id
+        )
+        name_to_dsinfo[dataset.name] = dataset
 
         ds_progress = progress_cb
         if log_progress:
