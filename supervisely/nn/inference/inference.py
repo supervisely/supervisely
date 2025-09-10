@@ -2261,7 +2261,7 @@ class Inference:
                 error=str(type(e)),
                 message=str(e),
             )
-            raise
+            raise e
 
         with Uploader(
             upload_f=_upload_f,
