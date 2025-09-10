@@ -106,6 +106,7 @@ class AddTrainingDataNode(BaseCardNode):
 
         settings_data = self.settings_data
 
+        dst_project_id = self.project_id
         src_project_id = settings_data["project_id"]
         src_dataset_ids = settings_data["dataset_ids"]
         src_workspace_id = settings_data["workspace_id"]
@@ -122,8 +123,6 @@ class AddTrainingDataNode(BaseCardNode):
                     )
                     parent_id = ds_info.id
                 destination = parent_id
-
-        dst_project_id = self.project_id
 
         self.show_in_progress_badge()
 

@@ -139,12 +139,11 @@ class AddTrainingDataGUI(Widget):
         """Trigger all registered settings saved callbacks"""
         selected_ids_to_parents = {}
         ds_infos = sorted(self.project_table.get_selected_datasets(), key=lambda x: x.id)
-        rows = sorted(self.project_table.table.get_selected_rows(), key=lambda x: x.row[1])
-        for ds_info, row in zip(ds_infos, rows):
-            full_name: str = row[0]
-            last_name = ds_info.name
-            name = full_name.removesuffix(last_name).rstrip("/")
-            selected_ids_to_parents[ds_info.id] = name.split("/")
+        full_names = self.project_table.get_selected_datasets_full_names()
+        for ds_info, full_name in zip(ds_infos, full_names):
+            ds_name = ds_info.name
+            parents = full_name.removesuffix(ds_name).rstrip("/")
+            selected_ids_to_parents[ds_info.id] = parents.split("/")
 
         settings_data = {
             "workspace_id": self.project_table.team_workspace_selector.get_selected_workspace_id(),

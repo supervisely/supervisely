@@ -1,24 +1,27 @@
-from supervisely.app.widgets import (
-    FastTable,
-    Widget,
-    ProjectThumbnail,
-    DatasetThumbnail,
-    Container,
-    Select,
-    Text,
-    Empty,
-)
-from typing import List, Optional, Literal
-from supervisely.project import ProjectType
+import json
+from datetime import datetime
+from typing import List, Literal, Optional
+
+import pandas as pd
+
 from supervisely import env
 from supervisely.api.api import Api
-from datetime import datetime
+from supervisely.api.dataset_api import DatasetInfo
 from supervisely.api.module_api import ApiField
 from supervisely.api.project_api import ProjectInfo
-from supervisely.api.dataset_api import DatasetInfo
-import json
-import pandas as pd
 from supervisely.app.content import StateJson
+from supervisely.app.widgets import (
+    Container,
+    DatasetThumbnail,
+    Empty,
+    FastTable,
+    ProjectThumbnail,
+    Select,
+    Text,
+    Widget,
+)
+from supervisely.project import ProjectType
+
 
 class TeamWorkspaceSelect(Widget):
     class Routes:
@@ -59,7 +62,7 @@ class TeamWorkspaceSelect(Widget):
             "justify-content: center; align-items: center;" if direction == "horizontal" else ""
         )
         self._selectors_style = selectors_style
-        self._gap = 20   if direction == "horizontal" else 10
+        self._gap = 20 if direction == "horizontal" else 10
         self._changes_handled = False
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -139,7 +142,7 @@ class TeamWorkspaceSelect(Widget):
 
     def get_selected_workspace_id(self) -> Optional[int]:
         return StateJson()[self.widget_id]["workspaceId"]
-    
+
     def set_team_id(self, team_id: int):
         self._team_id = team_id
         self.team_selector.set_value(team_id)
@@ -175,6 +178,7 @@ class TeamWorkspaceSelect(Widget):
 
         return func
 
+
 class ProjectDatasetTable(Widget):
     class CurrentTable:
         PROJECTS = "projects"
@@ -197,9 +201,7 @@ class ProjectDatasetTable(Widget):
         self._allowed_project_types = allowed_project_types
         if isinstance(self._allowed_project_types, list):
             if all(isinstance(pt, ProjectType) for pt in self._allowed_project_types):
-                self._allowed_project_types = [
-                    pt.value for pt in self._allowed_project_types
-                ]
+                self._allowed_project_types = [pt.value for pt in self._allowed_project_types]
         self._projects: List[ProjectInfo] = []
         self._project_id_to_info = {}
         self._datasets: List[DatasetInfo] = []
@@ -215,7 +217,6 @@ class ProjectDatasetTable(Widget):
         self._width = width
         super().__init__(widget_id=widget_id, file_path=__file__)
         self._content = self.table
-        
 
     @property
     def current_table(self):
@@ -275,7 +276,7 @@ class ProjectDatasetTable(Widget):
     def switch_table(self, table: Literal["projects", "datasets"]):
         if self.current_table == table:
             return
-        
+
         if table == self.CurrentTable.PROJECTS:
             self._current_table = self.CurrentTable.PROJECTS
             self._selected_dataset_ids = None
@@ -298,9 +299,7 @@ class ProjectDatasetTable(Widget):
         ] = self.table._max_selected_rows
 
         self.table._search_position = self._get_search_position()
-        DataJson()[self.table.widget_id]["options"][
-            "searchPosition"
-        ] = self.table._search_position
+        DataJson()[self.table.widget_id]["options"]["searchPosition"] = self.table._search_position
         data = self._get_table_data()
         columns = self._get_columns()
         data_json = self.table.to_json()
@@ -339,6 +338,10 @@ class ProjectDatasetTable(Widget):
     def get_selected_datasets(self) -> Optional[List[DatasetInfo]]:
         dataset_ids = self._get_selected_dataset_ids()
         return [self._dataset_id_to_info.get(did, None) for did in dataset_ids]
+
+    def get_selected_datasets_full_names(self) -> Optional[List[str]]:
+        dataset_ids = self._get_selected_dataset_ids()
+        return [self._dataset_id_to_full_name.get(did, None) for did in dataset_ids]
 
     def set_team(self, team_id: int):
         if not self.current_table == self.CurrentTable.PROJECTS:
@@ -452,13 +455,9 @@ class ProjectDatasetTable(Widget):
             project_thumbnail = ProjectThumbnail(project, remove_margins=True)
             ds_thumb = DatasetThumbnail(show_project_name=False, remove_margins=True)
             ds_thumb.hide()
-            dt = datetime.strptime(
-                project.created_at.replace("Z", ""), "%Y-%m-%dT%H:%M:%S.%f"
-            )
+            dt = datetime.strptime(project.created_at.replace("Z", ""), "%Y-%m-%dT%H:%M:%S.%f")
             row_data = [
-                self._widget_to_cell_value(
-                    Container([project_thumbnail, ds_thumb], gap=0)
-                ),
+                self._widget_to_cell_value(Container([project_thumbnail, ds_thumb], gap=0)),
                 project.id,
                 dt.strftime("%d %b %Y %H:%M"),
                 project.type.replace("_", " ").title(),
@@ -480,8 +479,7 @@ class ProjectDatasetTable(Widget):
             for pid, vals in zip(self._project_id_to_info.keys(), search_values)
         }
         self._id_to_sort_key = {
-            pid: vals
-            for pid, vals in zip(self._project_id_to_info.keys(), search_values)
+            pid: vals for pid, vals in zip(self._project_id_to_info.keys(), search_values)
         }
         return table_data
 
@@ -499,6 +497,7 @@ class ProjectDatasetTable(Widget):
 
         self._datasets = datasets
         self._dataset_id_to_info = {d.id: d for d in datasets}
+        self._dataset_id_to_full_name = id_to_full_name
 
         table_data = []
         search_values = []
@@ -513,9 +512,7 @@ class ProjectDatasetTable(Widget):
                 remove_margins=True,
                 custom_name=full_name,
             )
-            dt = datetime.strptime(
-                dataset.created_at.replace("Z", ""), "%Y-%m-%dT%H:%M:%S.%f"
-            )
+            dt = datetime.strptime(dataset.created_at.replace("Z", ""), "%Y-%m-%dT%H:%M:%S.%f")
             row_data = [
                 self._widget_to_cell_value(Container([proj_thumb, ds_preview], gap=0)),
                 dataset.id,
@@ -537,8 +534,7 @@ class ProjectDatasetTable(Widget):
             for did, vals in zip(self._dataset_id_to_info.keys(), search_values)
         }
         self._id_to_sort_key = {
-            did: vals
-            for did, vals in zip(self._dataset_id_to_info.keys(), search_values)
+            did: vals for did, vals in zip(self._dataset_id_to_info.keys(), search_values)
         }
 
         return table_data
@@ -551,9 +547,7 @@ class ProjectDatasetTable(Widget):
                     Container(
                         [
                             ProjectThumbnail(remove_margins=True),
-                            DatasetThumbnail(
-                                show_project_name=False, remove_margins=True
-                            ),
+                            DatasetThumbnail(show_project_name=False, remove_margins=True),
                         ],
                         gap=0,
                     ),
@@ -570,9 +564,7 @@ class ProjectDatasetTable(Widget):
                     Container(
                         [
                             ProjectThumbnail(remove_margins=True),
-                            DatasetThumbnail(
-                                show_project_name=False, remove_margins=True
-                            ),
+                            DatasetThumbnail(show_project_name=False, remove_margins=True),
                         ],
                         gap=0,
                     ),
