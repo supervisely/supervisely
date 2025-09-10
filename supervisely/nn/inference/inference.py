@@ -2212,7 +2212,7 @@ class Inference:
             n_frames = video_info.frames_count
 
         self._tracker = self._tracker_init(
-            state.get("tracker", None), state.get("tracker_settings", {})
+            state.get("tracker", "botsort"), state.get("tracker_settings", {})
         )
 
         logger.debug(
