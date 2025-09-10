@@ -2296,11 +2296,7 @@ class Inference:
                 ]
                 for pred, this_slides_data in zip(predictions, slides_data):
                     pred.extra_data["slides_data"] = this_slides_data
-                batch_results = self._format_output(predictions)
-
-                inference_request.add_results(batch_results)
-                inference_request.done(len(batch_results))
-                logger.debug(f"Frames {batch[0]}-{batch[-1]} done.")
+                uploader.put(predictions)
         video_ann_json = None
         if self._tracker is not None:
             inference_request.set_stage("Postprocess...", 0, 1)
