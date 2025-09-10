@@ -127,6 +127,16 @@ class VideoFigure:
             status = LabelingStatus.MANUALLY_LABELED
         self._status = status
 
+        if status == LabelingStatus.AUTO_LABELED:
+            self._nn_created = True
+            self._nn_updated = True
+        elif status == LabelingStatus.MANUALLY_CORRECTED:
+            self._nn_created = True
+            self._nn_updated = False
+        elif status == LabelingStatus.MANUALLY_LABELED:
+            self._nn_created = False
+            self._nn_updated = False
+
     def _add_creation_info(self, d):
         if self.labeler_login is not None:
             d[LABELER_LOGIN] = self.labeler_login
@@ -360,8 +370,8 @@ class VideoFigure:
             OBJECT_KEY: self.parent_object.key().hex,
             ApiField.GEOMETRY_TYPE: self.geometry.geometry_name(),
             ApiField.GEOMETRY: self.geometry.to_json(),
-            ApiField.NN_CREATED: self.status.nn_created,
-            ApiField.NN_UPDATED: self.status.nn_updated,
+            ApiField.NN_CREATED: self._nn_created,
+            ApiField.NN_UPDATED: self._nn_updated,
         }
 
         if key_id_map is not None:
@@ -608,14 +618,6 @@ class VideoFigure:
     @property
     def status(self) -> LabelingStatus:
         return self._status
-
-    @property
-    def nn_created(self) -> bool:
-        return self.status.nn_created
-
-    @property
-    def nn_updated(self) -> bool:
-        return self.status.nn_updated
 
     def validate_bounds(
         self, img_size: Tuple[int, int], _auto_correct: Optional[bool] = False

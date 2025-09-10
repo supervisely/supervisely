@@ -10,7 +10,7 @@ from supervisely.api.module_api import ApiField
 from supervisely.geometry.geometry import Geometry
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.video_annotation.video_figure import VideoFigure
-
+from supervisely.annotation.label import LabelingStatus
 
 class VideoFigureApi(FigureApi):
     """
@@ -26,7 +26,7 @@ class VideoFigureApi(FigureApi):
         geometry_type: str,
         track_id: Optional[int] = None,
         meta: Optional[dict] = None,
-        nn_created: Optional[bool] = False,
+        status: Optional[LabelingStatus] = None,
     ) -> int:
         """
         Create new VideoFigure for given frame in given video ID.
@@ -45,8 +45,8 @@ class VideoFigureApi(FigureApi):
         :type track_id: int, optional
         :param meta: Meta data for VideoFigure.
         :type meta: dict, optional
-        :param nn_created: Whether the VideoFigure was created by a neural network.
-        :type nn_created: bool, optional
+        :param status: Labeling status. Specifies if the VideoFigure was created by NN model, manually or created by NN and then manually corrected.
+        :type status: LabelingStatus, optional
         :return: New figure ID
         :rtype: :class:`int`
         :Usage example:
@@ -72,13 +72,19 @@ class VideoFigureApi(FigureApi):
         # set nnCreated flag on creation
         meta = {**(meta or {}), ApiField.FRAME: frame_index}
 
-        if nn_created:
+        if status is None:
+            status = LabelingStatus.MANUALLY_LABELED
+            
+        if status == LabelingStatus.AUTO_LABELED:
             meta[ApiField.NN_CREATED] = True
             meta[ApiField.NN_UPDATED] = True
-        else:
+        elif status == LabelingStatus.MANUALLY_CORRECTED:
+            meta[ApiField.NN_CREATED] = True
+            meta[ApiField.NN_UPDATED] = False
+        elif status == LabelingStatus.MANUALLY_LABELED:
             meta[ApiField.NN_CREATED] = False
             meta[ApiField.NN_UPDATED] = False
-            
+
         return super().create(
             video_id,
             object_id,

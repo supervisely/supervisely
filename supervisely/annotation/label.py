@@ -4,7 +4,7 @@
 # docs
 from __future__ import annotations
 
-from enum import Enum
+from supervisely.collection.str_enum import StrEnum
 from copy import deepcopy
 from typing import Dict, List, Optional, Tuple, Union
 
@@ -52,7 +52,7 @@ class LabelJsonFields:
     """"""
 
 
-class LabelingStatus(Enum):
+class LabelingStatus(StrEnum):
     """
     Shows status of the label. Can be one of the following:
 
@@ -67,22 +67,19 @@ class LabelingStatus(Enum):
         - nn_updated: False | Manually corrected
     """
 
-    AUTO_LABELED = ("auto_labeled", True, True)
-    MANUALLY_LABELED = ("manually_labeled", False, False)
-    MANUALLY_CORRECTED = ("manually_corrected", True, False)
-
-    def __init__(self, value: str, nn_created: bool, nn_updated: bool):
-        self._value_ = value
-        self.nn_created = nn_created
-        self.nn_updated = nn_updated
-
+    AUTO_LABELED = "auto_labeled"
+    MANUALLY_LABELED = "manually_labeled"
+    MANUALLY_CORRECTED = "manually_corrected"
+    
     @classmethod
     def from_flags(cls, nn_created: bool, nn_updated: bool) -> "LabelingStatus":
-        for status in cls:
-            if status.nn_created == nn_created and status.nn_updated == nn_updated:
-                return status
+        if nn_created and nn_updated:
+            return cls.AUTO_LABELED
+        elif nn_created and not nn_updated:
+            return cls.MANUALLY_CORRECTED
+        elif not nn_created and not nn_updated:
+            return cls.MANUALLY_LABELED
         raise ValueError(f"No matching status for ({nn_created}, {nn_updated})")
-
 class LabelBase:
     """
     Labeling object for :class:`Annotation<supervisely.annotation.annotation.Annotation>`. :class:`Label<Label>` object is immutable.
@@ -157,6 +154,16 @@ class LabelBase:
         if status is None:
             status = LabelingStatus.MANUALLY_LABELED
         self._status = status
+
+        if status == LabelingStatus.MANUALLY_LABELED:
+            self._nn_created = False
+            self._nn_updated = False
+        elif status == LabelingStatus.MANUALLY_CORRECTED:
+            self._nn_created = True
+            self._nn_updated = False
+        elif status == LabelingStatus.AUTO_LABELED:
+            self._nn_created = True
+            self._nn_updated = True
 
     def _validate_geometry(self):
         """
@@ -323,8 +330,8 @@ class LabelBase:
             **self.geometry.to_json(),
             GEOMETRY_TYPE: self.geometry.geometry_name(),
             GEOMETRY_SHAPE: self.geometry.geometry_name(),
-            LabelJsonFields.NN_CREATED: self.status.nn_created,
-            LabelJsonFields.NN_UPDATED: self.status.nn_updated,
+            LabelJsonFields.NN_CREATED: self._nn_created,
+            LabelJsonFields.NN_UPDATED: self._nn_updated,
         }
 
         if self.obj_class.sly_id is not None:
@@ -926,16 +933,6 @@ class LabelBase:
     def status(self) -> LabelingStatus:
         """Labeling status. Specifies if the label was created by NN model, manually or created by NN and then manually corrected."""
         return self._status
-
-    @property
-    def nn_created(self) -> bool:
-        """Returns True if the label was created by NN model and False if it was created manually."""
-        return self.status.nn_created
-
-    @property
-    def nn_updated(self) -> bool:
-        """Returns True if the label was created or corrected by NN model and False if it was created or corrected manually."""
-        return self.status.nn_updated
 
     @classmethod
     def _to_pixel_coordinate_system_json(cls, data: Dict, image_size: List[int]) -> Dict:
