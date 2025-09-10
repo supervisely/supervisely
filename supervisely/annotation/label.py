@@ -70,16 +70,18 @@ class LabelingStatus(StrEnum):
     AUTO_LABELED = "auto_labeled"
     MANUALLY_LABELED = "manually_labeled"
     MANUALLY_CORRECTED = "manually_corrected"
-    
+
     @classmethod
     def from_flags(cls, nn_created: bool, nn_updated: bool) -> "LabelingStatus":
-        if nn_created and nn_updated:
+        if nn_created is True and nn_updated is True:
             return cls.AUTO_LABELED
-        elif nn_created and not nn_updated:
+        elif nn_created is True and nn_updated is False:
             return cls.MANUALLY_CORRECTED
-        elif not nn_created and not nn_updated:
+        elif nn_created is False and nn_updated is False:
             return cls.MANUALLY_LABELED
         raise ValueError(f"No matching status for ({nn_created}, {nn_updated})")
+
+
 class LabelBase:
     """
     Labeling object for :class:`Annotation<supervisely.annotation.annotation.Annotation>`. :class:`Label<Label>` object is immutable.
