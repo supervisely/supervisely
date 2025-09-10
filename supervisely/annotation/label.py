@@ -47,9 +47,9 @@ class LabelJsonFields:
     SMART_TOOL_INPUT = "smartToolInput"
     """"""
     NN_CREATED = "nnCreated"
-    """"""
+    """Flag indicating if the label was created by NN model or manually."""
     NN_UPDATED = "nnUpdated"
-    """"""
+    """Flag indicating if the label was corrected by NN model or manually."""
 
 
 class LabelingStatus(StrEnum):
