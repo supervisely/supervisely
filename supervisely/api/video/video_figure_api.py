@@ -71,7 +71,14 @@ class VideoFigureApi(FigureApi):
             meta = {}
         # set nnCreated flag on creation
         meta = {**(meta or {}), ApiField.FRAME: frame_index}
-        meta[ApiField.NN_CREATED] = nn_created
+
+        if nn_created:
+            meta[ApiField.NN_CREATED] = True
+            meta[ApiField.NN_UPDATED] = True
+        else:
+            meta[ApiField.NN_CREATED] = False
+            meta[ApiField.NN_UPDATED] = False
+            
         return super().create(
             video_id,
             object_id,

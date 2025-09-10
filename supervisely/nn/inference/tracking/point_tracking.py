@@ -10,7 +10,7 @@ from pydantic import ValidationError
 
 import supervisely.nn.inference.tracking.functional as F
 from supervisely.annotation.annotation import Annotation
-from supervisely.annotation.label import Geometry, Label
+from supervisely.annotation.label import Geometry, Label, LabelingStatus
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.api.api import Api
 from supervisely.api.module_api import ApiField
@@ -614,7 +614,10 @@ class PointTracking(BaseTracking):
                 continue
             labels.append(label)
 
+        # Update labeling status
+        nn_labels = [lb.clone(status=LabelingStatus.AUTO_LABELED) for lb in labels]
+
         # create annotation with correct image resolution
         ann = Annotation(img_size=image.shape[:2])
-        ann = ann.add_labels(labels)
+        ann = ann.add_labels(nn_labels)
         return ann

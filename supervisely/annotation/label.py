@@ -4,6 +4,7 @@
 # docs
 from __future__ import annotations
 
+from enum import Enum
 from copy import deepcopy
 from typing import Dict, List, Optional, Tuple, Union
 
@@ -51,6 +52,28 @@ class LabelJsonFields:
     """"""
 
 
+class LabelingStatus(Enum):
+    """
+    Specifies if the label was created by NN model, created manually,
+    or created by NN and then manually corrected.
+    """
+
+    AUTO_LABELED = ("auto_labeled", True, True)
+    MANUALLY_LABELED = ("manually_labeled", False, False)
+    MANUALLY_CORRECTED = ("manually_corrected", True, False)
+
+    def __init__(self, value: str, nn_created: bool, nn_updated: bool):
+        self._value_ = value
+        self.nn_created = nn_created
+        self.nn_updated = nn_updated
+
+    @classmethod
+    def from_flags(cls, nn_created: bool, nn_updated: bool) -> "LabelingStatus":
+        for status in cls:
+            if status.nn_created == nn_created and status.nn_updated == nn_updated:
+                return status
+        raise ValueError(f"No matching status for ({nn_created}, {nn_updated})")
+
 class LabelBase:
     """
     Labeling object for :class:`Annotation<supervisely.annotation.annotation.Annotation>`. :class:`Label<Label>` object is immutable.
@@ -69,10 +92,8 @@ class LabelBase:
     :type smart_tool_input: dict, optional
     :param sly_id: Label unique identifier.
     :type sly_id: int, optional
-    :param nn_created: Label created by NN.
-    :type nn_created: bool, optional
-    :param nn_updated: Label updated by NN.
-    :type nn_updated: bool, optional
+    :param status: Sets labeling status. Specifies if the label was created by NN model, manually or created by NN and then manually corrected.
+    :type status: LabelingStatus, optional
 
     :Usage example:
 
@@ -107,8 +128,7 @@ class LabelBase:
         binding_key: Optional[str] = None,
         smart_tool_input: Optional[Dict] = None,
         sly_id: Optional[int] = None,
-        nn_created: Optional[bool] = False,
-        nn_updated: Optional[bool] = False,
+        status: Optional[LabelingStatus] = None,
     ):
         self._geometry = geometry
         self._obj_class = obj_class
@@ -124,8 +144,10 @@ class LabelBase:
         self._smart_tool_input = smart_tool_input
 
         self._sly_id = sly_id
-        self._nn_created = nn_created
-        self._nn_updated = nn_updated
+
+        if status is None:
+            status = LabelingStatus.MANUALLY_LABELED
+        self._status = status
 
     def _validate_geometry(self):
         """
@@ -292,8 +314,8 @@ class LabelBase:
             **self.geometry.to_json(),
             GEOMETRY_TYPE: self.geometry.geometry_name(),
             GEOMETRY_SHAPE: self.geometry.geometry_name(),
-            LabelJsonFields.NN_CREATED: self._nn_created,
-            LabelJsonFields.NN_UPDATED: self._nn_updated,
+            LabelJsonFields.NN_CREATED: self.status.nn_created,
+            LabelJsonFields.NN_UPDATED: self.status.nn_updated,
         }
 
         if self.obj_class.sly_id is not None:
@@ -370,6 +392,10 @@ class LabelBase:
         binding_key = data.get(LabelJsonFields.INSTANCE_KEY)
         smart_tool_input = data.get(LabelJsonFields.SMART_TOOL_INPUT)
 
+        nn_created = data.get(LabelJsonFields.NN_CREATED, False)
+        nn_updated = data.get(LabelJsonFields.NN_UPDATED, False)
+        status = LabelingStatus.from_flags(nn_created, nn_updated)
+
         return cls(
             geometry=geometry,
             obj_class=obj_class,
@@ -378,8 +404,7 @@ class LabelBase:
             binding_key=binding_key,
             smart_tool_input=smart_tool_input,
             sly_id=data.get(LabelJsonFields.ID),
-            nn_created=data.get(LabelJsonFields.NN_CREATED, False),
-            nn_updated=data.get(LabelJsonFields.NN_UPDATED, False),
+            status=status,
         )
 
     @property
@@ -461,8 +486,7 @@ class LabelBase:
         description: Optional[str] = None,
         binding_key: Optional[str] = None,
         smart_tool_input: Optional[Dict] = None,
-        nn_created: Optional[bool] = None,
-        nn_updated: Optional[bool] = None,
+        status: Optional[LabelingStatus] = None,
     ) -> LabelBase:
         """
         Makes a copy of Label with new fields, if fields are given, otherwise it will use fields of the original Label.
@@ -479,10 +503,8 @@ class LabelBase:
         :type binding_key: str, optional
         :param smart_tool_input: Smart Tool parameters that were used for labeling.
         :type smart_tool_input: dict, optional
-        :param nn_created: Label created by NN.
-        :type nn_created: bool, optional
-        :param nn_updated: Label updated by NN.
-        :type nn_updated: bool, optional
+        :param status: Sets labeling status. Specifies if the label was created by NN model, manually or created by NN and then manually corrected.
+        :type status: LabelingStatus, optional
         :return: New instance of Label
         :rtype: :class:`Label<LabelBase>`
         :Usage example:
@@ -527,8 +549,7 @@ class LabelBase:
             description=take_with_default(description, self.description),
             binding_key=take_with_default(binding_key, self.binding_key),
             smart_tool_input=take_with_default(smart_tool_input, self._smart_tool_input),
-            nn_created=take_with_default(nn_created, self._nn_created),
-            nn_updated=take_with_default(nn_updated, self._nn_updated),
+            status=take_with_default(status, self.status),
         )
 
     def crop(self, rect: Rectangle) -> List[LabelBase]:
@@ -893,12 +914,19 @@ class LabelBase:
         return self.geometry.labeler_login
 
     @property
+    def status(self) -> LabelingStatus:
+        """Labeling status. Specifies if the label was created by NN model, manually or created by NN and then manually corrected."""
+        return self._status
+
+    @property
     def nn_created(self) -> bool:
-        return self._nn_created
+        """Returns True if the label was created by NN model and False if it was created manually."""
+        return self.status.nn_created
 
     @property
     def nn_updated(self) -> bool:
-        return self._nn_updated
+        """Returns True if the label was created or corrected by NN model and False if it was created or corrected manually."""
+        return self.status.nn_updated
 
     @classmethod
     def _to_pixel_coordinate_system_json(cls, data: Dict, image_size: List[int]) -> Dict:

@@ -198,7 +198,6 @@ class TrackerInterface:
             geometry.geometry_name(),
             self.track_id,
             nn_created=True,
-            nn_updated=False,
         )
         self.logger.debug(f"Added {geometry.geometry_name()} to frame #{frame_ind}")
         if notify:

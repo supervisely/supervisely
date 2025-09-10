@@ -45,7 +45,7 @@ from supervisely._utils import (
     rand_str,
 )
 from supervisely.annotation.annotation import Annotation
-from supervisely.annotation.label import Label
+from supervisely.annotation.label import Label, LabelingStatus
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.tag_collection import TagCollection
 from supervisely.annotation.tag_meta import TagMeta, TagValueType
@@ -1444,11 +1444,8 @@ class Inference:
             
             labels.append(label)
 
-        # Add NN flags to created labels
-        fixed_labels = []
-        for lb in labels:
-            lb = lb.clone(nn_created=True, nn_updated=False)
-            fixed_labels.append(lb)
+        # Update labeling status
+        nn_labels = [lb.clone(status=LabelingStatus.AUTO_LABELED) for lb in labels]
 
         # create annotation with correct image resolution
         if isinstance(image_path, str):
@@ -1456,7 +1453,7 @@ class Inference:
             img_size = img.shape[:2]
         else:
             img_size = image_path.shape[:2]
-        ann = Annotation(img_size, fixed_labels)
+        ann = Annotation(img_size, nn_labels)
         return ann
 
     @property
@@ -2644,11 +2641,8 @@ class Inference:
         for prediction in predictions:
             ds_predictions[prediction.dataset_id].append(prediction)
 
-        def add_nn_flags_to_ann(ann: Annotation) -> Annotation:
-            nn_labels = []
-            for label in ann.labels:
-                nn_label = label.clone(nn_created=True, nn_updated=False)
-                nn_labels.append(nn_label)
+        def update_labeling_status(ann: Annotation) -> Annotation:
+            nn_labels = [lb.clone(status=LabelingStatus.AUTO_LABELED) for lb in ann.labels]
             return ann.clone(labels=nn_labels)
 
         def _new_name(image_info: ImageInfo):
@@ -2727,10 +2721,10 @@ class Inference:
                     meta=project_meta,
                 )
 
-                # Add NN flags to new predictions before upload
+                # Update labeling status of new predictions before upload
                 anns_with_nn_flags = []
                 for pred, ann in zip(preds, anns):
-                    ann = add_nn_flags_to_ann(ann)
+                    ann = update_labeling_status(ann)
                     pred.annotation = ann
                     anns_with_nn_flags.append(ann)
 
@@ -2800,9 +2794,9 @@ class Inference:
                     meta=project_meta,
                 )
 
-                # Add NN flags to predicted labels before optional merge
+                # Update labeling status of predicted labels before optional merge
                 for pred, ann in zip(preds, anns):
-                    ann = add_nn_flags_to_ann(ann)
+                    ann = update_labeling_status(ann)
                     pred.annotation = ann
 
                 if upload_mode in ["iou_merge", "append"]:
