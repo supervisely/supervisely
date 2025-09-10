@@ -167,7 +167,7 @@ class TrackerInterface:
                     ApiField.META: {ApiField.FRAME: frame_index},
                     ApiField.TRACK_ID: self.track_id,
                     ApiField.NN_CREATED: True,
-                    ApiField.NN_UPDATED: False,
+                    ApiField.NN_UPDATED: True,
                 }
                 for geometry, frame_index in geometries_frame_indexes
             ]
