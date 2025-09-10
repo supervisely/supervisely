@@ -19,7 +19,18 @@ from typing import Any, Dict, List, Literal, Optional, Tuple
 
 import numpy as np
 import requests
-from requests.utils import DEFAULT_CA_BUNDLE_PATH
+from redef get_project_storage_url(project_id: int, source_type: Literal["original", "preview"] = "original") -> str:
+    """
+    Generate URL for project storage resources.
+
+    :param project_id: ID of the project
+    :type project_id: int
+    :param source_type: Type of source ("original" or "preview")
+    :type source_type: Literal["original", "preview"]
+    :return: Storage URL for project
+    :rtype: str
+    """
+    return get_storage_url("projects", project_id, source_type) import DEFAULT_CA_BUNDLE_PATH
 
 from supervisely.io import env as sly_env
 from supervisely.io import fs as sly_fs
@@ -319,7 +330,7 @@ def resize_image_url(
         return full_storage_url
 
 
-def get_storage_url(entity_type: str, entity_id: int, source_type: str = "original") -> str:
+def get_storage_url(entity_type: str, entity_id: int, source_type: Literal["original", "preview"]) -> str:
     """
     Generate URL for storage resources endpoints.
 
@@ -328,7 +339,7 @@ def get_storage_url(entity_type: str, entity_id: int, source_type: str = "origin
     :param entity_id: ID of the entity
     :type entity_id: int
     :param source_type: Type of source ("original" or "preview")
-    :type source_type: str
+    :type source_type: Literal["original", "preview"]
     :return: Storage URL
     :rtype: str
     """
@@ -338,35 +349,35 @@ def get_storage_url(entity_type: str, entity_id: int, source_type: str = "origin
     return relative_url
 
 
-def get_image_storage_url(image_id: int, source_type: str = "original") -> str:
+def get_image_storage_url(image_id: int, source_type: Literal["original", "preview"]) -> str:
     """
     Generate URL for image storage resources.
 
     :param image_id: ID of the image
     :type image_id: int
     :param source_type: Type of source ("original" or "preview")
-    :type source_type: str
+    :type source_type: Literal["original", "preview"]
     :return: Storage URL for image
     :rtype: str
     """
     return get_storage_url("dataset-entities", image_id, source_type)
 
 
-def get_dataset_storage_url(dataset_id: int, source_type: str = "original") -> str:
+def get_dataset_storage_url(dataset_id: int, source_type: Literal["original", "preview"]) -> str:
     """
     Generate URL for dataset storage resources.
 
     :param dataset_id: ID of the dataset
     :type dataset_id: int
     :param source_type: Type of source ("original" or "preview")
-    :type source_type: str
+    :type source_type: Literal["original", "preview"]
     :return: Storage URL for dataset
     :rtype: str
     """
     return get_storage_url("dataset", dataset_id, source_type)
 
 
-def get_project_storage_url(project_id: int, source_type: str = "original") -> str:
+def get_project_storage_url(project_id: int, source_type: Literal["original", "preview"]) -> str:
     """
     Generate URL for project storage resources.
 
