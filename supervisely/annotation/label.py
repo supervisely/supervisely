@@ -55,16 +55,16 @@ class LabelJsonFields:
 class LabelingStatus(Enum):
     """
     Shows status of the label. Can be one of the following:
-    
+
     - AUTO_LABELED: Specifies if the label was created by NN model.
         - nn_created: True | Created by NN model
         - nn_updated: True | Corrected by NN model
     - MANUALLY_LABELED: Specifies if the label was created manually.
-        - nn_created: False | Created manually
+        - nn_created: False | Manually created
         - nn_updated: False | Not corrected by NN model
     - MANUALLY_CORRECTED: Specifies if the label was initially created by NN model and then manually corrected.
         - nn_created: True | Created by NN model
-        - nn_updated: False | Corrected by manually
+        - nn_updated: False | Manually corrected
     """
 
     AUTO_LABELED = ("auto_labeled", True, True)
