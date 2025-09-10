@@ -19,18 +19,7 @@ from typing import Any, Dict, List, Literal, Optional, Tuple
 
 import numpy as np
 import requests
-from redef get_project_storage_url(project_id: int, source_type: Literal["original", "preview"] = "original") -> str:
-    """
-    Generate URL for project storage resources.
-
-    :param project_id: ID of the project
-    :type project_id: int
-    :param source_type: Type of source ("original" or "preview")
-    :type source_type: Literal["original", "preview"]
-    :return: Storage URL for project
-    :rtype: str
-    """
-    return get_storage_url("projects", project_id, source_type) import DEFAULT_CA_BUNDLE_PATH
+from requests.utils import DEFAULT_CA_BUNDLE_PATH
 
 from supervisely.io import env as sly_env
 from supervisely.io import fs as sly_fs
@@ -330,7 +319,11 @@ def resize_image_url(
         return full_storage_url
 
 
-def get_storage_url(entity_type: str, entity_id: int, source_type: Literal["original", "preview"]) -> str:
+def get_storage_url(
+    entity_type: Literal["dataset-entities", "dataset", "project", "file-storage"],
+    entity_id: int,
+    source_type: Literal["original", "preview"],
+) -> str:
     """
     Generate URL for storage resources endpoints.
 
