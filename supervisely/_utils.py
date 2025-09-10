@@ -356,28 +356,32 @@ def get_image_storage_url(image_id: int, source_type: Literal["original", "previ
     return get_storage_url("dataset-entities", image_id, source_type)
 
 
-def get_dataset_storage_url(dataset_id: int, source_type: Literal["original", "preview"]) -> str:
+def get_dataset_storage_url(
+    dataset_id: int, source_type: Literal["original", "preview", "raw"]
+) -> str:
     """
     Generate URL for dataset storage resources.
 
     :param dataset_id: ID of the dataset
     :type dataset_id: int
-    :param source_type: Type of source ("original" or "preview")
-    :type source_type: Literal["original", "preview"]
+    :param source_type: Type of source ("original", "preview", or "raw")
+    :type source_type: Literal["original", "preview", "raw"]
     :return: Storage URL for dataset
     :rtype: str
     """
     return get_storage_url("dataset", dataset_id, source_type)
 
 
-def get_project_storage_url(project_id: int, source_type: Literal["original", "preview"]) -> str:
+def get_project_storage_url(
+    project_id: int, source_type: Literal["original", "preview", "raw"]
+) -> str:
     """
     Generate URL for project storage resources.
 
     :param project_id: ID of the project
     :type project_id: int
-    :param source_type: Type of source ("original" or "preview")
-    :type source_type: str
+    :param source_type: Type of source ("original", "preview", or "raw")
+    :type source_type: Literal["original", "preview", "raw"]
     :return: Storage URL for project
     :rtype: str
     """
