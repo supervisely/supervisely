@@ -43,7 +43,7 @@ from supervisely.io.fs_cache import FileCache
 from supervisely.io.json import load_json_file
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress, tqdm_sly
-
+from supervisely._utils import get_file_storage_url
 
 class FileInfo(NamedTuple):
     """ """
@@ -62,6 +62,16 @@ class FileInfo(NamedTuple):
     updated_at: str
     full_storage_url: str
     is_dir: bool
+
+    @property
+    def url_original(self):
+        """
+        Get File original URL via storage-resources endpoint.
+
+        :return: File original URL.
+        :rtype: :class:`str`
+        """
+        return get_file_storage_url(self.id)
 
 
 class FileApi(ModuleApiBase):
