@@ -2239,7 +2239,6 @@ class Inference:
             context=inference_request.context,
             progress_cb=inference_request.done,
             inference_request=inference_request,
-            logger=logger,
         )
 
         _range = (start_frame_index, start_frame_index + direction * n_frames)
@@ -2256,7 +2255,20 @@ class Inference:
                 total=inference_request.progress.total,
             )
 
-        with Uploader(upload_f=_upload_f, notify_f=_notify_f, logger=logger) as uploader:
+        def _exception_handler(e: Exception):
+            self.api.video.notify_tracking_error(
+                track_id=track_id,
+                error=str(type(e)),
+                message=str(e),
+            )
+            raise
+
+        with Uploader(
+            upload_f=_upload_f,
+            notify_f=_notify_f,
+            exception_handler=_exception_handler,
+            logger=logger,
+        ) as uploader:
             for batch in batched(
                 range(
                     start_frame_index, start_frame_index + direction * n_frames, direction * step
