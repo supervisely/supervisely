@@ -319,7 +319,7 @@ def resize_image_url(
         return full_storage_url
 
 
-def get_storage_url(entity_type: str, entity_id: int, file_type: str = "original") -> str:
+def get_storage_url(entity_type: str, entity_id: int, source_type: str = "original") -> str:
     """
     Generate URL for storage resources endpoints.
 
@@ -327,57 +327,57 @@ def get_storage_url(entity_type: str, entity_id: int, file_type: str = "original
     :type entity_type: str
     :param entity_id: ID of the entity
     :type entity_id: int
-    :param file_type: Type of file ("original" or "preview")
-    :type file_type: str
+    :param source_type: Type of source ("original" or "preview")
+    :type source_type: str
     :return: Storage URL
     :rtype: str
     """
-    relative_url = f"/storage-resources/{entity_type}/{file_type}/{entity_id}"
+    relative_url = f"/storage-resources/{entity_type}/{source_type}/{entity_id}"
     if is_development():
         return abs_url(relative_url)
     return relative_url
 
 
-def get_image_storage_url(image_id: int, file_type: str = "original") -> str:
+def get_image_storage_url(image_id: int, source_type: str = "original") -> str:
     """
     Generate URL for image storage resources.
 
     :param image_id: ID of the image
     :type image_id: int
-    :param file_type: Type of file ("original" or "preview")
-    :type file_type: str
+    :param source_type: Type of source ("original" or "preview")
+    :type source_type: str
     :return: Storage URL for image
     :rtype: str
     """
-    return get_storage_url("dataset-entities", image_id, file_type)
+    return get_storage_url("dataset-entities", image_id, source_type)
 
 
-def get_dataset_storage_url(dataset_id: int, file_type: str = "original") -> str:
+def get_dataset_storage_url(dataset_id: int, source_type: str = "original") -> str:
     """
     Generate URL for dataset storage resources.
 
     :param dataset_id: ID of the dataset
     :type dataset_id: int
-    :param file_type: Type of file ("original" or "preview")
-    :type file_type: str
+    :param source_type: Type of source ("original" or "preview")
+    :type source_type: str
     :return: Storage URL for dataset
     :rtype: str
     """
-    return get_storage_url("dataset", dataset_id, file_type)
+    return get_storage_url("dataset", dataset_id, source_type)
 
 
-def get_project_storage_url(project_id: int, file_type: str = "original") -> str:
+def get_project_storage_url(project_id: int, source_type: str = "original") -> str:
     """
     Generate URL for project storage resources.
 
     :param project_id: ID of the project
     :type project_id: int
-    :param file_type: Type of file ("original" or "preview")
-    :type file_type: str
+    :param source_type: Type of source ("original" or "preview")
+    :type source_type: str
     :return: Storage URL for project
     :rtype: str
     """
-    return get_storage_url("project", project_id, file_type)
+    return get_storage_url("project", project_id, source_type)
 
 
 def get_file_storage_url(file_id: int) -> str:
