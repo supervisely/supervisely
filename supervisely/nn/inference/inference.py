@@ -11,6 +11,7 @@ import subprocess
 import tempfile
 import threading
 import time
+import uuid
 from collections import OrderedDict, defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass
@@ -52,6 +53,7 @@ from supervisely.annotation.tag_meta import TagMeta, TagValueType
 from supervisely.api.api import Api, ApiField
 from supervisely.api.app_api import WorkflowMeta, WorkflowSettings
 from supervisely.api.image_api import ImageInfo
+from supervisely.api.video.video_api import VideoInfo
 from supervisely.app.content import get_data_dir
 from supervisely.app.fastapi.subapp import (
     Application,
@@ -94,6 +96,11 @@ from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress
 from supervisely.video.video import ALLOWED_VIDEO_EXTENSIONS, VideoFrameReader
+from supervisely.video_annotation.key_id_map import KeyIdMap
+from supervisely.video_annotation.video_object_collection import (
+    VideoObject,
+    VideoObjectCollection,
+)
 
 try:
     from typing import Literal
@@ -1269,16 +1276,16 @@ class Inference:
 
     def get_classes(self) -> List[str]:
         return self.classes
-    
+
     def _tracker_init(self, tracker: str, tracker_settings: dict):
         # Check if tracking is supported for this model
         info = self.get_info()
         tracking_support = info.get("tracking_on_videos_support", False)
-        
+
         if not tracking_support:
             logger.debug("Tracking is not supported for this model")
             return None
-        
+
         if tracker == "botsort":
             from supervisely.nn.tracker import BotSortTracker
             device = tracker_settings.get("device", self.device)
@@ -1288,7 +1295,6 @@ class Inference:
             if tracker is not None:
                 logger.warning(f"Unknown tracking type: {tracker}. Tracking is disabled.")
             return None
-
 
     def get_info(self) -> Dict[str, Any]:
         num_classes = None
@@ -1872,7 +1878,7 @@ class Inference:
             n_frames = frames_reader.frames_count()
 
         self._tracker = self._tracker_init(state.get("tracker", None), state.get("tracker_settings", {}))
-        
+
         progress_total = (n_frames + step - 1) // step
         inference_request.set_stage(InferenceRequest.Stage.INFERENCE, 0, progress_total)
 
@@ -1896,32 +1902,31 @@ class Inference:
                 source=frames,
                 settings=inference_settings,
             )
-            
+
             if self._tracker is not None:
                 anns = self._apply_tracker_to_anns(frames, anns)
-                
+
             predictions = [
                 Prediction(ann, model_meta=self.model_meta, frame_index=frame_index)
                 for ann, frame_index in zip(anns, batch)
             ]
-            
+
             for pred, this_slides_data in zip(predictions, slides_data):
                 pred.extra_data["slides_data"] = this_slides_data
             batch_results = self._format_output(predictions)
-            
+
             inference_request.add_results(batch_results)
             inference_request.done(len(batch_results))
             logger.debug(f"Frames {batch[0]}-{batch[-1]} done.")
         video_ann_json = None
         if self._tracker is not None:
             inference_request.set_stage("Postprocess...", 0, 1)
-            
+
             video_ann_json = self._tracker.video_annotation.to_json()
             inference_request.done()
         result = {"ann": results, "video_ann": video_ann_json}
         inference_request.final_result = result.copy()
         return video_ann_json
-        
 
     def _inference_image_ids(
         self,
@@ -2102,7 +2107,7 @@ class Inference:
             n_frames = video_info.frames_count
 
         self._tracker = self._tracker_init(state.get("tracker", None), state.get("tracker_settings", {}))
-        
+
         logger.debug(
             f"Video info:",
             extra=dict(
@@ -2137,10 +2142,10 @@ class Inference:
                 source=frames,
                 settings=inference_settings,
             )
-            
+
             if self._tracker is not None:
                 anns = self._apply_tracker_to_anns(frames, anns)
-                
+
             predictions = [
                 Prediction(
                     ann,
@@ -2155,10 +2160,147 @@ class Inference:
             for pred, this_slides_data in zip(predictions, slides_data):
                 pred.extra_data["slides_data"] = this_slides_data
             batch_results = self._format_output(predictions)
-                    
+
             inference_request.add_results(batch_results)
             inference_request.done(len(batch_results))
             logger.debug(f"Frames {batch[0]}-{batch[-1]} done.")
+        video_ann_json = None
+        if self._tracker is not None:
+            inference_request.set_stage("Postprocess...", 0, 1)
+            video_ann_json = self._tracker.video_annotation.to_json()
+            inference_request.done()
+        inference_request.final_result = {"video_ann": video_ann_json}
+        return video_ann_json
+
+    def _tracking_by_detection(self, api: Api, state: dict, inference_request: InferenceRequest):
+        logger.debug("Inferring video_id...", extra={"state": state})
+        inference_settings = self._get_inference_settings(state)
+        logger.debug(f"Inference settings:", extra=inference_settings)
+        batch_size = self._get_batch_size_from_state(state)
+        video_id = get_value_for_keys(state, ["videoId", "video_id"], ignore_none=True)
+        if video_id is None:
+            raise ValueError("Video id is not provided")
+        video_info = api.video.get_info_by_id(video_id)
+        start_frame_index = get_value_for_keys(
+            state, ["startFrameIndex", "start_frame_index", "start_frame"], ignore_none=True
+        )
+        if start_frame_index is None:
+            start_frame_index = 0
+        step = get_value_for_keys(state, ["stride", "step"], ignore_none=True)
+        if step is None:
+            step = 1
+        end_frame_index = get_value_for_keys(
+            state, ["endFrameIndex", "end_frame_index", "end_frame"], ignore_none=True
+        )
+        duration = state.get("duration", None)
+        frames_count = get_value_for_keys(
+            state, ["framesCount", "frames_count", "num_frames"], ignore_none=True
+        )
+        tracking = state.get("tracker", None)
+        direction = state.get("direction", "forward")
+        direction = 1 if direction == "forward" else -1
+        track_id = get_value_for_keys(state, ["trackId", "track_id"], ignore_none=True)
+
+        if frames_count is not None:
+            n_frames = frames_count
+        elif end_frame_index is not None:
+            n_frames = end_frame_index - start_frame_index
+        elif duration is not None:
+            fps = video_info.frames_count / video_info.duration
+            n_frames = int(duration * fps)
+        else:
+            n_frames = video_info.frames_count
+
+        self._tracker = self._tracker_init(
+            state.get("tracker", None), state.get("tracker_settings", {})
+        )
+
+        logger.debug(
+            f"Video info:",
+            extra=dict(
+                w=video_info.frame_width,
+                h=video_info.frame_height,
+                start_frame_index=start_frame_index,
+                n_frames=n_frames,
+            ),
+        )
+
+        # start downloading video in background
+        self.cache.run_cache_task_manually(api, None, video_id=video_id)
+
+        progress_total = (n_frames + step - 1) // step
+        inference_request.set_stage(InferenceRequest.Stage.INFERENCE, 0, progress_total)
+
+        _upload_f = partial(
+            self.upload_predictions_to_video,
+            api=api,
+            video_info=video_info,
+            track_id=track_id,
+            context=inference_request.context,
+            progress_cb=inference_request.done,
+            inference_request=inference_request,
+            logger=logger,
+        )
+
+        _range = (start_frame_index, start_frame_index + direction * n_frames)
+        if _range[0] > _range[1]:
+            _range = (_range[1], _range[0])
+
+        def _notify_f(predictions: List[Prediction]):
+            self.api.video.notify_progress(
+                track_id=track_id,
+                video_id=video_info.id,
+                frame_start=_range[0],
+                frame_end=_range[1],
+                current=inference_request.progress.current,
+                total=inference_request.progress.total,
+            )
+
+        with Uploader(upload_f=_upload_f, notify_f=_notify_f, logger=logger) as uploader:
+            for batch in batched(
+                range(
+                    start_frame_index, start_frame_index + direction * n_frames, direction * step
+                ),
+                batch_size,
+            ):
+                if inference_request.is_stopped():
+                    logger.debug(
+                        f"Cancelling inference video...",
+                        extra={"inference_request_uuid": inference_request.uuid},
+                    )
+                    break
+                logger.debug(
+                    f"Inferring frames {batch[0]}-{batch[-1]}:",
+                )
+                frames = self.cache.download_frames(
+                    api, video_info.id, batch, redownload_video=True
+                )
+                anns, slides_data = self._inference_auto(
+                    source=frames,
+                    settings=inference_settings,
+                )
+
+                if self._tracker is not None:
+                    anns = self._apply_tracker_to_anns(frames, anns)
+
+                predictions = [
+                    Prediction(
+                        ann,
+                        model_meta=self.model_meta,
+                        frame_index=frame_index,
+                        video_id=video_info.id,
+                        dataset_id=video_info.dataset_id,
+                        project_id=video_info.project_id,
+                    )
+                    for ann, frame_index in zip(anns, batch)
+                ]
+                for pred, this_slides_data in zip(predictions, slides_data):
+                    pred.extra_data["slides_data"] = this_slides_data
+                batch_results = self._format_output(predictions)
+
+                inference_request.add_results(batch_results)
+                inference_request.done(len(batch_results))
+                logger.debug(f"Frames {batch[0]}-{batch[-1]} done.")
         video_ann_json = None
         if self._tracker is not None:
             inference_request.set_stage("Postprocess...", 0, 1)
@@ -2820,6 +2962,83 @@ class Inference:
         inference_request.add_results(results)
         inference_request.done(len(results))
 
+    def upload_predictions_to_video(
+        self,
+        predictions: List[Prediction],
+        api: Api,
+        video_info: VideoInfo,
+        track_id: str,
+        context: Dict,
+        progress_cb=None,
+        inference_request: InferenceRequest = None,
+    ):
+        key_id_map = KeyIdMap()
+        project_meta = context.get("project_meta", None)
+        if project_meta is None:
+            project_meta = ProjectMeta.from_json(api.project.get_meta(video_info.project_id))
+            context["project_meta"] = project_meta
+        meta_changed = False
+        for prediction in predictions:
+            project_meta, ann, meta_changed_ = update_meta_and_ann(
+                project_meta, prediction.annotation, None
+            )
+            prediction.annotation = ann
+            meta_changed = meta_changed or meta_changed_
+        if meta_changed:
+            project_meta = api.project.update_meta(video_info.project_id, project_meta)
+            context["project_meta"] = project_meta
+
+        figure_data_by_object_id = defaultdict(list)
+
+        tracks_to_object_ids = context.setdefault("tracks_to_object_ids", {})
+        new_tracks: Dict[int, VideoObject] = {}
+        for prediction in predictions:
+            annotation = prediction.annotation
+            tracks = annotation.custom_data
+            for track, label in zip(tracks, annotation.labels):
+                if track not in tracks_to_object_ids and track not in new_tracks:
+                    video_object = VideoObject(obj_class=label.obj_class)
+                    new_tracks[track] = video_object
+        if new_tracks:
+            tracks, video_objects = zip(*new_tracks.items())
+            added_object_ids = api.video.object.append_bulk(
+                video_info.id, VideoObjectCollection(video_objects), key_id_map=key_id_map
+            )
+            for track, object_id in zip(tracks, added_object_ids):
+                tracks_to_object_ids[track] = object_id
+        for prediction in predictions:
+            annotation = prediction.annotation
+            tracks = annotation.custom_data
+            for track, label in zip(tracks, annotation.labels):
+                object_id = tracks_to_object_ids[track]
+                figure_data_by_object_id[object_id].append(
+                    {
+                        ApiField.OBJECT_ID: object_id,
+                        ApiField.GEOMETRY_TYPE: label.geometry.geometry_name(),
+                        ApiField.GEOMETRY: label.geometry.to_json(),
+                        ApiField.META: {ApiField.FRAME: prediction.frame_index},
+                        ApiField.TRACK_ID: track_id,
+                    }
+                )
+
+        for object_id, figures_data in figure_data_by_object_id.items():
+            figures_keys = [uuid.uuid4() for _ in figures_data]
+            api.video.figure._append_bulk(
+                entity_id=video_info.id,
+                figures_json=figures_data,
+                figures_keys=figures_keys,
+                key_id_map=key_id_map,
+            )
+            logger.debug(f"Added {len(figures_data)} geometries to object #{object_id}")
+            if progress_cb:
+                progress_cb(len(figures_data))
+        if inference_request is not None:
+            results = self._format_output(predictions)
+            for result in results:
+                result["annotation"] = None
+                result["data"] = None
+            inference_request.add_results(results)
+
     def serve(self):
         if not self._use_gui and not self._is_cli_deploy:
             Progress("Deploying model ...", 1)
@@ -3211,6 +3430,22 @@ class Inference:
                 "message": "Inference has started.",
                 "inference_request_uuid": inference_request.uuid,
             }
+
+        @server.post("/tracking_by_detection")
+        def tracking_by_detection(response: Response, request: Request):
+            state = request.state.state
+            logger.debug("Received a request to 'tracking_by_detection'", extra={"state": state})
+            self.validate_inference_state(state)
+            api = self.api_from_request(request)
+            inference_request, future = self.inference_requests_manager.schedule_task(
+                self._tracking_by_detection, api, state
+            )
+            future.result()
+            results = {"ann": inference_request.pop_pending_results()}
+            final_result = inference_request.final_result
+            if final_result is not None:
+                results.update(final_result)
+            return results
 
         @server.post("/inference_project_id_async")
         def inference_project_id_async(response: Response, request: Request):
@@ -4141,14 +4376,14 @@ class Inference:
             matches = self._tracker.update(frame, ann)
             track_ids = [match["track_id"] for match in matches]
             tracked_labels = [match["label"] for match in matches]
-            
+
             filtered_annotation = ann.clone(
                 labels=tracked_labels,
                 custom_data=track_ids
             )
             updated_anns.append(filtered_annotation)
         return updated_anns
-                
+
     def _add_workflow_input(self, model_source: str, model_files: dict, model_info: dict):
         if model_source == ModelSource.PRETRAINED:
             checkpoint_url = model_info["meta"]["model_files"]["checkpoint"]
