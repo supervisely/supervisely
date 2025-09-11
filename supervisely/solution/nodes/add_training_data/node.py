@@ -112,24 +112,24 @@ class AddTrainingDataNode(BaseCardNode):
         src_workspace_id = settings_data["workspace_id"]
         src_team_id = settings_data["team_id"]
         replicate_structure = settings_data.get("replicate_structure", False)
-        destination = None
-        if replicate_structure:
-            selected_ids_to_parents = settings_data.get("selected_ids_to_parents", {})
-            for dataset_names in selected_ids_to_parents.values():
-                parent_id = None
-                for dataset_name in dataset_names:
-                    ds_info = self.api.dataset.get_or_create(
-                        dst_project_id, dataset_name, parent_id=parent_id
-                    )
-                    parent_id = ds_info.id
-                destination = parent_id
+        # destination = None
+        # if replicate_structure:
+        #     selected_ids_to_parents = settings_data.get("selected_ids_to_parents", {})
+        #     for dataset_names in selected_ids_to_parents.values():
+        #         parent_id = None
+        #         for dataset_name in dataset_names:
+        #             ds_info = self.api.dataset.get_or_create(
+        #                 dst_project_id, dataset_name, parent_id=parent_id
+        #             )
+        #             parent_id = ds_info.id
+        #         destination = parent_id
 
         self.show_in_progress_badge()
 
         module_info = self.api.app.get_ecosystem_module_info(slug=self.APP_SLUG)
         params = {
             "state": {
-                "action": "copy",
+                "action": "copy" if not replicate_structure else "merge",
                 "items": [{"id": ds_id, "type": "dataset"} for ds_id in src_dataset_ids],
                 "source": {
                     "team": {"id": src_team_id},
@@ -149,8 +149,8 @@ class AddTrainingDataNode(BaseCardNode):
                 },
             }
         }
-        if destination is not None:
-            params["state"]["destination"]["dataset"] = {"id": destination}
+        # if destination is not None:
+        #     params["state"]["destination"]["dataset"] = {"id": destination}
         agent = self.api.agent.get_list_available(team_id, True)[0]
         task_info_json = self.api.task.start(
             agent_id=agent.id,
@@ -163,7 +163,7 @@ class AddTrainingDataNode(BaseCardNode):
         task_id = task_info_json["id"]
         thread = threading.Thread(
             target=self.wait_task_complete,
-            args=(task_id, src_dataset_ids),
+            args=(task_id,),
             daemon=True,
         )
         thread.start()
@@ -171,7 +171,6 @@ class AddTrainingDataNode(BaseCardNode):
     def wait_task_complete(
         self,
         task_id: int,
-        dataset_ids: List[int],
     ) -> TrainingDataAddedMessage:
         """Wait until the task is complete."""
         task_info_json = self.api.task.get_info_by_id(task_id)
@@ -201,8 +200,8 @@ class AddTrainingDataNode(BaseCardNode):
         if not success:
             logger.error(f"Task {task_id} failed with status: {task_status}")
 
-        dst_dataset_ids = []  # @TODO: get a hold of them somehow
+        # @TODO: remove arg?
         return TrainingDataAddedMessage(
             project_id=self.project_id,
-            dataset_ids=dst_dataset_ids,
+            dataset_ids=[],
         )

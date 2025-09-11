@@ -343,6 +343,9 @@ class ProjectDatasetTable(Widget):
         dataset_ids = self._get_selected_dataset_ids()
         return [self._dataset_id_to_full_name.get(did, None) for did in dataset_ids]
 
+    def has_nested_datasets(self) -> bool:
+        return any("/" in full_name for full_name in self._dataset_id_to_full_name.values())
+
     def set_team(self, team_id: int):
         if not self.current_table == self.CurrentTable.PROJECTS:
             return
@@ -369,6 +372,12 @@ class ProjectDatasetTable(Widget):
 
     def show(self):
         self.table.show()
+
+    def disable(self):
+        self.table.disable()
+
+    def enable(self):
+        self.table.enable()
 
     def _sort_function(self, data: pd.DataFrame, column_idx: int, order: str = "asc"):
         data = data.copy()
