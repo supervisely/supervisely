@@ -318,3 +318,115 @@ except Exception as e:
 from supervisely.io.env import configure_minimum_instance_version
 
 configure_minimum_instance_version()
+
+LARGE_ENV_PLACEHOLDER = "@.@SLY_LARGE_ENV@.@"
+
+
+def restore_env_vars():
+    try:
+        large_env_keys = []
+        for key, value in os.environ.items():
+            if value == LARGE_ENV_PLACEHOLDER:
+                large_env_keys.append(key)
+        if len(large_env_keys) == 0:
+            return
+
+        if utils.is_development():
+            logger.info(
+                "Large environment variables detected. Skipping restoration in development mode.",
+                extra={"keys": large_env_keys},
+            )
+            return
+
+        unknown_keys = []
+        state_keys = []
+        context_keys = []
+        for key in large_env_keys:
+            if key == "CONTEXT" or key.startswith("context."):
+                context_keys.append(key)
+            elif key.startswith("MODAL_STATE") or key.startswith("modal.state."):
+                state_keys.append(key)
+            else:
+                unknown_keys.append(key)
+
+        if state_keys or context_keys:
+            api = Api()
+            if state_keys:
+                task_info = api.task.get_info_by_id(env.task_id())
+                state = task_info.get("meta", {}).get("params", {}).get("state", {})
+                modal_state_envs = json.flatten_json(state)
+                modal_state_envs = json.modify_keys(modal_state_envs, prefix="modal.state.")
+
+                restored_keys = []
+                not_found_keys = []
+                for key in state_keys:
+                    if key == "MODAL_STATE":
+                        os.environ[key] = json.json.dumps(state)
+                    elif key in modal_state_envs:
+                        os.environ[key] = str(modal_state_envs[key])
+                    elif key.replace("_", ".") in [k.upper() for k in modal_state_envs]:
+                        # some env vars do not support dots in their names
+                        k = next(k for k in modal_state_envs if k.upper() == key.replace("_", "."))
+                        os.environ[key] = str(modal_state_envs[k])
+                    else:
+                        not_found_keys.append(key)
+                        continue
+                    restored_keys.append(key)
+
+                if restored_keys:
+                    logger.info(
+                        "Restored large environment variables from task state",
+                        extra={"keys": restored_keys},
+                    )
+
+                if not_found_keys:
+                    logger.warning(
+                        "Failed to restore some large environment variables from task state. "
+                        "No such keys in the state.",
+                        extra={"keys": not_found_keys},
+                    )
+
+            if context_keys:
+                context = api.task.get_context(env.task_id())
+                context_envs = json.flatten_json(context)
+                context_envs = json.modify_keys(context_envs, prefix="context.")
+
+                restored_keys = []
+                not_found_keys = []
+                for key in context_keys:
+                    if key == "CONTEXT":
+                        os.environ[key] = json.json.dumps(context)
+                    elif key in context_envs:
+                        os.environ[key] = context_envs[key]
+                    else:
+                        not_found_keys.append(key)
+                        continue
+                    restored_keys.append(key)
+
+                if restored_keys:
+                    logger.info(
+                        "Restored large environment variables from task context",
+                        extra={"keys": restored_keys},
+                    )
+
+                if not_found_keys:
+                    logger.warning(
+                        "Failed to restore some large environment variables from task context. "
+                        "No such keys in the context.",
+                        extra={"keys": not_found_keys},
+                    )
+
+        if unknown_keys:
+            logger.warning(
+                "Found unknown large environment variables. Can't restore them.",
+                extra={"keys": unknown_keys},
+            )
+
+    except Exception as e:
+        logger.warning(
+            "Failed to restore large environment variables.",
+            exc_info=True,
+        )
+
+
+restore_env_vars()
