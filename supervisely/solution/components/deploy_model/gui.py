@@ -73,20 +73,22 @@ class DeployModelGUI(Widget):
         If the model is not deployed or the agent does not have GPU info, returns None.
         """
         try:
+            if self.content.model_api is None:
+                return
             task_id = self.content.model_api.task_id
             task_info = self._api.task.get_info_by_id(task_id)
             if not task_info:
-                return None
+                return
             agent_id = task_info.get("agentId")
             if agent_id is None:
-                return None
+                return
             agent_info = self._api.agent.get_info_by_id(agent_id)
             if agent_info is None or not hasattr(agent_info, "gpu_info"):
-                return None
+                return
             if not isinstance(agent_info.gpu_info, dict):
-                return None
+                return
             if "device_memory" not in agent_info.gpu_info:
-                return None
+                return
             return {
                 "available": agent_info.gpu_info["device_memory"][0]["available"],
                 "total": agent_info.gpu_info["device_memory"][0]["total"],

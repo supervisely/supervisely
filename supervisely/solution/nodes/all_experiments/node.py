@@ -30,7 +30,7 @@ class AllExperimentsNode(LinkNode):
         self._api = Api.from_env()
         self._best_model = None
         self._best_model_task_id = None
-        self._project_id = project_id or env_project_id()
+        self._project_id = project_id
         self._last_task_id = None
         # self._update_link()
 
@@ -77,7 +77,7 @@ class AllExperimentsNode(LinkNode):
     # ------------------------------------------------------------------
     def _available_subscribe_methods(self) -> Dict[str, Callable]:
         return {
-            "register_experiment": self._process_incomming_message,
+            "register_experiment": self._process_incoming_message,
         }
 
     def _available_publish_methods(self) -> Dict[str, Callable]:
@@ -85,10 +85,11 @@ class AllExperimentsNode(LinkNode):
             "training_finished": self._send_model_to_evaluation,
         }
 
-    def _process_incomming_message(self, message: TrainingFinishedMessage):
-        project_id = self._extract_project_id(message.task_id)
-        if project_id is not None:
-            self._update_link(project_id)
+    def _process_incoming_message(self, message: TrainingFinishedMessage):
+        if self._project_id is None:
+            self._project_id = self._extract_project_id(message.task_id)
+            if self._project_id is not None:
+                self._update_link(self._project_id)
         if self._last_task_id is not None:
             self._send_model_to_evaluation(message.task_id)
         self._last_task_id = message.task_id

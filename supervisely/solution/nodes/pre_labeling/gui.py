@@ -15,6 +15,7 @@ from supervisely.app.widgets import (
 )
 from supervisely.nn.model.model_api import ModelAPI
 from supervisely.sly_logger import logger
+from supervisely.solution.utils import find_agent
 
 
 class PreLabelingGUI(Widget):
@@ -233,13 +234,11 @@ class PreLabelingGUI(Widget):
                 self.predict_app_task_id = None
             if self.predict_app_task_id is None:
                 module_id = self.api.app.get_ecosystem_module_id(slug=self.PREDICT_APP_SLUG)
-                agent_id = self.api.nn._deploy_api._find_agent(self.team_id)
+                agent_id = find_agent(self.api, self.team_id)
                 session_info = self.api.app.start(
                     module_id=module_id,
                     workspace_id=self.workspace_id,
                     agent_id=agent_id,
-                    app_version="test-sdk-branch",  # ! TODO: remove after testing
-                    is_branch=True,  # ! TODO: remove after testing
                 )
 
                 self.api.app.wait_until_ready_for_api_calls(
@@ -298,13 +297,13 @@ class PreLabelingGUI(Widget):
                 self.predict_app_task_id = task_id
 
             if self._session_id is None:
-                raise ValueError("No model session ID set. Please set a valid session ID.")
+                raise ValueError("Please select a model session for pre-labeling.")
 
             if not self.model:
                 raise ValueError("No model is connected. Please deploy a model first.")
 
             if not images:
-                raise ValueError("No images provided for pre-labeling.")
+                raise ValueError("No images available for pre-labeling.")
 
             self._run_predict_app()
 
@@ -354,7 +353,7 @@ class PreLabelingGUI(Widget):
         finally:
             if self.predict_app_task_id:
                 try:
-                    self.api.task.stop(self.predict_app_task_id)
+                    # self.api.task.stop(self.predict_app_task_id)
                     self.predict_app_task_id = None
                 except Exception as e:
                     logger.error(f"Failed to stop predict app session: {repr(e)}")

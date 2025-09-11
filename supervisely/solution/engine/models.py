@@ -136,6 +136,9 @@ class ComparisonFinishedMessage(Message):
     best_checkpoint: Optional[str] = Field(
         None, description="Path to the best model checkpoint after comparison"
     )
+    train_task_id: Optional[int] = Field(
+        None, description="ID of the training task that produced the model"
+    )
 
 
 class TrainFinishedMessage(Message):
