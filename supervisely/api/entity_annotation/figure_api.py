@@ -27,6 +27,7 @@ from supervisely._utils import batched, logger, run_coroutine
 from supervisely.api.module_api import ApiField, ModuleApi, RemoveableBulkModuleApi
 from supervisely.geometry.rectangle import Rectangle
 from supervisely.video_annotation.key_id_map import KeyIdMap
+from supervisely.annotation.label import LabelingStatus
 
 
 class FigureInfo(NamedTuple):
@@ -235,6 +236,7 @@ class FigureApi(RemoveableBulkModuleApi):
         geometry_type: str,
         track_id: Optional[int] = None,
         custom_data: Optional[dict] = None,
+        status: Optional[LabelingStatus] = None,
     ) -> int:
         """"""
         input_figure = {
@@ -243,6 +245,12 @@ class FigureApi(RemoveableBulkModuleApi):
             ApiField.GEOMETRY_TYPE: geometry_type,
             ApiField.GEOMETRY: geometry_json,
         }
+
+        if status is None:
+            status = LabelingStatus.MANUALLY_LABELED
+        nn_created, nn_updated = LabelingStatus.to_flags(status)
+        input_figure[ApiField.NN_CREATED] = nn_created
+        input_figure[ApiField.NN_UPDATED] = nn_updated
 
         if track_id is not None:
             input_figure[ApiField.TRACK_ID] = track_id

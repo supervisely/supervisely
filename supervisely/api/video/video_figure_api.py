@@ -69,14 +69,7 @@ class VideoFigureApi(FigureApi):
         """
         if meta is None:
             meta = {}
-        # set nnCreated flag on creation
         meta = {**(meta or {}), ApiField.FRAME: frame_index}
-
-        if status is None:
-            status = LabelingStatus.MANUALLY_LABELED
-        nn_created, nn_updated = LabelingStatus.to_flags(status)
-        meta[ApiField.NN_CREATED] = nn_created
-        meta[ApiField.NN_UPDATED] = nn_updated
 
         return super().create(
             video_id,
@@ -85,6 +78,7 @@ class VideoFigureApi(FigureApi):
             geometry_json,
             geometry_type,
             track_id,
+            status=status,
         )
 
     def append_bulk(self, video_id: int, figures: List[VideoFigure], key_id_map: KeyIdMap) -> None:
@@ -161,10 +155,10 @@ class VideoFigureApi(FigureApi):
             ApiField.ID: figure_id,
             ApiField.GEOMETRY: geometry.to_json(),
         }
-        
+
         if status:
             nn_created, nn_updated = LabelingStatus.to_flags(status)
-            payload[ApiField.NN_CREATED] = nn_created
+            # payload[ApiField.NN_CREATED] = nn_created
             payload[ApiField.NN_UPDATED] = nn_updated
 
         self._api.post("figures.editInfo", payload)

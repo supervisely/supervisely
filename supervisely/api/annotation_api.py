@@ -1321,8 +1321,8 @@ class AnnotationApi(ModuleApi):
         }
         if status:
             nn_created, nn_updated = LabelingStatus.to_flags(status)
-            payload[LabelJsonFields.NN_CREATED] = nn_created
-            payload[LabelJsonFields.NN_UPDATED] = nn_updated
+            # payload[ApiField.NN_CREATED] = nn_created
+            payload[ApiField.NN_UPDATED] = nn_updated
         self._api.post("figures.editInfo", payload)
 
     def update_label_priority(self, label_id: int, priority: int) -> None:
