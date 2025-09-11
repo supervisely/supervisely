@@ -363,7 +363,7 @@ def restore_env_vars():
                     if key == "MODAL_STATE":
                         os.environ[key] = json.json.dumps(state)
                     elif key in modal_state_envs:
-                        os.environ[key] = modal_state_envs[key]
+                        os.environ[key] = str(modal_state_envs[key])
                     else:
                         not_found_keys.append(key)
                         continue
