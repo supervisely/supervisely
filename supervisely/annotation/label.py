@@ -72,6 +72,16 @@ class LabelingStatus(StrEnum):
     MANUALLY_CORRECTED = "manually_corrected"
 
     @classmethod
+    def to_flags(cls, status: "LabelingStatus") -> Tuple[bool, bool]:
+        if status == cls.AUTO_LABELED:
+            return True, True
+        elif status == cls.MANUALLY_CORRECTED:
+            return True, False
+        elif status == cls.MANUALLY_LABELED:
+            return False, False
+        raise ValueError(f"No matching flags for status: {status}")
+
+    @classmethod
     def from_flags(cls, nn_created: bool, nn_updated: bool) -> "LabelingStatus":
         if nn_created is True and nn_updated is True:
             return cls.AUTO_LABELED
@@ -79,7 +89,7 @@ class LabelingStatus(StrEnum):
             return cls.MANUALLY_CORRECTED
         elif nn_created is False and nn_updated is False:
             return cls.MANUALLY_LABELED
-        raise ValueError(f"No matching status for ({nn_created}, {nn_updated})")
+        raise ValueError(f"No matching status for flags: nn_created: {nn_created}, nn_updated: {nn_updated}")
 
 
 class LabelBase:
@@ -156,16 +166,7 @@ class LabelBase:
         if status is None:
             status = LabelingStatus.MANUALLY_LABELED
         self._status = status
-
-        if status == LabelingStatus.MANUALLY_LABELED:
-            self._nn_created = False
-            self._nn_updated = False
-        elif status == LabelingStatus.MANUALLY_CORRECTED:
-            self._nn_created = True
-            self._nn_updated = False
-        elif status == LabelingStatus.AUTO_LABELED:
-            self._nn_created = True
-            self._nn_updated = True
+        self._nn_created, self._nn_updated = LabelingStatus.to_flags(status)
 
     def _validate_geometry(self):
         """

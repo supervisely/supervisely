@@ -22,6 +22,7 @@ from supervisely.geometry.rectangle import Rectangle
 from supervisely.nn.inference.cache import InferenceImageCache
 from supervisely.sly_logger import logger
 from supervisely.video_annotation.key_id_map import KeyIdMap
+from supervisely.annotation.label import LabelingStatus
 
 
 class TrackerInterface:
@@ -197,7 +198,7 @@ class TrackerInterface:
             geometry.to_json(),
             geometry.geometry_name(),
             self.track_id,
-            nn_created=True,
+            status=LabelingStatus.AUTO_LABELED,
         )
         self.logger.debug(f"Added {geometry.geometry_name()} to frame #{frame_ind}")
         if notify:

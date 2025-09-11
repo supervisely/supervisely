@@ -126,16 +126,7 @@ class VideoFigure:
         if status is None:
             status = LabelingStatus.MANUALLY_LABELED
         self._status = status
-
-        if status == LabelingStatus.AUTO_LABELED:
-            self._nn_created = True
-            self._nn_updated = True
-        elif status == LabelingStatus.MANUALLY_CORRECTED:
-            self._nn_created = True
-            self._nn_updated = False
-        elif status == LabelingStatus.MANUALLY_LABELED:
-            self._nn_created = False
-            self._nn_updated = False
+        self._nn_created, self._nn_updated = LabelingStatus.to_flags(status)
 
     def _add_creation_info(self, d):
         if self.labeler_login is not None:

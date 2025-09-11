@@ -74,16 +74,9 @@ class VideoFigureApi(FigureApi):
 
         if status is None:
             status = LabelingStatus.MANUALLY_LABELED
-            
-        if status == LabelingStatus.AUTO_LABELED:
-            meta[ApiField.NN_CREATED] = True
-            meta[ApiField.NN_UPDATED] = True
-        elif status == LabelingStatus.MANUALLY_CORRECTED:
-            meta[ApiField.NN_CREATED] = True
-            meta[ApiField.NN_UPDATED] = False
-        elif status == LabelingStatus.MANUALLY_LABELED:
-            meta[ApiField.NN_CREATED] = False
-            meta[ApiField.NN_UPDATED] = False
+        nn_created, nn_updated = LabelingStatus.to_flags(status)
+        meta[ApiField.NN_CREATED] = nn_created
+        meta[ApiField.NN_UPDATED] = nn_updated
 
         return super().create(
             video_id,
@@ -136,15 +129,15 @@ class VideoFigureApi(FigureApi):
 
         self._append_bulk(video_id, figures_json, keys, key_id_map)
 
-    def update(self, figure_id: int, geometry: Geometry, by_nn: Optional[bool] = False) -> None:
+    def update(self, figure_id: int, geometry: Geometry, status: Optional[LabelingStatus] = None) -> None:
         """Updates figure feometry with given ID in Supervisely with new Geometry object.
 
         :param figure_id: ID of the figure to update
         :type figure_id: int
         :param geometry: Supervisely Gepmetry object
         :type geometry: Geometry
-        :param by_nn: Whether the figure was updated by a neural network.
-        :type by_nn: bool, optional
+        :param status: Labeling status. Specifies if the VideoFigure was created by NN model, manually or created by NN and then manually corrected.
+        :type status: LabelingStatus, optional
         :Usage example:
 
          .. code-block:: python
@@ -168,8 +161,12 @@ class VideoFigureApi(FigureApi):
             ApiField.ID: figure_id,
             ApiField.GEOMETRY: geometry.to_json(),
         }
-        if by_nn:
-            payload[ApiField.NN_UPDATED] = True
+        
+        if status:
+            nn_created, nn_updated = LabelingStatus.to_flags(status)
+            payload[ApiField.NN_CREATED] = nn_created
+            payload[ApiField.NN_UPDATED] = nn_updated
+
         self._api.post("figures.editInfo", payload)
 
     def download(
