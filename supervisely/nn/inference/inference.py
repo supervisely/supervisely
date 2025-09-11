@@ -1439,13 +1439,12 @@ class Inference:
                 # for example empty mask
                 continue
             if isinstance(label, list):
+                [lb._set_status(LabelingStatus.AUTO) for lb in label]
                 labels.extend(label)
                 continue
-            
-            labels.append(label)
 
-        # Update labeling status
-        nn_labels = [lb.clone(status=LabelingStatus.AUTO_LABELED) for lb in labels]
+            label._set_status(LabelingStatus.AUTO)
+            labels.append(label)
 
         # create annotation with correct image resolution
         if isinstance(image_path, str):
@@ -1453,7 +1452,7 @@ class Inference:
             img_size = img.shape[:2]
         else:
             img_size = image_path.shape[:2]
-        ann = Annotation(img_size, nn_labels)
+        ann = Annotation(img_size, labels)
         return ann
 
     @property
@@ -2642,8 +2641,7 @@ class Inference:
             ds_predictions[prediction.dataset_id].append(prediction)
 
         def update_labeling_status(ann: Annotation) -> Annotation:
-            nn_labels = [lb.clone(status=LabelingStatus.AUTO_LABELED) for lb in ann.labels]
-            return ann.clone(labels=nn_labels)
+            [lb._set_status(LabelingStatus.AUTO) for lb in ann.labels]
 
         def _new_name(image_info: ImageInfo):
             name = Path(image_info.name)
@@ -2724,7 +2722,7 @@ class Inference:
                 # Update labeling status of new predictions before upload
                 anns_with_nn_flags = []
                 for pred, ann in zip(preds, anns):
-                    ann = update_labeling_status(ann)
+                    update_labeling_status(ann)
                     pred.annotation = ann
                     anns_with_nn_flags.append(ann)
 
@@ -2796,7 +2794,7 @@ class Inference:
 
                 # Update labeling status of predicted labels before optional merge
                 for pred, ann in zip(preds, anns):
-                    ann = update_labeling_status(ann)
+                    update_labeling_status(ann)
                     pred.annotation = ann
 
                 if upload_mode in ["iou_merge", "append"]:

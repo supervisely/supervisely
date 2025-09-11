@@ -1285,7 +1285,7 @@ class AnnotationApi(ModuleApi):
         """
         return self._api.get("figures.tags.list", {ApiField.ID: label_id}).json()
 
-    def update_label(self, label_id: int, label: Label, status: Optional[LabelingStatus] = None) -> None:
+    def update_label(self, label_id: int, label: Label) -> None:
         """Updates label with given ID in Supervisely with new Label object.
         NOTE: This method only updates label's geometry and tags, not class title, etc.
 
@@ -1293,8 +1293,6 @@ class AnnotationApi(ModuleApi):
         :type label_id: int
         :param label: Supervisely Label object
         :type label: Label
-        :param status: Labeling status
-        :type status: LabelingStatus
         :Usage example:
 
          .. code-block:: python
@@ -1318,11 +1316,9 @@ class AnnotationApi(ModuleApi):
             ApiField.ID: label_id,
             ApiField.TAGS: [tag.to_json() for tag in label.tags],
             ApiField.GEOMETRY: label.geometry.to_json(),
+            ApiField.NN_CREATED: label.status.nn_created,
+            ApiField.NN_UPDATED: label.status.nn_updated,
         }
-        if status is not None:
-            nn_created, nn_updated = LabelingStatus.to_flags(status)
-            payload[ApiField.NN_CREATED] = nn_created
-            payload[ApiField.NN_UPDATED] = nn_updated
         self._api.post("figures.editInfo", payload)
 
     def update_label_priority(self, label_id: int, priority: int) -> None:

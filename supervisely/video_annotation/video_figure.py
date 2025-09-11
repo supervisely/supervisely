@@ -57,7 +57,7 @@ class VideoFigure:
     :type smart_tool_input: dict, optional
     :param priority: Priority of the figure (position of the figure relative to other overlapping or underlying figures).
     :type priority: int, optional
-    :param status: Sets labeling status. Specifies if the VideoFigure was created by NN model, manually or created by NN and then manually corrected.
+    :param status: Sets labeling status. Shows how label was created and corrected.
     :type status: LabelingStatus, optional
     :Usage example:
 
@@ -124,9 +124,8 @@ class VideoFigure:
         self._priority = priority
 
         if status is None:
-            status = LabelingStatus.MANUALLY_LABELED
+            status = LabelingStatus.MANUAL
         self._status = status
-        self._nn_created, self._nn_updated = LabelingStatus.to_flags(status)
 
     def _add_creation_info(self, d):
         if self.labeler_login is not None:
@@ -361,8 +360,8 @@ class VideoFigure:
             OBJECT_KEY: self.parent_object.key().hex,
             ApiField.GEOMETRY_TYPE: self.geometry.geometry_name(),
             ApiField.GEOMETRY: self.geometry.to_json(),
-            ApiField.NN_CREATED: self._nn_created,
-            ApiField.NN_UPDATED: self._nn_updated,
+            ApiField.NN_CREATED: self.status.nn_created,
+            ApiField.NN_UPDATED: self.status.nn_updated,
         }
 
         if key_id_map is not None:
@@ -608,7 +607,24 @@ class VideoFigure:
 
     @property
     def status(self) -> LabelingStatus:
+        """Labeling status. Specifies if the VideoFigure was created by NN model, manually or created by NN and then manually corrected."""
         return self._status
+
+    def _set_status(self, status: LabelingStatus):
+        """Set labeling status."""
+        self._status = status
+
+    def is_auto(self) -> bool:
+        return self.status == LabelingStatus.AUTO
+    
+    def is_manual(self) -> bool:
+        return self.status == LabelingStatus.MANUAL
+    
+    def is_corrected(self) -> bool:
+        return self.status == LabelingStatus.CORRECTED
+
+    def is_smart(self) -> bool:
+        return self.status == LabelingStatus.SMART
 
     def validate_bounds(
         self, img_size: Tuple[int, int], _auto_correct: Optional[bool] = False

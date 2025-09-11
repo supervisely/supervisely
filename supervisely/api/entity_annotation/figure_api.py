@@ -247,10 +247,9 @@ class FigureApi(RemoveableBulkModuleApi):
         }
 
         if status is None:
-            status = LabelingStatus.MANUALLY_LABELED
-        nn_created, nn_updated = LabelingStatus.to_flags(status)
-        input_figure[ApiField.NN_CREATED] = nn_created
-        input_figure[ApiField.NN_UPDATED] = nn_updated
+            status = LabelingStatus.MANUAL
+        input_figure[ApiField.NN_CREATED] = status.nn_created
+        input_figure[ApiField.NN_UPDATED] = status.nn_updated
 
         if track_id is not None:
             input_figure[ApiField.TRACK_ID] = track_id

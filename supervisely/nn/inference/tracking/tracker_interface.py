@@ -198,7 +198,7 @@ class TrackerInterface:
             geometry.to_json(),
             geometry.geometry_name(),
             self.track_id,
-            status=LabelingStatus.AUTO_LABELED,
+            status=LabelingStatus.AUTO,
         )
         self.logger.debug(f"Added {geometry.geometry_name()} to frame #{frame_ind}")
         if notify:
