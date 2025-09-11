@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 
-from enum import Enum
+from supervisely.collection.str_enum import StrEnum
 from copy import deepcopy
 from typing import Dict, List, Optional, Tuple, Union
 
@@ -52,7 +52,7 @@ class LabelJsonFields:
     NN_UPDATED = "nnUpdated"
     """Flag indicating if the label was corrected by NN model or manually."""
 
-class LabelingStatus(str, Enum):
+class LabelingStatus(StrEnum):
     """
     Shows status of the label. Can be one of the following:
 
@@ -67,33 +67,13 @@ class LabelingStatus(str, Enum):
         - nn_updated: False | Manually corrected
     - SMART: Specifies if the label was created using smart tool
         - nn_created: False | Manually created
-        - nn_updated: True | Corrected by smart tool
+        - nn_updated: False | Corrected by smart tool
     """
-    nn_created: bool
-    nn_updated: bool
 
-    def __new__(cls, value: str, nn_created: bool, nn_updated: bool):
-        obj = str.__new__(cls, value)
-        obj._value_ = value
-        obj.nn_created = nn_created
-        obj.nn_updated = nn_updated
-        return obj
-
-    AUTO = ("auto", True, True)
-    MANUAL = ("manual", False, False)
-    CORRECTED = ("corrected", True, False)
-    SMART = ("smart", False, True)
-
-    @classmethod
-    def from_flags(cls, nn_created: bool, nn_updated: bool) -> "LabelingStatus":
-        if nn_created is True and nn_updated is True:
-            return cls.AUTO
-        elif nn_created is True and nn_updated is False:
-            return cls.CORRECTED
-        elif nn_created is False and nn_updated is False:
-            return cls.MANUAL
-        else:
-            return cls.SMART
+    AUTO = "auto"
+    MANUAL = "manual"
+    CORRECTED = "corrected"
+    SMART = "smart"
 
 
 class LabelBase:
@@ -164,12 +144,13 @@ class LabelBase:
 
         self._binding_key = binding_key
         self._smart_tool_input = smart_tool_input
-
         self._sly_id = sly_id
 
         if status is None:
             status = LabelingStatus.MANUAL
         self._status = status
+        self._set_flags_from_status()
+
 
     def _validate_geometry(self):
         """
@@ -336,8 +317,8 @@ class LabelBase:
             **self.geometry.to_json(),
             GEOMETRY_TYPE: self.geometry.geometry_name(),
             GEOMETRY_SHAPE: self.geometry.geometry_name(),
-            LabelJsonFields.NN_CREATED: self.status.nn_created,
-            LabelJsonFields.NN_UPDATED: self.status.nn_updated,
+            LabelJsonFields.NN_CREATED: self._nn_created,
+            LabelJsonFields.NN_UPDATED: self._nn_updated,
         }
 
         if self.obj_class.sly_id is not None:
@@ -416,7 +397,7 @@ class LabelBase:
 
         nn_created = data.get(LabelJsonFields.NN_CREATED, False)
         nn_updated = data.get(LabelJsonFields.NN_UPDATED, False)
-        status = LabelingStatus.from_flags(nn_created, nn_updated)
+        status = cls._get_status_from_flags(nn_created, nn_updated)
 
         return cls(
             geometry=geometry,
@@ -940,21 +921,51 @@ class LabelBase:
         """Labeling status. Specifies if the Label was created by NN model, manually or created by NN and then manually corrected."""
         return self._status
 
-    def _set_status(self, status: LabelingStatus):
+    @status.setter
+    def status(self, status: LabelingStatus):
         """Set labeling status."""
         self._status = status
+        self._set_flags_from_status()
 
-    def is_auto(self) -> bool:
-        return self.status == LabelingStatus.AUTO
-    
-    def is_manual(self) -> bool:
-        return self.status == LabelingStatus.MANUAL
-    
-    def is_corrected(self) -> bool:
-        return self.status == LabelingStatus.CORRECTED
+    def _set_status_from_flags(self, nn_created: bool, nn_updated: bool):
+        if nn_created is True and nn_updated is True:
+            self._status = LabelingStatus.AUTO
+        elif nn_created is True and nn_updated is False:
+            self._status = LabelingStatus.CORRECTED
+        else:
+            self._status = LabelingStatus.MANUAL
 
-    def is_smart(self) -> bool:
-        return self.status == LabelingStatus.SMART
+        self._nn_created = nn_created
+        self._nn_updated = nn_updated
+
+    def _set_flags_from_status(self):
+        if self._status == LabelingStatus.AUTO:
+            self._nn_created = True
+            self._nn_updated = True
+        elif self._status == LabelingStatus.CORRECTED:
+            self._nn_created = True
+            self._nn_updated = False
+        else:
+            self._nn_created = False
+            self._nn_updated = False
+
+    @classmethod
+    def _get_status_from_flags(cls, nn_created: bool, nn_updated: bool) -> LabelingStatus:
+        if nn_created is True and nn_updated is True:
+            return LabelingStatus.AUTO
+        elif nn_created is True and nn_updated is False:
+            return LabelingStatus.CORRECTED
+        else:
+            return LabelingStatus.MANUAL
+
+    @classmethod
+    def _get_flags_from_status(cls, status: LabelingStatus) -> Tuple[bool, bool]:
+        if status == LabelingStatus.AUTO:
+            return True, True
+        elif status == LabelingStatus.CORRECTED:
+            return True, False
+        else:
+            return False, False
 
     @classmethod
     def _to_pixel_coordinate_system_json(cls, data: Dict, image_size: List[int]) -> Dict:

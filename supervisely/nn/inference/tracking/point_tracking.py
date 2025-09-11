@@ -610,11 +610,12 @@ class PointTracking(BaseTracking):
                 # for example empty mask
                 continue
             if isinstance(label, list):
-                [lb._set_status(LabelingStatus.AUTO) for lb in label]
+                for label in labels:
+                    label.status = LabelingStatus.AUTO
                 labels.extend(label)
                 continue
 
-            label._set_status(LabelingStatus.AUTO)
+            label.status = LabelingStatus.AUTO
             labels.append(label)
 
         # create annotation with correct image resolution

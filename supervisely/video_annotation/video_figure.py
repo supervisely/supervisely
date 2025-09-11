@@ -126,6 +126,7 @@ class VideoFigure:
         if status is None:
             status = LabelingStatus.MANUAL
         self._status = status
+        self._set_flags_from_status()
 
     def _add_creation_info(self, d):
         if self.labeler_login is not None:
@@ -360,8 +361,8 @@ class VideoFigure:
             OBJECT_KEY: self.parent_object.key().hex,
             ApiField.GEOMETRY_TYPE: self.geometry.geometry_name(),
             ApiField.GEOMETRY: self.geometry.to_json(),
-            ApiField.NN_CREATED: self.status.nn_created,
-            ApiField.NN_UPDATED: self.status.nn_updated,
+            ApiField.NN_CREATED: self._nn_created,
+            ApiField.NN_UPDATED: self._nn_updated,
         }
 
         if key_id_map is not None:
@@ -485,9 +486,10 @@ class VideoFigure:
         track_id = data.get(TRACK_ID, None)
         smart_tool_input = data.get(ApiField.SMART_TOOL_INPUT, None)
         priority = data.get(ApiField.PRIORITY, None)
+
         nn_created = data.get(ApiField.NN_CREATED, False)
         nn_updated = data.get(ApiField.NN_UPDATED, False)
-        status = LabelingStatus.from_flags(nn_created, nn_updated)
+        status = cls._get_status_from_flags(nn_created, nn_updated)
 
         return cls(
             object,
@@ -610,21 +612,52 @@ class VideoFigure:
         """Labeling status. Specifies if the VideoFigure was created by NN model, manually or created by NN and then manually corrected."""
         return self._status
 
-    def _set_status(self, status: LabelingStatus):
+    @status.setter
+    def status(self, status: LabelingStatus):
         """Set labeling status."""
         self._status = status
+        self._set_flags_from_status()
 
-    def is_auto(self) -> bool:
-        return self.status == LabelingStatus.AUTO
-    
-    def is_manual(self) -> bool:
-        return self.status == LabelingStatus.MANUAL
-    
-    def is_corrected(self) -> bool:
-        return self.status == LabelingStatus.CORRECTED
+    def _set_status_from_flags(self, nn_created: bool, nn_updated: bool):
+        if nn_created is True and nn_updated is True:
+            self._status = LabelingStatus.AUTO
+        elif nn_created is True and nn_updated is False:
+            self._status = LabelingStatus.CORRECTED
+        else:
+            self._status = LabelingStatus.MANUAL
 
-    def is_smart(self) -> bool:
-        return self.status == LabelingStatus.SMART
+        self._nn_created = nn_created
+        self._nn_updated = nn_updated
+
+    def _set_flags_from_status(self):
+        if self._status == LabelingStatus.AUTO:
+            self._nn_created = True
+            self._nn_updated = True
+        elif self._status == LabelingStatus.CORRECTED:
+            self._nn_created = True
+            self._nn_updated = False
+        else:
+            self._nn_created = False
+            self._nn_updated = False
+
+    @classmethod
+    def _get_status_from_flags(cls, nn_created: bool, nn_updated: bool) -> LabelingStatus:
+        if nn_created is True and nn_updated is True:
+            return LabelingStatus.AUTO
+        elif nn_created is True and nn_updated is False:
+            return LabelingStatus.CORRECTED
+        else:
+            return LabelingStatus.MANUAL
+
+    @classmethod
+    def _get_flags_from_status(cls, status: LabelingStatus) -> Tuple[bool, bool]:
+        if status == LabelingStatus.AUTO:
+            return True, True
+        elif status == LabelingStatus.CORRECTED:
+            return True, False
+        else:
+            return False, False
+
 
     def validate_bounds(
         self, img_size: Tuple[int, int], _auto_correct: Optional[bool] = False

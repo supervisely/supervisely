@@ -157,8 +157,9 @@ class VideoFigureApi(FigureApi):
         }
 
         if status is not None:
-            payload[ApiField.NN_CREATED] = status.nn_created
-            payload[ApiField.NN_UPDATED] = status.nn_updated
+            nn_created,nn_updated = VideoFigure._get_flags_from_status(status)
+            payload[ApiField.NN_CREATED] = nn_created
+            payload[ApiField.NN_UPDATED] = nn_updated
 
         self._api.post("figures.editInfo", payload)
 

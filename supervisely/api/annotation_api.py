@@ -1316,8 +1316,8 @@ class AnnotationApi(ModuleApi):
             ApiField.ID: label_id,
             ApiField.TAGS: [tag.to_json() for tag in label.tags],
             ApiField.GEOMETRY: label.geometry.to_json(),
-            ApiField.NN_CREATED: label.status.nn_created,
-            ApiField.NN_UPDATED: label.status.nn_updated,
+            ApiField.NN_CREATED: label._nn_created,
+            ApiField.NN_UPDATED: label._nn_updated,
         }
         self._api.post("figures.editInfo", payload)
 
