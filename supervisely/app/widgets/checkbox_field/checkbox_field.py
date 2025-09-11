@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Callable, Dict, Optional, Union
 
-from supervisely.app import StateJson, DataJson
+from supervisely.app import DataJson, StateJson
 from supervisely.app.widgets import Text, Widget
 
 
@@ -17,6 +17,8 @@ class CheckboxField(Widget):
     :type checked: Optional[bool]
     :param widget_id: Unique widget identifier.
     :type widget_id: str
+    :param remove_margins: If True, removes margins around the checkbox.
+    :type remove_margins: bool
     """
 
     class Routes:
@@ -28,11 +30,13 @@ class CheckboxField(Widget):
         description: str,
         checked: Optional[bool] = False,
         widget_id: Optional[str] = None,
+        remove_margins: bool = False,
     ):
         self._title = title
         self._description = description
         self._checked = checked
         self._changes_handled = False
+        self._remove_margins = remove_margins
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def get_json_data(self) -> Dict:

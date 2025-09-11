@@ -1,5 +1,5 @@
 <div class="fflex align-start">
-    <el-checkbox v-model="state.{{{widget.widget_id}}}.checked" class="mt10 mr10" 
+    <el-checkbox v-model="state.{{{widget.widget_id}}}.checked" class="mt10 mr10"
     {%
     if
     widget._changes_handled
@@ -9,7 +9,7 @@
     endif
     %}
     ></el-checkbox>
-    <sly-field class="mt20"
+    <sly-field {% if widget._remove_margins == False %}class="mt20"{% endif %}
                 :title="data.{{{widget.widget_id}}}.title"
                 :description="data.{{{widget.widget_id}}}.description">
     </sly-field>

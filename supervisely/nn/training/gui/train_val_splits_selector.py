@@ -13,7 +13,7 @@ class TrainValSplitsSelector:
     def __init__(self, api: Api, project_id: int, app_options: dict = {}):
         # Init widgets
         self.train_val_splits = None
-        self.validator_text = None
+        self.validator_text = Text("")
         self.button = None
         self.container = None
         self.card = None
@@ -42,8 +42,11 @@ class TrainValSplitsSelector:
 
         self.train_val_splits = TrainValSplits(project_id, None, random_split, tag_split, ds_split, collections_splits=coll_split)
 
-        self._detect_splits(coll_split, ds_split)
+        if self.project_id is not None:
+            self._detect_splits(coll_split, ds_split)
         self.button = Button("Select")
+        if self.validator_text.text == "":
+            self.validator_text.hide()
         self.display_widgets.extend([self.train_val_splits, self.validator_text, self.button])
         # -------------------------------- #
 
@@ -78,6 +81,8 @@ class TrainValSplitsSelector:
         return [self.train_val_splits]
 
     def validate_step(self) -> bool:
+        if not self.project_id:
+            return False
         split_method = self.train_val_splits.get_split_method()
         warning_text = "Using the same data for training and validation leads to overfitting, poor generalization and biased model selection."
         ensure_text = "Ensure this is intentional."
@@ -305,6 +310,10 @@ class TrainValSplitsSelector:
     def set_sly_project(self, project: Project) -> None:
         self.train_val_splits._project_fs = project
 
+    def set_project_id(self, project_id: int) -> None:
+        self.project_id = project_id
+        self.train_val_splits.set_project_id(project_id)
+
     def get_split_method(self) -> str:
         return self.train_val_splits.get_split_method()
 
@@ -352,7 +361,7 @@ class TrainValSplitsSelector:
                     curr_idx = collection_idx
                     curr_collection = collection
             return curr_collection
-
+        
         all_collections = self.api.entities_collection.get_list(self.project_id)
         train_collections = []
         val_collections = []
@@ -386,7 +395,7 @@ class TrainValSplitsSelector:
             nested = self.api.dataset.get_nested(self.project_id, root_ds.id)
             nested_ids = [ds.id for ds in nested]
             return [root_ds.id] + nested_ids
-
+        
         datasets_found = False
         train_val_dataset_ids = {"train": set(), "val": set()}
         for _, dataset in self.api.dataset.tree(self.project_id):

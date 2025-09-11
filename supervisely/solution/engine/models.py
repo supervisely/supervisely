@@ -50,6 +50,13 @@ class MoveLabeledDataFinishedMessage(Message):
     items_count: int = Field(..., description="Total number of images moved")
 
 
+class TrainingDataAddedMessage(Message):
+    """Training data has been added event message."""
+
+    project_id: int = Field(..., description="ID of the project where data was added")
+    dataset_ids: List[int] = Field(..., description="List of dataset IDs that were added")
+
+
 class LabelingQueueRefreshInfoMessage(Message):
     """Labeling queue refresh info event message."""
 

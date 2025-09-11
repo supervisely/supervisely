@@ -1,0 +1,162 @@
+.sly-stepper-progress {
+  width: 100%;
+  /* Use SDK / Element default font to match the rest of the UI */
+  font-family: var(--sly-font-family, var(--el-font-family, inherit));
+}
+
+.sly-stepper-progress--horizontal .sly-stepper-progress__track {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sly-stepper-progress__item {
+  display: flex;
+  align-items: center;
+}
+
+.sly-stepper-progress__dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--sly-grey-300, #dcdfe6);
+  border: 2px solid var(--sly-grey-300, #dcdfe6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 200ms ease, border-color 200ms ease, transform 200ms ease;
+}
+
+.sly-stepper-progress__dot-num {
+  color: white;
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 1;
+  font-family: inherit;
+  transition: color 200ms ease;
+}
+
+.sly-stepper-progress__label {
+  margin-left: 6px;
+  margin-right: 6px;
+  font-size: 16px;
+  color: var(--sly-grey-700, #606266);
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.sly-stepper-progress__connector {
+  width: 48px;
+  height: 4px;
+  /* thicker (girthier) */
+  background: var(--sly-grey-200, #e4e7ed);
+  margin-left: 4px;
+  margin-right: 4px;
+  position: relative;
+  overflow: hidden;
+  border-radius: 999px;
+}
+
+.sly-stepper-progress__bar {
+  height: 100%;
+  width: 0%;
+  background: var(--sly-primary, #409eff);
+  transition: width 240ms ease;
+}
+
+.sly-stepper-progress__bar.is-filled {
+  width: 100%;
+}
+
+/* State-based coloring */
+.sly-stepper-progress__item.is-current .sly-stepper-progress__dot {
+  background: var(--sly-primary, #409eff);
+  border-color: var(--sly-primary, #409eff);
+}
+
+.sly-stepper-progress__item.is-current .sly-stepper-progress__dot-num {
+  color: #ffffff;
+}
+
+.sly-stepper-progress__item.is-completed .sly-stepper-progress__dot {
+  background: var(--sly-primary, #409eff);
+  border-color: var(--sly-primary, #409eff);
+}
+
+.sly-stepper-progress__item.is-completed .sly-stepper-progress__dot-num {
+  color: #ffffff;
+}
+
+.sly-stepper-progress__item.is-upcoming .sly-stepper-progress__dot {
+  background: var(--sly-grey-300, #dcdfe6);
+  border-color: var(--sly-grey-300, #dcdfe6);
+}
+
+.sly-stepper-progress__item.is-upcoming .sly-stepper-progress__dot-num {
+  color: var(--sly-grey-700, #606266);
+}
+
+/* Size variants */
+.sly-stepper-progress--size-small .sly-stepper-progress__dot {
+  width: 22px;
+  height: 22px;
+}
+
+.sly-stepper-progress--size-small .sly-stepper-progress__dot-num {
+  font-size: 12px;
+}
+
+.sly-stepper-progress--size-small .sly-stepper-progress__label {
+  font-size: 14px;
+}
+
+.sly-stepper-progress--size-small .sly-stepper-progress__connector {
+  width: 44px;
+  height: 3px;
+}
+
+.sly-stepper-progress--size-medium .sly-stepper-progress__dot {
+  width: 26px;
+  height: 26px;
+}
+
+.sly-stepper-progress--size-medium .sly-stepper-progress__dot-num {
+  font-size: 13px;
+}
+
+.sly-stepper-progress--size-medium .sly-stepper-progress__label {
+  font-size: 15px;
+}
+
+.sly-stepper-progress--size-medium .sly-stepper-progress__connector {
+  width: 50px;
+  height: 4px;
+}
+
+.sly-stepper-progress--size-large .sly-stepper-progress__dot {
+  width: 30px;
+  height: 30px;
+}
+
+.sly-stepper-progress--size-large .sly-stepper-progress__dot-num {
+  font-size: 14px;
+}
+
+.sly-stepper-progress--size-large .sly-stepper-progress__label {
+  font-size: 16px;
+}
+
+.sly-stepper-progress--size-large .sly-stepper-progress__connector {
+  width: 68px;
+  height: 4px;
+}
+
+/* Respect reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+
+  .sly-stepper-progress__bar,
+  .sly-stepper-progress__dot,
+  .sly-stepper-progress__dot-num {
+    transition: none !important;
+  }
+}
