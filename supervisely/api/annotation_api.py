@@ -1319,9 +1319,9 @@ class AnnotationApi(ModuleApi):
             ApiField.TAGS: [tag.to_json() for tag in label.tags],
             ApiField.GEOMETRY: label.geometry.to_json(),
         }
-        if status:
+        if status is not None:
             nn_created, nn_updated = LabelingStatus.to_flags(status)
-            # payload[ApiField.NN_CREATED] = nn_created
+            payload[ApiField.NN_CREATED] = nn_created
             payload[ApiField.NN_UPDATED] = nn_updated
         self._api.post("figures.editInfo", payload)
 
