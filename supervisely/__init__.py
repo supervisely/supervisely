@@ -364,9 +364,10 @@ def restore_env_vars():
                         os.environ[key] = json.json.dumps(state)
                     elif key in modal_state_envs:
                         os.environ[key] = str(modal_state_envs[key])
-                    elif key.replace("_", ".") in modal_state_envs:
+                    elif key.replace("_", ".") in [k.upper() for k in modal_state_envs]:
                         # some env vars do not support dots in their names
-                        os.environ[key] = str(modal_state_envs[key.replace("_", ".")])
+                        k = next(k for k in modal_state_envs if k.upper() == key.replace("_", "."))
+                        os.environ[key] = str(modal_state_envs[k])
                     else:
                         not_found_keys.append(key)
                         continue
