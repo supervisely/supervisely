@@ -344,7 +344,7 @@ def restore_env_vars():
         for key in large_env_keys:
             if key == "CONTEXT" or key.startswith("context."):
                 context_keys.append(key)
-            elif key == "MODAL_STATE" or key.startswith("modal.state."):
+            elif key.startswith("MODAL_STATE") or key.startswith("modal.state."):
                 state_keys.append(key)
             else:
                 unknown_keys.append(key)
