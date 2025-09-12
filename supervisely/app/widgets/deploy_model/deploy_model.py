@@ -11,9 +11,8 @@ from supervisely.api.api import Api
 from supervisely.api.app_api import ModuleInfo
 from supervisely.app.widgets.agent_selector.agent_selector import AgentSelector
 from supervisely.app.widgets.button.button import Button
-from supervisely.app.widgets.container.container import Container
 from supervisely.app.widgets.card.card import Card
-from supervisely.app.widgets.model_info.model_info import ModelInfo
+from supervisely.app.widgets.container.container import Container
 from supervisely.app.widgets.ecosystem_model_selector.ecosystem_model_selector import (
     EcosystemModelSelector,
 )
@@ -23,7 +22,8 @@ from supervisely.app.widgets.experiment_selector.experiment_selector import (
 from supervisely.app.widgets.fast_table.fast_table import FastTable
 from supervisely.app.widgets.field.field import Field
 from supervisely.app.widgets.flexbox.flexbox import Flexbox
-from supervisely.app.widgets.tabs.tabs import Tabs
+from supervisely.app.widgets.model_info.model_info import ModelInfo
+from supervisely.app.widgets.radio_tabs.radio_tabs import RadioTabs
 from supervisely.app.widgets.text.text import Text
 from supervisely.app.widgets.widget import Widget
 from supervisely.io import env
@@ -267,8 +267,8 @@ class DeployModel(Widget):
     MODES = [str(MODE.CONNECT), str(MODE.PRETRAINED), str(MODE.CUSTOM)]
     MODE_TO_CLASS = {
         str(MODE.CONNECT): Connect,
-        str(MODE.PRETRAINED): Pretrained,
         str(MODE.CUSTOM): Custom,
+        str(MODE.PRETRAINED): Pretrained,
     }
 
     def __init__(
@@ -294,6 +294,11 @@ class DeployModel(Widget):
             self.MODE.CONNECT: "Connect",
             self.MODE.PRETRAINED: "Pretrained",
             self.MODE.CUSTOM: "Custom",
+        }
+        self.modes_descriptions = {
+            self.MODE.CONNECT: "Connect to an already deployed model",
+            self.MODE.PRETRAINED: "Deploy a pretrained model from the ecosystem",
+            self.MODE.CUSTOM: "Deploy a custom model from your experiments",
         }
 
         # GUI
@@ -444,31 +449,34 @@ class DeployModel(Widget):
 
         self._init_modes(modes)
         _labels = []
+        _descriptions = []
         _contents = []
         for mode_name, mode in self.modes.items():
             label = self.modes_labels[mode_name]
+            description = self.modes_descriptions[mode_name]
             if mode_name == str(self.MODE.CONNECT):
                 widgets = [
                     mode.layout,
-                    self._model_info_card,
-                    self.connect_stop_buttons,
                     self.status,
                     self.sesson_link,
+                    self._model_info_container,
+                    self.connect_stop_buttons,
                 ]
             else:
                 widgets = [
                     mode.layout,
-                    self._model_info_card,
                     self.select_agent_field,
-                    self.deploy_stop_buttons,
                     self.status,
                     self.sesson_link,
+                    self._model_info_container,
+                    self.deploy_stop_buttons,
                 ]
             content = Container(widgets=widgets, gap=20)
             _labels.append(label)
+            _descriptions.append(description)
             _contents.append(content)
 
-        self.tabs = Tabs(labels=_labels, contents=_contents)
+        self.tabs = RadioTabs(titles=_labels, descriptions=_descriptions, contents=_contents)
         if len(self.modes) == 1:
             self.layout = _contents[0]
         else:
@@ -490,7 +498,7 @@ class DeployModel(Widget):
         def _disconnect_button_clicked():
             self.disconnect()
 
-        @self.tabs.click
+        @self.tabs.value_changed
         def _active_tab_changed(tab_name: str):
             self.set_model_message_by_tab(tab_name)
 
@@ -690,29 +698,24 @@ class DeployModel(Widget):
             title="Model Info",
             description="Information about the deployed model",
         )
-
-        self._model_info_container = Container([self._model_info_widget_field])
-        self._model_info_container.hide()
         self._model_info_message = Text("Connect to model to see the session information.")
-
-        self._model_info_card = Card(
-            title="Session Info",
-            description="Model parameters and classes",
-            collapsable=True,
-            content=Container([self._model_info_container, self._model_info_message]),
+        self._model_info_container = Container(
+            [self._model_info_widget_field, self._model_info_message]
         )
-        self._model_info_card.collapse()
+        self._model_info_widget_field.hide()
+
+        self._model_info_container.hide()
 
     def set_model_info(self, session_id):
         self._model_info_widget.set_model_info(session_id)
 
         self._model_info_message.hide()
+        self._model_info_widget_field.show()
         self._model_info_container.show()
-        self._model_info_card.uncollapse()
 
     def reset_model_info(self):
-        self._model_info_card.collapse()
         self._model_info_container.hide()
+        self._model_info_widget_field.hide()
         self._model_info_message.show()
 
     def set_model_message_by_tab(self, tab_name: str):
@@ -724,6 +727,6 @@ class DeployModel(Widget):
             self._model_info_message.set(
                 "Deploy model to see the session information.", status="text"
             )
-        self._model_info_card.collapse()
+        self._model_info_widget_field.hide()
 
     # ------------------------------------------------------------ #

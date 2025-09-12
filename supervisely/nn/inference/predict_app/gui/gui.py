@@ -244,7 +244,7 @@ class PredictAppGui:
 
             model_meta = model_api.get_model_meta()
             if self.classes_selector is not None:
-                self.classes_selector.classes_table.set_project_meta(model_meta)
+                self.classes_selector.set_project_meta(model_meta)
                 self.classes_selector.classes_table.show()
             if self.tags_selector is not None:
                 self.tags_selector.tags_table.set_project_meta(model_meta)
@@ -259,7 +259,7 @@ class PredictAppGui:
         def reset_entity_meta():
             empty_meta = ProjectMeta()
             if self.classes_selector is not None:
-                self.classes_selector.classes_table.set_project_meta(empty_meta)
+                self.classes_selector.set_project_meta(empty_meta)
                 self.classes_selector.classes_table.hide()
             if self.tags_selector is not None:
                 self.tags_selector.tags_table.set_project_meta(empty_meta)
@@ -393,12 +393,41 @@ class PredictAppGui:
         self.step_flow.register_step(
             "model_selector",
             self.model_selector.card,
-            self.model_selector.button,
+            None,
             self.model_selector.widgets_to_disable,
             self.model_selector.validator_text,
             self.model_selector.validate_step,
             position=position,
         )
+
+        current_position = position
+
+        def deploy_and_set_step():
+            model_api = type(self.model_selector.model).deploy(self.model_selector.model)
+            if model_api is not None:
+                self.step_flow.stepper.set_active_step(current_position + 1)
+                set_entity_meta()
+                self.classes_selector.card.unlock()
+            else:
+                reset_entity_meta()
+                self.classes_selector.card.lock()
+            return model_api
+
+        def stop_and_reset_step():
+            type(self.model_selector.model).stop(self.model_selector.model)
+            self.step_flow.stepper.set_active_step(current_position)
+            reset_entity_meta()
+            self.classes_selector.card.lock()
+
+        def disconnect_and_reset_step():
+            type(self.model_selector.model).disconnect(self.model_selector.model)
+            self.step_flow.stepper.set_active_step(current_position)
+            reset_entity_meta()
+            self.classes_selector.card.lock()
+
+        self.model_selector.model.deploy = deploy_and_set_step
+        self.model_selector.model.stop = stop_and_reset_step
+        self.model_selector.model.disconnect = disconnect_and_reset_step
         self.step_flow.add_on_select_actions("model_selector", [set_entity_meta])
         self.step_flow.add_on_select_actions(
             "model_selector", [reset_entity_meta], is_reselect=True
@@ -592,8 +621,17 @@ class PredictAppGui:
         output_parameters = run_parameters["output"]
         project_name = output_parameters.get("project_name", "")
         upload_to_source_project = output_parameters.get("upload_to_source_project", False)
+        skip_project_versioning = output_parameters.get("skip_project_versioning", False)
         if upload_to_source_project:
             output_project_id = input_project_id
+            if not skip_project_versioning and not is_development():
+                logger.info("Creating new project version...")
+                input_project_info = self.api.project.get_info_by_id(input_project_id)
+                version_id = self.api.project.version.create(
+                    input_project_info,
+                    "Created by Predict App. Task Id: " + str(env.task_id()),
+                )
+                logger.info("New project version created: " + str(version_id))
         else:
             if not project_name:
                 input_project_info = self.api.project.get_info_by_id(input_project_id)

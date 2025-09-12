@@ -27,7 +27,7 @@ class AddPredictionsMode:
 
 
 class SettingsSelector:
-    title = "Settings Selector"
+    title = "Inference (settings + preview)"
     description = "Select additional settings for model inference"
     lock_message = "Select previous step to unlock"
 
@@ -55,18 +55,18 @@ class SettingsSelector:
         # -------------------------------- #
 
         # Inference Mode
-        self.inference_modes = [InferenceMode.FULL_IMAGE, InferenceMode.SLIDING_WINDOW]
-        self.inference_mode_selector = Select(
-            items=[Select.Item(mode) for mode in self.inference_modes]
-        )
-        self.inference_mode_selector.set_value(self.inference_modes[0])
-        self.inference_mode_field = Field(
-            content=self.inference_mode_selector,
-            title="Inference mode",
-            description="Select how to process images: full images or using sliding window.",
-        )
-        # Add widgets to display ------------ #
-        self.display_widgets.extend([self.inference_mode_field])
+        # self.inference_modes = [InferenceMode.FULL_IMAGE, InferenceMode.SLIDING_WINDOW]
+        # self.inference_mode_selector = Select(
+        #     items=[Select.Item(mode) for mode in self.inference_modes]
+        # )
+        # self.inference_mode_selector.set_value(self.inference_modes[0])
+        # self.inference_mode_field = Field(
+        #     content=self.inference_mode_selector,
+        #     title="Inference mode",
+        #     description="Select how to process images: full images or using sliding window.",
+        # )
+        # # Add widgets to display ------------ #
+        # self.display_widgets.extend([self.inference_mode_field])
         # ----------------------------------- #
 
         # Class / Tag Suffix
@@ -136,7 +136,7 @@ class SettingsSelector:
     @property
     def widgets_to_disable(self) -> list:
         return [
-            self.inference_mode_selector,
+            # self.inference_mode_selector,
             self.model_prediction_suffix_input,
             # self.model_prediction_suffix_checkbox,
             self.predictions_mode_selector,
@@ -157,16 +157,17 @@ class SettingsSelector:
 
     def get_settings(self) -> Dict[str, Any]:
         return {
-            "inference_mode": self.inference_mode_selector.get_value(),
+            # "inference_mode": self.inference_mode_selector.get_value(),
+            "inference_mode": InferenceMode.FULL_IMAGE,
             "model_prediction_suffix": self.model_prediction_suffix_input.get_value(),
             "predictions_mode": self.predictions_mode_selector.get_value(),
             "inference_settings": self.get_inference_settings(),
         }
 
     def load_from_json(self, data):
-        inference_mode = data.get("inference_mode", None)
-        if inference_mode:
-            self.inference_mode_selector.set_value(inference_mode)
+        # inference_mode = data.get("inference_mode", None)
+        # if inference_mode:
+        #     self.inference_mode_selector.set_value(inference_mode)
 
         model_prediction_suffix = data.get("model_prediction_suffix", None)
         if model_prediction_suffix is not None:

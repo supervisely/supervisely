@@ -14,7 +14,7 @@ from supervisely.project.project import ProjectType
 
 
 class InputSelector:
-    title = "Select Input"
+    title = "Input data"
     description = "Select input data on which to run model for prediction"
     lock_message = None
 
@@ -48,7 +48,7 @@ class InputSelector:
         self.select_dataset_for_images = SelectDatasetTree(
             multiselect=True,
             flat=True,
-            select_all_datasets=False,
+            select_all_datasets=True,
             allowed_project_types=[ProjectType.IMAGES],
             always_open=False,
             compact=False,
