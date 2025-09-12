@@ -217,7 +217,7 @@ class BaseTrainNode(BaseCardNode):
         self, success: bool, task_id: int, experiment_info: dict
     ) -> TrainFinishedMessage:
         return TrainFinishedMessage(
-            success=success, task_id=task_id, experiment_info=experiment_info
+            success=success, task_id=task_id, experiment_info=experiment_info or {}
         )
 
     # subscribe event (may receive Message object)

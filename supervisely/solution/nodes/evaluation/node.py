@@ -97,7 +97,7 @@ class EvaluationNode(BaseCardNode):
     def _get_handles(self):
         return [
             {
-                "id": "training_finished",
+                "id": "experiment_registered",
                 "type": "target",
                 "position": "top",
                 "connectable": True,
@@ -115,7 +115,7 @@ class EvaluationNode(BaseCardNode):
     # ------------------------------------------------------------------
     def _available_subscribe_methods(self) -> Dict[str, Callable]:
         return {
-            "training_finished": self._process_incomming_message,
+            "experiment_registered": self._process_incomming_message,
         }
 
     def _available_publish_methods(self) -> Dict[str, Callable]:

@@ -65,7 +65,7 @@ class AllExperimentsNode(LinkNode):
                 "connectable": True,
             },
             {
-                "id": "training_finished",
+                "id": "experiment_registered",
                 "type": "source",
                 "position": "right",
                 "connectable": True,
@@ -82,7 +82,7 @@ class AllExperimentsNode(LinkNode):
 
     def _available_publish_methods(self) -> Dict[str, Callable]:
         return {
-            "training_finished": self._send_model_to_evaluation,
+            "experiment_registered": self._send_model_to_evaluation,
         }
 
     def _process_incoming_message(self, message: TrainingFinishedMessage):

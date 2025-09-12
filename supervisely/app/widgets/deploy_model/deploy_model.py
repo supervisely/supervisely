@@ -229,6 +229,19 @@ class DeployModel(Widget):
 
             return self.experiment_table
 
+        def update_table(self):
+            frameworks = self.deploy_model.get_frameworks()
+            experiment_infos = []
+            for framework_name in frameworks:
+                experiment_infos.extend(
+                    get_experiment_infos(self.api, self.team_id, framework_name=framework_name)
+                )
+            self.experiment_table._experiment_infos = experiment_infos
+            self.experiment_table._project_infos_map = self.experiment_table._get_project_infos_map(
+                experiment_infos
+            )
+            self.experiment_table.set_experiment_infos(experiment_infos)
+
         def get_deploy_parameters(self) -> Dict[str, Any]:
             experiment_info = self.experiment_table.get_selected_experiment_info()
             return {
