@@ -27,7 +27,7 @@ from supervisely._utils import batched, logger, run_coroutine
 from supervisely.api.module_api import ApiField, ModuleApi, RemoveableBulkModuleApi
 from supervisely.geometry.rectangle import Rectangle
 from supervisely.video_annotation.key_id_map import KeyIdMap
-from supervisely.annotation.label import Label, LabelingStatus
+from supervisely.annotation.label import LabelingStatus
 
 
 class FigureInfo(NamedTuple):
@@ -249,9 +249,7 @@ class FigureApi(RemoveableBulkModuleApi):
         if status is None:
             status = LabelingStatus.MANUAL
 
-        # @TODO: Figure can be Label or VideoFigure
-        # Move LabelingStatus from Label file?
-        nn_created, nn_updated = Label._get_flags_from_status(status)
+        nn_created, nn_updated = LabelingStatus.to_flags(status)
         input_figure[ApiField.NN_CREATED] = nn_created
         input_figure[ApiField.NN_UPDATED] = nn_updated
 

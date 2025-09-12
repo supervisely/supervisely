@@ -25,7 +25,7 @@ from tqdm import tqdm
 
 from supervisely._utils import batched, run_coroutine
 from supervisely.annotation.annotation import Annotation, AnnotationJsonFields
-from supervisely.annotation.label import Label, LabelJsonFields, LabelingStatus
+from supervisely.annotation.label import Label, LabelJsonFields
 from supervisely.annotation.tag import Tag
 from supervisely.annotation.tag_meta import TagMeta, TagValueType
 from supervisely.api.module_api import ApiField, ModuleApi

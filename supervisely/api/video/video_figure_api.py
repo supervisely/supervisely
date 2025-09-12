@@ -157,7 +157,7 @@ class VideoFigureApi(FigureApi):
         }
 
         if status is not None:
-            nn_created,nn_updated = VideoFigure._get_flags_from_status(status)
+            nn_created,nn_updated = LabelingStatus.to_flags(status)
             payload[ApiField.NN_CREATED] = nn_created
             payload[ApiField.NN_UPDATED] = nn_updated
 
