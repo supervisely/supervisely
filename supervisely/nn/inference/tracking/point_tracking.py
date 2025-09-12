@@ -610,8 +610,8 @@ class PointTracking(BaseTracking):
                 # for example empty mask
                 continue
             if isinstance(label, list):
-                for label in labels:
-                    label.status = LabelingStatus.AUTO
+                for lb in label:
+                    lb.status = LabelingStatus.AUTO
                 labels.extend(label)
                 continue
 
