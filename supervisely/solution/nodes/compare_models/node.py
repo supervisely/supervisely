@@ -397,8 +397,12 @@ class CompareModelsNode(BaseCardNode):
     def _is_new_model_better(self, old_task_id: int, new_task_id: int) -> bool:
         """
         Compares the primary metrics of two checkpoints.
-        Returns "better", "worse", or "equal".
         """
+        if old_task_id == new_task_id:
+            logger.warning("Old and new task IDs are the same. Cannot compare models.")
+            exp_info = self._extract_experiment_info(old_task_id)
+            return False, self._get_checkpoint_path(exp_info)
+
         old_experiment = self._extract_experiment_info(old_task_id)
         new_experiment = self._extract_experiment_info(new_task_id)
 
@@ -414,13 +418,19 @@ class CompareModelsNode(BaseCardNode):
         if old_metric is None or new_metric is None:
             raise ValueError(f"Primary metric '{metric_name}' not found in evaluation results.")
 
+        if old_metric == new_metric:
+            logger.info(
+                f"{metric_name} of new model is equal to the old one: {new_metric} == {old_metric}"
+            )
+            return False, old_checkpoint
+
         is_new_better = new_metric > old_metric
         if is_new_better:
             logger.info(f"{metric_name} of new model is better: {new_metric} > {old_metric}")
             logger.info(f"New best checkpoint path: {new_checkpoint}")
-            return is_new_better, new_checkpoint
+        else:
+            logger.info(f"{metric_name} of new model is worse: {new_metric} <= {old_metric}")
 
-        logger.info(f"{metric_name} of new model is worse: {new_metric} <= {old_metric}")
         return is_new_better, old_checkpoint
 
     def save(self, enabled: Optional[bool] = None, agent_id: Optional[int] = None):
