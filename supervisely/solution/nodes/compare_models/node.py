@@ -428,10 +428,10 @@ class CompareModelsNode(BaseCardNode):
         if is_new_better:
             logger.info(f"{metric_name} of new model is better: {new_metric} > {old_metric}")
             logger.info(f"New best checkpoint path: {new_checkpoint}")
+            return is_new_better, new_checkpoint
         else:
             logger.info(f"{metric_name} of new model is worse: {new_metric} <= {old_metric}")
-
-        return is_new_better, old_checkpoint
+            return is_new_better, old_checkpoint
 
     def save(self, enabled: Optional[bool] = None, agent_id: Optional[int] = None):
         """Save re-deploy settings."""
