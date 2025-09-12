@@ -400,7 +400,7 @@ class PredictAppGui:
             position=position,
         )
 
-        current_position = position
+        current_position = position + 1
 
         def deploy_and_set_step():
             model_api = type(self.model_selector.model).deploy(self.model_selector.model)
@@ -409,6 +409,7 @@ class PredictAppGui:
                 set_entity_meta()
                 self.classes_selector.card.unlock()
             else:
+                self.step_flow.stepper.set_active_step(current_position)
                 reset_entity_meta()
                 self.classes_selector.card.lock()
             return model_api

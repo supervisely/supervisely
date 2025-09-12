@@ -451,6 +451,14 @@ class DeployModel(Widget):
         _labels = []
         _descriptions = []
         _contents = []
+        self.statuses_widgets = Container(
+            widgets=[
+                self.sesson_link,
+                self._model_info_container,
+            ],
+            gap=20,
+        )
+        self.statuses_widgets.hide()
         for mode_name, mode in self.modes.items():
             label = self.modes_labels[mode_name]
             description = self.modes_descriptions[mode_name]
@@ -458,8 +466,7 @@ class DeployModel(Widget):
                 widgets = [
                     mode.layout,
                     self.status,
-                    self.sesson_link,
-                    self._model_info_container,
+                    self.statuses_widgets,
                     self.connect_stop_buttons,
                 ]
             else:
@@ -467,10 +474,10 @@ class DeployModel(Widget):
                     mode.layout,
                     self.select_agent_field,
                     self.status,
-                    self.sesson_link,
-                    self._model_info_container,
+                    self.statuses_widgets,
                     self.deploy_stop_buttons,
                 ]
+
             content = Container(widgets=widgets, gap=20)
             _labels.append(label)
             _descriptions.append(description)
@@ -581,6 +588,7 @@ class DeployModel(Widget):
                 f"Model {framework}: {model_name} deployed with session ID {model_api.task_id}."
             )
             self.model_api = model_api
+            self.statuses_widgets.show()
             self.set_model_status("connected")
             self.set_session_info(task_info)
             self.set_model_info(model_api.task_id)
@@ -611,12 +619,14 @@ class DeployModel(Widget):
             self.set_session_info(task_info)
             self.set_model_info(model_api.task_id)
             self.show_stop()
+            self.statuses_widgets.show()
         except Exception as e:
             logger.error(f"Failed to deploy model: {e}", exc_info=True)
             self.set_model_status("error", str(e))
             self.set_session_info(None)
             self.reset_model_info()
             self.show_deploy_button()
+            self.statuses_widgets.hide()
             self.enable_modes()
         else:
             if str(self.MODE.CONNECT) in self.modes:
@@ -642,6 +652,7 @@ class DeployModel(Widget):
         self.enable_modes()
         self.reset_model_info()
         self.show_deploy_button()
+        self.statuses_widgets.hide()
         if str(self.MODE.CONNECT) in self.modes:
             self.modes[str(self.MODE.CONNECT)]._update_sessions()
 
@@ -653,6 +664,7 @@ class DeployModel(Widget):
         self.set_session_info(None)
         self.reset_model_info()
         self.show_deploy_button()
+        self.statuses_widgets.hide()
         self.enable_modes()
 
     def load_from_json(self, data: Dict[str, Any]) -> None:
@@ -700,7 +712,7 @@ class DeployModel(Widget):
         )
         self._model_info_message = Text("Connect to model to see the session information.")
         self._model_info_container = Container(
-            [self._model_info_widget_field, self._model_info_message]
+            [self._model_info_widget_field, self._model_info_message], gap=0
         )
         self._model_info_widget_field.hide()
 

@@ -146,4 +146,7 @@ class ClassesSelector:
             table_line = [name, shape]
             table_data.append(table_line)
         self._table_data = table_data
-        self.classes_table.read_pandas(pd.DataFrame(self._table_data))
+        if self._table_data:
+            self.classes_table.read_pandas(pd.DataFrame(self._table_data))
+        else:
+            self.classes_table.clear()
