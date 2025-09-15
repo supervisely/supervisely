@@ -167,12 +167,12 @@ class CompareModelsNode(BaseCardNode):
         }
 
     def _process_training_finished_message(self, message: TrainingFinishedMessage):
-        is_first_training_message = self._last_experiment_task_id is None
         experiment = self._extract_experiment_info(message.task_id)
-        self._last_experiment_task_id = message.task_id
-        self._last_experiment_eval_dir = self._get_evaluation_dir_from_experiment(experiment)
-        if is_first_training_message:
-            # if the first training message received, store it as best experiment
+        eval_dir = self._get_evaluation_dir_from_experiment(experiment)
+        if self._best_experiment_task_id is None:
+            # First ever training -> becomes best immediately
+            self._best_experiment_task_id = message.task_id
+            self._best_experiment_eval_dir = eval_dir
             best_checkpoint = self._get_checkpoint_path(experiment)
             metric_name = experiment.get("primary_metric")
             best_metric = self._get_primary_metric_value_from_experiment(experiment)
@@ -185,13 +185,35 @@ class CompareModelsNode(BaseCardNode):
                 metric_name=metric_name,
                 task_id=message.task_id,
             )
+            logger.info(
+                "First training completed. Set task %s as current best (no evaluation comparison yet).",
+                message.task_id,
+            )
+        else:
+            logger.debug(
+                "Training finished for task %s. Waiting for evaluation to consider for comparison.",
+                message.task_id,
+            )
 
     def _process_evaluation_finished_message(self, message: EvaluationFinishedMessage):
-        self._best_experiment_eval_dir = message.eval_dir
-        self._best_experiment_task_id = message.task_id
+        if self._best_experiment_task_id == message.task_id:
+            self._best_experiment_eval_dir = message.eval_dir
+            logger.debug(
+                "Evaluation for current best task %s updated. Stored best eval dir refreshed.",
+                message.task_id,
+            )
+            return
+
+        self._last_experiment_task_id = message.task_id
+        self._last_experiment_eval_dir = message.eval_dir
+        logger.info(
+            "Stored candidate evaluation: task_id=%s eval_dir=%s (best_task_id=%s)",
+            message.task_id,
+            message.eval_dir,
+            self._best_experiment_task_id,
+        )
 
         if self.gui.automation_switch.is_switched():
-            # assume that training message was already received
             self.run()
 
     def _send_comparison_finished_message(
@@ -250,6 +272,11 @@ class CompareModelsNode(BaseCardNode):
                 )
             else:
                 eval_dirs = [self._best_experiment_eval_dir, self._last_experiment_eval_dir]
+                try:
+                    assert len(eval_dirs) == len(set(eval_dirs))
+                except:
+                    logger.warning("Evaluation directories must be unique. Comparison aborted.")
+                    return
                 task_info, task_status = self._start_compare_models_app(eval_dirs)
                 if task_info is None:
                     raise RuntimeError("Failed to start the evaluation task.")
@@ -322,10 +349,10 @@ class CompareModelsNode(BaseCardNode):
             self._api.task.Status.TERMINATING,
         ]
         while (task_status := self._api.task.get_status(task_id)) not in finished_statuses:
-            logger.info("Waiting for the evaluation task to start... Status: %s", task_status)
+            logger.info("Waiting for the comparison task to start... Status: %s", task_status)
             time.sleep(5)
             if time.time() - current_time > 300:  # 5 minutes timeout
-                logger.warning("Timeout reached while waiting for the evaluation task to start.")
+                logger.warning("Timeout reached while waiting for the comparison task to start.")
                 break
 
         task_info = self._api.task.get_info_by_id(task_id)

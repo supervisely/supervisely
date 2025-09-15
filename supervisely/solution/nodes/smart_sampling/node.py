@@ -259,5 +259,14 @@ class SmartSamplingNode(BaseCardNode):
         src, dst, images_count = res
         self.hide_in_progress_badge("Sampling")
         self._update_widgets()
+        self._update_history()
         if images_count > 0:
             self._send_output_message(src=src, dst=dst, items_count=images_count)
+
+    def _update_history(self):
+        current_history_tasks = self.history.get_tasks()
+        current_ids = [task.get("sampling_id") for task in current_history_tasks]
+        for task in self.gui.tasks:
+            task_id = task.get("sampling_id")
+            if task_id not in current_ids:
+                self.history.add_task(task)

@@ -164,7 +164,9 @@ class MoveLabeledNode(BaseCardNode):
             logger.info(f"Train/Val split settings: {self._train_percent}%/{self._val_percent}%")
 
     # publish event (may send Message object)
-    def wait_task_complete(self, task_id: int, src_images: List[int]) -> MoveLabeledDataFinishedMessage:
+    def wait_task_complete(
+        self, task_id: int, src_images: List[int]
+    ) -> MoveLabeledDataFinishedMessage:
         """Wait until the task is complete."""
         task_info_json = self.api.task.get_info_by_id(task_id)
         if task_info_json is None:
@@ -180,10 +182,12 @@ class MoveLabeledNode(BaseCardNode):
             ]:
                 logger.error(f"Task {task_id} failed with status: {task_status}")
                 break
-            logger.info("Waiting for the evaluation task to start... Status: %s", task_status)
+            logger.info("Waiting for the Data Commander task to start... Status: %s", task_status)
             time.sleep(5)
             if time.time() - current_time > 30000:  # 500 minutes timeout
-                logger.warning("Timeout reached while waiting for the evaluation task to start.")
+                logger.warning(
+                    "Timeout reached while waiting for the Data Commander task to start."
+                )
                 break
 
         success = task_status == self.api.task.Status.FINISHED
@@ -357,7 +361,6 @@ class MoveLabeledNode(BaseCardNode):
             logger.info(f"Created new collection '{batch_name}'")
 
         self.api.entities_collection.add_items(main_col.id, image_ids)
-
 
     def _get_uploaded_ids(self, project_id: int, task_id: int) -> List[int]:
         """Get the IDs of images uploaded from the project's custom data."""

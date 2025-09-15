@@ -173,10 +173,12 @@ class BaseTrainNode(BaseCardNode):
             ]:
                 logger.error(f"Task {task_id} failed with status: {task_status}")
                 break
-            logger.info("Waiting for the evaluation task to start... Status: %s", task_status)
+            logger.info("Waiting for the Data Commander task to start... Status: %s", task_status)
             time.sleep(5)
             if time.time() - current_time > 30000:  # 500 minutes timeout
-                logger.warning("Timeout reached while waiting for the evaluation task to start.")
+                logger.warning(
+                    "Timeout reached while waiting for the Data Commander task to start."
+                )
                 break
 
         try:
