@@ -39,10 +39,10 @@ class AutoImportNode(BaseCardNode):
         self.start_autorefresh()
 
         # ! TODO: remove hardcoded agent_id
-        agent_id = 41
+        # agent_id = 41
         autoimport_link = abs_url(f"/import-wizard/project/{self.project_id}/dataset")
-        # ! TODO: remove hardcoded agent_id
-        autoimport_link += f"?moduleId=435&nodeId={agent_id}&appVersion=test-env&appIsBranch=true"
+        # # ! TODO: remove hardcoded agent_id
+        # autoimport_link += f"?moduleId=435&nodeId={agent_id}&appVersion=test-env&appIsBranch=true"
 
         # --- node init ----------------------------------------------------------
         title = kwargs.pop("title", self.TITLE)

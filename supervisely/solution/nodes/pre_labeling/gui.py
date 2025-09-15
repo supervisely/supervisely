@@ -155,7 +155,13 @@ class PreLabelingGUI(Widget):
             self._select_session = SelectAppSession(
                 team_id=self.team_id, tags=["deployed_nn"], size="small"
             )
+
             # self._select_session.disable()
+            @self._select_session.value_changed
+            def _on_session_change(value: int):
+                logger.debug(f"Selected model session changed to: {value}")
+                self._session_id = value
+
         return self._select_session
 
     @property
@@ -223,9 +229,6 @@ class PreLabelingGUI(Widget):
             return
         self._connect_model(session_id)
         self._session_id = session_id
-        self.select_session.set_session_id(session_id)
-        DataJson()[self.widget_id]["session_id"] = session_id
-        DataJson().send_changes()
 
     def _connect_model(self, session_id: int):
         """Connect to the model using the session ID."""
