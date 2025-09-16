@@ -106,7 +106,7 @@ class CompareModelsNode(BaseCardNode):
     def _update_best_model_properties(
         self,
         best_checkpoint: str,
-        best_metric: float,
+        best_metric: Optional[float],
         metric_name: str,
         task_id: int,
     ):
@@ -117,7 +117,13 @@ class CompareModelsNode(BaseCardNode):
             best_checkpoint = abs_url(best_checkpoint)
         checkpoint_name = Path(best_checkpoint).name
         self.update_property("Best checkpoint", checkpoint_name, link=best_checkpoint)
-        self.update_property(f"Best {metric_name}", f"{best_metric:.4f}", highlight=True)
+        if isinstance(best_metric, (int, float)):
+            metric_value = f"{best_metric:.4f}"
+            highlight = True
+        else:
+            metric_value = "N/A"
+            highlight = False
+        self.update_property(f"Best {metric_name}", metric_value, highlight=highlight)
         self.update_property("Task ID", str(task_id))
 
     # ------------------------------------------------------------------

@@ -18,12 +18,12 @@ class DeployCustomModelNode(DeployModelNode):
     GUI_CLASS = DeployCustomModelGUI
 
     def _process_incoming_message(self, message: ComparisonFinishedMessage):
-        self._deploy(message.train_task_id, message.eval_dir)
+        self._deploy(message.train_task_id)
 
     def _send_model_deployed_message(self, session_id: int = None) -> ModelDeployMessage:
         return ModelDeployMessage(session_id=session_id)
 
-    def _deploy(self, train_task_id: int, eval_dir: int):
+    def _deploy(self, train_task_id: int):
         agent_id = self.gui.content.select_agent.get_value()
         if not agent_id:
             agent_id = find_agent(api=self._api, team_id=env_team_id())
@@ -32,7 +32,7 @@ class DeployCustomModelNode(DeployModelNode):
         data = {"mode": "custom", "train_task_id": train_task_id}
         # key = str(self.gui.content.MODE.CUSTOM)
         # self.gui.content.modes[key].update_table()
-        self.gui.content._add_custom_model_to_table(eval_dir)
+        self.gui.content.add_new_experiment_to_table(train_task_id)
         self.gui.content.load_from_json(data)
         self.gui.content._deploy()
         self._refresh_node()

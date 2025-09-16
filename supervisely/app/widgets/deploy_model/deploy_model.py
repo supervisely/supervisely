@@ -31,6 +31,7 @@ from supervisely.nn.experiments import (
     ExperimentInfo,
     get_experiment_info_by_artifacts_dir,
     get_experiment_infos,
+    get_new_experiment_infos,
 )
 from supervisely.nn.model.model_api import ModelAPI
 
@@ -233,18 +234,25 @@ class DeployModel(Widget):
 
             return self.experiment_table
 
-        def update_table(self):
-            frameworks = self.deploy_model.get_frameworks()
-            experiment_infos = []
-            for framework_name in frameworks:
-                experiment_infos.extend(
-                    get_experiment_infos(self.api, self.team_id, framework_name=framework_name)
-                )
-            self.experiment_table._experiment_infos = experiment_infos
-            self.experiment_table._project_infos_map = self.experiment_table._get_project_infos_map(
-                experiment_infos
+        def update_table(self, task_id: int = None):
+            existing_experiments = self.experiment_table._experiment_infos
+            new_experiment_infos = get_new_experiment_infos(
+                self.api,
+                self.team_id,
+                existing_experiment_infos=existing_experiments,
+                task_id=task_id,
             )
-            self.experiment_table.set_experiment_infos(experiment_infos)
+            all_experiments = existing_experiments + new_experiment_infos
+            self.experiment_table._experiment_infos = all_experiments
+            self.experiment_table._project_infos_map = self.experiment_table._get_project_infos_map(
+                all_experiments
+            )
+            # self.experiment_table.set_experiment_infos(all_experiments)
+            current_rows = self.experiment_table._rows
+            new_rows = self.experiment_table._generate_table_rows(new_experiment_infos)
+            self.experiment_table._rows = current_rows + new_rows
+            for row in new_rows:
+                self.experiment_table.table.insert_row(row.to_table_row())
 
         def add_experiment_to_table(self, eval_dir: int):
             experiment_info = get_experiment_info_by_artifacts_dir(self.api, self.team_id, eval_dir)
@@ -749,8 +757,8 @@ class DeployModel(Widget):
             )
         self._model_info_card.collapse()
 
-    def _add_custom_model_to_table(self, eval_dir: int):
+    def add_new_experiment_to_table(self, task_id: int):
         if str(self.MODE.CUSTOM) in self.modes:
-            self.modes[str(self.MODE.CUSTOM)].add_experiment_to_table(eval_dir)
+            self.modes[str(self.MODE.CUSTOM)].update_table(task_id)
 
     # ------------------------------------------------------------ #
