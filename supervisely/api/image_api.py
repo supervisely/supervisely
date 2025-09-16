@@ -5566,7 +5566,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 raise ValueError(f"Image with ID {image_id} not found.")
             project_id = self._api.dataset.get_info_by_id(image_info.dataset_id).project_id
         if job_id is not None:
-            data["filters"].append({"field": "jobId", "operator": "=", "value": job_id})
+            self._api.add_header("x-job-id", str(job_id))
         if dataset_id is not None:
             data["datasetId"] = dataset_id
 
@@ -5576,6 +5576,7 @@ class ImageApi(RemoveableBulkModuleApi):
             limit=None,
             return_first_response=False,
         )
+        self._api.headers.pop("x-job-id", None)
         image_ids = [img_info.id for img_info in image_infos]
         if len(image_ids) == 0:
             raise ValueError("No images found with the specified criteria.")
