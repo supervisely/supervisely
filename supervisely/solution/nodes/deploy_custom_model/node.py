@@ -8,6 +8,9 @@ from supervisely.solution.engine.models import (
     ModelDeployMessage,
 )
 from supervisely.solution.nodes.deploy_custom_model.gui import DeployCustomModelGUI
+from supervisely.solution.nodes.deploy_custom_model.history import (
+    DeployCustomModelHistory,
+)
 from supervisely.solution.utils import find_agent
 
 
@@ -16,6 +19,7 @@ class DeployCustomModelNode(DeployModelNode):
     DESCRIPTION = "Deploy a custom model for pre-labeling to speed up the labeling process."
 
     GUI_CLASS = DeployCustomModelGUI
+    HISTORY_CLASS = DeployCustomModelHistory
 
     def _process_incoming_message(self, message: ComparisonFinishedMessage):
         self._deploy(message.train_task_id)
@@ -35,3 +39,20 @@ class DeployCustomModelNode(DeployModelNode):
         self.gui.content.load_from_json(data)
         self.gui.content._deploy()
         self._refresh_node()
+        # self.columns_keys = [
+        #     ["id"],
+        #     ["model_name"],
+        #     ["experiment_name"],
+        #     ["started_at"],
+        #     ["hardware"],
+        #     ["device"],
+        # ]
+        task = {
+            "id": train_task_id,
+            "model_name": self.gui.content.model_name.get_value(),
+            "experiment_name": self.gui.content.experiment_name.get_value(),
+            "started_at": self.gui.content.started_at.get_value(),
+            "hardware": self.gui.content.hardware.get_value(),
+            "device": self.gui.content.device.get_value(),
+        }
+        self.history.add_task()
