@@ -11,9 +11,8 @@ from supervisely.api.api import Api
 from supervisely.api.app_api import ModuleInfo
 from supervisely.app.widgets.agent_selector.agent_selector import AgentSelector
 from supervisely.app.widgets.button.button import Button
-from supervisely.app.widgets.container.container import Container
 from supervisely.app.widgets.card.card import Card
-from supervisely.app.widgets.model_info.model_info import ModelInfo
+from supervisely.app.widgets.container.container import Container
 from supervisely.app.widgets.ecosystem_model_selector.ecosystem_model_selector import (
     EcosystemModelSelector,
 )
@@ -23,11 +22,17 @@ from supervisely.app.widgets.experiment_selector.experiment_selector import (
 from supervisely.app.widgets.fast_table.fast_table import FastTable
 from supervisely.app.widgets.field.field import Field
 from supervisely.app.widgets.flexbox.flexbox import Flexbox
+from supervisely.app.widgets.model_info.model_info import ModelInfo
 from supervisely.app.widgets.tabs.tabs import Tabs
 from supervisely.app.widgets.text.text import Text
 from supervisely.app.widgets.widget import Widget
 from supervisely.io import env
-from supervisely.nn.experiments import ExperimentInfo, get_experiment_infos
+from supervisely.nn.experiments import (
+    ExperimentInfo,
+    get_experiment_info_by_artifacts_dir,
+    get_experiment_infos,
+    get_new_experiment_infos,
+)
 from supervisely.nn.model.model_api import ModelAPI
 
 
@@ -229,18 +234,17 @@ class DeployModel(Widget):
 
             return self.experiment_table
 
-        def update_table(self):
-            frameworks = self.deploy_model.get_frameworks()
-            experiment_infos = []
-            for framework_name in frameworks:
-                experiment_infos.extend(
-                    get_experiment_infos(self.api, self.team_id, framework_name=framework_name)
-                )
-            self.experiment_table._experiment_infos = experiment_infos
-            self.experiment_table._project_infos_map = self.experiment_table._get_project_infos_map(
-                experiment_infos
+        def update_table(self, task_id: int = None):
+            existing_experiments = self.experiment_table._experiment_infos
+            new_experiment_infos = get_new_experiment_infos(
+                self.api,
+                self.team_id,
+                existing_experiment_infos=existing_experiments,
+                task_id=task_id,
             )
-            self.experiment_table.set_experiment_infos(experiment_infos)
+            for new_exp in new_experiment_infos:
+                self.experiment_table.append_experiment(new_exp)
+                self.experiment_table.set_selected_row_by_experiment_info(new_exp)
 
         def get_deploy_parameters(self) -> Dict[str, Any]:
             experiment_info = self.experiment_table.get_selected_experiment_info()
@@ -264,7 +268,9 @@ class DeployModel(Widget):
         def load_from_json(self, data: Dict):
             if "experiment_info" in data:
                 experiment_info_json = data["experiment_info"]
-                experiment_info = ExperimentInfo(**experiment_info_json)  # pylint: disable=not-a-mapping
+                experiment_info = ExperimentInfo(
+                    **experiment_info_json
+                )  # pylint: disable=not-a-mapping
                 self.experiment_table.set_selected_row_by_experiment_info(experiment_info)
             elif "train_task_id" in data:
                 task_id = data["train_task_id"]
@@ -738,5 +744,9 @@ class DeployModel(Widget):
                 "Deploy model to see the session information.", status="text"
             )
         self._model_info_card.collapse()
+
+    def add_new_experiment_to_table(self, task_id: int):
+        if str(self.MODE.CUSTOM) in self.modes:
+            self.modes[str(self.MODE.CUSTOM)].update_table(task_id)
 
     # ------------------------------------------------------------ #

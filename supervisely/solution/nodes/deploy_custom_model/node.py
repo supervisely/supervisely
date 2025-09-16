@@ -30,8 +30,9 @@ class DeployCustomModelNode(DeployModelNode):
         if not agent_id:
             raise RuntimeError("No available agents found for model deployment.")
         data = {"mode": "custom", "train_task_id": train_task_id}
-        key = str(self.gui.content.MODE.CUSTOM)
-        self.gui.content.modes[key].update_table()
+        # key = str(self.gui.content.MODE.CUSTOM)
+        # self.gui.content.modes[key].update_table()
+        self.gui.content.add_new_experiment_to_table(train_task_id)
         self.gui.content.load_from_json(data)
         self.gui.content._deploy()
         self._refresh_node()
