@@ -624,6 +624,18 @@ class ExperimentSelector(Widget):
         Appends a single experiment info to the table.
         """
         project_info = self._project_infos_map.get(experiment_info.project_id)
+        if project_info is None:
+            if experiment_info.project_id is not None:
+                try:
+                    project_info = self.api.project.get_info_by_id(experiment_info.project_id)
+                    self._project_infos_map[experiment_info.project_id] = project_info
+                except Exception as e:
+                    logger.debug(
+                        f"Failed to fetch project info for project ID {experiment_info.project_id}: {e}"
+                    )
+                    project_info = None
+            else:
+                project_info = None
         model_row = ExperimentSelector.ModelRow(
             api=self.api,
             team_id=self.team_id,
@@ -638,7 +650,8 @@ class ExperimentSelector(Widget):
         model_row.checkpoint_changed = this_row_checkpoint_changed
 
         self._rows.append(model_row)
-        self.table.insert_row(model_row.to_table_row())
+        self._experiment_infos.append(experiment_info)
+        self.table.insert_row(model_row.to_table_row(), 0)
         self._update_value_index_map()
         self._update_search_text()
         self._update_sort_values()

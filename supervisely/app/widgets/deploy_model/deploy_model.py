@@ -242,21 +242,8 @@ class DeployModel(Widget):
                 existing_experiment_infos=existing_experiments,
                 task_id=task_id,
             )
-            all_experiments = existing_experiments + new_experiment_infos
-            self.experiment_table._experiment_infos = all_experiments
-            self.experiment_table._project_infos_map = self.experiment_table._get_project_infos_map(
-                all_experiments
-            )
-            # self.experiment_table.set_experiment_infos(all_experiments)
-            current_rows = self.experiment_table._rows
-            new_rows = self.experiment_table._generate_table_rows(new_experiment_infos)
-            self.experiment_table._rows = current_rows + new_rows
-            for row in new_rows:
-                self.experiment_table.table.insert_row(row.to_table_row())
-
-        def add_experiment_to_table(self, eval_dir: int):
-            experiment_info = get_experiment_info_by_artifacts_dir(self.api, self.team_id, eval_dir)
-            self.experiment_table.append_experiment(experiment_info)
+            for new_exp in new_experiment_infos:
+                self.experiment_table.append_experiment(new_exp)
 
         def get_deploy_parameters(self) -> Dict[str, Any]:
             experiment_info = self.experiment_table.get_selected_experiment_info()
