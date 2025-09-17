@@ -10,6 +10,7 @@ import glob
 import json
 import os
 import shutil
+import threading
 from logging import Logger
 from pathlib import Path
 from typing import (
@@ -397,6 +398,7 @@ class Api:
         self._semaphore = None
         self._instance_version = None
         self._version_check_completed = False
+        self._version_check_lock = threading.Lock()
 
         if check_instance_version:
             self._check_version(None if check_instance_version is True else check_instance_version)
@@ -601,43 +603,49 @@ class Api:
         :type version: Optional[str], e.g. "6.9.13"
         """
 
+        # Thread-safe one-time check with double-checked locking pattern
         if self._version_check_completed:
             return
 
-        self._version_check_completed = True
+        with self._version_check_lock:
+            # Double-check inside the lock
+            if self._version_check_completed:
+                return
 
-        # Since it's a informational message, we don't raise an exception if the check fails
-        # in any case, we don't want to interrupt the user's workflow.
-        try:
-            check_result = self.is_version_supported(version)
-            if check_result is None:
-                logger.debug(
-                    "Failed to check if the instance version meets the minimum requirements "
-                    "of current SDK version. "
-                    "Ensure that the MINIMUM_INSTANCE_VERSION_FOR_SDK environment variable is set. "
-                    "Usually you can ignore this message, but if you're adding new features, "
-                    "which will require upgrade of the Supervisely instance, you should update "
-                    "it supervisely.__init__.py file."
-                )
-            if check_result is False:
-                message = (
-                    "The current version of the Supervisely instance is not supported by the SDK. "
-                    "Some features may not work correctly."
-                )
-                if not is_community():
-                    message += (
-                        " Please upgrade the Supervisely instance to the latest version (recommended) "
-                        "or downgrade the SDK to the version that supports the current instance (not recommended). "
-                        "Refer to this docs for more information: "
-                        "https://docs.supervisely.com/enterprise-edition/get-supervisely/upgrade "
-                        "Check out changelog for the latest version of Supervisely: "
-                        "https://app.supervisely.com/changelog"
+            self._version_check_completed = True
+
+            # Since it's a informational message, we don't raise an exception if the check fails
+            # in any case, we don't want to interrupt the user's workflow.
+            try:
+                check_result = self.is_version_supported(version)
+                if check_result is None:
+                    logger.debug(
+                        "Failed to check if the instance version meets the minimum requirements "
+                        "of current SDK version. "
+                        "Ensure that the MINIMUM_INSTANCE_VERSION_FOR_SDK environment variable is set. "
+                        "Usually you can ignore this message, but if you're adding new features, "
+                        "which will require upgrade of the Supervisely instance, you should update "
+                        "it supervisely.__init__.py file."
                     )
-                    logger.warning(message)
-        except Exception as e:
-            logger.debug(
-                f"Tried to check version compatibility between SDK and instance, but failed: {e}"
-            )
+                if check_result is False:
+                    message = (
+                        "The current version of the Supervisely instance is not supported by the SDK. "
+                        "Some features may not work correctly."
+                    )
+                    if not is_community():
+                        message += (
+                            " Please upgrade the Supervisely instance to the latest version (recommended) "
+                            "or downgrade the SDK to the version that supports the current instance (not recommended). "
+                            "Refer to this docs for more information: "
+                            "https://docs.supervisely.com/enterprise-edition/get-supervisely/upgrade "
+                            "Check out changelog for the latest version of Supervisely: "
+                            "https://app.supervisely.com/changelog"
+                        )
+                        logger.warning(message)
+            except Exception as e:
+                logger.debug(
+                    f"Tried to check version compatibility between SDK and instance, but failed: {e}"
+                )
 
     def post(
         self,
