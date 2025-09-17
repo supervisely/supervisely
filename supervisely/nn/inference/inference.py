@@ -863,6 +863,38 @@ class Inference:
                 self.gui.download_progress.hide()
         return local_model_files
 
+    def _fallback_download_custom_model_pt(self, deploy_params: dict):
+        """
+        Downloads the PyTorch checkpoint from Team Files if TensorRT is failed to load.
+        """
+        team_id = sly_env.team_id()
+
+        checkpoint_name = sly_fs.get_file_name(deploy_params["model_files"]["checkpoint"])
+        artifacts_dir = deploy_params["model_info"]["artifacts_dir"]
+        checkpoints_dir = os.path.join(artifacts_dir, "checkpoints")
+        checkpoint_ext = sly_fs.get_file_ext(deploy_params["model_info"]["checkpoints"][0])
+
+        pt_checkpoint_name = f"{checkpoint_name}{checkpoint_ext}"
+        remote_checkpoint_path = os.path.join(checkpoints_dir, pt_checkpoint_name)
+        local_checkpoint_path = os.path.join(self.model_dir, pt_checkpoint_name)
+
+        file_info = self.api.file.get_info_by_path(team_id, remote_checkpoint_path)
+        file_size = file_info.sizeb
+        if self.gui is not None:
+            with self.gui.download_progress(
+                message=f"Fallback. Downloading PyTorch checkpoint: '{pt_checkpoint_name}'",
+                total=file_size,
+                unit="bytes",
+                unit_scale=True,
+            ) as download_pbar:
+                self.gui.download_progress.show()
+                self.api.file.download(team_id, remote_checkpoint_path, local_checkpoint_path, progress_cb=download_pbar.update)
+                self.gui.download_progress.hide()
+        else:
+            self.api.file.download(team_id, remote_checkpoint_path, local_checkpoint_path)
+
+        return local_checkpoint_path
+
     def _download_custom_model(self, model_files: dict, log_progress: bool = True):
         """
         Downloads the custom model data.
@@ -1060,7 +1092,29 @@ class Inference:
         self.runtime = deploy_params.get("runtime", RuntimeType.PYTORCH)
         self.model_precision = deploy_params.get("model_precision", ModelPrecision.FP32)
         self._hardware = get_hardware_info(self.device)
-        self.load_model(**deploy_params)
+
+        checkpoint_path = deploy_params["model_files"]["checkpoint"]
+        checkpoint_ext = sly_fs.get_file_ext(checkpoint_path)
+        if self.runtime == RuntimeType.TENSORRT and checkpoint_ext == ".engine":
+            try:
+                self.load_model(**deploy_params)
+            except Exception as e:
+                logger.warning(f"Failed to load model with TensorRT. Downloading PyTorch to export to TensorRT. Error: {repr(e)}")
+                checkpoint_path = self._fallback_download_custom_model_pt(deploy_params)
+                deploy_params["model_files"]["checkpoint"] = checkpoint_path
+                checkpoint_path = self.export_tensorrt(deploy_params)
+                deploy_params["model_files"]["checkpoint"] = checkpoint_path
+                self.load_model(**deploy_params)
+        if checkpoint_ext in (".pt", ".pth") and not self.runtime == RuntimeType.PYTORCH:
+                if self.runtime == RuntimeType.ONNXRUNTIME:
+                    checkpoint_path = self.export_onnx(deploy_params)
+                elif self.runtime == RuntimeType.TENSORRT:
+                    checkpoint_path = self.export_tensorrt(deploy_params)
+                deploy_params["model_files"]["checkpoint"] = checkpoint_path
+                self.load_model(**deploy_params)
+        else:
+            self.load_model(**deploy_params)
+
         self._model_served = True
         self._deploy_params = deploy_params
         if self._task_id is not None and is_production():
@@ -1180,6 +1234,7 @@ class Inference:
         self._load_model(deploy_params)
         if self._model_meta is None:
             self._set_model_meta_from_classes()
+
 
     def _set_model_meta_custom_model(self, model_info: dict):
         model_meta = model_info.get("model_meta")
@@ -4214,6 +4269,11 @@ class Inference:
             return
         self.gui.model_source_tabs.set_active_tab(ModelSource.PRETRAINED)
 
+    def export_onnx(self, deploy_params: dict):
+        raise NotImplementedError("Have to be implemented in child class after inheritance")
+
+    def export_tensorrt(self, deploy_params: dict):
+        raise NotImplementedError("Have to be implemented in child class after inheritance")
 
 def _exclude_duplicated_predictions(
     api: Api,
