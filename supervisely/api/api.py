@@ -392,13 +392,14 @@ class Api:
             else not self.server_address.startswith("https://")
         )
 
-        if check_instance_version:
-            self._check_version(None if check_instance_version is True else check_instance_version)
-
         self.async_httpx_client: httpx.AsyncClient = None
         self.httpx_client: httpx.Client = None
         self._semaphore = None
         self._instance_version = None
+        self._version_check_completed = False
+
+        if check_instance_version:
+            self._check_version(None if check_instance_version is True else check_instance_version)
 
     @classmethod
     def normalize_server_address(cls, server_address: str) -> str:
@@ -600,6 +601,11 @@ class Api:
         :type version: Optional[str], e.g. "6.9.13"
         """
 
+        if self._version_check_completed:
+            return
+
+        self._version_check_completed = True
+
         # Since it's a informational message, we don't raise an exception if the check fails
         # in any case, we don't want to interrupt the user's workflow.
         try:
@@ -686,7 +692,8 @@ class Api:
                     )
 
                 if response.status_code != requests.codes.ok:  # pylint: disable=no-member
-                    self._check_version()
+                    if not self._version_check_completed:
+                        self._check_version()
                     Api._raise_for_status(response)
                 return response
             except requests.RequestException as exc:
@@ -1103,7 +1110,8 @@ class Api:
                     timeout=timeout,
                 )
                 if response.status_code != httpx.codes.OK:
-                    self._check_version()
+                    if not self._version_check_completed:
+                        self._check_version()
                     Api._raise_for_status_httpx(response)
                 return response
             except (httpx.RequestError, httpx.HTTPStatusError) as exc:
@@ -1319,7 +1327,8 @@ class Api:
                         httpx.codes.OK,
                         httpx.codes.PARTIAL_CONTENT,
                     ]:
-                        self._check_version()
+                        if not self._version_check_completed:
+                            self._check_version()
                         Api._raise_for_status_httpx(resp)
 
                     hhash = resp.headers.get("x-content-checksum-sha256", None)
@@ -1433,7 +1442,8 @@ class Api:
                     timeout=timeout,
                 )
                 if response.status_code != httpx.codes.OK:
-                    self._check_version()
+                    if not self._version_check_completed:
+                        self._check_version()
                     Api._raise_for_status_httpx(response)
                 return response
             except (httpx.RequestError, httpx.HTTPStatusError) as exc:
@@ -1574,7 +1584,8 @@ class Api:
                         httpx.codes.OK,
                         httpx.codes.PARTIAL_CONTENT,
                     ]:
-                        self._check_version()
+                        if not self._version_check_completed:
+                            self._check_version()
                         Api._raise_for_status_httpx(resp)
 
                     # received hash of the content to check integrity of the data stream
