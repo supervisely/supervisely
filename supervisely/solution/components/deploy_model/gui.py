@@ -4,6 +4,7 @@ import supervisely.io.env as sly_env
 from supervisely.api.api import Api
 from supervisely.app.content import DataJson
 from supervisely.app.widgets import DeployModel, Dialog, Widget
+from supervisely.nn import ModelAPI
 from supervisely.sly_logger import logger
 
 
@@ -17,7 +18,7 @@ class DeployModelGUI(Widget):
     ):
         self._api = Api.from_env()
         self.team_id = team_id or sly_env.team_id()
-        self.model = None
+        self.model: ModelAPI = None
         super().__init__(widget_id=widget_id)
         self.content = self._init_gui()
 

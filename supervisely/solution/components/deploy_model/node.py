@@ -1,5 +1,5 @@
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple
-from supervisely.solution.engine.models import ModelDeployMessage
+
 import supervisely.io.env as sly_env
 from supervisely._utils import abs_url, is_development
 from supervisely.api.api import Api
@@ -10,6 +10,7 @@ from supervisely.solution.components.deploy_model.automation import (
 )
 from supervisely.solution.components.deploy_model.gui import DeployModelGUI
 from supervisely.solution.components.deploy_model.history import DeployTasksHistory
+from supervisely.solution.engine.models import ModelDeployMessage
 
 
 class DeployModelNode(BaseCardNode):
@@ -62,7 +63,7 @@ class DeployModelNode(BaseCardNode):
         def _on_node_click():
             self.gui.modal.show()
 
-        self.modals = [self.history.modal, self.gui.modal]
+        self.modals = [self.history.modal, self.history.logs_modal, self.gui.modal]
         self.enable_automation()
 
     # ------------------------------------------------------------------
@@ -70,6 +71,7 @@ class DeployModelNode(BaseCardNode):
     # ------------------------------------------------------------------
     def enable_automation(self):
         pass
+
     # ------------------------------------------------------------------
     # Node methods -----------------------------------------------------
     # ------------------------------------------------------------------

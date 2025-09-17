@@ -2,26 +2,22 @@ from supervisely.api.api import Api
 from supervisely.app.widgets import Button, TasksHistory
 
 
-class DeployTasksHistory(TasksHistory):
+class DeployCustomModelHistory(TasksHistory):
     def __init__(self, api: Api):
         super().__init__(api)
         self.table_columns = [
             "Task ID",
-            "App Name",
             "Model Name",
+            "Experiment Name",
             "Started At",
-            # "Classses Count",
-            "Runtime",
             "Hardware",
             "Device",
         ]
         self.columns_keys = [
             ["id"],
-            ["app_name"],
             ["model_name"],
+            ["experiment_name"],
             ["started_at"],
-            # ["meta", "model", "classes_count"],
-            ["runtime"],
             ["hardware"],
             ["device"],
         ]
@@ -31,7 +27,7 @@ class DeployTasksHistory(TasksHistory):
         for row in self._get_table_data():
             self.table.insert_row(row)
 
-    def add_task(self, task: dict):
+    def add_task(self, task):
         super().add_task(task)
         self.update()
 
