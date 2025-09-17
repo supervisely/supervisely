@@ -242,9 +242,11 @@ class DeployModel(Widget):
                 existing_experiment_infos=existing_experiments,
                 task_id=task_id,
             )
+            # self.experiment_table.table.set_active_page(1)
             for new_exp in new_experiment_infos:
                 self.experiment_table.append_experiment(new_exp)
-                self.experiment_table.set_selected_row_by_experiment_info(new_exp)
+                # self.experiment_table.set_selected_row_by_experiment_info(new_exp)
+                self.experiment_table.set_selected_row_by_task_id(new_exp.task_id)
 
         def get_deploy_parameters(self) -> Dict[str, Any]:
             experiment_info = self.experiment_table.get_selected_experiment_info()

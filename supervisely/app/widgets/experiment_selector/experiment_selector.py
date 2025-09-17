@@ -649,8 +649,8 @@ class ExperimentSelector(Widget):
 
         model_row.checkpoint_changed = this_row_checkpoint_changed
 
-        self._rows.append(model_row)
-        self._experiment_infos.append(experiment_info)
+        self._rows = [model_row] + self._rows
+        self._experiment_infos = [experiment_info] + self._experiment_infos
         self.table.insert_row(model_row.to_table_row(), 0)
         self._update_value_index_map()
         self._update_search_text()
