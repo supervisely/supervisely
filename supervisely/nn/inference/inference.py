@@ -1102,16 +1102,19 @@ class Inference:
                 logger.warning(f"Failed to load model with TensorRT. Downloading PyTorch to export to TensorRT. Error: {repr(e)}")
                 checkpoint_path = self._fallback_download_custom_model_pt(deploy_params)
                 deploy_params["model_files"]["checkpoint"] = checkpoint_path
+                logger.info("Exporting PyTorch model to TensorRT...")
                 checkpoint_path = self.export_tensorrt(deploy_params)
                 deploy_params["model_files"]["checkpoint"] = checkpoint_path
                 self.load_model(**deploy_params)
         if checkpoint_ext in (".pt", ".pth") and not self.runtime == RuntimeType.PYTORCH:
-                if self.runtime == RuntimeType.ONNXRUNTIME:
-                    checkpoint_path = self.export_onnx(deploy_params)
-                elif self.runtime == RuntimeType.TENSORRT:
-                    checkpoint_path = self.export_tensorrt(deploy_params)
-                deploy_params["model_files"]["checkpoint"] = checkpoint_path
-                self.load_model(**deploy_params)
+            if self.runtime == RuntimeType.ONNXRUNTIME:
+                logger.info("Exporting PyTorch model to ONNX...")
+                checkpoint_path = self.export_onnx(deploy_params)
+            elif self.runtime == RuntimeType.TENSORRT:
+                logger.info("Exporting PyTorch model to TensorRT...")
+                checkpoint_path = self.export_tensorrt(deploy_params)
+            deploy_params["model_files"]["checkpoint"] = checkpoint_path
+            self.load_model(**deploy_params)
         else:
             self.load_model(**deploy_params)
 
