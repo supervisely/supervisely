@@ -13,7 +13,7 @@ from supervisely.solution.engine.models import (
     EvaluationFinishedMessage,
     TrainingFinishedMessage,
 )
-from supervisely.solution.utils import find_agent
+from supervisely.solution.utils import find_agent, get_last_val_collection
 from supervisely.solution.nodes.evaluation.gui import EvaluationReportGUI
 from supervisely.solution.nodes.evaluation.history import EvaluationTaskHistory
 
@@ -267,14 +267,6 @@ class EvaluationNode(BaseCardNode):
                 logger.error(f"Failed to stop evaluation session: {e}", exc_info=True)
             self.hide_in_progress_badge("Evaluation")
 
-    def _get_collection_ids(self) -> Optional[Tuple[int, str]]:
-        collections = self._api.entities_collection.get_list(project_id=self.project.id)
-        val_collections = [col for col in collections if col.name == "all_val"]
-        if not val_collections:
-            logger.warning("No 'all_val' collection found in the project.")
-            return None, None
-        return val_collections[0].id, val_collections[0].name
-
     def _run_evaluation(self):
         if not self._model:
             logger.error("Model is not deployed. Cannot run evaluation.")
@@ -282,11 +274,12 @@ class EvaluationNode(BaseCardNode):
         if not self._session_info:
             logger.error("Evaluation session info is not available. Cannot run evaluation.")
             return
-        collection_id, collection_name = self._get_collection_ids()
-        if not collection_id:
-            logger.error("Validation collection ID could not be determined.")
+        collection, _ = get_last_val_collection(self._api, self.project.id)
+        if not collection:
+            logger.error("No validation collection found. Cannot run evaluation.")
             return
 
+        collection_id, collection_name = collection.id, collection.name
         data = {
             "session_id": self._model.task_id,
             "project_id": self.project.id,

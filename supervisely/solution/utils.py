@@ -69,3 +69,18 @@ def find_agent(api: Api, team_id: int) -> int:
         if len(agents) > 0:
             return agents[0]
     raise ValueError("No available agents found.")
+
+
+def get_last_split_collection(api: Api, project_id: int, prefix: str) -> int:
+    last_collection_idx = 0
+    last_collection = None
+    for collection_info in api.entities_collection.get_list(project_id):
+        if collection_info.name.startswith(prefix):
+            last_collection_idx = int(collection_info.name.split("_")[-1])
+            last_collection = collection_info
+    return last_collection, last_collection_idx
+
+
+def get_last_val_collection(api: Api, project_id: int) -> int:
+    val_collection, val_idx = get_last_split_collection(api, project_id, "val_")
+    return val_collection, val_idx

@@ -6,8 +6,6 @@ import supervisely.io.env as sly_env
 from supervisely.api.api import Api
 from supervisely.api.entities_collection_api import CollectionTypeFilter
 from supervisely.api.task_api import TaskApi
-from supervisely.app.widgets import Dialog, NewExperiment
-from supervisely.project.image_transfer_utils import move_structured_images
 from supervisely.sly_logger import logger
 from supervisely.solution.base_node import BaseCardNode
 from supervisely.solution.engine.models import (

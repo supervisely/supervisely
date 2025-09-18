@@ -6,7 +6,7 @@ from supervisely.app.widgets import Dialog, NewExperiment
 from supervisely.nn.task_type import TaskType
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import ProjectType
-from supervisely.solution.utils import find_agent
+from supervisely.solution.utils import find_agent, get_last_split_collection
 
 
 class PretrainedModelsGUI:
@@ -31,7 +31,10 @@ class PretrainedModelsGUI:
     def _create_widget(self) -> NewExperiment:
         """Creates the GUI widgets for the PretrainedModels node."""
         train_datasets, val_datasets = self._get_train_val_datasets()
-        train_collections, val_collections = self._get_train_val_collections()
+        train_collection = get_last_split_collection(self._api, self.project.id, "train_")
+        val_collection = get_last_split_collection(self._api, self.project.id, "val_")
+        train_collections = [train_collection.id] if train_collection else []
+        val_collections = [val_collection.id] if val_collection else []
 
         if train_collections and val_collections:
             split_mode = "collections"
@@ -96,18 +99,6 @@ class PretrainedModelsGUI:
                 size="tiny",
             )
         return self._modal
-
-    def _get_train_val_collections(self) -> Tuple[List[int], List[int]]:
-        if self.project.type != ProjectType.IMAGES.value:
-            return [], []
-        train_collections, val_collections = [], []
-        all_collections = self._api.entities_collection.get_list(self.project.id)
-        for collection in all_collections:
-            if collection.name == "all_train":
-                train_collections.append(collection.id)
-            elif collection.name == "all_val":
-                val_collections.append(collection.id)
-        return train_collections, val_collections
 
     def _get_train_val_datasets(self) -> Tuple[List[int], List[int]]:
         if self.project.type != ProjectType.IMAGES.value:

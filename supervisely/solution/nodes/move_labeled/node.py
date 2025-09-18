@@ -5,6 +5,7 @@ from typing import Any, Callable, Dict, List, Literal, Optional, Tuple
 
 import supervisely.io.env as sly_env
 from supervisely.api.api import Api
+from supervisely.api.entities_collection_api import CollectionTypeFilter
 from supervisely.app.widgets import Dialog
 from supervisely.project.image_transfer_utils import move_structured_images
 from supervisely.sly_logger import logger
@@ -16,6 +17,7 @@ from supervisely.solution.engine.models import (
 from supervisely.solution.nodes.move_labeled.automation import MoveLabeledAuto
 from supervisely.solution.nodes.move_labeled.gui import MoveLabeledGUI
 from supervisely.solution.nodes.move_labeled.history import MoveLabeledTasksHistory
+from supervisely.solution.utils import get_last_split_collection
 
 
 class MoveLabeledNode(BaseCardNode):
@@ -327,40 +329,28 @@ class MoveLabeledNode(BaseCardNode):
             random.shuffle(items)
         train = items[:train_count]
         val = items[train_count : train_count + val_count]
-        self._add_to_collection(train, "all_train")
-        self._add_to_collection(val, "all_val")
-        self._add_to_collection(items, "batch")
+        self._add_to_collection(train, "train")
+        self._add_to_collection(val, "val")
         logger.info(f"Split {len(items)} items into {len(train)} train and {len(val)} val items.")
 
     def _add_to_collection(
         self,
         image_ids: List[int],
-        split_name: Literal["all_train", "all_val", "batch"],
+        split_name: Literal["train", "val"],
     ) -> None:
         """Add the MoveLabeled node to a collection."""
         if not image_ids:
             return
-        collections = self.api.entities_collection.get_list(self.dst_project_id)
+        collection, idx = get_last_split_collection(self.api, self.dst_project_id, split_name)
 
-        main_col = None
+        split_name = f"{split_name}_{idx + 1:03d}"
+        new_col = self.api.entities_collection.create(self.dst_project_id, split_name)
+        logger.info(f"Created new collection '{split_name}'")
 
-        last_batch_idx = 0
-        for collection in collections:
-            if collection.name == split_name and split_name in ["all_train", "all_val"]:
-                main_col = collection
-            elif split_name == "batch":
-                if collection.name.startswith("batch_"):
-                    last_batch_idx = max(last_batch_idx, int(collection.name.split("_")[-1]))
+        items = self.api.entities_collection.get_items(collection.id, CollectionTypeFilter.DEFAULT)
+        previous_ids = [item.id for item in items] if items else []
 
-        if main_col is None and split_name in ["all_train", "all_val"]:
-            main_col = self.api.entities_collection.create(self.dst_project_id, split_name)
-            logger.info(f"Created new collection '{split_name}'")
-        elif split_name == "batch":
-            batch_name = f"batch_{last_batch_idx + 1}"
-            main_col = self.api.entities_collection.create(self.dst_project_id, batch_name)
-            logger.info(f"Created new collection '{batch_name}'")
-
-        self.api.entities_collection.add_items(main_col.id, image_ids)
+        self.api.entities_collection.add_items(new_col.id, image_ids + previous_ids)
 
     def _get_uploaded_ids(self, project_id: int, task_id: int) -> List[int]:
         """Get the IDs of images uploaded from the project's custom data."""
