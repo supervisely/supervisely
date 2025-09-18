@@ -10,6 +10,7 @@ import glob
 import json
 import os
 import shutil
+import threading
 from logging import Logger
 from pathlib import Path
 from typing import (
@@ -392,13 +393,15 @@ class Api:
             else not self.server_address.startswith("https://")
         )
 
-        if check_instance_version:
-            self._check_version(None if check_instance_version is True else check_instance_version)
-
         self.async_httpx_client: httpx.AsyncClient = None
         self.httpx_client: httpx.Client = None
         self._semaphore = None
         self._instance_version = None
+        self._version_check_completed = False
+        self._version_check_lock = threading.Lock()
+
+        if check_instance_version:
+            self._check_version(None if check_instance_version is True else check_instance_version)
 
     @classmethod
     def normalize_server_address(cls, server_address: str) -> str:
@@ -600,38 +603,49 @@ class Api:
         :type version: Optional[str], e.g. "6.9.13"
         """
 
-        # Since it's a informational message, we don't raise an exception if the check fails
-        # in any case, we don't want to interrupt the user's workflow.
-        try:
-            check_result = self.is_version_supported(version)
-            if check_result is None:
-                logger.debug(
-                    "Failed to check if the instance version meets the minimum requirements "
-                    "of current SDK version. "
-                    "Ensure that the MINIMUM_INSTANCE_VERSION_FOR_SDK environment variable is set. "
-                    "Usually you can ignore this message, but if you're adding new features, "
-                    "which will require upgrade of the Supervisely instance, you should update "
-                    "it supervisely.__init__.py file."
-                )
-            if check_result is False:
-                message = (
-                    "The current version of the Supervisely instance is not supported by the SDK. "
-                    "Some features may not work correctly."
-                )
-                if not is_community():
-                    message += (
-                        " Please upgrade the Supervisely instance to the latest version (recommended) "
-                        "or downgrade the SDK to the version that supports the current instance (not recommended). "
-                        "Refer to this docs for more information: "
-                        "https://docs.supervisely.com/enterprise-edition/get-supervisely/upgrade "
-                        "Check out changelog for the latest version of Supervisely: "
-                        "https://app.supervisely.com/changelog"
+        # Thread-safe one-time check with double-checked locking pattern
+        if self._version_check_completed:
+            return
+
+        with self._version_check_lock:
+            # Double-check inside the lock
+            if self._version_check_completed:
+                return
+
+            self._version_check_completed = True
+
+            # Since it's a informational message, we don't raise an exception if the check fails
+            # in any case, we don't want to interrupt the user's workflow.
+            try:
+                check_result = self.is_version_supported(version)
+                if check_result is None:
+                    logger.debug(
+                        "Failed to check if the instance version meets the minimum requirements "
+                        "of current SDK version. "
+                        "Ensure that the MINIMUM_INSTANCE_VERSION_FOR_SDK environment variable is set. "
+                        "Usually you can ignore this message, but if you're adding new features, "
+                        "which will require upgrade of the Supervisely instance, you should update "
+                        "it supervisely.__init__.py file."
                     )
-                    logger.warning(message)
-        except Exception as e:
-            logger.debug(
-                f"Tried to check version compatibility between SDK and instance, but failed: {e}"
-            )
+                if check_result is False:
+                    message = (
+                        "The current version of the Supervisely instance is not supported by the SDK. "
+                        "Some features may not work correctly."
+                    )
+                    if not is_community():
+                        message += (
+                            " Please upgrade the Supervisely instance to the latest version (recommended) "
+                            "or downgrade the SDK to the version that supports the current instance (not recommended). "
+                            "Refer to this docs for more information: "
+                            "https://docs.supervisely.com/enterprise-edition/get-supervisely/upgrade "
+                            "Check out changelog for the latest version of Supervisely: "
+                            "https://app.supervisely.com/changelog"
+                        )
+                        logger.warning(message)
+            except Exception as e:
+                logger.debug(
+                    f"Tried to check version compatibility between SDK and instance, but failed: {e}"
+                )
 
     def post(
         self,
@@ -686,7 +700,8 @@ class Api:
                     )
 
                 if response.status_code != requests.codes.ok:  # pylint: disable=no-member
-                    self._check_version()
+                    if not self._version_check_completed:
+                        self._check_version()
                     Api._raise_for_status(response)
                 return response
             except requests.RequestException as exc:
@@ -1103,7 +1118,8 @@ class Api:
                     timeout=timeout,
                 )
                 if response.status_code != httpx.codes.OK:
-                    self._check_version()
+                    if not self._version_check_completed:
+                        self._check_version()
                     Api._raise_for_status_httpx(response)
                 return response
             except (httpx.RequestError, httpx.HTTPStatusError) as exc:
@@ -1319,7 +1335,8 @@ class Api:
                         httpx.codes.OK,
                         httpx.codes.PARTIAL_CONTENT,
                     ]:
-                        self._check_version()
+                        if not self._version_check_completed:
+                            self._check_version()
                         Api._raise_for_status_httpx(resp)
 
                     hhash = resp.headers.get("x-content-checksum-sha256", None)
@@ -1433,7 +1450,8 @@ class Api:
                     timeout=timeout,
                 )
                 if response.status_code != httpx.codes.OK:
-                    self._check_version()
+                    if not self._version_check_completed:
+                        self._check_version()
                     Api._raise_for_status_httpx(response)
                 return response
             except (httpx.RequestError, httpx.HTTPStatusError) as exc:
@@ -1574,7 +1592,8 @@ class Api:
                         httpx.codes.OK,
                         httpx.codes.PARTIAL_CONTENT,
                     ]:
-                        self._check_version()
+                        if not self._version_check_completed:
+                            self._check_version()
                         Api._raise_for_status_httpx(resp)
 
                     # received hash of the content to check integrity of the data stream

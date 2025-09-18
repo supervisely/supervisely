@@ -140,7 +140,7 @@ def check_workflow_compatibility(api, min_instance_version: str) -> bool:
             "instance_version", api.instance_version
         )
 
-        if instance_version == "unknown":
+        if instance_version is None or instance_version == "unknown":
             # to check again on the next call
             del _workflow_compatibility_version_cache["instance_version"]
             logger.info(
