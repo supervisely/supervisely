@@ -11,10 +11,12 @@ from supervisely.app.widgets import (
     Flexbox,
     NotificationBox,
     ProjectDatasetTable,
+    ReloadableArea,
     StepperProgress,
     Text,
     Widget,
 )
+from supervisely.nn.training.gui.train_val_splits_selector import TrainValSplits
 from supervisely.project.project import ProjectType
 
 
@@ -65,7 +67,7 @@ class AddTrainingDataGUI(Widget):
     @property
     def stepper(self) -> StepperProgress:
         if not hasattr(self, "_stepper"):
-            steps = ["Select Project", "Select Datasets", "Add Data"]
+            steps = ["Select Project", "Select Datasets", "Select split settings", "Add Data"]
             self._stepper = StepperProgress(titles=steps)
         return self._stepper
 
@@ -95,6 +97,19 @@ class AddTrainingDataGUI(Widget):
 
         return self._select_all_datasets_checkbox
 
+    @property
+    def splits_widget(self) -> TrainValSplits:
+        if not hasattr(self, "_splits_widget"):
+            self._splits_widget = TrainValSplits(
+                # project_id=project_id,
+                random_splits=True,
+                tags_splits=True,
+                datasets_splits=True,
+                collections_splits=True,
+            )
+            self._splits_widget.hide()
+        return self._splits_widget
+
     def _create_main_widget(self) -> Container:
         desc = Text(
             "Skip the initial steps of data import and annotation "
@@ -110,7 +125,10 @@ class AddTrainingDataGUI(Widget):
 
         table_container = Container(
             [
-                Container([self.select_all_datasets_checkbox, self.project_table], gap=0),
+                Container(
+                    [self.select_all_datasets_checkbox, self.project_table, self.splits_widget],
+                    gap=0,
+                ),
                 self.replicate_structure_checkbox,
             ]
         )
@@ -156,26 +174,43 @@ class AddTrainingDataGUI(Widget):
                     self.project_table.table.select_rows(
                         [i for i in range(self.project_table.table._rows_total)]
                     )
+                    next_btn.enable()
                 back_btn.show()
-                next_btn.text = "Add"
-            elif self.project_table.current_table == self.project_table.CurrentTable.DATASETS:
+            elif (
+                self.project_table.current_table == self.project_table.CurrentTable.DATASETS
+                and self.splits_widget.is_hidden()
+            ):
+                self._set_train_val_splits_data()
                 self.stepper.next_step()
-                self._trigger_settings_saved_event()
-                self.modal.hide()
-                next_btn.text = "Next"
-                self.project_table.table.clear_selection()
-                next_btn.disable()
-                back_btn.hide()
                 self.replicate_structure_checkbox.hide()
                 self.select_all_datasets_checkbox.hide()
-                self.project_table.switch_table(self.project_table.CurrentTable.PROJECTS)
+                next_btn.text = "Add"
+                next_btn.enable()
+            elif (
+                self.project_table.current_table == self.project_table.CurrentTable.DATASETS
+                and not self.splits_widget.is_hidden()
+            ):
+                self.stepper.next_step()
+                self.modal.hide()
+                self._trigger_settings_saved_event()
+                # area to reset the widget to initial state
+                next_btn.text = "Next"
+                next_btn.disable()
+                back_btn.hide()
+                self.project_table.show()
+                self.splits_widget.hide()
                 self.stepper.set_active_step(1)
-            next_btn.disable()
+                self.project_table.switch_table(self.project_table.CurrentTable.PROJECTS)
+                self.project_table.table.clear_selection()
 
         @back_btn.click
         def on_back_btn_click():
-            self.project_table.enable()
-            if self.project_table.current_table == self.project_table.CurrentTable.DATASETS:
+            self.project_table.show()
+            self.stepper.previous_step()
+            if (
+                self.project_table.current_table == self.project_table.CurrentTable.DATASETS
+                and not self.splits_widget.is_hidden()
+            ):
                 self.replicate_structure_checkbox.hide()
                 self.select_all_datasets_checkbox.hide()
                 back_btn.hide()
@@ -183,12 +218,39 @@ class AddTrainingDataGUI(Widget):
                 next_btn.text = "Next"
                 self.project_table.table.clear_selection()
                 next_btn.disable()
-            self.stepper.previous_step()
+            elif (
+                self.project_table.current_table == self.project_table.CurrentTable.DATASETS
+                and self.splits_widget.is_hidden()
+            ):
+                self.splits_widget.hide()
+                self.project_table.show()
+                next_btn.text = "Next"
+                next_btn.enable()
+                self.project_table.switch_table(self.project_table.CurrentTable.DATASETS)
+                if self.project_table.has_nested_datasets():
+                    self.replicate_structure_checkbox.show()
+                self.select_all_datasets_checkbox.show()
+                if self.select_all_datasets_checkbox.is_checked():
+                    self.project_table.disable()
+                    self.project_table.table.select_rows(
+                        [i for i in range(self.project_table.table._rows_total)]
+                    )
 
         return Flexbox(
             [Container([back_btn, next_btn], direction="horizontal")],
             horizontal_alignment="flex-end",
         )
+
+    def _set_train_val_splits_data(self) -> None:
+        # include_collections_tab = self.api.project.get_info_by_id(project_id) # TODO
+        # include_tags_tab = self.api.project.get_info_by_id(project_id) # TODO
+        # TODO: determine whether to include tabs & check which tab we need to select by default
+        self.project_table.hide()
+        self.splits_widget.show()
+        project_id = self.get_selected_project_id()
+        if not project_id:
+            raise RuntimeError("Project ID is not selected. Cannot set splits data.")
+        self.splits_widget.set_project_id(project_id)
 
     def get_json_data(self) -> dict:
         return {}

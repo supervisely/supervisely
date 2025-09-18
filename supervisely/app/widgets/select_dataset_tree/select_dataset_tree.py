@@ -97,6 +97,7 @@ class SelectDatasetTree(Widget):
         widget_id: Union[str, None] = None,
         show_select_all_datasets_checkbox: bool = True,
         width: int = 193,
+        default_to_env: bool = True,
     ):
         self._api = Api.from_env()
 
@@ -112,8 +113,12 @@ class SelectDatasetTree(Widget):
         self._workspace_id = env.workspace_id()
 
         # Using environment variables to set the default values if they are not provided.
-        self._project_id = project_id or env.project_id(raise_not_found=False)
-        self._dataset_id = default_id or env.dataset_id(raise_not_found=False)
+        self._project_id = project_id
+        if self._project_id is None and default_to_env:
+            self._project_id = env.project_id(raise_not_found=False)
+        self._dataset_id = default_id
+        if self._dataset_id is None and default_to_env:
+            self._dataset_id = env.dataset_id(raise_not_found=False)
 
         self._multiselect = multiselect
         self._compact = compact
@@ -278,10 +283,7 @@ class SelectDatasetTree(Widget):
         :param project_id: The ID of the project.
         :type project_id: int
         """
-        if not self._compact:
-            self._select_project.set_value(project_id)
-        self._project_id = project_id
-        self._select_dataset.set_items(self._read_datasets(project_id))
+        self.set_project_id(project_id)
 
     def get_selected_project_id(self) -> Optional[int]:
         """Get the ID of the selected project.
@@ -552,7 +554,10 @@ class SelectDatasetTree(Widget):
         :param project_id: The ID of the project.
         :type project_id: int
         """
-        self.project_id = project_id
+        if not self._compact:
+            self._select_project.set_value(project_id)
+        self._project_id = project_id
+        self._select_dataset.set_items(self._read_datasets(project_id))
 
     def _get_selected(self) -> Optional[Union[List[int], int]]:
         """Get the ID of the selected dataset(s).

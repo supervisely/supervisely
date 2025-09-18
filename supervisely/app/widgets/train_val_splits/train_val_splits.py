@@ -27,6 +27,7 @@ from supervisely.project import get_project_class
 from supervisely.project.pointcloud_episode_project import PointcloudEpisodeProject
 from supervisely.project.pointcloud_project import PointcloudProject
 from supervisely.project.project import ItemInfo, Project
+from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import ProjectType
 from supervisely.project.video_project import VideoProject
 from supervisely.project.volume_project import VolumeProject
@@ -83,10 +84,10 @@ class TrainValSplits(Widget):
             contents.append(self._get_random_content())
         if tags_splits:
             self._split_methods.append("Based on item tags")
-            proj_type = self._project_type.capitalize() if self._project_type is not None else "Project"
-            tabs_descriptions.append(
-                f"{proj_type} should have assigned train or val tag"
+            proj_type = (
+                self._project_type.capitalize() if self._project_type is not None else "Project"
             )
+            tabs_descriptions.append(f"{proj_type} should have assigned train or val tag")
             contents.append(self._get_tags_content())
         if datasets_splits:
             self._split_methods.append("Based on datasets")
@@ -108,7 +109,7 @@ class TrainValSplits(Widget):
         )
 
         super().__init__(widget_id=widget_id, file_path=__file__)
-    
+
     def _init_content(self) -> None:
         contents = []
         tabs_descriptions = []
@@ -117,10 +118,10 @@ class TrainValSplits(Widget):
         if "Based on item tags" in self._split_methods:
             tabs_descriptions.append("Item tags should be assigned for train/val splits")
             contents.append(self._get_tags_content())
-            proj_type = self._project_type.capitalize() if self._project_type is not None else "Project"
-            tabs_descriptions.append(
-                f"{proj_type} should have assigned train or val tag"
+            proj_type = (
+                self._project_type.capitalize() if self._project_type is not None else "Project"
             )
+            tabs_descriptions.append(f"{proj_type} should have assigned train or val tag")
             contents.append(self._get_tags_content())
         if "Based on datasets" in self._split_methods:
             tabs_descriptions.append("Select one or several datasets for every split")
@@ -133,15 +134,6 @@ class TrainValSplits(Widget):
             descriptions=tabs_descriptions,
             contents=contents,
         )
-
-    def set_project_id(self, project_id: int) -> None:
-        self._project_id = project_id
-        if self._api is None:
-            self._api = Api()
-        self._project_info = self._api.project.get_info_by_id(self._project_id)
-        self._project_type = self._project_info.type
-        self._project_class = get_project_class(self._project_type)
-        self._init_content()
 
     def _get_random_content(self):
         items_count = 0
@@ -169,6 +161,9 @@ class TrainValSplits(Widget):
             self._val_tag_select = SelectTagMeta(
                 project_meta=self._project_fs.meta, show_label=False
             )
+        else:
+            self._train_tag_select = SelectTagMeta(default="train", show_label=False)
+            self._val_tag_select = SelectTagMeta(default="val", show_label=False)
         self._untagged_select = SelectString(
             values=["train", "val", "ignore"],
             labels=[
@@ -211,8 +206,13 @@ class TrainValSplits(Widget):
             description="Choose the same dataset(s) for train/validation to make splits equal. Can be used for debug and for tiny projects",
             box_type="info",
         )
-        if self._project_id is not None:
+        if self._project_fs is not None:
+            ds_names = [ds.name for ds in self._project_fs.datasets]
+            self._train_ds_select = SelectString(ds_names, multiple=True)
+            self._val_ds_select = SelectString(ds_names, multiple=True)
+        else:
             self._train_ds_select = SelectDatasetTree(
+                project_id=self._project_id,
                 multiselect=True,
                 flat=True,
                 select_all_datasets=False,
@@ -222,9 +222,11 @@ class TrainValSplits(Widget):
                 team_is_selectable=False,
                 workspace_is_selectable=False,
                 append_to_body=True,
+                default_to_env=False,
             )
 
             self._val_ds_select = SelectDatasetTree(
+                project_id=self._project_id,
                 multiselect=True,
                 flat=True,
                 select_all_datasets=False,
@@ -234,6 +236,7 @@ class TrainValSplits(Widget):
                 team_is_selectable=False,
                 workspace_is_selectable=False,
                 append_to_body=True,
+                default_to_env=False,
             )
 
             # old implementation
@@ -243,10 +246,6 @@ class TrainValSplits(Widget):
             # self._val_ds_select = SelectDataset(
             #     project_id=self._project_id, multiselect=True, compact=True, show_label=False
             # )
-        elif self._project_fs is not None:
-            ds_names = [ds.name for ds in self._project_fs.datasets]
-            self._train_ds_select = SelectString(ds_names, multiple=True)
-            self._val_ds_select = SelectString(ds_names, multiple=True)
         train_field = Field(
             self._train_ds_select,
             title="Train dataset(s)",
@@ -268,8 +267,12 @@ class TrainValSplits(Widget):
             box_type="info",
         )
 
-        self._train_collections_select = SelectCollection(multiselect=True, compact=True)
-        self._val_collections_select = SelectCollection(multiselect=True, compact=True)
+        self._train_collections_select = SelectCollection(
+            multiselect=True, compact=True, default_to_env=False
+        )
+        self._val_collections_select = SelectCollection(
+            multiselect=True, compact=True, default_to_env=False
+        )
         if self._project_id is not None:
             self._train_collections_select.set_project_id(self._project_id)
             self._val_collections_select.set_project_id(self._project_id)
@@ -441,6 +444,33 @@ class TrainValSplits(Widget):
             raise ValueError("Collections select widgets are not initialized.")
         self._train_collections_select.set_project_id(project_id)
         self._val_collections_select.set_project_id(project_id)
+
+    def set_project_id(self, project_id: int) -> None:
+        # TODO: flag to disable contents/ set active tabs according to the project
+        # TODO: add value_changed callback to handle selection button
+        if not isinstance(project_id, int):
+            raise ValueError("Project ID must be an integer.")
+        self._project_id = project_id
+        self._project_type = None
+        if self._api is None:
+            self._api = Api()
+        self._project_info = self._api.project.get_info_by_id(self._project_id)
+        if self._random_splits_table is not None:
+            items_count = self._project_info.items_count
+            self._random_splits_table.set_items_count(items_count)
+        self._project_type = self._project_info.type
+        self._project_class = get_project_class(self._project_type)
+        if self._train_collections_select and self._val_collections_select:
+            self._train_collections_select.set_project_id(project_id)
+            self._val_collections_select.set_project_id(project_id)
+        if self._train_tag_select is not None and self._val_tag_select is not None:
+            project_meta = ProjectMeta.from_json(self._api.project.get_meta(self._project_id))
+            self._train_tag_select.set_project_meta(project_meta)
+            self._val_tag_select.set_project_meta(project_meta)
+        if self._train_ds_select is not None and self._val_ds_select is not None:
+            self._train_ds_select.set_project_id(project_id)
+            self._val_ds_select.set_project_id(project_id)
+        # self._init_content()
 
     def get_train_collections_ids(self) -> List[int]:
         return self._train_collections_select.get_selected_ids() or []
