@@ -895,6 +895,18 @@ class Inference:
 
         return local_checkpoint_path
 
+    def _remove_exported_checkpoints(self, checkpoint_path: str):
+        """
+        Removes the exported checkpoints for provided PyTorch checkpoint path.
+        """
+        checkpoint_ext = sly_fs.get_file_ext(checkpoint_path)
+        onnx_path = checkpoint_path.replace(checkpoint_ext, ".onnx")
+        engine_path = checkpoint_path.replace(checkpoint_ext, ".engine")
+        if os.path.exists(onnx_path):
+            sly_fs.silent_remove(onnx_path)
+        if os.path.exists(engine_path):
+            sly_fs.silent_remove(engine_path)
+
     def _download_custom_model(self, model_files: dict, log_progress: bool = True):
         """
         Downloads the custom model data.
@@ -1103,15 +1115,18 @@ class Inference:
                 checkpoint_path = self._fallback_download_custom_model_pt(deploy_params)
                 deploy_params["model_files"]["checkpoint"] = checkpoint_path
                 logger.info("Exporting PyTorch model to TensorRT...")
+                self._remove_exported_checkpoints(checkpoint_path)
                 checkpoint_path = self.export_tensorrt(deploy_params)
                 deploy_params["model_files"]["checkpoint"] = checkpoint_path
                 self.load_model(**deploy_params)
         if checkpoint_ext in (".pt", ".pth") and not self.runtime == RuntimeType.PYTORCH:
             if self.runtime == RuntimeType.ONNXRUNTIME:
                 logger.info("Exporting PyTorch model to ONNX...")
+                self._remove_exported_checkpoints(checkpoint_path)
                 checkpoint_path = self.export_onnx(deploy_params)
             elif self.runtime == RuntimeType.TENSORRT:
                 logger.info("Exporting PyTorch model to TensorRT...")
+                self._remove_exported_checkpoints(checkpoint_path)
                 checkpoint_path = self.export_tensorrt(deploy_params)
             deploy_params["model_files"]["checkpoint"] = checkpoint_path
             self.load_model(**deploy_params)
