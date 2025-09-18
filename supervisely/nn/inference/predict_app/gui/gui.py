@@ -2,8 +2,6 @@ import random
 import time
 from typing import Any, Callable, Dict, List, Optional
 
-import yaml
-
 from supervisely._utils import is_development, logger
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.label import Label
@@ -201,7 +199,12 @@ class PredictAppGui:
             self.steps.append(self.tags_selector.card)
 
         # 5. Settings selector
-        self.settings_selector = SettingsSelector()
+        self.settings_selector = SettingsSelector(
+            api=self.api,
+            static_dir=self.static_dir,
+            model_selector=self.model_selector,
+            input_selector=self.input_selector,
+        )
         self.steps.append(self.settings_selector.card)
 
         # 6. Preview
@@ -253,9 +256,6 @@ class PredictAppGui:
             inference_settings = model_api.get_settings()
             self.settings_selector.set_inference_settings(inference_settings)
 
-            if self.preview is not None:
-                self.preview.inference_settings = inference_settings
-
         def reset_entity_meta():
             empty_meta = ProjectMeta()
             if self.classes_selector is not None:
@@ -266,9 +266,6 @@ class PredictAppGui:
                 self.tags_selector.tags_table.hide()
 
             self.settings_selector.set_inference_settings("")
-
-            if self.preview is not None:
-                self.preview.inference_settings = None
 
         def disable_settings_editor():
             if self.settings_selector.inference_settings.readonly:
@@ -388,6 +385,7 @@ class PredictAppGui:
             position=position,
         )
         position += 1
+        self.step_flow.add_on_select_actions("input_selector", [self.update_item_type])
 
         # 2. Model selector
         self.step_flow.register_step(
@@ -558,6 +556,11 @@ class PredictAppGui:
             self.input_selector.select_video.loading = False
 
         # ------------------------------------------------- #
+
+    def update_item_type(self):
+        item_type = self.input_selector.radio.get_value()
+        self.settings_selector.update_item_type(item_type)
+        self.output_selector.update_item_type(item_type)
 
     def run(self, run_parameters: Dict[str, Any] = None) -> List[Prediction]:
         self.show_validator_text()

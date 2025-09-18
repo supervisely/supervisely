@@ -5,6 +5,7 @@ import asyncio
 import datetime
 import json
 import os
+import re
 import urllib.parse
 from functools import partial
 from typing import (
@@ -23,7 +24,11 @@ from typing import (
 import aiofiles
 from numerize.numerize import numerize
 from requests import Response
-from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
+from requests_toolbelt import (
+    MultipartDecoder,
+    MultipartEncoder,
+    MultipartEncoderMonitor,
+)
 from tqdm import tqdm
 
 import supervisely.io.fs as sly_fs
@@ -1185,6 +1190,37 @@ class VideoApi(RemoveableBulkModuleApi):
 
                 if progress_cb is not None:
                     progress_cb(len(chunk))
+
+    def download_frames(self, video_id: int, frames: List[int], paths: List[str]) -> None:
+        endpoint = "videos.bulk.download-frame"
+        response: Response = self._api.get(
+            endpoint,
+            params={},
+            data={ApiField.VIDEO_ID: video_id, ApiField.FRAMES: frames},
+            stream=True,
+        )
+        response.raise_for_status()
+
+        files = {frame_n: None for frame_n in frames}
+        file_paths = {frame_n: path for frame_n, path in zip(frames, paths)}
+
+        try:
+            decoder = MultipartDecoder.from_response(response)
+            for part in decoder.parts:
+                content_utf8 = part.headers[b"Content-Disposition"].decode("utf-8")
+                # Find name="1245" preceded by a whitespace, semicolon or beginning of line.
+                # The regex has 2 capture group: one for the prefix and one for the actual name value.
+                frame_n = int(re.findall(r'(^|[\s;])name="(\d*)"', content_utf8)[0][1])
+                if files[frame_n] is None:
+                    file_path = file_paths[frame_n]
+                    files[frame_n] = open(file_path, "wb")
+                f = files[frame_n]
+                f.write(part.content)
+
+        finally:
+            for f in files.values():
+                if f is not None:
+                    f.close()
 
     def download_range_by_id(
         self,

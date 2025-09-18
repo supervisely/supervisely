@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import os
-from typing import Dict, Generator, List, Optional, Tuple
+from typing import Dict, Generator, Iterable, List, Optional, Tuple
 
 import cv2
 import numpy as np
@@ -625,3 +625,17 @@ class VideoFrameReader:
             return self.vr.get_avg_fps()
         else:
             return int(self.cap.get(cv2.CAP_PROP_FPS))
+
+
+def create_from_frames(frames: Iterable[np.ndarray], output_path: str, fps: int = 30) -> None:
+    video_writer = None
+    for frame in frames:
+        if video_writer is None:
+            height, width, _ = frame.shape
+            fourcc = cv2.VideoWriter.fourcc(*"mp4v")
+            video_writer = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+        if frame.dtype != np.uint8:
+            frame = (frame * 255).astype(np.uint8) if frame.max() <= 1.0 else frame.astype(np.uint8)
+
+        video_writer.write(frame)
+    video_writer.release()

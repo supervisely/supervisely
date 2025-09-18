@@ -83,9 +83,9 @@ class InputSelector:
         # -------------------------------- #
 
         # Data type Radio Selector
-        # self.radio = RadioGroup(items=[self._radio_item_images, self._radio_item_videos])
-        self.radio = RadioGroup(items=[self._radio_item_images])
-        self.radio.hide()
+        self.radio = RadioGroup(items=[self._radio_item_images, self._radio_item_videos])
+        # self.radio = RadioGroup(items=[self._radio_item_images])
+        # self.radio.hide()
         self.one_of = OneOf(conditional_widget=self.radio)
         # Add widgets to display ------------ #
         self.display_widgets.extend([self.radio, self.one_of])
@@ -126,7 +126,12 @@ class InputSelector:
                 "dataset_ids": self.select_dataset_for_images.get_selected_ids(),
             }
         if self.radio.get_value() == ProjectType.VIDEOS.value:
-            return {"video_id": self.select_video.get_selected_row()}
+            video_id = self.select_video.get_selected_row()
+            if video_id:
+                video_id = video_id[0]
+            else:
+                video_id = None
+            return {"video_id": video_id}
 
     def load_from_json(self, data):
         if "project_id" in data:

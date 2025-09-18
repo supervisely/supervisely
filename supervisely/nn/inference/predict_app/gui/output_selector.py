@@ -15,6 +15,7 @@ from supervisely.app.widgets import (
     RadioTabs,
     Text,
 )
+from supervisely.project.project_meta import ProjectType
 
 
 class OutputSelector:
@@ -60,10 +61,11 @@ class OutputSelector:
             title="New Project Name",
             description="Name of the new project to create for the results. The created project will have the same dataset structure as the input project.",
         )
+        self.skip_annotated_checkbox = Checkbox("Skip annotated images", False)
         self._tab_names = ["Create New Project", "Update source project"]
         self.tabs = RadioTabs(
             titles=self._tab_names,
-            contents=[self.project_name_field, Empty()],
+            contents=[self.project_name_field, self.skip_annotated_checkbox],
         )
         # Add widgets to display ------------ #
         self.display_widgets.extend([self.tabs])
@@ -153,3 +155,11 @@ class OutputSelector:
             return False
 
         return True
+
+    def update_item_type(self, item_type: str):
+        if item_type == ProjectType.IMAGES.value:
+            self.skip_annotated_checkbox.show()
+        elif item_type == ProjectType.VIDEOS.value:
+            self.skip_annotated_checkbox.hide()
+        else:
+            raise ValueError(f"Unsupported item type: {item_type}")

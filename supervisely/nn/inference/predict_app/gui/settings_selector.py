@@ -1,18 +1,34 @@
+import os
+import random
 from typing import Any, Dict, List
 
+import cv2
 import yaml
 
+from supervisely._utils import logger
+from supervisely.api.api import Api
 from supervisely.app.widgets import (
     Button,
     Card,
-    Checkbox,
     Container,
     Editor,
     Field,
+    GridGallery,
     Input,
+    OneOf,
     Select,
     Text,
+    VideoPlayer,
 )
+from supervisely.app.widgets.checkbox.checkbox import Checkbox
+from supervisely.nn.inference.predict_app.gui.input_selector import InputSelector
+from supervisely.nn.inference.predict_app.gui.model_selector import ModelSelector
+from supervisely.nn.model.model_api import ModelAPI
+from supervisely.nn.tracker import TrackingVisualizer
+from supervisely.project import ProjectMeta
+from supervisely.project.project_meta import ProjectType
+from supervisely.video.video import create_from_frames
+from supervisely.video_annotation.video_annotation import VideoAnnotation
 
 
 class InferenceMode:
@@ -26,19 +42,62 @@ class AddPredictionsMode:
     REPLACE_EXISTING_LABELS_AND_SAVE_IMAGE_TAGS = "Replace existing labels and save image tags"
 
 
+class Preview:
+    def __init__(self, api: Any, static_dir: str):
+        self.static_dir = static_dir
+        self.display_widgets = []
+        # Preview
+        self.gallery = None
+        self.video_player = None
+        # -------------------------------- #
+
+        # Preview Directory
+        self.preview_dir = os.path.join(self.static_dir, "preview")
+        os.makedirs(self.preview_dir, exist_ok=True)
+        self.image_preview_path = os.path.join(self.preview_dir, "preview.jpg")
+        self.image_peview_url = f"/static/preview/preview.jpg"
+        self.video_preview_path = os.path.join(self.preview_dir, "preview.mp4")
+        self.video_peview_url = f"/static/preview/preview.mp4"
+        # ----------------------------------- #
+
+        # Preview Widget
+        self.gallery = GridGallery(
+            2,
+            sync_views=True,
+            enable_zoom=True,
+            resize_on_zoom=True,
+            empty_message="Click 'Preview' to see the model output.",
+        )
+        self.video_player = VideoPlayer()
+        # Add widgets to display ------------ #
+        self.display_widgets.extend([self.gallery])
+        # ----------------------------------- #
+
+
 class SettingsSelector:
     title = "Inference (settings + preview)"
     description = "Select additional settings for model inference"
     lock_message = "Select previous step to unlock"
 
-    def __init__(self):
+    def __init__(
+        self,
+        api: Api,
+        static_dir: str,
+        input_selector: InputSelector,
+        model_selector: ModelSelector,
+    ):
         # Init Step
+        self.api = api
+        self.static_dir = static_dir
+        self.input_selector = input_selector
+        self.model_selector = model_selector
         self.display_widgets: List[Any] = []
         # -------------------------------- #
 
         # Init Base Widgets
         self.validator_text = None
         self.button = None
+        self.run_button = None
         self.container = None
         self.card = None
         # -------------------------------- #
@@ -54,40 +113,9 @@ class SettingsSelector:
         self.inference_settings = None
         # -------------------------------- #
 
-        # Inference Mode
-        # self.inference_modes = [InferenceMode.FULL_IMAGE, InferenceMode.SLIDING_WINDOW]
-        # self.inference_mode_selector = Select(
-        #     items=[Select.Item(mode) for mode in self.inference_modes]
-        # )
-        # self.inference_mode_selector.set_value(self.inference_modes[0])
-        # self.inference_mode_field = Field(
-        #     content=self.inference_mode_selector,
-        #     title="Inference mode",
-        #     description="Select how to process images: full images or using sliding window.",
-        # )
-        # # Add widgets to display ------------ #
-        # self.display_widgets.extend([self.inference_mode_field])
-        # ----------------------------------- #
-
-        # Class / Tag Suffix
-        self.model_prediction_suffix_input = Input(
-            value="_model", minlength=1, placeholder="Enter suffix e.g: _model"
-        )
-        self.model_prediction_suffix_field = Field(
-            content=self.model_prediction_suffix_input,
-            title="Class and tag suffix",
-            description=(
-                "Suffix that will be added to conflicting class and tag names. "
-                "E.g. your project has a class 'person' with shape 'bitmap' and model has class 'person' with shape 'rectangle', "
-                "then suffix will be added to the model predictions to avoid conflicts. E.g. 'person_model'."
-            ),
-        )
-        # self.model_prediction_suffix_checkbox = Checkbox("Always add suffix to model predictions")
-        # Add widgets to display ------------ #
-        self.display_widgets.extend(
-            [self.model_prediction_suffix_field]  # , self.model_prediction_suffix_checkbox]
-        )
-        # ----------------------------------- #
+        self.settings_widgets = []
+        self.image_settings_widgets = []
+        self.video_settings_widgets = []
 
         # Prediction Mode
         self.prediction_modes = [
@@ -105,15 +133,86 @@ class SettingsSelector:
             description="Select how to add predictions to the project: by merging with existing labels or by replacing them.",
         )
         # Add widgets to display ------------ #
-        self.display_widgets.extend([self.predictions_mode_field])
+        self.image_settings_widgets.extend([self.predictions_mode_field])
+        # ----------------------------------- #
+
+        # Tracking
+        self.tracking_checkbox = Checkbox(content="Enable tracking", checked=True)
+        self.tracking_checkbox_field = Field(
+            content=self.tracking_checkbox,
+            title="Tracking",
+            description="Enable tracking for video predictions. The tracking algorith is BoT-SORT",
+        )
+        # Add widgets to display ------------ #
+        self.video_settings_widgets.extend([self.tracking_checkbox_field])
+        self.image_settings_container = Container(widgets=self.image_settings_widgets, gap=15)
+        self.video_settings_container = Container(widgets=self.video_settings_widgets, gap=15)
+        self.image_or_video_container = Container(
+            widgets=[self.image_settings_container, self.video_settings_container], gap=0
+        )
+        self.video_settings_container.hide()
+        self.settings_widgets.extend([self.image_or_video_container])
+        # ----------------------------------- #
+
+        # Class / Tag Suffix
+        self.model_prediction_suffix_input = Input(
+            value="_model", minlength=1, placeholder="Enter suffix e.g: _model"
+        )
+        self.model_prediction_suffix_field = Field(
+            content=self.model_prediction_suffix_input,
+            title="Class and tag suffix",
+            description=(
+                "Suffix that will be added to conflicting class and tag names. "
+                "E.g. your project has a class 'person' with shape 'bitmap' and model has class 'person' with shape 'rectangle', "
+                "then suffix will be added to the model predictions to avoid conflicts. E.g. 'person_model'."
+            ),
+        )
+        # Add widgets to display ------------ #
+        self.settings_widgets.extend([self.model_prediction_suffix_field])
         # ----------------------------------- #
 
         # Inference Settings
         self.inference_settings = Editor("", language_mode="yaml", height_px=300)
         # Add widgets to display ------------ #
-        self.display_widgets.extend([self.inference_settings])
+        self.settings_widgets.extend([self.inference_settings])
         # ----------------------------------- #
 
+        # Preview
+        self.preview_dir = os.path.join(self.static_dir, "preview")
+        os.makedirs(self.preview_dir, exist_ok=True)
+        self.image_preview_path = os.path.join(self.preview_dir, "preview.jpg")
+        self.image_peview_url = f"/static/preview/preview.jpg"
+        self.video_preview_path = os.path.join(self.preview_dir, "preview.mp4")
+        self.video_peview_url = f"/static/preview/preview.mp4"
+
+        self.run_button = Button("Preview")
+        self.image_preview_gallery = GridGallery(
+            2,
+            sync_views=True,
+            enable_zoom=True,
+            resize_on_zoom=True,
+            empty_message="Click 'Preview' to see the model output.",
+        )
+        self.last_video_id = None
+        self.video_player = VideoPlayer()
+        self.video_player.hide()
+        self.preview_error = Text("Failed to generate preview", status="error")
+        self.preview_error.hide()
+        self.preview_container = Container(
+            widgets=[self.image_preview_gallery, self.video_player, self.preview_error], gap=0
+        )
+
+        @self.run_button.click
+        def run_preview():
+            self.run_preview()
+
+        self.settings_container = Container(widgets=self.settings_widgets, gap=15)
+        self.main_widgets_container = Container(
+            widgets=[self.settings_container, self.preview_container],
+            direction="horizontal",
+            fractions=[1, 1],
+        )
+        self.display_widgets.extend([self.main_widgets_container])
         # Base Widgets
         self.validator_text = Text("")
         self.validator_text.hide()
@@ -129,6 +228,7 @@ class SettingsSelector:
             description=self.description,
             content=self.container,
             lock_message=self.lock_message,
+            content_top_right=self.run_button,
         )
         self.card.lock()
         # ----------------------------------- #
@@ -156,13 +256,15 @@ class SettingsSelector:
         return {}
 
     def get_settings(self) -> Dict[str, Any]:
-        return {
+        settings = {
             # "inference_mode": self.inference_mode_selector.get_value(),
             "inference_mode": InferenceMode.FULL_IMAGE,
             "model_prediction_suffix": self.model_prediction_suffix_input.get_value(),
             "predictions_mode": self.predictions_mode_selector.get_value(),
             "inference_settings": self.get_inference_settings(),
         }
+        if self.input_selector.get_settings().get("video_id", None) is not None:
+            settings["tracking"] = self.tracking_checkbox.is_checked()
 
     def load_from_json(self, data):
         # inference_mode = data.get("inference_mode", None)
@@ -180,6 +282,103 @@ class SettingsSelector:
         inference_settings = data.get("inference_settings", None)
         if inference_settings is not None:
             self.set_inference_settings(inference_settings)
+
+    def update_item_type(self, item_type: str):
+        if item_type == ProjectType.IMAGES.value:
+            self.image_settings_container.show()
+            self.video_settings_container.hide()
+            self.video_player.hide()
+            self.image_preview_gallery.show()
+        elif item_type == ProjectType.VIDEOS.value:
+            self.image_settings_container.hide()
+            self.video_settings_container.show()
+            self.image_preview_gallery.hide()
+            self.video_player.show()
+        else:
+            raise ValueError(f"Unsupported item type: {item_type}")
+
+    def set_image_preview(self, image_id: int):
+        with self.model_selector.model.model_api.predict_detached(
+            image_id=image_id, inference_settings=self.get_inference_settings()
+        ) as session:
+            self.api.image.download_path(image_id, self.image_preview_path)
+            prediction = list(session)[0]
+        self.image_preview_gallery.clean_up()
+        self.image_preview_gallery.append(
+            self.image_peview_url, title="Source", annotation=prediction.annotation
+        )
+        self.image_preview_gallery.append(
+            self.image_peview_url, title="Prediction", annotation=prediction.annotation
+        )
+
+    def set_video_preview(self, video_id: int):
+        self.video_player.set_video(None)
+        frame_start = 0
+        seconds = 5
+        video_info = self.api.video.get_info_by_id(video_id)
+        fps = int(video_info.frames_count / video_info.duration)
+        frames_number = min(video_info.frames_count, int(fps * seconds))
+        project_meta = ProjectMeta.from_json(self.api.project.get_meta(video_info.project_id))
+        with self.model_selector.model.model_api.predict_detached(
+            video_id=video_id, inference_settings=self.get_inference_settings(), tracking=True
+        ) as session:
+            if self.last_video_id != video_id:
+                paths = [f"/tmp/{i}.jpg" for i in range(frame_start, frame_start + frames_number)]
+                self.api.video.download_frames(
+                    video_id,
+                    frames=list(range(frame_start, frame_start + frames_number)),
+                    paths=paths,
+                )
+                frames_gen = (cv2.imread(p) for p in paths)
+                create_from_frames(frames_gen, self.video_preview_path, fps=fps)
+                self.last_video_id = video_id
+
+            list(session)
+
+            video_annotation = session.final_result.get("video_ann", {})
+            video_annotation = VideoAnnotation.from_json(
+                video_annotation, project_meta=project_meta
+            )
+            visualizer = TrackingVisualizer(
+                output_fps=fps,
+                box_thickness=video_info.frame_width // 200,
+                text_scale=0.6,
+                text_thickness=video_info.frame_width // 200,
+                trajectory_thickness=video_info.frame_width // 200,
+            )
+            visualizer.visualize_video_annotation(
+                video_annotation,
+                source=self.video_preview_path,
+                output_path=self.video_preview_path,
+            )
+            self.video_player.set_video(self.video_peview_url)
+
+    def run_preview(self):
+        try:
+            self.preview_error.hide()
+            video_id = self.input_selector.get_settings().get("video_id", None)
+            if video_id is None:
+                project_id = self.input_selector.get_settings().get("project_id", None)
+                dataset_ids = self.input_selector.get_settings().get("dataset_ids", None)
+                if dataset_ids:
+                    dataset_id = random.choice(dataset_ids)
+                else:
+                    datasets = self.api.dataset.get_list(project_id)
+                    dataset_id = random.choice(datasets).id
+                images = self.api.image.get_list(dataset_id)
+                image_id = random.choice(images).id
+                self.set_image_preview(image_id)
+                self.image_preview_gallery.show()
+            else:
+                self.set_video_preview(video_id)
+                self.video_player.show()
+        except Exception as e:
+            logger.error(f"Failed to generate preview: {str(e)}", exc_info=True)
+            self.video_player.hide()
+            self.image_preview_gallery.hide()
+            self.image_preview_gallery.clean_up()
+            self.preview_error.text = f"Failed to generate preview: {str(e)}"
+            self.preview_error.show()
 
     def validate_step(self) -> bool:
         return True
