@@ -4,10 +4,11 @@ from typing import Callable, Dict, Tuple
 
 from supervisely._utils import abs_url
 from supervisely.api.api import Api
-from supervisely.io.env import project_id as env_project_id
+import supervisely.io.env as sly_env
 from supervisely.sly_logger import logger
 from supervisely.solution.base_node import BaseCardNode
 from supervisely.solution.engine.models import ImportFinishedMessage
+from supervisely.solution.utils import find_agent
 
 from .history import AutoImportTasksHistory
 
@@ -28,7 +29,7 @@ class AutoImportNode(BaseCardNode):
         :param project_id: ID of the project to import data into.
         """
         self.api = Api.from_env()
-        self.project_id = project_id or env_project_id()
+        self.project_id = project_id or sly_env.project_id()
         self._refresh_interval = 60
         self._stop_autorefresh = False
         self._refresh_thread = None
@@ -38,11 +39,10 @@ class AutoImportNode(BaseCardNode):
         self.history = AutoImportTasksHistory(self.api, self.project_id)
         self.start_autorefresh()
 
-        # ! TODO: remove hardcoded agent_id
-        # agent_id = 41
         autoimport_link = abs_url(f"/import-wizard/project/{self.project_id}/dataset")
-        # # ! TODO: remove hardcoded agent_id
-        # autoimport_link += f"?moduleId=435&nodeId={agent_id}&appVersion=test-env&appIsBranch=true"
+        # ! TODO: remove hardcoded agent_id and appVersion after testing
+        agent_id = find_agent(self.api, sly_env.team_id())
+        autoimport_link += f"?moduleId=435&nodeId={agent_id}&appVersion=test-env&appIsBranch=true"
 
         # --- node init ----------------------------------------------------------
         title = kwargs.pop("title", self.TITLE)
