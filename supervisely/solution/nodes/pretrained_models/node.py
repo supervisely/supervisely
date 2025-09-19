@@ -6,8 +6,6 @@ import supervisely.io.env as sly_env
 from supervisely.api.api import Api
 from supervisely.api.entities_collection_api import CollectionTypeFilter
 from supervisely.api.task_api import TaskApi
-from supervisely.app.widgets import Dialog, NewExperiment
-from supervisely.project.image_transfer_utils import move_structured_images
 from supervisely.sly_logger import logger
 from supervisely.solution.base_node import BaseCardNode
 from supervisely.solution.engine.models import (
@@ -173,10 +171,12 @@ class BaseTrainNode(BaseCardNode):
             ]:
                 logger.error(f"Task {task_id} failed with status: {task_status}")
                 break
-            logger.info("Waiting for the evaluation task to start... Status: %s", task_status)
+            logger.info("Waiting for the Data Commander task to start... Status: %s", task_status)
             time.sleep(5)
             if time.time() - current_time > 30000:  # 500 minutes timeout
-                logger.warning("Timeout reached while waiting for the evaluation task to start.")
+                logger.warning(
+                    "Timeout reached while waiting for the Data Commander task to start."
+                )
                 break
 
         try:
@@ -217,7 +217,7 @@ class BaseTrainNode(BaseCardNode):
         self, success: bool, task_id: int, experiment_info: dict
     ) -> TrainFinishedMessage:
         return TrainFinishedMessage(
-            success=success, task_id=task_id, experiment_info=experiment_info
+            success=success, task_id=task_id, experiment_info=experiment_info or {}
         )
 
     # subscribe event (may receive Message object)

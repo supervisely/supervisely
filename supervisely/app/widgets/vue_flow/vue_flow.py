@@ -90,12 +90,14 @@ class VueFlow(Widget):
         sidebar_nodes: Optional[List[Dict[str, Any]]] = None,
         widget_id: str = None,
         show_sidebar: bool = False,
+        lock_flow: bool = True,
     ):
         self.nodes = nodes if nodes is not None else []
         self.edges = edges if edges is not None else []
         self._sidebar_nodes = sidebar_nodes if sidebar_nodes is not None else []
         self._url = None
         self._show_sidebar = show_sidebar
+        self._lock_flow = lock_flow
 
         super().__init__(widget_id=widget_id, file_path=__file__)
         self._modal = VueFlowModal(widget_id_prefix=self.widget_id + "_modal")
@@ -226,13 +228,12 @@ class VueFlow(Widget):
         return {}
 
     def get_json_state(self):
-        url = f"{self._url}?showSidebar={str(self._show_sidebar).lower()}" if self._url else ""
         return {
             "nodes": [node.to_json() for node in self.nodes],
             "edges": [
                 edge.to_json() if isinstance(edge, self.Edge) else edge for edge in self.edges
             ],
-            "url": url,
+            "url": "",  # url must be set in _prepare_ui_static
             "sidebarNodes": self._sidebar_nodes,
         }
 
@@ -337,11 +338,15 @@ class VueFlow(Widget):
         clean_dir(str(dst_ui_dir))
         copy_dir_recursively(str(vue_flow_ui_dir), str(dst_ui_dir))
 
-        self._url = f"{str(dst_ui_dir)}/index.html?showSidebar={str(self._show_sidebar).lower()}"
+        url = f"{str(dst_ui_dir)}/index.html"
         if is_development():
             # self._url = f"http://0.0.0.0:8000/{self._url}"
-            self._url = f"http://localhost:8000/{self._url}"
-        StateJson()[self.widget_id]["url"] = self._url
+            url = f"http://localhost:8000/{url}"
+        if self._show_sidebar:
+            url += "?showSidebar=true"
+        if self._lock_flow:
+            url += "&lockFlow=true" if self._show_sidebar else "?lockFlow=true"
+        StateJson()[self.widget_id]["url"] = url
         StateJson().send_changes()
 
     def reload(self) -> None:

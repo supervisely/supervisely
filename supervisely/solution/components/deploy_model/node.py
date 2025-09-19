@@ -1,5 +1,5 @@
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple
-from supervisely.solution.engine.models import ModelDeployMessage
+
 import supervisely.io.env as sly_env
 from supervisely._utils import abs_url, is_development
 from supervisely.api.api import Api
@@ -10,6 +10,7 @@ from supervisely.solution.components.deploy_model.automation import (
 )
 from supervisely.solution.components.deploy_model.gui import DeployModelGUI
 from supervisely.solution.components.deploy_model.history import DeployTasksHistory
+from supervisely.solution.engine.models import ModelDeployMessage
 
 
 class DeployModelNode(BaseCardNode):
@@ -62,8 +63,14 @@ class DeployModelNode(BaseCardNode):
         def _on_node_click():
             self.gui.modal.show()
 
-        self.modals = [self.history.modal, self.gui.modal]
-        self._automation.apply(self._refresh_node, self._automation.REFRESH_GPU_USAGE)
+        self.modals = [self.history.modal, self.history.logs_modal, self.gui.modal]
+        self.enable_automation()
+
+    # ------------------------------------------------------------------
+    # Automation -------------------------------------------------------
+    # ------------------------------------------------------------------
+    def enable_automation(self):
+        pass
 
     # ------------------------------------------------------------------
     # Node methods -----------------------------------------------------
@@ -85,7 +92,7 @@ class DeployModelNode(BaseCardNode):
                 "connectable": True,
             },
             {
-                "id": "deploy_model",
+                "id": "best_model",
                 "type": "target",
                 "position": "right",
                 "connectable": True,
@@ -97,7 +104,7 @@ class DeployModelNode(BaseCardNode):
     # ------------------------------------------------------------------
     def _available_subscribe_methods(self) -> Dict[str, Callable]:
         return {
-            "deploy_model": self._process_incoming_message,
+            "best_model": self._process_incoming_message,
         }
 
     def _available_publish_methods(self) -> Dict[str, Callable]:
@@ -136,6 +143,9 @@ class DeployModelNode(BaseCardNode):
             value = f"{used / (1024 ** 3):.2f} GB / {total / (1024 ** 3):.2f} GB"
             self.update_property("Agent", agent_info["agent_name"])
             self.update_property("GPU Memory", value, highlight=True)
+        else:
+            self.remove_property_by_key("GPU Memory")
+            self.remove_property_by_key("Agent")
 
     def _refresh_model_info(self) -> None:
         """
@@ -166,18 +176,14 @@ class DeployModelNode(BaseCardNode):
                 logger.info(
                     f"Model '{deploy_info.get('model_name')}' deployed successfully. Task ID: {task_info.get('id')}"
                 )
-
-    def _refresh_node(self):
-        if self.gui.content.model_api is not None:
-            self.gui.model = self.gui.content.model_api
-            self._refresh_model_info()
-            self._refresh_memory_usage_info()
         else:
-            self.gui.model = None
             self.remove_property_by_key("Model")
-            self.remove_property_by_key("Agent")
-            self.remove_property_by_key("GPU Memory")
             # self.remove_property_by_key("Status")
             self.remove_property_by_key("Source")
             self.remove_property_by_key("Hardware")
             self.remove_badge_by_key("Deployed Deployed")
+
+    def _refresh_node(self):
+        self.gui.model = self.gui.content.model_api
+        self._refresh_model_info()
+        self._refresh_memory_usage_info()

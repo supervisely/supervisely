@@ -192,7 +192,7 @@ class PreLabelingNode(BaseCardNode):
             return None
 
         if self.gui.model is None:
-            logger.warning("No custom model deployed, cannot perform pre-labeling")
+            logger.warning("No model selected, cannot perform pre-labeling")
             return None
 
         start_time = time.time()

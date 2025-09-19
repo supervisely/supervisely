@@ -260,3 +260,42 @@ def get_experiment_info_by_artifacts_dir(
         raise ValueError("Artifacts directory should start with '/experiments'")
     experiment_path = join(artifacts_dir, EXPERIMENT_INFO_FILENAME)
     return _fetch_experiment_data(api, team_id, experiment_path)
+
+
+def get_new_experiment_infos(
+    api: Api,
+    team_id: int,
+    existing_experiment_infos: List[ExperimentInfo],
+    task_id: Optional[int] = None,
+) -> List[ExperimentInfo]:
+    from os.path import basename
+
+    metadata_name = "experiment_info.json"
+    experiments_folder = "/experiments"
+    existing_artifact_paths = {info.artifacts_dir for info in existing_experiment_infos}
+
+    file_infos = api.file.list(team_id, experiments_folder, recursive=True, return_type="fileinfo")
+    filter_fn = (
+        lambda fi: fi.path.endswith(metadata_name)
+        and dirname(fi.path) not in existing_artifact_paths
+    )
+    filtered_infos = list(filter(filter_fn, file_infos))
+    sorted_experiment_paths = []
+    for file_info in filtered_infos:
+        experiment_dir = dirname(file_info.path)
+        if task_id is not None and not basename(experiment_dir).startswith(str(task_id)):
+            continue
+        experiment_path = join(experiment_dir, metadata_name)
+        sorted_experiment_paths.append(experiment_path)
+
+    if len(sorted_experiment_paths) == 0:
+        logger.info("No new experiments found.")
+        return existing_experiment_infos
+
+    new_experiment_infos = []
+    logger.info(f"Found {len(sorted_experiment_paths)} new experiments.")
+    for experiment_path in sorted_experiment_paths:
+        experiment_info = _fetch_experiment_data(api, team_id, experiment_path)
+        if experiment_info is not None:
+            new_experiment_infos.append(experiment_info)
+    return new_experiment_infos

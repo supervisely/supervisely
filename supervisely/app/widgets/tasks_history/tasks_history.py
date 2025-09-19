@@ -5,8 +5,8 @@ from venv import logger
 
 from supervisely.api.api import Api
 from supervisely.app import DataJson
-from supervisely.app.widgets.dialog.dialog import Dialog
 from supervisely.app.widgets import Button
+from supervisely.app.widgets.dialog.dialog import Dialog
 from supervisely.app.widgets.fast_table.fast_table import FastTable
 from supervisely.app.widgets.task_logs.task_logs import TaskLogs
 from supervisely.app.widgets.widget import Widget
@@ -103,7 +103,12 @@ class TasksHistory(Widget):
 
     def update(self):
         for task in self.get_tasks():
-            task_id = task["id"]
+            try:
+                task_id = task["id"]
+            except KeyError:
+                task_id = task.get("task_info", {}).get("id", None)
+                if task_id is None:
+                    continue
             task_info = self.api.task.get_info_by_id(task_id)
             for col_keys in self.columns_keys:
                 if not isinstance(col_keys, list):

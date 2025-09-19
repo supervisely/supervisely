@@ -13,9 +13,9 @@ from supervisely.solution.engine.models import (
     EvaluationFinishedMessage,
     TrainingFinishedMessage,
 )
-from supervisely.solution.utils import find_agent
 from supervisely.solution.nodes.evaluation.gui import EvaluationReportGUI
 from supervisely.solution.nodes.evaluation.history import EvaluationTaskHistory
+from supervisely.solution.utils import find_agent, get_last_val_collection
 
 
 class EvaluationNode(BaseCardNode):
@@ -97,7 +97,7 @@ class EvaluationNode(BaseCardNode):
     def _get_handles(self):
         return [
             {
-                "id": "training_finished",
+                "id": "experiment_registered",
                 "type": "target",
                 "position": "top",
                 "connectable": True,
@@ -115,7 +115,7 @@ class EvaluationNode(BaseCardNode):
     # ------------------------------------------------------------------
     def _available_subscribe_methods(self) -> Dict[str, Callable]:
         return {
-            "training_finished": self._process_incomming_message,
+            "experiment_registered": self._process_incomming_message,
         }
 
     def _available_publish_methods(self) -> Dict[str, Callable]:
@@ -205,6 +205,9 @@ class EvaluationNode(BaseCardNode):
             agent_id=self.gui.agent_selector.get_value(),
             workspace_id=self.project.workspace_id,
             module_id=module_id,
+            description=f"Evaluation started by {self._api.task_id} task",
+            app_version="fix-mb-for-collections",  # TODO: remove
+            is_branch=True,  # TODO: remove
         )
         task_id = task_info_json["id"]
         current_time = time.time()
@@ -213,7 +216,7 @@ class EvaluationNode(BaseCardNode):
             if time.time() - current_time > 300:
                 break
         ready = self._api.app.wait_until_ready_for_api_calls(
-            task_id=task_id, attempts=50, attempt_delay_sec=2
+            task_id=task_id, attempts=150, attempt_delay_sec=5
         )
         if not ready:
             self._api.task.stop(task_id)
@@ -267,14 +270,6 @@ class EvaluationNode(BaseCardNode):
                 logger.error(f"Failed to stop evaluation session: {e}", exc_info=True)
             self.hide_in_progress_badge("Evaluation")
 
-    def _get_collection_ids(self) -> Optional[Tuple[int, str]]:
-        collections = self._api.entities_collection.get_list(project_id=self.project.id)
-        val_collections = [col for col in collections if col.name == "all_val"]
-        if not val_collections:
-            logger.warning("No 'all_val' collection found in the project.")
-            return None, None
-        return val_collections[0].id, val_collections[0].name
-
     def _run_evaluation(self):
         if not self._model:
             logger.error("Model is not deployed. Cannot run evaluation.")
@@ -282,11 +277,12 @@ class EvaluationNode(BaseCardNode):
         if not self._session_info:
             logger.error("Evaluation session info is not available. Cannot run evaluation.")
             return
-        collection_id, collection_name = self._get_collection_ids()
-        if not collection_id:
-            logger.error("Validation collection ID could not be determined.")
+        collection = self._api.entities_collection.get_info_by_name(self.project.id, "main_val")
+        if not collection:
+            logger.error("No validation collection found. Cannot run evaluation.")
             return
 
+        collection_id, collection_name = collection.id, collection.name
         data = {
             "session_id": self._model.task_id,
             "project_id": self.project.id,

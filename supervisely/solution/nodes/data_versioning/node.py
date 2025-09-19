@@ -7,7 +7,7 @@ class DataVersioningNode(LinkNode):
     """Node for linking to the Project Versions dashboard."""
 
     TITLE = "Data Versioning"
-    DESCRIPTION = "Open the project versions page to explore the training project history changes."
+    DESCRIPTION = "Versioning allows you to track changes in your projects over time. Each version is a snapshot of the project at a specific point in time, enabling you to revert to previous versions if needed. Training sessions automatically create new versions, capturing the exact state of the project at that moment. You can track and manage these versions in the Versions tab of the project (or click this card to open it)."
     ICON = "mdi mdi-history"
     ICON_COLOR = "#1976D2"
     ICON_BG_COLOR = "#E3F2FD"
