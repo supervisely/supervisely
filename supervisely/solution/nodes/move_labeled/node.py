@@ -329,8 +329,8 @@ class MoveLabeledNode(BaseCardNode):
             random.shuffle(items)
         train = items[:train_count]
         val = items[train_count : train_count + val_count]
-        self._add_to_collection(train, "train")
-        self._add_to_collection(val, "val")
+        self._add_to_train_collection(train)
+        self._add_to_val_collection(val)
         logger.info(f"Split {len(items)} items into {len(train)} train and {len(val)} val items.")
 
     def _add_to_collection(
@@ -341,19 +341,32 @@ class MoveLabeledNode(BaseCardNode):
         """Add the MoveLabeled node to a collection."""
         if not image_ids:
             return
-        collection, idx = get_last_split_collection(self.api, self.dst_project_id, split_name)
+        # collection, idx = get_last_split_collection(self.api, self.dst_project_id, split_name)
 
-        split_name = f"{split_name}_{idx + 1:03d}"
-        new_col = self.api.entities_collection.create(self.dst_project_id, split_name)
-        logger.info(f"Created new collection '{split_name}'")
+        # split_name = f"{split_name}_{idx + 1:03d}"
+        split_name = f"main_{split_name}"
 
-        if collection is None:
-            self.api.entities_collection.add_items(new_col.id, image_ids)
-            return
-        items = self.api.entities_collection.get_items(collection.id, CollectionTypeFilter.DEFAULT)
-        previous_ids = [item.id for item in items] if items else []
+        col = self.api.entities_collection.get_info_by_name(self.dst_project_id, split_name)
+        if col is None:
+            col = self.api.entities_collection.create(self.dst_project_id, split_name)
+            logger.info(f"Created new collection '{split_name}'")
+        self.api.entities_collection.add_items(col.id, image_ids)
 
-        self.api.entities_collection.add_items(new_col.id, image_ids + previous_ids)
+        # if collection is None:
+        #     self.api.entities_collection.add_items(new_col.id, image_ids)
+        #     return
+        # items = self.api.entities_collection.get_items(collection.id, CollectionTypeFilter.DEFAULT)
+        # previous_ids = [item.id for item in items] if items else []
+
+        # self.api.entities_collection.add_items(new_col.id, image_ids + previous_ids)
+
+    def _add_to_train_collection(self, image_ids: List[int]) -> None:
+        """Add the MoveLabeled node to the train collection."""
+        self._add_to_collection(image_ids, "train")
+
+    def _add_to_val_collection(self, image_ids: List[int]) -> None:
+        """Add the MoveLabeled node to the validation collection."""
+        self._add_to_collection(image_ids, "val")
 
     def _get_uploaded_ids(self, project_id: int, task_id: int) -> List[int]:
         """Get the IDs of images uploaded from the project's custom data."""

@@ -158,15 +158,17 @@ class ProjectNode(BaseProjectNode):
 
         :return: Tuple containing lists of training and validation items.
         """
-        train_collection, _ = get_last_split_collection(self.api, self.project_id, "train_")
-        val_collection, _ = get_last_split_collection(self.api, self.project_id, "val_")
+        # train_collection, _ = get_last_split_collection(self.api, self.project_id, "train_")
+        # val_collection, _ = get_last_split_collection(self.api, self.project_id, "val_")
+        train = self.api.entities_collection.get_info_by_name(self.project_id, "main_train")
+        val = self.api.entities_collection.get_info_by_name(self.project_id, "main_val")
 
         def get_items(collection):
             if not collection:
                 return []
             return self.api.entities_collection.get_items(collection.id, self.project_id)
 
-        return get_items(train_collection), get_items(val_collection)
+        return get_items(train), get_items(val)
 
     def _get_random_image_url(self, images: List) -> Optional[str]:
         """Get a random image URL from a list of images"""

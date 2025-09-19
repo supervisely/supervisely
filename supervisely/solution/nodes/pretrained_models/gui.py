@@ -31,8 +31,12 @@ class PretrainedModelsGUI:
     def _create_widget(self) -> NewExperiment:
         """Creates the GUI widgets for the PretrainedModels node."""
         train_datasets, val_datasets = self._get_train_val_datasets()
-        train_collection, _ = get_last_split_collection(self._api, self.project.id, "train_")
-        val_collection, _ = get_last_split_collection(self._api, self.project.id, "val_")
+        # train_collection, _ = get_last_split_collection(self._api, self.project.id, "train_")
+        # val_collection, _ = get_last_split_collection(self._api, self.project.id, "val_")
+        train_collection = self._api.entities_collection.get_info_by_name(
+            self.project.id, "main_train"
+        )
+        val_collection = self._api.entities_collection.get_info_by_name(self.project.id, "main_val")
         train_collections = [train_collection.id] if train_collection else []
         val_collections = [val_collection.id] if val_collection else []
 

@@ -13,9 +13,9 @@ from supervisely.solution.engine.models import (
     EvaluationFinishedMessage,
     TrainingFinishedMessage,
 )
-from supervisely.solution.utils import find_agent, get_last_val_collection
 from supervisely.solution.nodes.evaluation.gui import EvaluationReportGUI
 from supervisely.solution.nodes.evaluation.history import EvaluationTaskHistory
+from supervisely.solution.utils import find_agent, get_last_val_collection
 
 
 class EvaluationNode(BaseCardNode):
@@ -274,7 +274,7 @@ class EvaluationNode(BaseCardNode):
         if not self._session_info:
             logger.error("Evaluation session info is not available. Cannot run evaluation.")
             return
-        collection, _ = get_last_val_collection(self._api, self.project.id)
+        collection = self._api.entities_collection.get_info_by_name(self.project.id, "main_val")
         if not collection:
             logger.error("No validation collection found. Cannot run evaluation.")
             return
