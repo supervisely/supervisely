@@ -110,31 +110,6 @@ class TrainValSplits(Widget):
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
-    def _init_content(self) -> None:
-        contents = []
-        tabs_descriptions = []
-        if "Random" in self._split_methods:
-            contents.append(self._get_random_content())
-        if "Based on item tags" in self._split_methods:
-            tabs_descriptions.append("Item tags should be assigned for train/val splits")
-            contents.append(self._get_tags_content())
-            proj_type = (
-                self._project_type.capitalize() if self._project_type is not None else "Project"
-            )
-            tabs_descriptions.append(f"{proj_type} should have assigned train or val tag")
-            contents.append(self._get_tags_content())
-        if "Based on datasets" in self._split_methods:
-            tabs_descriptions.append("Select one or several datasets for every split")
-            contents.append(self._get_datasets_content())
-        if "Based on collections" in self._split_methods:
-            tabs_descriptions.append("Select one or several collections for every split")
-            contents.append(self._get_collections_content())
-        self._content.set_content(
-            titles=self._split_methods,
-            descriptions=tabs_descriptions,
-            contents=contents,
-        )
-
     def _get_random_content(self):
         items_count = 0
         if self._project_id is not None:
@@ -221,7 +196,7 @@ class TrainValSplits(Widget):
                 compact=True,
                 team_is_selectable=False,
                 workspace_is_selectable=False,
-                append_to_body=True,
+                append_to_body=False,
                 default_to_env=False,
             )
 
@@ -235,7 +210,7 @@ class TrainValSplits(Widget):
                 compact=True,
                 team_is_selectable=False,
                 workspace_is_selectable=False,
-                append_to_body=True,
+                append_to_body=False,
                 default_to_env=False,
             )
 
@@ -470,7 +445,6 @@ class TrainValSplits(Widget):
         if self._train_ds_select is not None and self._val_ds_select is not None:
             self._train_ds_select.set_project_id(project_id)
             self._val_ds_select.set_project_id(project_id)
-        # self._init_content()
 
     def get_train_collections_ids(self) -> List[int]:
         return self._train_collections_select.get_selected_ids() or []

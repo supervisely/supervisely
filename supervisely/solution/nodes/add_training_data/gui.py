@@ -180,8 +180,8 @@ class AddTrainingDataGUI(Widget):
                 self.project_table.current_table == self.project_table.CurrentTable.DATASETS
                 and self.splits_widget.is_hidden()
             ):
-                self._set_train_val_splits_data()
                 self.stepper.next_step()
+                self._set_train_val_splits_data()
                 self.replicate_structure_checkbox.hide()
                 self.select_all_datasets_checkbox.hide()
                 next_btn.text = "Add"
@@ -207,6 +207,7 @@ class AddTrainingDataGUI(Widget):
         def on_back_btn_click():
             self.project_table.show()
             self.stepper.previous_step()
+            self.splits_widget.hide()
             if (
                 self.project_table.current_table == self.project_table.CurrentTable.DATASETS
                 and not self.splits_widget.is_hidden()
@@ -222,7 +223,6 @@ class AddTrainingDataGUI(Widget):
                 self.project_table.current_table == self.project_table.CurrentTable.DATASETS
                 and self.splits_widget.is_hidden()
             ):
-                self.splits_widget.hide()
                 self.project_table.show()
                 next_btn.text = "Next"
                 next_btn.enable()
