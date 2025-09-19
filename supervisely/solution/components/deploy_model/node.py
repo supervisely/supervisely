@@ -92,7 +92,7 @@ class DeployModelNode(BaseCardNode):
                 "connectable": True,
             },
             {
-                "id": "deploy_model",
+                "id": "best_model",
                 "type": "target",
                 "position": "right",
                 "connectable": True,
@@ -104,7 +104,7 @@ class DeployModelNode(BaseCardNode):
     # ------------------------------------------------------------------
     def _available_subscribe_methods(self) -> Dict[str, Callable]:
         return {
-            "deploy_model": self._process_incoming_message,
+            "best_model": self._process_incoming_message,
         }
 
     def _available_publish_methods(self) -> Dict[str, Callable]:

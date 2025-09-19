@@ -1,5 +1,7 @@
+import json
 import time
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple
 
 import supervisely.io.env as sly_env
@@ -136,12 +138,14 @@ class CompareModelsNode(BaseCardNode):
                 "type": "target",
                 "position": "left",
                 "connectable": True,
+                "style": {"top": "27px", "height": "12px"},
             },
             {
                 "id": "evaluation_finished",
                 "type": "target",
-                "position": "top",
+                "position": "left",
                 "connectable": True,
+                "style": {"top": "11px", "height": "12px"},
             },
             {
                 "id": "evaluation_finished",
@@ -150,7 +154,7 @@ class CompareModelsNode(BaseCardNode):
                 "connectable": True,
             },
             {
-                "id": "deploy_model",
+                "id": "best_model",
                 "type": "source",
                 "position": "right",
                 "connectable": True,
@@ -169,7 +173,7 @@ class CompareModelsNode(BaseCardNode):
     def _available_publish_methods(self) -> Dict[str, Callable]:
         return {
             "evaluation_finished": self._send_comparison_finished_message,
-            "deploy_model": self._send_new_model_better_message,
+            "best_model": self._send_new_model_better_message,
         }
 
     def _process_training_finished_message(self, message: TrainingFinishedMessage):
@@ -200,24 +204,17 @@ class CompareModelsNode(BaseCardNode):
                 "Training finished for task %s. Waiting for evaluation to consider for comparison.",
                 message.task_id,
             )
+            self._last_experiment_task_id = message.task_id
+            self._last_experiment_eval_dir = eval_dir
 
     def _process_evaluation_finished_message(self, message: EvaluationFinishedMessage):
-        if self._best_experiment_task_id == message.task_id:
-            self._best_experiment_eval_dir = message.eval_dir
+        if self._best_experiment_task_id != message.task_id:
             logger.debug(
-                "Evaluation for current best task %s updated. Stored best eval dir refreshed.",
+                "Received evaluation for task %s, but current best is task %s.",
                 message.task_id,
+                self._best_experiment_task_id,
             )
-            return
-
-        self._last_experiment_task_id = message.task_id
-        self._last_experiment_eval_dir = message.eval_dir
-        logger.info(
-            "Stored candidate evaluation: task_id=%s eval_dir=%s (best_task_id=%s)",
-            message.task_id,
-            message.eval_dir,
-            self._best_experiment_task_id,
-        )
+        self._best_experiment_eval_dir = message.eval_dir
 
         if self.gui.automation_switch.is_switched():
             self.run()
@@ -251,18 +248,14 @@ class CompareModelsNode(BaseCardNode):
         try:
             self.gui.run_btn.disable()
             self.show_in_progress_badge("Comparison")
-            if not self._last_experiment_eval_dir:
-                logger.debug("Not enough evaluation directories provided for comparison.")
-            elif not self._best_experiment_eval_dir:
+            if not self._best_experiment_eval_dir:
+                logger.debug("Previous best evaluation directory is not set.")
+            elif not self._last_experiment_eval_dir:
                 logger.debug(
-                    "Previous best evaluation directory is not set. Using only the new one."
+                    "Latest evaluation directory is not set. Using the best model as the latest."
                 )
-                experiment = self._extract_experiment_info(self._last_experiment_task_id)
+                experiment = self._extract_experiment_info(self._best_experiment_task_id)
                 best_checkpoint = self._get_checkpoint_path(experiment)
-                self._best_experiment_eval_dir = self._last_experiment_eval_dir
-                self._best_experiment_task_id = self._last_experiment_task_id
-                self._last_experiment_eval_dir = None
-                self._last_experiment_task_id = None
                 self._send_new_model_better_message(
                     is_better=True,
                     best_checkpoint=best_checkpoint,
@@ -295,15 +288,13 @@ class CompareModelsNode(BaseCardNode):
 
                 report_url = self._get_report_url(task_info)
                 result_dir = self._get_evaluation_dir_from_report_url(report_url)
-                # @ todo: find the best checkpoint from the evaluation results
-                # self._update_automation_properties()
                 task_info["result_dir"] = result_dir
                 task_info["result_link"] = report_url
                 self.history.add_task(task_info)
 
                 # compare metrics to determine if the new model is better
                 is_better, best_checkpoint = self._is_new_model_better(
-                    self._best_experiment_task_id, self._last_experiment_task_id
+                    task_id, self._last_experiment_task_id, self._best_experiment_task_id
                 )
                 if is_better:
                     self._best_experiment_eval_dir = self._last_experiment_eval_dir
@@ -427,27 +418,54 @@ class CompareModelsNode(BaseCardNode):
         except Exception:
             pass
 
-    def _is_new_model_better(self, old_task_id: int, new_task_id: int) -> bool:
+    def _is_new_model_better(
+        self, task_id: int, train_task_id: int, best_train_task_id: int
+    ) -> bool:
         """
         Compares the primary metrics of two checkpoints.
         """
-        if old_task_id == new_task_id:
-            logger.warning("Old and new task IDs are the same. Cannot compare models.")
-            exp_info = self._extract_experiment_info(old_task_id)
-            return False, self._get_checkpoint_path(exp_info)
+        task_info = self._api.task.get_info_by_id(task_id)
+        if not task_info:
+            logger.warning("Task info not found for task ID: %s", task_id)
+            return False, None
 
-        old_experiment = self._extract_experiment_info(old_task_id)
-        new_experiment = self._extract_experiment_info(new_task_id)
+        new_experiment = self._extract_experiment_info(train_task_id)
+        old_experiment = self._extract_experiment_info(best_train_task_id)
+        new_checkpoint = self._get_checkpoint_path(new_experiment)
+        old_checkpoint = self._get_checkpoint_path(old_experiment)
 
-        metric_name = old_experiment.get("primary_metric")
+        metric_name = new_experiment.get("primary_metric")
         if metric_name != new_experiment.get("primary_metric"):
             raise ValueError("Primary metrics do not match between the two experiments.")
 
-        old_metric = self._get_primary_metric_value_from_experiment(old_experiment)
-        old_checkpoint = self._get_checkpoint_path(old_experiment)
+        report_url = task_info.get("meta", {}).get("output", {}).get("general", {}).get("titleUrl")
+        old_metric = None
+        new_metric = None
+        try:
+            report_id = int(report_url.split("?id=")[-1])
+            file_info = self._api.file.get_info_by_id(report_id)
+            eval_dir = Path(file_info.path).parent
+            eval_files = self._api.storage.list(self.team_id, str(eval_dir / "data"))
+            for eval_file in eval_files:
+                if eval_file.name.startswith(
+                    "table_key_metrics_table_widget"
+                ) and eval_file.name.endswith(".json"):
+                    with NamedTemporaryFile(delete=False) as temp_file:
+                        self._api.storage.download(self.team_id, eval_file.path, temp_file.name)
+                        with open(temp_file.name, "r") as f:
+                            eval_data = json.load(f)
+                            for row in eval_data.get("content", []):
+                                if row.get("id") == metric_name:
+                                    old_metric = row.get("items", [None, None, None])[1]
+                                    new_metric = row.get("items", [None, None, None])[2]
+                                    break
+                    if old_metric is not None and new_metric is not None:
+                        break
 
-        new_metric = self._get_primary_metric_value_from_experiment(new_experiment)
-        new_checkpoint = self._get_checkpoint_path(new_experiment)
+        except:
+            logger.warning("Failed to extract report ID from URL: %s", report_url)
+            return False, None
+
         if old_metric is None or new_metric is None:
             raise ValueError(f"Primary metric '{metric_name}' not found in evaluation results.")
 
