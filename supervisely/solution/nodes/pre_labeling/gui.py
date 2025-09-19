@@ -91,7 +91,7 @@ class PreLabelingGUI(Widget):
         enable_field = Field(
             self.enable_switch,
             title="Enable Pre-labeling",
-            description="Enable or disable automatic pre-labeling of sampled images using the deployed custom model.",
+            description="Enable or disable automatic pre-labeling of sampled images using the deployed model.",
             icon=Field.Icon(
                 zmdi_class="zmdi zmdi-settings",
                 color_rgb=(21, 101, 192),

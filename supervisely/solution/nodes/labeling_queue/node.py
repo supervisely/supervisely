@@ -300,6 +300,7 @@ class LabelingQueueNode(BaseQueueNode):
                     review_job = job_info
             return ann_job, review_job
 
+        self.update_badge_by_key(key="Labeling", label="in progress", badge_type="info")
         queue_info = self.api.labeling_queue.get_info_by_id(self.queue_id)
         if queue_info.status == self.api.labeling_job.Status.COMPLETED.value:
             logger.info(f"Labeling queue {self.queue_id} is already completed")
@@ -326,6 +327,9 @@ class LabelingQueueNode(BaseQueueNode):
 
         for entity_id in _get_next(self.api, review_job.id):
             self.api.labeling_job.set_entity_review_status(review_job.id, entity_id, "accepted")
+
+        self.refresh_info()
+        self.remove_badge_by_key(key="Labeling")
 
     def _debug_1(self):
         self._debug(annotate=True)

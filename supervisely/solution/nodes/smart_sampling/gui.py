@@ -295,12 +295,7 @@ class SmartSamplingGUI(Widget):
         num_input = InputNumber(value=1, min=1, max=self.diff_num)
         get_text = lambda x: f" of {x} images"
         text = Text(get_text(self.diff_num))
-        container = Container(
-            [num_input, text],
-            direction="horizontal",
-            gap=5,
-            style="align-items: center",
-        )
+        container = Flexbox([num_input, text], vertical_alignment="center")
 
         # --- Methods -------------------------------------------------
         self.set_diverse_text = lambda msg: text.set(text=get_text(msg), status="text")

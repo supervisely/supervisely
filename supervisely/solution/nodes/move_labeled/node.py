@@ -347,6 +347,9 @@ class MoveLabeledNode(BaseCardNode):
         new_col = self.api.entities_collection.create(self.dst_project_id, split_name)
         logger.info(f"Created new collection '{split_name}'")
 
+        if collection is None:
+            self.api.entities_collection.add_items(new_col.id, image_ids)
+            return
         items = self.api.entities_collection.get_items(collection.id, CollectionTypeFilter.DEFAULT)
         previous_ids = [item.id for item in items] if items else []
 
