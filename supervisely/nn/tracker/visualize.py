@@ -161,8 +161,8 @@ class TrackingVisualizer:
         process = (
             ffmpeg
             .input(str(video_path))
-            .output('pipe:', format='rawvideo', pix_fmt='bgr24')
-            .run_async(pipe_stdout=True, pipe_stderr=True)
+            .output('pipe:', format='rawvideo', pix_fmt='bgr24', loglevel='quiet')
+            .run_async(pipe_stdout=True, pipe_stderr=False)
         )
         
         try:
@@ -177,7 +177,10 @@ class TrackingVisualizer:
                 frame = np.frombuffer(frame_data, np.uint8).reshape([height, width, 3])
                 yield frame_idx, frame
                 frame_idx += 1
-                
+
+        except ffmpeg.Error as e:
+            logger.error(f"ffmpeg error: {e.stderr.decode() if e.stderr else str(e)}", exc_info=True)
+
         finally:
             process.stdout.close()
             if process.stderr:

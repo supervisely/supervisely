@@ -2599,7 +2599,6 @@ class Inference:
         timer.daemon = True
         timer.start()
         self._freeze_timer = timer
-        logger.debug("Model will be frozen in %s seconds due to inactivity.", self._inactivity_timeout)
 
     def _set_served_callback(self):
         self._model_served = True
