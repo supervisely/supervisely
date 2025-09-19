@@ -214,7 +214,7 @@ class EvaluationNode(BaseCardNode):
             if time.time() - current_time > 300:
                 break
         ready = self._api.app.wait_until_ready_for_api_calls(
-            task_id=task_id, attempts=50, attempt_delay_sec=2
+            task_id=task_id, attempts=150, attempt_delay_sec=5
         )
         if not ready:
             self._api.task.stop(task_id)

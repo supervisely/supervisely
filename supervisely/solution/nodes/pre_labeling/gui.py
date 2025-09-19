@@ -266,7 +266,7 @@ class PreLabelingGUI(Widget):
                 )
 
                 self.api.app.wait_until_ready_for_api_calls(
-                    session_info.task_id, attempts=100, attempt_delay_sec=5
+                    session_info.task_id, attempts=150, attempt_delay_sec=5
                 )
                 self.predict_app_task_id = session_info.task_id
         except Exception as e:
