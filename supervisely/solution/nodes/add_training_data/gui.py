@@ -16,7 +16,10 @@ from supervisely.app.widgets import (
     Text,
     Widget,
 )
-from supervisely.nn.training.gui.train_val_splits_selector import TrainValSplits
+from supervisely.nn.training.gui.train_val_splits_selector import (
+    TrainValSplits,
+    TrainValSplitsSelector,
+)
 from supervisely.project.project import ProjectType
 
 
@@ -98,16 +101,19 @@ class AddTrainingDataGUI(Widget):
         return self._select_all_datasets_checkbox
 
     @property
-    def splits_widget(self) -> TrainValSplits:
+    def splits_widget(self) -> TrainValSplitsSelector:
         if not hasattr(self, "_splits_widget"):
-            self._splits_widget = TrainValSplits(
-                # project_id=project_id,
-                random_splits=True,
-                tags_splits=True,
-                datasets_splits=True,
-                collections_splits=True,
-            )
-            self._splits_widget.hide()
+            # self._splits_widget = TrainValSplits(
+            #     # project_id=project_id,
+            #     random_splits=True,
+            #     tags_splits=True,
+            #     datasets_splits=True,
+            #     collections_splits=True,
+            # )
+            # self._splits_widget.hide()
+            self._splits_widget = TrainValSplitsSelector(self.api)
+            self._splits_widget.train_val_splits.hide()
+
         return self._splits_widget
 
     def _create_main_widget(self) -> Container:
@@ -126,7 +132,11 @@ class AddTrainingDataGUI(Widget):
         table_container = Container(
             [
                 Container(
-                    [self.select_all_datasets_checkbox, self.project_table, self.splits_widget],
+                    [
+                        self.select_all_datasets_checkbox,
+                        self.project_table,
+                        self.splits_widget.train_val_splits,
+                    ],
                     gap=0,
                 ),
                 self.replicate_structure_checkbox,
@@ -161,6 +171,13 @@ class AddTrainingDataGUI(Widget):
             else:
                 next_btn.disable()
 
+        @self._splits_widget.train_val_splits.value_changed
+        def on_splits_value_changed(val):
+            if val:
+                next_btn.enable()
+            else:
+                next_btn.disable()
+
         @next_btn.click
         def on_next_btn_click():
             if self.project_table.current_table == self.project_table.CurrentTable.PROJECTS:
@@ -178,7 +195,7 @@ class AddTrainingDataGUI(Widget):
                 back_btn.show()
             elif (
                 self.project_table.current_table == self.project_table.CurrentTable.DATASETS
-                and self.splits_widget.is_hidden()
+                and self.splits_widget.train_val_splits.is_hidden()
             ):
                 self.stepper.next_step()
                 self._set_train_val_splits_data()
@@ -188,7 +205,7 @@ class AddTrainingDataGUI(Widget):
                 next_btn.enable()
             elif (
                 self.project_table.current_table == self.project_table.CurrentTable.DATASETS
-                and not self.splits_widget.is_hidden()
+                and not self.splits_widget.train_val_splits.is_hidden()
             ):
                 self.stepper.next_step()
                 self.modal.hide()
@@ -198,7 +215,7 @@ class AddTrainingDataGUI(Widget):
                 next_btn.disable()
                 back_btn.hide()
                 self.project_table.show()
-                self.splits_widget.hide()
+                self.splits_widget.train_val_splits.hide()
                 self.stepper.set_active_step(1)
                 self.project_table.switch_table(self.project_table.CurrentTable.PROJECTS)
                 self.project_table.table.clear_selection()
@@ -207,10 +224,10 @@ class AddTrainingDataGUI(Widget):
         def on_back_btn_click():
             self.project_table.show()
             self.stepper.previous_step()
-            self.splits_widget.hide()
+            self.splits_widget.train_val_splits.hide()
             if (
                 self.project_table.current_table == self.project_table.CurrentTable.DATASETS
-                and not self.splits_widget.is_hidden()
+                and not self.splits_widget.train_val_splits.is_hidden()
             ):
                 self.replicate_structure_checkbox.hide()
                 self.select_all_datasets_checkbox.hide()
@@ -221,7 +238,7 @@ class AddTrainingDataGUI(Widget):
                 next_btn.disable()
             elif (
                 self.project_table.current_table == self.project_table.CurrentTable.DATASETS
-                and self.splits_widget.is_hidden()
+                and self.splits_widget.train_val_splits.is_hidden()
             ):
                 self.project_table.show()
                 next_btn.text = "Next"
@@ -242,15 +259,15 @@ class AddTrainingDataGUI(Widget):
         )
 
     def _set_train_val_splits_data(self) -> None:
-        # include_collections_tab = self.api.project.get_info_by_id(project_id) # TODO
-        # include_tags_tab = self.api.project.get_info_by_id(project_id) # TODO
         # TODO: determine whether to include tabs & check which tab we need to select by default
         self.project_table.hide()
-        self.splits_widget.show()
+        self.splits_widget.train_val_splits.show()
         project_id = self.get_selected_project_id()
         if not project_id:
             raise RuntimeError("Project ID is not selected. Cannot set splits data.")
-        self.splits_widget.set_project_id(project_id)
+        dataset_ids = self.get_selected_dataset_ids()
+        self.splits_widget.set_project_id(project_id, dataset_ids)
+        self.splits_widget._detect_splits(True, True, True)
 
     def get_json_data(self) -> dict:
         return {}

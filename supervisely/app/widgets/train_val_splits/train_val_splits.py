@@ -420,9 +420,22 @@ class TrainValSplits(Widget):
         self._train_collections_select.set_project_id(project_id)
         self._val_collections_select.set_project_id(project_id)
 
-    def set_project_id(self, project_id: int) -> None:
+    def value_changed(self, func):
+        if self._random_splits_table:
+            self._random_splits_table.value_changed(func)
+        if self._train_tag_select:
+            self._train_tag_select.value_changed(func)
+            self._val_tag_select.value_changed(func)
+            self._untagged_select.value_changed(func)
+        if self._train_ds_select:
+            self._train_ds_select.value_changed(func)
+            self._val_ds_select.value_changed(func)
+        if self._train_collections_select and self._val_collections_select:
+            self._train_collections_select.value_changed(func)
+            self._val_collections_select.value_changed(func)
+
+    def set_project_id(self, project_id: int, dataset_ids: Optional[List[int]] = None) -> None:
         # TODO: flag to disable contents/ set active tabs according to the project
-        # TODO: add value_changed callback to handle selection button
         if not isinstance(project_id, int):
             raise ValueError("Project ID must be an integer.")
         self._project_id = project_id
@@ -431,7 +444,12 @@ class TrainValSplits(Widget):
             self._api = Api()
         self._project_info = self._api.project.get_info_by_id(self._project_id)
         if self._random_splits_table is not None:
-            items_count = self._project_info.items_count
+            if dataset_ids is not None:
+                filters = [{"field": "id", "operator": "in", "value": dataset_ids}]
+                dataset_infos = self._api.dataset.get_list(
+                    project_id, filters=filters, recursive=True
+                )
+                items_count = sum([ds_info.items_count for ds_info in dataset_infos])
             self._random_splits_table.set_items_count(items_count)
         self._project_type = self._project_info.type
         self._project_class = get_project_class(self._project_type)
@@ -443,8 +461,8 @@ class TrainValSplits(Widget):
             self._train_tag_select.set_project_meta(project_meta)
             self._val_tag_select.set_project_meta(project_meta)
         if self._train_ds_select is not None and self._val_ds_select is not None:
-            self._train_ds_select.set_project_id(project_id)
-            self._val_ds_select.set_project_id(project_id)
+            self._train_ds_select.set_project_id(project_id, dataset_ids)
+            self._val_ds_select.set_project_id(project_id, dataset_ids)
 
     def get_train_collections_ids(self) -> List[int]:
         return self._train_collections_select.get_selected_ids() or []
