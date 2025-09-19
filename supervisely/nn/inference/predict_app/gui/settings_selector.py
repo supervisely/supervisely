@@ -336,22 +336,20 @@ class SettingsSelector:
             list(session)
 
             video_annotation = session.final_result.get("video_ann", {})
-            video_annotation = VideoAnnotation.from_json(
-                video_annotation, project_meta=project_meta
-            )
-            visualizer = TrackingVisualizer(
-                output_fps=fps,
-                box_thickness=video_info.frame_width // 200,
-                text_scale=0.6,
-                text_thickness=video_info.frame_width // 200,
-                trajectory_thickness=video_info.frame_width // 200,
-            )
-            visualizer.visualize_video_annotation(
-                video_annotation,
-                source=self.video_preview_path,
-                output_path=self.video_preview_path,
-            )
-            self.video_player.set_video(self.video_peview_url)
+        video_annotation = VideoAnnotation.from_json(video_annotation, project_meta=project_meta)
+        visualizer = TrackingVisualizer(
+            output_fps=fps,
+            box_thickness=video_info.frame_width // 200,
+            text_scale=0.6,
+            text_thickness=video_info.frame_width // 200,
+            trajectory_thickness=video_info.frame_width // 200,
+        )
+        visualizer.visualize_video_annotation(
+            video_annotation,
+            source=self.video_preview_path,
+            output_path=self.video_preview_path,
+        )
+        self.video_player.set_video(self.video_peview_url)
 
     def run_preview(self):
         try:

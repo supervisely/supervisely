@@ -1,12 +1,12 @@
-from typing import Any, Callable, Dict, List, Optional, Tuple, Set
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+
 from supervisely import logger
 from supervisely.api.api import Api
-from supervisely.api.project_api import ProjectInfo
 from supervisely.api.dataset_api import DatasetInfo
-from supervisely.project.project import ProjectType
-from supervisely.app.widgets import Progress
+from supervisely.api.project_api import ProjectInfo
 from supervisely.app import DataJson
-from supervisely.app.widgets import Button, Card, Stepper, Text, Widget
+from supervisely.app.widgets import Button, Card, Progress, Stepper, Text, Widget
+from supervisely.project.project import ProjectType
 
 button_clicked = {}
 
@@ -160,8 +160,10 @@ def copy_project(
     workspace_id: int,
     project_id: int,
     dataset_ids: List[int] = [],
+    items_ids: Optional[List[int]] = None,
     with_annotations: bool = True,
     progress: Progress = None,
+    project_type: ProjectType = ProjectType.IMAGES,
 ):
     """
     Copy a project
@@ -188,7 +190,7 @@ def copy_project(
         created_project = api.project.create(
             workspace_id,
             project_name,
-            type=ProjectType.IMAGES,
+            type=project_type,
             change_name_if_conflict=True,
         )
         if with_annotations:
@@ -258,19 +260,38 @@ def copy_project(
                 processed_copy.add(dataset_id)
 
     def _copy_items(src_ds_id: int, dst_ds: DatasetInfo):
-        input_img_infos = api.image.get_list(src_ds_id)
-        with progress(
-            message=f"Copying items from dataset: {dst_ds.name}", total=len(input_img_infos)
-        ) as pbar:
-            progress.show()
-            api.image.copy_batch_optimized(
-                src_dataset_id=src_ds_id,
-                src_image_infos=input_img_infos,
-                dst_dataset_id=dst_ds.id,
-                with_annotations=with_annotations,
-                progress_cb=pbar.update,
-            )
-            progress.hide()
+        if project_type == ProjectType.IMAGES:
+            input_img_infos = api.image.get_list(src_ds_id)
+            with progress(
+                message=f"Copying items from dataset: {dst_ds.name}", total=len(input_img_infos)
+            ) as pbar:
+                progress.show()
+                api.image.copy_batch_optimized(
+                    src_dataset_id=src_ds_id,
+                    src_image_infos=input_img_infos,
+                    dst_dataset_id=dst_ds.id,
+                    with_annotations=with_annotations,
+                    progress_cb=pbar.update,
+                )
+                progress.hide()
+        elif project_type == ProjectType.VIDEOS:
+            input_vid_infos = api.video.get_list(src_ds_id)
+            if items_ids is not None:
+                input_vid_infos = [info for info in input_vid_infos if info.id in items_ids]
+
+            with progress(
+                message=f"Copying items from dataset: {dst_ds.name}", total=len(input_vid_infos)
+            ) as pbar:
+                progress.show()
+                api.video.copy_batch(
+                    dst_dataset_id=dst_ds.id,
+                    ids=[info.id for info in input_vid_infos],
+                    with_annotations=with_annotations,
+                    progress_cb=pbar.update,
+                )
+                progress.hide()
+        else:
+            raise NotImplementedError(f"Copy not implemented for project type {project_type}")
 
     created_project = _create_project()
     src_datasets_tree = api.dataset.get_tree(project_id)

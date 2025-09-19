@@ -120,8 +120,11 @@ class OutputSelector:
 
     def get_settings(self) -> Dict[str, Any]:
         settings = {}
-        settings["project_name"] = self.project_name_input.get_value()
-        settings["upload_to_source_project"] = self.tabs.get_active_tab() == self._tab_names[1]
+        if self.tabs.get_active_tab() == self._tab_names[0]:
+            settings["upload_to_source_project"] = True
+        else:
+            settings["project_name"] = self.project_name_input.get_value()
+        settings["skip_annotated"] = self.skip_annotated_checkbox.is_checked()
         return settings
 
     def should_stop_serving_on_finish(self) -> bool:
