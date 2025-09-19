@@ -158,8 +158,8 @@ class ProjectNode(BaseProjectNode):
 
         :return: Tuple containing lists of training and validation items.
         """
-        train_collection = get_last_split_collection(self.api, self.project_id, "train_")
-        val_collection = get_last_split_collection(self.api, self.project_id, "val_")
+        train_collection, _ = get_last_split_collection(self.api, self.project_id, "train_")
+        val_collection, _ = get_last_split_collection(self.api, self.project_id, "val_")
 
         def get_items(collection):
             if not collection:
