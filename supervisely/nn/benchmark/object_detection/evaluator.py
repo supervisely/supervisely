@@ -161,11 +161,11 @@ class ObjectDetectionEvaluator(BaseEvaluator):
                 "Please make sure that your model produces predictions."
             )
         assert (
-            cocoDt_json["categories"] == cocoGt_json["categories"]
+            set(cocoDt_json["categories"]) == set(cocoGt_json["categories"])
         ), "Classes in GT and Pred projects must be the same"
-        assert [f'{x["dataset"]}/{x["file_name"]}' for x in cocoDt_json["images"]] == [
+        assert set(f'{x["dataset"]}/{x["file_name"]}' for x in cocoDt_json["images"]) == set(
             f'{x["dataset"]}/{x["file_name"]}' for x in cocoGt_json["images"]
-        ], "Images in GT and DT projects are different"
+        ), "Images in GT and DT projects are different"
         return cocoGt_json, cocoDt_json
 
     def _dump_eval_results(self):
