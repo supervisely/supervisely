@@ -292,6 +292,7 @@ class MoveLabeledNode(BaseCardNode):
             workspace_id=sly_env.workspace_id(),
             module_id=module_info.id,
             params=params,
+            description=f"Moving labeled data to the Training project started by {self.api.task_id} task",
         )
         task_info_json = self.api.task.get_info_by_id(task_info_json["id"])
 

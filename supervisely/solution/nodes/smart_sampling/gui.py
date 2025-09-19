@@ -754,6 +754,7 @@ class SmartSamplingGUI(Widget):
                 workspace_id=self.workspace_id,
                 module_id=module_info.id,
                 params=params,
+                description=f"Sampling started by {self.api.task_id} task",
             )
             task_id = task_info_json["id"]
             completed = self._wait_until_complete(task_id)

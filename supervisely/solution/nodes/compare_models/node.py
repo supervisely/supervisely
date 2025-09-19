@@ -335,6 +335,7 @@ class CompareModelsNode(BaseCardNode):
             workspace_id=self.workspace_id,
             module_id=module_id,
             params=params,
+            description=f"Model comparison started by {self._api.task_id} task",
         )
         task_id = task_info_json["id"]
 

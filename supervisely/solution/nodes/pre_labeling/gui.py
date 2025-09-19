@@ -262,6 +262,7 @@ class PreLabelingGUI(Widget):
                     module_id=module_id,
                     workspace_id=self.workspace_id,
                     agent_id=agent_id,
+                    description=f"Predict app session started by {self.api.task_id} task",
                 )
 
                 self.api.app.wait_until_ready_for_api_calls(
