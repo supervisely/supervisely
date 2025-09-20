@@ -5,11 +5,11 @@ try:
 except ImportError:
     from typing_extensions import Literal
 
+from supervisely.annotation.tag_meta import SUPPORTED_TAG_VALUE_TYPES, TagMeta
+from supervisely.api.api import Api
 from supervisely.app import StateJson
 from supervisely.app.widgets import Widget
-from supervisely.api.api import Api
-from supervisely.app.widgets.select_sly_utils import _get_int_or_env, _get_int_env
-from supervisely.annotation.tag_meta import TagMeta, SUPPORTED_TAG_VALUE_TYPES
+from supervisely.app.widgets.select_sly_utils import _get_int_env, _get_int_or_env
 from supervisely.project.project_meta import ProjectMeta
 
 
@@ -55,22 +55,24 @@ class SelectTagMeta(Widget):
 
         if project_meta is None:
             self._project_id = _get_int_or_env(self._project_id, "context.projectId")
-        self._tags = None
+        self._tags = []
         self._value = None
-        if self._project_id is None and self._project_meta is None:
-            dataset_id = _get_int_env("context.datasetId")
-            if dataset_id is None:
-                raise ValueError(
-                    "Argument 'project_id' or environment variables 'context.projectId' or 'context.datasetId' has to be defined"
-                )
-            dataset_info = self._api.dataset.get_info_by_id(dataset_id, raise_error=True)
-            self._project_id = dataset_info.project_id
+        # if self._project_id is None and self._project_meta is None:
+        #     dataset_id = _get_int_env("context.datasetId")
+        #     if dataset_id is None:
+        #         raise ValueError(
+        #             "Argument 'project_id' or environment variables 'context.projectId' or 'context.datasetId' has to be defined"
+        #         )
+        #     dataset_info = self._api.dataset.get_info_by_id(dataset_id, raise_error=True)
+        #     self._project_id = dataset_info.project_id
 
-            self._project_info = self._api.project.get_info_by_id(
-                self._project_id, raise_error=True
-            )
+        #     self._project_info = self._api.project.get_info_by_id(
+        #         self._project_id, raise_error=True
+        #     )
 
-        elif self._project_meta is not None:
+        # elif self._project_meta is not None:
+        #     self._tags = self._project_meta.tag_metas.to_json()
+        if self._project_meta is not None:
             self._tags = self._project_meta.tag_metas.to_json()
 
         super().__init__(widget_id=widget_id, file_path=__file__)

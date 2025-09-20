@@ -1,27 +1,25 @@
 <link rel="stylesheet" href="./sly/css/app/widgets/stepper_progress/style.css" />
 
-<div class="sly-stepper-progress sly-stepper-progress--horizontal"
-  :class="['sly-stepper-progress--size-' + data.{{{widget.widget_id}}}.size]">
-  <div class="sly-stepper-progress__track">
-    <div
-      v-for="(title, idx) in data.{{{widget.widget_id}}}.titles"
-      :key="idx"
-      class="sly-stepper-progress__item"
-      :class="{
-        'is-completed': (idx + 1) < state.{{{widget.widget_id}}}.active,
-        'is-current': (idx + 1) === state.{{{widget.widget_id}}}.active,
-        'is-upcoming': (idx + 1) > state.{{{widget.widget_id}}}.active,
-      }"
-    >
-      <div class="sly-stepper-progress__dot">
-        <span class="sly-stepper-progress__dot-num">{{ idx + 1 }}</span>
-      </div>
-      <div class="sly-stepper-progress__label">{{ title }}</div>
-      <div class="sly-stepper-progress__connector" v-if="idx < data.{{{widget.widget_id}}}.titles.length - 1">
-        <div class="sly-stepper-progress__bar"
-             :class="{'is-filled': (idx + 1) < state.{{{widget.widget_id}}}.active}"></div>
-    
-      </div>
-    </div>
-  </div>
-</div>
+<el-steps
+  class="stepper-progress-host"
+  :active="state.{{{widget.widget_id}}}.active - 1"
+  :space="state.{{{widget.widget_id}}}.spacing"
+  :align-center="data.{{{widget.widget_id}}}.align_center"
+  :simple="data.{{{widget.widget_id}}}.simple"
+>
+  <el-step
+    v-for="(item, idx) in data.{{{widget.widget_id}}}.items"
+    :key="idx"
+    :title="item.title"
+    :description="item.description || ''"
+    :icon="item.icon || ''"
+    :status="
+      (state.{{{widget.widget_id}}}.active > data.{{{widget.widget_id}}}.items.length)
+        ? 'finish'
+        : (idx + 1) < state.{{{widget.widget_id}}}.active
+          ? 'finish'
+          : (idx + 1) === state.{{{widget.widget_id}}}.active
+            ? 'process'
+            : 'wait'"
+  />
+</el-steps>
