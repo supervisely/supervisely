@@ -214,6 +214,7 @@ class CompareModelsNode(BaseCardNode):
                 message.task_id,
                 self._best_experiment_task_id,
             )
+            self._best_experiment_task_id = message.task_id
         self._best_experiment_eval_dir = message.eval_dir
 
         if self.gui.automation_switch.is_switched():
@@ -336,8 +337,6 @@ class CompareModelsNode(BaseCardNode):
             module_id=module_id,
             params=params,
             description=f"Model comparison started by {self._api.task_id} task",
-            app_version="fix-mb-for-collections",  # TODO: remove
-            is_branch=True,  # TODO: remove
         )
         task_id = task_info_json["id"]
 
