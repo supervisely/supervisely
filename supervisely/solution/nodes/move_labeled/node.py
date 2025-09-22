@@ -351,7 +351,7 @@ class MoveLabeledNode(BaseCardNode):
             )
             existing_ids = [item.id for item in existing_items]
 
-        split_name = f"{split_name}_latest"
+        split_name = f"latest_{split_name}"  # TODO: change to "latest_.."  to ".._latest"
         col = self.api.entities_collection.get_info_by_name(self.dst_project_id, split_name)
         if col is None:
             col = self.api.entities_collection.create(self.dst_project_id, split_name)
