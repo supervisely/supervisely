@@ -350,6 +350,9 @@ class TrainValSplitsSelector:
     def set_val_collection_ids(self, collection_ids: List[int]) -> None:
         self.train_val_splits._val_collections_select.set_selected_ids(collection_ids)
 
+    def get_splits(self):
+        return self.train_val_splits.get_splits()
+
     def _detect_splits(
         self, collections_split: bool, datasets_split: bool, tag_split: bool = False
     ) -> bool:

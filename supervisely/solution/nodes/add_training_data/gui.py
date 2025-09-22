@@ -1,4 +1,4 @@
-from typing import Callable, List
+from typing import Callable, List, Tuple
 
 from supervisely import logger
 from supervisely.api.api import Api
@@ -295,11 +295,19 @@ class AddTrainingDataGUI(Widget):
             parents = full_name.removesuffix(ds_name).rstrip("/")
             selected_ids_to_parents[ds_info.id] = parents.split("/")
 
+        split_method = self.splits_widget.get_split_method()
+        split_iteminfos = self.splits_widget.get_splits()
+        train_split_ids, val_split_ids = self._get_ids_from_iteminfos(
+            split_method, *split_iteminfos
+        )
+
         settings_data = {
             "workspace_id": self.project_table.team_workspace_selector.get_selected_workspace_id(),
             "team_id": self.project_table.team_workspace_selector.get_selected_team_id(),
             "project_id": self.get_selected_project_id(),
             "dataset_ids": self.get_selected_dataset_ids(),
+            "splits_ids": (train_split_ids, val_split_ids),
+            "splits_item": split_iteminfos,
             "replicate_structure": self.replicate_structure_checkbox.is_checked(),
             "selected_ids_to_parents": selected_ids_to_parents,
         }
@@ -309,3 +317,37 @@ class AddTrainingDataGUI(Widget):
                 callback(settings_data)
             except Exception as e:
                 logger.error(f"Error in settings saved callback: {e}")
+
+    def _get_ids_from_iteminfos(
+        self, split_method, train_iteminfos, val_iteminfos
+    ) -> Tuple[List[int], List[int]]:
+        if split_method in ["Based on collections", "Based on item tags"]:
+            project_id = self.project_table.get_selected_project_id()
+            dataset_infos = self.api.dataset.get_list(project_id, recursive=True)
+            ds_name_to_id = {ds_info.name: ds_info.id for ds_info in dataset_infos}
+        else:
+            ds_name_to_id = {
+                ds_info.name: ds_info.id for ds_info in self.project_table.get_selected_datasets()
+            }
+
+        train_split, val_split = [], []
+        for split, split_list in ((train_iteminfos, train_split), (val_iteminfos, val_split)):
+            split_iteminfos = [iteminfo for iteminfo in split]
+            split_ids = [iteminfo.id for iteminfo in split_iteminfos]
+            split_datasets = set()
+            for iteminfo in split_iteminfos:
+                split_datasets.add(iteminfo.dataset_name)
+
+            for dataset_name in split_datasets:
+                dataset_id = ds_name_to_id.get(dataset_name)
+                if dataset_id is None:
+                    raise RuntimeError(
+                        f"Dataset '{dataset_name}' from train split is not in the selected datasets."
+                    )
+
+                filters = [{"field": "id", "operator": "in", "value": split_ids}]
+                image_infos = self.api.image.get_list(dataset_id, filters=filters)
+                image_ids = [image_info.id for image_info in image_infos]
+                split_list.extend(image_ids)
+
+        return train_split, val_split

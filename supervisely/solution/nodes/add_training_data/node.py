@@ -11,6 +11,7 @@ from supervisely.sly_logger import logger
 from supervisely.solution.base_node import BaseCardNode
 from supervisely.solution.engine.models import TrainingDataAddedMessage
 from supervisely.solution.nodes.add_training_data.gui import AddTrainingDataGUI
+from supervisely.solution.utils import get_last_split_collection
 
 
 class AddTrainingDataNode(BaseCardNode):
@@ -111,18 +112,12 @@ class AddTrainingDataNode(BaseCardNode):
         src_dataset_ids = settings_data["dataset_ids"]
         src_workspace_id = settings_data["workspace_id"]
         src_team_id = settings_data["team_id"]
-        replicate_structure = settings_data.get("replicate_structure", False)
-        # destination = None
-        # if replicate_structure:
-        #     selected_ids_to_parents = settings_data.get("selected_ids_to_parents", {})
-        #     for dataset_names in selected_ids_to_parents.values():
-        #         parent_id = None
-        #         for dataset_name in dataset_names:
-        #             ds_info = self.api.dataset.get_or_create(
-        #                 dst_project_id, dataset_name, parent_id=parent_id
-        #             )
-        #             parent_id = ds_info.id
-        #         destination = parent_id
+        # replicate_structure = settings_data.get("replicate_structure", False)
+        replicate_structure = False  # @TODO: add logic later
+        train_split, val_split = settings_data.get("splits_ids", (None, None))
+        if train_split is None and val_split is None:
+            raise RuntimeError("No train/val split selected. Cannot start the task.")
+        train_items, val_items = settings_data.get("splits_item", ([], []))
 
         self.show_in_progress_badge()
 
@@ -130,7 +125,8 @@ class AddTrainingDataNode(BaseCardNode):
         params = {
             "state": {
                 "action": "copy" if not replicate_structure else "merge",
-                "items": [{"id": ds_id, "type": "dataset"} for ds_id in src_dataset_ids],
+                # "items": [{"id": ds_id, "type": "dataset"} for ds_id in src_dataset_ids],
+                "items": [{"id": img_id, "type": "item"} for img_id in train_split + val_split],
                 "source": {
                     "team": {"id": src_team_id},
                     "workspace": {"id": src_workspace_id},
@@ -149,8 +145,6 @@ class AddTrainingDataNode(BaseCardNode):
                 },
             }
         }
-        # if destination is not None:
-        #     params["state"]["destination"]["dataset"] = {"id": destination}
         agent = self.api.agent.get_list_available(team_id, True)[0]
         task_info_json = self.api.task.start(
             agent_id=agent.id,
@@ -163,20 +157,27 @@ class AddTrainingDataNode(BaseCardNode):
         task_id = task_info_json["id"]
         thread = threading.Thread(
             target=self.wait_task_complete,
-            args=(task_id,),
+            args=(task_id, dst_project_id, train_items, val_items),
             daemon=True,
         )
         thread.start()
 
     def wait_task_complete(
-        self,
-        task_id: int,
+        self, task_id: int, dst_project_id: int, train_items: List, val_items: List
     ) -> TrainingDataAddedMessage:
         """Wait until the task is complete."""
         task_info_json = self.api.task.get_info_by_id(task_id)
         if task_info_json is None:
             logger.error(f"Task with ID {task_id} not found.")
             return
+
+        # list project before task is started
+        datasets = self.api.dataset.get_list(dst_project_id, recursive=True)
+        dataset_images = {}
+        for dataset_info in datasets:
+            dataset_images[(dataset_info.id, dataset_info.name)] = self.api.image.get_list(
+                dataset_info.id
+            )
 
         current_time = time.time()
         while (task_status := self.api.task.get_status(task_id)) != self.api.task.Status.FINISHED:
@@ -200,8 +201,45 @@ class AddTrainingDataNode(BaseCardNode):
         if not success:
             logger.error(f"Task {task_id} failed with status: {task_status}")
 
-        # @TODO: remove arg?
+        # list project after task is finished
+        new_datasets = self.api.dataset.get_list(dst_project_id, recursive=True)
+        new_dataset_images = {}
+        for dataset_info in new_datasets:
+            new_dataset_images[(dataset_info.id, dataset_info.name)] = self.api.image.get_list(
+                dataset_info.id
+            )
+        train_names = [item_info.name for item_info in train_items]
+        val_names = [item_info.name for item_info in val_items]
+
+        # find new images in the project and add them to the corresponding split collections
+        train_image_ids, val_image_ids = [], []
+        for (ds_id, ds_name), images in new_dataset_images.items():
+            prev_images = dataset_images.get((ds_id, ds_name), [])
+            if not prev_images:
+                for image_info in images:
+                    if image_info.name in train_names:
+                        train_image_ids.append(image_info.id)
+                    elif image_info.name in val_names:
+                        val_image_ids.append(image_info.id)
+                continue
+            old_image_ids = {img_info.id for img_info in prev_images}
+            current_images = {img_info.id for img_info in images}
+            new_image_ids = list(current_images - old_image_ids)
+            new_images = [img_info for img_info in images if img_info.id in new_image_ids]
+            for image_info in new_images:
+                if image_info.name in train_names:
+                    train_image_ids.append(image_info.id)
+                elif image_info.name in val_names:
+                    val_image_ids.append(image_info.id)
+
+        train_col, train_col_idx = get_last_split_collection(self.api, dst_project_id, "train")
+        val_col, val_col_idx = get_last_split_collection(self.api, dst_project_id, "val")
+
+        self.api.entities_collection.add_items(train_col.id, train_image_ids)
+        self.api.entities_collection.add_items(val_col.id, val_image_ids)
+
         return TrainingDataAddedMessage(
             project_id=self.project_id,
-            dataset_ids=[],
+            train_ids=train_image_ids,
+            val_ids=val_image_ids,
         )

@@ -288,13 +288,16 @@ class TrainValSplits(Widget):
             train_count = splits_counts["train"]
             val_count = splits_counts["val"]
             val_part = val_count / (val_count + train_count)
-            project = self._project_class(project_dir, sly.OpenMode.READ)
-            n_images = project.total_items
+            n_images = self._random_splits_table._items_count
             new_val_count = round(val_part * n_images)
             new_train_count = n_images - new_val_count
 
+            dataset_names = None
+            if hasattr(self, "_dataset_names"):
+                dataset_names = self._dataset_names
+
             train_set, val_set = self._project_class.get_train_val_splits_by_count(
-                project_dir, new_train_count, new_val_count
+                project_dir, new_train_count, new_val_count, dataset_names
             )
 
         elif split_method == "Based on item tags":
@@ -435,7 +438,6 @@ class TrainValSplits(Widget):
             self._val_collections_select.value_changed(func)
 
     def set_project_id(self, project_id: int, dataset_ids: Optional[List[int]] = None) -> None:
-        # TODO: flag to disable contents/ set active tabs according to the project
         if not isinstance(project_id, int):
             raise ValueError("Project ID must be an integer.")
         self._project_id = project_id
@@ -450,7 +452,8 @@ class TrainValSplits(Widget):
                     project_id, filters=filters, recursive=True
                 )
                 items_count = sum([ds_info.items_count for ds_info in dataset_infos])
-            self._random_splits_table.set_items_count(items_count)
+                self._random_splits_table.set_items_count(items_count)
+                self._dataset_names = [ds_info.name for ds_info in dataset_infos]
         self._project_type = self._project_info.type
         self._project_class = get_project_class(self._project_type)
         if self._train_collections_select and self._val_collections_select:

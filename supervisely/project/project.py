@@ -3116,7 +3116,10 @@ class Project:
 
     @staticmethod
     def get_train_val_splits_by_count(
-        project_dir: str, train_count: int, val_count: int
+        project_dir: str,
+        train_count: int,
+        val_count: int,
+        dataset_names: Optional[List[str]] = None,
     ) -> Tuple[List[ItemInfo], List[ItemInfo]]:
         """
         Get train and val items information from project by given train and val counts.
@@ -3127,6 +3130,8 @@ class Project:
         :type train_count: :class:`int`
         :param val_count: Number of val items.
         :type val_count: :class:`int`
+        :param dataset_names: List of dataset names to get items from. If None, all datasets will be used.
+        :type dataset_names: :class:`list` [ :class:`str` ], optional
         :raises: :class:`ValueError` if total_count != train_count + val_count
         :return: Tuple with lists of train items information and val items information
         :rtype: :class:`list` [ :class:`ItemInfo<ItemInfo>` ], :class:`list` [ :class:`ItemInfo<ItemInfo>` ]
@@ -3144,9 +3149,21 @@ class Project:
             )
         """
 
-        def _list_items_for_splits(project) -> List[ItemInfo]:
+        def _list_items_for_splits(
+            project, dataset_names: Optional[List[str]] = None
+        ) -> List[ItemInfo]:
+            if dataset_names is not None:
+                datasets = []
+                for ds_name in dataset_names:
+                    ds = project.datasets.get(ds_name)
+                    if ds is None:
+                        raise KeyError(f"Dataset '{ds_name}' not found")
+                    datasets.append(ds)
+            else:
+                datasets = project.datasets
+
             items = []
-            for dataset in project.datasets:
+            for dataset in datasets:
                 for item_name in dataset:
                     items.append(
                         ItemInfo(
@@ -3159,9 +3176,20 @@ class Project:
             return items
 
         project = Project(project_dir, OpenMode.READ)
-        if project.total_items != train_count + val_count:
-            raise ValueError("total_count != train_count + val_count")
-        all_items = _list_items_for_splits(project)
+        if dataset_names is None:
+            if project.total_items != train_count + val_count:
+                raise ValueError("total_count != train_count + val_count")
+        else:
+            total_count = 0
+            for ds_name in dataset_names:
+                ds = project.datasets.get(ds_name)
+                if ds is None:
+                    raise KeyError(f"Dataset '{ds_name}' not found")
+                total_count += len(ds)
+            if total_count != train_count + val_count:
+                raise ValueError("total_count != train_count + val_count")
+
+        all_items = _list_items_for_splits(project, dataset_names)
         random.shuffle(all_items)
         train_items = all_items[:train_count]
         val_items = all_items[train_count:]
