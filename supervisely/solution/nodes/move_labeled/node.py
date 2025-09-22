@@ -342,24 +342,25 @@ class MoveLabeledNode(BaseCardNode):
         """Add the MoveLabeled node to a collection."""
         if not image_ids:
             return
-        # collection, idx = get_last_split_collection(self.api, self.dst_project_id, split_name)
+        last_split, idx = get_last_split_collection(self.api, self.dst_project_id, split_name)
 
-        # split_name = f"{split_name}_{idx + 1:03d}"
-        split_name = f"main_{split_name}"
+        existing_ids = []
+        if last_split:
+            existing_items = self.api.entities_collection.get_items(
+                last_split.id, CollectionTypeFilter.DEFAULT
+            )
+            existing_ids = [item.id for item in existing_items]
 
+        split_name = f"{split_name}_latest"
         col = self.api.entities_collection.get_info_by_name(self.dst_project_id, split_name)
         if col is None:
             col = self.api.entities_collection.create(self.dst_project_id, split_name)
             logger.info(f"Created new collection '{split_name}'")
         self.api.entities_collection.add_items(col.id, image_ids)
 
-        # if collection is None:
-        #     self.api.entities_collection.add_items(new_col.id, image_ids)
-        #     return
-        # items = self.api.entities_collection.get_items(collection.id, CollectionTypeFilter.DEFAULT)
-        # previous_ids = [item.id for item in items] if items else []
-
-        # self.api.entities_collection.add_items(new_col.id, image_ids + previous_ids)
+        new_split_name = f"{split_name}_{idx + 1:04d}"
+        new_col = self.api.entities_collection.create(self.dst_project_id, new_split_name)
+        self.api.entities_collection.add_items(new_col.id, image_ids + existing_ids)
 
     def _add_to_train_collection(self, image_ids: List[int]) -> None:
         """Add the MoveLabeled node to the train collection."""

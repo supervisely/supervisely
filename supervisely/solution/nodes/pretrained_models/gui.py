@@ -31,14 +31,7 @@ class PretrainedModelsGUI:
     def _create_widget(self) -> NewExperiment:
         """Creates the GUI widgets for the PretrainedModels node."""
         train_datasets, val_datasets = self._get_train_val_datasets()
-        # train_collection, _ = get_last_split_collection(self._api, self.project.id, "train_")
-        # val_collection, _ = get_last_split_collection(self._api, self.project.id, "val_")
-        train_collection = self._api.entities_collection.get_info_by_name(
-            self.project.id, "main_train"
-        )
-        val_collection = self._api.entities_collection.get_info_by_name(self.project.id, "main_val")
-        train_collections = [train_collection.id] if train_collection else []
-        val_collections = [val_collection.id] if val_collection else []
+        train_collections, val_collections = self._get_train_val_collections()
 
         if train_collections and val_collections:
             split_mode = "collections"
@@ -87,7 +80,10 @@ class PretrainedModelsGUI:
 
         @content.visible_changed
         def _on_visible_changed(visible: bool):
-            print(f"NewExperiment visibility changed: {visible}")
+            if visible:
+                train_collections, val_collections = self._get_train_val_collections()
+                content.train_collections = train_collections
+                content.val_collections = val_collections
 
         return content
 
@@ -115,6 +111,13 @@ class PretrainedModelsGUI:
             elif "val" in dataset.name:
                 val_datasets.append(dataset.id)
         return train_datasets, val_datasets
+
+    def _get_train_val_collections(self) -> Tuple[List[int], List[int]]:
+        last_train, _ = get_last_split_collection(self._api, self.project.id, "train_")
+        last_val, _ = get_last_split_collection(self._api, self.project.id, "val_")
+        if last_train and last_val:
+            return [last_train.id], [last_val.id]
+        return [], []
 
     def _find_agent(self):
         return find_agent(self._api, self.team_id)

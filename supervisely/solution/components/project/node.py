@@ -11,7 +11,6 @@ from supervisely.solution.engine.models import (
     MoveLabeledDataFinishedMessage,
     SampleFinishedMessage,
 )
-from supervisely.solution.utils import get_last_split_collection
 
 
 class ProjectNode(BaseProjectNode):
@@ -158,17 +157,15 @@ class ProjectNode(BaseProjectNode):
 
         :return: Tuple containing lists of training and validation items.
         """
-        # train_collection, _ = get_last_split_collection(self.api, self.project_id, "train_")
-        # val_collection, _ = get_last_split_collection(self.api, self.project_id, "val_")
-        train = self.api.entities_collection.get_info_by_name(self.project_id, "main_train")
-        val = self.api.entities_collection.get_info_by_name(self.project_id, "main_val")
+        train = self.api.entities_collection.get_info_by_name(self.project_id, "train_latest")
+        val = self.api.entities_collection.get_info_by_name(self.project_id, "val_latest")
 
-        def get_items(collection):
+        def _get_items(collection):
             if not collection:
                 return []
             return self.api.entities_collection.get_items(collection.id, self.project_id)
 
-        return get_items(train), get_items(val)
+        return _get_items(train), _get_items(val)
 
     def _get_random_image_url(self, images: List) -> Optional[str]:
         """Get a random image URL from a list of images"""
