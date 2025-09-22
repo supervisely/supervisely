@@ -351,11 +351,11 @@ class MoveLabeledNode(BaseCardNode):
             )
             existing_ids = [item.id for item in existing_items]
 
-        split_name = f"latest_{split_name}"  # TODO: change to "latest_.."  to ".._latest"
-        col = self.api.entities_collection.get_info_by_name(self.dst_project_id, split_name)
+        col_name = f"latest_{split_name}"  # TODO: change to "latest_.."  to ".._latest"
+        col = self.api.entities_collection.get_info_by_name(self.dst_project_id, col_name)
         if col is None:
-            col = self.api.entities_collection.create(self.dst_project_id, split_name)
-            logger.info(f"Created new collection '{split_name}'")
+            col = self.api.entities_collection.create(self.dst_project_id, col_name)
+            logger.info(f"Created new collection '{col_name}'")
         self.api.entities_collection.add_items(col.id, image_ids)
 
         new_split_name = f"{split_name}_{idx + 1:04d}"
