@@ -1,7 +1,7 @@
 import json
 import random
 import time
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Union
 
 from supervisely._utils import is_development, logger
 from supervisely.annotation.annotation import Annotation
@@ -45,7 +45,7 @@ class StepFlow:
     def register_step(
         self,
         name: str,
-        card: Card,
+        card: Union[Card, List[Card]],
         button: Optional[Button] = None,
         widgets_to_disable: Optional[List[Widget]] = None,
         validation_text: Optional[Widget] = None,
@@ -95,7 +95,10 @@ class StepFlow:
             cards_to_unlock = []
             for next_step_name in step["next_steps"]:
                 if next_step_name in self.steps:
-                    cards_to_unlock.append(self.steps[next_step_name]["card"])
+                    if isinstance(self.steps[next_step_name]["card"], list):
+                        cards_to_unlock.extend(self.steps[next_step_name]["card"])
+                    else:
+                        cards_to_unlock.append(self.steps[next_step_name]["card"])
 
             callback = None
             if step["next_steps"] and step["has_button"]:
@@ -208,7 +211,7 @@ class PredictAppGui:
             model_selector=self.model_selector,
             input_selector=self.input_selector,
         )
-        self.steps.append(self.settings_selector.card)
+        self.steps.append(self.settings_selector.cards_container)
 
         # 6. Preview
         self.preview = None
@@ -465,7 +468,7 @@ class PredictAppGui:
         # 5. Settings selector
         self.step_flow.register_step(
             "settings_selector",
-            self.settings_selector.card,
+            self.settings_selector.cards,
             self.settings_selector.button,
             self.settings_selector.widgets_to_disable,
             self.settings_selector.validator_text,

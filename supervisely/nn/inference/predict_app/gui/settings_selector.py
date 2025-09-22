@@ -99,7 +99,7 @@ class SettingsSelector:
         self.button = None
         self.run_button = None
         self.container = None
-        self.card = None
+        self.cards = None
         # -------------------------------- #
 
         # Init Step Widgets
@@ -185,7 +185,7 @@ class SettingsSelector:
         self.video_preview_path = os.path.join(self.preview_dir, "preview.mp4")
         self.video_peview_url = f"/static/preview/preview.mp4"
 
-        self.run_button = Button("Preview")
+        self.run_button = Button("Preview", icon="zmdi zmdi-slideshow")
         self.image_preview_gallery = GridGallery(
             2,
             sync_views=True,
@@ -201,18 +201,21 @@ class SettingsSelector:
         self.preview_container = Container(
             widgets=[self.image_preview_gallery, self.video_player, self.preview_error], gap=0
         )
+        self.preview_card = Card(
+            title="Preview",
+            description="Preview model predictions on a random image or video from the selected input source.",
+            content=self.preview_container,
+            content_top_right=self.run_button,
+            lock_message=self.lock_message,
+        )
+        self.preview_card.lock()
 
         @self.run_button.click
         def run_preview():
             self.run_preview()
 
         self.settings_container = Container(widgets=self.settings_widgets, gap=15)
-        self.main_widgets_container = Container(
-            widgets=[self.settings_container, self.preview_container],
-            direction="horizontal",
-            fractions=[1, 1],
-        )
-        self.display_widgets.extend([self.main_widgets_container])
+        self.display_widgets.extend([self.settings_container])
         # Base Widgets
         self.validator_text = Text("")
         self.validator_text.hide()
@@ -223,14 +226,20 @@ class SettingsSelector:
 
         # Card Layout
         self.container = Container(self.display_widgets)
-        self.card = Card(
+        self.settings_card = Card(
             title=self.title,
             description=self.description,
             content=self.container,
             lock_message=self.lock_message,
-            content_top_right=self.run_button,
         )
-        self.card.lock()
+        self.settings_card.lock()
+        self.cards = [self.settings_card, self.preview_card]
+        self.cards_container = Container(
+            widgets=[self.settings_card, self.preview_card],
+            gap=15,
+            direction="horizontal",
+            fractions=[3, 7],
+        )
         # ----------------------------------- #
 
     @property
@@ -320,7 +329,11 @@ class SettingsSelector:
         frames_number = min(video_info.frames_count, int(fps * seconds))
         project_meta = ProjectMeta.from_json(self.api.project.get_meta(video_info.project_id))
         with self.model_selector.model.model_api.predict_detached(
-            video_id=video_id, inference_settings=self.get_inference_settings(), tracking=True
+            video_id=video_id,
+            inference_settings=self.get_inference_settings(),
+            tracking=True,
+            start_frame=frame_start,
+            frames_num=frames_number,
         ) as session:
             if self.last_video_id != video_id:
                 paths = [f"/tmp/{i}.jpg" for i in range(frame_start, frame_start + frames_number)]
