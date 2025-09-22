@@ -138,14 +138,14 @@ class CompareModelsNode(BaseCardNode):
                 "type": "target",
                 "position": "left",
                 "connectable": True,
-                "style": {"top": "27px", "height": "12px"},
+                # "style": {"top": "27px", "height": "12px"},
             },
             {
                 "id": "evaluation_finished",
                 "type": "target",
-                "position": "left",
+                "position": "top",
                 "connectable": True,
-                "style": {"top": "11px", "height": "12px"},
+                # "style": {"top": "11px", "height": "12px"},
             },
             {
                 "id": "evaluation_finished",

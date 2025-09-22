@@ -21,8 +21,8 @@ from supervisely.solution.utils import find_agent, get_last_val_collection
 class EvaluationNode(BaseCardNode):
     APP_SLUG = "supervisely-ecosystem/model-benchmark"
     EVALUATION_ENDPOINT = "run_evaluation"
-    TITLE = "Re-evaluate on new validation dataset"
-    DESCRIPTION = "Re-evaluate the best model on a new validation dataset."
+    TITLE = "Evaluate Best Model"
+    DESCRIPTION = "Evaluate the best model on a new validation dataset to monitor its performance on the latest data and allow comparison with latest models from new experiments."
     ICON = "mdi mdi-chart-box"
     ICON_COLOR = "#1976D2"
     ICON_BG_COLOR = "#E3F2FD"
