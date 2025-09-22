@@ -3188,12 +3188,14 @@ class TrainApp:
         # Get train collection with max idx
         if len(all_train_collections) > 0:
             train_indices = [_extract_index_from_col_name(collection.name, "train") for collection in all_train_collections]
+            train_indices = [idx for idx in train_indices if idx is not None]
             if len(train_indices) > 0:
                 train_collection_idx = max(train_indices) + 1
 
         # Get val collection with max idx
         if len(all_val_collections) > 0:
             val_indices = [_extract_index_from_col_name(collection.name, "val") for collection in all_val_collections]
+            val_indices = [idx for idx in val_indices if idx is not None]
             if len(val_indices) > 0:
                 val_collection_idx = max(val_indices) + 1
         # -------------------------------- #
