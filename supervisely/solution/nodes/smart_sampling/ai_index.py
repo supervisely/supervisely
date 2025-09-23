@@ -107,8 +107,6 @@ class AiIndexNode(EmptyNode):
             )
             if not is_ready:
                 self.start_autorefresh()
-            else:
-                self.stop_autorefresh(wait=True)
         except Exception as e:
             logger.error(f"Error checking AI Index status: {repr(e)}")
         finally:
@@ -154,7 +152,7 @@ class AiIndexNode(EmptyNode):
             logger.info(f"Embeddings are not up to date for project {self.project_id}. Updating...")
             self.api.project.calculate_embeddings(self.project_id)
             return False
-        logger.info(f"Embeddings are up to date for project {self.project_id}.")
+        logger.debug(f"Embeddings are up to date for project {self.project_id}.")
         return True
 
     def _is_embeddings_in_progress(self):
@@ -205,7 +203,7 @@ class AiIndexNode(EmptyNode):
             self._refresh_thread = threading.Thread(target=self._autorefresh, daemon=True)
         if not self._refresh_thread.is_alive():
             self._refresh_thread.start()
-            logger.info("AI Index auto-refresh started.")
+            logger.debug("AI Index auto-refresh started.")
 
     def stop_autorefresh(self, wait: bool = False):
         self._stop_autorefresh = True
@@ -213,9 +211,6 @@ class AiIndexNode(EmptyNode):
             if self._refresh_thread is not None:
                 try:
                     self._refresh_thread.join()
-                    logger.info("AI Index auto-refresh stopped.")
-                except Exception as e:
-                    logger.error(f"Error stopping AI Index auto-refresh: {repr(e)}")
-                    logger.info("AI Index auto-refresh stopped.")
+                    logger.debug("AI Index auto-refresh stopped.")
                 except Exception as e:
                     logger.error(f"Error stopping AI Index auto-refresh: {repr(e)}")
