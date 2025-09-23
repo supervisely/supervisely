@@ -47,7 +47,7 @@ class InferenceRequest:
         self._final_result = None
         self._exception = None
         self._stopped = threading.Event()
-        self._progress_log_interval = None
+        self._progress_log_interval = 5.0
         self._last_progress_report_time = 0
         self.progress = Progress(
             message=self._stage,
