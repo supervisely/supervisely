@@ -1,5 +1,6 @@
 from typing import List, Optional, Tuple, Union
 
+from supervisely.sly_logger import logger
 from supervisely.api.api import Api
 from supervisely.api.project_api import ProjectInfo
 from supervisely.app.widgets import Dialog, NewExperiment
@@ -81,7 +82,9 @@ class PretrainedModelsGUI:
         @content.visible_changed
         def _on_visible_changed(visible: bool):
             if visible:
+                logger.info("New Experiment modal is shown")
                 train_collections, val_collections = self._get_train_val_collections()
+                logger.info(f"Train collections: {train_collections}, Val collections: {val_collections}")
                 content.train_collections = train_collections
                 content.val_collections = val_collections
 
