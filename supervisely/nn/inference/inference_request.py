@@ -148,6 +148,7 @@ class InferenceRequest:
                 > self._report_progress_interval
             ):
                 self.progress.iters_done_report(n)
+                self._last_progress_report_time = time.monotonic()
             else:
                 self.progress.iters_done(n)
             if self._stage == InferenceRequest.Stage.INFERENCE:
