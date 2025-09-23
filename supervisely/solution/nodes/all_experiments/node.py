@@ -52,6 +52,7 @@ class AllExperimentsNode(LinkNode):
             *args,
             **kwargs,
         )
+        self._update_link()
         # self._update_properties()
 
     # ------------------------------------------------------------------

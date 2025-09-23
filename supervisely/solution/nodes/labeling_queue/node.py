@@ -50,6 +50,7 @@ class LabelingQueueNode(BaseQueueNode):
         self.queue_id = queue_id
         self.collection_id = collection_id
         self.REFRESH_INTERVAL_SEC = 30
+        self._is_empty_finished_sent = False
 
         # --- core blocks --------------------------------------------------------
         self.gui = LabelingQueueGUI(queue_id=self.queue_id)
@@ -232,6 +233,11 @@ class LabelingQueueNode(BaseQueueNode):
             self.update_finished(finished)
             if finished > 0:
                 self.send_accepted_images_message()
+                self._is_empty_finished_sent = False
+            else:
+                if not self._is_empty_finished_sent:
+                    self.send_accepted_images_message()
+                    self._is_empty_finished_sent = True
         except Exception as e:
             logger.error(f"Failed to refresh labeling queue info: {str(e)}")
         return LabelingQueueRefreshInfoMessage(
@@ -256,7 +262,7 @@ class LabelingQueueNode(BaseQueueNode):
         )
 
         img_ids = [entity["id"] for entity in resp["images"]]
-        logger.info(f"Found {len(img_ids)} new accepted images in the labeling queue.")
+        logger.debug(f"Found {len(img_ids)} new accepted images in the labeling queue.")
         return img_ids
 
     def add_items(self, message: SampleFinishedMessage) -> None:

@@ -294,7 +294,7 @@ class CompareModelsNode(BaseCardNode):
                 self.history.add_task(task_info)
 
                 # compare metrics to determine if the new model is better
-                is_better, best_checkpoint = self._is_new_model_better(
+                is_better, best_checkpoint, best_metric, metric_name = self._is_new_model_better(
                     task_id, self._last_experiment_task_id, self._best_experiment_task_id
                 )
                 if is_better:
@@ -305,9 +305,6 @@ class CompareModelsNode(BaseCardNode):
                         best_checkpoint=best_checkpoint,
                         train_task_id=self._best_experiment_task_id,
                     )
-                    experiment = self._extract_experiment_info(self._best_experiment_task_id)
-                    metric_name = experiment.get("primary_metric")
-                    best_metric = self._get_primary_metric_value_from_experiment(experiment)
                     self._update_best_model_properties(
                         best_checkpoint=best_checkpoint,
                         best_metric=best_metric,
@@ -422,14 +419,14 @@ class CompareModelsNode(BaseCardNode):
 
     def _is_new_model_better(
         self, task_id: int, train_task_id: int, best_train_task_id: int
-    ) -> bool:
+    ) -> Tuple[bool, Optional[str], Optional[float], Optional[str]]:
         """
         Compares the primary metrics of two checkpoints.
         """
         task_info = self._api.task.get_info_by_id(task_id)
         if not task_info:
             logger.warning("Task info not found for task ID: %s", task_id)
-            return False, None
+            return False, None, None, None
 
         new_experiment = self._extract_experiment_info(train_task_id)
         old_experiment = self._extract_experiment_info(best_train_task_id)
@@ -466,7 +463,7 @@ class CompareModelsNode(BaseCardNode):
 
         except:
             logger.warning("Failed to extract report ID from URL: %s", report_url)
-            return False, None
+            return False, None, None, None
 
         if old_metric is None or new_metric is None:
             raise ValueError(f"Primary metric '{metric_name}' not found in evaluation results.")
@@ -475,16 +472,16 @@ class CompareModelsNode(BaseCardNode):
             logger.info(
                 f"{metric_name} of new model is equal to the old one: {new_metric} == {old_metric}"
             )
-            return False, old_checkpoint
+            return False, old_checkpoint, old_metric, metric_name
 
         is_new_better = new_metric > old_metric
         if is_new_better:
             logger.info(f"{metric_name} of new model is better: {new_metric} > {old_metric}")
             logger.info(f"New best checkpoint path: {new_checkpoint}")
-            return is_new_better, new_checkpoint
+            return is_new_better, new_checkpoint, new_metric, metric_name
         else:
             logger.info(f"{metric_name} of new model is worse: {new_metric} <= {old_metric}")
-            return is_new_better, old_checkpoint
+            return is_new_better, old_checkpoint, old_metric, metric_name
 
     def save(self, enabled: Optional[bool] = None, agent_id: Optional[int] = None):
         """Save re-deploy settings."""
