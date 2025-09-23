@@ -523,18 +523,16 @@ class PredictionSession:
                 "Inference is already running. Please stop it before starting a new one."
             )
         resp = self._post(method, **kwargs).json()
-
         self.inference_request_uuid = resp["inference_request_uuid"]
-
-        logger.info(
-            "Inference has started:",
-            extra={"inference_request_uuid": resp.get("inference_request_uuid")},
-        )
         try:
             resp, has_started = self._wait_for_inference_start(tqdm=self.tqdm)
         except:
             self.stop()
             raise
+        logger.info(
+            "Inference has started:",
+            extra={"inference_request_uuid": resp.get("inference_request_uuid")},
+        )
         frame_iterator = self.Iterator(resp["progress"]["total"], self, tqdm=self.tqdm)
         return frame_iterator
 
