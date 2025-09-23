@@ -171,13 +171,13 @@ class AddTrainingDataNode(BaseCardNode):
             logger.error(f"Task with ID {task_id} not found.")
             return
 
-        # list project before task is started
-        datasets = self.api.dataset.get_list(dst_project_id, recursive=True)
-        dataset_images = {}
-        for dataset_info in datasets:
-            dataset_images[(dataset_info.id, dataset_info.name)] = self.api.image.get_list(
-                dataset_info.id
-            )
+        # # list project before task is started
+        # datasets = self.api.dataset.get_list(dst_project_id, recursive=True)
+        # dataset_images = {}
+        # for dataset_info in datasets:
+        #     dataset_images[(dataset_info.id, dataset_info.name)] = self.api.image.get_list(
+        #         dataset_info.id
+        #     )
 
         current_time = time.time()
         while (task_status := self.api.task.get_status(task_id)) != self.api.task.Status.FINISHED:
@@ -201,36 +201,45 @@ class AddTrainingDataNode(BaseCardNode):
         if not success:
             logger.error(f"Task {task_id} failed with status: {task_status}")
 
-        # list project after task is finished
-        new_datasets = self.api.dataset.get_list(dst_project_id, recursive=True)
-        new_dataset_images = {}
-        for dataset_info in new_datasets:
-            new_dataset_images[(dataset_info.id, dataset_info.name)] = self.api.image.get_list(
-                dataset_info.id
-            )
+        # # list project after task is finished
+        # new_datasets = self.api.dataset.get_list(dst_project_id, recursive=True)
+        # new_dataset_images = {}
+        # for dataset_info in new_datasets:
+        #     new_dataset_images[(dataset_info.id, dataset_info.name)] = self.api.image.get_list(
+        #         dataset_info.id
+        #     )
+        # train_names = [item_info.name for item_info in train_items]
+        # val_names = [item_info.name for item_info in val_items]
+
+        # # find new images in the project and add them to the corresponding split collections
+        # train_image_ids, val_image_ids = [], []
+        # for (ds_id, ds_name), images in new_dataset_images.items():
+        #     prev_images = dataset_images.get((ds_id, ds_name), [])
+        #     if not prev_images:
+        #         for image_info in images:
+        #             if image_info.name in train_names:
+        #                 train_image_ids.append(image_info.id)
+        #             elif image_info.name in val_names:
+        #                 val_image_ids.append(image_info.id)
+        #         continue
+        #     old_image_ids = {img_info.id for img_info in prev_images}
+        #     current_images = {img_info.id for img_info in images}
+        #     new_image_ids = list(current_images - old_image_ids)
+        #     new_images = [img_info for img_info in images if img_info.id in new_image_ids]
+        #     for image_info in new_images:
+        #         if image_info.name in train_names:
+        #             train_image_ids.append(image_info.id)
+        #         elif image_info.name in val_names:
+        #             val_image_ids.append(image_info.id)
+
+        uploaded_ids = self._get_uploaded_ids(dst_project_id, task_id)
+
         train_names = [item_info.name for item_info in train_items]
         val_names = [item_info.name for item_info in val_items]
 
-        # find new images in the project and add them to the corresponding split collections
-        train_image_ids, val_image_ids = [], []
-        for (ds_id, ds_name), images in new_dataset_images.items():
-            prev_images = dataset_images.get((ds_id, ds_name), [])
-            if not prev_images:
-                for image_info in images:
-                    if image_info.name in train_names:
-                        train_image_ids.append(image_info.id)
-                    elif image_info.name in val_names:
-                        val_image_ids.append(image_info.id)
-                continue
-            old_image_ids = {img_info.id for img_info in prev_images}
-            current_images = {img_info.id for img_info in images}
-            new_image_ids = list(current_images - old_image_ids)
-            new_images = [img_info for img_info in images if img_info.id in new_image_ids]
-            for image_info in new_images:
-                if image_info.name in train_names:
-                    train_image_ids.append(image_info.id)
-                elif image_info.name in val_names:
-                    val_image_ids.append(image_info.id)
+        # TODO: enhance check
+        train_image_ids = [item.id for item in uploaded_ids if item.name in train_names]
+        val_image_ids = [item.id for item in uploaded_ids if item.name in val_names]
 
         train_col, train_col_idx = get_last_split_collection(self.api, dst_project_id, "train")
         val_col, val_col_idx = get_last_split_collection(self.api, dst_project_id, "val")
@@ -243,3 +252,22 @@ class AddTrainingDataNode(BaseCardNode):
             train_ids=train_image_ids,
             val_ids=val_image_ids,
         )
+
+    def _get_uploaded_ids(self, project_id: int, task_id: int) -> List[int]:
+        """Get the IDs of images uploaded from the project's custom data."""
+        project = self.api.project.get_info_by_id(project_id)
+        if project is None:
+            logger.warning(f"Project with ID {project_id} not found.")
+            return []
+        custom_data = project.custom_data or {}
+        history = custom_data.get("import_history", {}).get("tasks", [])
+        for record in history:
+            if record.get("task_id") == task_id:
+                break
+        else:
+            logger.warning(f"No import history found for task ID {task_id}.")
+            return []
+        uploaded_ids = []
+        for ds in record.get("datasets", []):
+            uploaded_ids.extend(list(map(int, ds.get("uploaded_images", []))))
+        return uploaded_ids

@@ -405,9 +405,7 @@ class ProjectDatasetTable(Widget):
             data.reset_index(inplace=True, drop=True)
 
         except IndexError as e:
-            e.args = (
-                f"Sorting by column idx = {column_idx} is not possible, your sort values have only {len(self._rows_sort_values[0]) if self._rows_sort_values else 0} columns with idx from 0 to {len(self._rows_sort_values[0]) - 1 if self._rows_sort_values else -1}",
-            )
+            e.args = f"Sorting by column idx = {column_idx} is not possible, your sort values have only {len(first_sort_keys) if self._id_to_sort_key else 0} columns with idx from 0 to {len(first_sort_keys) - 1 if self._id_to_sort_key else -1}"
             raise e
 
         return data

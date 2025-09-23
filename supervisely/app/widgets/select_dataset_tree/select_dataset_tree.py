@@ -558,7 +558,7 @@ class SelectDatasetTree(Widget):
             result = []
             for dataset_info, children in node.items():
                 if dataset_ids:
-                    if not (dataset_info.id in dataset_ids) or not (_subnodes_in_filter(children)):
+                    if not (dataset_info.id in dataset_ids) and not (_subnodes_in_filter(children)):
                         continue
                 item = TreeSelect.Item(
                     id=dataset_info.id,

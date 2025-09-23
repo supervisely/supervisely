@@ -232,7 +232,7 @@ class AddTrainingDataGUI(Widget):
             self.splits_widget.train_val_splits.hide()
             if (
                 self.project_table.current_table == self.project_table.CurrentTable.DATASETS
-                and not self.splits_widget.train_val_splits.is_hidden()
+                and self.splits_widget.train_val_splits.is_hidden()
             ):
                 self.replicate_structure_checkbox.hide()
                 self.select_all_datasets_checkbox.hide()
@@ -241,11 +241,11 @@ class AddTrainingDataGUI(Widget):
                 next_btn.text = "Next"
                 self.project_table.table.clear_selection()
                 next_btn.disable()
+                self.project_table.enable()
             elif (
                 self.project_table.current_table == self.project_table.CurrentTable.DATASETS
-                and self.splits_widget.train_val_splits.is_hidden()
+                and not self.splits_widget.train_val_splits.is_hidden()
             ):
-                self.project_table.show()
                 next_btn.text = "Next"
                 next_btn.enable()
                 self.project_table.switch_table(self.project_table.CurrentTable.DATASETS)
