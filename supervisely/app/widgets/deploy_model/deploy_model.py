@@ -1,6 +1,7 @@
 import datetime
 import tempfile
 from pathlib import Path
+from time import sleep
 from typing import Any, Dict, List, Literal
 
 import pandas as pd
@@ -613,6 +614,7 @@ class DeployModel(Widget):
             self.disable_modes()
             model_api = self.deploy()
             task_info = self.api.task.get_info_by_id(model_api.task_id)
+            sleep(4)  # wait for the model to be fully deployed
             model_info = model_api.get_info()
             model_name = model_info["model_name"]
             framework = self._framework_from_task_info(task_info)
