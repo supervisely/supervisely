@@ -651,10 +651,10 @@ class ExperimentSelector(Widget):
 
         self._rows = [model_row] + self._rows
         self._experiment_infos = [experiment_info] + self._experiment_infos
-        self.table.insert_row(model_row.to_table_row(), 0)
         self._update_value_index_map()
         self._update_search_text()
         self._update_sort_values()
+        self.table.insert_row(model_row.to_table_row(), 0)
 
     def _update_search_text(self):
         self._rows_search_texts = [row.search_text() for row in self._rows]
