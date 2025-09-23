@@ -203,9 +203,9 @@ class AddTrainingDataGUI(Widget):
                 and self.splits_widget.train_val_splits.is_hidden()
             ):
                 self.stepper.next_step()
-                self._set_train_val_splits_data()
                 self.replicate_structure_checkbox.hide()
                 self.select_all_datasets_checkbox.hide()
+                self._set_train_val_splits_data()
                 next_btn.text = "Add"
                 next_btn.enable()
             elif (
