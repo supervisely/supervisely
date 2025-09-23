@@ -2145,7 +2145,7 @@ class Inference:
         video_id = get_value_for_keys(state, ["videoId", "video_id"], ignore_none=True)
         if video_id is None:
             raise ValueError("Video id is not provided")
-        video_info = api.video.get_info_by_id(video_id)
+        video_info = api.video.get_info_by_id(video_id, force_metadata_for_links=True)
         start_frame_index = get_value_for_keys(
             state, ["startFrameIndex", "start_frame_index", "start_frame"], ignore_none=True
         )
