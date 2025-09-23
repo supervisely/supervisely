@@ -118,6 +118,7 @@ class AddTrainingDataGUI(Widget):
             # self._splits_widget.hide()
             self._splits_widget = TrainValSplitsSelector(self.api)
             self._splits_widget.train_val_splits.hide()
+            self._splits_widget.train_val_splits.get_splits = self._get_splits_downloadless
 
         return self._splits_widget
 
@@ -360,3 +361,87 @@ class AddTrainingDataGUI(Widget):
                 split_list.extend(image_ids)
 
         return train_split, val_split
+
+    def _get_splits_downloadless(self):
+        import random
+
+        from supervisely.annotation.annotation import Annotation
+        from supervisely.api.entities_collection_api import CollectionTypeFilter
+        from supervisely.project.project_meta import ProjectMeta
+
+        if not self._project_id:
+            return [], []
+
+        dataset_ids = None
+        if hasattr(self, "_dataset_ids"):
+            dataset_ids = self._dataset_ids
+
+        if dataset_ids is None:
+            raise RuntimeError("Cannot get splits: dataset_ids is None")
+
+        filters = [{"field": "id", "operator": "in", "value": dataset_ids}]
+
+        split_method = self._content.get_active_tab()
+        train_set, val_set = [], []
+        if split_method == "Random":
+            splits_counts = self._random_splits_table.get_splits_counts()
+            train_count = splits_counts["train"]
+            val_count = splits_counts["val"]
+            val_part = val_count / (val_count + train_count)
+
+            dataset_infos = self._api.dataset.get_list(
+                self._project_id, filters=filters, recursive=True
+            )
+
+            all_images = []
+            for ds_info in dataset_infos:
+                img_infos = self._api.image.get_list(ds_info.id)
+                all_images.extend(img_infos)
+
+            random.shuffle(all_images)
+            split_idx = round(len(all_images) * (1 - val_part))
+            train_set = all_images[:split_idx]
+            val_set = all_images[split_idx:]
+        elif split_method == "Based on item tags":
+            train_tag_name = self._train_tag_select.get_selected_name()
+            val_tag_name = self._val_tag_select.get_selected_name()
+            add_untagged_to = self._untagged_select.get_value()
+            project_meta = ProjectMeta.from_json(self._api.project.get_meta(self._project_id))
+            for ds_info in self._api.dataset.get_list(self._project_id, recursive=True):
+                ann_infos = self._api.annotation.get_list(ds_info.id)
+                anns = [Annotation.from_json(ann.annotation, project_meta) for ann in ann_infos]
+                for ann_info, ann in zip(ann_infos, anns):
+                    tags = [tag.name for tag in ann.tags]
+                    if train_tag_name in tags:
+                        train_set.append(self._api.image.get_info_by_id(ann_info.image_id))
+                    elif val_tag_name in tags:
+                        val_set.append(self._api.image.get_info_by_id(ann_info.image_id))
+                    elif add_untagged_to == "train":
+                        train_set.append(self._api.image.get_info_by_id(ann_info.image_id))
+                    elif add_untagged_to == "val":
+                        val_set.append(self._api.image.get_info_by_id(ann_info.image_id))
+        elif split_method == "Based on datasets":
+            train_ds_ids = self._train_ds_select.get_selected_ids()
+            val_ds_ids = self._val_ds_select.get_selected_ids()
+            ds_infos = self._api.dataset.get_list(self._project_id, filters=filters, recursive=True)
+            for ds_info in ds_infos:
+                if ds_info.id in train_ds_ids:
+                    train_set.extend(self._api.image.get_list(ds_info.id))
+                if ds_info.id in val_ds_ids:
+                    val_set.extend(self._api.image.get_list(ds_info.id))
+        elif split_method == "Based on collections":
+            train_collections = self._train_collections_select.get_selected_ids()
+            val_collections = self._val_collections_select.get_selected_ids()
+
+            for collection_ids, items_list in [
+                (train_collections, train_set),
+                (val_collections, val_set),
+            ]:
+                for collection_id in collection_ids:
+                    collection_items = self._api.entities_collection.get_items(
+                        collection_id=collection_id,
+                        project_id=self._project_id,
+                        collection_type=CollectionTypeFilter.DEFAULT,
+                    )
+                    items_list.extend(collection_items)
+        return train_set, val_set
