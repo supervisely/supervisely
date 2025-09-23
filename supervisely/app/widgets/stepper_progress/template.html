@@ -6,6 +6,7 @@
   :space="state.{{{widget.widget_id}}}.spacing"
   :align-center="data.{{{widget.widget_id}}}.align_center"
   :simple="data.{{{widget.widget_id}}}.simple"
+  :style="{ paddingLeft: (state.{{{widget.widget_id}}}.margin_left || 0) + 'px' }"
 >
   <el-step
     v-for="(item, idx) in data.{{{widget.widget_id}}}.items"
