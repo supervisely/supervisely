@@ -93,6 +93,6 @@ def get_last_split_collection(
     return last_collection, last_collection_idx
 
 
-def get_last_val_collection(api: Api, project_id: int) -> int:
+def get_last_val_collection(api: Api, project_id: int) -> Tuple[Optional[EntitiesCollectionInfo], int]:
     val_collection, val_idx = get_last_split_collection(api, project_id, "val_")
     return val_collection, val_idx

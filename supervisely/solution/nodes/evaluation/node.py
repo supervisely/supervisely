@@ -276,7 +276,9 @@ class EvaluationNode(BaseCardNode):
             logger.error("Evaluation session info is not available. Cannot run evaluation.")
             return
         # TODO: change to "latest_.."  to ".._latest"
-        collection = self._api.entities_collection.get_info_by_name(self.project.id, "latest_val")
+        collection, _ = get_last_val_collection(self._api, self.project.id)
+        if not collection:
+            collection = self._api.entities_collection.get_info_by_name(self.project.id, "latest_val")
         if not collection:
             logger.error("No validation collection found. Cannot run evaluation.")
             return
