@@ -207,6 +207,7 @@ class NewExperiment(Widget):
                 "selectedFrameworks": self._selected_frameworks,
                 "selectedArchitectures": self._selected_architectures,
                 "allowEmptyExperimentName": True,
+                "version": "1.0.23",  # TODO: remove after fix in Train YOLO
             },
         }
 
