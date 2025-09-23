@@ -3231,7 +3231,6 @@ class Inference:
             inference_request, future = self.inference_requests_manager.schedule_task(
                 self._inference_video_id, api, state
             )
-            inference_request.set_report_progress_interval(5.0)
             future.result()
             results = {"ann": inference_request.pop_pending_results()}
             final_result = inference_request.final_result
@@ -3258,7 +3257,6 @@ class Inference:
             file_size = file.size
 
             inference_request = self.inference_requests_manager.create()
-            inference_request.set_report_progress_interval(5.0)
             inference_request.set_stage(InferenceRequest.Stage.PREPARING, 0, file_size)
 
             video_source.read = progress_wrapper(
@@ -3296,7 +3294,6 @@ class Inference:
             inference_request, _ = self.inference_requests_manager.schedule_task(
                 self._inference_video_id, api, state
             )
-            inference_request.set_report_progress_interval(5.0)
             return {
                 "message": "Inference has started.",
                 "inference_request_uuid": inference_request.uuid,
