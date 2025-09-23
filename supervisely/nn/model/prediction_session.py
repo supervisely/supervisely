@@ -523,18 +523,16 @@ class PredictionSession:
                 "Inference is already running. Please stop it before starting a new one."
             )
         resp = self._post(method, **kwargs).json()
-
         self.inference_request_uuid = resp["inference_request_uuid"]
-
-        logger.info(
-            "Inference has started:",
-            extra={"inference_request_uuid": resp.get("inference_request_uuid")},
-        )
         try:
             resp, has_started = self._wait_for_inference_start(tqdm=self.tqdm)
         except:
             self.stop()
             raise
+        logger.info(
+            "Inference has started:",
+            extra={"inference_request_uuid": resp.get("inference_request_uuid")},
+        )
         frame_iterator = self.Iterator(resp["progress"]["total"], self, tqdm=self.tqdm)
         return frame_iterator
 
@@ -647,8 +645,11 @@ class PredictionSession:
                 encoder = MultipartEncoder(fields)
                 if self.tqdm is not None:
 
+                    bytes_read = 0
                     def _callback(monitor):
-                        self.tqdm.update(monitor.bytes_read)
+                        nonlocal bytes_read
+                        self.tqdm.update(monitor.bytes_read - bytes_read)
+                        bytes_read = monitor.bytes_read
 
                     video_size = get_file_size(video_path)
                     self._update_progress(self.tqdm, "Uploading video", 0, video_size, is_size=True)

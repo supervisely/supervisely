@@ -1253,7 +1253,6 @@ class Inference:
         if self._model_meta is None:
             self._set_model_meta_from_classes()
 
-
     def _set_model_meta_custom_model(self, model_info: dict):
         model_meta = model_info.get("model_meta")
         if model_meta is None:
@@ -2146,7 +2145,7 @@ class Inference:
         video_id = get_value_for_keys(state, ["videoId", "video_id"], ignore_none=True)
         if video_id is None:
             raise ValueError("Video id is not provided")
-        video_info = api.video.get_info_by_id(video_id)
+        video_info = api.video.get_info_by_id(video_id, force_metadata_for_links=True)
         start_frame_index = get_value_for_keys(
             state, ["startFrameIndex", "start_frame_index", "start_frame"], ignore_none=True
         )
@@ -4440,7 +4439,6 @@ def _get_log_extra_for_inference_request(
         "has_result": inference_request.final_result is not None,
         "pending_results": inference_request.pending_num(),
         "exception": inference_request.exception_json(),
-        "result": inference_request._final_result,
         "preparing_progress": progress,
     }
     return log_extra
