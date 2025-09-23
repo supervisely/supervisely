@@ -76,7 +76,9 @@ class BaseTrainNode(BaseCardNode):
         @self.click
         def on_click():
             self.gui.widget.visible = True
-            # self.gui.modal.show()
+            train_collections, val_collections = self.gui._get_train_val_collections()
+            self.gui.widget.train_collections = train_collections
+            self.gui.widget.val_collections = val_collections
 
         @self.gui.widget.app_started
         def _on_app_started(app_id: int, model_id: int, task_id: int):

@@ -81,12 +81,7 @@ class PretrainedModelsGUI:
 
         @content.visible_changed
         def _on_visible_changed(visible: bool):
-            if visible:
-                logger.info("New Experiment modal is shown")
-                train_collections, val_collections = self._get_train_val_collections()
-                logger.info(f"Train collections: {train_collections}, Val collections: {val_collections}")
-                content.train_collections = train_collections
-                content.val_collections = val_collections
+            logger.info(f"New Experiment modal visibility changed: {visible}")
 
         return content
 
