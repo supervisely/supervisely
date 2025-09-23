@@ -146,7 +146,7 @@ class InferenceRequest:
                 self._report_progress_interval is None
                 or time.monotonic() - self._last_progress_report_time
                 > self._report_progress_interval
-            ):
+            ) or (self.progress.current + n >= self.progress.total):
                 self.progress.iters_done_report(n)
                 self._last_progress_report_time = time.monotonic()
             else:
