@@ -238,8 +238,9 @@ class AddTrainingDataNode(BaseCardNode):
         val_names = [item_info.name for item_info in val_items]
 
         # TODO: enhance check
-        train_image_ids = [item.id for item in uploaded_ids if item.name in train_names]
-        val_image_ids = [item.id for item in uploaded_ids if item.name in val_names]
+        infos = self.api.image.get_info_by_id_batch(uploaded_ids)
+        train_image_ids = [info.id for info in infos if info.name in train_names]
+        val_image_ids = [info.id for info in infos if info.name in val_names]
 
         train_col, train_col_idx = get_last_split_collection(self.api, dst_project_id, "train")
         val_col, val_col_idx = get_last_split_collection(self.api, dst_project_id, "val")
