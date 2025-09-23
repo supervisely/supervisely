@@ -514,7 +514,7 @@ class SelectDatasetTree(Widget):
         return {}
 
     def _read_datasets(
-        self, project_id: Optional[int], dataset_ids: Optional[List[int]]
+        self, project_id: Optional[int], dataset_ids: Optional[List[int]] = None
     ) -> Optional[List[TreeSelect.Item]]:
         """Get the list of TreeSelect.Item objects representing the dataset hierarchy.
 

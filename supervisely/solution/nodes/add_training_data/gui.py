@@ -70,8 +70,13 @@ class AddTrainingDataGUI(Widget):
     @property
     def stepper(self) -> StepperProgress:
         if not hasattr(self, "_stepper"):
-            steps = ["Select Project", "Select Datasets", "Select split settings", "Add Data"]
-            self._stepper = StepperProgress(titles=steps)
+            steps = [
+                StepperProgress.StepItem("Select Project"),
+                StepperProgress.StepItem("Select Datasets"),
+                StepperProgress.StepItem("Configure Splits"),
+                StepperProgress.StepItem("Add Data"),
+            ]
+            self._stepper = StepperProgress(steps)
         return self._stepper
 
     @property
@@ -171,7 +176,7 @@ class AddTrainingDataGUI(Widget):
             else:
                 next_btn.disable()
 
-        @self._splits_widget.train_val_splits.value_changed
+        @self.splits_widget.train_val_splits.value_changed
         def on_splits_value_changed(val):
             if val:
                 next_btn.enable()
