@@ -647,8 +647,11 @@ class PredictionSession:
                 encoder = MultipartEncoder(fields)
                 if self.tqdm is not None:
 
+                    bytes_read = 0
                     def _callback(monitor):
-                        self.tqdm.update(monitor.bytes_read)
+                        nonlocal bytes_read
+                        self.tqdm.update(monitor.bytes_read - bytes_read)
+                        bytes_read = monitor.bytes_read
 
                     video_size = get_file_size(video_path)
                     self._update_progress(self.tqdm, "Uploading video", 0, video_size, is_size=True)
