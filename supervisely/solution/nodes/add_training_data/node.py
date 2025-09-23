@@ -131,7 +131,6 @@ class AddTrainingDataNode(BaseCardNode):
                     "team": {"id": src_team_id},
                     "workspace": {"id": src_workspace_id},
                     "project": {"id": src_project_id},
-                    # "dataset": {"id": 16712, "parentIds": None},
                 },
                 "destination": {
                     "team": {"id": team_id},
@@ -142,6 +141,7 @@ class AddTrainingDataNode(BaseCardNode):
                     "preserveSrcDate": False,
                     "cloneAnnotations": True,
                     "conflictResolutionMode": "rename",
+                    "saveIdsToProjectCustomData": True,
                 },
             }
         }

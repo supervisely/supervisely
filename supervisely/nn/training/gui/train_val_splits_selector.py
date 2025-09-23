@@ -361,15 +361,17 @@ class TrainValSplitsSelector:
         if collections_split:
             splits_found = self._detect_collections()
             if splits_found:
-                self.train_val_splits.set_split_method("Based on collections")
+                self.train_val_splits.set_split_method("collections")
         if not splits_found and datasets_split:
             splits_found = self._detect_datasets()
             if splits_found:
-                self.train_val_splits.set_split_method("Based on datasets")
+                self.train_val_splits.set_split_method("datasets")
         if not splits_found and tag_split:
             splits_found = self._detect_tags()
             if splits_found:
-                self.train_val_splits.set_split_method("Based on tags")
+                self.train_val_splits.set_split_method("tags")
+        if not splits_found:
+            self.train_val_splits.set_split_method("random")
         return splits_found
 
     def _detect_collections(self) -> bool:
@@ -465,27 +467,25 @@ class TrainValSplitsSelector:
     def _detect_tags(self) -> bool:
         """Find most common tags and set them to train_val_splits"""
         stats = self.api.project.get_stats(self.project_id)
-        tags_count = {}
+        train_tags, val_tags = [], []
         for item in stats["imageTags"]["items"]:
             tag_name = item["tagMeta"]["name"]
             tag_total = item["total"]
-            tags_count[tag_name] = tag_total
+            if tag_total > 0 and any(
+                split in tag_name.lower() for split in ["train", "val", "test"]
+            ):
+                if "train" in tag_name.lower():
+                    train_tags.append(tag_name)
+                else:
+                    val_tags.append(tag_name)
 
-        for object_tags in stats["objectTags"]["items"]:
-            tag_name = object_tags["tagMeta"]["name"]
-            tag_total = object_tags["total"]
-            if tag_name in tags_count:
-                tags_count[tag_name] += tag_total
-            else:
-                tags_count[tag_name] = tag_total
-
-        if len(tags_count) < 2:
+        if len(train_tags) < 1 or len(val_tags) < 1:
             self.validator_text = Text("")
             self.validator_text.hide()
             return False
 
-        sorted_tags = sorted(tags_count.items(), key=lambda x: x[1], reverse=True)
-        train_tag, val_tag = sorted_tags[0][0], sorted_tags[1][0]
+        train_tag = max(train_tags, key=lambda x: stats["imageTags"]["items"][x]["total"])
+        val_tag = max(val_tags, key=lambda x: stats["imageTags"]["items"][x]["total"])
         self.train_val_splits.set_tags_splits(train_tag, val_tag, "ignore")
         self.validator_text = Text("Train and val tags are detected", status="info")
         self.validator_text.show()

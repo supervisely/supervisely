@@ -151,7 +151,7 @@ class AddTrainingDataGUI(Widget):
         return Container(
             [
                 desc,
-                self.stepper,
+                Flexbox([self.stepper], center_content=True, horizontal_alignment="center"),
                 table_container,
                 btns_container,
             ],
@@ -185,6 +185,7 @@ class AddTrainingDataGUI(Widget):
 
         @next_btn.click
         def on_next_btn_click():
+            # Step 1 -> Step 2
             if self.project_table.current_table == self.project_table.CurrentTable.PROJECTS:
                 self.project_table.switch_table(self.project_table.CurrentTable.DATASETS)
                 self.stepper.next_step()
@@ -198,6 +199,7 @@ class AddTrainingDataGUI(Widget):
                     )
                     next_btn.enable()
                 back_btn.show()
+            # Step 2 -> Step 3
             elif (
                 self.project_table.current_table == self.project_table.CurrentTable.DATASETS
                 and self.splits_widget.train_val_splits.is_hidden()
@@ -208,6 +210,7 @@ class AddTrainingDataGUI(Widget):
                 self._set_train_val_splits_data()
                 next_btn.text = "Add"
                 next_btn.enable()
+            # Finish
             elif (
                 self.project_table.current_table == self.project_table.CurrentTable.DATASETS
                 and not self.splits_widget.train_val_splits.is_hidden()
@@ -229,7 +232,7 @@ class AddTrainingDataGUI(Widget):
         def on_back_btn_click():
             self.project_table.show()
             self.stepper.previous_step()
-            self.splits_widget.train_val_splits.hide()
+            # Step 2 -> Step 1
             if (
                 self.project_table.current_table == self.project_table.CurrentTable.DATASETS
                 and self.splits_widget.train_val_splits.is_hidden()
@@ -238,16 +241,18 @@ class AddTrainingDataGUI(Widget):
                 self.select_all_datasets_checkbox.hide()
                 back_btn.hide()
                 self.project_table.switch_table(self.project_table.CurrentTable.PROJECTS)
-                next_btn.text = "Next"
                 self.project_table.table.clear_selection()
-                next_btn.disable()
                 self.project_table.enable()
+                next_btn.text = "Next"
+                next_btn.disable()
+            # Step 3 -> Step 2
             elif (
                 self.project_table.current_table == self.project_table.CurrentTable.DATASETS
                 and not self.splits_widget.train_val_splits.is_hidden()
             ):
                 next_btn.text = "Next"
                 next_btn.enable()
+                self.splits_widget.train_val_splits.hide()
                 self.project_table.switch_table(self.project_table.CurrentTable.DATASETS)
                 if self.project_table.has_nested_datasets():
                     self.replicate_structure_checkbox.show()
@@ -264,7 +269,6 @@ class AddTrainingDataGUI(Widget):
         )
 
     def _set_train_val_splits_data(self) -> None:
-        # TODO: determine whether to include tabs & check which tab we need to select by default
         self.project_table.hide()
         self.splits_widget.train_val_splits.show()
         project_id = self.get_selected_project_id()
