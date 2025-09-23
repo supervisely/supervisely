@@ -2747,10 +2747,10 @@ class Inference:
             context.setdefault("created_dataset", {})[src_dataset_id] = created_dataset.id
             return created_dataset.id
 
-        created_names = []
         if context is None:
             context = {}
         for dataset_id, preds in ds_predictions.items():
+            created_names = set()
             if dst_project_id is not None:
                 # upload to the destination project
                 dst_dataset_id = _get_or_create_dataset(
@@ -2826,7 +2826,7 @@ class Inference:
                     with_annotations=False,
                     save_source_date=False,
                 )
-                created_names.extend([image_info.name for image_info in dst_image_infos])
+                created_names.update([image_info.name for image_info in dst_image_infos])
                 api.annotation.upload_anns([image_info.id for image_info in dst_image_infos], anns)
             else:
                 # upload to the source dataset
