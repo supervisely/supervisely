@@ -24,10 +24,10 @@ from requests_toolbelt import MultipartDecoder, MultipartEncoder
 from tqdm import tqdm
 
 from supervisely._utils import batched, logger, run_coroutine
+from supervisely.annotation.label import LabelingStatus
 from supervisely.api.module_api import ApiField, ModuleApi, RemoveableBulkModuleApi
 from supervisely.geometry.rectangle import Rectangle
 from supervisely.video_annotation.key_id_map import KeyIdMap
-from supervisely.annotation.label import LabelingStatus
 
 
 class FigureInfo(NamedTuple):
@@ -595,10 +595,13 @@ class FigureApi(RemoveableBulkModuleApi):
         """
         geometries = {}
         for idx, part in self._download_geometries_generator(ids):
-            if progress_cb is not None:
-                progress_cb(len(part.content))
-            geometry_json = json.loads(part.content)
-            geometries[idx] = geometry_json
+            try:
+                if progress_cb is not None:
+                    progress_cb(len(part.content))
+                geometry_json = json.loads(part.content)
+                geometries[idx] = geometry_json
+            except Exception as e:
+                raise RuntimeError(f"Failed to decode geometry for figure ID {idx}") from e
 
         if len(geometries) != len(ids):
             raise RuntimeError("Not all geometries were downloaded")
