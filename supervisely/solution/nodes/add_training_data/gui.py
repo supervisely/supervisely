@@ -338,7 +338,7 @@ class AddTrainingDataGUI(Widget):
         train_split, val_split = [], []
         for split, split_list in ((train_iteminfos, train_split), (val_iteminfos, val_split)):
             split_iteminfos = [iteminfo for iteminfo in split]
-            split_ids = [iteminfo.id for iteminfo in split_iteminfos]
+            split_names = [iteminfo.name for iteminfo in split_iteminfos]
             split_datasets = set()
             for iteminfo in split_iteminfos:
                 split_datasets.add(iteminfo.dataset_name)
@@ -350,7 +350,7 @@ class AddTrainingDataGUI(Widget):
                         f"Dataset '{dataset_name}' from train split is not in the selected datasets."
                     )
 
-                filters = [{"field": "id", "operator": "in", "value": split_ids}]
+                filters = [{"field": "name", "operator": "in", "value": split_names}]
                 image_infos = self.api.image.get_list(dataset_id, filters=filters)
                 image_ids = [image_info.id for image_info in image_infos]
                 split_list.extend(image_ids)
