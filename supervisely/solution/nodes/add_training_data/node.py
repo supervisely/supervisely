@@ -109,23 +109,22 @@ class AddTrainingDataNode(BaseCardNode):
 
         dst_project_id = self.project_id
         src_project_id = settings_data["project_id"]
-        src_dataset_ids = settings_data["dataset_ids"]
         src_workspace_id = settings_data["workspace_id"]
         src_team_id = settings_data["team_id"]
-        # replicate_structure = settings_data.get("replicate_structure", False)
-        replicate_structure = False  # @TODO: add logic later
         train_split, val_split = settings_data.get("splits", (None, None))
         if train_split is None and val_split is None:
             raise RuntimeError("No train/val split selected. Cannot start the task.")
+
+        img_ids = [item_info.id for item_info in train_split + val_split]
+        dst_dataset = self.api.dataset.create(dst_project_id, f"import_{random.randint(0, 1e9)}")
 
         self.show_in_progress_badge()
 
         module_info = self.api.app.get_ecosystem_module_info(slug=self.APP_SLUG)
         params = {
             "state": {
-                "action": "copy" if not replicate_structure else "merge",
-                # "items": [{"id": ds_id, "type": "dataset"} for ds_id in src_dataset_ids],
-                "items": [{"id": img_id, "type": "item"} for img_id in train_split + val_split],
+                "action": "copy",
+                "items": [{"id": img_id, "type": "image"} for img_id in img_ids],
                 "source": {
                     "team": {"id": src_team_id},
                     "workspace": {"id": src_workspace_id},
@@ -135,6 +134,7 @@ class AddTrainingDataNode(BaseCardNode):
                     "team": {"id": team_id},
                     "workspace": {"id": workspace_id},
                     "project": {"id": dst_project_id},
+                    "dataset": {"id": dst_dataset.id},
                 },
                 "options": {
                     "preserveSrcDate": False,
@@ -156,13 +156,18 @@ class AddTrainingDataNode(BaseCardNode):
         task_id = task_info_json["id"]
         thread = threading.Thread(
             target=self.wait_task_complete,
-            args=(task_id, dst_project_id, train_split, val_split),
+            args=(task_id, dst_project_id, train_split, val_split, dst_dataset.id),
             daemon=True,
         )
         thread.start()
 
     def wait_task_complete(
-        self, task_id: int, dst_project_id: int, train_split: List, val_split: List
+        self,
+        task_id: int,
+        dst_project_id: int,
+        train_split: List,
+        val_split: List,
+        dst_dataset_id: int,
     ) -> TrainingDataAddedMessage:
         """Wait until the task is complete."""
         task_info_json = self.api.task.get_info_by_id(task_id)
@@ -195,14 +200,13 @@ class AddTrainingDataNode(BaseCardNode):
         uploaded_ids = self._get_uploaded_ids(dst_project_id, task_id)
         assert uploaded_ids, RuntimeError("Failed to fetch uploaded IDs.")
 
-        # TODO: enhance check
         infos = self.api.image.get_info_by_id_batch(uploaded_ids)
         train_hashes = [item_info.hash for item_info in train_split]
         train_image_ids = [info.id for info in infos if info.hash in train_hashes]
         val_hashes = [item_info.hash for item_info in val_split]
         val_image_ids = [info.id for info in infos if info.hash in val_hashes]
 
-        self._add_new_collection(dst_project_id, train_image_ids, val_image_ids)
+        self._add_new_collection(dst_project_id, train_image_ids, val_image_ids, dst_dataset_id)
 
         return TrainingDataAddedMessage(
             project_id=self.project_id,
@@ -229,7 +233,9 @@ class AddTrainingDataNode(BaseCardNode):
             uploaded_ids.extend(list(map(int, ds.get("uploaded_images", []))))
         return uploaded_ids
 
-    def _add_new_collection(self, project_id: int, train_ids: List, val_ids: List) -> None:
+    def _add_new_collection(
+        self, project_id: int, train_ids: List, val_ids: List, dst_dataset_id
+    ) -> None:
         """Create new collections for training and validation splits."""
         from supervisely.api.entities_collection_api import CollectionTypeFilter
 
@@ -244,6 +250,14 @@ class AddTrainingDataNode(BaseCardNode):
         )
         train_last_ids = [item.id for item in train_last_collection_items]
         val_last_ids = [item.id for item in val_last_collection_items]
+
+        self.api.dataset.update(
+            dst_dataset_id,
+            name=f"Training Data: splits {train_col_idx + 1}",
+            description="Dataset with training/validation splits imported via Add Training Data node in the Solution (task id: {}).".format(
+                sly_env.task_id()
+            ),
+        )
 
         new_train_collection = self.api.entities_collection.create(
             project_id, f"train_{train_col_idx + 1}"

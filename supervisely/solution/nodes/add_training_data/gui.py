@@ -51,17 +51,6 @@ class AddTrainingDataGUI(Widget):
         return self._project_table
 
     @property
-    def replicate_structure_checkbox(self) -> CheckboxField:
-        if not hasattr(self, "_replicate_structure_checkbox"):
-            self._replicate_structure_checkbox = CheckboxField(
-                title="Replicate Dataset Structure",
-                description="If checked, resulting nested datasets will feature the same structure as in the source project.",
-                remove_margins=True,
-            )
-            self._replicate_structure_checkbox.hide()
-        return self._replicate_structure_checkbox
-
-    @property
     def stepper(self) -> StepperProgress:
         if not hasattr(self, "_stepper"):
             steps = [
@@ -126,16 +115,11 @@ class AddTrainingDataGUI(Widget):
 
         table_container = Container(
             [
-                Container(
-                    [
-                        self.select_all_datasets_checkbox,
-                        self.project_table,
-                        self.splits_widget.train_val_splits,
-                    ],
-                    gap=0,
-                ),
-                self.replicate_structure_checkbox,
-            ]
+                self.select_all_datasets_checkbox,
+                self.project_table,
+                self.splits_widget.train_val_splits,
+            ],
+            gap=0,
         )
 
         return Container(
@@ -179,8 +163,6 @@ class AddTrainingDataGUI(Widget):
             if self.project_table.current_table == self.project_table.CurrentTable.PROJECTS:
                 self.project_table.switch_table(self.project_table.CurrentTable.DATASETS)
                 self.stepper.next_step()
-                if self.project_table.has_nested_datasets():
-                    self.replicate_structure_checkbox.show()
                 self.select_all_datasets_checkbox.show()
                 if self.select_all_datasets_checkbox.is_checked():
                     self.project_table.disable()
@@ -195,7 +177,6 @@ class AddTrainingDataGUI(Widget):
                 and self.splits_widget.train_val_splits.is_hidden()
             ):
                 self.stepper.next_step()
-                self.replicate_structure_checkbox.hide()
                 self.select_all_datasets_checkbox.hide()
                 self._set_train_val_splits_data()
                 next_btn.text = "Add"
@@ -227,7 +208,6 @@ class AddTrainingDataGUI(Widget):
                 self.project_table.current_table == self.project_table.CurrentTable.DATASETS
                 and self.splits_widget.train_val_splits.is_hidden()
             ):
-                self.replicate_structure_checkbox.hide()
                 self.select_all_datasets_checkbox.hide()
                 back_btn.hide()
                 self.project_table.switch_table(self.project_table.CurrentTable.PROJECTS)
@@ -244,8 +224,6 @@ class AddTrainingDataGUI(Widget):
                 next_btn.enable()
                 self.splits_widget.train_val_splits.hide()
                 self.project_table.switch_table(self.project_table.CurrentTable.DATASETS)
-                if self.project_table.has_nested_datasets():
-                    self.replicate_structure_checkbox.show()
                 self.select_all_datasets_checkbox.show()
                 if self.select_all_datasets_checkbox.is_checked():
                     self.project_table.disable()
@@ -290,25 +268,16 @@ class AddTrainingDataGUI(Widget):
 
     def _trigger_settings_saved_event(self):
         """Trigger all registered settings saved callbacks"""
-        selected_ids_to_parents = {}
-        ds_infos = sorted(self.project_table.get_selected_datasets(), key=lambda x: x.id)
-        full_names = self.project_table.get_selected_datasets_full_names()
-        for ds_info, full_name in zip(ds_infos, full_names):
-            ds_name = ds_info.name
-            parents = full_name.removesuffix(ds_name).rstrip("/")
-            selected_ids_to_parents[ds_info.id] = parents.split("/")
+        dataset_ids = self.project_table.get_selected_dataset_ids()
 
-        self.splits_widget.train_val_splits._dataset_ids = list(selected_ids_to_parents.keys())
+        self.splits_widget.train_val_splits._dataset_ids = dataset_ids
         train_split_ids, val_split_ids = self.splits_widget.get_splits()
 
         settings_data = {
             "workspace_id": self.project_table.team_workspace_selector.get_selected_workspace_id(),
             "team_id": self.project_table.team_workspace_selector.get_selected_team_id(),
             "project_id": self.get_selected_project_id(),
-            "dataset_ids": self.get_selected_dataset_ids(),
             "splits": (train_split_ids, val_split_ids),
-            "replicate_structure": self.replicate_structure_checkbox.is_checked(),
-            "selected_ids_to_parents": selected_ids_to_parents,
         }
 
         for callback in self._on_settings_saved_callbacks:
