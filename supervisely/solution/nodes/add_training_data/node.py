@@ -94,14 +94,19 @@ class AddTrainingDataNode(BaseCardNode):
     # ------------------------------------------------------------------
     # Events -----------------------------------------------------------
     # ------------------------------------------------------------------
-    def _available_subscribe_methods(self) -> Dict[str, Union[Callable, List[Callable]]]:
-        """Returns a dictionary of methods that can be used for subscribing to events."""
+    # def _available_subscribe_methods(self) -> Dict[str, Union[Callable, List[Callable]]]:
+    #     """Returns a dictionary of methods that can be used for subscribing to events."""
+    #     return {
+    #         "add_training_data_id": self.start_task,
+    #     }
+
+    def _available_publish_methods(self) -> Dict[str, Callable]:
         return {
             "add_training_data_id": self.start_task,
         }
 
     def start_task(self) -> None:
-        """Start the task to copy training daata from one project to another."""
+        """Start the task to copy training data from one project to another."""
         if not self.settings_data:
             return
 
