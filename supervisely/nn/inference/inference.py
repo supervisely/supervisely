@@ -1105,31 +1105,37 @@ class Inference:
         self.model_precision = deploy_params.get("model_precision", ModelPrecision.FP32)
         self._hardware = get_hardware_info(self.device)
 
-        checkpoint_path = deploy_params["model_files"]["checkpoint"]
-        checkpoint_ext = sly_fs.get_file_ext(checkpoint_path)
-        if self.runtime == RuntimeType.TENSORRT and checkpoint_ext == ".engine":
-            try:
-                self.load_model(**deploy_params)
-            except Exception as e:
-                logger.warning(f"Failed to load model with TensorRT. Downloading PyTorch to export to TensorRT. Error: {repr(e)}")
-                checkpoint_path = self._fallback_download_custom_model_pt(deploy_params)
+        model_files = deploy_params.get("model_files", None)
+        if model_files is not None:
+            checkpoint_path = deploy_params["model_files"]["checkpoint"]
+            checkpoint_ext = sly_fs.get_file_ext(checkpoint_path)
+            if self.runtime == RuntimeType.TENSORRT and checkpoint_ext == ".engine":
+                try:
+                    self.load_model(**deploy_params)
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to load model with TensorRT. Downloading PyTorch to export to TensorRT. Error: {repr(e)}"
+                    )
+                    checkpoint_path = self._fallback_download_custom_model_pt(deploy_params)
+                    deploy_params["model_files"]["checkpoint"] = checkpoint_path
+                    logger.info("Exporting PyTorch model to TensorRT...")
+                    self._remove_exported_checkpoints(checkpoint_path)
+                    checkpoint_path = self.export_tensorrt(deploy_params)
+                    deploy_params["model_files"]["checkpoint"] = checkpoint_path
+                    self.load_model(**deploy_params)
+            if checkpoint_ext in (".pt", ".pth") and not self.runtime == RuntimeType.PYTORCH:
+                if self.runtime == RuntimeType.ONNXRUNTIME:
+                    logger.info("Exporting PyTorch model to ONNX...")
+                    self._remove_exported_checkpoints(checkpoint_path)
+                    checkpoint_path = self.export_onnx(deploy_params)
+                elif self.runtime == RuntimeType.TENSORRT:
+                    logger.info("Exporting PyTorch model to TensorRT...")
+                    self._remove_exported_checkpoints(checkpoint_path)
+                    checkpoint_path = self.export_tensorrt(deploy_params)
                 deploy_params["model_files"]["checkpoint"] = checkpoint_path
-                logger.info("Exporting PyTorch model to TensorRT...")
-                self._remove_exported_checkpoints(checkpoint_path)
-                checkpoint_path = self.export_tensorrt(deploy_params)
-                deploy_params["model_files"]["checkpoint"] = checkpoint_path
                 self.load_model(**deploy_params)
-        if checkpoint_ext in (".pt", ".pth") and not self.runtime == RuntimeType.PYTORCH:
-            if self.runtime == RuntimeType.ONNXRUNTIME:
-                logger.info("Exporting PyTorch model to ONNX...")
-                self._remove_exported_checkpoints(checkpoint_path)
-                checkpoint_path = self.export_onnx(deploy_params)
-            elif self.runtime == RuntimeType.TENSORRT:
-                logger.info("Exporting PyTorch model to TensorRT...")
-                self._remove_exported_checkpoints(checkpoint_path)
-                checkpoint_path = self.export_tensorrt(deploy_params)
-            deploy_params["model_files"]["checkpoint"] = checkpoint_path
-            self.load_model(**deploy_params)
+            else:
+                self.load_model(**deploy_params)
         else:
             self.load_model(**deploy_params)
 
