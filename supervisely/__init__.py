@@ -112,7 +112,7 @@ from supervisely.worker_api.chunking import (
     ChunkedFileWriter,
     ChunkedFileReader,
 )
-import supervisely.worker_proto.worker_api_pb2 as api_proto
+# Global import of api_proto removed - now imported locally where needed
 
 from supervisely.api.api import Api, UserSession, ApiContext
 from supervisely.api import api
