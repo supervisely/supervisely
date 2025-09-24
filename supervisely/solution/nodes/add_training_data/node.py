@@ -114,10 +114,9 @@ class AddTrainingDataNode(BaseCardNode):
         src_team_id = settings_data["team_id"]
         # replicate_structure = settings_data.get("replicate_structure", False)
         replicate_structure = False  # @TODO: add logic later
-        train_split, val_split = settings_data.get("splits_ids", (None, None))
+        train_split, val_split = settings_data.get("splits", (None, None))
         if train_split is None and val_split is None:
             raise RuntimeError("No train/val split selected. Cannot start the task.")
-        train_items, val_items = settings_data.get("splits_item", ([], []))
 
         self.show_in_progress_badge()
 
@@ -157,27 +156,19 @@ class AddTrainingDataNode(BaseCardNode):
         task_id = task_info_json["id"]
         thread = threading.Thread(
             target=self.wait_task_complete,
-            args=(task_id, dst_project_id, train_items, val_items),
+            args=(task_id, dst_project_id, train_split, val_split),
             daemon=True,
         )
         thread.start()
 
     def wait_task_complete(
-        self, task_id: int, dst_project_id: int, train_items: List, val_items: List
+        self, task_id: int, dst_project_id: int, train_split: List, val_split: List
     ) -> TrainingDataAddedMessage:
         """Wait until the task is complete."""
         task_info_json = self.api.task.get_info_by_id(task_id)
         if task_info_json is None:
             logger.error(f"Task with ID {task_id} not found.")
             return
-
-        # # list project before task is started
-        # datasets = self.api.dataset.get_list(dst_project_id, recursive=True)
-        # dataset_images = {}
-        # for dataset_info in datasets:
-        #     dataset_images[(dataset_info.id, dataset_info.name)] = self.api.image.get_list(
-        #         dataset_info.id
-        #     )
 
         current_time = time.time()
         while (task_status := self.api.task.get_status(task_id)) != self.api.task.Status.FINISHED:
@@ -201,52 +192,17 @@ class AddTrainingDataNode(BaseCardNode):
         if not success:
             logger.error(f"Task {task_id} failed with status: {task_status}")
 
-        # # list project after task is finished
-        # new_datasets = self.api.dataset.get_list(dst_project_id, recursive=True)
-        # new_dataset_images = {}
-        # for dataset_info in new_datasets:
-        #     new_dataset_images[(dataset_info.id, dataset_info.name)] = self.api.image.get_list(
-        #         dataset_info.id
-        #     )
-        # train_names = [item_info.name for item_info in train_items]
-        # val_names = [item_info.name for item_info in val_items]
-
-        # # find new images in the project and add them to the corresponding split collections
-        # train_image_ids, val_image_ids = [], []
-        # for (ds_id, ds_name), images in new_dataset_images.items():
-        #     prev_images = dataset_images.get((ds_id, ds_name), [])
-        #     if not prev_images:
-        #         for image_info in images:
-        #             if image_info.name in train_names:
-        #                 train_image_ids.append(image_info.id)
-        #             elif image_info.name in val_names:
-        #                 val_image_ids.append(image_info.id)
-        #         continue
-        #     old_image_ids = {img_info.id for img_info in prev_images}
-        #     current_images = {img_info.id for img_info in images}
-        #     new_image_ids = list(current_images - old_image_ids)
-        #     new_images = [img_info for img_info in images if img_info.id in new_image_ids]
-        #     for image_info in new_images:
-        #         if image_info.name in train_names:
-        #             train_image_ids.append(image_info.id)
-        #         elif image_info.name in val_names:
-        #             val_image_ids.append(image_info.id)
-
         uploaded_ids = self._get_uploaded_ids(dst_project_id, task_id)
-
-        train_names = [item_info.name for item_info in train_items]
-        val_names = [item_info.name for item_info in val_items]
+        assert uploaded_ids, RuntimeError("Failed to fetch uploaded IDs.")
 
         # TODO: enhance check
         infos = self.api.image.get_info_by_id_batch(uploaded_ids)
-        train_image_ids = [info.id for info in infos if info.name in train_names]
-        val_image_ids = [info.id for info in infos if info.name in val_names]
+        train_hashes = [item_info.hash for item_info in train_split]
+        train_image_ids = [info.id for info in infos if info.hash in train_hashes]
+        val_hashes = [item_info.hash for item_info in val_split]
+        val_image_ids = [info.id for info in infos if info.hash in val_hashes]
 
-        train_col, train_col_idx = get_last_split_collection(self.api, dst_project_id, "train")
-        val_col, val_col_idx = get_last_split_collection(self.api, dst_project_id, "val")
-
-        self.api.entities_collection.add_items(train_col.id, train_image_ids)
-        self.api.entities_collection.add_items(val_col.id, val_image_ids)
+        self._add_new_collection(dst_project_id, train_image_ids, val_image_ids)
 
         return TrainingDataAddedMessage(
             project_id=self.project_id,
@@ -272,3 +228,29 @@ class AddTrainingDataNode(BaseCardNode):
         for ds in record.get("datasets", []):
             uploaded_ids.extend(list(map(int, ds.get("uploaded_images", []))))
         return uploaded_ids
+
+    def _add_new_collection(self, project_id: int, train_ids: List, val_ids: List) -> None:
+        """Create new collections for training and validation splits."""
+        from supervisely.api.entities_collection_api import CollectionTypeFilter
+
+        train_col, train_col_idx = get_last_split_collection(self.api, project_id, "train_")
+        val_col, val_col_idx = get_last_split_collection(self.api, project_id, "val_")
+
+        train_last_collection_items = self.api.entities_collection.get_items(
+            train_col.id, CollectionTypeFilter.DEFAULT, project_id
+        )
+        val_last_collection_items = self.api.entities_collection.get_items(
+            val_col.id, CollectionTypeFilter.DEFAULT, project_id
+        )
+        train_last_ids = [item.id for item in train_last_collection_items]
+        val_last_ids = [item.id for item in val_last_collection_items]
+
+        new_train_collection = self.api.entities_collection.create(
+            project_id, f"train_{train_col_idx + 1}"
+        )
+        new_val_collection = self.api.entities_collection.create(
+            project_id, f"val_{val_col_idx + 1}"
+        )
+
+        self.api.entities_collection.add_items(new_train_collection.id, train_last_ids + train_ids)
+        self.api.entities_collection.add_items(new_val_collection.id, val_last_ids + val_ids)

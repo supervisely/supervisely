@@ -542,7 +542,7 @@ class SelectDatasetTree(Widget):
             for dataset_info, children in subnodes.items():
                 if dataset_info.id in dataset_ids:
                     return True
-                if _subnodes_in_filter(children, dataset_ids):
+                if _subnodes_in_filter(children):
                     return True
             return False
 

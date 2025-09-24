@@ -64,6 +64,7 @@ class TeamWorkspaceSelect(Widget):
         self._selectors_style = selectors_style
         self._gap = 20 if direction == "horizontal" else 10
         self._changes_handled = False
+        self._value_changed_callback = None
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     @property
@@ -91,10 +92,6 @@ class TeamWorkspaceSelect(Widget):
                 self._team_id = value
                 self._update_workspace_selector()
 
-                if hasattr(self, "_value_change_callback") and self._value_change_callback:
-                    result = {"teamId": self._team_id, "workspaceId": self._workspace_id}
-                    self._value_change_callback(result)
-
             self._team_selector = select
         return self._team_selector
 
@@ -112,9 +109,9 @@ class TeamWorkspaceSelect(Widget):
                 StateJson()[self.widget_id]["workspaceId"] = value
                 StateJson().send_changes()
 
-                if hasattr(self, "_workspace_change_callback") and self._workspace_change_callback:
+                if self._changes_handled:
                     result = {"teamId": self._team_id, "workspaceId": value}
-                    self._workspace_change_callback(result)
+                    self._value_changed_callback(result)
 
             self._workspace_selector = select
         return self._workspace_selector
@@ -173,9 +170,8 @@ class TeamWorkspaceSelect(Widget):
 
     def value_changed(self, func):
         """Register a callback function to be called when team or workspace selection changes"""
-        self._value_change_callback = func
         self._changes_handled = True
-        self._workspace_change_callback = func
+        self._value_changed_callback = func
 
         return func
 
@@ -272,6 +268,7 @@ class ProjectDatasetTable(Widget):
                 try:
                     self.table.loading = True
                     self._refresh_table()
+                    self.table.clear_selection()
                 finally:
                     self.table.loading = False
 
@@ -313,8 +310,9 @@ class ProjectDatasetTable(Widget):
         data_json = self.table.to_json()
         data_json["data"] = data
         item_ids = [row[1] for row in data]
-        if item_ids != self._id_to_search_str.keys():
+        if item_ids != list(self._id_to_search_str.keys()):
             self._get_search_sort_keys()
+            assert item_ids == list(self._id_to_search_str.keys())
         self.table.read_json(data_json, custom_columns=columns)
         self.table._refresh()
 
@@ -393,13 +391,6 @@ class ProjectDatasetTable(Widget):
     def _sort_function(self, data: pd.DataFrame, column_idx: int, order: str = "asc"):
         if not self._id_to_sort_key:
             return data
-        p_ids = [row[1] for row in data.values]
-        # !TODO: delete after testing
-        if any(
-            pid_data != pid
-            for pid_data, pid in zip(sorted(p_ids), sorted(self._id_to_search_str.keys()))
-        ):
-            print("Mismatch in project IDs and sort keys!")
         data = data.copy()
         first_sort_keys = next(iter(self._id_to_sort_key.values()), [])
         if column_idx >= len(first_sort_keys) if self._id_to_sort_key else True:
@@ -513,9 +504,10 @@ class ProjectDatasetTable(Widget):
                 info.name.lower(),
                 p_id,
                 dt.timestamp(),
-                info.type.lower(),
                 info.items_count,
             ]
+            if self.current_table == self.CurrentTable.PROJECTS:
+                search_value.insert(3, info.type.replace("_", " ").lower())
             self._id_to_search_str[p_id] = "".join(str(v) for v in search_value)
             self._id_to_sort_key[p_id] = search_value
 

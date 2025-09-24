@@ -1,29 +1,23 @@
-from typing import Callable, List, Tuple
+from types import MethodType
+from typing import Callable, List
 
 from supervisely import logger
 from supervisely.api.api import Api
 from supervisely.app.widgets import (
     Button,
-    Checkbox,
     CheckboxField,
     Container,
     Dialog,
     Flexbox,
-    NotificationBox,
     ProjectDatasetTable,
-    ReloadableArea,
     StepperProgress,
     Text,
     Widget,
 )
-from supervisely.nn.training.gui.train_val_splits_selector import (
-    TrainValSplits,
-    TrainValSplitsSelector,
-)
+from supervisely.nn.training.gui.train_val_splits_selector import TrainValSplitsSelector
 from supervisely.project.project import ProjectType
 
 
-# At the moment it is very tricky to get resulting DatasetInfos as they are being created externally - Not implemented yet.
 class AddTrainingDataGUI(Widget):
     """
     GUI for Add Training Data node.
@@ -108,17 +102,12 @@ class AddTrainingDataGUI(Widget):
     @property
     def splits_widget(self) -> TrainValSplitsSelector:
         if not hasattr(self, "_splits_widget"):
-            # self._splits_widget = TrainValSplits(
-            #     # project_id=project_id,
-            #     random_splits=True,
-            #     tags_splits=True,
-            #     datasets_splits=True,
-            #     collections_splits=True,
-            # )
-            # self._splits_widget.hide()
             self._splits_widget = TrainValSplitsSelector(self.api)
             self._splits_widget.train_val_splits.hide()
-            self._splits_widget.train_val_splits.get_splits = self._get_splits_downloadless
+
+            self._splits_widget.train_val_splits.get_splits = MethodType(
+                AddTrainingDataGUI._get_splits_downloadless, self._splits_widget.train_val_splits
+            )
 
         return self._splits_widget
 
@@ -276,8 +265,12 @@ class AddTrainingDataGUI(Widget):
         if not project_id:
             raise RuntimeError("Project ID is not selected. Cannot set splits data.")
         dataset_ids = self.get_selected_dataset_ids()
-        self.splits_widget.set_project_id(project_id, dataset_ids)
-        self.splits_widget._detect_splits(True, True, True)
+        try:
+            self.splits_widget.train_val_splits._content.loading = True
+            self.splits_widget.set_project_id(project_id, dataset_ids)
+            self.splits_widget._detect_splits(True, True, True)
+        finally:
+            self.splits_widget.train_val_splits._content.loading = False
 
     def get_json_data(self) -> dict:
         return {}
@@ -305,19 +298,15 @@ class AddTrainingDataGUI(Widget):
             parents = full_name.removesuffix(ds_name).rstrip("/")
             selected_ids_to_parents[ds_info.id] = parents.split("/")
 
-        split_method = self.splits_widget.get_split_method()
-        split_iteminfos = self.splits_widget.get_splits()
-        train_split_ids, val_split_ids = self._get_ids_from_iteminfos(
-            split_method, *split_iteminfos
-        )
+        self.splits_widget.train_val_splits._dataset_ids = list(selected_ids_to_parents.keys())
+        train_split_ids, val_split_ids = self.splits_widget.get_splits()
 
         settings_data = {
             "workspace_id": self.project_table.team_workspace_selector.get_selected_workspace_id(),
             "team_id": self.project_table.team_workspace_selector.get_selected_team_id(),
             "project_id": self.get_selected_project_id(),
             "dataset_ids": self.get_selected_dataset_ids(),
-            "splits_ids": (train_split_ids, val_split_ids),
-            "splits_item": split_iteminfos,
+            "splits": (train_split_ids, val_split_ids),
             "replicate_structure": self.replicate_structure_checkbox.is_checked(),
             "selected_ids_to_parents": selected_ids_to_parents,
         }
@@ -327,40 +316,6 @@ class AddTrainingDataGUI(Widget):
                 callback(settings_data)
             except Exception as e:
                 logger.error(f"Error in settings saved callback: {e}")
-
-    def _get_ids_from_iteminfos(
-        self, split_method, train_iteminfos, val_iteminfos
-    ) -> Tuple[List[int], List[int]]:
-        if split_method in ["Based on collections", "Based on item tags"]:
-            project_id = self.project_table.get_selected_project_id()
-            dataset_infos = self.api.dataset.get_list(project_id, recursive=True)
-            ds_name_to_id = {ds_info.name: ds_info.id for ds_info in dataset_infos}
-        else:
-            ds_name_to_id = {
-                ds_info.name: ds_info.id for ds_info in self.project_table.get_selected_datasets()
-            }
-
-        train_split, val_split = [], []
-        for split, split_list in ((train_iteminfos, train_split), (val_iteminfos, val_split)):
-            split_iteminfos = [iteminfo for iteminfo in split]
-            split_names = [iteminfo.name for iteminfo in split_iteminfos]
-            split_datasets = set()
-            for iteminfo in split_iteminfos:
-                split_datasets.add(iteminfo.dataset_name)
-
-            for dataset_name in split_datasets:
-                dataset_id = ds_name_to_id.get(dataset_name)
-                if dataset_id is None:
-                    raise RuntimeError(
-                        f"Dataset '{dataset_name}' from train split is not in the selected datasets."
-                    )
-
-                filters = [{"field": "name", "operator": "in", "value": split_names}]
-                image_infos = self.api.image.get_list(dataset_id, filters=filters)
-                image_ids = [image_info.id for image_info in image_infos]
-                split_list.extend(image_ids)
-
-        return train_split, val_split
 
     def _get_splits_downloadless(self):
         import random
