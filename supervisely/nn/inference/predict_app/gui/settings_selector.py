@@ -274,6 +274,7 @@ class SettingsSelector:
         }
         if self.input_selector.get_settings().get("video_id", None) is not None:
             settings["tracking"] = self.tracking_checkbox.is_checked()
+        return settings
 
     def load_from_json(self, data):
         # inference_mode = data.get("inference_mode", None)
