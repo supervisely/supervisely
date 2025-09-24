@@ -120,7 +120,7 @@ class OutputSelector:
 
     def get_settings(self) -> Dict[str, Any]:
         settings = {}
-        if self.tabs.get_active_tab() == self._tab_names[0]:
+        if self.tabs.get_active_tab() == self._tab_names[1]:
             settings["upload_to_source_project"] = True
         else:
             settings["project_name"] = self.project_name_input.get_value()
