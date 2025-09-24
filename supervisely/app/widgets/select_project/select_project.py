@@ -45,8 +45,9 @@ class SelectProject(Widget):
 
         self._default_id = _get_int_or_env(self._default_id, "modal.state.slyProjectId")
         if self._default_id is not None:
-            info = self._api.project.get_info_by_id(self._default_id, raise_error=True)
-            self._ws_id = info.workspace_id
+            info = self._api.project.get_info_by_id(self._default_id, raise_error=False)
+            if info is not None:
+                self._ws_id = info.workspace_id
         self._ws_id = _get_int_or_env(self._ws_id, "context.workspaceId")
 
         if self._ws_id is not None:
