@@ -28,6 +28,8 @@ class Dialog(Widget):
         dialog = Dialog(title="Dialog title", content=Input("Input"), size="large")
         dialog.show()
     """
+    class Routes:
+        ON_CLOSE = "close_cb"
 
     def __init__(
         self,
@@ -40,6 +42,16 @@ class Dialog(Widget):
         self._content = content
         self._size = size
         super().__init__(widget_id=widget_id, file_path=__file__)
+
+        server = self._sly_app.get_server()
+        route = self.get_route_path(Dialog.Routes.ON_CLOSE)
+        @server.post(route)
+        def _on_close():
+            # * Change visibility state to False when dialog is closed on client side
+            visible = StateJson()[self.widget_id]["visible"]
+            if visible is True:
+                StateJson()[self.widget_id]["visible"] = False
+                # * no need to call send_changes(), as it is already changed on client side
 
     def get_json_data(self) -> Dict[str, str]:
         """Returns dictionary with widget data, which defines the appearance and behavior of the widget.
