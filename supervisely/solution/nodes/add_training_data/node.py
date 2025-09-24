@@ -44,7 +44,7 @@ class AddTrainingDataNode(BaseCardNode):
         # --- core blocks --------------------------------------------------------
         self.gui = AddTrainingDataGUI(api=self.api)
         self.gui.project_table.set_project_filter(
-            lambda p: p.id != self.project_id and p.item_count > 0
+            lambda p: p.id != self.project_id and p.items_count > 0
         )
         self.modal_content = self.gui.widget
 

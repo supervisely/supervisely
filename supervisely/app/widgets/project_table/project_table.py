@@ -212,9 +212,9 @@ class ProjectDatasetTable(Widget):
         self._sort_order = sort_order
         self._page_size = page_size
         self._width = width
+        self._project_filter_fn = lambda p: True if project_filter_fn is None else project_filter_fn
         super().__init__(widget_id=widget_id, file_path=__file__)
         self._content = self.table
-        self._project_filter_fn = lambda p: True if project_filter_fn is None else project_filter_fn
 
     @property
     def current_table(self):
