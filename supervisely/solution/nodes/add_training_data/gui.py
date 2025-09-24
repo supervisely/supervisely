@@ -269,15 +269,12 @@ class AddTrainingDataGUI(Widget):
     def _trigger_settings_saved_event(self):
         """Trigger all registered settings saved callbacks"""
         dataset_ids = self.project_table.get_selected_dataset_ids()
-
         self.splits_widget.train_val_splits._dataset_ids = dataset_ids
-        train_split_ids, val_split_ids = self.splits_widget.get_splits()
 
         settings_data = {
             "workspace_id": self.project_table.team_workspace_selector.get_selected_workspace_id(),
             "team_id": self.project_table.team_workspace_selector.get_selected_team_id(),
             "project_id": self.get_selected_project_id(),
-            "splits": (train_split_ids, val_split_ids),
         }
 
         for callback in self._on_settings_saved_callbacks:
@@ -335,7 +332,7 @@ class AddTrainingDataGUI(Widget):
                 ann_infos = self._api.annotation.get_list(ds_info.id)
                 anns = [Annotation.from_json(ann.annotation, project_meta) for ann in ann_infos]
                 for ann_info, ann in zip(ann_infos, anns):
-                    tags = [tag.name for tag in ann.tags]
+                    tags = [tag.name for tag in ann.img_tags]
                     if train_tag_name in tags:
                         train_set.append(self._api.image.get_info_by_id(ann_info.image_id))
                     elif val_tag_name in tags:

@@ -1,6 +1,6 @@
 import json
 from datetime import datetime
-from typing import List, Literal, Optional
+from typing import Callable, List, Literal, Optional
 
 import pandas as pd
 
@@ -190,6 +190,7 @@ class ProjectDatasetTable(Widget):
         allowed_project_types: Optional[List[ProjectType]] = None,
         team_id: Optional[int] = None,
         workspace_id: Optional[int] = None,
+        project_filter_fn: Optional[Callable] = None,
         widget_id: Optional[str] = None,
     ):
         self._api = Api()
@@ -213,6 +214,7 @@ class ProjectDatasetTable(Widget):
         self._width = width
         super().__init__(widget_id=widget_id, file_path=__file__)
         self._content = self.table
+        self._project_filter_fn = lambda p: True if project_filter_fn is None else project_filter_fn
 
     @property
     def current_table(self):
@@ -273,6 +275,17 @@ class ProjectDatasetTable(Widget):
                     self.table.loading = False
 
         return self._team_workspace_selector
+
+    def set_project_filter(self, filter_fn: Callable):
+        """Set a filter function to filter projects displayed in the table."""
+        self._project_filter_fn = filter_fn
+        if self.current_table == self.CurrentTable.PROJECTS:
+            try:
+                self.table.loading = True
+                self._refresh_table()
+                self.table.clear_selection()
+            finally:
+                self.table.loading = False
 
     def switch_table(self, table: Literal["projects", "datasets"]):
         if self.current_table == table:
@@ -470,7 +483,7 @@ class ProjectDatasetTable(Widget):
             filters=filters,
         )
 
-        id_to_info = {p.id: p for p in projects}
+        id_to_info = {p.id: p for p in list(filter(self._project_filter_fn, projects))}
         self._project_id_to_info = id_to_info
 
         table_data = []
