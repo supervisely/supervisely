@@ -4440,6 +4440,7 @@ def _get_log_extra_for_inference_request(
         "pending_results": inference_request.pending_num(),
         "exception": inference_request.exception_json(),
         "preparing_progress": progress,
+        "result": inference_request.final_result is not None,  # for backward compatibility
     }
     return log_extra
 
