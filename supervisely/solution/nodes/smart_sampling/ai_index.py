@@ -54,6 +54,7 @@ class AiIndexNode(EmptyNode):
         self._stop_autorefresh = False
         self._refresh_thread = None
         self.api = Api.from_env()
+        self._clip_message_processed = False
         self.check_embeddings_status()
 
     # ------------------------------------------------------------------
@@ -98,8 +99,11 @@ class AiIndexNode(EmptyNode):
         }
 
     def process_message_from_clip_service(self, message: CLIPServiceStatusMessage) -> None:
-        if message.is_ready:
+        if message.is_ready and not self._clip_message_processed:
             self.check_embeddings_status()
+            self._clip_message_processed = True
+        elif not message.is_ready:
+            self._clip_message_processed = False
 
     def check_embeddings_status(self) -> EmbeddingsStatusMessage:
         """Check that project embeddings are enabled, not in progress, and up to date."""

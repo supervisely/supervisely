@@ -5,7 +5,7 @@ from supervisely.app.fastapi import _MainServer
 from supervisely.app.widgets.vue_flow.models import (
     NodeBadge,
     NodeBadgeStyle,
-    NodeBadgeStyleMap,
+    get_badge_style,
     NodeLink,
     NodeSettings,
     TooltipProperty,
@@ -101,7 +101,7 @@ class Node:
             value=value,
             link={"url": link} if link else None,
             highlight=highlight if highlight is not None else False,
-        )   
+        )
         self.settings.tooltip.properties.append(new_prop)
         self.update_node(self)
 
@@ -150,8 +150,9 @@ class Node:
             badge._on_hover = on_hover
         if plain is not None and plain:
             badge.style = NodeBadgeStyle()
-        elif badge_type is not None and badge_type in NodeBadgeStyleMap.__members__:
-            badge.style = NodeBadgeStyleMap[badge_type].value
+        elif badge_type is not None:
+            if badge_type in ["info", "success", "warning", "error"]:
+                badge.style = get_badge_style(badge_type)
         self.update_node(self)
 
     def update_badge_by_key(
@@ -171,15 +172,25 @@ class Node:
                 if plain is not None and plain:
                     badge.style = NodeBadgeStyle()
                 elif badge_type is not None:
-                    badge.style = NodeBadgeStyleMap[badge_type].value
+                    badge.style = get_badge_style(badge_type)
                 self.update_node(self)
                 return
         # If badge not found, add it
         if plain:
             style = NodeBadgeStyle()
         else:
-            badge_type = badge_type if badge_type in NodeBadgeStyleMap.__members__ else "info"
-            style = NodeBadgeStyleMap[badge_type].value
+            badge_type = (
+                badge_type
+                if badge_type
+                in [
+                    "info",
+                    "success",
+                    "warning",
+                    "error",
+                ]
+                else "info"
+            )
+            style = get_badge_style(badge_type)
         new_badge = NodeBadge(label=key, value=label, style=style)
         self.add_badge(new_badge)
 
