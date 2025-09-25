@@ -7,18 +7,18 @@ class TrainingDataHistory(TasksHistory):
         super().__init__(api)
         self._table_columns = [
             "Task ID",
-            "App Name",
-            "Dataset IDs",
+            "Split Method",
+            "Train Split Items",
+            "Val Split Items",
             "Started At",
-            "Images Count",
             "Status",
         ]
         self.columns_keys = [
-            ["task_id"],
-            ["app", "name"],
-            ["datasets", "id"],
-            ["timestamp"],
-            ["items_count"],
+            ["id"],
+            ["split_method"],
+            ["train_count"],
+            ["val_count"],
+            ["started_at"],
             ["status"],
         ]
 
