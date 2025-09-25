@@ -593,10 +593,10 @@ class ExperimentSelector(Widget):
                     project_info=project_info,
                 )
 
-                def this_row_checkpoint_changed(checkpoint_value: str):
+                def current_row_checkpoint_changed(checkpoint_value: str):
                     self._checkpoint_changed(model_row, checkpoint_value)
 
-                model_row.checkpoint_changed = this_row_checkpoint_changed
+                model_row.checkpoint_changed = current_row_checkpoint_changed
                 return experiment_info.task_type, model_row
             except Exception as e:
                 logger.debug(f"Failed to process experiment info: {experiment_info}")
@@ -644,10 +644,10 @@ class ExperimentSelector(Widget):
             project_info=project_info,
         )
 
-        def this_row_checkpoint_changed(checkpoint_value: str):
+        def current_row_checkpoint_changed(checkpoint_value: str):
             self._checkpoint_changed(model_row, checkpoint_value)
 
-        model_row.checkpoint_changed = this_row_checkpoint_changed
+        model_row.checkpoint_changed = current_row_checkpoint_changed
 
         self._rows = [model_row] + self._rows
         self._experiment_infos = [experiment_info] + self._experiment_infos
