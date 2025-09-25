@@ -2,6 +2,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import MISSING, dataclass, fields
 from json import JSONDecodeError
 from os.path import dirname, join
+from pathlib import Path
 from typing import Dict, List, Optional, Union
 
 import requests
@@ -272,30 +273,30 @@ def get_new_experiment_infos(
 
     metadata_name = "experiment_info.json"
     experiments_folder = "/experiments"
-    existing_artifact_paths = {info.artifacts_dir for info in existing_experiment_infos}
+    existing_paths = {Path(i.artifacts_dir) for i in existing_experiment_infos}
 
-    file_infos = api.file.list(team_id, experiments_folder, recursive=True, return_type="fileinfo")
+    file_infos = api.storage.list(team_id, experiments_folder, include_folders=False)
     filter_fn = (
-        lambda fi: fi.path.endswith(metadata_name)
-        and dirname(fi.path) not in existing_artifact_paths
+        lambda fi: Path(fi.path).name == metadata_name
+        and Path(fi.path).parent not in existing_paths
     )
     filtered_infos = list(filter(filter_fn, file_infos))
     sorted_experiment_paths = []
     for file_info in filtered_infos:
-        experiment_dir = dirname(file_info.path)
-        if task_id is not None and not basename(experiment_dir).startswith(str(task_id)):
+        experiment_dir = Path(file_info.path).parent
+        if task_id is not None and not experiment_dir.name.startswith(str(task_id)):
             continue
-        experiment_path = join(experiment_dir, metadata_name)
+        experiment_path = experiment_dir / metadata_name
         sorted_experiment_paths.append(experiment_path)
 
     if len(sorted_experiment_paths) == 0:
         logger.info("No new experiments found.")
-        return existing_experiment_infos
+        return []
 
     new_experiment_infos = []
     logger.info(f"Found {len(sorted_experiment_paths)} new experiments.")
     for experiment_path in sorted_experiment_paths:
-        experiment_info = _fetch_experiment_data(api, team_id, experiment_path)
+        experiment_info = _fetch_experiment_data(api, team_id, str(experiment_path))
         if experiment_info is not None:
             new_experiment_infos.append(experiment_info)
     return new_experiment_infos

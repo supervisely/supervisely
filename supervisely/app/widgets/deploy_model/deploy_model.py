@@ -231,7 +231,7 @@ class DeployModel(Widget):
 
             @self.experiment_table.checkpoint_changed
             def _checkpoint_changed(row: ExperimentSelector.ModelRow, checkpoint_value: str):
-                print(f"Checkpoint changed for {row._experiment_info.task_id}: {checkpoint_value}")
+                logger.debug(f"Checkpoint changed for {row._experiment_info.task_id}: {checkpoint_value}")
 
             return self.experiment_table
 
@@ -247,7 +247,11 @@ class DeployModel(Widget):
             for new_exp in new_experiment_infos:
                 self.experiment_table.append_experiment(new_exp)
                 # self.experiment_table.set_selected_row_by_experiment_info(new_exp)
-                self.experiment_table.set_selected_row_by_task_id(new_exp.task_id)
+            if task_id is not None:
+                self.experiment_table.set_selected_row_by_task_id(task_id)
+            elif len(new_experiment_infos) > 0:
+                self.experiment_table.set_selected_row_by_task_id(new_experiment_infos[-1].task_id)
+            
 
         def get_deploy_parameters(self) -> Dict[str, Any]:
             experiment_info = self.experiment_table.get_selected_experiment_info()

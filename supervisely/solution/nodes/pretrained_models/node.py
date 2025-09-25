@@ -134,76 +134,9 @@ class BaseTrainNode(BaseCardNode):
 
     def _available_subscribe_methods(self):
         """Returns a dictionary of methods that can be used as callbacks for subscribed events."""
-        return {"data_versioning_project_id": self.get_data_versioning_project_id}
+        return {"data_versioning_project_id": self._get_data_versioning_project_id}
 
-    def send_data_moving_finished_message(
-        self,
-        success: bool,
-        items: List[int],
-        items_count: int,
-    ) -> MoveLabeledDataFinishedMessage:
-        return MoveLabeledDataFinishedMessage(
-            success=success,
-            items=items,
-            items_count=items_count,
-        )
-
-    # def send_images_count_message(self, count: int) -> LabelingQueueAcceptedImagesMessage:
-    #     return LabelingQueueAcceptedImagesMessage(accepted_images=[i for i in range(count)])
-
-    # publish event (may send Message object)
-    def wait_task_complete(
-        self,
-        task_id: int,
-        dataset_id: int,
-        images: List[int],
-    ) -> None:
-        """Wait until the task is complete."""
-        task_info_json = self.api.task.get_info_by_id(task_id)
-        if task_info_json is None:
-            logger.error(f"Task with ID {task_id} not found.")
-            self.send_data_moving_finished_message(success=False, items=[], items_count=0)
-
-        current_time = time.time()
-        while (task_status := self.api.task.get_status(task_id)) != self.api.task.Status.FINISHED:
-            if task_status in [
-                self.api.task.Status.ERROR,
-                self.api.task.Status.STOPPED,
-                self.api.task.Status.TERMINATING,
-            ]:
-                logger.error(f"Task {task_id} failed with status: {task_status}")
-                break
-            logger.info("Waiting for the Data Commander task to start... Status: %s", task_status)
-            time.sleep(5)
-            if time.time() - current_time > 30000:  # 500 minutes timeout
-                logger.warning(
-                    "Timeout reached while waiting for the Data Commander task to start."
-                )
-                break
-
-        try:
-            task_info_json = {"id": task_id, "status": task_status.value}
-            self.history.update_task(task_id=task_id, task=task_info_json)
-            logger.info(f"Task {task_id} completed with status: {task_status.value}")
-        except Exception as e:
-            logger.error(f"Failed to update task history: {repr(e)}")
-
-        self.hide_in_progress_badge()
-
-        success = task_status == self.api.task.Status.FINISHED
-        res = self.api.image.get_list(dataset_id=dataset_id)
-        res = [img.id for img in res]
-        if len(res) != len(images):
-            logger.error(f"Not all images were moved. Expected {len(images)}, but got {len(res)}.")
-            success = False
-
-        if success:
-            logger.info(f"Setting {len(res)} images as moved. Cleaning up the list.")
-            self._images_to_move = []
-
-        self.send_data_moving_finished_message(success=success, items=res, items_count=len(res))
-
-    def get_data_versioning_project_id(self) -> Optional[int]:
+    def _get_data_versioning_project_id(self) -> Optional[int]:
         return getattr(self, "project_id", None)
 
     def _send_training_output_message(
@@ -221,21 +154,6 @@ class BaseTrainNode(BaseCardNode):
         return TrainFinishedMessage(
             success=success, task_id=task_id, experiment_info=experiment_info or {}
         )
-
-    # subscribe event (may receive Message object)
-    def set_images_to_move(self, message: LabelingQueueAcceptedImagesMessage) -> None:
-        """
-        Set the images to move based on the message.
-        """
-        if not message.accepted_images:
-            logger.warning("No items to move. Returning empty list.")
-            self._images_to_move = []
-        else:
-            self._images_to_move = message.accepted_images
-        logger.info(f"Set {len(self._images_to_move)} images to move.")
-        self.gui.set_items_count(len(self._images_to_move))
-        self.update_property("Available items to move", f"{len(self._images_to_move)}")
-        # self.send_images_count_message(len(self._images_to_move))
 
     # ------------------------------------------------------------------
     # Automation ---------------------------------------------------

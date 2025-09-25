@@ -126,7 +126,7 @@ class EvaluationNode(BaseCardNode):
     def _process_incomming_message(self, message: TrainingFinishedMessage):
         self._last_task_id = message.task_id
         self._model_path = self._extract_experiment_info(message.task_id)
-        if self._model_path:
+        if self._model_path and self.gui.automation_switch.is_switched():
             self.run()
 
     def _send_evaluation_finished_message(self, res_dir: str) -> EvaluationFinishedMessage:

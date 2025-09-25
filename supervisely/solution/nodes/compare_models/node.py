@@ -186,9 +186,10 @@ class CompareModelsNode(BaseCardNode):
             best_checkpoint = self._get_checkpoint_path(experiment)
             metric_name = experiment.get("primary_metric")
             best_metric = self._get_primary_metric_value_from_experiment(experiment)
-            self._send_new_model_better_message(
-                is_better=True, best_checkpoint=best_checkpoint, train_task_id=message.task_id
-            )
+            if self.gui.redeploy_switch.is_switched():
+                self._send_new_model_better_message(
+                    is_better=True, best_checkpoint=best_checkpoint, train_task_id=message.task_id
+                )
             self._update_best_model_properties(
                 best_checkpoint=best_checkpoint,
                 best_metric=best_metric,
@@ -257,11 +258,12 @@ class CompareModelsNode(BaseCardNode):
                 )
                 experiment = self._extract_experiment_info(self._best_experiment_task_id)
                 best_checkpoint = self._get_checkpoint_path(experiment)
-                self._send_new_model_better_message(
-                    is_better=True,
-                    best_checkpoint=best_checkpoint,
-                    train_task_id=self._best_experiment_task_id,
-                )
+                if self.gui.redeploy_switch.is_switched():
+                    self._send_new_model_better_message(
+                        is_better=True,
+                        best_checkpoint=best_checkpoint,
+                        train_task_id=self._best_experiment_task_id,
+                    )
                 metric_name = experiment.get("primary_metric")
                 best_metric = self._get_primary_metric_value_from_experiment(experiment)
                 self._update_best_model_properties(
@@ -300,17 +302,18 @@ class CompareModelsNode(BaseCardNode):
                 if is_better:
                     self._best_experiment_eval_dir = self._last_experiment_eval_dir
                     self._best_experiment_task_id = self._last_experiment_task_id
-                    self._send_new_model_better_message(
-                        is_better=is_better,
-                        best_checkpoint=best_checkpoint,
-                        train_task_id=self._best_experiment_task_id,
-                    )
                     self._update_best_model_properties(
                         best_checkpoint=best_checkpoint,
                         best_metric=best_metric,
                         metric_name=metric_name,
                         task_id=self._best_experiment_task_id,
                     )
+                    if self.gui.redeploy_switch.is_switched():
+                        self._send_new_model_better_message(
+                            is_better=is_better,
+                            best_checkpoint=best_checkpoint,
+                            train_task_id=self._best_experiment_task_id,
+                        )
                 self._send_comparison_finished_message(report_url, result_dir)
                 self._last_experiment_eval_dir = None
                 self._last_experiment_task_id = None
