@@ -97,6 +97,7 @@ class SelectDatasetTree(Widget):
         widget_id: Union[str, None] = None,
         show_select_all_datasets_checkbox: bool = True,
         width: int = 193,
+        default_to_env: bool = True,
     ):
         self._api = Api.from_env()
 
@@ -112,8 +113,12 @@ class SelectDatasetTree(Widget):
         self._workspace_id = env.workspace_id()
 
         # Using environment variables to set the default values if they are not provided.
-        self._project_id = project_id or env.project_id(raise_not_found=False)
-        self._dataset_id = default_id or env.dataset_id(raise_not_found=False)
+        self._project_id = project_id
+        if self._project_id is None and default_to_env:
+            self._project_id = env.project_id(raise_not_found=False)
+        self._dataset_id = default_id
+        if self._dataset_id is None and default_to_env:
+            self._dataset_id = env.dataset_id(raise_not_found=False)
 
         self._multiselect = multiselect
         self._compact = compact
@@ -278,10 +283,7 @@ class SelectDatasetTree(Widget):
         :param project_id: The ID of the project.
         :type project_id: int
         """
-        if not self._compact:
-            self._select_project.set_value(project_id)
-        self._project_id = project_id
-        self._select_dataset.set_items(self._read_datasets(project_id))
+        self.set_project_id(project_id)
 
     def get_selected_project_id(self) -> Optional[int]:
         """Get the ID of the selected project.
@@ -511,17 +513,38 @@ class SelectDatasetTree(Widget):
         """
         return {}
 
-    def _read_datasets(self, project_id: Optional[int]) -> Optional[List[TreeSelect.Item]]:
-        """Get the lisf of TreeSelect.Item objects representing the dataset hierarchy.
+    def _read_datasets(
+        self, project_id: Optional[int], dataset_ids: Optional[List[int]] = None
+    ) -> Optional[List[TreeSelect.Item]]:
+        """Get the list of TreeSelect.Item objects representing the dataset hierarchy.
 
         :param project_id: The ID of the project.
         :type project_id: Optional[int]
+        :param dataset_ids: The IDs of the datasets to include.
+        :type dataset_ids: Optional[List[int]]
         :return: The list of TreeSelect.Item objects.
         :rtype: Optional[List[TreeSelect.Item]]
         """
         if not project_id:
             return None
         dataset_tree = self._api.dataset.get_tree(project_id)
+
+        def _subnodes_in_filter(subnodes) -> bool:
+            """Check if any of the subnodes are in the dataset_ids filter.
+
+            :param subnodes: The subnodes to check.
+            :type subnodes: Dict
+            :param dataset_ids: The IDs of the datasets to include.
+            :type dataset_ids: List[int]
+            :return: True if any of the subnodes are in the dataset_ids filter, False otherwise.
+            :rtype: bool
+            """
+            for dataset_info, children in subnodes.items():
+                if dataset_info.id in dataset_ids:
+                    return True
+                if _subnodes_in_filter(children):
+                    return True
+            return False
 
         def convert_tree_to_list(node, parent_id: Optional[int] = None):
             """
@@ -534,6 +557,9 @@ class SelectDatasetTree(Widget):
             """
             result = []
             for dataset_info, children in node.items():
+                if dataset_ids:
+                    if not (dataset_info.id in dataset_ids) and not (_subnodes_in_filter(children)):
+                        continue
                 item = TreeSelect.Item(
                     id=dataset_info.id,
                     label=dataset_info.name,
@@ -546,13 +572,18 @@ class SelectDatasetTree(Widget):
 
         return convert_tree_to_list(dataset_tree)
 
-    def set_project_id(self, project_id: Optional[int]) -> None:
+    def set_project_id(
+        self, project_id: Optional[int] = None, dataset_ids: Optional[List[int]] = None
+    ) -> None:
         """Set the project ID to read datasets from.
 
         :param project_id: The ID of the project.
         :type project_id: int
         """
-        self.project_id = project_id
+        if not self._compact:
+            self._select_project.set_value(project_id)
+        self._project_id = project_id
+        self._select_dataset.set_items(self._read_datasets(project_id, dataset_ids=dataset_ids))
 
     def _get_selected(self) -> Optional[Union[List[int], int]]:
         """Get the ID of the selected dataset(s).

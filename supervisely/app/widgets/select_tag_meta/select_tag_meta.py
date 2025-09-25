@@ -5,11 +5,11 @@ try:
 except ImportError:
     from typing_extensions import Literal
 
+from supervisely.annotation.tag_meta import SUPPORTED_TAG_VALUE_TYPES, TagMeta
+from supervisely.api.api import Api
 from supervisely.app import StateJson
 from supervisely.app.widgets import Widget
-from supervisely.api.api import Api
-from supervisely.app.widgets.select_sly_utils import _get_int_or_env, _get_int_env
-from supervisely.annotation.tag_meta import TagMeta, SUPPORTED_TAG_VALUE_TYPES
+from supervisely.app.widgets.select_sly_utils import _get_int_env, _get_int_or_env
 from supervisely.project.project_meta import ProjectMeta
 
 
@@ -27,6 +27,7 @@ class SelectTagMeta(Widget):
         show_label: bool = True,
         size: Literal["large", "small", "mini"] = None,
         widget_id: str = None,
+        default_to_env: bool = True,
     ):
         self._changes_handled = False
         self._api = Api()
@@ -55,9 +56,9 @@ class SelectTagMeta(Widget):
 
         if project_meta is None:
             self._project_id = _get_int_or_env(self._project_id, "context.projectId")
-        self._tags = None
+        self._tags = []
         self._value = None
-        if self._project_id is None and self._project_meta is None:
+        if default_to_env and self._project_id is None and self._project_meta is None:
             dataset_id = _get_int_env("context.datasetId")
             if dataset_id is None:
                 raise ValueError(
