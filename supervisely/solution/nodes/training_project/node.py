@@ -42,7 +42,6 @@ class TrainingProjectNode(ProjectNode):
         return {
             "qa_stats": self.send_message_to_qa_stats,
             "data_versioning_project_id": self.send_message_to_data_versioning,
-            # "add_training_data_id": self.send_message_to_add_training_data,
         }
 
     def send_message_to_qa_stats(self) -> None:

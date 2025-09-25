@@ -27,6 +27,7 @@ class SelectTagMeta(Widget):
         show_label: bool = True,
         size: Literal["large", "small", "mini"] = None,
         widget_id: str = None,
+        default_to_env: bool = True,
     ):
         self._changes_handled = False
         self._api = Api()
@@ -57,22 +58,20 @@ class SelectTagMeta(Widget):
             self._project_id = _get_int_or_env(self._project_id, "context.projectId")
         self._tags = []
         self._value = None
-        # if self._project_id is None and self._project_meta is None:
-        #     dataset_id = _get_int_env("context.datasetId")
-        #     if dataset_id is None:
-        #         raise ValueError(
-        #             "Argument 'project_id' or environment variables 'context.projectId' or 'context.datasetId' has to be defined"
-        #         )
-        #     dataset_info = self._api.dataset.get_info_by_id(dataset_id, raise_error=True)
-        #     self._project_id = dataset_info.project_id
+        if default_to_env and self._project_id is None and self._project_meta is None:
+            dataset_id = _get_int_env("context.datasetId")
+            if dataset_id is None:
+                raise ValueError(
+                    "Argument 'project_id' or environment variables 'context.projectId' or 'context.datasetId' has to be defined"
+                )
+            dataset_info = self._api.dataset.get_info_by_id(dataset_id, raise_error=True)
+            self._project_id = dataset_info.project_id
 
-        #     self._project_info = self._api.project.get_info_by_id(
-        #         self._project_id, raise_error=True
-        #     )
+            self._project_info = self._api.project.get_info_by_id(
+                self._project_id, raise_error=True
+            )
 
-        # elif self._project_meta is not None:
-        #     self._tags = self._project_meta.tag_metas.to_json()
-        if self._project_meta is not None:
+        elif self._project_meta is not None:
             self._tags = self._project_meta.tag_metas.to_json()
 
         super().__init__(widget_id=widget_id, file_path=__file__)

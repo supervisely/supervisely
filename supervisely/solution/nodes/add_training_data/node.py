@@ -211,14 +211,6 @@ class AddTrainingDataNode(BaseCardNode):
 
         self.hide_in_progress_badge()
         task_info = self.api.task.get_info_by_id(task_id)
-        # [
-        #     ["task_id"],
-        #     ["split_method"],
-        #     ["train_count"],
-        #     ["val_count"],
-        #     ["started_at"],
-        #     ["status"],
-        # ]
         task = {
             "id": task_id,
             "split_method": self.gui.splits_widget.get_split_method(),

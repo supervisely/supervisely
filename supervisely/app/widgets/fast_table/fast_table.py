@@ -1025,8 +1025,6 @@ class FastTable(Widget):
             self._multi_idx_columns = self._create_multi_idx_columns()
             source_data.columns = self._multi_idx_columns
         elif isinstance(data, (list, type(None))):
-            if data is not None and len(data) == 0:
-                return pd.DataFrame(columns=self._columns_first_idx)
             self._multi_idx_columns = self._create_multi_idx_columns()
             source_data = self._sort_table_data(
                 pd.DataFrame(data=data, columns=self._multi_idx_columns)

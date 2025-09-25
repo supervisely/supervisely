@@ -110,6 +110,36 @@ class TrainValSplits(Widget):
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
+    def set_project_id(self, project_id: int, dataset_ids: Optional[List[int]] = None) -> None:
+        if not isinstance(project_id, int):
+            raise ValueError("Project ID must be an integer.")
+        self._project_id = project_id
+        self._project_type = None
+        if self._api is None:
+            self._api = Api()
+        self._project_info = self._api.project.get_info_by_id(self._project_id)
+        if self._random_splits_table is not None:
+            if dataset_ids is not None:
+                filters = [{"field": "id", "operator": "in", "value": dataset_ids}]
+                dataset_infos = self._api.dataset.get_list(
+                    project_id, filters=filters, recursive=True
+                )
+                items_count = sum([ds_info.items_count for ds_info in dataset_infos])
+                self._random_splits_table.set_items_count(items_count)
+                self._dataset_names = [ds_info.name for ds_info in dataset_infos]
+        self._project_type = self._project_info.type
+        self._project_class = get_project_class(self._project_type)
+        if self._train_collections_select and self._val_collections_select:
+            self._train_collections_select.set_project_id(project_id)
+            self._val_collections_select.set_project_id(project_id)
+        if self._train_tag_select is not None and self._val_tag_select is not None:
+            project_meta = ProjectMeta.from_json(self._api.project.get_meta(self._project_id))
+            self._train_tag_select.set_project_meta(project_meta)
+            self._val_tag_select.set_project_meta(project_meta)
+        if self._train_ds_select is not None and self._val_ds_select is not None:
+            self._train_ds_select.set_project_id(project_id, dataset_ids)
+            self._val_ds_select.set_project_id(project_id, dataset_ids)
+
     def _get_random_content(self):
         items_count = 0
         if self._project_id is not None:
@@ -137,8 +167,12 @@ class TrainValSplits(Widget):
                 project_meta=self._project_fs.meta, show_label=False
             )
         else:
-            self._train_tag_select = SelectTagMeta(default="train", show_label=False)
-            self._val_tag_select = SelectTagMeta(default="val", show_label=False)
+            self._train_tag_select = SelectTagMeta(
+                default="train", show_label=False, default_to_env=False
+            )
+            self._val_tag_select = SelectTagMeta(
+                default="val", show_label=False, default_to_env=False
+            )
         self._untagged_select = SelectString(
             values=["train", "val", "ignore"],
             labels=[
@@ -423,50 +457,6 @@ class TrainValSplits(Widget):
         self._train_collections_select.set_project_id(project_id)
         self._val_collections_select.set_project_id(project_id)
 
-    def value_changed(self, func):
-        if self._random_splits_table:
-            self._random_splits_table.value_changed(func)
-        if self._train_tag_select:
-            self._train_tag_select.value_changed(func)
-            self._val_tag_select.value_changed(func)
-            self._untagged_select.value_changed(func)
-        if self._train_ds_select:
-            self._train_ds_select.value_changed(func)
-            self._val_ds_select.value_changed(func)
-        if self._train_collections_select and self._val_collections_select:
-            self._train_collections_select.value_changed(func)
-            self._val_collections_select.value_changed(func)
-
-    def set_project_id(self, project_id: int, dataset_ids: Optional[List[int]] = None) -> None:
-        if not isinstance(project_id, int):
-            raise ValueError("Project ID must be an integer.")
-        self._project_id = project_id
-        self._project_type = None
-        if self._api is None:
-            self._api = Api()
-        self._project_info = self._api.project.get_info_by_id(self._project_id)
-        if self._random_splits_table is not None:
-            if dataset_ids is not None:
-                filters = [{"field": "id", "operator": "in", "value": dataset_ids}]
-                dataset_infos = self._api.dataset.get_list(
-                    project_id, filters=filters, recursive=True
-                )
-                items_count = sum([ds_info.items_count for ds_info in dataset_infos])
-                self._random_splits_table.set_items_count(items_count)
-                self._dataset_names = [ds_info.name for ds_info in dataset_infos]
-        self._project_type = self._project_info.type
-        self._project_class = get_project_class(self._project_type)
-        if self._train_collections_select and self._val_collections_select:
-            self._train_collections_select.set_project_id(project_id)
-            self._val_collections_select.set_project_id(project_id)
-        if self._train_tag_select is not None and self._val_tag_select is not None:
-            project_meta = ProjectMeta.from_json(self._api.project.get_meta(self._project_id))
-            self._train_tag_select.set_project_meta(project_meta)
-            self._val_tag_select.set_project_meta(project_meta)
-        if self._train_ds_select is not None and self._val_ds_select is not None:
-            self._train_ds_select.set_project_id(project_id, dataset_ids)
-            self._val_ds_select.set_project_id(project_id, dataset_ids)
-
     def get_train_collections_ids(self) -> List[int]:
         return self._train_collections_select.get_selected_ids() or []
 
@@ -534,3 +524,17 @@ class TrainValSplits(Widget):
             self._val_collections_select.enable()
         DataJson()[self.widget_id]["disabled"] = self._disabled
         DataJson().send_changes()
+
+    def value_changed(self, func):
+        if self._random_splits_table:
+            self._random_splits_table.value_changed(func)
+        if self._train_tag_select:
+            self._train_tag_select.value_changed(func)
+            self._val_tag_select.value_changed(func)
+            self._untagged_select.value_changed(func)
+        if self._train_ds_select:
+            self._train_ds_select.value_changed(func)
+            self._val_ds_select.value_changed(func)
+        if self._train_collections_select and self._val_collections_select:
+            self._train_collections_select.value_changed(func)
+            self._val_collections_select.value_changed(func)
