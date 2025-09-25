@@ -11,6 +11,7 @@ from supervisely.sly_logger import logger
 from supervisely.solution.base_node import BaseCardNode
 from supervisely.solution.engine.models import TrainingDataAddedMessage
 from supervisely.solution.nodes.add_training_data.gui import AddTrainingDataGUI
+from supervisely.solution.nodes.add_training_data.history import TrainingDataHistory
 from supervisely.solution.utils import get_last_split_collection
 
 
@@ -46,10 +47,11 @@ class AddTrainingDataNode(BaseCardNode):
         self.gui.project_table.set_project_filter(
             lambda p: p.id != self.project_id and p.items_count > 0
         )
+        self.history = TrainingDataHistory(self.api)
         self.modal_content = self.gui.widget
 
         # --- modals -------------------------------------------------------------
-        self.modals = [self.gui.modal]
+        self.modals = [self.gui.modal, self.history.modal, self.history.logs_modal]
 
         # --- init Node ----------------------------------------------------------
         title = kwargs.pop("title", self.TITLE)
@@ -90,6 +92,11 @@ class AddTrainingDataNode(BaseCardNode):
                 "connectable": True,
             },
         ]
+
+    def _get_tooltip_buttons(self):
+        if not hasattr(self, "tooltip_buttons"):
+            self.tooltip_buttons = [self.history.history_btn]
+        return self.tooltip_buttons
 
     # ------------------------------------------------------------------
     # Events -----------------------------------------------------------
@@ -203,6 +210,8 @@ class AddTrainingDataNode(BaseCardNode):
                 break
 
         self.hide_in_progress_badge()
+        task_info = self.api.task.get_info_by_id(task_id)
+        self.history.add_task(task_info)
         success = task_status == self.api.task.Status.FINISHED
         if not success:
             logger.error(f"Task {task_id} failed with status: {task_status}")
