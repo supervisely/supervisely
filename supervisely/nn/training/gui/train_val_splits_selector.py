@@ -360,20 +360,26 @@ class TrainValSplitsSelector:
 
         self._all_train_collections = existing_train_collections
         self._all_val_collections = existing_val_collections
-        self._latest_train_collection = self._get_latest_collection(existing_train_collections)
-        self._latest_val_collection = self._get_latest_collection(existing_val_collections)
+        self._latest_train_collection = self._get_latest_collection(existing_train_collections, "train")
+        self._latest_val_collection = self._get_latest_collection(existing_val_collections, "val")
 
     def _get_latest_collection(
-        self, collections: List[EntitiesCollectionInfo]
+        self, collections: List[EntitiesCollectionInfo], expected_prefix: str
     ) -> EntitiesCollectionInfo:
         curr_collection = None
         curr_idx = 0
         for collection in collections:
-            collection_idx = int(collection.name.rsplit("_", 1)[-1])
-            if collection_idx > curr_idx:
-                curr_idx = collection_idx
-                curr_collection = collection
+            parts = collection.name.split("_")
+            if len(parts) == 2:
+                prefix = parts[0].lower()
+                if prefix == expected_prefix:
+                    if parts[1].isdigit():
+                        collection_idx = int(parts[1])
+                        if collection_idx > curr_idx:
+                            curr_idx = collection_idx
+                            curr_collection = collection
         return curr_collection
+
 
     def _detect_collections(self) -> bool:
         """Find collections with train and val prefixes and set them to train_val_splits"""
