@@ -15,9 +15,7 @@ def read(fname):
 
 
 def get_common_commit_with_master():
-    result = subprocess.run(
-        ["git", "merge-base", "HEAD", "master"], stdout=subprocess.PIPE
-    )
+    result = subprocess.run(["git", "merge-base", "HEAD", "master"], stdout=subprocess.PIPE)
     return result.stdout.decode("utf-8").strip()
 
 
@@ -27,9 +25,7 @@ def get_previous_commit(sha: str):
 
 
 def get_branch():
-    result = subprocess.run(
-        ["git", "rev-parse", "--abbrev-ref", "HEAD"], stdout=subprocess.PIPE
-    )
+    result = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], stdout=subprocess.PIPE)
     return result.stdout.decode("utf-8").strip()
 
 
@@ -39,9 +35,7 @@ def get_commit_tags(sha: str):
 
 
 def get_github_releases():
-    response = requests.get(
-        "https://api.github.com/repos/supervisely/supervisely/releases"
-    )
+    response = requests.get("https://api.github.com/repos/supervisely/supervisely/releases")
     response.raise_for_status()
     return response.json()
 
@@ -75,9 +69,7 @@ def get_version():
                     return release["tag_name"]
         commit = get_previous_commit(commit)
 
-    response = requests.get(
-        "https://api.github.com/repos/supervisely/supervisely/releases/latest"
-    )
+    response = requests.get("https://api.github.com/repos/supervisely/supervisely/releases/latest")
     version = response.json()["tag_name"]
     return version
 
@@ -286,6 +278,7 @@ setup(
             "decord",
             "gdown",
             "torch",
+            "motmetrics",
         ],
         "model-benchmark": [
             "pycocotools",
