@@ -709,6 +709,10 @@ class ApiField:
     """"""
     UNIQUE_ITEMS = "uniqueItems"
     """"""
+    NN_CREATED = "nnCreated"
+    """"""
+    NN_UPDATED = "nnUpdated"
+    """"""
 
 
 def _get_single_item(items):

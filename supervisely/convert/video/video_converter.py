@@ -266,8 +266,8 @@ class VideoConverter(BaseConverter):
             if codec_type not in ["video", "audio"]:
                 continue
             codec_name = stream["codecName"]
-            if codec_type == "video" and codec_name != "h264":
-                logger.info(f"Video codec is not h264, transcoding is required: {codec_name}")
+            if codec_type == "video" and codec_name not in ["h264", "h265", "hevc", "av1"]:
+                logger.info(f"Video codec is not h264/h265/hevc/av1, transcoding is required: {codec_name}")
                 need_video_transc = True
             elif codec_type == "audio" and codec_name != "aac":
                 logger.info(f"Audio codec is not aac, transcoding is required: {codec_name}")

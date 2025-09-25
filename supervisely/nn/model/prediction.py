@@ -59,6 +59,7 @@ class Prediction:
         self.source = source
         if isinstance(annotation_json, Annotation):
             annotation_json = annotation_json.to_json()
+
         self.annotation_json = annotation_json
         self.model_meta = model_meta
         if isinstance(self.model_meta, dict):
@@ -157,7 +158,7 @@ class Prediction:
 
     @property
     def annotation(self) -> Annotation:
-        if self._annotation is None:
+        if self._annotation is None and self.annotation_json is not None:
             if self.model_meta is None:
                 raise ValueError("Model meta is not provided. Cannot create annotation.")
             model_meta = get_meta_from_annotation(self.annotation_json, self.model_meta)
