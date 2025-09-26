@@ -211,23 +211,30 @@ class DeployModel(Widget):
             return self._layout
 
         def _create_layout(self) -> Container:
-            frameworks = self.deploy_model.get_frameworks()
-            experiment_infos = []
-            for framework_name in frameworks:
-                experiment_infos.extend(
-                    get_experiment_infos(self.api, self.team_id, framework_name=framework_name)
-                )
             self.experiment_table = ExperimentSelector(
-                experiment_infos=experiment_infos,
-                team_id=self.team_id,
                 api=self.api,
+                team_id=self.team_id,
             )
 
             @self.experiment_table.checkpoint_changed
             def _checkpoint_changed(row: ExperimentSelector.ModelRow, checkpoint_value: str):
                 print(f"Checkpoint changed for {row._experiment_info.task_id}: {checkpoint_value}")
 
+            threading.Thread(target=self.refresh_experiments, daemon=True).start()
+
             return self.experiment_table
+
+        def refresh_experiments(self):
+            self.experiment_table.loading = True
+            frameworks = self.deploy_model.get_frameworks()
+            experiment_infos = []
+            for framework_name in frameworks:
+                experiment_infos.extend(
+                    get_experiment_infos(self.api, self.team_id, framework_name=framework_name)
+                )
+
+            self.experiment_table.set_experiment_infos(experiment_infos)
+            self.experiment_table.loading = False
 
         def get_deploy_parameters(self) -> Dict[str, Any]:
             experiment_info = self.experiment_table.get_selected_experiment_info()
