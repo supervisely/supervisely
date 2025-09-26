@@ -44,8 +44,8 @@ class Polyline3D(Geometry):
         updated_at=None,
         created_at=None,
     ):
-        if isinstance(points[0], Vector3d):
-            points = [[point.x, point.y, point.z] for point in points]
+        if not isinstance(points[0], Vector3d):
+            points = [Vector3d(point[0], point[1], point[2]) for point in points]
         super().__init__(
             sly_id=sly_id,
             class_id=class_id,
@@ -61,7 +61,8 @@ class Polyline3D(Geometry):
         return self._points
 
     def to_json(self):
-        res = {"points": self._points}
+        points = [[point.x, point.y, point.z] for point in self._points]
+        res = {"points": points}
         self._add_creation_info(res)
         return res
 
