@@ -215,6 +215,7 @@ class BaseTrainNode(BaseCardNode):
         }
         self.history.add_task(task=task)
 
+        self.update_badge_by_key(key="Status", label="Starting", badge_type="info")
         # Avoid using automation.apply()
         threading.Thread(target=self._poll_train_progress, args=(task_id,), daemon=True).start()
 
@@ -268,9 +269,59 @@ class BaseTrainNode(BaseCardNode):
                 )
                 break
             else:
-                self.update_badge_by_key(key="Status", label="Training...", badge_type="info")
+                self._set_train_progress_from_widgets(task_id)
 
             time.sleep(interval_sec)
+
+    # @TODO: Use epoch num instead of percent (key 'info')
+    # @TODO: Refactor?
+    def _set_train_progress_from_widgets(self, task_id: int) -> str:
+        progress_widgets_data = self.api.task.get_progress_widgets(task_id)
+        if progress_widgets_data is None:
+            return
+
+        # Debug
+        for idx, progress_widget_data in enumerate(progress_widgets_data):
+            print(f"Progress widget {idx}: {progress_widget_data}")
+            with open('/root/projects/solution-labeling/task_progress.log', 'a') as f:
+                f.write(f"Progress widget {idx}: {progress_widget_data}\n\n")
+
+        progress_widget = progress_widgets_data[0]
+        message = progress_widget["message"]
+        if message is None:
+            return
+        
+        percent = progress_widget["percent"]
+
+        start_messages = ["Application is started"]
+        prepare_messages = ["Downloading input data", "Retrieving data from cache", "Preparing data for training...", "Applying train/val splits to project", "Processing splits", "Downloading model files"]
+        training_messages = ["Epochs", "Epoches", "Epoch"] # "Training is in progress..."
+        finalize_messages = ["Uploading demo files to Team Files", "Uploading train artifacts to Team Files", "Finalizing and uploading training artifacts..."]
+        complete_messages = ["Training completed"]
+        eval_messages = ["Starting Model Benchmark evaluation", "Evaluation: Downloading GT annotations", "Visualizations: Adding tags to predictions"]
+        error_messages = ["Ready for training"]
+
+        badge_type = "info"
+        if message in start_messages:
+            label = "Starting"
+        elif message in prepare_messages:
+            label = "Preparing Data for Training"
+        elif message in training_messages:
+            label = f"Training {percent} / 100 %"
+        elif message in finalize_messages or message.startswith("Uploading"):
+            label = "Finalizing Training"
+        elif message in eval_messages:
+            label = "Evaluating Model"
+        elif message in complete_messages:
+            label = "Training Completed"
+        elif message in error_messages:
+            label = "Failed"
+            badge_type = "error"
+        else:
+            return
+
+        self.update_badge_by_key(key="Status", label=label, badge_type=badge_type)
+
 
     def _save_train_settings(self):
         """
