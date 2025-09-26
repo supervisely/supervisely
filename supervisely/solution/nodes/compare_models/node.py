@@ -274,7 +274,7 @@ class CompareModelsNode(BaseCardNode):
                 eval_dirs = [self._best_experiment_eval_dir, self._last_experiment_eval_dir]
                 try:
                     assert len(eval_dirs) == len(set(eval_dirs))
-                except:
+                except AssertionError:
                     logger.warning("Evaluation directories must be unique. Comparison aborted.")
                     return
                 task_info, task_status = self._start_compare_models_app(eval_dirs)
