@@ -6,6 +6,7 @@ from supervisely.app.widgets.vue_flow.models import (
     NodeBadge,
     NodeBadgeStyle,
     get_badge_style,
+    node_badge_style_map,
     NodeLink,
     NodeSettings,
     TooltipProperty,
@@ -151,7 +152,7 @@ class Node:
         if plain is not None and plain:
             badge.style = NodeBadgeStyle()
         elif badge_type is not None:
-            if badge_type in ["info", "success", "warning", "error"]:
+            if badge_type in node_badge_style_map.keys():
                 badge.style = get_badge_style(badge_type)
         self.update_node(self)
 
@@ -171,7 +172,7 @@ class Node:
                     badge.label = new_key
                 if plain is not None and plain:
                     badge.style = NodeBadgeStyle()
-                elif badge_type is not None:
+                elif badge_type is not None and badge_type in node_badge_style_map.keys():
                     badge.style = get_badge_style(badge_type)
                 self.update_node(self)
                 return
@@ -179,17 +180,7 @@ class Node:
         if plain:
             style = NodeBadgeStyle()
         else:
-            badge_type = (
-                badge_type
-                if badge_type
-                in [
-                    "info",
-                    "success",
-                    "warning",
-                    "error",
-                ]
-                else "info"
-            )
+            badge_type = badge_type if badge_type in node_badge_style_map.keys() else "info"
             style = get_badge_style(badge_type)
         new_badge = NodeBadge(label=key, value=label, style=style)
         self.add_badge(new_badge)
