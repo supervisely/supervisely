@@ -1,5 +1,7 @@
 from supervisely.geometry.geometry import Geometry
 from supervisely.geometry.constants import LABELER_LOGIN, UPDATED_AT, CREATED_AT, ID, CLASS_ID
+from supervisely.geometry.cuboid_3d import Vector3d
+from typing import List, Union
 
 
 class Polyline3D(Geometry):
@@ -35,13 +37,15 @@ class Polyline3D(Geometry):
 
     def __init__(
         self,
-        points: list,
+        points: Union[List[float], List[Vector3d]],
         sly_id=None,
         class_id=None,
         labeler_login=None,
         updated_at=None,
         created_at=None,
     ):
+        if isinstance(points[0], Vector3d):
+            points = [[point.x, point.y, point.z] for point in points]
         super().__init__(
             sly_id=sly_id,
             class_id=class_id,
@@ -87,6 +91,8 @@ class Polyline3D(Geometry):
             }
             figure = sly.Polyline3D.from_json(figure_json)
         """
+        if not data.get("points"):
+            raise ValueError("Data dict must contain 'points' field!")
         points = data["points"]
         labeler_login = data.get(LABELER_LOGIN, None)
         updated_at = data.get(UPDATED_AT, None)
