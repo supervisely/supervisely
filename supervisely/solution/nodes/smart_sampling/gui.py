@@ -494,7 +494,6 @@ class SmartSamplingGUI(Widget):
         if task_id is None:
             logger.warning("No images to copy to the labeling project.")
             return None, status, src
-        # src = {ds: [i.id for i in imgs] for ds, imgs in src.items() if len(imgs) > 0}
         return task_id, status, src
 
     # ------------------------------------------------------------------
@@ -540,8 +539,7 @@ class SmartSamplingGUI(Widget):
                     f"Sample size ({sample_size}) is greater than total differences ({total_diffs}). "
                     "Returning all images."
                 )
-                res = {ds: [i.id for i in imgs] for ds, imgs in diffs.items() if len(imgs) > 0}
-                return res
+                return self._convert_img_infos_to_ids(diffs)
 
             mode = settings.get("mode", SamplingMode.RANDOM.value)
 
@@ -637,8 +635,7 @@ class SmartSamplingGUI(Widget):
                 logger.error(f"Unknown sampling mode: {mode}")
                 return None
 
-            res = {ds: [i.id for i in imgs] for ds, imgs in sampled_images.items() if len(imgs) > 0}
-            return res
+            return self._convert_img_infos_to_ids(sampled_images)
 
         except Exception as e:
             logger.error(f"Error during sampling: {repr(e)}")
@@ -708,3 +705,7 @@ class SmartSamplingGUI(Widget):
 
         success = task_status == self.api.task.Status.FINISHED
         return success
+
+    def _convert_img_infos_to_ids(self, images: Dict[int, List[ImageInfo]]) -> Dict[int, List[int]]:
+        """Convert a dict of ImageInfo objects to a dict of image IDs."""
+        return {ds_id: [img.id for img in imgs] for ds_id, imgs in images.items()}
