@@ -198,11 +198,9 @@ class CloudImport(Widget):
         return True
 
     def _validate_path_existance(self, path: str) -> bool:
-        # @TODO: fix, internal server error
-        exists = self.api.storage.exists(self.team_id, path)
-        # exists = self.api.storage.dir_exists(self.team_id, path)
+        exists = self.api.storage.dir_exists(self.team_id, path)
         if not exists:
-            self.status_text.set(f"Path '{path}' does not exist in cloud storage", status="error")
+            self.status_text.set(f"Directory '{path}' does not exist in cloud storage", status="error")
             self.status_text.show()
             return False
         return True
