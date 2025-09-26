@@ -34,20 +34,3 @@ class DeployTasksHistory(TasksHistory):
     def add_task(self, task: dict):
         super().add_task(task)
         self.update()
-
-    @property
-    def history_btn(self) -> Button:
-        if not hasattr(self, "_history_btn"):
-            self._history_btn = Button(
-                "History",
-                icon="zmdi zmdi-format-list-bulleted",
-                button_size="mini",
-                plain=True,
-                button_type="text",
-            )
-
-            @self._history_btn.click
-            def show_history():
-                self.modal.show()
-
-        return self._history_btn

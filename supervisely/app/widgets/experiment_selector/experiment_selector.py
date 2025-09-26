@@ -631,7 +631,7 @@ class ExperimentSelector(Widget):
                     self._project_infos_map[experiment_info.project_id] = project_info
                 except Exception as e:
                     logger.debug(
-                        f"Failed to fetch project info for project ID {experiment_info.project_id}: {e}"
+                        f"Failed to fetch project info for project ID {experiment_info.project_id}: {repr(e)}"
                     )
                     project_info = None
             else:

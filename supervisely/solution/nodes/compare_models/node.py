@@ -138,14 +138,12 @@ class CompareModelsNode(BaseCardNode):
                 "type": "target",
                 "position": "left",
                 "connectable": True,
-                # "style": {"top": "27px", "height": "12px"},
             },
             {
                 "id": "evaluation_finished",
                 "type": "target",
                 "position": "top",
                 "connectable": True,
-                # "style": {"top": "11px", "height": "12px"},
             },
             {
                 "id": "evaluation_finished",
@@ -482,9 +480,8 @@ class CompareModelsNode(BaseCardNode):
             logger.info(f"{metric_name} of new model is better: {new_metric} > {old_metric}")
             logger.info(f"New best checkpoint path: {new_checkpoint}")
             return is_new_better, new_checkpoint, new_metric, metric_name
-        else:
-            logger.info(f"{metric_name} of new model is worse: {new_metric} <= {old_metric}")
-            return is_new_better, old_checkpoint, old_metric, metric_name
+        logger.info(f"{metric_name} of new model is worse: {new_metric} <= {old_metric}")
+        return is_new_better, old_checkpoint, old_metric, metric_name
 
     def save(self, enabled: Optional[bool] = None, agent_id: Optional[int] = None):
         """Save re-deploy settings."""

@@ -77,7 +77,7 @@ class DeployModelNode(BaseCardNode):
     # ------------------------------------------------------------------
     def _get_tooltip_buttons(self):
         if not hasattr(self, "tooltip_buttons"):
-            self.tooltip_buttons = [self.history.history_btn]
+            self.tooltip_buttons = [self.history.open_modal_button]
         return self.tooltip_buttons
 
     # ------------------------------------------------------------------

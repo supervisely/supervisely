@@ -158,8 +158,6 @@ class ProjectNode(BaseProjectNode):
         :return: Tuple containing lists of training and validation items.
         """
         # TODO: change to "latest_.."  to ".._latest"
-        # train = self.api.entities_collection.get_info_by_name(self.project_id, "train_latest")
-        # val = self.api.entities_collection.get_info_by_name(self.project_id, "val_latest")
         train = self.api.entities_collection.get_info_by_name(self.project_id, "latest_train")
         val = self.api.entities_collection.get_info_by_name(self.project_id, "latest_val")
 
