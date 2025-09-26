@@ -127,7 +127,7 @@ class ProjectNode(BaseProjectNode):
             preview_url = self.project.image_preview_url
 
         if new_items_count is not None:
-            self.update_property(key="Last update", value=f"+{new_items_count}")
+            self.update_property(key="Last update", value=f"+{new_items_count} images")
             self.update_badge_by_key(key="Last update", label=f"+{new_items_count}")
         self.update_property(key="Total", value=f"{items_count} images")
 
