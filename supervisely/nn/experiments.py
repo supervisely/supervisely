@@ -305,9 +305,9 @@ def get_new_experiment_infos(
         return []
 
     new_experiment_infos = []
-    logger.info(f"Found {len(filtered_experiment_paths)} new experiments.")
     for experiment_path in filtered_experiment_paths:
         experiment_info = _fetch_experiment_data(api, team_id, experiment_path)
         if experiment_info is not None:
             new_experiment_infos.append(experiment_info)
+    logger.info(f"Found {len(new_experiment_infos)} new experiments.")
     return new_experiment_infos
