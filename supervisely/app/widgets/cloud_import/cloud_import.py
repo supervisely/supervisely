@@ -133,9 +133,8 @@ class CloudImport(Widget):
         @self.path_input.value_changed
         def _on_path_change(val):
             self.status_text.hide()
-            if not self._validate_path(val):
-                self.run_btn.disable()
-            else:
+            self.run_btn.disable()
+            if self._validate_path(val):
                 self.run_btn.enable()
 
         # @self.run_btn.click
