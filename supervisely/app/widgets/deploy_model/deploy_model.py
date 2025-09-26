@@ -1,17 +1,16 @@
 import datetime
 import tempfile
+import threading
 from pathlib import Path
 from typing import Any, Dict, List, Literal
 
 import pandas as pd
-import yaml
 
 from supervisely._utils import logger
 from supervisely.api.api import Api
 from supervisely.api.app_api import ModuleInfo
 from supervisely.app.widgets.agent_selector.agent_selector import AgentSelector
 from supervisely.app.widgets.button.button import Button
-from supervisely.app.widgets.card.card import Card
 from supervisely.app.widgets.container.container import Container
 from supervisely.app.widgets.ecosystem_model_selector.ecosystem_model_selector import (
     EcosystemModelSelector,
