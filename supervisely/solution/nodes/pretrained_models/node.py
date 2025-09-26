@@ -76,6 +76,7 @@ class BaseTrainNode(BaseCardNode):
         @self.click
         def on_click():
             self.gui.widget.visible = True
+            self.gui.train_val_split_mode = "collections"
             train_collections, val_collections = self.gui._get_train_val_collections()
             self.gui.widget.train_collections = train_collections
             self.gui.widget.val_collections = val_collections
@@ -203,14 +204,15 @@ class BaseTrainNode(BaseCardNode):
                 val_collection, CollectionTypeFilter.DEFAULT
             )
             images_count = f"train: {len(train_imgs)}, val: {len(val_imgs)}"
+        classes_count = len(self._train_settings.get("classes", []))
 
         task = {
-            "id": task_id,
+            "task_id": task_id,
             "task_info": task_info,
-            "model_id": self.gui.widget.model_id,
+            "model_id": model_id,
             "status": "started",
-            "agent_id": self.gui.widget.agent_id,
-            "classes_count": len(self.gui.widget.classes),
+            "agent_id": self._train_settings.get("agentId"),
+            "classes_count": f"{classes_count} class{'s' if classes_count != 1 else ''}",
             "images_count": images_count,
         }
         self.history.add_task(task=task)

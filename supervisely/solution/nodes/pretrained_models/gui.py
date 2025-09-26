@@ -36,12 +36,15 @@ class PretrainedModelsGUI:
 
         if train_collections and val_collections:
             split_mode = "collections"
+            random_train_percentage = None
             train_datasets, val_datasets = None, None
         elif train_datasets and val_datasets:
             split_mode = "datasets"
+            random_train_percentage = None
             train_collections, val_collections = None, None
         else:
             split_mode = "random"
+            random_train_percentage = 80
             train_collections, val_collections = None, None
             train_datasets, val_datasets = None, None
 
@@ -61,6 +64,7 @@ class PretrainedModelsGUI:
             cv_task=TaskType.OBJECT_DETECTION,
             selected_frameworks=self.frameworks,
             train_val_split_mode=split_mode,
+            random_train_percentage=random_train_percentage,
             train_collections=train_collections,
             val_collections=val_collections,
             training_datasets=train_datasets,
