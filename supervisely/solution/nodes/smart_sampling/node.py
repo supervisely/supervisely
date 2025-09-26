@@ -40,7 +40,9 @@ class SmartSamplingNode(BaseCardNode):
         self.gui = SmartSamplingGUI(project=self.project, dst_project_id=dst_project)
         self.modal_content = self.gui.content
         self.automation = SmartSamplingAutomation()
-        self.history = SmartSamplingTasksHistory(self.api)
+        self.history = SmartSamplingTasksHistory(
+            self.api, project_id=self.project_id, dst_project_id=self.dst_project
+        )
 
         # --- modals -------------------------------------------------------------
         self.modals = [
@@ -48,6 +50,7 @@ class SmartSamplingNode(BaseCardNode):
             self.automation.modal,
             self.history.modal,
             self.history.logs_modal,
+            self.history.preview_modal,
         ]
 
         # --- init node ------------------------------------------------------
@@ -99,6 +102,22 @@ class SmartSamplingNode(BaseCardNode):
             self.gui.collapse_preview()
             self.gui.preview_gallery.clean_up()
             self._configure_button_status_by_sampling_mode()
+
+        @self.gui.preview_button.click
+        def preview_button_clicked():
+            self.gui.hide_status_text()
+            self.gui.uncollapse_preview()
+            self.gui.preview_gallery.loading = True
+            sampling_settings = self.gui.get_settings()
+            if sampling_settings.get("sample_size", 0) > 6:
+                sampling_settings["sample_size"] = 6
+            if sampling_settings.get("limit", 0) > 6:
+                sampling_settings["limit"] = 6
+
+            diffs = self.history.calculate_differences()
+            sampled_images = self.gui._sample(diffs, sampling_settings)
+            self.gui._update_gallery(sampled_images)
+            self.gui.preview_gallery.loading = False
 
     def _get_tooltip_buttons(self):
         return [self.history.open_modal_button, self.automation.open_modal_button]
@@ -198,7 +217,7 @@ class SmartSamplingNode(BaseCardNode):
         self.gui.set_total_num_text(self.items_count)
         sampling_settings = self.gui.get_settings()
 
-        diff = self.gui.calculate_diff_count()
+        diff = self.gui.calculate_diff_count(self.history.calculate_differences())
         self.gui.update_widgets(diff, sampling_settings)
 
         if diff == 0:
@@ -251,22 +270,24 @@ class SmartSamplingNode(BaseCardNode):
     # ------------------------------------------------------------------
     # Run --------------------------------------------------------------
     # ------------------------------------------------------------------
-
-    # publish_event (may send Message object)
     def run(self) -> None:
-        self.show_in_progress_badge("Sampling")
-        res = self.gui.run()
-        src, dst, images_count = res
-        self.hide_in_progress_badge("Sampling")
-        self._update_widgets()
-        self._update_history()
-        if images_count > 0:
-            self._send_output_message(src=src, dst=dst, items_count=images_count)
-
-    def _update_history(self):
-        current_history_tasks = self.history.get_tasks()
-        current_ids = [task.get("sampling_id") for task in current_history_tasks]
-        for task in self.gui.tasks:
-            task_id = task.get("sampling_id")
-            if task_id not in current_ids:
-                self.history.add_task(task)
+        try:
+            self.show_in_progress_badge("Sampling")
+            diffs = self.history.calculate_differences()
+            task_id, status, src = self.gui.run(diffs)
+            if src is not None:
+                dst = self.history._get_uploaded_ids(self.dst_project, task_id)
+                images_count = sum(len(imgs) for imgs in src.values())
+            else:
+                dst = {}
+                images_count = 0
+            settings = self.gui.get_settings()
+            self.history.add_task(task_id, settings, images_count, status)
+            self._update_widgets()
+            if images_count > 0:
+                self.history._add_sampled_images(task_id, src)
+                self._send_output_message(src=src, dst=dst, items_count=images_count)
+        except Exception as e:
+            raise e
+        finally:
+            self.hide_in_progress_badge("Sampling")
