@@ -269,34 +269,45 @@ def get_new_experiment_infos(
     existing_experiment_infos: List[ExperimentInfo],
     task_id: Optional[int] = None,
 ) -> List[ExperimentInfo]:
-    from os.path import basename
+    """
+    Get new experiments that are not in the existing_experiment_infos list.
+    This function fetches experiments from the specified team and filters out those
+    that are already present in the existing_experiment_infos based on their artifacts_dir.
 
-    metadata_name = "experiment_info.json"
-    experiments_folder = "/experiments"
+    :param api: Supervisely API client
+    :type api: Api
+    :param team_id: Team ID
+    :type team_id: int
+    :param existing_experiment_infos: List of existing ExperimentInfo objects
+    :type existing_experiment_infos: List[ExperimentInfo]
+    :param task_id: Optional Task ID to filter experiments by, defaults to None
+    :type task_id: Optional[int], optional
+    :return: List of new ExperimentInfo objects
+    :rtype: List[ExperimentInfo]
+    """
+    EXPERIMENT_FILE = "experiment_info.json"
+    EXPERIMENT_DIR = "/experiments"
     existing_paths = {Path(i.artifacts_dir) for i in existing_experiment_infos}
 
-    file_infos = api.storage.list(team_id, experiments_folder, include_folders=False)
-    filter_fn = (
-        lambda fi: Path(fi.path).name == metadata_name
-        and Path(fi.path).parent not in existing_paths
-    )
-    filtered_infos = list(filter(filter_fn, file_infos))
-    sorted_experiment_paths = []
-    for file_info in filtered_infos:
-        experiment_dir = Path(file_info.path).parent
-        if task_id is not None and not experiment_dir.name.startswith(str(task_id)):
+    file_infos = api.storage.list(team_id, EXPERIMENT_DIR, include_folders=False)
+    filtered_experiment_paths = []
+    for fi in file_infos:
+        p = Path(fi.path)
+        if not (p.name == EXPERIMENT_FILE and p.parent not in existing_paths):
             continue
-        experiment_path = experiment_dir / metadata_name
-        sorted_experiment_paths.append(experiment_path)
+        if task_id is not None and not p.parent.name.startswith(str(task_id)):
+            continue
+        path = p.parent / EXPERIMENT_FILE
+        filtered_experiment_paths.append(str(path))
 
-    if len(sorted_experiment_paths) == 0:
+    if len(filtered_experiment_paths) == 0:
         logger.info("No new experiments found.")
         return []
 
     new_experiment_infos = []
-    logger.info(f"Found {len(sorted_experiment_paths)} new experiments.")
-    for experiment_path in sorted_experiment_paths:
-        experiment_info = _fetch_experiment_data(api, team_id, str(experiment_path))
+    logger.info(f"Found {len(filtered_experiment_paths)} new experiments.")
+    for experiment_path in filtered_experiment_paths:
+        experiment_info = _fetch_experiment_data(api, team_id, experiment_path)
         if experiment_info is not None:
             new_experiment_infos.append(experiment_info)
     return new_experiment_infos
