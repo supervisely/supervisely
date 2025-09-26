@@ -603,6 +603,16 @@ class PredictAppGui:
         else:
             raise ValueError("No valid input parameters found for prediction.")
 
+        source_project_id = None
+        if input_project_id is not None:
+            source_project_id = input_project_id
+        elif input_dataset_ids:
+            dataset_info = self.api.dataset.get_info_by_id(input_dataset_ids[0])
+            source_project_id = dataset_info.project_id
+        elif input_video_id:
+            video_info = self.api.video.get_info_by_id(input_video_id)
+            source_project_id = video_info.project_id
+
         # Settings
         settings = run_parameters["settings"]
         prediction_mode = settings.pop("predictions_mode")
@@ -644,8 +654,8 @@ class PredictAppGui:
                 logger.info("New project version created: " + str(version_id))
         elif input_video_id:
             if not project_name:
-                input_project_info = self.api.project.get_info_by_id(input_project_id)
-                project_name = input_project_info.name + " [Predictions]"
+                source_project_info = self.api.project.get_info_by_id(source_project_id)
+                project_name = source_project_info.name + " [Predictions]"
                 logger.warning("Project name is empty, using auto-generated name: " + project_name)
             # Create new project
             self.set_validator_text("Creating project...", "info")
@@ -653,7 +663,7 @@ class PredictAppGui:
                 api=self.api,
                 project_name=project_name,
                 workspace_id=self.workspace_id,
-                project_id=input_project_id,
+                project_id=source_project_id,
                 dataset_ids=input_dataset_ids,
                 items_ids=[input_video_id],
                 with_annotations=with_annotations,
@@ -666,22 +676,16 @@ class PredictAppGui:
             }
         else:
             if not project_name:
-                input_project_info = self.api.project.get_info_by_id(input_project_id)
-                project_name = input_project_info.name + " [Predictions]"
+                source_project_info = self.api.project.get_info_by_id(source_project_id)
+                project_name = source_project_info.name + " [Predictions]"
                 logger.warning("Project name is empty, using auto-generated name: " + project_name)
 
             item_ids = None
             if not output_parameters.get("skip_annotated", False):
                 item_ids = []
-                if input_project_id:
-                    src_project_meta = ProjectMeta.from_json(
-                        self.api.project.get_meta(input_project_id)
-                    )
-                else:
-                    dataset_info = self.api.dataset.get_info_by_id(input_dataset_ids[0])
-                    src_project_meta = ProjectMeta.from_json(
-                        self.api.project.get_meta(dataset_info.project_id)
-                    )
+                src_project_meta = ProjectMeta.from_json(
+                    self.api.project.get_meta(source_project_id)
+                )
                 existing_ann_infos: List[AnnotationInfo] = []
                 if input_dataset_ids:
                     for dataset_id in input_dataset_ids:
@@ -689,7 +693,7 @@ class PredictAppGui:
                             self.api.annotation.get_list(dataset_id)
                         )
                 else:
-                    datasets = self.api.dataset.get_list(input_project_id, recursive=True)
+                    datasets = self.api.dataset.get_list(source_project_id, recursive=True)
                     for dataset in datasets:
                         existing_ann_infos.extend(
                             self.api.annotation.get_list(dataset.id)
@@ -710,7 +714,7 @@ class PredictAppGui:
                 api=self.api,
                 project_name=project_name,
                 workspace_id=self.workspace_id,
-                project_id=input_project_id,
+                project_id=source_project_id,
                 dataset_ids=input_dataset_ids,
                 items_ids=item_ids,
                 with_annotations=with_annotations,
@@ -743,31 +747,37 @@ class PredictAppGui:
                         logger.info("Prediction stopped by user.")
                         break
             if input_video_id:
-                prediction_video_annotation: VideoAnnotation = session.final_result
                 project_meta = model_api.get_model_meta()
                 video_info = self.api.video.get_info_by_id(input_video_id)
                 src_project_meta = ProjectMeta.from_json(
                     self.api.project.get_meta(video_info.project_id)
                 )
                 project_meta = src_project_meta.merge(project_meta)
-                self.api.project.update_meta(output_project_id, project_meta)
-                if upload_to_source_project and prediction_mode in [
-                    AddPredictionsMode.REPLACE_EXISTING_LABELS,
-                    AddPredictionsMode.REPLACE_EXISTING_LABELS_AND_SAVE_IMAGE_TAGS,
-                ]:
-                    with open("/tmp/prediction_video_annotation.json", "w") as f:
-                        json.dump(prediction_video_annotation.to_json(), f)
-                    self.api.video.annotation.upload_paths(
-                        video_ids=[input_video_id],
-                        paths=["/tmp/prediction_video_annotation.json"],
-                        project_meta=project_meta,
-                    )
+                project_meta = self.api.project.update_meta(output_project_id, project_meta)
+                prediction_video_annotation: VideoAnnotation = VideoAnnotation.from_json(
+                    session.final_result["video_ann"],
+                    project_meta=project_meta,
+                )
+                if upload_to_source_project:
+                    if prediction_mode in [
+                        AddPredictionsMode.REPLACE_EXISTING_LABELS,
+                        AddPredictionsMode.REPLACE_EXISTING_LABELS_AND_SAVE_IMAGE_TAGS,
+                    ]:
+                        with open("/tmp/prediction_video_annotation.json", "w") as f:
+                            json.dump(prediction_video_annotation.to_json(), f)
+                        self.api.video.annotation.upload_paths(
+                            video_ids=[input_video_id],
+                            paths=["/tmp/prediction_video_annotation.json"],
+                            project_meta=project_meta,
+                        )
+                    else:
+                        self.api.video.annotation.append(
+                            video_id=input_video_id,
+                            ann=prediction_video_annotation,
+                            key_id_map=KeyIdMap(),
+                        )
                 else:
-                    self.api.video.annotation.append(
-                        video_id=input_video_id,
-                        ann=prediction_video_annotation,
-                        key_id_map=KeyIdMap(),
-                    )
+                    self.api.video.annotation.append(video_id=None)
 
             self.output_selector.progress.hide()
         except Exception as e:
