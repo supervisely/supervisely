@@ -66,7 +66,7 @@ class DeployCustomModelNode(DeployModelNode):
                 # self.update_property("Status", "Model deployed", highlight=True)
                 self.update_property("Source", deploy_info.get("model_source"))
                 self.update_property("Hardware", deploy_info.get("hardware"))
-                self.update_badge_by_key(key="Deployed Deployed", label="⚡", plain=True)
+                self.update_badge_by_key(key="Deployed", label="⚡", plain=True)
                 self._send_model_deployed_message(session_id=task_info.get("id"))
                 logger.info(
                     f"Model '{deploy_info.get('model_name')}' deployed successfully. Task ID: {task_info.get('id')}"
@@ -76,4 +76,4 @@ class DeployCustomModelNode(DeployModelNode):
             # self.remove_property_by_key("Status")
             self.remove_property_by_key("Source")
             self.remove_property_by_key("Hardware")
-            self.remove_badge_by_key("Deployed Deployed")
+            self.remove_badge_by_key("Deployed")
