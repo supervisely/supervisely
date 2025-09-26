@@ -5,8 +5,8 @@ from supervisely.api.api import Api
 from supervisely.app.widgets.agent_selector.agent_selector import AgentSelector
 from supervisely.app.widgets.button.button import Button
 from supervisely.app.widgets.container.container import Container
-from supervisely.app.widgets.input.input import Input
 from supervisely.app.widgets.field.field import Field
+from supervisely.app.widgets.input.input import Input
 from supervisely.app.widgets.tasks_history.tasks_history import TasksHistory
 from supervisely.app.widgets.text.text import Text
 from supervisely.app.widgets.widget import Widget
@@ -37,6 +37,8 @@ class CloudImport(Widget):
         self.project = self.api.project.get_info_by_id(project_id)
         self.one_at_a_time = one_at_a_time
         self.workspace_id = self.project.workspace_id
+        self.workspace = self.api.workspace.get_info_by_id(self.workspace_id)
+        self.team_id = self.workspace.team_id
         self.on_start_callbacks = []
         self.on_finish_callbacks = []
         self._init_tasks_history()
@@ -122,10 +124,19 @@ class CloudImport(Widget):
         self.status_text = Text("", status="text")
         self.status_text.hide()
         self.run_btn = Button("Run")
+        self.run_btn.disable()
         run_btn_cont = Container([self.run_btn], style="align-items: flex-end")
         self.content = Container(
             [text, input_field, agent_select_field, self.status_text, run_btn_cont], gap=20
         )
+
+        @self.path_input.value_changed
+        def _on_path_change(val):
+            self.status_text.hide()
+            if not self._validate_path(val):
+                self.run_btn.disable()
+            else:
+                self.run_btn.enable()
 
         # @self.run_btn.click
         # def _on_run_btn_click():
@@ -139,6 +150,8 @@ class CloudImport(Widget):
         :param path: Cloud storage path to validate
         :return: True if path is valid, False otherwise
         """
+        import re
+
         if path is None or path.strip() == "":
             self.status_text.set("Path cannot be empty", status="error")
             self.status_text.show()
@@ -176,15 +189,20 @@ class CloudImport(Widget):
             self.status_text.show()
             return False
 
-        # Check if bucket name exists (first part before /)
-        if "/" not in rest:
+        pattern = r"^[^/]+(?:/[^/]+)+/?$"
+        if not re.match(pattern, rest):
             self.status_text.set("Path must include bucket name and folder path", status="error")
             self.status_text.show()
             return False
 
-        bucket_name = rest.split("/")[0]
-        if not bucket_name:
-            self.status_text.set("Bucket name cannot be empty", status="error")
+        return True
+
+    def _validate_path_existance(self, path: str) -> bool:
+        # @TODO: fix, internal server error
+        exists = self.api.storage.exists(self.team_id, path)
+        # exists = self.api.storage.dir_exists(self.team_id, path)
+        if not exists:
+            self.status_text.set(f"Path '{path}' does not exist in cloud storage", status="error")
             self.status_text.show()
             return False
         return True
@@ -194,7 +212,7 @@ class CloudImport(Widget):
         if path is None:
             path = self.path_input.get_value().strip()
 
-        is_valid_path = self._validate_path(path)
+        is_valid_path = self._validate_path_existance(path)
         if not is_valid_path:
             return None
         agent_id = self.agent_select.get_value()
