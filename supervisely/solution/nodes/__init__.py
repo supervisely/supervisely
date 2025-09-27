@@ -1,8 +1,12 @@
 from supervisely.solution.nodes.all_experiments.node import AllExperimentsNode
 from supervisely.solution.nodes.auto_import.node import AutoImportNode
+from supervisely.solution.nodes.best_model_evaluation_report.node import (
+    BestModelEvaluationReportNode,
+)
 from supervisely.solution.nodes.cloud_import.node import CloudImportNode
 from supervisely.solution.nodes.compare_models.node import CompareModelsNode
 from supervisely.solution.nodes.data_versioning.node import DataVersioningNode
+from supervisely.solution.nodes.deploy_custom_model.node import DeployCustomModelNode
 from supervisely.solution.nodes.deploy_pretrained_model.node import (
     DeployPretrainedModelNode,
 )
@@ -61,4 +65,6 @@ __all__ = [
     # Prediction
     "DeployPretrainedModelNode",
     "PreLabelingNode",
+    "DeployCustomModelNode",
+    "BestModelEvaluationReportNode",
 ]

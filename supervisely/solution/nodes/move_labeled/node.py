@@ -5,6 +5,7 @@ from typing import Any, Callable, Dict, List, Literal, Optional, Tuple
 
 import supervisely.io.env as sly_env
 from supervisely.api.api import Api
+from supervisely.api.entities_collection_api import CollectionTypeFilter
 from supervisely.app.widgets import Dialog
 from supervisely.project.image_transfer_utils import move_structured_images
 from supervisely.sly_logger import logger
@@ -16,6 +17,7 @@ from supervisely.solution.engine.models import (
 from supervisely.solution.nodes.move_labeled.automation import MoveLabeledAuto
 from supervisely.solution.nodes.move_labeled.gui import MoveLabeledGUI
 from supervisely.solution.nodes.move_labeled.history import MoveLabeledTasksHistory
+from supervisely.solution.utils import get_last_split_collection
 
 
 class MoveLabeledNode(BaseCardNode):
@@ -164,7 +166,9 @@ class MoveLabeledNode(BaseCardNode):
             logger.info(f"Train/Val split settings: {self._train_percent}%/{self._val_percent}%")
 
     # publish event (may send Message object)
-    def wait_task_complete(self, task_id: int, src_images: List[int]) -> MoveLabeledDataFinishedMessage:
+    def wait_task_complete(
+        self, task_id: int, src_images: List[int]
+    ) -> MoveLabeledDataFinishedMessage:
         """Wait until the task is complete."""
         task_info_json = self.api.task.get_info_by_id(task_id)
         if task_info_json is None:
@@ -180,10 +184,12 @@ class MoveLabeledNode(BaseCardNode):
             ]:
                 logger.error(f"Task {task_id} failed with status: {task_status}")
                 break
-            logger.info("Waiting for the evaluation task to start... Status: %s", task_status)
+            logger.info("Waiting for the Data Commander task to start... Status: %s", task_status)
             time.sleep(5)
             if time.time() - current_time > 30000:  # 500 minutes timeout
-                logger.warning("Timeout reached while waiting for the evaluation task to start.")
+                logger.warning(
+                    "Timeout reached while waiting for the Data Commander task to start."
+                )
                 break
 
         success = task_status == self.api.task.Status.FINISHED
@@ -286,6 +292,7 @@ class MoveLabeledNode(BaseCardNode):
             workspace_id=sly_env.workspace_id(),
             module_id=module_info.id,
             params=params,
+            description=f"Moving labeled data to the Training project started by {self.api.task_id} task",
         )
         task_info_json = self.api.task.get_info_by_id(task_info_json["id"])
 
@@ -323,41 +330,45 @@ class MoveLabeledNode(BaseCardNode):
             random.shuffle(items)
         train = items[:train_count]
         val = items[train_count : train_count + val_count]
-        self._add_to_collection(train, "all_train")
-        self._add_to_collection(val, "all_val")
-        self._add_to_collection(items, "batch")
+        self._add_to_train_collection(train)
+        self._add_to_val_collection(val)
         logger.info(f"Split {len(items)} items into {len(train)} train and {len(val)} val items.")
 
     def _add_to_collection(
         self,
         image_ids: List[int],
-        split_name: Literal["all_train", "all_val", "batch"],
+        split_name: Literal["train", "val"],
     ) -> None:
         """Add the MoveLabeled node to a collection."""
         if not image_ids:
             return
-        collections = self.api.entities_collection.get_list(self.dst_project_id)
+        last_split, idx = get_last_split_collection(self.api, self.dst_project_id, split_name)
 
-        main_col = None
+        existing_ids = []
+        if last_split:
+            existing_items = self.api.entities_collection.get_items(
+                last_split.id, CollectionTypeFilter.DEFAULT
+            )
+            existing_ids = [item.id for item in existing_items]
 
-        last_batch_idx = 0
-        for collection in collections:
-            if collection.name == split_name and split_name in ["all_train", "all_val"]:
-                main_col = collection
-            elif split_name == "batch":
-                if collection.name.startswith("batch_"):
-                    last_batch_idx = max(last_batch_idx, int(collection.name.split("_")[-1]))
+        col_name = f"latest_{split_name}"  # TODO: change to "latest_.."  to ".._latest"
+        col = self.api.entities_collection.get_info_by_name(self.dst_project_id, col_name)
+        if col is None:
+            col = self.api.entities_collection.create(self.dst_project_id, col_name)
+            logger.info(f"Created new collection '{col_name}'")
+        self.api.entities_collection.add_items(col.id, image_ids)
 
-        if main_col is None and split_name in ["all_train", "all_val"]:
-            main_col = self.api.entities_collection.create(self.dst_project_id, split_name)
-            logger.info(f"Created new collection '{split_name}'")
-        elif split_name == "batch":
-            batch_name = f"batch_{last_batch_idx + 1}"
-            main_col = self.api.entities_collection.create(self.dst_project_id, batch_name)
-            logger.info(f"Created new collection '{batch_name}'")
+        new_split_name = f"{split_name}_{idx + 1:04d}"
+        new_col = self.api.entities_collection.create(self.dst_project_id, new_split_name)
+        self.api.entities_collection.add_items(new_col.id, image_ids + existing_ids)
 
-        self.api.entities_collection.add_items(main_col.id, image_ids)
+    def _add_to_train_collection(self, image_ids: List[int]) -> None:
+        """Add the MoveLabeled node to the train collection."""
+        self._add_to_collection(image_ids, "train")
 
+    def _add_to_val_collection(self, image_ids: List[int]) -> None:
+        """Add the MoveLabeled node to the validation collection."""
+        self._add_to_collection(image_ids, "val")
 
     def _get_uploaded_ids(self, project_id: int, task_id: int) -> List[int]:
         """Get the IDs of images uploaded from the project's custom data."""

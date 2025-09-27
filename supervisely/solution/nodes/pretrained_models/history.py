@@ -15,9 +15,9 @@ class PretrainedModelsTasksHistory(TasksHistory):
             "Images Count",
         ]
         self._columns_keys = [
-            ["task_info", "id"],
+            ["task_id"],
             ["model_id"],
-            ["task_info", "created_at"],
+            ["task_info", "startedAt"],
             ["status"],
             ["agent_id"],
             ["classes_count"],

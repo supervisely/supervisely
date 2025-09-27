@@ -2,6 +2,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import MISSING, dataclass, fields
 from json import JSONDecodeError
 from os.path import dirname, join
+from pathlib import Path
 from typing import Dict, List, Optional, Union
 
 import requests
@@ -260,3 +261,53 @@ def get_experiment_info_by_artifacts_dir(
         raise ValueError("Artifacts directory should start with '/experiments'")
     experiment_path = join(artifacts_dir, EXPERIMENT_INFO_FILENAME)
     return _fetch_experiment_data(api, team_id, experiment_path)
+
+
+def get_new_experiment_infos(
+    api: Api,
+    team_id: int,
+    existing_experiment_infos: List[ExperimentInfo],
+    task_id: Optional[int] = None,
+) -> List[ExperimentInfo]:
+    """
+    Get new experiments that are not in the existing_experiment_infos list.
+    This function fetches experiments from the specified team and filters out those
+    that are already present in the existing_experiment_infos based on their artifacts_dir.
+
+    :param api: Supervisely API client
+    :type api: Api
+    :param team_id: Team ID
+    :type team_id: int
+    :param existing_experiment_infos: List of existing ExperimentInfo objects
+    :type existing_experiment_infos: List[ExperimentInfo]
+    :param task_id: Optional Task ID to filter experiments by, defaults to None
+    :type task_id: Optional[int], optional
+    :return: List of new ExperimentInfo objects
+    :rtype: List[ExperimentInfo]
+    """
+    EXPERIMENT_FILE = "experiment_info.json"
+    EXPERIMENT_DIR = "/experiments"
+    existing_paths = {Path(i.artifacts_dir) for i in existing_experiment_infos}
+
+    file_infos = api.storage.list(team_id, EXPERIMENT_DIR, include_folders=False)
+    filtered_experiment_paths = []
+    for fi in file_infos:
+        p = Path(fi.path)
+        if not (p.name == EXPERIMENT_FILE and p.parent not in existing_paths):
+            continue
+        if task_id is not None and not p.parent.name.startswith(str(task_id)):
+            continue
+        path = p.parent / EXPERIMENT_FILE
+        filtered_experiment_paths.append(str(path))
+
+    if len(filtered_experiment_paths) == 0:
+        logger.info("No new experiments found.")
+        return []
+
+    new_experiment_infos = []
+    for experiment_path in filtered_experiment_paths:
+        experiment_info = _fetch_experiment_data(api, team_id, experiment_path)
+        if experiment_info is not None:
+            new_experiment_infos.append(experiment_info)
+    logger.info(f"Found {len(new_experiment_infos)} new experiments.")
+    return new_experiment_infos

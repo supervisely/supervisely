@@ -1,12 +1,13 @@
 from typing import List, Optional, Tuple, Union
 
+from supervisely.sly_logger import logger
 from supervisely.api.api import Api
 from supervisely.api.project_api import ProjectInfo
 from supervisely.app.widgets import Dialog, NewExperiment
 from supervisely.nn.task_type import TaskType
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import ProjectType
-from supervisely.solution.utils import find_agent
+from supervisely.solution.utils import find_agent, get_last_split_collection
 
 
 class PretrainedModelsGUI:
@@ -35,12 +36,15 @@ class PretrainedModelsGUI:
 
         if train_collections and val_collections:
             split_mode = "collections"
+            random_train_percentage = None
             train_datasets, val_datasets = None, None
         elif train_datasets and val_datasets:
             split_mode = "datasets"
+            random_train_percentage = None
             train_collections, val_collections = None, None
         else:
             split_mode = "random"
+            random_train_percentage = 80
             train_collections, val_collections = None, None
             train_datasets, val_datasets = None, None
 
@@ -60,6 +64,7 @@ class PretrainedModelsGUI:
             cv_task=TaskType.OBJECT_DETECTION,
             selected_frameworks=self.frameworks,
             train_val_split_mode=split_mode,
+            random_train_percentage=random_train_percentage,
             train_collections=train_collections,
             val_collections=val_collections,
             training_datasets=train_datasets,
@@ -80,7 +85,7 @@ class PretrainedModelsGUI:
 
         @content.visible_changed
         def _on_visible_changed(visible: bool):
-            print(f"NewExperiment visibility changed: {visible}")
+            logger.info(f"New Experiment modal visibility changed: {visible}")
 
         return content
 
@@ -97,18 +102,6 @@ class PretrainedModelsGUI:
             )
         return self._modal
 
-    def _get_train_val_collections(self) -> Tuple[List[int], List[int]]:
-        if self.project.type != ProjectType.IMAGES.value:
-            return [], []
-        train_collections, val_collections = [], []
-        all_collections = self._api.entities_collection.get_list(self.project.id)
-        for collection in all_collections:
-            if collection.name == "all_train":
-                train_collections.append(collection.id)
-            elif collection.name == "all_val":
-                val_collections.append(collection.id)
-        return train_collections, val_collections
-
     def _get_train_val_datasets(self) -> Tuple[List[int], List[int]]:
         if self.project.type != ProjectType.IMAGES.value:
             return [], []
@@ -120,6 +113,13 @@ class PretrainedModelsGUI:
             elif "val" in dataset.name:
                 val_datasets.append(dataset.id)
         return train_datasets, val_datasets
+
+    def _get_train_val_collections(self) -> Tuple[List[int], List[int]]:
+        last_train, _ = get_last_split_collection(self._api, self.project.id, "train_")
+        last_val, _ = get_last_split_collection(self._api, self.project.id, "val_")
+        if last_train and last_val:
+            return [last_train.id], [last_val.id]
+        return [], []
 
     def _find_agent(self):
         return find_agent(self._api, self.team_id)

@@ -102,7 +102,7 @@ class NewExperiment(Widget):
         self._val_datasets = self._validate_datasets(val_datasets)
         self._train_collections = self._validate_collections(train_collections)
         self._val_collections = self._validate_collections(val_collections)
-        self._random_train_percentage = random_train_percentage or 80
+        self._random_train_percentage = random_train_percentage
         self._train_val_split_mode = self._validate_split_mode(train_val_split_mode)
 
         # Widget selectors disabled by default:

@@ -11,3 +11,16 @@ class DeployPretrainedModelNode(DeployModelNode):
     DESCRIPTION = "Deploy a pretrained model for pre-labeling to speed up the labeling process."
 
     GUI_CLASS = DeployPretrainedModelGUI
+
+    def _get_handles(self):
+        return [
+            {
+                "id": "model_deployed",
+                "type": "source",
+                "position": "left",
+                "connectable": True,
+            }
+        ]
+
+    def enable_automation(self):
+        self._automation.apply(self._refresh_node, self._automation.REFRESH_GPU_USAGE)

@@ -5,8 +5,9 @@ from venv import logger
 
 from supervisely.api.api import Api
 from supervisely.app import DataJson
-from supervisely.app.widgets.dialog.dialog import Dialog
 from supervisely.app.widgets import Button
+from supervisely.app.widgets.grid_gallery.grid_gallery import GridGallery
+from supervisely.app.widgets.dialog.dialog import Dialog
 from supervisely.app.widgets.fast_table.fast_table import FastTable
 from supervisely.app.widgets.task_logs.task_logs import TaskLogs
 from supervisely.app.widgets.widget import Widget
@@ -38,6 +39,10 @@ class TasksHistory(Widget):
     # ------------------------------------------------------------------
     # Table ------------------------------------------------------------
     # ------------------------------------------------------------------
+    def _on_table_row_click(self, clicked_row: FastTable.ClickedRow):
+        self.logs.set_task_id(clicked_row.row[0])
+        self.logs_modal.show()
+
     @property
     def table(self):
         if not hasattr(self, "_tasks_table"):
@@ -45,8 +50,7 @@ class TasksHistory(Widget):
 
             @self._tasks_table.row_click
             def on_row_click(clicked_row: FastTable.ClickedRow):
-                self.logs.set_task_id(clicked_row.row[0])
-                self.logs_modal.show()
+                self._on_table_row_click(clicked_row)
 
         return self._tasks_table
 
@@ -103,7 +107,12 @@ class TasksHistory(Widget):
 
     def update(self):
         for task in self.get_tasks():
-            task_id = task["id"]
+            try:
+                task_id = task["id"]
+            except KeyError:
+                task_id = task.get("task_info", {}).get("id", None)
+                if task_id is None:
+                    continue
             task_info = self.api.task.get_info_by_id(task_id)
             for col_keys in self.columns_keys:
                 if not isinstance(col_keys, list):
@@ -224,6 +233,25 @@ class TasksHistory(Widget):
         if not hasattr(self, "_logs_modal"):
             self._logs_modal = Dialog(title="Task logs", content=self.logs)
         return self._logs_modal
+
+    # ------------------------------------------------------------------
+    # Gallery ------------------------------------------------------------
+    # ------------------------------------------------------------------
+    @property
+    def gallery(self) -> GridGallery:
+        if not hasattr(self, "_gallery"):
+            self._gallery = GridGallery(columns_number=3)
+        return self._gallery
+
+    @property
+    def preview_modal(self) -> Dialog:
+        if not hasattr(self, "_preview_modal"):
+            self._preview_modal = Dialog(
+                title="Preview",
+                content=self.gallery,
+                size="small",
+            )
+        return self._preview_modal
 
     # ------------------------------------------------------------------
     # Modal ------------------------------------------------------------

@@ -1,9 +1,8 @@
 import threading
 import time
-from datetime import datetime
-from typing import Callable, Dict
+from typing import Callable, Dict, List, Optional
 
-from supervisely.api.api import Api
+from supervisely.api.api import Api, ApiField
 from supervisely.io.env import project_id as env_project_id
 from supervisely.sly_logger import logger
 from supervisely.solution.components.empty.node import EmptyNode
@@ -11,6 +10,12 @@ from supervisely.solution.engine.models import (
     CLIPServiceStatusMessage,
     EmbeddingsStatusMessage,
 )
+
+from supervisely.api.project_api import ProjectInfo
+from supervisely.app.fastapi import run_sync
+import asyncio
+from supervisely.api.image_api import ImageInfo
+from supervisely import batched
 
 
 class AiIndexNode(EmptyNode):
@@ -49,6 +54,7 @@ class AiIndexNode(EmptyNode):
         self._stop_autorefresh = False
         self._refresh_thread = None
         self.api = Api.from_env()
+        self._clip_message_processed = False
         self.check_embeddings_status()
 
     # ------------------------------------------------------------------
@@ -93,8 +99,11 @@ class AiIndexNode(EmptyNode):
         }
 
     def process_message_from_clip_service(self, message: CLIPServiceStatusMessage) -> None:
-        if message.is_ready:
+        if message.is_ready and not self._clip_message_processed:
             self.check_embeddings_status()
+            self._clip_message_processed = True
+        elif not message.is_ready:
+            self._clip_message_processed = False
 
     def check_embeddings_status(self) -> EmbeddingsStatusMessage:
         """Check that project embeddings are enabled, not in progress, and up to date."""
@@ -107,8 +116,6 @@ class AiIndexNode(EmptyNode):
             )
             if not is_ready:
                 self.start_autorefresh()
-            else:
-                self.stop_autorefresh(wait=True)
         except Exception as e:
             logger.error(f"Error checking AI Index status: {repr(e)}")
         finally:
@@ -148,13 +155,12 @@ class AiIndexNode(EmptyNode):
             self.api.project.calculate_embeddings(self.project_id)
             return False
         project_info = self.api.project.get_info_by_id(self.project_id)
-        embeddings_updated_at = datetime.fromisoformat(embeddings_updated_at.replace("Z", "+00:00"))
-        project_updated_at = datetime.fromisoformat(project_info.updated_at.replace("Z", "+00:00"))
-        if embeddings_updated_at < project_updated_at:
+        need_update = check_embeddings_update_status(self.api, self.project_id, project_info)
+        if need_update:
             logger.info(f"Embeddings are not up to date for project {self.project_id}. Updating...")
             self.api.project.calculate_embeddings(self.project_id)
             return False
-        logger.info(f"Embeddings are up to date for project {self.project_id}.")
+        logger.debug(f"Embeddings are up to date for project {self.project_id}.")
         return True
 
     def _is_embeddings_in_progress(self):
@@ -205,7 +211,7 @@ class AiIndexNode(EmptyNode):
             self._refresh_thread = threading.Thread(target=self._autorefresh, daemon=True)
         if not self._refresh_thread.is_alive():
             self._refresh_thread.start()
-            logger.info("AI Index auto-refresh started.")
+            logger.debug("AI Index auto-refresh started.")
 
     def stop_autorefresh(self, wait: bool = False):
         self._stop_autorefresh = True
@@ -213,9 +219,141 @@ class AiIndexNode(EmptyNode):
             if self._refresh_thread is not None:
                 try:
                     self._refresh_thread.join()
-                    logger.info("AI Index auto-refresh stopped.")
+                    logger.debug("AI Index auto-refresh stopped.")
                 except Exception as e:
                     logger.error(f"Error stopping AI Index auto-refresh: {repr(e)}")
-                    logger.info("AI Index auto-refresh stopped.")
-                except Exception as e:
-                    logger.error(f"Error stopping AI Index auto-refresh: {repr(e)}")
+
+
+# Utils
+def get_filter_images_wo_embeddings() -> Dict:
+    """Create filter to get images that dont have embeddings.
+
+    :return: Dictionary representing the filter.
+    :rtype: Dict
+    """
+    return {
+        ApiField.FIELD: ApiField.EMBEDDINGS_UPDATED_AT,
+        ApiField.OPERATOR: "eq",
+        ApiField.VALUE: None,
+    }
+
+
+def get_filter_deleted_after(timestamp: str) -> Dict:
+    """Create filter to get images deleted after a specific date.
+
+    :return: Dictionary representing the filter.
+    :rtype: Dict
+    """
+    return {
+        ApiField.FIELD: ApiField.UPDATED_AT,
+        ApiField.OPERATOR: "gt",
+        ApiField.VALUE: timestamp,
+    }
+
+def check_embeddings_update_status(api, project_id, project_info: ProjectInfo):
+    return run_sync(_compute_need_update(api, project_id, project_info.embeddings_updated_at))
+
+async def _compute_need_update(api, project_id, updated_at):
+    images_to_create = await image_get_list_async(api, project_id, wo_embeddings=True)
+    if updated_at is not None:
+        images_to_delete = await image_get_list_async(api, project_id, deleted_after=updated_at)
+    else:
+        images_to_delete = []
+    return len(images_to_create) > 0 or len(images_to_delete) > 0
+
+async def image_get_list_async(
+    api: Api,
+    project_id: int,
+    dataset_id: int = None,
+    image_ids: List[int] = None,
+    per_page: int = 1000,
+    wo_embeddings: Optional[bool] = False,
+    deleted_after: Optional[str] = None,
+) -> List[ImageInfo]:
+    method = "images.list"
+    base_data = {
+        ApiField.PROJECT_ID: project_id,
+        ApiField.FORCE_METADATA_FOR_LINKS: False,
+        ApiField.PER_PAGE: per_page,
+    }
+
+    if dataset_id is not None:
+        base_data[ApiField.DATASET_ID] = dataset_id
+
+    if wo_embeddings and deleted_after:
+        raise ValueError("Both created_after and deleted_after cannot be set at the same time.")
+    if wo_embeddings:
+        base_data[ApiField.FILTER] = [get_filter_images_wo_embeddings()]
+    if deleted_after is not None:
+        if ApiField.FILTER not in base_data:
+            base_data[ApiField.FILTER] = []
+        base_data[ApiField.FILTER].append(get_filter_deleted_after(deleted_after))
+        base_data[ApiField.SHOW_DISABLED] = True
+
+    semaphore = api.get_default_semaphore()
+    all_items = []
+    tasks = []
+
+    async def _get_all_pages(ids_filter: List[Dict]):
+        page_data = base_data.copy()
+        if ids_filter:
+            if ApiField.FILTER not in page_data:
+                page_data[ApiField.FILTER] = []
+            page_data[ApiField.FILTER].extend(ids_filter)
+
+        page_data[ApiField.PAGE] = 1
+        first_response = await api.post_async(method, page_data)
+        first_response_json = first_response.json()
+
+        total_pages = first_response_json.get("pagesCount", 1)
+        batch_items = []
+
+        entities = first_response_json.get("entities", [])
+        for item in entities:
+            image_info = api.image._convert_json_info(item)
+            batch_items.append(image_info)
+
+        if total_pages > 1:
+
+            async def fetch_page(page_num):
+                page_data_copy = page_data.copy()
+                page_data_copy[ApiField.PAGE] = page_num
+
+                async with semaphore:
+                    response = await api.post_async(method, page_data_copy)
+                    response_json = response.json()
+
+                    page_items = []
+                    entities = response_json.get("entities", [])
+                    for item in entities:
+                        image_info = api.image._convert_json_info(item)
+                        page_items.append(image_info)
+
+                    return page_items
+
+            tasks = []
+            for page_num in range(2, total_pages + 1):
+                tasks.append(asyncio.create_task(fetch_page(page_num)))
+
+            page_results = await asyncio.gather(*tasks)
+
+            for page_items in page_results:
+                batch_items.extend(page_items)
+
+        return batch_items
+
+    if image_ids is None:
+        tasks.append(asyncio.create_task(_get_all_pages([])))
+    else:
+        for batch in batched(image_ids):
+            ids_filter = [
+                {ApiField.FIELD: ApiField.ID, ApiField.OPERATOR: "in", ApiField.VALUE: batch}
+            ]
+            tasks.append(asyncio.create_task(_get_all_pages(ids_filter)))
+            await asyncio.sleep(0.02)
+
+    batch_results = await asyncio.gather(*tasks)
+    for batch_items in batch_results:
+        all_items.extend(batch_items)
+
+    return all_items
