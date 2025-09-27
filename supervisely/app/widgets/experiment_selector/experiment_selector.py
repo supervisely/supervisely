@@ -593,10 +593,10 @@ class ExperimentSelector(Widget):
                     project_info=project_info,
                 )
 
-                def this_row_checkpoint_changed(checkpoint_value: str):
+                def current_row_checkpoint_changed(checkpoint_value: str):
                     self._checkpoint_changed(model_row, checkpoint_value)
 
-                model_row.checkpoint_changed = this_row_checkpoint_changed
+                model_row.checkpoint_changed = current_row_checkpoint_changed
                 return experiment_info.task_type, model_row
             except Exception as e:
                 logger.debug(f"Failed to process experiment info: {experiment_info}")
@@ -618,6 +618,43 @@ class ExperimentSelector(Widget):
 
         table_rows.sort(key=lambda x: x.task_id, reverse=True)
         return table_rows
+
+    def append_experiment(self, experiment_info: ExperimentInfo) -> None:
+        """
+        Appends a single experiment info to the table.
+        """
+        project_info = self._project_infos_map.get(experiment_info.project_id)
+        if project_info is None:
+            if experiment_info.project_id is not None:
+                try:
+                    project_info = self.api.project.get_info_by_id(experiment_info.project_id)
+                    self._project_infos_map[experiment_info.project_id] = project_info
+                except Exception as e:
+                    logger.debug(
+                        f"Failed to fetch project info for project ID {experiment_info.project_id}: {repr(e)}"
+                    )
+                    project_info = None
+            else:
+                project_info = None
+        model_row = ExperimentSelector.ModelRow(
+            api=self.api,
+            team_id=self.team_id,
+            task_type=experiment_info.task_type,
+            experiment_info=experiment_info,
+            project_info=project_info,
+        )
+
+        def current_row_checkpoint_changed(checkpoint_value: str):
+            self._checkpoint_changed(model_row, checkpoint_value)
+
+        model_row.checkpoint_changed = current_row_checkpoint_changed
+
+        self._rows = [model_row] + self._rows
+        self._experiment_infos = [experiment_info] + self._experiment_infos
+        self._update_value_index_map()
+        self._update_search_text()
+        self._update_sort_values()
+        self.table.insert_row(model_row.to_table_row(), 0)
 
     def _update_search_text(self):
         self._rows_search_texts = [row.search_text() for row in self._rows]
