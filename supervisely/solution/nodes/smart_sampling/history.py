@@ -5,11 +5,12 @@ from supervisely.api.api import Api
 from supervisely.api.image_api import ImageInfo
 from supervisely.app.content import DataJson
 from supervisely.app.widgets import FastTable, TasksHistory
+from supervisely.solution.components.tasks_history.tasks_history import TasksHistoryWidget
 from supervisely.project.image_transfer_utils import compare_projects
 from supervisely.sly_logger import logger
 
 
-class SmartSamplingTasksHistory(TasksHistory):
+class SmartSamplingTasksHistory(TasksHistoryWidget):
     """Tasks history widget specialised for Smart Sampling node."""
 
     def __init__(
