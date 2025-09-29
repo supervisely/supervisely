@@ -241,7 +241,7 @@ class AddTrainingDataGUI(Widget):
         self.splits_widget.train_val_splits.show()
         project_id = self.get_selected_project_id()
         if not project_id:
-            raise RuntimeError("Project ID is not selected. Cannot set splits data.")
+            raise RuntimeError("Project ID is required to configure splits data but no project is currently selected.")
         dataset_ids = self.get_selected_dataset_ids()
         try:
             self.splits_widget.train_val_splits._content.loading = True
