@@ -3,10 +3,10 @@ from typing import Any, Dict, List, Union
 
 from supervisely import logger
 from supervisely.app.content import DataJson
-from supervisely.app.widgets import Button, FastTable, TasksHistory
+from supervisely.solution.components import TasksHistoryWidget
 
 
-class SendEmailHistory(TasksHistory):
+class SendEmailHistory(TasksHistoryWidget):
 
     class Item:
         class Status:
@@ -40,20 +40,29 @@ class SendEmailHistory(TasksHistory):
                 res["created_at"] = self.created_at
             return res
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._table_columns = [
-            "ID",
-            "Created At",
-            "Sent To",
-            "Status",
-        ]
-        self._columns_keys = [
-            ["id"],
-            ["created_at"],
-            ["sent_to"],
-            ["status"],
-        ]
+    @property
+    def table_columns(self) -> List[str]:
+        """Header names for the tasks table."""
+        if not hasattr(self, "_table_columns"):
+            self._table_columns = [
+                "ID",
+                "Created At",
+                "Sent To",
+                "Status",
+            ]
+        return self._table_columns
+
+    @property
+    def columns_keys(self) -> List[List[str]]:
+        """Mapping between :pyattr:`table_columns` and task dict keys."""
+        if not hasattr(self, "_columns_keys"):
+            self._columns_keys = [
+                ["id"],
+                ["created_at"],
+                ["sent_to"],
+                ["status"],
+            ]
+        return self._columns_keys
 
     def update(self):
         self.table.clear()
