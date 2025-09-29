@@ -1,8 +1,8 @@
-from supervisely.app.widgets import Widget, DynamicWidget
-from supervisely.app.widgets_context import JinjaWidgets
-from supervisely.app.fastapi.websocket import WebsocketManager
-from supervisely.app.fastapi.utils import run_sync
 from supervisely.app.content import DataJson, StateJson
+from supervisely.app.fastapi.utils import run_sync
+from supervisely.app.fastapi.websocket import WebsocketManager
+from supervisely.app.widgets import DynamicWidget, Widget
+from supervisely.app.widgets_context import JinjaWidgets
 
 
 class ReloadableArea(DynamicWidget):
@@ -88,10 +88,10 @@ class ReloadableArea(DynamicWidget):
         """Hides the content of the ReloadableArea."""
         if self._content is not None:
             self._content.hide()
-        self._hide = True
+        super().hide()
 
     def show(self):
         """Shows the content of the ReloadableArea."""
         if self._content is not None:
             self._content.show()
-        self._hide = False
+        super().show()

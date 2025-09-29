@@ -22,7 +22,14 @@ class Flexbox(Widget):
         center_content: bool = False,
         widget_id: str = None,
         vertical_alignment: Literal["start", "end", "center", "stretch", "baseline"] = None,
-        horizontal_alignment: Literal["flex-start", "flex-end", "center", "stretch", "baseline"] = None
+        horizontal_alignment: Literal[
+            "flex-start",
+            "flex-end",
+            "center",
+            "space-between",
+            "space-around",
+            "space-evenly",
+        ] = None,
     ):
         if not isinstance(widgets, list):
             widgets = [widgets]

@@ -64,7 +64,7 @@ class TeamWorkspaceSelect(Widget):
         self._selectors_style = selectors_style
         self._gap = 20 if direction == "horizontal" else 10
         self._changes_handled = False
-        self._value_changed_callback = None
+        self._value_changed_callbacks = []
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     @property
@@ -111,7 +111,8 @@ class TeamWorkspaceSelect(Widget):
 
                 if self._changes_handled:
                     result = {"teamId": self._team_id, "workspaceId": value}
-                    self._value_changed_callback(result)
+                    for callback in self._value_changed_callbacks:
+                        callback(result)
 
             self._workspace_selector = select
         return self._workspace_selector
@@ -170,8 +171,10 @@ class TeamWorkspaceSelect(Widget):
 
     def value_changed(self, func):
         """Register a callback function to be called when team or workspace selection changes"""
-        self._changes_handled = True
-        self._value_changed_callback = func
+        self._value_changed_callbacks.append(func)
+        self._changes_handled = any(
+            isinstance(cb, Callable) for cb in self._value_changed_callbacks
+        )
 
         return func
 

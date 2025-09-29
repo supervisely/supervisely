@@ -114,7 +114,6 @@ class TrainValSplits(Widget):
         if not isinstance(project_id, int):
             raise ValueError("Project ID must be an integer.")
         self._project_id = project_id
-        self._project_type = None
         if self._api is None:
             self._api = Api()
         self._project_info = self._api.project.get_info_by_id(self._project_id)
@@ -446,7 +445,6 @@ class TrainValSplits(Widget):
         if not isinstance(project_id, int):
             raise ValueError("Project ID must be an integer.")
         self._project_id = project_id
-        self._project_type = None
         if self._api is None:
             self._api = Api()
         self._project_info = self._api.project.get_info_by_id(self._project_id, raise_error=True)
