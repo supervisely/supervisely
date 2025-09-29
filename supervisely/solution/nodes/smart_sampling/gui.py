@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import itertools
 import random
+import time
 from datetime import datetime
 from enum import Enum
-import time
 from typing import Dict, List, Literal, Optional, Tuple
 from uuid import uuid4
 
@@ -15,7 +15,6 @@ from supervisely.api.entities_collection_api import CollectionTypeFilter
 from supervisely.api.image_api import ImageInfo
 from supervisely.api.project_api import ProjectInfo
 from supervisely.app.content import DataJson, StateJson
-from supervisely.solution.utils import find_agent
 from supervisely.app.widgets import (
     Button,
     Card,
@@ -36,11 +35,8 @@ from supervisely.app.widgets import (
     Text,
     Widget,
 )
-from supervisely.project.image_transfer_utils import (
-    compare_projects,
-    copy_structured_images,
-)
 from supervisely.sly_logger import logger
+from supervisely.solution.utils import find_agent
 
 
 class SamplingSettings(TypedDict, total=False):
@@ -100,15 +96,6 @@ class SmartSamplingGUI(Widget):
         self._diff_num = DataJson()[self.widget_id].get("differences_count", 0)
         return self._diff_num
 
-    @property
-    def sampled_images(self) -> Dict[int, List[int]]:
-        """
-        Get sampled images from DataJson.
-        :return: dict, sampled images by dataset ID
-        """
-        self._sampled_images = DataJson()[self.widget_id].get("sampled_images", {})
-        return self._sampled_images
-
     # ------------------------------------------------------------------
     # Base Widget Methods ----------------------------------------------
     # ------------------------------------------------------------------
@@ -154,39 +141,6 @@ class SmartSamplingGUI(Widget):
         # --- Field with Save Settings and Run buttons ---------------
         buttons = self._create_main_buttons()
 
-        @self.preview_button.click
-        def preview_button_clicked():
-            self.hide_status_text()
-            self.uncollapse_preview()
-            self.preview_gallery.clean_up()
-            self.preview_gallery.loading = True
-            sampling_settings = self.get_settings()
-            if sampling_settings.get("sample_size", 0) > 6:
-                sampling_settings["sample_size"] = 6
-            if sampling_settings.get("limit", 0) > 6:
-                sampling_settings["limit"] = 6
-
-            sampled_images = self._sample(sampling_settings)
-            if sampled_images is None:
-                self.preview_gallery.loading = False
-                self.set_status_text("No images to preview.", "warning")
-                self.show_status_text()
-                return
-
-            infos = []
-            for _, imgs in sampled_images.items():
-                infos.extend(imgs)
-            urls = [img.full_storage_url for img in infos]
-            ai_metas = [img.ai_search_meta for img in infos]
-
-            for idx, (url, ai_meta) in enumerate(zip(urls, ai_metas)):
-                title = None
-                if isinstance(ai_meta, dict) and ai_meta.get("score") is not None:
-                    title = f"Score: {ai_meta.get('score'):.3f}"
-                column = idx % 3
-                self.preview_gallery.append(column_index=column, image_url=url, title=title)
-            self.preview_gallery.loading = False
-
         return Container(
             [
                 sampling_mode_field,
@@ -202,6 +156,25 @@ class SmartSamplingGUI(Widget):
     # ------------------------------------------------------------------
     # GUI Helpers ------------------------------------------------------
     # ------------------------------------------------------------------
+    def _update_gallery(self, sampled_images: Dict[int, List[int]]):
+        self.preview_gallery.clean_up()
+        if not sampled_images:
+            self.set_status_text("No images to preview.", "warning")
+            self.show_status_text()
+            return
+
+        ids = list(itertools.chain.from_iterable(sampled_images.values()))
+        infos = self.api.image.get_info_by_id_batch(ids=ids)
+        urls = [img.full_storage_url for img in infos]
+        ai_metas = [img.ai_search_meta for img in infos]
+
+        for idx, (url, ai_meta) in enumerate(zip(urls, ai_metas)):
+            title = None
+            if isinstance(ai_meta, dict) and ai_meta.get("score") is not None:
+                title = f"Score: {ai_meta.get('score'):.3f}"
+            column = idx % 3
+            self.preview_gallery.append(column_index=column, image_url=url, title=title)
+
     def _create_images_info_field(self) -> Field:
         get_total_text = lambda x: f"Total images in project: <strong>{x}</strong>"
         total_text = Text(get_total_text(self.items_count))
@@ -295,12 +268,7 @@ class SmartSamplingGUI(Widget):
         num_input = InputNumber(value=1, min=1, max=self.diff_num)
         get_text = lambda x: f" of {x} images"
         text = Text(get_text(self.diff_num))
-        container = Container(
-            [num_input, text],
-            direction="horizontal",
-            gap=5,
-            style="align-items: center",
-        )
+        container = Flexbox([num_input, text], vertical_alignment="center")
 
         # --- Methods -------------------------------------------------
         self.set_diverse_text = lambda msg: text.set(text=get_text(msg), status="text")
@@ -511,57 +479,26 @@ class SmartSamplingGUI(Widget):
     # ------------------------------------------------------------------
     # Run --------------------------------------------------------
     # ------------------------------------------------------------------
-    def run(self) -> Optional[Tuple[Dict[int, List[int]], Dict[int, List[int]], int]]:
+    def run(
+        self, diffs: Dict[int, List[ImageInfo]]
+    ) -> Tuple[Optional[str], str, Optional[Dict[int, List[ImageInfo]]]]:
         """
         Sample images from the source project and copy them to the destination project.
-
-        :return: Tuple with source, destination and images count or None if no new items to copy
         """
-        uuid = uuid4().hex
         settings = self.get_settings()
-        sampled_images = self._sample(settings)
-        if sampled_images is None:
-            return {}, {}, 0
+        src = self._sample(diffs, settings)  # dict with sampled src images by dataset ID
+        if src is None:
+            return None, "no images to sample", None
 
-        res = self._copy_to_new_project(sampled_images)
-        if res is None:
+        task_id, status = self._copy_to_new_project(src)
+        if task_id is None:
             logger.warning("No images to copy to the labeling project.")
-            return {}, {}, 0
-        src, dst, images_count = res
-        if images_count is None or images_count == 0:
-            return {}, {}, 0
-
-        self._add_record_to_history(
-            sampling_id=uuid,
-            status="success",
-            total_items=images_count,
-            settings=settings,
-            items=sampled_images,
-        )
-        self.update_widgets(diff=self.calculate_diff_count(), sampling_settings=settings)
-        return src, dst, images_count
+            return None, status, src
+        return task_id, status, src
 
     # ------------------------------------------------------------------
     # Differences Helpers ----------------------------------------------
     # ------------------------------------------------------------------
-    def calculate_differences(self) -> Dict[int, List[ImageInfo]]:
-        """
-        Calculate the differences between the source and destination projects.
-
-        :return: dict of differences by dataset ID
-        """
-        diffs = compare_projects(
-            api=self.api,
-            src_project_id=self.project_id,
-            dst_project_id=self.dst_project_id,
-        )
-        if not diffs:
-            return {}
-
-        sampled_images = self.get_all_sampled_images()
-        filtered_diffs = self._filter_diffs(diffs, sampled_images)
-        return filtered_diffs
-
     def calculate_diff_count(self, diffs: Dict = None) -> int:
         """
         Calculate the differences between the source and destination projects.
@@ -576,26 +513,9 @@ class SmartSamplingGUI(Widget):
     # ------------------------------------------------------------------
     # Sampling Helpers -------------------------------------------------
     # ------------------------------------------------------------------
-    def _filter_diffs(
-        self, diffs: Dict[int, List[ImageInfo]], sampled_images: Dict[int, List[int]]
-    ) -> Dict[int, List[ImageInfo]]:
-        """
-        Filter out already sampled images from the differences.
-
-        :param diffs: dict, differences by dataset ID
-        :type diffs: Dict[int, List[ImageInfo]]
-        :param sampled_images: dict, sampled images by dataset ID
-        :type sampled_images: Dict[int, List[int]]
-        :return: dict, filtered differences
-        :rtype: Dict[int, List[ImageInfo]]
-        """
-        filtered_diffs = {}
-        for ds_id, imgs in diffs.items():
-            ignore_ids = {img for img in sampled_images.get(ds_id, [])}
-            filtered_diffs[ds_id] = [img for img in imgs if img.id not in ignore_ids]
-        return filtered_diffs
-
-    def _sample(self, settings: SamplingSettings) -> Optional[Dict[int, List[ImageInfo]]]:
+    def _sample(
+        self, diffs: Dict[int, List[ImageInfo]], settings: SamplingSettings
+    ) -> Optional[Dict[int, List[ImageInfo]]]:
         """
         Sample images from the source project and copy them to the destination project.
 
@@ -605,7 +525,6 @@ class SmartSamplingGUI(Widget):
         :rtype: Optional[Dict[int, List[ImageInfo]]]
         """
         try:
-            diffs = self.calculate_differences()  # dict with diffs by datasets
             total_diffs = self.calculate_diff_count(diffs)
 
             # If there are no differences
@@ -620,7 +539,7 @@ class SmartSamplingGUI(Widget):
                     f"Sample size ({sample_size}) is greater than total differences ({total_diffs}). "
                     "Returning all images."
                 )
-                return diffs
+                return self._convert_img_infos_to_ids(diffs)
 
             mode = settings.get("mode", SamplingMode.RANDOM.value)
 
@@ -650,10 +569,10 @@ class SmartSamplingGUI(Widget):
                         datasets_with_space.remove(ds_id)
 
             if mode == SamplingMode.RANDOM.value:
-                new_sampled_images = {}
+                sampled_images = {}
                 for ds_id, sample_count in samples_per_dataset.items():
                     if sample_count > 0:
-                        new_sampled_images[ds_id] = random.sample(diffs[ds_id], sample_count)
+                        sampled_images[ds_id] = random.sample(diffs[ds_id], sample_count)
             elif mode in [SamplingMode.DIVERSE.value, SamplingMode.AI_SEARCH.value]:
                 all_diffs_flat = []
                 for ds_id, imgs in diffs.items():
@@ -697,12 +616,12 @@ class SmartSamplingGUI(Widget):
                         collection_type=CollectionTypeFilter.AI_SEARCH,
                         project_id=self.project_id,
                     )
-                    new_sampled_images = {}
+                    sampled_images = {}
                     for img in all_sampled_images:
                         ds_id = img.dataset_id
-                        if ds_id not in new_sampled_images:
-                            new_sampled_images[ds_id] = []
-                        new_sampled_images[ds_id].append(img)
+                        if ds_id not in sampled_images:
+                            sampled_images[ds_id] = []
+                        sampled_images[ds_id].append(img)
                 else:
                     self.show_status_text()
                     self.set_status_text(
@@ -716,21 +635,17 @@ class SmartSamplingGUI(Widget):
                 logger.error(f"Unknown sampling mode: {mode}")
                 return None
 
-            return new_sampled_images
+            return self._convert_img_infos_to_ids(sampled_images)
 
         except Exception as e:
             logger.error(f"Error during sampling: {repr(e)}")
 
-    def _copy_to_new_project(
-        self,
-        images: Dict[int, List[ImageInfo]],
-    ) -> Tuple[Dict[int, List[int]], Dict[int, List[int]]]:
+    def _copy_to_new_project(self, images: Dict[int, List[int]]) -> Tuple[Optional[int], str]:
         try:
-            src = {ds: [i.id for i in imgs] for ds, imgs in images.items() if len(imgs) > 0}
-            flat_images = list(itertools.chain.from_iterable(src.values()))
+            flat_images = list(itertools.chain.from_iterable(images.values()))
             if len(flat_images) == 0:
                 logger.warning("No images to copy to the labeling project.")
-                return None
+                return None, "no images to sample"
             module_info = self.api.app.get_ecosystem_module_info(slug=self.APP_SLUG)
             params = {
                 "state": {
@@ -759,118 +674,17 @@ class SmartSamplingGUI(Widget):
                 workspace_id=self.workspace_id,
                 module_id=module_info.id,
                 params=params,
+                description=f"Sampling started by {self.api.task_id} task",
             )
             task_id = task_info_json["id"]
             completed = self._wait_until_complete(task_id)
             if not completed:
                 logger.warning("Error during copying to new project.")
-                return {}, {}, 0
-            task_info_json = self.api.task.get_info_by_id(task_id)
-            dst = self._get_uploaded_ids(self.dst_project_id, task_id)
-            images_count = sum(len(imgs) for imgs in dst.values())
-            return src, dst, images_count
+                return task_id, "failed"
+            return task_id, "success"
         except Exception as e:
-            logger.error(f"Error during copying to new project: {e}")
-
-    def _add_task(self, task: Dict):
-        """
-        Add a task to the DataJson.
-        :param task_id: str, unique ID for the task
-        """
-        if "tasks" not in DataJson()[self.widget_id]:
-            DataJson()[self.widget_id]["tasks"] = []
-        DataJson()[self.widget_id]["tasks"].append(task)
-        DataJson().send_changes()
-
-    def _add_sampled_images(
-        self,
-        sampling_id: str,
-        images: Dict[int, List[ImageInfo]],
-    ):
-        """
-        Save sampled images to DataJson.
-        :param sampling_id: str, unique ID for the sampling task
-        :param images: dict, sampled images by dataset ID
-        """
-        if "sampled_images" not in DataJson()[self.widget_id]:
-            DataJson()[self.widget_id]["sampled_images"] = {}
-        DataJson()[self.widget_id]["sampled_images"][sampling_id] = images
-        DataJson().send_changes()
-
-    def get_all_sampled_images(self) -> Dict[int, List[int]]:
-        """
-        Get sampled images from DataJson.
-        :return: dict, sampled images by dataset ID
-        """
-        res = {}
-        for _, images in self.sampled_images.items():
-            for ds_id, img_list in images.items():
-                if ds_id not in res:
-                    res[ds_id] = []
-                res[ds_id].extend(img_list)
-        return res
-
-    def _add_record_to_history(
-        self,
-        sampling_id: str,
-        status: Literal["success", "error"],
-        total_items: int,
-        settings: dict,
-        items: Optional[Dict[int, List[ImageInfo]]] = None,
-    ):
-        """
-        Add a record to the sampling history.
-
-        :param sampling_id: str, unique ID for the sampling task
-        :type sampling_id: str
-        :param status: status of the sampling task (e.g., "success", "error")
-        :type status: str
-        :param total_items: int, total number of items sampled
-        :type total_items: int
-        :param settings: dict, settings used for sampling
-        :type settings: dict
-        :param items: dict, sampled images by dataset ID
-        :type items: Optional[Dict[int, List[ImageInfo]]]
-        """
-        if sampling_id is None:
-            sampling_id = uuid4().hex
-
-        settings_copy = settings.copy()
-        mode = settings_copy.pop("mode", None)
-        history_item = {
-            "sampling_id": sampling_id,
-            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
-            "mode": mode,
-            "settings": settings_copy,
-            "items_count": total_items,
-            "status": status,
-        }
-
-        self._add_task(history_item)
-        if items is not None:
-            _items = {}
-            for ds_id, img_list in items.items():
-                _items[ds_id] = [img.id for img in img_list]
-            self._add_sampled_images(sampling_id, _items)
-
-    def _get_uploaded_ids(self, project_id: int, task_id: int) -> Dict[int, List[int]]:
-        """Get the IDs of images uploaded from the project's custom data."""
-        project = self.api.project.get_info_by_id(project_id)
-        if project is None:
-            logger.warning(f"Project with ID {project_id} not found.")
-            return {}
-        custom_data = project.custom_data or {}
-        history = custom_data.get("import_history", {}).get("tasks", [])
-        for record in history:
-            if record.get("task_id") == task_id:
-                break
-        else:
-            logger.warning(f"No import history found for task ID {task_id}.")
-            return {}
-        uploaded_ids = {}
-        for ds in record.get("datasets", []):
-            uploaded_ids[int(ds["id"])] = list(map(int, ds.get("uploaded_images", [])))
-        return uploaded_ids
+            logger.error(f"Error during copying to new project: {repr(e)}")
+            return None, "failed"
 
     def _wait_until_complete(self, task_id: int):
         """Wait until the task is complete."""
@@ -891,3 +705,7 @@ class SmartSamplingGUI(Widget):
 
         success = task_status == self.api.task.Status.FINISHED
         return success
+
+    def _convert_img_infos_to_ids(self, images: Dict[int, List[ImageInfo]]) -> Dict[int, List[int]]:
+        """Convert a dict of ImageInfo objects to a dict of image IDs."""
+        return {ds_id: [img.id for img in imgs] for ds_id, imgs in images.items()}

@@ -50,6 +50,7 @@ class LabelingQueueNode(BaseQueueNode):
         self.queue_id = queue_id
         self.collection_id = collection_id
         self.REFRESH_INTERVAL_SEC = 30
+        self._is_empty_finished_sent = False
 
         # --- core blocks --------------------------------------------------------
         self.gui = LabelingQueueGUI(queue_id=self.queue_id)
@@ -232,6 +233,11 @@ class LabelingQueueNode(BaseQueueNode):
             self.update_finished(finished)
             if finished > 0:
                 self.send_accepted_images_message()
+                self._is_empty_finished_sent = False
+            else:
+                if not self._is_empty_finished_sent:
+                    self.send_accepted_images_message()
+                    self._is_empty_finished_sent = True
         except Exception as e:
             logger.error(f"Failed to refresh labeling queue info: {str(e)}")
         return LabelingQueueRefreshInfoMessage(
@@ -256,7 +262,7 @@ class LabelingQueueNode(BaseQueueNode):
         )
 
         img_ids = [entity["id"] for entity in resp["images"]]
-        logger.info(f"Found {len(img_ids)} new accepted images in the labeling queue.")
+        logger.debug(f"Found {len(img_ids)} new accepted images in the labeling queue.")
         return img_ids
 
     def add_items(self, message: SampleFinishedMessage) -> None:
@@ -300,6 +306,7 @@ class LabelingQueueNode(BaseQueueNode):
                     review_job = job_info
             return ann_job, review_job
 
+        self.update_badge_by_key(key="Labeling", label="in progress", badge_type="info")
         queue_info = self.api.labeling_queue.get_info_by_id(self.queue_id)
         if queue_info.status == self.api.labeling_job.Status.COMPLETED.value:
             logger.info(f"Labeling queue {self.queue_id} is already completed")
@@ -326,6 +333,9 @@ class LabelingQueueNode(BaseQueueNode):
 
         for entity_id in _get_next(self.api, review_job.id):
             self.api.labeling_job.set_entity_review_status(review_job.id, entity_id, "accepted")
+
+        self.refresh_info()
+        self.remove_badge_by_key(key="Labeling")
 
     def _debug_1(self):
         self._debug(annotate=True)

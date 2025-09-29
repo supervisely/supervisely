@@ -81,7 +81,13 @@ class EvaluationReportNode(LinkNode):
     # ------------------------------------------------------------------
     def set_report(self, eval_dir: str):
         """Set the link to the evaluation report."""
-        lnk_path = f"{eval_dir.rstrip('/')}/visualizations/Model Evaluation Report.lnk"
+        if "model-benchmark" in eval_dir:
+            lnk_path = f"{eval_dir.rstrip('/')}/visualizations/Model Evaluation Report.lnk"
+        elif "model-comparison" in eval_dir:
+            lnk_path = f"{eval_dir.rstrip('/')}/Model Comparison Report.lnk"
+        else:
+            logger.warning(f"Unknown evaluation directory format: {eval_dir}")
+            return
         link = self._get_url_from_lnk_path(lnk_path)
         if link:
             self.update_badge_by_key(key="Evaluation Report", label="new", badge_type="success")

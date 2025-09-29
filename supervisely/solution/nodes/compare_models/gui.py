@@ -47,6 +47,12 @@ class ComparisonGUI(Widget):
         if not hasattr(self, "_automation_switch"):
             self._automation_switch = Switch(switched=True)
         return self._automation_switch
+    
+    @property
+    def redeploy_switch(self) -> Switch:
+        if not hasattr(self, "_redeploy_switch"):
+            self._redeploy_switch = Switch(switched=False)
+        return self._redeploy_switch
 
     def _init_gui(self):
         agent_selector_field = Field(
@@ -62,7 +68,7 @@ class ComparisonGUI(Widget):
 
         automation_field = Field(
             self.automation_switch,
-            title="Enable Automation",
+            title="Compare Models Automatically",
             description="Enable or disable automatic model comparison after each evaluation.",
             icon=Field.Icon(
                 zmdi_class="zmdi zmdi-settings",
@@ -71,7 +77,18 @@ class ComparisonGUI(Widget):
             ),
         )
 
-        return Container([agent_selector_field, automation_field], gap=20)
+        redeploy_field = Field(
+            self.redeploy_switch,
+            title="Deploy the Best Model Automatically",
+            description="Enable to automatically deploy the best model after each comparison.",
+            icon=Field.Icon(
+                zmdi_class="zmdi zmdi-refresh",
+                color_rgb=(21, 101, 192),
+                bg_color_rgb=(227, 242, 253),
+            ),
+        )
+
+        return Container([agent_selector_field, automation_field, redeploy_field], gap=20)
 
     def get_json_data(self) -> dict:
         return {

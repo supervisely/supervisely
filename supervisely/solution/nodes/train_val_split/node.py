@@ -44,6 +44,7 @@ class TrainValSplitNode(BaseCardNode):
         self.api = Api.from_env()
         self.dst_project_id = dst_project_id
         self._click_handled = True
+        self._accepted_images = []
 
         # --- modals -------------------------------------------------------------
         self.modals = [self.gui.modal]
@@ -69,6 +70,10 @@ class TrainValSplitNode(BaseCardNode):
         def on_save_split_settings_click():
             self.gui.modal.hide()
             self.save_split_settings()
+            self.send_accepted_images_message(
+                accepted_images=self._accepted_images,
+                splits=self.gui.get_split_settings(),
+            )
 
         @self.click
         def show_split_modal():
@@ -121,11 +126,11 @@ class TrainValSplitNode(BaseCardNode):
 
     def set_items_count(self, message: LabelingQueueAcceptedImagesMessage = None) -> None:
         """Set the number of items in the random splits table."""
-        accepted_images = message.accepted_images
-        self.gui.set_items_count(len(accepted_images))
+        self._accepted_images = message.accepted_images
+        self.gui.set_items_count(len(self._accepted_images))
         self.save_split_settings()
         splits = self.gui.get_split_settings()
-        self.send_accepted_images_message(accepted_images=accepted_images, splits=splits)
+        self.send_accepted_images_message(accepted_images=self._accepted_images, splits=splits)
 
     # ------------------------------------------------------------------
     # Methods ----------------------------------------------------------

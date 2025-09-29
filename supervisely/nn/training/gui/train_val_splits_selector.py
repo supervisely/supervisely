@@ -357,6 +357,7 @@ class TrainValSplitsSelector:
         self, collections_split: bool, datasets_split: bool, tag_split: bool = False
     ) -> bool:
         """Detect splits based on the selected method"""
+        self._parse_collections()
         splits_found = False
         if collections_split:
             splits_found = self._detect_collections()
@@ -374,42 +375,51 @@ class TrainValSplitsSelector:
             self.train_val_splits.set_split_method("random")
         return splits_found
 
+    def _parse_collections(self) -> None:
+        """Parse collections with train and val prefixes and set them to train_val_splits variables"""
+        all_collections = self.api.entities_collection.get_list(self.project_id)
+        existing_train_collections = [
+            collection for collection in all_collections if collection.name.startswith("train_")
+        ]
+        existing_val_collections = [
+            collection for collection in all_collections if collection.name.startswith("val_")
+        ]
+
+        self._all_train_collections = existing_train_collections
+        self._all_val_collections = existing_val_collections
+        self._latest_train_collection = self._get_latest_collection(
+            existing_train_collections, "train"
+        )
+        self._latest_val_collection = self._get_latest_collection(existing_val_collections, "val")
+
+    def _get_latest_collection(
+        self, collections: List[EntitiesCollectionInfo], expected_prefix: str
+    ) -> EntitiesCollectionInfo:
+        curr_collection = None
+        curr_idx = 0
+        for collection in collections:
+            parts = collection.name.split("_")
+            if len(parts) == 2:
+                prefix = parts[0].lower()
+                if prefix == expected_prefix:
+                    if parts[1].isdigit():
+                        collection_idx = int(parts[1])
+                        if collection_idx > curr_idx:
+                            curr_idx = collection_idx
+                            curr_collection = collection
+        return curr_collection
+
     def _detect_collections(self) -> bool:
         """Find collections with train and val prefixes and set them to train_val_splits"""
 
-        def _get_latest_collection(
-            collections: List[EntitiesCollectionInfo],
-        ) -> EntitiesCollectionInfo:
-            curr_collection = None
-            curr_idx = 0
-            for collection in collections:
-                collection_idx = int(collection.name.rsplit("_", 1)[-1])
-                if collection_idx > curr_idx:
-                    curr_idx = collection_idx
-                    curr_collection = collection
-            return curr_collection
-
-        all_collections = self.api.entities_collection.get_list(self.project_id)
-        train_collections = []
-        val_collections = []
         collections_found = False
-        for collection in all_collections:
-            if collection.name.lower().startswith("train_"):
-                train_collections.append(collection)
-            elif collection.name.lower().startswith("val_"):
-                val_collections.append(collection)
-
-        train_collection = _get_latest_collection(train_collections)
-        val_collection = _get_latest_collection(val_collections)
-        if train_collection is not None and val_collection is not None:
-            self.train_val_splits.set_collections_splits([train_collection.id], [val_collection.id])
+        if self._latest_train_collection is not None and self._latest_val_collection is not None:
+            self.train_val_splits.set_collections_splits(
+                [self._latest_train_collection.id], [self._latest_val_collection.id]
+            )
             self.validator_text = Text("Train and val collections are detected", status="info")
             self.validator_text.show()
             collections_found = True
-            self._all_train_collections = train_collections
-            self._all_val_collections = val_collections
-            self._latest_train_collection = train_collection
-            self._latest_val_collection = val_collection
         else:
             self.validator_text = Text("")
             self.validator_text.hide()
@@ -463,30 +473,3 @@ class TrainValSplitsSelector:
             self.validator_text.hide()
             datasets_found = False
         return datasets_found
-
-    def _detect_tags(self) -> bool:
-        """Find most common tags and set them to train_val_splits"""
-        stats = self.api.project.get_stats(self.project_id)
-        train_tags, val_tags = [], []
-        for item in stats["imageTags"]["items"]:
-            tag_name = item["tagMeta"]["name"]
-            tag_total = item["total"]
-            if tag_total > 0 and any(
-                split in tag_name.lower() for split in ["train", "val", "test"]
-            ):
-                if "train" in tag_name.lower():
-                    train_tags.append(tag_name)
-                else:
-                    val_tags.append(tag_name)
-
-        if len(train_tags) < 1 or len(val_tags) < 1:
-            self.validator_text = Text("")
-            self.validator_text.hide()
-            return False
-
-        train_tag = max(train_tags, key=lambda x: stats["imageTags"]["items"][x]["total"])
-        val_tag = max(val_tags, key=lambda x: stats["imageTags"]["items"][x]["total"])
-        self.train_val_splits.set_tags_splits(train_tag, val_tag, "ignore")
-        self.validator_text = Text("Train and val tags are detected", status="info")
-        self.validator_text.show()
-        return True

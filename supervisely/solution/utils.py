@@ -1,6 +1,7 @@
-from typing import Tuple
+from typing import Optional, Tuple
 
 from supervisely.api.api import Api
+from supervisely.api.entities_collection_api import EntitiesCollectionInfo
 
 
 def get_interval_period(sec: int) -> Tuple[str, int]:
@@ -71,11 +72,29 @@ def find_agent(api: Api, team_id: int) -> int:
     raise ValueError("No available agents found.")
 
 
-def get_last_split_collection(api: Api, project_id: int, prefix: str) -> int:
+def get_last_split_collection(
+    api: Api, project_id: int, prefix: str
+) -> Tuple[Optional[EntitiesCollectionInfo], int]:
     last_collection_idx = 0
     last_collection = None
     for collection_info in api.entities_collection.get_list(project_id):
         if collection_info.name.startswith(prefix):
-            last_collection_idx = int(collection_info.name.split("_")[-1])
-            last_collection = collection_info
+            try:
+                suffix = collection_info.name.split("_")[-1]
+                if suffix == "latest":
+                    continue
+                elif suffix.isdigit():
+                    collection_idx = int(suffix)
+                    if collection_idx > last_collection_idx:
+                        last_collection_idx = collection_idx
+                        last_collection = collection_info
+            except Exception:
+                continue
     return last_collection, last_collection_idx
+
+
+def get_last_val_collection(
+    api: Api, project_id: int
+) -> Tuple[Optional[EntitiesCollectionInfo], int]:
+    val_collection, val_idx = get_last_split_collection(api, project_id, "val_")
+    return val_collection, val_idx
