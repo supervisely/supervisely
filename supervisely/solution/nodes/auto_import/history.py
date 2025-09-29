@@ -3,9 +3,10 @@ from venv import logger
 
 from supervisely.api.api import Api
 from supervisely.app.widgets.tasks_history.tasks_history import TasksHistory
+from supervisely.solution.components import TasksHistoryWidget
 
 
-class AutoImportTasksHistory(TasksHistory):
+class AutoImportTasksHistory(TasksHistoryWidget):
     """Tasks history widget specialised for Auto Import node."""
 
     APP_SLUG = "supervisely-ecosystem/main-import"
