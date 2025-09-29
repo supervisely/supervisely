@@ -30,9 +30,10 @@ class StepperProgress(Widget):
         widget_id: Optional[str] = None,
     ) -> None:
         self._items = items or []
-        assert all(
+        if not all(
             isinstance(item, StepperProgress.StepItem) for item in self._items
-        ), RuntimeError("All items must be of type StepperProgress.StepItem")
+        ):
+            raise RuntimeError("All items must be of type StepperProgress.StepItem")
         self._active_step = max(1, active_step) if self._items else 0
         size_to_spacing = {"small": 100, "medium": 150, "large": 300}
         self._size = size if size in size_to_spacing else "medium"
