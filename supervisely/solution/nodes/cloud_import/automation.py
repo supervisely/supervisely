@@ -10,7 +10,7 @@ from supervisely.app.widgets import (
     Select,
     Text,
 )
-from supervisely.solution.automation import AutomationWidget
+from supervisely.solution.components import AutomationWidget
 from supervisely.solution.utils import get_seconds_from_period_and_interval
 
 

@@ -4,16 +4,12 @@ from typing import Callable, Dict, Optional, Tuple, Union
 import supervisely.io.env as sly_env
 from supervisely._utils import abs_url, logger
 from supervisely.api.api import Api
-from supervisely.app.widgets import Button
 from supervisely.app.widgets import CloudImport as CloudImportWidget
-from supervisely.app.widgets import Dialog, SolutionCard
 from supervisely.solution.base_node import BaseCardNode
-from supervisely.solution.engine.events import publish_event
-from supervisely.solution.engine.models import (
-    ImportFinishedMessage,
-    ImportStartedMessage,
-)
+from supervisely.solution.engine.modal_registry import ModalRegistry
+from supervisely.solution.engine.models import ImportFinishedMessage
 from supervisely.solution.nodes.cloud_import.automation import CloudImportAutomation
+from supervisely.solution.nodes.cloud_import.history import CloudImportTasksHistory
 
 
 class CloudImportNode(BaseCardNode):
@@ -30,12 +26,12 @@ class CloudImportNode(BaseCardNode):
         self.project_id = project_id or sly_env.project_id()
 
         # --- core blocks --------------------------------------------------------
-        self.gui = CloudImportWidget(project_id=project_id)  # includes tasks history
-        self.modal_content = self.gui  # for BaseCardNode
-        self.history = self.gui.tasks_history
+        self.history = CloudImportTasksHistory(api=self.api, project_id=self.project_id)
+        self.gui = CloudImportWidget(project_id=project_id, history_widget=self.history)
         self.automation = CloudImportAutomation()
 
         # --- init card ----------------------------------------------------------
+        self.modal_content = self.gui.content
         title = kwargs.pop("title", self.TITLE)
         description = kwargs.pop("description", self.DESCRIPTION)
         icon = kwargs.pop("icon", self.ICON)
@@ -52,9 +48,14 @@ class CloudImportNode(BaseCardNode):
             **kwargs,
         )
 
+        # --- modals registry ------------------------------------------------------
+        ModalRegistry().attach_settings_widget(
+            owner_id=self.widget_id, widget=self.gui.content, size="tiny"
+        )
+
         @self.click
-        def show_modal():
-            self.modal.show()
+        def _show_modal():
+            ModalRegistry().open_settings(owner_id=self.widget_id, size="tiny")
 
         @self.gui.run_btn.click
         def _on_run_btn_click():
@@ -64,14 +65,6 @@ class CloudImportNode(BaseCardNode):
         def _on_apply_automation_btn_click():
             self.automation.modal.hide()
             self.apply_automation(self.run)
-
-        # --- modals -------------------------------------------------------------
-        self.modals = [
-            self.modal,
-            self.automation.modal,
-            self.gui.tasks_history.modal,
-            self.gui.tasks_history.logs_modal,
-        ]
 
     def _get_tooltip_buttons(self):
         return [self.gui.tasks_history.open_modal_button, self.automation.open_modal_button]
@@ -94,11 +87,7 @@ class CloudImportNode(BaseCardNode):
     # ------------------------------------------------------------------
     @property
     def modal(self):
-        if not hasattr(self, "_modal"):
-            self._modal = Dialog(
-                title="Import from Cloud Storage", content=self.modal_content, size="tiny"
-            )
-        return self._modal
+        return ModalRegistry().settings_dialog_tiny
 
     # ------------------------------------------------------------------
     # Automation -------------------------------------------------------
