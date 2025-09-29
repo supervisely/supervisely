@@ -51,9 +51,6 @@ class TrainingProjectNode(ProjectNode):
     def send_message_to_data_versioning(self) -> None:
         pass
 
-    def send_message_to_add_training_data(self) -> None:
-        pass
-
     def _get_handles(self):
         return [
             {
