@@ -225,7 +225,8 @@ class AddTrainingDataNode(BaseCardNode):
             logger.error(f"Task {task_id} failed with status: {task_status}")
 
         uploaded_ids = self._get_uploaded_ids(dst_project_id, task_id)
-        assert uploaded_ids, RuntimeError("Failed to fetch uploaded IDs.")
+        if not uploaded_ids:
+            raise RuntimeError("Failed to fetch uploaded IDs.")
 
         infos = self.api.image.get_info_by_id_batch(uploaded_ids)
 
