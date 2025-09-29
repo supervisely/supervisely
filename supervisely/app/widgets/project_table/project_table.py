@@ -64,7 +64,7 @@ class TeamWorkspaceSelect(Widget):
         self._selectors_style = selectors_style
         self._gap = 20 if direction == "horizontal" else 10
         self._changes_handled = False
-        self._value_changed_callbacks = []
+        self._value_changed_callbacks: List[Callable] = []
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     @property
