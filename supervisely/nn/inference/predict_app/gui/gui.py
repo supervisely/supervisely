@@ -22,7 +22,9 @@ from supervisely.nn.inference.predict_app.gui.settings_selector import (
 )
 from supervisely.nn.inference.predict_app.gui.tags_selector import TagsSelector
 from supervisely.nn.inference.predict_app.gui.utils import (
+    copy_items_to_project,
     copy_project,
+    create_project,
     disable_enable,
     set_stepper_step,
     wrap_button_click,
@@ -659,17 +661,23 @@ class PredictAppGui:
                 logger.warning("Project name is empty, using auto-generated name: " + project_name)
             # Create new project
             self.set_validator_text("Creating project...", "info")
-            created_project = copy_project(
+            created_project = create_project(
                 api=self.api,
+                project_id=source_project_id,
                 project_name=project_name,
                 workspace_id=self.workspace_id,
-                project_id=source_project_id,
-                dataset_ids=input_dataset_ids,
-                items_ids=[input_video_id],
+                copy_meta=with_annotations,
+                project_type=ProjectType.VIDEOS,
+            )
+            created_video = copy_items_to_project(
+                api=self.api,
+                src_project_id=source_project_id,
+                items=[self.api.video.get_info_by_id(input_video_id)],
+                dst_project_id=created_project.id,
                 with_annotations=with_annotations,
                 progress=self.output_selector.progress,
                 project_type=ProjectType.VIDEOS,
-            )
+            )[0]
             output_project_id = created_project.id
             input_args = {
                 "video_id": input_video_id,
@@ -712,14 +720,12 @@ class PredictAppGui:
             self.set_validator_text("Copying project...", "info")
             created_project = copy_project(
                 api=self.api,
-                project_name=project_name,
-                workspace_id=self.workspace_id,
                 project_id=source_project_id,
-                dataset_ids=input_dataset_ids,
+                workspace_id=self.workspace_id,
+                project_name=project_name,
                 items_ids=item_ids,
                 with_annotations=with_annotations,
                 progress=self.output_selector.progress,
-                project_type=ProjectType.IMAGES,
             )
             output_project_id = created_project.id
             input_args = {
@@ -777,7 +783,9 @@ class PredictAppGui:
                             key_id_map=KeyIdMap(),
                         )
                 else:
-                    self.api.video.annotation.append(video_id=None)
+                    self.api.video.annotation.append(
+                        video_id=created_video, ann=prediction_video_annotation
+                    )
 
             self.output_selector.progress.hide()
         except Exception as e:

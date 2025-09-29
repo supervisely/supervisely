@@ -1,12 +1,14 @@
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
 
 from supervisely import logger
 from supervisely.api.api import Api
 from supervisely.api.dataset_api import DatasetInfo
+from supervisely.api.image_api import ImageInfo
 from supervisely.api.project_api import ProjectInfo
 from supervisely.app import DataJson
 from supervisely.app.widgets import Button, Card, Progress, Stepper, Text, Widget
 from supervisely.project.project import ProjectType
+from supervisely.project.video_project import VideoInfo
 
 button_clicked = {}
 
@@ -154,150 +156,189 @@ def find_parents_in_tree(
     return _dfs(tree, [])
 
 
-def copy_project(
+def _copy_items_to_dataset(
     api: Api,
-    project_name: str,
-    workspace_id: int,
-    project_id: int,
-    dataset_ids: List[int] = [],
-    items_ids: Optional[List[int]] = None,
+    src_dataset_id: int,
+    dst_dataset: DatasetInfo,
+    project_type: str,
     with_annotations: bool = True,
     progress: Progress = None,
-    project_type: ProjectType = ProjectType.IMAGES,
-):
-    """
-    Copy a project
+    items_infos: List[Union[ImageInfo, VideoInfo]] = None,
+) -> Union[List[ImageInfo, VideoInfo]]:
+    if progress is None:
+        progress = Progress()
+    if project_type == ProjectType.IMAGES:
+        if items_infos is None:
+            items_infos = api.image.get_list(src_dataset_id)
+        with progress(
+            message=f"Copying items from dataset: {dst_dataset.name}", total=len(items_infos)
+        ) as pbar:
+            progress.show()
+            copied = api.image.copy_batch_optimized(
+                src_dataset_id=src_dataset_id,
+                src_image_infos=items_infos,
+                dst_dataset_id=dst_dataset.id,
+                with_annotations=with_annotations,
+                progress_cb=pbar.update,
+            )
+            progress.hide()
+    elif project_type == ProjectType.VIDEOS:
+        if items_infos is None:
+            items_infos = api.video.get_list(src_dataset_id)
 
-    :param api: Supervisely API
-    :type api: Api
-    :param project_name: Name of the new project
-    :type project_name: str
-    :param workspace_id: ID of the workspace
-    :type workspace_id: int
-    :param project_id: ID of the project to copy
-    :type project_id: int
-    :param dataset_ids: List of dataset IDs to copy. If empty, all datasets from the project will be copied.
-    :type dataset_ids: List[int]
-    :param with_annotations: Whether to copy annotations
-    :type with_annotations: bool
-    :param progress: Progress callback
-    :type progress: Progress
-    :return: Created project
-    :rtype: ProjectInfo
-    """
+        with progress(
+            message=f"Copying items from dataset: {dst_dataset.name}", total=len(items_infos)
+        ) as pbar:
+            progress.show()
+            copied = api.video.copy_batch(
+                dst_dataset_id=dst_dataset.id,
+                ids=[info.id for info in items_infos],
+                with_annotations=with_annotations,
+                progress_cb=pbar.update,
+            )
+            progress.hide()
+    else:
+        raise NotImplementedError(f"Copy not implemented for project type {project_type}")
+    return copied
 
-    def _create_project() -> ProjectInfo:
-        created_project = api.project.create(
-            workspace_id,
-            project_name,
-            type=project_type,
-            change_name_if_conflict=True,
-        )
-        if with_annotations:
-            api.project.merge_metas(src_project_id=project_id, dst_project_id=created_project.id)
-        return created_project
 
-    def _copy_full_project(
-        created_project: ProjectInfo, src_datasets_tree: Dict[DatasetInfo, Dict]
-    ):
-        src_dst_ds_id_map: Dict[int, int] = {}
+def get_items_infos(
+    api: Api, items_ids: List[int], project_type: str
+) -> List[Union[ImageInfo, VideoInfo]]:
+    if project_type == ProjectType.IMAGES:
+        items_infos: List[ImageInfo] = api.image.get_info_by_id_batch(items_ids)
+    elif project_type == ProjectType.VIDEOS:
+        items_infos: List[VideoInfo] = api.video.get_info_by_id_batch(items_ids)
+    else:
+        raise NotImplementedError(f"Items of type {project_type} are not supported")
+    return items_infos
 
-        def _create_full_tree(ds_tree: Dict[DatasetInfo, Dict], parent_id: int = None):
-            for src_ds, nested_src_ds_tree in ds_tree.items():
-                dst_ds = api.dataset.create(
-                    project_id=created_project.id,
-                    name=src_ds.name,
-                    description=src_ds.description,
-                    change_name_if_conflict=True,
-                    parent_id=parent_id,
-                )
-                src_dst_ds_id_map[src_ds.id] = dst_ds
 
-                # Preserve dataset custom data
-                info_ds = api.dataset.get_info_by_id(src_ds.id)
-                if info_ds.custom_data:
-                    api.dataset.update_custom_data(dst_ds.id, info_ds.custom_data)
-                _create_full_tree(nested_src_ds_tree, parent_id=dst_ds.id)
+def copy_items_to_project(
+    api: Api,
+    src_project_id: int,
+    items: Union[List[ImageInfo], List[VideoInfo]],
+    dst_project_id: int,
+    with_annotations: bool = True,
+    progress: Progress = None,
+    project_type: str = None,
+) -> Union[List[ImageInfo], List[VideoInfo]]:
+    if project_type is None:
+        dst_project_info = api.project.get_info_by_id(src_project_id)
+        project_type = dst_project_info.type
+    if len(items) == 0:
+        return []
+    if len(set(info.project_id for info in items)) != 1:
+        raise ValueError("Items must belong to the same project")
 
-        _create_full_tree(src_datasets_tree)
+    items_by_dataset: Dict[int, List[Union[ImageInfo, VideoInfo]]] = {}
+    for item_info in items:
+        items_by_dataset.setdefault(item_info.dataset_id, []).append(item_info)
 
-        for src_ds_id, dst_ds in src_dst_ds_id_map.items():
-            _copy_items(src_ds_id, dst_ds)
+    if src_datasets_tree is None:
+        src_datasets_tree = api.dataset.get_tree(src_project_id)
 
-    def _copy_datasets(created_project: ProjectInfo, src_datasets_tree: Dict[DatasetInfo, Dict]):
-        created_datasets: Dict[int, DatasetInfo] = {}
-        processed_copy: Set[int] = set()
+    created_datasets: Dict[int, DatasetInfo] = {}
+    processed_copy: Set[int] = set()
 
-        for dataset_id in dataset_ids:
-            chain = find_parents_in_tree(src_datasets_tree, dataset_id, with_self=True)
-            if not chain:
-                logger.warning(
-                    f"Dataset id {dataset_id} not found in project {project_id}. Skipping."
-                )
+    copied_items = {}
+    for dataset_id, items_infos in items_by_dataset.items():
+        chain = find_parents_in_tree(src_datasets_tree, dataset_id, with_self=True)
+        if not chain:
+            logger.warning(f"Dataset id {dataset_id} not found in project. Skipping")
+            continue
+
+        parent_created_id = None
+        for ds_info in chain:
+            if ds_info.id in created_datasets:
+                parent_created_id = created_datasets[ds_info.id].id
                 continue
 
-            parent_created_id = None
-            for ds_info in chain:
-                if ds_info.id in created_datasets:
-                    parent_created_id = created_datasets[ds_info.id].id
-                    continue
+            created_ds = api.dataset.create(
+                dst_project_id,
+                ds_info.name,
+                description=ds_info.description,
+                change_name_if_conflict=False,
+                parent_id=parent_created_id,
+            )
+            if ds_info.custom_data:
+                created_ds = api.dataset.update_custom_data(created_ds.id, ds_info.custom_data)
+            created_datasets[ds_info.id] = created_ds
+            parent_created_id = created_ds.id
 
-                created_ds = api.dataset.create(
-                    created_project.id,
-                    ds_info.name,
-                    description=ds_info.description,
-                    change_name_if_conflict=False,
-                    parent_id=parent_created_id,
-                )
-                created_datasets[ds_info.id] = created_ds
-                src_info = api.dataset.get_info_by_id(ds_info.id)
-                if src_info.custom_data:
-                    api.dataset.update_custom_data(created_ds.id, src_info.custom_data)
-                parent_created_id = created_ds.id
+        if dataset_id not in processed_copy:
+            copied_ds_items = _copy_items_to_dataset(
+                api=api,
+                src_dataset_id=dataset_id,
+                dst_dataset=created_datasets[dataset_id],
+                project_type=project_type,
+                with_annotations=with_annotations,
+                progress=progress,
+                items_infos=items_infos,
+            )
+            for src_info, dst_info in zip(items_infos, copied_ds_items):
+                copied_items[src_info.id] = dst_info
+            processed_copy.add(dataset_id)
+    return [copied_items[item.id] for item in items]
 
-            if dataset_id not in processed_copy:
-                _copy_items(dataset_id, created_datasets[dataset_id])
-                processed_copy.add(dataset_id)
 
-    def _copy_items(src_ds_id: int, dst_ds: DatasetInfo):
-        if project_type == ProjectType.IMAGES:
-            input_img_infos = api.image.get_list(src_ds_id)
-            with progress(
-                message=f"Copying items from dataset: {dst_ds.name}", total=len(input_img_infos)
-            ) as pbar:
-                progress.show()
-                api.image.copy_batch_optimized(
-                    src_dataset_id=src_ds_id,
-                    src_image_infos=input_img_infos,
-                    dst_dataset_id=dst_ds.id,
-                    with_annotations=with_annotations,
-                    progress_cb=pbar.update,
-                )
-                progress.hide()
-        elif project_type == ProjectType.VIDEOS:
-            input_vid_infos = api.video.get_list(src_ds_id)
-            if items_ids is not None:
-                input_vid_infos = [info for info in input_vid_infos if info.id in items_ids]
-
-            with progress(
-                message=f"Copying items from dataset: {dst_ds.name}", total=len(input_vid_infos)
-            ) as pbar:
-                progress.show()
-                api.video.copy_batch(
-                    dst_dataset_id=dst_ds.id,
-                    ids=[info.id for info in input_vid_infos],
-                    with_annotations=with_annotations,
-                    progress_cb=pbar.update,
-                )
-                progress.hide()
-        else:
-            raise NotImplementedError(f"Copy not implemented for project type {project_type}")
-
-    created_project = _create_project()
-    src_datasets_tree = api.dataset.get_tree(project_id)
-
-    if not dataset_ids:
-        _copy_full_project(created_project, src_datasets_tree)
-    else:
-        _copy_datasets(created_project, src_datasets_tree)
+def create_project(
+    api: Api,
+    project_id: int,
+    project_name: str,
+    workspace_id: int,
+    copy_meta: bool = False,
+    project_type: str = None,
+) -> ProjectInfo:
+    if project_type is None:
+        project_info = api.project.get_info_by_id(project_id)
+        project_type = project_info.type
+    created_project = api.project.create(
+        workspace_id,
+        project_name,
+        type=project_type,
+        change_name_if_conflict=True,
+    )
+    if copy_meta:
+        api.project.merge_metas(src_project_id=project_id, dst_project_id=created_project.id)
     return created_project
+
+
+def copy_project(
+    api: Api,
+    project_id: int,
+    workspace_id: int,
+    project_name: str,
+    items_ids: List[int] = None,
+    with_annotations: bool = True,
+    progress: Progress = None,
+) -> ProjectInfo:
+    dst_project = create_project(
+        api, project_id, project_name, workspace_id=workspace_id, copy_meta=True
+    )
+    items = []
+    if items_ids is None:
+        project_type = dst_project.type
+        datasets = api.dataset.get_list(project_id, recursive=True)
+        if project_type == ProjectType.IMAGES:
+            get_items_f = api.image.get_list
+        elif project_type == ProjectType.VIDEOS:
+            get_items_f = api.video.get_list
+        else:
+            raise NotImplementedError(f"Project type {project_type} is not supported")
+        for ds in datasets:
+            ds_items = get_items_f(dataset_id=ds.id)
+            if ds_items:
+                items.extend(ds_items)
+    else:
+        items = get_items_infos(api, items_ids, dst_project.type)
+    copy_items_to_project(
+        api=api,
+        src_project_id=project_id,
+        items=items,
+        dst_project_id=dst_project.id,
+        with_annotations=with_annotations,
+        progress=progress,
+        project_type=dst_project.type,
+    )
+    return dst_project
