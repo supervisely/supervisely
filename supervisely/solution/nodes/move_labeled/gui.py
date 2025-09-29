@@ -1,15 +1,42 @@
-from supervisely.app.widgets import (AgentSelector, Button, Container, Dialog,
-                                     Field, Text)
+from typing import Optional
+
+from supervisely.app.widgets import (
+    AgentSelector,
+    Button,
+    Container,
+    Dialog,
+    Field,
+    Text,
+    Widget,
+)
 from supervisely.io.env import team_id
+from supervisely.solution.engine.modal_registry import ModalRegistry
 
 
-class MoveLabeledGUI:
+class MoveLabeledGUI(Widget):
     """
     GUI components for the MoveLabeled node.
     """
 
-    def __init__(self):
-        self.widget = self._create_widget()
+    def __init__(self, widget_id: Optional[str] = None):
+        self.content = self._create_widget()
+        super().__init__(widget_id=widget_id)
+
+        # --- modals -------------------------------------------------------------
+        ModalRegistry().attach_settings_widget(
+            owner_id=self.widget_id,
+            widget=self.content,
+            size="tiny",
+        )
+
+    def get_json_data(self):
+        return {}
+
+    def get_json_state(self):
+        return {}
+
+    def open_modal(self):
+        ModalRegistry().open_settings(owner_id=self.widget_id, size="tiny")
 
     def _create_widget(self) -> Container:
         """Creates the GUI widgets for the MoveLabeled node."""
@@ -70,13 +97,4 @@ class MoveLabeledGUI:
 
     @property
     def modal(self):
-        """
-        Create the modal dialog for automation settings.
-        """
-        if not hasattr(self, "_modal"):
-            self._modal = Dialog(
-                title="Move Labeled Data",
-                content=self.widget,
-                size="tiny",
-            )
-        return self._modal
+        return ModalRegistry().settings_dialog_tiny
