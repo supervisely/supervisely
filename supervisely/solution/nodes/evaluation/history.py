@@ -1,38 +1,12 @@
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from supervisely import logger
-from supervisely.app.widgets import FastTable, TasksHistory, Button
+from supervisely.app.widgets import Button, FastTable, TasksHistory
+from supervisely.solution.components import TasksHistoryWidget
+from supervisely.solution.engine.modal_registry import ModalRegistry
 
 
-class EvaluationTaskHistory(TasksHistory):
-    def __init__(
-        self,
-        widget_id: str = None,
-    ):
-        super().__init__(widget_id=widget_id)
-        self._table_columns = [
-            "Task ID",
-            "Model Path",
-            "Status",
-            "Collection Name",
-            "Session ID",
-        ]
-        self._columns_keys = [
-            ["taskId"],
-            ["modelPath"],
-            ["status"],
-            ["collectionName"],
-            ["sessionId"],
-        ]
-
-    def update(self):
-        self.table.clear()
-        for task in self._get_table_data():
-            self.table.insert_row(task)
-
-    def add_task(self, task: Dict[str, Any]) -> int:
-        super().add_task(task)
-        self.update()
+class EvaluationTaskHistory(TasksHistoryWidget):
 
     @property
     def table(self):
@@ -46,10 +20,44 @@ class EvaluationTaskHistory(TasksHistory):
                 else:
                     col_idx = 0
                 self.logs.set_task_id(clicked_cell.row[col_idx])
-                logger.debug("Showing logs for task ID: %s", self.logs.get_task_id())
-                self.logs_modal.show()
+                ModalRegistry().open_logs(owner_id=self.widget_id)
 
         return self._tasks_table
+
+    @property
+    def table_columns(self) -> List[str]:
+        """Header names for the tasks table."""
+        if not hasattr(self, "_table_columns"):
+            self._table_columns = [
+                "Task ID",
+                "Model Path",
+                "Status",
+                "Collection Name",
+                "Session ID",
+            ]
+        return self._table_columns
+
+    @property
+    def columns_keys(self) -> List[List[str]]:
+        """Mapping between :pyattr:`table_columns` and task dict keys."""
+        if not hasattr(self, "_columns_keys"):
+            self._columns_keys = [
+                ["taskId"],
+                ["modelPath"],
+                ["status"],
+                ["collectionName"],
+                ["sessionId"],
+            ]
+        return self._columns_keys
+
+    def update(self):
+        self.table.clear()
+        for task in self._get_table_data():
+            self.table.insert_row(task)
+
+    def add_task(self, task: Dict[str, Any]) -> int:
+        super().add_task(task)
+        self.update()
 
     @property
     def btn(self) -> Button:
