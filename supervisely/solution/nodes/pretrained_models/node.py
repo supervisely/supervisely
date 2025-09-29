@@ -1,3 +1,4 @@
+import re
 import threading
 import time
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
@@ -18,6 +19,8 @@ from supervisely.solution.nodes.pretrained_models.gui import PretrainedModelsGUI
 from supervisely.solution.nodes.pretrained_models.history import (
     PretrainedModelsTasksHistory,
 )
+
+from supervisely.nn.inference import RuntimeType
 
 
 class BaseTrainNode(BaseCardNode):
@@ -153,7 +156,7 @@ class BaseTrainNode(BaseCardNode):
         self, success: bool, task_id: int, experiment_info: dict
     ) -> TrainFinishedMessage:
         return TrainFinishedMessage(
-            success=success, task_id=task_id, experiment_info=experiment_info
+            success=success, task_id=task_id, experiment_info=experiment_info or {}
         )
 
     # ------------------------------------------------------------------
@@ -217,19 +220,16 @@ class BaseTrainNode(BaseCardNode):
         }
         self.history.add_task(task=task)
 
-        self.update_badge_by_key(key="Status", label="Starting", badge_type="info")
+        self.update_badge_by_key(key="Training", label="Starting Application", badge_type="info")
         # Avoid using automation.apply()
         threading.Thread(target=self._poll_train_progress, args=(task_id,), daemon=True).start()
 
+
     # ------------------------------------------------------------------
-    # Utils ------------------------------------------------------------
+    # Progress ---------------------------------------------------------
     # ------------------------------------------------------------------
     def _poll_train_progress(self, task_id: int, interval_sec: int = 10) -> None:
         """Poll task status every interval seconds until completion or failure."""
-        # @ TODO: get train status from the task (fix send request on web progress status message)
-        # train_status = self.api.task.send_request(task_id, "train_status", {})
-        # print(f"Train status: {train_status}")
-
         while True:
             try:
                 task_info = self.api.task.get_info_by_id(task_id)
@@ -243,17 +243,17 @@ class BaseTrainNode(BaseCardNode):
 
             status = task_info.get("status")
             if status == TaskApi.Status.ERROR.value:
-                self.update_badge_by_key(key="Status", label="Failed", badge_type="error")
+                self.update_badge_by_key(key="Training", label="Failed", badge_type="error")
                 break
             if status in [TaskApi.Status.STOPPED.value, TaskApi.Status.TERMINATING.value]:
-                self.update_badge_by_key(key="Status", label="Stopped", badge_type="warning")
+                self.update_badge_by_key(key="Training", label="Stopped", badge_type="warning")
                 break
             if status == TaskApi.Status.CONSUMED.value:
-                self.update_badge_by_key(key="Status", label="Consumed", badge_type="warning")
+                self.update_badge_by_key(key="Training", label="Consumed", badge_type="warning")
             elif status == TaskApi.Status.QUEUED.value:
-                self.update_badge_by_key(key="Status", label="Queued", badge_type="warning")
+                self.update_badge_by_key(key="Training", label="Queued", badge_type="warning")
             elif status == TaskApi.Status.FINISHED.value:
-                self.update_badge_by_key(key="Status", label="Finished", badge_type="success")
+                self.update_badge_by_key(key="Training", label="Completed", badge_type="success")
                 try:
                     time.sleep(5)  # wait for experiment to be registered
                     experiment_info = self.api.nn.get_experiment_info(task_id)
@@ -275,9 +275,39 @@ class BaseTrainNode(BaseCardNode):
 
             time.sleep(interval_sec)
 
-    # @TODO: Use epoch num instead of percent (key 'info')
-    # @TODO: Refactor?
     def _set_train_progress_from_widgets(self, task_id: int) -> str:
+        # messages
+        start_messages = ["Application is started"]
+        prepare_messages = [
+            "Downloading input data",
+            "Retrieving data from cache",
+            "Preparing data for training...",
+            "Applying train/val splits to project",
+            "Processing splits",
+            "Downloading model files",
+            "Training is in progress..."
+        ]
+        training_messages = ["Epochs", "Epoches", "Epoch"]
+        finalize_messages = [
+            "Uploading demo files to Team Files",
+            "Uploading train artifacts to Team Files",
+            "Finalizing and uploading training artifacts...",
+            "Uploading training artifacts to Team Files",
+        ]
+        eval_messages = [
+            "Starting Model Benchmark evaluation",
+            "Evaluation: Downloading GT annotations",
+            "Visualizations: Adding tags to predictions",
+            "Speedtest: Running speedtest for batch sizes",
+            "Uploading visualizations to visualizations",
+        ]
+        export_messages = [f"Converting to {RuntimeType.ONNXRUNTIME}", f"Converting to {RuntimeType.TENSORRT}"]
+        complete_messages = ["Training completed"]
+        error_messages = ["Ready for training"]
+
+        combined_messages = start_messages + prepare_messages + training_messages + finalize_messages + eval_messages + export_messages + complete_messages + error_messages
+        # --------------- #
+
         progress_widgets_data = self.api.task.get_progress_widgets(task_id)
         if progress_widgets_data is None:
             return
@@ -292,39 +322,60 @@ class BaseTrainNode(BaseCardNode):
         message = progress_widget["message"]
         if message is None:
             return
-        
-        percent = progress_widget["percent"]
 
-        start_messages = ["Application is started"]
-        prepare_messages = ["Downloading input data", "Retrieving data from cache", "Preparing data for training...", "Applying train/val splits to project", "Processing splits", "Downloading model files"]
-        training_messages = ["Epochs", "Epoches", "Epoch"] # "Training is in progress..."
-        finalize_messages = ["Uploading demo files to Team Files", "Uploading train artifacts to Team Files", "Finalizing and uploading training artifacts..."]
-        complete_messages = ["Training completed"]
-        eval_messages = ["Starting Model Benchmark evaluation", "Evaluation: Downloading GT annotations", "Visualizations: Adding tags to predictions"]
-        error_messages = ["Ready for training"]
+        if message not in combined_messages:
+            progress_widget = progress_widgets_data[1]
+            message = progress_widget["message"]
+            if message is None:
+                return
 
         badge_type = "info"
         if message in start_messages:
-            label = "Starting"
+            label = "Starting Application"
         elif message in prepare_messages:
-            label = "Preparing Data for Training"
+            label = "Preparing Data"
         elif message in training_messages:
-            label = f"Training {percent} / 100 %"
+            epoch_str = self._extract_epoch_progress(progress_widget["info"])
+            if epoch_str is None:
+                label = "In Progress"
+            else:
+                label = f"{epoch_str} epochs"
         elif message in finalize_messages or message.startswith("Uploading"):
-            label = "Finalizing Training"
+            label = "Finalizing"
         elif message in eval_messages:
             label = "Evaluating Model"
+        elif message in export_messages:
+            label = "Exporting Model"
         elif message in complete_messages:
-            label = "Training Completed"
+            label = "Completed"
+            badge_type = "success"
         elif message in error_messages:
             label = "Failed"
             badge_type = "error"
         else:
             return
 
-        self.update_badge_by_key(key="Status", label=label, badge_type=badge_type)
+        self.update_badge_by_key(key="Training", label=label, badge_type=badge_type)
 
 
+    def _extract_epoch_progress(self, info: Optional[str]) -> Optional[str]:
+        """Extracts leading epoch progress like '52/100' from info string.
+
+        Returns None if it cannot be extracted.
+        """
+        if not info:
+            return None
+        first_token = info.split(" ", 1)[0]
+        if "/" in first_token:
+            return first_token
+        match = re.match(r"\s*(\d+\/\d+)", info)
+        if match:
+            return match.group(1)
+        return None              
+
+    # ------------------------------------------------------------------
+    # Utils ------------------------------------------------------------
+    # ------------------------------------------------------------------
     def _save_train_settings(self):
         """
         Extract training configuration from the embedded NewExperiment widget and store it
@@ -335,3 +386,5 @@ class BaseTrainNode(BaseCardNode):
             logger.info("Training settings saved.")
         except Exception as e:
             logger.warning(f"Failed to save training settings: {repr(e)}")
+
+
