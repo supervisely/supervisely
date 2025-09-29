@@ -277,7 +277,7 @@ class BaseTrainNode(BaseCardNode):
 
     def _set_train_progress_from_widgets(self, task_id: int) -> str:
         # messages
-        start_messages = ["Application is started"]
+        start_messages = ["Application is started", "Application is started ..."]
         prepare_messages = [
             "Downloading input data",
             "Retrieving data from cache",
@@ -313,10 +313,10 @@ class BaseTrainNode(BaseCardNode):
             return
 
         # Debug
-        for idx, progress_widget_data in enumerate(progress_widgets_data):
-            print(f"Progress widget {idx}: {progress_widget_data}")
-            with open('/root/projects/solution-labeling/task_progress.log', 'a') as f:
-                f.write(f"Progress widget {idx}: {progress_widget_data}\n\n")
+        # for idx, progress_widget_data in enumerate(progress_widgets_data):
+        #     print(f"Progress widget {idx}: {progress_widget_data}")
+        #     with open('/root/projects/solution-labeling/task_progress.log', 'a') as f:
+        #         f.write(f"Progress widget {idx}: {progress_widget_data}\n\n")
 
         progress_widget = progress_widgets_data[0]
         message = progress_widget["message"]

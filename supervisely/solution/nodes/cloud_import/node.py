@@ -1,4 +1,5 @@
 import threading
+import time
 from typing import Callable, Dict, Optional, Tuple, Union
 
 import supervisely.io.env as sly_env
@@ -14,6 +15,7 @@ from supervisely.solution.engine.models import (
     ImportStartedMessage,
 )
 from supervisely.solution.nodes.cloud_import.automation import CloudImportAutomation
+from supervisely.api.task_api import TaskApi
 
 
 class CloudImportNode(BaseCardNode):
@@ -146,15 +148,18 @@ class CloudImportNode(BaseCardNode):
         self.gui.path_input.set_value("")
 
         # Start a separate thread to wait for the import task to complete
+        self.update_badge_by_key(key="Import", label="Starting Application", badge_type="info")
         threading.Thread(target=self.handle_import_started, args=(task_id,), daemon=True).start()
         return task_id
 
     def handle_import_started(self, task_id: int) -> None:
         """Automatically handles import_started events"""
-        self.show_in_progress_badge()
+        # @TODO: no need?
+        # self.show_in_progress_badge()
         success = self.wait_import_completion(task_id)
         logger.info(f"Import task {task_id} completed with status: {success}")
-        self.hide_in_progress_badge()
+        # @TODO: no need?
+        # self.hide_in_progress_badge()
 
     def wait_import_completion(self, task_id: int) -> ImportFinishedMessage:
         """
@@ -165,7 +170,7 @@ class CloudImportNode(BaseCardNode):
         :return: Dictionary containing the success status, items count, image preview URL, and task ID.
         :rtype: Dict[str, Optional[int]]
         """
-        success = self.gui.wait_import_completion(task_id)
+        success = self._poll_import_progress(task_id, 2)
         items_count, image_preview_url = self.update_card_after_import(task_id)
         return ImportFinishedMessage(
             task_id=task_id,
@@ -197,3 +202,59 @@ class CloudImportNode(BaseCardNode):
                 self.update_badge_by_key("Last import", f"+{items_count}", "success")
                 return items_count, self.project.image_preview_url
         return None, None
+
+    # ------------------------------------------------------------------
+    # Progress ---------------------------------------------------------
+    # ------------------------------------------------------------------
+    def _poll_import_progress(self, task_id: int, interval_sec: int = 10) -> None:
+        """Poll task status every interval seconds until completion or failure."""
+        while True:
+            try:
+                task_info = self.api.task.get_info_by_id(task_id)
+            except Exception as e:
+                logger.error(f"Failed to get task info for task_id={task_id}: {repr(e)}")
+                return False
+
+            if task_info is None:
+                logger.error(f"Task info is not found for task_id: {task_id}")
+                return False
+
+            status = task_info.get("status")
+            if status == TaskApi.Status.ERROR.value:
+                self.update_badge_by_key(key="Import", label="Failed", badge_type="error")
+                return False
+            if status in [TaskApi.Status.STOPPED.value, TaskApi.Status.TERMINATING.value]:
+                self.update_badge_by_key(key="Import", label="Stopped", badge_type="warning")
+                return False
+            if status == TaskApi.Status.CONSUMED.value:
+                self.update_badge_by_key(key="Import", label="Consumed", badge_type="warning")
+            elif status == TaskApi.Status.QUEUED.value:
+                self.update_badge_by_key(key="Import", label="Queued", badge_type="warning")
+            elif status == TaskApi.Status.FINISHED.value:
+                self.update_badge_by_key(key="Import", label="Completed", badge_type="success")
+                return True
+            else:
+                self._set_import_progress_from_widgets(task_id)
+            time.sleep(interval_sec)
+
+    def _set_import_progress_from_widgets(self, task_id: int) -> str:
+        progress = self.api.task.get_progress(task_id)
+
+        # Debug
+        # print(f"Progress widget: {progress}")
+        # with open('/root/projects/solution-labeling/task_progress.log', 'a') as f:
+        #     f.write(f"Progress widget: {progress}\n\n")
+
+        if progress is None:
+            return
+
+        name = progress["name"]
+        if name in ["Uploading"]:
+            label = "Uploading"
+            current = progress["current"]
+            total = progress["total"]
+            label = f"{name}: {current} / {total}"
+        else:
+            return
+
+        self.update_badge_by_key(key="Import", label=label, badge_type="info")
