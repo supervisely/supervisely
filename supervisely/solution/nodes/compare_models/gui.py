@@ -11,6 +11,7 @@ from supervisely.app.widgets import (
     Switch,
     Widget,
 )
+from supervisely.solution.engine.modal_registry import ModalRegistry
 
 
 class ComparisonGUI(Widget):
@@ -22,6 +23,17 @@ class ComparisonGUI(Widget):
         self.team_id = team_id or sly_env.team_id()
         super().__init__(widget_id=widget_id)
         self.content = self._init_gui()
+
+        ModalRegistry().attach_settings_widget(
+            owner_id=self.widget_id, widget=self.content, size="tiny"
+        )
+
+    @property
+    def modal(self):
+        return ModalRegistry().settings_dialog_tiny
+
+    def open_modal(self):
+        ModalRegistry().open_settings(owner_id=self.widget_id, size="tiny")
 
     @property
     def run_btn(self) -> Button:
@@ -47,7 +59,7 @@ class ComparisonGUI(Widget):
         if not hasattr(self, "_automation_switch"):
             self._automation_switch = Switch(switched=True)
         return self._automation_switch
-    
+
     @property
     def redeploy_switch(self) -> Switch:
         if not hasattr(self, "_redeploy_switch"):
@@ -123,16 +135,3 @@ class ComparisonGUI(Widget):
         if agent_id is not None:
             self.agent_selector.set_value(agent_id)
             self.agent_selector.set_value(agent_id)
-
-    @property
-    def settings_modal(self) -> Dialog:
-        """
-        Returns the settings modal dialog for the Compare widget.
-        """
-        if not hasattr(self, "_settings_modal"):
-            self._settings_modal = Dialog(
-                title="Settings",
-                content=self.content,
-                size="tiny",
-            )
-        return self._settings_modal

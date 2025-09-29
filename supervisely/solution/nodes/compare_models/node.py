@@ -82,9 +82,7 @@ class CompareModelsNode(BaseCardNode):
 
         @self.click
         def on_node_click():
-            self.gui.settings_modal.show()
-
-        self.modals = [self.history.modal, self.gui.settings_modal]
+            self.gui.open_modal()
 
         self._update_automation_properties(self.gui.automation_switch.is_switched())
 
@@ -93,7 +91,7 @@ class CompareModelsNode(BaseCardNode):
     # ------------------------------------------------------------------
     def _get_tooltip_buttons(self):
         if not hasattr(self, "tooltip_buttons"):
-            self.tooltip_buttons = [self.gui.run_btn, self.history.history_btn]
+            self.tooltip_buttons = [self.gui.run_btn, self.history.open_modal_button]
         return self.tooltip_buttons
 
     def _update_automation_properties(self, enable: bool):
