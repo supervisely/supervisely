@@ -7,6 +7,8 @@ from typing import Any, Dict, List, Literal, Optional, Union
 from supervisely.app.widgets import Dialog, VueFlow
 from supervisely.solution.base_node import BaseCardNode, BaseNode
 from supervisely.solution.engine.config_parser import YAMLParser
+from supervisely.solution.engine.modal_registry import ModalRegistry
+
 
 
 class GraphBuilder(VueFlow):
@@ -18,12 +20,11 @@ class GraphBuilder(VueFlow):
         self,
         nodes: Optional[List[VueFlow.Node]] = None,
         edges: Optional[List[Dict[str, Any]]] = None,
-        modals: Optional[List[Dialog]] = None,
         widget_id: Optional[str] = None,
     ):
         self.nodes: Dict[str, VueFlow.Node] = nodes or []
         self.edges: List[Dict[str, Any]] = edges or []
-        self._modals: List[Dialog] = modals or []
+        self._modal_registry = ModalRegistry()  # singleton
 
         sidebar_nodes = []
         from supervisely.solution.nodes import __all__ as all_nodes
@@ -93,8 +94,6 @@ class GraphBuilder(VueFlow):
                 module = importlib.import_module(module_path)
                 node_class: BaseNode = getattr(module, class_name)
                 node = node_class.from_json(node_data, parent_id=self.widget_id)
-                if hasattr(node, "modals") and node.modals:
-                    self._modals.extend(node.modals)
                 nodes.append(node)
                 node_id_to_obj[node.id] = node
             except Exception as e:
@@ -146,4 +145,4 @@ class GraphBuilder(VueFlow):
     @property
     def modals(self) -> List[Dialog]:
         """Return a list of modals defined in the graph."""
-        return self._modals
+        return self._modal_registry.modals()
