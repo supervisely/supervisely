@@ -164,7 +164,7 @@ def _copy_items_to_dataset(
     with_annotations: bool = True,
     progress: Progress = None,
     items_infos: List[Union[ImageInfo, VideoInfo]] = None,
-) -> Union[List[ImageInfo, VideoInfo]]:
+) -> Union[List[ImageInfo], List[VideoInfo]]:
     if progress is None:
         progress = Progress()
     if project_type == ProjectType.IMAGES:
