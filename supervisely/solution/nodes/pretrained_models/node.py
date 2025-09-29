@@ -275,6 +275,7 @@ class BaseTrainNode(BaseCardNode):
 
             time.sleep(interval_sec)
 
+    # @TODO: Refactor?
     def _set_train_progress_from_widgets(self, task_id: int) -> str:
         # messages
         start_messages = ["Application is started", "Application is started ..."]
