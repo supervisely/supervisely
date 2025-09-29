@@ -11,6 +11,8 @@ from supervisely.sly_logger import logger
 from supervisely.solution.base_node import BaseCardNode
 from supervisely.solution.engine.models import TrainingDataAddedMessage
 from supervisely.solution.nodes.add_training_data.gui import AddTrainingDataGUI
+from supervisely.solution.nodes.add_training_data.history import TrainingDataHistory
+from supervisely.solution.utils import get_last_split_collection
 
 
 class AddTrainingDataNode(BaseCardNode):
@@ -42,10 +44,14 @@ class AddTrainingDataNode(BaseCardNode):
         self.settings_data = None
         # --- core blocks --------------------------------------------------------
         self.gui = AddTrainingDataGUI(api=self.api)
+        self.gui.project_table.set_project_filter(
+            lambda p: p.id != self.project_id and p.items_count > 0
+        )
+        self.history = TrainingDataHistory(self.api)
         self.modal_content = self.gui.widget
 
         # --- modals -------------------------------------------------------------
-        self.modals = [self.gui.modal]
+        self.modals = [self.gui.modal, self.history.modal, self.history.logs_modal]
 
         # --- init Node ----------------------------------------------------------
         title = kwargs.pop("title", self.TITLE)
@@ -87,55 +93,56 @@ class AddTrainingDataNode(BaseCardNode):
             },
         ]
 
+    def _get_tooltip_buttons(self):
+        if not hasattr(self, "tooltip_buttons"):
+            self.tooltip_buttons = [self.history.history_btn]
+        return self.tooltip_buttons
+
     # ------------------------------------------------------------------
     # Events -----------------------------------------------------------
     # ------------------------------------------------------------------
-    def _available_subscribe_methods(self) -> Dict[str, Union[Callable, List[Callable]]]:
-        """Returns a dictionary of methods that can be used for subscribing to events."""
+    # def _available_subscribe_methods(self) -> Dict[str, Union[Callable, List[Callable]]]:
+    #     """Returns a dictionary of methods that can be used for subscribing to events."""
+    #     return {
+    #         "add_training_data_id": self.start_task,
+    #     }
+
+    def _available_publish_methods(self) -> Dict[str, Callable]:
         return {
             "add_training_data_id": self.start_task,
         }
 
     def start_task(self) -> None:
-        """Start the task to copy training daata from one project to another."""
+        """Start the task to copy training data from one project to another."""
         if not self.settings_data:
             return
+
         team_id = sly_env.team_id()
         workspace_id = sly_env.workspace_id()
         task_id = sly_env.task_id()
 
         settings_data = self.settings_data
-
         dst_project_id = self.project_id
+
         src_project_id = settings_data["project_id"]
-        src_dataset_ids = settings_data["dataset_ids"]
         src_workspace_id = settings_data["workspace_id"]
         src_team_id = settings_data["team_id"]
-        replicate_structure = settings_data.get("replicate_structure", False)
-        # destination = None
-        # if replicate_structure:
-        #     selected_ids_to_parents = settings_data.get("selected_ids_to_parents", {})
-        #     for dataset_names in selected_ids_to_parents.values():
-        #         parent_id = None
-        #         for dataset_name in dataset_names:
-        #             ds_info = self.api.dataset.get_or_create(
-        #                 dst_project_id, dataset_name, parent_id=parent_id
-        #             )
-        #             parent_id = ds_info.id
-        #         destination = parent_id
 
         self.show_in_progress_badge()
+        train_split, val_split = self.gui.splits_widget.get_splits()
+        if train_split is None and val_split is None:
+            raise RuntimeError("No train/val split selected. Cannot start the task.")
+        img_ids = [item_info.id for item_info in train_split + val_split]
 
         module_info = self.api.app.get_ecosystem_module_info(slug=self.APP_SLUG)
         params = {
             "state": {
-                "action": "copy" if not replicate_structure else "merge",
-                "items": [{"id": ds_id, "type": "dataset"} for ds_id in src_dataset_ids],
+                "action": "merge",
+                "items": [{"id": img_id, "type": "image"} for img_id in img_ids],
                 "source": {
                     "team": {"id": src_team_id},
                     "workspace": {"id": src_workspace_id},
                     "project": {"id": src_project_id},
-                    # "dataset": {"id": 16712, "parentIds": None},
                 },
                 "destination": {
                     "team": {"id": team_id},
@@ -146,11 +153,10 @@ class AddTrainingDataNode(BaseCardNode):
                     "preserveSrcDate": False,
                     "cloneAnnotations": True,
                     "conflictResolutionMode": "rename",
+                    "saveIdsToProjectCustomData": True,
                 },
             }
         }
-        # if destination is not None:
-        #     params["state"]["destination"]["dataset"] = {"id": destination}
         agent = self.api.agent.get_list_available(team_id, True)[0]
         task_info_json = self.api.task.start(
             agent_id=agent.id,
@@ -163,7 +169,12 @@ class AddTrainingDataNode(BaseCardNode):
         task_id = task_info_json["id"]
         thread = threading.Thread(
             target=self.wait_task_complete,
-            args=(task_id,),
+            args=(
+                task_id,
+                dst_project_id,
+                train_split,
+                val_split,
+            ),
             daemon=True,
         )
         thread.start()
@@ -171,6 +182,9 @@ class AddTrainingDataNode(BaseCardNode):
     def wait_task_complete(
         self,
         task_id: int,
+        dst_project_id: int,
+        train_split: List,
+        val_split: List,
     ) -> TrainingDataAddedMessage:
         """Wait until the task is complete."""
         task_info_json = self.api.task.get_info_by_id(task_id)
@@ -187,7 +201,7 @@ class AddTrainingDataNode(BaseCardNode):
             ]:
                 logger.error(f"Task {task_id} failed with status: {task_status}")
                 break
-            logger.info("Waiting for the Data Commander task to start... Status: %s", task_status)
+            logger.info("Waiting for the Data Commander task to finish... Status: %s", task_status)
             time.sleep(5)
             if time.time() - current_time > 300:  # 5 minutes timeout
                 logger.warning(
@@ -196,12 +210,82 @@ class AddTrainingDataNode(BaseCardNode):
                 break
 
         self.hide_in_progress_badge()
+        task_info = self.api.task.get_info_by_id(task_id)
+        task = {
+            "id": task_id,
+            "split_method": self.gui.splits_widget.get_split_method(),
+            "train_count": len(train_split),
+            "val_count": len(val_split),
+            "started_at": task_info["startedAt"],
+            "status": task_info["status"],
+        }
+        self.history.add_task(task)
         success = task_status == self.api.task.Status.FINISHED
         if not success:
             logger.error(f"Task {task_id} failed with status: {task_status}")
 
-        # @TODO: remove arg?
+        uploaded_ids = self._get_uploaded_ids(dst_project_id, task_id)
+        if not uploaded_ids:
+            raise RuntimeError("Failed to fetch uploaded IDs.")
+
+        infos = self.api.image.get_info_by_id_batch(uploaded_ids)
+
+        train_hashes = [item_info.hash for item_info in train_split]
+        val_hashes = [item_info.hash for item_info in val_split]
+
+        train_image_ids = [info.id for info in infos if info.hash in train_hashes]
+        val_image_ids = [info.id for info in infos if info.hash in val_hashes]
+
+        self._add_new_collection(dst_project_id, train_image_ids, val_image_ids)
+        self.gui.project_table.enable()
+
         return TrainingDataAddedMessage(
             project_id=self.project_id,
-            dataset_ids=[],
+            train_ids=train_image_ids,
+            val_ids=val_image_ids,
         )
+
+    def _get_uploaded_ids(self, project_id: int, task_id: int) -> List[int]:
+        """Get the IDs of images uploaded from the project's custom data."""
+        project = self.api.project.get_info_by_id(project_id)
+        if project is None:
+            logger.warning(f"Project with ID {project_id} not found.")
+            return []
+        custom_data = project.custom_data or {}
+        history = custom_data.get("import_history", {}).get("tasks", [])
+        for record in history:
+            if record.get("task_id") == task_id:
+                break
+        else:
+            logger.warning(f"No import history found for task ID {task_id}.")
+            return []
+        uploaded_ids = []
+        for ds in record.get("datasets", []):
+            uploaded_ids.extend(list(map(int, ds.get("uploaded_images", []))))
+        return uploaded_ids
+
+    def _add_new_collection(self, project_id: int, train_ids: List, val_ids: List) -> None:
+        """Create new collections for training and validation splits."""
+        from supervisely.api.entities_collection_api import CollectionTypeFilter
+
+        train_col, train_col_idx = get_last_split_collection(self.api, project_id, "train_")
+        val_col, val_col_idx = get_last_split_collection(self.api, project_id, "val_")
+
+        train_last_collection_items = self.api.entities_collection.get_items(
+            train_col.id, CollectionTypeFilter.DEFAULT, project_id
+        )
+        val_last_collection_items = self.api.entities_collection.get_items(
+            val_col.id, CollectionTypeFilter.DEFAULT, project_id
+        )
+        train_last_ids = [item.id for item in train_last_collection_items]
+        val_last_ids = [item.id for item in val_last_collection_items]
+
+        new_train_collection = self.api.entities_collection.create(
+            project_id, f"train_{train_col_idx + 1:04d}"
+        )
+        new_val_collection = self.api.entities_collection.create(
+            project_id, f"val_{val_col_idx + 1:04d}"
+        )
+
+        self.api.entities_collection.add_items(new_train_collection.id, train_last_ids + train_ids)
+        self.api.entities_collection.add_items(new_val_collection.id, val_last_ids + val_ids)

@@ -92,6 +92,7 @@ class SelectCollection(Widget):
         show_select_all_collections_checkbox: bool = True,
         widget_id: Union[str, None] = None,
         width: int = 193,
+        default_to_env: bool = True,
     ):
         self._api = Api.from_env()
 
@@ -107,7 +108,9 @@ class SelectCollection(Widget):
         self._workspace_id = env.workspace_id()
 
         # Using environment variables to set the default values if they are not provided.
-        self._project_id = project_id or env.project_id(raise_not_found=False)
+        self._project_id = project_id
+        if self._project_id is None and default_to_env:
+            self._project_id = env.project_id(raise_not_found=False)
         self._collection_id = default_id
 
         # Get mapping of collection ID to name for current project.

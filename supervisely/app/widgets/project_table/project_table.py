@@ -1,6 +1,6 @@
 import json
 from datetime import datetime
-from typing import List, Literal, Optional
+from typing import Callable, List, Literal, Optional
 
 import pandas as pd
 
@@ -64,6 +64,7 @@ class TeamWorkspaceSelect(Widget):
         self._selectors_style = selectors_style
         self._gap = 20 if direction == "horizontal" else 10
         self._changes_handled = False
+        self._value_changed_callbacks: List[Callable] = []
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     @property
@@ -91,10 +92,6 @@ class TeamWorkspaceSelect(Widget):
                 self._team_id = value
                 self._update_workspace_selector()
 
-                if hasattr(self, "_value_change_callback") and self._value_change_callback:
-                    result = {"teamId": self._team_id, "workspaceId": self._workspace_id}
-                    self._value_change_callback(result)
-
             self._team_selector = select
         return self._team_selector
 
@@ -112,9 +109,10 @@ class TeamWorkspaceSelect(Widget):
                 StateJson()[self.widget_id]["workspaceId"] = value
                 StateJson().send_changes()
 
-                if hasattr(self, "_workspace_change_callback") and self._workspace_change_callback:
+                if self._changes_handled:
                     result = {"teamId": self._team_id, "workspaceId": value}
-                    self._workspace_change_callback(result)
+                    for callback in self._value_changed_callbacks:
+                        callback(result)
 
             self._workspace_selector = select
         return self._workspace_selector
@@ -155,10 +153,11 @@ class TeamWorkspaceSelect(Widget):
     def _update_workspace_selector(self):
         items = [Select.Item(ws.id, ws.name) for ws in self._api.workspace.get_list(self._team_id)]
         self.workspace_selector.set(items)
-        if self._workspace_id not in [item for item in items]:
-            self.workspace_selector.set_value(items[0].value)
-        else:
-            self.workspace_selector.set_value(self._workspace_id)
+        item_value_to_item = {item.value: item for item in items}
+        current_item = item_value_to_item.get(self._workspace_id, None)
+        if current_item is None:
+            self._workspace_id = items[0].value
+        self.workspace_selector.set_value(self._workspace_id)
 
     def get_json_data(self):
         return {}
@@ -172,9 +171,10 @@ class TeamWorkspaceSelect(Widget):
 
     def value_changed(self, func):
         """Register a callback function to be called when team or workspace selection changes"""
-        self._value_change_callback = func
-        self._changes_handled = True
-        self._workspace_change_callback = func
+        self._value_changed_callbacks.append(func)
+        self._changes_handled = any(
+            isinstance(cb, Callable) for cb in self._value_changed_callbacks
+        )
 
         return func
 
@@ -193,6 +193,7 @@ class ProjectDatasetTable(Widget):
         allowed_project_types: Optional[List[ProjectType]] = None,
         team_id: Optional[int] = None,
         workspace_id: Optional[int] = None,
+        project_filter_fn: Optional[Callable] = None,
         widget_id: Optional[str] = None,
     ):
         self._api = Api()
@@ -202,7 +203,6 @@ class ProjectDatasetTable(Widget):
         if isinstance(self._allowed_project_types, list):
             if all(isinstance(pt, ProjectType) for pt in self._allowed_project_types):
                 self._allowed_project_types = [pt.value for pt in self._allowed_project_types]
-        self._projects: List[ProjectInfo] = []
         self._project_id_to_info = {}
         self._datasets: List[DatasetInfo] = []
         self._dataset_id_to_info = {}
@@ -215,6 +215,7 @@ class ProjectDatasetTable(Widget):
         self._sort_order = sort_order
         self._page_size = page_size
         self._width = width
+        self._project_filter_fn = project_filter_fn or (lambda p: True)
         super().__init__(widget_id=widget_id, file_path=__file__)
         self._content = self.table
 
@@ -269,9 +270,25 @@ class ProjectDatasetTable(Widget):
                 self._team_id = value["teamId"]
                 self._workspace_id = value["workspaceId"]
                 self.current_table = self.CurrentTable.PROJECTS
-                self._refresh_table()
+                try:
+                    self.table.loading = True
+                    self._refresh_table()
+                    self.table.clear_selection()
+                finally:
+                    self.table.loading = False
 
         return self._team_workspace_selector
+
+    def set_project_filter(self, filter_fn: Callable):
+        """Set a filter function to filter projects displayed in the table."""
+        self._project_filter_fn = filter_fn
+        if self.current_table == self.CurrentTable.PROJECTS:
+            try:
+                self.table.loading = True
+                self._refresh_table()
+                self.table.clear_selection()
+            finally:
+                self.table.loading = False
 
     def switch_table(self, table: Literal["projects", "datasets"]):
         if self.current_table == table:
@@ -288,7 +305,11 @@ class ProjectDatasetTable(Widget):
             self._selected_project_id = self._get_selected_project_id()
             self.team_workspace_selector.hide()
 
-        self._refresh_table()
+        try:
+            self.table.loading = True
+            self._refresh_table()
+        finally:
+            self.table.loading = False
 
     def _refresh_table(self):
         from supervisely.app import DataJson, StateJson
@@ -304,6 +325,10 @@ class ProjectDatasetTable(Widget):
         columns = self._get_columns()
         data_json = self.table.to_json()
         data_json["data"] = data
+        item_ids = [row[1] for row in data]
+        if item_ids != list(self._id_to_search_str.keys()):
+            self._get_search_sort_keys()
+            assert item_ids == list(self._id_to_search_str.keys())
         self.table.read_json(data_json, custom_columns=columns)
         self.table._refresh()
 
@@ -380,6 +405,8 @@ class ProjectDatasetTable(Widget):
         self.table.enable()
 
     def _sort_function(self, data: pd.DataFrame, column_idx: int, order: str = "asc"):
+        if not self._id_to_sort_key:
+            return data
         data = data.copy()
         first_sort_keys = next(iter(self._id_to_sort_key.values()), [])
         if column_idx >= len(first_sort_keys) if self._id_to_sort_key else True:
@@ -396,7 +423,7 @@ class ProjectDatasetTable(Widget):
             current_sort_keys = []
             for row in data.values:
                 p_id = row[1]
-                sort_key = self._id_to_sort_key.get(p_id, "")[column_idx]
+                sort_key = self._id_to_sort_key.get(p_id, [])[column_idx]
                 current_sort_keys.append(sort_key)
 
             sort_series = pd.Series(current_sort_keys, index=data.index)
@@ -406,7 +433,7 @@ class ProjectDatasetTable(Widget):
 
         except IndexError as e:
             e.args = (
-                f"Sorting by column idx = {column_idx} is not possible, your sort values have only {len(self._rows_sort_values[0]) if self._rows_sort_values else 0} columns with idx from 0 to {len(self._rows_sort_values[0]) - 1 if self._rows_sort_values else -1}",
+                f"Sorting by column idx = {column_idx} is not possible, your sort values have only {len(first_sort_keys) if self._id_to_sort_key else 0} columns with idx from 0 to {len(first_sort_keys) - 1 if self._id_to_sort_key else -1}",
             )
             raise e
 
@@ -428,9 +455,13 @@ class ProjectDatasetTable(Widget):
             return self._get_projects_data(workspace_id=workspace_id)
         elif self.current_table == self.CurrentTable.DATASETS:
             return self._get_datasets_data(project_id=self.get_selected_project_id())
+        self._get_search_sort_keys()
 
     def _get_projects_data(self, workspace_id):
         if not workspace_id:
+            self._project_id_to_info = {}
+            self._id_to_search_str = {}
+            self._id_to_sort_key = {}
             return []
         filters = None
         if self._allowed_project_types:
@@ -455,42 +486,46 @@ class ProjectDatasetTable(Widget):
             filters=filters,
         )
 
-        self._projects = projects
-        self._project_id_to_info = {p.id: p for p in projects}
+        id_to_info = {p.id: p for p in list(filter(self._project_filter_fn, projects))}
+        self._project_id_to_info = id_to_info
 
         table_data = []
-        search_values = []
-        for project in projects:
-            project_thumbnail = ProjectThumbnail(project, remove_margins=True)
+        for p_id, info in self._project_id_to_info.items():
+            project_thumbnail = ProjectThumbnail(info, remove_margins=True)
             ds_thumb = DatasetThumbnail(show_project_name=False, remove_margins=True)
             ds_thumb.hide()
-            dt = datetime.strptime(project.created_at.replace("Z", ""), "%Y-%m-%dT%H:%M:%S.%f")
+            dt = datetime.strptime(info.created_at.replace("Z", ""), "%Y-%m-%dT%H:%M:%S.%f")
             row_data = [
                 self._widget_to_cell_value(Container([project_thumbnail, ds_thumb], gap=0)),
-                project.id,
+                p_id,
                 dt.strftime("%d %b %Y %H:%M"),
-                project.type.replace("_", " ").title(),
-                project.items_count or 0,
+                info.type.replace("_", " ").title(),
+                info.items_count or 0,
             ]
             table_data.append(row_data)
-            search_values.append(
-                [
-                    project.name.lower(),
-                    project.id,
-                    dt.timestamp(),
-                    project.type.lower(),
-                    project.items_count,
-                ]
-            )
 
-        self._id_to_search_str = {
-            pid: "".join(str(vals))
-            for pid, vals in zip(self._project_id_to_info.keys(), search_values)
-        }
-        self._id_to_sort_key = {
-            pid: vals for pid, vals in zip(self._project_id_to_info.keys(), search_values)
-        }
         return table_data
+
+    def _get_search_sort_keys(self):
+        self._id_to_search_str = {}
+        self._id_to_sort_key = {}
+        mapping = (
+            self._project_id_to_info
+            if self.current_table == self.CurrentTable.PROJECTS
+            else self._dataset_id_to_info
+        )
+        for p_id, info in mapping.items():
+            dt = datetime.strptime(info.created_at.replace("Z", ""), "%Y-%m-%dT%H:%M:%S.%f")
+            search_value = [
+                info.name.lower(),
+                p_id,
+                dt.timestamp(),
+                info.items_count,
+            ]
+            if self.current_table == self.CurrentTable.PROJECTS:
+                search_value.insert(3, info.type.replace("_", " ").lower())
+            self._id_to_search_str[p_id] = "".join(str(v) for v in search_value)
+            self._id_to_sort_key[p_id] = search_value
 
     def _get_datasets_data(self, project_id):
         project_info = self._project_id_to_info.get(project_id, None)
@@ -504,13 +539,11 @@ class ProjectDatasetTable(Widget):
             id_to_full_name[dataset_info.id] = full_name
             datasets.append(dataset_info)
 
-        self._datasets = datasets
         self._dataset_id_to_info = {d.id: d for d in datasets}
         self._dataset_id_to_full_name = id_to_full_name
 
         table_data = []
-        search_values = []
-        for dataset in datasets:
+        for dataset_id, dataset in self._dataset_id_to_info.items():
             proj_thumb = ProjectThumbnail(remove_margins=True)
             proj_thumb.hide()
             full_name = id_to_full_name.get(dataset.id, dataset.name)
@@ -524,27 +557,11 @@ class ProjectDatasetTable(Widget):
             dt = datetime.strptime(dataset.created_at.replace("Z", ""), "%Y-%m-%dT%H:%M:%S.%f")
             row_data = [
                 self._widget_to_cell_value(Container([proj_thumb, ds_preview], gap=0)),
-                dataset.id,
+                dataset_id,
                 dt.strftime("%d %b %Y %H:%M"),
                 dataset.items_count or 0,
             ]
             table_data.append(row_data)
-            search_values.append(
-                [
-                    full_name.lower(),
-                    dataset.id,
-                    dt.strftime("%d %b %Y %H:%M"),
-                    dataset.items_count,
-                ]
-            )
-
-        self._id_to_search_str = {
-            did: "".join(str(vals))
-            for did, vals in zip(self._dataset_id_to_info.keys(), search_values)
-        }
-        self._id_to_sort_key = {
-            did: vals for did, vals in zip(self._dataset_id_to_info.keys(), search_values)
-        }
 
         return table_data
 
