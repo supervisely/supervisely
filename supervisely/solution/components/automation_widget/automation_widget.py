@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, Callable, Optional
 
 from supervisely.app.widgets import Button, Container, Dialog
+from supervisely.solution.engine.modal_registry import ModalRegistry
 from supervisely.solution.engine.scheduler import TasksScheduler
 
 
@@ -32,8 +33,9 @@ class AutomationWidget(Automation):
         self.job_id = self.widget.widget_id
 
         # --- modal ----------------------------------------------------
-        self._modal: Optional[Dialog] = None
-        self._open_modal_button: Optional[Button] = None
+        ModalRegistry().attach_automation_widget(
+            owner_id=self.widget.widget_id, widget=self.widget
+        )
 
         # --- apply button ---------------------------------------------
         # should be implemented in subclasses (can not be overridden)
@@ -100,14 +102,12 @@ class AutomationWidget(Automation):
     @property
     def modal(self) -> Dialog:
         """Returns the modal for the automation."""
-        if self._modal is None:
-            self._modal = Dialog(title="Automation Settings", content=self.widget)
-        return self._modal
+        return ModalRegistry().automation_dialog
 
     @property
     def open_modal_button(self) -> Button:
         """Returns the open modal button."""
-        if self._open_modal_button is None:
+        if not hasattr(self, "_open_modal_button") or self._open_modal_button is None:
             btn = Button(
                 text="Automate",
                 icon="zmdi zmdi-flash-auto",
@@ -118,7 +118,7 @@ class AutomationWidget(Automation):
 
             @btn.click
             def _on_click():
-                self.modal.show()
+                ModalRegistry().open_automation(owner_id=self.widget.widget_id)
 
             self._open_modal_button = btn
         return self._open_modal_button

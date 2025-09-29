@@ -1,0 +1,2 @@
+from supervisely.solution.components.automation_widget.automation_widget import AutomationWidget
+from supervisely.solution.components.tasks_history.tasks_history import TasksHistoryWidget
