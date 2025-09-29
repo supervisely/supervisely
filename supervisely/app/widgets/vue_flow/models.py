@@ -13,11 +13,19 @@ class NodeBadgeStyle(BaseModel):
         return super().model_dump(*args, **kwargs, exclude_none=True)
 
 
-class NodeBadgeStyleMap(Enum):
-    info = NodeBadgeStyle(backgroundColor="#1976D2", color="#FFFFFF")
-    warning = NodeBadgeStyle(backgroundColor="#FFA000", color="#FFFFFF")
-    error = NodeBadgeStyle(backgroundColor="#D32F2F", color="#FFFFFF")
-    success = NodeBadgeStyle(backgroundColor="#388E3C", color="#FFFFFF")
+node_badge_style_map = {
+    "info": "#1976D2",
+    "warning": "#FFA000",
+    "error": "#D32F2F",
+    "success": "#388E3C",
+}
+
+
+def get_badge_style(badge_type: str) -> NodeBadgeStyle:
+    return NodeBadgeStyle(
+        backgroundColor=node_badge_style_map.get(badge_type),
+        color="#FFFFFF",
+    )
 
 
 class NodeBadge(BaseModel):
@@ -40,7 +48,9 @@ class TooltipButton(BaseModel):
 class TooltipProperty(BaseModel):
     label: str = Field(..., description="Property label")
     value: str = Field(..., description="Property value")
-    link: Optional[Dict[str, str]] = Field(default=None, description="Optional link for the property value")
+    link: Optional[Dict[str, str]] = Field(
+        default=None, description="Optional link for the property value"
+    )
     highlight: bool = Field(default=False, description="Whether to highlight the property")
 
 

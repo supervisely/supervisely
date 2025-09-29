@@ -146,7 +146,7 @@ class TrainFinishedMessage(Message):
 
     success: bool = Field(..., description="Indicates if the training was successful")
     task_id: int = Field(..., description="ID of the training task")
-    experiment_info: dict = Field(..., description="Dictionary with experiment info")
+    experiment_info: Optional[dict] = Field(None, description="Dictionary with experiment info")
 
 
 class ModelDeployMessage(Message):

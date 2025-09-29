@@ -127,7 +127,7 @@ class ProjectNode(BaseProjectNode):
             preview_url = self.project.image_preview_url
 
         if new_items_count is not None:
-            self.update_property(key="Last update", value=f"+{new_items_count}")
+            self.update_property(key="Last update", value=f"+{new_items_count} images")
             self.update_badge_by_key(key="Last update", label=f"+{new_items_count}")
         self.update_property(key="Total", value=f"{items_count} images")
 
@@ -151,46 +151,22 @@ class ProjectNode(BaseProjectNode):
     ) -> None:
         return self._update(message)
 
-    def _get_train_val_collections(self) -> Tuple[List[int], List[int]]:
-        """
-        Returns the training and validation collections for the project.
-        If the project is not a training project, returns empty lists.
-
-        :return: Tuple of lists containing training and validation collection IDs.
-        """
-        train_collections = []
-        val_collections = []
-
-        if self.IS_TRAINING:
-            for collection_info in self.api.entities_collection.get_list(self.project_id):
-                if collection_info.name == "all_train":
-                    train_collections.append(collection_info.id)
-                elif collection_info.name == "all_val":
-                    val_collections.append(collection_info.id)
-
-            if not train_collections and not val_collections:
-                logger.debug("No training or validation collections found in the project.")
-
-        return train_collections, val_collections
-
     def _get_train_val_items(self) -> Tuple[List, List]:
         """
         Returns the items in training and validation collections.
 
         :return: Tuple containing lists of training and validation items.
         """
-        train_collections, val_collections = self._get_train_val_collections()
-        train_items, val_items = [], []
+        # TODO: change to "latest_.."  to ".._latest"
+        train = self.api.entities_collection.get_info_by_name(self.project_id, "latest_train")
+        val = self.api.entities_collection.get_info_by_name(self.project_id, "latest_val")
 
-        for collection_id in train_collections:
-            images = self.api.entities_collection.get_items(collection_id, self.project_id)
-            train_items.extend(images)
+        def _get_items(collection):
+            if not collection:
+                return []
+            return self.api.entities_collection.get_items(collection.id, self.project_id)
 
-        for collection_id in val_collections:
-            images = self.api.entities_collection.get_items(collection_id, self.project_id)
-            val_items.extend(images)
-
-        return train_items, val_items
+        return _get_items(train), _get_items(val)
 
     def _get_random_image_url(self, images: List) -> Optional[str]:
         """Get a random image URL from a list of images"""

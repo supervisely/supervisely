@@ -1,8 +1,13 @@
+from supervisely.solution.nodes.add_training_data.node import AddTrainingDataNode
 from supervisely.solution.nodes.all_experiments.node import AllExperimentsNode
 from supervisely.solution.nodes.auto_import.node import AutoImportNode
+from supervisely.solution.nodes.best_model_evaluation_report.node import (
+    BestModelEvaluationReportNode,
+)
 from supervisely.solution.nodes.cloud_import.node import CloudImportNode
 from supervisely.solution.nodes.compare_models.node import CompareModelsNode
 from supervisely.solution.nodes.data_versioning.node import DataVersioningNode
+from supervisely.solution.nodes.deploy_custom_model.node import DeployCustomModelNode
 from supervisely.solution.nodes.deploy_pretrained_model.node import (
     DeployPretrainedModelNode,
 )
@@ -29,7 +34,6 @@ from supervisely.solution.nodes.training_evaluation.node import (
 )
 from supervisely.solution.nodes.training_experiment.node import TrainingExperimentNode
 from supervisely.solution.nodes.training_project.node import TrainingProjectNode
-from supervisely.solution.nodes.add_training_data.node import AddTrainingDataNode
 
 # from supervisely.solution.components.video_samling import VideoSampling
 
@@ -62,5 +66,7 @@ __all__ = [
     # Prediction
     "DeployPretrainedModelNode",
     "PreLabelingNode",
+    "DeployCustomModelNode",
+    "BestModelEvaluationReportNode",
     "AddTrainingDataNode",
 ]

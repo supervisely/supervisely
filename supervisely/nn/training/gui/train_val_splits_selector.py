@@ -1,9 +1,10 @@
 from typing import List
 
 from supervisely import Api, Project
-from supervisely.app.widgets import Button, Card, Container, Text, TrainValSplits
-from supervisely.api.module_api import ApiField
 from supervisely.api.entities_collection_api import EntitiesCollectionInfo
+from supervisely.api.module_api import ApiField
+from supervisely.app.widgets import Button, Card, Container, Text, TrainValSplits
+
 
 class TrainValSplitsSelector:
     title = "Train / Val Splits"
@@ -40,7 +41,9 @@ class TrainValSplitsSelector:
         ds_split = "Based on datasets" in split_methods
         coll_split = "Based on collections" in split_methods
 
-        self.train_val_splits = TrainValSplits(project_id, None, random_split, tag_split, ds_split, collections_splits=coll_split)
+        self.train_val_splits = TrainValSplits(
+            project_id, None, random_split, tag_split, ds_split, collections_splits=coll_split
+        )
 
         if self.project_id is not None:
             self._detect_splits(coll_split, ds_split)
@@ -185,7 +188,13 @@ class TrainValSplitsSelector:
                 return False
 
             # Check if datasets are not empty
-            filters = [{ ApiField.FIELD: ApiField.ID, ApiField.OPERATOR: "in", ApiField.VALUE: train_dataset_id + val_dataset_id}]
+            filters = [
+                {
+                    ApiField.FIELD: ApiField.ID,
+                    ApiField.OPERATOR: "in",
+                    ApiField.VALUE: train_dataset_id + val_dataset_id,
+                }
+            ]
             selected_datasets = self.api.dataset.get_list(self.project_id, filters, recursive=True)
             datasets_count = {}
             for dataset in selected_datasets:
@@ -343,6 +352,7 @@ class TrainValSplitsSelector:
 
     def _detect_splits(self, collections_split: bool, datasets_split: bool) -> bool:
         """Detect splits based on the selected method"""
+        self._parse_collections()
         splits_found = False
         if collections_split:
             splits_found = self._detect_collections()
@@ -350,52 +360,65 @@ class TrainValSplitsSelector:
             splits_found = self._detect_datasets()
         return splits_found
 
+    def _parse_collections(self) -> None:
+        """Parse collections with train and val prefixes and set them to train_val_splits variables"""
+        all_collections = self.api.entities_collection.get_list(self.project_id)
+        existing_train_collections = [
+            collection for collection in all_collections if collection.name.startswith("train_")
+        ]
+        existing_val_collections = [
+            collection for collection in all_collections if collection.name.startswith("val_")
+        ]
+
+        self._all_train_collections = existing_train_collections
+        self._all_val_collections = existing_val_collections
+        self._latest_train_collection = self._get_latest_collection(
+            existing_train_collections, "train"
+        )
+        self._latest_val_collection = self._get_latest_collection(existing_val_collections, "val")
+
+    def _get_latest_collection(
+        self, collections: List[EntitiesCollectionInfo], expected_prefix: str
+    ) -> EntitiesCollectionInfo:
+        curr_collection = None
+        curr_idx = 0
+        for collection in collections:
+            parts = collection.name.split("_")
+            if len(parts) == 2:
+                prefix = parts[0].lower()
+                if prefix == expected_prefix:
+                    if parts[1].isdigit():
+                        collection_idx = int(parts[1])
+                        if collection_idx > curr_idx:
+                            curr_idx = collection_idx
+                            curr_collection = collection
+        return curr_collection
+
     def _detect_collections(self) -> bool:
         """Find collections with train and val prefixes and set them to train_val_splits"""
-        def _get_latest_collection(collections: List[EntitiesCollectionInfo]) -> EntitiesCollectionInfo:
-            curr_collection = None
-            curr_idx = 0
-            for collection in collections:
-                collection_idx = int(collection.name.rsplit('_', 1)[-1])
-                if collection_idx > curr_idx:
-                    curr_idx = collection_idx
-                    curr_collection = collection
-            return curr_collection
-        
-        all_collections = self.api.entities_collection.get_list(self.project_id)
-        train_collections = []
-        val_collections = []
-        collections_found = False
-        for collection in all_collections:
-            if collection.name.lower().startswith("train_"):
-                train_collections.append(collection)
-            elif collection.name.lower().startswith("val_"):
-                val_collections.append(collection)
 
-        train_collection = _get_latest_collection(train_collections)
-        val_collection = _get_latest_collection(val_collections)
-        if train_collection is not None and val_collection is not None:
-            self.train_val_splits.set_collections_splits([train_collection.id], [val_collection.id])
+        collections_found = False
+        if self._latest_train_collection is not None and self._latest_val_collection is not None:
+            self.train_val_splits.set_collections_splits(
+                [self._latest_train_collection.id], [self._latest_val_collection.id]
+            )
             self.validator_text = Text("Train and val collections are detected", status="info")
             self.validator_text.show()
             collections_found = True
-            self._all_train_collections = train_collections
-            self._all_val_collections = val_collections
-            self._latest_train_collection = train_collection
-            self._latest_val_collection = val_collection
         else:
             self.validator_text = Text("")
             self.validator_text.hide()
             collections_found = False
         return collections_found
-        
+
     def _detect_datasets(self) -> bool:
         """Find datasets with train and val prefixes and set them to train_val_splits"""
+
         def _extend_with_nested(root_ds):
             nested = self.api.dataset.get_nested(self.project_id, root_ds.id)
             nested_ids = [ds.id for ds in nested]
             return [root_ds.id] + nested_ids
-        
+
         datasets_found = False
         train_val_dataset_ids = {"train": set(), "val": set()}
         for _, dataset in self.api.dataset.tree(self.project_id):
@@ -416,7 +439,9 @@ class TrainValSplitsSelector:
         val_count = len(train_val_dataset_ids["val"])
 
         if train_count > 0 and val_count > 0:
-            self.train_val_splits.set_datasets_splits(train_val_dataset_ids["train"], train_val_dataset_ids["val"])
+            self.train_val_splits.set_datasets_splits(
+                train_val_dataset_ids["train"], train_val_dataset_ids["val"]
+            )
             datasets_found = True
 
         if train_count > 0 and val_count > 0:
@@ -424,7 +449,7 @@ class TrainValSplitsSelector:
                 message = "train and val datasets are detected"
             else:
                 message = "Multiple train and val datasets are detected. Check manually if selection is correct"
-            
+
             self.validator_text = Text(message, status="info")
             self.validator_text.show()
             datasets_found = True

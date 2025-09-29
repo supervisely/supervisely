@@ -34,7 +34,7 @@ class TrainingProjectNode(ProjectNode):
     def _available_subscribe_methods(self) -> Dict[str, Callable]:
         """Returns a dictionary of methods that can be used for subscribing to events."""
         return {
-            "train_val_split_finished": self.refresh,
+            "move_labeled_data_finished": self.refresh,
         }
 
     def _available_publish_methods(self):
@@ -56,7 +56,7 @@ class TrainingProjectNode(ProjectNode):
     def _get_handles(self):
         return [
             {
-                "id": "train_val_split_finished",
+                "id": "move_labeled_data_finished",
                 "type": "target",
                 "position": "top",
                 "label": "Input",

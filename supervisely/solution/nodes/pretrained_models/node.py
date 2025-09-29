@@ -6,8 +6,6 @@ import supervisely.io.env as sly_env
 from supervisely.api.api import Api
 from supervisely.api.entities_collection_api import CollectionTypeFilter
 from supervisely.api.task_api import TaskApi
-from supervisely.app.widgets import Dialog, NewExperiment
-from supervisely.project.image_transfer_utils import move_structured_images
 from supervisely.sly_logger import logger
 from supervisely.solution.base_node import BaseCardNode
 from supervisely.solution.engine.models import (
@@ -78,7 +76,10 @@ class BaseTrainNode(BaseCardNode):
         @self.click
         def on_click():
             self.gui.widget.visible = True
-            # self.gui.modal.show()
+            self.gui.train_val_split_mode = "collections"
+            train_collections, val_collections = self.gui._get_train_val_collections()
+            self.gui.widget.train_collections = train_collections
+            self.gui.widget.val_collections = val_collections
 
         @self.gui.widget.app_started
         def _on_app_started(app_id: int, model_id: int, task_id: int):
@@ -134,74 +135,9 @@ class BaseTrainNode(BaseCardNode):
 
     def _available_subscribe_methods(self):
         """Returns a dictionary of methods that can be used as callbacks for subscribed events."""
-        return {"data_versioning_project_id": self.get_data_versioning_project_id}
+        return {"data_versioning_project_id": self._get_data_versioning_project_id}
 
-    def send_data_moving_finished_message(
-        self,
-        success: bool,
-        items: List[int],
-        items_count: int,
-    ) -> MoveLabeledDataFinishedMessage:
-        return MoveLabeledDataFinishedMessage(
-            success=success,
-            items=items,
-            items_count=items_count,
-        )
-
-    # def send_images_count_message(self, count: int) -> LabelingQueueAcceptedImagesMessage:
-    #     return LabelingQueueAcceptedImagesMessage(accepted_images=[i for i in range(count)])
-
-    # publish event (may send Message object)
-    def wait_task_complete(
-        self,
-        task_id: int,
-        dataset_id: int,
-        images: List[int],
-    ) -> None:
-        """Wait until the task is complete."""
-        task_info_json = self.api.task.get_info_by_id(task_id)
-        if task_info_json is None:
-            logger.error(f"Task with ID {task_id} not found.")
-            self.send_data_moving_finished_message(success=False, items=[], items_count=0)
-
-        current_time = time.time()
-        while (task_status := self.api.task.get_status(task_id)) != self.api.task.Status.FINISHED:
-            if task_status in [
-                self.api.task.Status.ERROR,
-                self.api.task.Status.STOPPED,
-                self.api.task.Status.TERMINATING,
-            ]:
-                logger.error(f"Task {task_id} failed with status: {task_status}")
-                break
-            logger.info("Waiting for the evaluation task to start... Status: %s", task_status)
-            time.sleep(5)
-            if time.time() - current_time > 30000:  # 500 minutes timeout
-                logger.warning("Timeout reached while waiting for the evaluation task to start.")
-                break
-
-        try:
-            task_info_json = {"id": task_id, "status": task_status.value}
-            self.history.update_task(task_id=task_id, task=task_info_json)
-            logger.info(f"Task {task_id} completed with status: {task_status.value}")
-        except Exception as e:
-            logger.error(f"Failed to update task history: {repr(e)}")
-
-        self.hide_in_progress_badge()
-
-        success = task_status == self.api.task.Status.FINISHED
-        res = self.api.image.get_list(dataset_id=dataset_id)
-        res = [img.id for img in res]
-        if len(res) != len(images):
-            logger.error(f"Not all images were moved. Expected {len(images)}, but got {len(res)}.")
-            success = False
-
-        if success:
-            logger.info(f"Setting {len(res)} images as moved. Cleaning up the list.")
-            self._images_to_move = []
-
-        self.send_data_moving_finished_message(success=success, items=res, items_count=len(res))
-
-    def get_data_versioning_project_id(self) -> Optional[int]:
+    def _get_data_versioning_project_id(self) -> Optional[int]:
         return getattr(self, "project_id", None)
 
     def _send_training_output_message(
@@ -219,21 +155,6 @@ class BaseTrainNode(BaseCardNode):
         return TrainFinishedMessage(
             success=success, task_id=task_id, experiment_info=experiment_info
         )
-
-    # subscribe event (may receive Message object)
-    def set_images_to_move(self, message: LabelingQueueAcceptedImagesMessage) -> None:
-        """
-        Set the images to move based on the message.
-        """
-        if not message.accepted_images:
-            logger.warning("No items to move. Returning empty list.")
-            self._images_to_move = []
-        else:
-            self._images_to_move = message.accepted_images
-        logger.info(f"Set {len(self._images_to_move)} images to move.")
-        self.gui.set_items_count(len(self._images_to_move))
-        self.update_property("Available items to move", f"{len(self._images_to_move)}")
-        # self.send_images_count_message(len(self._images_to_move))
 
     # ------------------------------------------------------------------
     # Automation ---------------------------------------------------
@@ -283,18 +204,20 @@ class BaseTrainNode(BaseCardNode):
                 val_collection, CollectionTypeFilter.DEFAULT
             )
             images_count = f"train: {len(train_imgs)}, val: {len(val_imgs)}"
+        classes_count = len(self._train_settings.get("classes", []))
 
         task = {
-            "id": task_id,
+            "task_id": task_id,
             "task_info": task_info,
-            "model_id": self.gui.widget.model_id,
+            "model_id": model_id,
             "status": "started",
-            "agent_id": self.gui.widget.agent_id,
-            "classes_count": len(self.gui.widget.classes),
+            "agent_id": self._train_settings.get("agentId"),
+            "classes_count": f"{classes_count} class{'s' if classes_count != 1 else ''}",
             "images_count": images_count,
         }
         self.history.add_task(task=task)
 
+        self.update_badge_by_key(key="Status", label="Starting", badge_type="info")
         # Avoid using automation.apply()
         threading.Thread(target=self._poll_train_progress, args=(task_id,), daemon=True).start()
 
@@ -348,9 +271,59 @@ class BaseTrainNode(BaseCardNode):
                 )
                 break
             else:
-                self.update_badge_by_key(key="Status", label="Training...", badge_type="info")
+                self._set_train_progress_from_widgets(task_id)
 
             time.sleep(interval_sec)
+
+    # @TODO: Use epoch num instead of percent (key 'info')
+    # @TODO: Refactor?
+    def _set_train_progress_from_widgets(self, task_id: int) -> str:
+        progress_widgets_data = self.api.task.get_progress_widgets(task_id)
+        if progress_widgets_data is None:
+            return
+
+        # Debug
+        for idx, progress_widget_data in enumerate(progress_widgets_data):
+            print(f"Progress widget {idx}: {progress_widget_data}")
+            with open('/root/projects/solution-labeling/task_progress.log', 'a') as f:
+                f.write(f"Progress widget {idx}: {progress_widget_data}\n\n")
+
+        progress_widget = progress_widgets_data[0]
+        message = progress_widget["message"]
+        if message is None:
+            return
+        
+        percent = progress_widget["percent"]
+
+        start_messages = ["Application is started"]
+        prepare_messages = ["Downloading input data", "Retrieving data from cache", "Preparing data for training...", "Applying train/val splits to project", "Processing splits", "Downloading model files"]
+        training_messages = ["Epochs", "Epoches", "Epoch"] # "Training is in progress..."
+        finalize_messages = ["Uploading demo files to Team Files", "Uploading train artifacts to Team Files", "Finalizing and uploading training artifacts..."]
+        complete_messages = ["Training completed"]
+        eval_messages = ["Starting Model Benchmark evaluation", "Evaluation: Downloading GT annotations", "Visualizations: Adding tags to predictions"]
+        error_messages = ["Ready for training"]
+
+        badge_type = "info"
+        if message in start_messages:
+            label = "Starting"
+        elif message in prepare_messages:
+            label = "Preparing Data for Training"
+        elif message in training_messages:
+            label = f"Training {percent} / 100 %"
+        elif message in finalize_messages or message.startswith("Uploading"):
+            label = "Finalizing Training"
+        elif message in eval_messages:
+            label = "Evaluating Model"
+        elif message in complete_messages:
+            label = "Training Completed"
+        elif message in error_messages:
+            label = "Failed"
+            badge_type = "error"
+        else:
+            return
+
+        self.update_badge_by_key(key="Status", label=label, badge_type=badge_type)
+
 
     def _save_train_settings(self):
         """
