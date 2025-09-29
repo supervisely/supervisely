@@ -11,7 +11,9 @@ class TrainValSplitsSelector:
     description = "Select train and val splits for training"
     lock_message = "Select previous step to unlock"
 
-    def __init__(self, api: Api, project_id: int = None, app_options: dict = {}):
+    def __init__(
+        self, api: Api, project_id: int = None, app_options: dict = {}, default_to_env: bool = True
+    ):
         # Init widgets
         self.train_val_splits = None
         self.validator_text = Text("")
@@ -42,7 +44,13 @@ class TrainValSplitsSelector:
         coll_split = "Based on collections" in split_methods
 
         self.train_val_splits = TrainValSplits(
-            project_id, None, random_split, tag_split, ds_split, collections_splits=coll_split
+            project_id,
+            None,
+            random_split,
+            tag_split,
+            ds_split,
+            collections_splits=coll_split,
+            default_to_env=default_to_env,
         )
 
         if self.project_id is not None:

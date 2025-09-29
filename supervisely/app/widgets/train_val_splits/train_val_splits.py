@@ -45,6 +45,7 @@ class TrainValSplits(Widget):
         datasets_splits: Optional[bool] = True,
         widget_id: Optional[int] = None,
         collections_splits: Optional[bool] = False,
+        default_to_env: Optional[bool] = True,
     ):
         self._project_id = project_id
         self._project_fs = project_fs
@@ -167,10 +168,10 @@ class TrainValSplits(Widget):
             )
         else:
             self._train_tag_select = SelectTagMeta(
-                default="train", show_label=False, default_to_env=False
+                default="train", show_label=False, default_to_env=self._default_to_env
             )
             self._val_tag_select = SelectTagMeta(
-                default="val", show_label=False, default_to_env=False
+                default="val", show_label=False, default_to_env=self._default_to_env
             )
         self._untagged_select = SelectString(
             values=["train", "val", "ignore"],
@@ -230,7 +231,7 @@ class TrainValSplits(Widget):
                 team_is_selectable=False,
                 workspace_is_selectable=False,
                 append_to_body=False,
-                default_to_env=False,
+                default_to_env=self._default_to_env,
             )
 
             self._val_ds_select = SelectDatasetTree(
@@ -244,7 +245,7 @@ class TrainValSplits(Widget):
                 team_is_selectable=False,
                 workspace_is_selectable=False,
                 append_to_body=False,
-                default_to_env=False,
+                default_to_env=self._default_to_env,
             )
 
             # old implementation
@@ -276,10 +277,10 @@ class TrainValSplits(Widget):
         )
 
         self._train_collections_select = SelectCollection(
-            multiselect=True, compact=True, default_to_env=False
+            multiselect=True, compact=True, default_to_env=self._default_to_env
         )
         self._val_collections_select = SelectCollection(
-            multiselect=True, compact=True, default_to_env=False
+            multiselect=True, compact=True, default_to_env=self._default_to_env
         )
         if self._project_id is not None:
             self._train_collections_select.set_project_id(self._project_id)

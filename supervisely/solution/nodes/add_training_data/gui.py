@@ -91,7 +91,7 @@ class AddTrainingDataGUI(Widget):
     @property
     def splits_widget(self) -> TrainValSplitsSelector:
         if not hasattr(self, "_splits_widget"):
-            self._splits_widget = TrainValSplitsSelector(self.api)
+            self._splits_widget = TrainValSplitsSelector(self.api, default_to_env=False)
             self._splits_widget.train_val_splits.hide()
 
             self._splits_widget.train_val_splits.get_splits = MethodType(
@@ -241,7 +241,9 @@ class AddTrainingDataGUI(Widget):
         self.splits_widget.train_val_splits.show()
         project_id = self.get_selected_project_id()
         if not project_id:
-            raise RuntimeError("Project ID is required to configure splits data but no project is currently selected.")
+            raise RuntimeError(
+                "Project ID is required to configure splits data but no project is currently selected."
+            )
         dataset_ids = self.get_selected_dataset_ids()
         try:
             self.splits_widget.train_val_splits._content.loading = True
