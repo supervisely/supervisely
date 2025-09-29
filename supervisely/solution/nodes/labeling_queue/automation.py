@@ -1,7 +1,7 @@
 from typing import Callable, List, Optional, Tuple
 from venv import logger
 
-from supervisely.solution.automation import Automation
+from supervisely.solution.components import Automation
 
 
 class LabelingQueueRefresh(Automation):

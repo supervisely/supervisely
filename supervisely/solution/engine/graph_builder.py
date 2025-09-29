@@ -4,7 +4,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Union
 
-from supervisely.app.widgets import Dialog, VueFlow
+from supervisely.app.widgets import Dialog, VueFlow, Widget
 from supervisely.solution.base_node import BaseCardNode, BaseNode
 from supervisely.solution.engine.config_parser import YAMLParser
 from supervisely.solution.engine.modal_registry import ModalRegistry
@@ -25,6 +25,7 @@ class GraphBuilder(VueFlow):
         self.nodes: Dict[str, VueFlow.Node] = nodes or []
         self.edges: List[Dict[str, Any]] = edges or []
         self._modal_registry = ModalRegistry()  # singleton
+        self._extra_widgets: List[Widget] = []  # e.g. NewExperiment widget
 
         sidebar_nodes = []
         from supervisely.solution.nodes import __all__ as all_nodes
@@ -94,6 +95,10 @@ class GraphBuilder(VueFlow):
                 module = importlib.import_module(module_path)
                 node_class: BaseNode = getattr(module, class_name)
                 node = node_class.from_json(node_data, parent_id=self.widget_id)
+
+                if hasattr(node, "_extra_widgets"):
+                    for w in node._extra_widgets:
+                        self._extra_widgets.append(w)
                 nodes.append(node)
                 node_id_to_obj[node.id] = node
             except Exception as e:
@@ -146,3 +151,8 @@ class GraphBuilder(VueFlow):
     def modals(self) -> List[Dialog]:
         """Return a list of modals defined in the graph."""
         return self._modal_registry.modals()
+    
+    @property
+    def extra_widgets(self) -> List[Widget]:
+        """Return a list of extra widgets (e.g. NewExperiment widget) defined in the graph."""
+        return self._extra_widgets

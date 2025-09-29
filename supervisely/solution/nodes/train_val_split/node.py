@@ -38,16 +38,13 @@ class TrainValSplitNode(BaseCardNode):
 
         # --- core blocks --------------------------------------------------------
         self.gui = TrainValSplitGUI()
-        self.modal_content = self.gui.widget
+        self.modal_content = self.gui.content
 
         # --- parameters --------------------------------------------------------
         self.api = Api.from_env()
         self.dst_project_id = dst_project_id
         self._click_handled = True
         self._accepted_images = []
-
-        # --- modals -------------------------------------------------------------
-        self.modals = [self.gui.modal]
 
         # --- init Node ----------------------------------------------------------
         title = kwargs.pop("title", self.TITLE)
@@ -77,7 +74,7 @@ class TrainValSplitNode(BaseCardNode):
 
         @self.click
         def show_split_modal():
-            self.gui.modal.show()
+            self.gui.open_modal()
 
     # ------------------------------------------------------------------
     # Handels ----------------------------------------------------------

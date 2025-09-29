@@ -65,13 +65,8 @@ class BaseTrainNode(BaseCardNode):
             **kwargs,
         )
 
-        # --- modals -------------------------------------------------------------
-        self.modals = [
-            self.gui.widget,
-            self.automation.modal,
-            self.history.modal,
-            self.history.logs_modal,
-        ]
+        # --- NewExperiment widget ----------------------------------------------------------
+        self._extra_widgets = [self.gui.widget]
 
         @self.click
         def on_click():
@@ -292,7 +287,7 @@ class BaseTrainNode(BaseCardNode):
         message = progress_widget["message"]
         if message is None:
             return
-        
+
         percent = progress_widget["percent"]
 
         start_messages = ["Application is started"]
@@ -323,7 +318,6 @@ class BaseTrainNode(BaseCardNode):
             return
 
         self.update_badge_by_key(key="Status", label=label, badge_type=badge_type)
-
 
     def _save_train_settings(self):
         """
