@@ -1312,14 +1312,14 @@ class AnnotationApi(ModuleApi):
 
             api.annotation.update_label(label_id, new_label)
         """
-        self._api.post(
-            "figures.editInfo",
-            {
-                ApiField.ID: label_id,
-                ApiField.TAGS: [tag.to_json() for tag in label.tags],
-                ApiField.GEOMETRY: label.geometry.to_json(),
-            },
-        )
+        payload = {
+            ApiField.ID: label_id,
+            ApiField.TAGS: [tag.to_json() for tag in label.tags],
+            ApiField.GEOMETRY: label.geometry.to_json(),
+            ApiField.NN_CREATED: label._nn_created,
+            ApiField.NN_UPDATED: label._nn_updated,
+        }
+        self._api.post("figures.editInfo", payload)
 
     def update_label_priority(self, label_id: int, priority: int) -> None:
         """Updates label's priority with given ID in Supervisely.

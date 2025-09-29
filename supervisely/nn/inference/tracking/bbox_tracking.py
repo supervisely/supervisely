@@ -7,7 +7,7 @@ import numpy as np
 from pydantic import ValidationError
 
 from supervisely.annotation.annotation import Annotation
-from supervisely.annotation.label import Geometry, Label
+from supervisely.annotation.label import Geometry, Label, LabelingStatus
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.api.api import Api
 from supervisely.api.module_api import ApiField
@@ -588,8 +588,12 @@ class BBoxTracking(BaseTracking):
                 # for example empty mask
                 continue
             if isinstance(label, list):
+                for lb in label:
+                    lb.status = LabelingStatus.AUTO
                 labels.extend(label)
                 continue
+
+            label.status = LabelingStatus.AUTO
             labels.append(label)
 
         # create annotation with correct image resolution

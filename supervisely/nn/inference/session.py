@@ -537,7 +537,7 @@ class SessionJSON:
         t0 = time.time()
         while not has_started and not timeout_exceeded:
             resp = self._get_inference_progress()
-            has_started = bool(resp["result"]) or resp["progress"]["total"] != 1
+            has_started = bool(resp.get("result")) or resp["progress"]["total"] != 1
             if not has_started:
                 time.sleep(delay)
             timeout_exceeded = timeout and time.time() - t0 > timeout

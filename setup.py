@@ -202,7 +202,7 @@ setup(
             "app/development/*.sh",
             "imaging/colors.json.gz",
             "nn/benchmark/*/*.yaml",
-            "nn/tracker/botsort/botsort_config.yaml"
+            "nn/tracker/botsort/botsort_config.yaml",
         ],
     },
     entry_points={
@@ -277,6 +277,7 @@ setup(
             "decord",
             "gdown",
             "torch",
+            "motmetrics",
         ],
         "model-benchmark": [
             "pycocotools",
