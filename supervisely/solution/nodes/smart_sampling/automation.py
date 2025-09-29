@@ -14,7 +14,7 @@ from supervisely.solution.components import AutomationWidget
 from supervisely.solution.utils import get_interval_period
 
 
-class SmartSamplingAutomationAutomationWidget(AutomationWidget):
+class SmartSamplingAutomation(AutomationWidget):
     # ------------------------------------------------------------------
     # Automation -------------------------------------------------------
     # ------------------------------------------------------------------

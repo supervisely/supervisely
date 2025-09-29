@@ -1,5 +1,6 @@
 from supervisely.app.widgets import Button, TasksHistory
 from supervisely.app.widgets.dialog.dialog import Dialog
+from supervisely.app.widgets.fast_table.fast_table import FastTable
 from supervisely.solution.engine.modal_registry import ModalRegistry
 
 
@@ -14,6 +15,11 @@ class TasksHistoryWidget(TasksHistory):
         ModalRegistry().attach_history_widget(owner_id=self.widget_id, widget=self.table)
         ModalRegistry().attach_preview_widget(owner_id=self.widget_id, widget=self.gallery)
         ModalRegistry().attach_logs_widget(owner_id=self.widget_id, widget=self.logs)
+
+    def _on_table_row_click(self, clicked_row: FastTable.ClickedRow):
+        # can be re-implemented in child classes (for example, to show preview of selected task)
+        self.logs.set_task_id(clicked_row.row[0])
+        ModalRegistry().open_logs(owner_id=self.widget_id)
 
     @property
     def logs_modal(self) -> Dialog:

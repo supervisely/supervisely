@@ -8,6 +8,7 @@ from supervisely.app.widgets import FastTable, TasksHistory
 from supervisely.solution.components.tasks_history.tasks_history import TasksHistoryWidget
 from supervisely.project.image_transfer_utils import compare_projects
 from supervisely.sly_logger import logger
+from supervisely.solution.engine.modal_registry import ModalRegistry
 
 
 class SmartSamplingTasksHistory(TasksHistoryWidget):
@@ -83,7 +84,7 @@ class SmartSamplingTasksHistory(TasksHistoryWidget):
             url = img.full_storage_url
             column = idx % 3
             self.gallery.append(column_index=column, image_url=url, title=title)
-        self.preview_modal.show()
+        ModalRegistry().open_preview(owner_id=self.widget_id)
 
     # ------------------------------------------------------------------
     # --- Add Task -----------------------------------------------------
