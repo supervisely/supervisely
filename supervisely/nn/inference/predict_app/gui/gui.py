@@ -784,7 +784,7 @@ class PredictAppGui:
                         )
                 else:
                     self.api.video.annotation.append(
-                        video_id=created_video, ann=prediction_video_annotation
+                        video_id=created_video.id, ann=prediction_video_annotation
                     )
 
             self.output_selector.progress.hide()
