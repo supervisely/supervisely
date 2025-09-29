@@ -222,6 +222,7 @@ def copy_items_to_project(
     with_annotations: bool = True,
     progress: Progress = None,
     project_type: str = None,
+    src_datasets_tree: Dict[DatasetInfo, Dict] = None,
 ) -> Union[List[ImageInfo], List[VideoInfo]]:
     if project_type is None:
         dst_project_info = api.project.get_info_by_id(src_project_id)
