@@ -6,9 +6,9 @@ from venv import logger
 from supervisely.api.api import Api
 from supervisely.app import DataJson
 from supervisely.app.widgets import Button
-from supervisely.app.widgets.grid_gallery_v2.grid_gallery_v2 import GridGalleryV2
 from supervisely.app.widgets.dialog.dialog import Dialog
 from supervisely.app.widgets.fast_table.fast_table import FastTable
+from supervisely.app.widgets.grid_gallery_v2.grid_gallery_v2 import GridGalleryV2
 from supervisely.app.widgets.task_logs.task_logs import TaskLogs
 from supervisely.app.widgets.widget import Widget
 
@@ -240,7 +240,12 @@ class TasksHistory(Widget):
     @property
     def gallery(self) -> GridGalleryV2:
         if not hasattr(self, "_gallery"):
-            self._gallery = GridGalleryV2(columns_number=3, enable_zoom=False)
+            self._gallery = GridGalleryV2(
+                columns_number=3,
+                enable_zoom=False,
+                enable_pagination=True,
+                pagination_page_size=9,
+            )
         return self._gallery
 
     @property
