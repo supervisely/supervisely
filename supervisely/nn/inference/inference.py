@@ -2201,6 +2201,10 @@ class Inference:
         direction = 1 if direction == "forward" else -1
         track_id = get_value_for_keys(state, ["trackId", "track_id"], ignore_none=True)
 
+        # TODO: 1. device default auto - same as model
+        # TODO: 2. fps remove from user defined, get from video
+        # TODO: 3. self._tracker -> inference_request.tracker
+
         if frames_count is not None:
             n_frames = frames_count
         elif end_frame_index is not None:
@@ -3460,12 +3464,13 @@ class Inference:
             inference_request, future = self.inference_requests_manager.schedule_task(
                 self._tracking_by_detection, api, state
             )
-            future.result()
-            results = {"ann": inference_request.pop_pending_results()}
-            final_result = inference_request.final_result
-            if final_result is not None:
-                results.update(final_result)
-            return results
+            # future.result()
+            # results = {"ann": inference_request.pop_pending_results()}
+            # final_result = inference_request.final_result
+            # if final_result is not None:
+            #     results.update(final_result)
+            # return results
+            return {"message": "Track task started."}
 
         @server.post("/inference_project_id_async")
         def inference_project_id_async(response: Response, request: Request):
