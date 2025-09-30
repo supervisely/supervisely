@@ -6,7 +6,13 @@
   :filters.sync="state.{{{widget.widget_id}}}.filters"
   :project-meta="data.{{{widget.widget_id}}}.content.projectMeta"
   :objects-bindings="data.{{{widget.widget_id}}}.content.objectsBindings"
-></sly-grid-gallery-v2>
+>
+    {% if widget._enable_pagination == true %}
+    <template slot="right-header">
+        {{{widget._pagination}}}
+    </template>
+    {% endif %}
+</sly-grid-gallery-v2>
 <div
   v-if="Object.keys(data.{{{widget.widget_id}}}.content.annotations).length === 0"
 >

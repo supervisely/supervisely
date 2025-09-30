@@ -4,12 +4,11 @@ import uuid
 from collections import defaultdict
 from typing import List, Union
 
-from supervisely.project.project_meta import ProjectMeta
 from supervisely.annotation.annotation import Annotation
 from supervisely.api.annotation_api import AnnotationInfo
 from supervisely.app import DataJson
 from supervisely.app.content import StateJson
-from supervisely.app.widgets import Widget
+from supervisely.app.widgets import Pagination, Widget
 from supervisely.project.project_meta import ProjectMeta
 
 
@@ -33,6 +32,8 @@ class GridGalleryV2(Widget):
         border_width: int = 3,
         default_tag_filters: List[Union[str, dict]] = None,
         widget_id: str = None,
+        enable_pagination: bool = False,
+        pagination_page_size: int = None,
     ):
         self._data = []
         self._layout = []
@@ -46,8 +47,7 @@ class GridGalleryV2(Widget):
 
         self._bindings_dict = defaultdict(list)
 
-        #############################
-        # grid gallery settings
+        # --- General Settings --------------------------------------
         self._show_preview: bool = True
         self._fill_rectangle: bool = fill_rectangle
         self._border_width: int = border_width
@@ -64,7 +64,31 @@ class GridGalleryV2(Widget):
         self._enablePan = enable_panning
 
         self._filters_tags = default_tag_filters
-        #############################
+
+        # ---  Pagination Settings ----------------------------------
+        if pagination_page_size is None:
+            pagination_page_size = columns_number * 3
+        elif pagination_page_size % columns_number != 0:
+            pagination_page_size = (pagination_page_size // columns_number) * columns_number
+
+        self._pagination = (
+            Pagination(
+                total=0,
+                page_size=pagination_page_size,
+                layout="prev, pager, next, jumper",
+            )
+            if enable_pagination
+            else None
+        )
+
+        if self._pagination is not None:
+
+            @self._pagination.page_changed
+            def _on_page_changed(page):
+                self._update()
+                self.update_data()
+
+        # -----------------------------------------------------------
 
         self._filters = []
         self._object_bindings = []
@@ -75,7 +99,8 @@ class GridGalleryV2(Widget):
         objects_dict = dict()
         obj_tags_dict = dict()
 
-        for cell_data in self._data:
+        start, end = self._get_start_end_indices()
+        for cell_data in self._data[start:end]:
             ann_info: AnnotationInfo = cell_data["annotation_info"]
             project_meta: ProjectMeta = cell_data["project_meta"]
 
@@ -123,7 +148,6 @@ class GridGalleryV2(Widget):
             },
         }
 
-
     def get_column_index(self, incoming_value):
         if incoming_value is not None and 0 > incoming_value > self.columns_number:
             raise ValueError(f"column index == {incoming_value} is out of bounds")
@@ -165,7 +189,6 @@ class GridGalleryV2(Widget):
                 "column_index": column_index,
                 "cell_uuid": cell_uuid,
                 "skipObjectTagsFiltering": ignore_tags_filtering,
-
             }
         )
 
@@ -183,7 +206,8 @@ class GridGalleryV2(Widget):
     def _update_layout(self):
         layout = [[] for _ in range(self.columns_number)]
 
-        for cell_data in self._data:
+        start, end = self._get_start_end_indices()
+        for cell_data in self._data[start:end]:
             tmp = cell_data["cell_uuid"]
             skip_filters: Union[bool, List[str]] = cell_data.get("skipObjectTagsFiltering")
             if skip_filters is True or isinstance(skip_filters, list):
@@ -199,7 +223,9 @@ class GridGalleryV2(Widget):
 
     def _update_annotations(self):
         annotations = {}
-        for cell_data in self._data:
+
+        start, end = self._get_start_end_indices()
+        for cell_data in self._data[start:end]:
             annotations[cell_data["cell_uuid"]] = {
                 "imageUrl": cell_data["image_url"],
                 "annotation": cell_data["annotation_info"]._asdict(),
@@ -209,7 +235,9 @@ class GridGalleryV2(Widget):
 
     def _update_object_bindings(self):
         object_bindings = []
-        for cell_data in self._data:
+
+        start, end = self._get_start_end_indices()
+        for cell_data in self._data[start:end]:
             ann_json = cell_data["annotation_info"].annotation
             for obj in ann_json["objects"]:
                 self._bindings_dict[obj["classTitle"]].append(
@@ -247,6 +275,8 @@ class GridGalleryV2(Widget):
         StateJson()[self.widget_id]["filters"] = filters
 
     def _update(self):
+        if self._pagination is not None:
+            self._pagination.set_total(value=len(self._data))
         self._update_layout()
         self._update_annotations()
         self._update_object_bindings()
@@ -265,3 +295,15 @@ class GridGalleryV2(Widget):
         self._loading = value
         DataJson()[self.widget_id]["loading"] = self._loading
         DataJson().send_changes()
+
+    def _get_start_end_indices(self):
+        if self._pagination is None:
+            return 0, len(self._data)
+
+        current_page = self._pagination.get_current_page()
+        page_size = self._pagination.get_page_size()
+
+        start_index = (current_page - 1) * page_size
+        end_index = min(start_index + page_size, len(self._data))
+
+        return start_index, end_index
