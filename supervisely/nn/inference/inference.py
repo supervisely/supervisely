@@ -1401,7 +1401,7 @@ class Inference:
 
     # pylint: enable=method-hidden
     
-    def get_tracking_params(self) -> Dict[str, Dict[str, Any]]:
+    def get_tracking_settings(self) -> Dict[str, Dict[str, Any]]:
         """
         Get default parameters for all available tracking algorithms.
         
@@ -1428,7 +1428,12 @@ class Inference:
                     logger.debug(f"Tracker '{tracker_name}' not implemented")
             except Exception as e:
                 logger.warning(f"Failed to get params for '{tracker_name}': {e}")
-        
+                
+        INTERNAL_FIELDS = {"device", "fps"}
+        for tracker_name, params in trackers_params.items():
+            trackers_params[tracker_name] = {
+                k: v for k, v in params.items() if k not in INTERNAL_FIELDS
+                }
         return trackers_params
 
     def get_human_readable_info(self, replace_none_with: Optional[str] = None):
@@ -3052,10 +3057,10 @@ class Inference:
         def get_session_info(response: Response):
             return self.get_info()
 
-        @server.post("/get_tracking_params")
+        @server.post("/get_tracking_settings")
         @self._check_serve_before_call
-        def get_tracking_params(response: Response):
-            return self.get_tracking_params()
+        def get_tracking_settings(response: Response):
+            return self.get_tracking_settings()
 
         @server.post("/get_custom_inference_settings")
         def get_custom_inference_settings():
