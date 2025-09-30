@@ -251,17 +251,17 @@ def get_filter_deleted_after(timestamp: str) -> Dict:
     }
 
 def check_embeddings_update_status(api, project_id, project_info: ProjectInfo):
-    return run_sync(_compute_need_update(api, project_id, project_info.embeddings_updated_at))
+    return _compute_need_update(api, project_id, project_info.embeddings_updated_at)
 
-async def _compute_need_update(api, project_id, updated_at):
-    images_to_create = await image_get_list_async(api, project_id, wo_embeddings=True)
+def _compute_need_update(api, project_id, updated_at):
+    images_to_create = image_get_list(api, project_id, wo_embeddings=True)
     if updated_at is not None:
-        images_to_delete = await image_get_list_async(api, project_id, deleted_after=updated_at)
+        images_to_delete = image_get_list(api, project_id, deleted_after=updated_at)
     else:
         images_to_delete = []
     return len(images_to_create) > 0 or len(images_to_delete) > 0
 
-async def image_get_list_async(
+def image_get_list(
     api: Api,
     project_id: int,
     dataset_id: int = None,
@@ -290,11 +290,9 @@ async def image_get_list_async(
         base_data[ApiField.FILTER].append(get_filter_deleted_after(deleted_after))
         base_data[ApiField.SHOW_DISABLED] = True
 
-    semaphore = api.get_default_semaphore()
     all_items = []
-    tasks = []
 
-    async def _get_all_pages(ids_filter: List[Dict]):
+    def _get_all_pages(ids_filter: List[Dict]):
         page_data = base_data.copy()
         if ids_filter:
             if ApiField.FILTER not in page_data:
@@ -302,7 +300,7 @@ async def image_get_list_async(
             page_data[ApiField.FILTER].extend(ids_filter)
 
         page_data[ApiField.PAGE] = 1
-        first_response = await api.post_async(method, page_data)
+        first_response = api.post(method, page_data)
         first_response_json = first_response.json()
 
         total_pages = first_response_json.get("pagesCount", 1)
@@ -315,45 +313,33 @@ async def image_get_list_async(
 
         if total_pages > 1:
 
-            async def fetch_page(page_num):
+            def fetch_page(page_num):
                 page_data_copy = page_data.copy()
                 page_data_copy[ApiField.PAGE] = page_num
 
-                async with semaphore:
-                    response = await api.post_async(method, page_data_copy)
-                    response_json = response.json()
+                response = api.post(method, page_data_copy)
+                response_json = response.json()
 
-                    page_items = []
-                    entities = response_json.get("entities", [])
-                    for item in entities:
-                        image_info = api.image._convert_json_info(item)
-                        page_items.append(image_info)
+                page_items = []
+                entities = response_json.get("entities", [])
+                for item in entities:
+                    image_info = api.image._convert_json_info(item)
+                    page_items.append(image_info)
 
-                    return page_items
-
-            tasks = []
+                return page_items
+            
             for page_num in range(2, total_pages + 1):
-                tasks.append(asyncio.create_task(fetch_page(page_num)))
-
-            page_results = await asyncio.gather(*tasks)
-
-            for page_items in page_results:
-                batch_items.extend(page_items)
+                batch_items.extend(fetch_page(page_num))
 
         return batch_items
 
     if image_ids is None:
-        tasks.append(asyncio.create_task(_get_all_pages([])))
+        all_items.extend(_get_all_pages([]))
     else:
         for batch in batched(image_ids):
             ids_filter = [
                 {ApiField.FIELD: ApiField.ID, ApiField.OPERATOR: "in", ApiField.VALUE: batch}
             ]
-            tasks.append(asyncio.create_task(_get_all_pages(ids_filter)))
-            await asyncio.sleep(0.02)
-
-    batch_results = await asyncio.gather(*tasks)
-    for batch_items in batch_results:
-        all_items.extend(batch_items)
+            all_items.extend(_get_all_pages(ids_filter))
 
     return all_items
