@@ -42,7 +42,7 @@ type_to_zmdi_icon = {
 }
 class ClassesSelector:
     title = "Classes"
-    description = "Select classes that will be used for inference"
+    description = "Select classes that will be used for inference. This classes are defined by the deployed model"
     lock_message = "Select previous step to unlock"
 
     def __init__(self):
