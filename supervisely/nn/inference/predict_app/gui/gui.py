@@ -309,8 +309,9 @@ class PredictAppGui:
             self.preview.gallery.loading = True
             try:
                 items_settings = self.input_selector.get_settings()
-                if "video_id" in items_settings:
-                    video_id = items_settings["video_id"]
+                if "video_ids" in items_settings:
+                    video_ids = items_settings["video_ids"]
+                    video_id = video_ids[0]
                     video_info = self.api.video.get_info_by_id(video_id)
                     video_frame = random.randint(0, video_info.frames_count - 1)
                     self.api.video.frame.download_path(
@@ -595,11 +596,9 @@ class PredictAppGui:
         input_project_id = input_parameters.get("project_id", None)
         input_dataset_ids = input_parameters.get("dataset_ids", [])
         input_image_ids = input_parameters.get("image_ids", [])
-        input_video_id = input_parameters.get("video_id", None)
+        input_video_ids = input_parameters.get("video_ids", None)
         if input_image_ids:
             input_args["image_ids"] = input_image_ids
-        elif input_video_id:
-            input_args["video_id"] = input_video_id
         elif input_dataset_ids:
             input_args["dataset_ids"] = input_dataset_ids
         elif input_project_id:
@@ -613,8 +612,8 @@ class PredictAppGui:
         elif input_dataset_ids:
             dataset_info = self.api.dataset.get_info_by_id(input_dataset_ids[0])
             source_project_id = dataset_info.project_id
-        elif input_video_id:
-            video_info = self.api.video.get_info_by_id(input_video_id)
+        elif input_video_ids:
+            video_info = self.api.video.get_info_by_id(input_video_ids[0])
             source_project_id = video_info.project_id
 
         # Settings
@@ -646,6 +645,7 @@ class PredictAppGui:
         project_name = output_parameters.get("project_name", "")
         upload_to_source_project = output_parameters.get("upload_to_source_project", False)
         skip_project_versioning = output_parameters.get("skip_project_versioning", False)
+        created_videos = []
         if upload_to_source_project:
             output_project_id = input_project_id
             if not skip_project_versioning and not is_development():
@@ -656,7 +656,7 @@ class PredictAppGui:
                     "Created by Predict App. Task Id: " + str(env.task_id()),
                 )
                 logger.info("New project version created: " + str(version_id))
-        elif input_video_id:
+        elif input_video_ids:
             if not project_name:
                 source_project_info = self.api.project.get_info_by_id(source_project_id)
                 project_name = source_project_info.name + " [Predictions]"
@@ -671,19 +671,17 @@ class PredictAppGui:
                 copy_meta=with_annotations,
                 project_type=ProjectType.VIDEOS,
             )
-            created_video = copy_items_to_project(
+            video_infos = self.api.video.get_info_by_id_batch(input_video_ids)
+            created_videos = copy_items_to_project(
                 api=self.api,
                 src_project_id=source_project_id,
-                items=[self.api.video.get_info_by_id(input_video_id)],
+                items=video_infos,
                 dst_project_id=created_project.id,
                 with_annotations=with_annotations,
                 progress=self.output_selector.progress,
                 project_type=ProjectType.VIDEOS,
-            )[0]
+            )
             output_project_id = created_project.id
-            input_args = {
-                "video_id": input_video_id,
-            }
         else:
             if not project_name:
                 source_project_info = self.api.project.get_info_by_id(source_project_id)
@@ -741,53 +739,68 @@ class PredictAppGui:
         predictions = []
         self._is_running = True
         try:
-            with model_api.predict_detached(
-                **input_args,
-                tqdm=self.output_selector.progress(),
-                **kwargs,
-            ) as session:
-                self.output_selector.progress.show()
-                i = 0
-                for prediction in session:
-                    predictions.append(prediction)
-                    i += 1
-                    if self._stop_flag:
-                        logger.info("Prediction stopped by user.")
-                        break
-            if input_video_id:
+            if input_video_ids:
                 project_meta = model_api.get_model_meta()
-                video_info = self.api.video.get_info_by_id(input_video_id)
                 src_project_meta = ProjectMeta.from_json(
-                    self.api.project.get_meta(video_info.project_id)
+                    self.api.project.get_meta(source_project_id)
                 )
                 project_meta = src_project_meta.merge(project_meta)
                 project_meta = self.api.project.update_meta(output_project_id, project_meta)
-                prediction_video_annotation: VideoAnnotation = VideoAnnotation.from_json(
-                    session.final_result["video_ann"],
-                    project_meta=project_meta,
-                )
-                if upload_to_source_project:
-                    if prediction_mode in [
-                        AddPredictionsMode.REPLACE_EXISTING_LABELS,
-                        AddPredictionsMode.REPLACE_EXISTING_LABELS_AND_SAVE_IMAGE_TAGS,
-                    ]:
-                        with open("/tmp/prediction_video_annotation.json", "w") as f:
-                            json.dump(prediction_video_annotation.to_json(), f)
-                        self.api.video.annotation.upload_paths(
-                            video_ids=[input_video_id],
-                            paths=["/tmp/prediction_video_annotation.json"],
-                            project_meta=project_meta,
-                        )
+
+                for input_video_id, created_video in zip(input_video_ids, created_videos):
+                    with model_api.predict_detached(
+                        video_id=input_video_id,
+                        tqdm=self.output_selector.progress(),
+                        **kwargs,
+                    ) as session:
+                        self.output_selector.progress.show()
+                        i = 0
+                        for prediction in session:
+                            predictions.append(prediction)
+                            i += 1
+                            if self._stop_flag:
+                                logger.info("Prediction stopped by user.")
+                                raise StopIteration("Stopped by user.")
+                    prediction_video_annotation: VideoAnnotation = VideoAnnotation.from_json(
+                        session.final_result["video_ann"],
+                        project_meta=project_meta,
+                    )
+                    if upload_to_source_project:
+                        if prediction_mode in [
+                            AddPredictionsMode.REPLACE_EXISTING_LABELS,
+                            AddPredictionsMode.REPLACE_EXISTING_LABELS_AND_SAVE_IMAGE_TAGS,
+                        ]:
+                            with open("/tmp/prediction_video_annotation.json", "w") as f:
+                                json.dump(prediction_video_annotation.to_json(), f)
+                            self.api.video.annotation.upload_paths(
+                                video_ids=[input_video_id],
+                                paths=["/tmp/prediction_video_annotation.json"],
+                                project_meta=project_meta,
+                            )
+                        else:
+                            self.api.video.annotation.append(
+                                video_id=input_video_id,
+                                ann=prediction_video_annotation,
+                                key_id_map=KeyIdMap(),
+                            )
                     else:
                         self.api.video.annotation.append(
-                            video_id=input_video_id,
-                            ann=prediction_video_annotation,
-                            key_id_map=KeyIdMap(),
+                            video_id=created_video.id, ann=prediction_video_annotation
                         )
-                else:
-                    self.api.video.annotation.append(
-                        video_id=created_video.id, ann=prediction_video_annotation
-                    )
+            else:
+                with model_api.predict_detached(
+                    **input_args,
+                    tqdm=self.output_selector.progress(),
+                    **kwargs,
+                ) as session:
+                    self.output_selector.progress.show()
+                    i = 0
+                    for prediction in session:
+                        predictions.append(prediction)
+                        i += 1
+                        if self._stop_flag:
+                            logger.info("Prediction stopped by user.")
+                            break
 
             self.output_selector.progress.hide()
         except Exception as e:

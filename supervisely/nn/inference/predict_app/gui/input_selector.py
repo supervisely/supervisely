@@ -1,5 +1,6 @@
 from typing import Any, Dict, List
 
+from build.lib.supervisely.app.widgets.fast_table.fast_table import FastTable
 from supervisely.app.widgets import (
     Button,
     Card,
@@ -127,12 +128,12 @@ class InputSelector:
                 "dataset_ids": self.select_dataset_for_images.get_selected_ids(),
             }
         if self.radio.get_value() == ProjectType.VIDEOS.value:
-            video_id = self.select_video.get_selected_row()
-            if video_id:
-                video_id = video_id[0]
+            rows = self.select_video.get_selected_rows()
+            if rows:
+                video_ids = [row.row[0] for row in rows]
             else:
-                video_id = None
-            return {"video_id": video_id}
+                video_ids = None
+            return {"video_ids": video_ids}
 
     def load_from_json(self, data):
         if "project_id" in data:
