@@ -556,7 +556,9 @@ class PredictAppGui:
             self.input_selector.select_video.loading = True
             if dataset_id is None:
                 rows = []
+                self.input_selector.select_video.hide()
             else:
+                self.input_selector.select_video.show()
                 dataset_info = self.api.dataset.get_info_by_id(dataset_id)
                 videos = self.api.video.get_list(dataset_id)
                 rows = [[video.id, video.name, dataset_info.name] for video in videos]
