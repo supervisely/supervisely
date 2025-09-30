@@ -110,7 +110,7 @@ class TrainingLogs:
         # Progress bars
         self.progress_bar_main = Progress(hide_on_finish=False)
         self.progress_bar_main.hide()
-        self.progress_bar_secondary = Progress(hide_on_finish=False)
+        self.progress_bar_secondary = Progress(hide_on_finish=False, is_secondary=True)
         self.progress_bar_secondary.hide()
         self.display_widgets.extend([self.progress_bar_main, self.progress_bar_secondary])
         # -------------------------------- #

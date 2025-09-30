@@ -31,7 +31,7 @@ UNITS = ["B", "KB", "MB", "GB", "TB"]
 
 
 class _slyProgressBarIO:
-    def __init__(self, widget_id, message=None, total=None, unit=None, unit_scale=None):
+    def __init__(self, widget_id, message=None, total=None, unit=None, unit_scale=None, is_secondary=False):
         self.widget_id = widget_id
 
         self.progress = {
@@ -53,6 +53,7 @@ class _slyProgressBarIO:
         self._n = 0
 
         self._done = False
+        self.is_secondary = is_secondary
 
     def print_progress_to_supervisely_tasks_section(self):
         """
@@ -78,7 +79,7 @@ class _slyProgressBarIO:
         gettrace = getattr(sys, "gettrace", None)
         in_debug_mode = gettrace is not None and gettrace()
 
-        if not in_debug_mode:
+        if not in_debug_mode and not self.is_secondary:
             logger.info("progress", extra=extra)
 
     def write(self, s):
@@ -153,6 +154,7 @@ class CustomTqdm(tqdm):
         )
         unit_scale = kwargs.get("unit_scale")
         unit = kwargs.get("unit")
+        is_secondary = kwargs.pop("is_secondary", False)
 
         self._iteration_value = 0
         self._iteration_number = 0
@@ -166,7 +168,7 @@ class CustomTqdm(tqdm):
         # self.report_every = max(1, math.ceil(self.extracted_total / 100))
 
         super().__init__(
-            file=_slyProgressBarIO(widget_id, message, extracted_total, unit, unit_scale),
+            file=_slyProgressBarIO(widget_id, message, extracted_total, unit, unit_scale, is_secondary=is_secondary),
             *args,
             **kwargs,
         )
@@ -229,7 +231,7 @@ class CustomTqdm(tqdm):
 
 class SlyTqdm(Widget):
     # @TODO: track all active sessions for one object and close them if new object inited
-    def __init__(self, message: str = None, show_percents: bool = False, widget_id: str = None):
+    def __init__(self, message: str = None, show_percents: bool = False, widget_id: str = None, is_secondary: bool = True):
         """
         Wrapper for classic tqdm progress bar.
 
@@ -247,6 +249,8 @@ class SlyTqdm(Widget):
         """
         self.message = message
         self.show_percents = show_percents
+        # If main=True, this bar emits task-level PROGRESS events; otherwise it only updates UI
+        self.is_secondary = is_secondary
 
         self._active_session = None
         self._sly_io = None
@@ -309,6 +313,7 @@ class SlyTqdm(Widget):
             postfix=postfix,
             unit_divisor=unit_divisor,
             gui=gui,
+            is_secondary=self.is_secondary,
             **kwargs,
         )
 
@@ -337,8 +342,9 @@ class Progress(SlyTqdm):
         show_percents: bool = False,
         hide_on_finish=True,
         widget_id: str = None,
+        is_secondary: bool = False,
     ):
         self.hide_on_finish = hide_on_finish
-        super().__init__(message=message, show_percents=show_percents, widget_id=widget_id)
+        super().__init__(message=message, show_percents=show_percents, widget_id=widget_id, is_secondary=is_secondary)
 
     pass
