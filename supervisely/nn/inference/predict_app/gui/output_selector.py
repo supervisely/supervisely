@@ -7,12 +7,12 @@ from supervisely.app.widgets import (
     Card,
     Checkbox,
     Container,
-    Empty,
     Field,
     Input,
+    OneOf,
     Progress,
     ProjectThumbnail,
-    RadioTabs,
+    RadioGroup,
     Text,
 )
 from supervisely.project.project_meta import ProjectType
@@ -63,12 +63,16 @@ class OutputSelector:
         )
         self.skip_annotated_checkbox = Checkbox("Skip annotated images", False)
         self._tab_names = ["Create New Project", "Update source project"]
-        self.tabs = RadioTabs(
-            titles=self._tab_names,
-            contents=[self.project_name_field, self.skip_annotated_checkbox],
+        self._tab_contents = [self.project_name_field, self.skip_annotated_checkbox]
+        self.tabs = RadioGroup(
+            items=[
+                RadioGroup.Item(tab_name, content=tab_content)
+                for tab_name, tab_content in zip(self._tab_names, self._tab_contents)
+            ],
         )
+        self.oneof = OneOf(self.tabs)
         # Add widgets to display ------------ #
-        self.display_widgets.extend([self.tabs])
+        self.display_widgets.extend([self.tabs, self.oneof])
         # ----------------------------------- #
 
         # Base Widgets
@@ -120,7 +124,7 @@ class OutputSelector:
 
     def get_settings(self) -> Dict[str, Any]:
         settings = {}
-        if self.tabs.get_active_tab() == self._tab_names[1]:
+        if self.tabs.get_value() == self._tab_names[1]:
             settings["upload_to_source_project"] = True
         else:
             settings["project_name"] = self.project_name_input.get_value()
@@ -143,14 +147,14 @@ class OutputSelector:
             self.project_name_input.set_value(project_name)
         upload_to_source_project = data.get("upload_to_source_project", False)
         if upload_to_source_project:
-            self.tabs.set_active_tab(self._tab_names[1])
+            self.tabs.set_value(self._tab_names[1])
         else:
-            self.tabs.set_active_tab(self._tab_names[0])
+            self.tabs.set_value(self._tab_names[0])
 
     def validate_step(self) -> bool:
         self.validator_text.hide()
         if (
-            self.tabs.get_active_tab() == self._tab_names[0]
+            self.tabs.get_value() == self._tab_names[0]
             and self.project_name_input.get_value() == ""
         ):
             self.validator_text.set(text="Project name is required", status="error")
