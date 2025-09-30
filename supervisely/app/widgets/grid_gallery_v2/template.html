@@ -7,7 +7,7 @@
   :project-meta="data.{{{widget.widget_id}}}.content.projectMeta"
   :objects-bindings="data.{{{widget.widget_id}}}.content.objectsBindings"
 >
-    {% if widget._enable_pagination == true %}
+    {% if widget._pagination %}
     <template slot="right-header">
         {{{widget._pagination}}}
     </template>
