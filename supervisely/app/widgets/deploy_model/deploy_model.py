@@ -1,8 +1,10 @@
 import datetime
 import tempfile
+import time
 from pathlib import Path
+from threading import Thread
 from time import sleep
-from typing import Any, Dict, List, Literal
+from typing import Any, Callable, Dict, List, Literal
 
 import pandas as pd
 import yaml
@@ -10,6 +12,7 @@ import yaml
 from supervisely._utils import logger
 from supervisely.api.api import Api
 from supervisely.api.app_api import ModuleInfo
+from supervisely.api.task_api import TaskApi
 from supervisely.app.widgets.agent_selector.agent_selector import AgentSelector
 from supervisely.app.widgets.button.button import Button
 from supervisely.app.widgets.card.card import Card
@@ -231,7 +234,9 @@ class DeployModel(Widget):
 
             @self.experiment_table.checkpoint_changed
             def _checkpoint_changed(row: ExperimentSelector.ModelRow, checkpoint_value: str):
-                logger.debug(f"Checkpoint changed for {row._experiment_info.task_id}: {checkpoint_value}")
+                logger.debug(
+                    f"Checkpoint changed for {row._experiment_info.task_id}: {checkpoint_value}"
+                )
 
             return self.experiment_table
 
@@ -251,7 +256,6 @@ class DeployModel(Widget):
                 self.experiment_table.set_selected_row_by_task_id(task_id)
             elif len(new_experiment_infos) > 0:
                 self.experiment_table.set_selected_row_by_task_id(new_experiment_infos[-1].task_id)
-            
 
         def get_deploy_parameters(self) -> Dict[str, Any]:
             experiment_info = self.experiment_table.get_selected_experiment_info()
@@ -327,6 +331,11 @@ class DeployModel(Widget):
         self._init_gui(modes)
 
         self.model_api: ModelAPI = None
+
+        self._deploy_cbs: List[Callable] = [self._start_status_watcher]
+        self._deploy_handled = False
+        self._stop_cbs: List[Callable] = []
+        self._stop_handled = False
 
         super().__init__(widget_id=widget_id)
 
@@ -649,6 +658,9 @@ class DeployModel(Widget):
                 break
         agent_id = self.select_agent.get_value()
         self.model_api = self.modes[mode].deploy(agent_id=agent_id)
+        if self._deploy_handled:
+            for deploy_cbs in self._deploy_cbs:
+                deploy_cbs(self.model_api)
         return self.model_api
 
     def stop(self) -> None:
@@ -663,6 +675,9 @@ class DeployModel(Widget):
         self.show_deploy_button()
         if str(self.MODE.CONNECT) in self.modes:
             self.modes[str(self.MODE.CONNECT)]._update_sessions()
+        if self._stop_handled:
+            for stop_cbs in self._stop_cbs:
+                stop_cbs()
 
     def disconnect(self) -> None:
         if self.model_api is None:
@@ -673,6 +688,9 @@ class DeployModel(Widget):
         self.reset_model_info()
         self.show_deploy_button()
         self.enable_modes()
+        if self._stop_handled:
+            for stop_cbs in self._stop_cbs:
+                stop_cbs()
 
     def load_from_json(self, data: Dict[str, Any]) -> None:
         """
@@ -699,6 +717,38 @@ class DeployModel(Widget):
         parameters = {"mode": mode, "agent_id": agent_id}
         parameters.update(self.modes[mode].get_deploy_parameters())
         return parameters
+
+    def on_deploy(self, callback: Callable) -> None:
+        self._deploy_cbs.append(callback)
+        self._deploy_handled = True
+
+    def on_stop(self, callback: Callable) -> None:
+        self._stop_cbs.append(callback)
+        self._stop_handled = True
+
+    def _start_status_watcher(self, *args) -> None:
+        if self.model_api is None or self._status_watcher is not None:
+            return
+        self._status_watcher = Thread(target=self._watch_status)
+        self._status_watcher.start()
+
+    def _watch_status(self):
+        while True:
+            attempts = 36000
+            for attempt in range(attempts):
+                status = self.api.task.get_status(self.model_api.task_id)
+                self.api.task.raise_for_status(status)
+                if status in [
+                    TaskApi.Status.FINISHED,
+                    TaskApi.Status.ERROR,
+                    TaskApi.Status.STOPPED,
+                    TaskApi.Status.TERMINATING,
+                ]:
+                    for stop_cbs in self._stop_cbs:
+                        stop_cbs()
+                    self._status_watcher = None
+                    return
+                time.sleep(2)
 
     def get_json_data(self) -> Dict[str, Any]:
         return {}

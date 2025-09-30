@@ -55,6 +55,16 @@ class DeployModelNode(BaseCardNode):
             **kwargs,
         )
 
+        @self.gui.content.on_deploy
+        def _on_deploy(model_api):
+            self.gui.model = model_api
+            self._refresh_node()
+
+        @self.gui.content.on_stop
+        def _on_stop():
+            self.gui.model = None
+            self._refresh_node()
+
         @self.gui.content.select_agent.value_changed
         def _on_agent_selector_change(value: int):
             self.save(agent_id=value)
@@ -69,8 +79,8 @@ class DeployModelNode(BaseCardNode):
     # ------------------------------------------------------------------
     # Automation -------------------------------------------------------
     # ------------------------------------------------------------------
-    def enable_automation(self):
-        pass
+    # def enable_automation(self):
+    #     pass
 
     # ------------------------------------------------------------------
     # Node methods -----------------------------------------------------
@@ -132,6 +142,10 @@ class DeployModelNode(BaseCardNode):
         """Load re-deploy settings from DataJson."""
         self.gui.load_settings()
 
+    def _refresh_node(self):
+        self._refresh_model_info()
+        self._refresh_memory_usage_info()
+
     def _refresh_memory_usage_info(self) -> None:
         """
         Refreshes the GPU memory usage information.
@@ -151,39 +165,41 @@ class DeployModelNode(BaseCardNode):
         """
         Refreshes the deployed model information.
         """
+        deploy_info = None
         if self.gui.model is not None:
             task_info, deploy_info = self.gui._get_deployed_model_info()
+            self._add_task_to_history(task_info.get("id"), deploy_info)
+        self._update_deploy_props(deploy_info)
 
-            tasks = self.history.get_tasks()
-            task_ids = {task["id"] for task in tasks}
-            if task_info.get("id") not in task_ids:
-                task_data = {
-                    "id": task_info.get("id"),
-                    "app_name": task_info.get("meta", {}).get("app", {}).get("name"),
-                    "model_name": deploy_info.get("model_name"),
-                    "started_at": task_info.get("startedAt"),
-                    "runtime": deploy_info.get("runtime"),
-                    "hardware": deploy_info.get("hardware"),
-                    "device": deploy_info.get("device"),
-                }
-                self.history.add_task(task_data)
-                self.update_property("Model", deploy_info.get("model_name"), highlight=True)
-                # self.update_property("Status", "Model deployed", highlight=True)
-                self.update_property("Source", deploy_info.get("model_source"))
-                self.update_property("Hardware", deploy_info.get("hardware"))
-                self.update_badge_by_key(key="Deployed", label="⚡", plain=True)
-                self._send_model_deployed_message(session_id=task_info.get("id"))
-                logger.info(
-                    f"Model '{deploy_info.get('model_name')}' deployed successfully. Task ID: {task_info.get('id')}"
-                )
-        else:
+    def _add_task_to_history(self, task_id: int, deploy_info) -> None:
+        existing_task_ids = {task["id"] for task in self.history.get_tasks()}
+        if task_id in existing_task_ids:
+            return
+        task_info = self._api.task.get_info_by_id(task_id)
+        if task_info is None:
+            return
+        task_data = {
+            "id": task_info.get("id"),
+            "app_name": task_info.get("meta", {}).get("app", {}).get("name"),
+            "model_name": task_info.get("meta", {}).get("model_name"),
+            "started_at": task_info.get("startedAt"),
+            "status": task_info.get("status"),
+        }
+        self.history.add_task(task_data)
+        self._send_model_deployed_message(session_id=task_info.get("id"))
+        logger.info(
+            f"Model '{deploy_info.get('model_name')}' deployed successfully. Task ID: {task_info.get('id')}"
+        )
+
+    def _update_deploy_props(self, deploy_info: Dict[str, Any]) -> None:
+        mandatory_keys = ["model_name", "model_source", "hardware"]
+        if deploy_info is None or not all(key in deploy_info for key in mandatory_keys):
             self.remove_property_by_key("Model")
-            # self.remove_property_by_key("Status")
             self.remove_property_by_key("Source")
             self.remove_property_by_key("Hardware")
             self.remove_badge_by_key("Deployed")
-
-    def _refresh_node(self):
-        self.gui.model = self.gui.content.model_api
-        self._refresh_model_info()
-        self._refresh_memory_usage_info()
+            return
+        self.update_property("Model", deploy_info.get("model_name"), highlight=True)
+        self.update_property("Source", deploy_info.get("model_source"))
+        self.update_property("Hardware", deploy_info.get("hardware"))
+        self.update_badge_by_key(key="Deployed", label="⚡", plain=True)
