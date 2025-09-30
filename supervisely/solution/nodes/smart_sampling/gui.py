@@ -36,6 +36,7 @@ from supervisely.app.widgets import (
     Widget,
 )
 from supervisely.sly_logger import logger
+from supervisely.solution.engine.modal_registry import ModalRegistry
 from supervisely.solution.utils import find_agent
 
 
@@ -75,6 +76,8 @@ class SmartSamplingGUI(Widget):
         self._items_count = self.project.items_count
         super().__init__(widget_id=widget_id)
         self.content = self._create_gui()
+
+        ModalRegistry().attach_settings_widget(owner_id=self.widget_id, widget=self.content)
 
     # ------------------------------------------------------------------
     # Properties -------------------------------------------------------
@@ -429,9 +432,14 @@ class SmartSamplingGUI(Widget):
     @property
     def modal(self) -> Dialog:
         """Returns the modal for the node GUI."""
-        if not hasattr(self, "_modal"):
-            self._modal = Dialog(title="Sampling Settings", content=self.content)
-        return self._modal
+        return ModalRegistry().settings_dialog_small
+
+    def open_modal(self):
+        """Opens the modal for the node GUI."""
+        ModalRegistry().open_settings(owner_id=self.widget_id)
+
+    def close_modal(self):
+        self.modal.hide()
 
     # ------------------------------------------------------------------
     # Settings --------------------------------------------------------

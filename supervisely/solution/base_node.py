@@ -24,7 +24,7 @@ from supervisely.app.widgets.vue_flow.models import (
     NodeSettings,
     NodeTooltip,
 )
-from supervisely.app.widgets.widget import generate_id
+from supervisely.app.widgets.widget import generate_incremental_id
 from supervisely.app.widgets_context import JinjaWidgets
 from supervisely.solution.engine.events import PubSub, PubSubAsync, publish_event
 from supervisely.solution.engine.scheduler import TasksScheduler
@@ -116,9 +116,8 @@ class BaseNode(Widget, VueFlow.Node, EventMixin):
         self.x = kwargs.pop("x", 0)
         self.y = kwargs.pop("y", 0)
         self.parent_id = kwargs.pop("parent_id", None)
-        self.id = kwargs.pop("id", generate_id(cls_name=self.__class__.__name__))
+        self.id = kwargs.pop("id", generate_incremental_id(cls_name=self.__class__.__name__))
         self.title = kwargs.pop("title", "Node")
-        # self._modal = kwargs.pop("modal", None)
 
         Widget.__init__(self, widget_id=self.id)  # Widget does not call super()
         EventMixin.__init__(self, *args, **kwargs)
@@ -151,7 +150,6 @@ class BaseNode(Widget, VueFlow.Node, EventMixin):
         cls,
         json_data,
         parent_id: Optional[str] = None,
-        # modal: Optional[VueFlowModal] = None,
     ) -> "BaseNode":
         node_id = json_data.get("id")
         kwargs = json_data.get("parameters", {})
@@ -164,7 +162,6 @@ class BaseNode(Widget, VueFlow.Node, EventMixin):
             x=x,
             y=y,
             parent_id=parent_id,
-            # modal=modal,
             **kwargs,
         )
 

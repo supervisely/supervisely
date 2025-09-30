@@ -46,11 +46,6 @@ class EvaluationNode(BaseCardNode):
         # --- components ---------------------------------------------------
         self.task_history = EvaluationTaskHistory()
         self.gui = EvaluationReportGUI(team_id=self.project.team_id)
-        self.modals = [
-            self.task_history.modal,
-            self.gui.settings_modal,
-            self.task_history.logs_modal,
-        ]
 
         # --- init node ------------------------------------------------------
         title = kwargs.pop("title", self.TITLE)
@@ -79,7 +74,7 @@ class EvaluationNode(BaseCardNode):
 
         @self.click
         def show_settings():
-            self.gui.settings_modal.show()
+            self.gui.open_modal()
 
         @self.gui.run_btn.click
         def run_cb():
@@ -88,7 +83,7 @@ class EvaluationNode(BaseCardNode):
         self._update_properties(self.gui.automation_switch.is_switched())
 
     def _get_tooltip_buttons(self):
-        self.tooltip_buttons = [self.gui.run_btn, self.task_history.btn]
+        self.tooltip_buttons = [self.gui.run_btn, self.task_history.open_modal_button]
         return self.tooltip_buttons
 
     # ------------------------------------------------------------------
@@ -316,5 +311,4 @@ class EvaluationNode(BaseCardNode):
         if enable:
             self.show_automation_badge()
         else:
-            self.hide_automation_badge()
             self.hide_automation_badge()

@@ -10,6 +10,7 @@ from supervisely.app.widgets import (
     Switch,
     Widget,
 )
+from supervisely.solution.engine.modal_registry import ModalRegistry
 
 
 class EvaluationReportGUI(Widget):
@@ -18,6 +19,17 @@ class EvaluationReportGUI(Widget):
         self.team_id = team_id
         super().__init__(widget_id=widget_id)
         self.content = self._init_gui()
+
+        ModalRegistry().attach_settings_widget(
+            owner_id=self.widget_id, widget=self.content, size="tiny"
+        )
+    
+    @property
+    def modal(self) -> Dialog:
+        return ModalRegistry().settings_dialog_tiny
+
+    def open_modal(self):
+        ModalRegistry().open_settings(owner_id=self.widget_id, size="tiny")
 
     def _init_gui(self):
         agent_selector_field = Field(
@@ -42,16 +54,6 @@ class EvaluationReportGUI(Widget):
         )
 
         return Container([agent_selector_field, automation_field], gap=20)
-
-    @property
-    def settings_modal(self) -> Dialog:
-        if not hasattr(self, "_settings_modal"):
-            self._settings_modal = Dialog(
-                title="Settings",
-                content=self.content,
-                size="tiny",
-            )
-        return self._settings_modal
 
     @property
     def run_btn(self) -> Button:

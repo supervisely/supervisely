@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-from typing import Callable, Tuple
-
-from git import Optional
+from typing import Callable, Tuple, Optional
 
 from supervisely.app.widgets import (
     Checkbox,
@@ -12,14 +10,11 @@ from supervisely.app.widgets import (
     Select,
     Text,
 )
-from supervisely.solution.automation import AutomationWidget
+from supervisely.solution.components import AutomationWidget
 from supervisely.solution.utils import get_interval_period
 
 
 class SmartSamplingAutomation(AutomationWidget):
-    def __init__(self, func: Optional[Callable] = None):
-        super().__init__(func)
-
     # ------------------------------------------------------------------
     # Automation -------------------------------------------------------
     # ------------------------------------------------------------------

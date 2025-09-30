@@ -6,10 +6,15 @@ from supervisely.api.image_api import ImageInfo
 from supervisely.app.content import DataJson
 from supervisely.app.widgets import FastTable, TasksHistory
 from supervisely.project.image_transfer_utils import compare_projects
+from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
+from supervisely.solution.components.tasks_history.tasks_history import (
+    TasksHistoryWidget,
+)
+from supervisely.solution.engine.modal_registry import ModalRegistry
 
 
-class SmartSamplingTasksHistory(TasksHistory):
+class SmartSamplingTasksHistory(TasksHistoryWidget):
     """Tasks history widget specialised for Smart Sampling node."""
 
     def __init__(
@@ -74,15 +79,22 @@ class SmartSamplingTasksHistory(TasksHistory):
         sampled_images = self.sampled_images.get(task_id, {})
         if not sampled_images:
             return super()._on_table_row_click(clicked_row)
+        ModalRegistry().open_preview(owner_id=self.widget_id)
+        self.gallery.loading = True
         ids = [img for imgs in sampled_images.values() for img in imgs]
         infos = self.api.image.get_info_by_id_batch(ids)
-        # urls = [img.full_storage_url for img in infos]
-        for idx, img in enumerate(infos):
-            title = img.name
-            url = img.full_storage_url
-            column = idx % 3
-            self.gallery.append(column_index=column, image_url=url, title=title)
-        self.preview_modal.show()
+        anns = self.api.annotation.download_batch(dataset_id=infos[0].dataset_id, image_ids=ids)
+        meta = ProjectMeta.from_json(self.api.project.get_meta(self.project_id))
+        for idx, (img, ann) in enumerate(zip(infos, anns)):
+            self.gallery.append(
+                image_url=img.full_storage_url,
+                annotation_info=ann,
+                title=img.name,
+                column_index=idx % 3,
+                project_meta=meta,
+                call_update=idx == len(infos) - 1,
+            )
+        self.gallery.loading = False
 
     # ------------------------------------------------------------------
     # --- Add Task -----------------------------------------------------

@@ -85,22 +85,9 @@ class PretrainedModelsGUI:
 
         @content.visible_changed
         def _on_visible_changed(visible: bool):
-            logger.info(f"New Experiment modal visibility changed: {visible}")
+            logger.debug(f"New Experiment modal visibility changed: {visible}")
 
         return content
-
-    @property
-    def modal(self):
-        """
-        Create the modal dialog for automation settings.
-        """
-        if not hasattr(self, "_modal"):
-            self._modal = Dialog(
-                title="Pretrained Models",
-                content=self.widget,
-                size="tiny",
-            )
-        return self._modal
 
     def _get_train_val_datasets(self) -> Tuple[List[int], List[int]]:
         if self.project.type != ProjectType.IMAGES.value:

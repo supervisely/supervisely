@@ -27,6 +27,7 @@ class CloudImport(Widget):
         project_id: int,
         one_at_a_time: bool = True,
         widget_id: Optional[str] = None,
+        history_widget: Optional[TasksHistory] = None,
     ):
         """
         :param project_id: ID of the project to import data into.
@@ -41,7 +42,9 @@ class CloudImport(Widget):
         self.team_id = self.workspace.team_id
         self.on_start_callbacks = []
         self.on_finish_callbacks = []
-        self._init_tasks_history()
+        self.tasks_history = history_widget
+        if self.tasks_history is None:
+            self._init_tasks_history()
         self._create_gui()
 
         super().__init__(widget_id=widget_id)
@@ -199,7 +202,9 @@ class CloudImport(Widget):
     def _validate_path_existance(self, path: str) -> bool:
         exists = self.api.storage.dir_exists(self.team_id, path)
         if not exists:
-            self.status_text.set(f"Directory '{path}' does not exist in cloud storage", status="error")
+            self.status_text.set(
+                f"Directory '{path}' does not exist in cloud storage", status="error"
+            )
             self.status_text.show()
             return False
         return True

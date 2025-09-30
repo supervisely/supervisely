@@ -2,17 +2,20 @@ from typing import Callable, Optional, Tuple
 
 from supervisely.app.widgets import (
     Checkbox,
-    Flexbox,
     Container,
     Dialog,
     Empty,
     Field,
+    Flexbox,
     InputNumber,
     Select,
 )
 from supervisely.sly_logger import logger
-from supervisely.solution.automation import AutomationWidget
-from supervisely.solution.utils import get_interval_period, get_seconds_from_period_and_interval
+from supervisely.solution.components import AutomationWidget
+from supervisely.solution.utils import (
+    get_interval_period,
+    get_seconds_from_period_and_interval,
+)
 
 
 class MoveLabeledAuto(AutomationWidget):
@@ -196,9 +199,6 @@ class MoveLabeledAuto(AutomationWidget):
         """
         self.automate_input.disable()
         self.automate_period_select.disable()
-        self.automate_min_batch.uncheck()
-        self.automate_min_batch.disable()
-        self.automate_min_batch_input.disable()
         self.automate_min_batch.uncheck()
         self.automate_min_batch.disable()
         self.automate_min_batch_input.disable()

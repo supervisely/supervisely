@@ -11,6 +11,7 @@ from supervisely.app.widgets import (
     Text,
     Widget,
 )
+from supervisely.solution.engine.modal_registry import ModalRegistry
 
 
 @dataclass
@@ -48,18 +49,18 @@ class TrainValSplitGUI(Widget):
         Initialize the TrainValSplit node.
         """
         self.split_settings = SplitSettings()
-        self.widget = self._create_main_widget()
+        self.content = self._create_main_widget()
         super().__init__(*args, **kwargs)
         self.set_items_count(0)  # Initialize with 0 items
 
+        ModalRegistry().attach_settings_widget(owner_id=self.widget_id, widget=self.content)
+
     @property
     def modal(self) -> Dialog:
-        if not hasattr(self, "_modal"):
-            self._modal = Dialog(
-                title="Train/Val Split",
-                content=self.widget,
-            )
-        return self._modal
+        return ModalRegistry().settings_dialog_small
+
+    def open_modal(self):
+        ModalRegistry().open_settings(owner_id=self.widget_id)
 
     def _create_main_widget(self) -> Container:
         info_text = Text(

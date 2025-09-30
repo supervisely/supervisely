@@ -15,6 +15,7 @@ from supervisely.app.widgets import (
 )
 from supervisely.nn.model.model_api import ModelAPI
 from supervisely.sly_logger import logger
+from supervisely.solution.engine.modal_registry import ModalRegistry
 from supervisely.solution.utils import find_agent
 
 
@@ -50,11 +51,14 @@ class PreLabelingGUI(Widget):
         self.content = self._init_gui()
         super().__init__(widget_id=widget_id)
 
+        ModalRegistry().attach_settings_widget(owner_id=self.widget_id, widget=self.content)
+
     @property
     def modal(self) -> Dialog:
-        if not hasattr(self, "_settings_modal"):
-            self._settings_modal = Dialog(title="Pre-labeling Settings", content=self.content)
-        return self._settings_modal
+        return ModalRegistry().settings_dialog_small
+
+    def open_modal(self):
+        ModalRegistry().open_settings(owner_id=self.widget_id)
 
     @property
     def session_id(self) -> Optional[int]:

@@ -55,10 +55,7 @@ class PreLabelingNode(BaseCardNode):
 
         @self.click
         def on_card_click():
-            self.gui.modal.show()
-
-        # Create UI components
-        self.modals = [self.history.modal, self.gui.modal]
+            self.gui.open_modal()
 
         # Load settings and update properties
         self._update_properties(self.gui.enable_switch.is_switched())

@@ -44,15 +44,6 @@ class SmartSamplingNode(BaseCardNode):
             self.api, project_id=self.project_id, dst_project_id=self.dst_project
         )
 
-        # --- modals -------------------------------------------------------------
-        self.modals = [
-            self.gui.modal,
-            self.automation.modal,
-            self.history.modal,
-            self.history.logs_modal,
-            self.history.preview_modal,
-        ]
-
         # --- init node ------------------------------------------------------
         title = kwargs.pop("title", self.TITLE)
         description = kwargs.pop("description", self.DESCRIPTION)
@@ -75,17 +66,17 @@ class SmartSamplingNode(BaseCardNode):
         @self.click
         def on_sampling_setup_btn_click():
             """Show the sampling settings modal."""
-            self.gui.modal.show()
+            self.gui.open_modal()
             self._configure_button_status_by_sampling_mode()
 
         @self.gui.save_settings_button.click
         def on_save_settings_click():
-            self.gui.modal.hide()
+            self.gui.close_modal()
             self._update_widgets()
 
         @self.gui.run_button.click
         def on_run_button_click():
-            self.gui.modal.hide()
+            self.gui.close_modal()
             self.gui.show_status_text()
             self.gui.set_status_text("Sampling is in progress...", "info")
             self.run()

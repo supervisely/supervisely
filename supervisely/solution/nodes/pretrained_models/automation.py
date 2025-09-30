@@ -11,7 +11,7 @@ from supervisely.app.widgets import (
     Text,
 )
 from supervisely.sly_logger import logger
-from supervisely.solution.automation import AutomationWidget
+from supervisely.solution.components import AutomationWidget
 from supervisely.solution.utils import get_interval_period, get_seconds_from_period_and_interval
 
 
@@ -82,13 +82,6 @@ class PretrainedModelsAuto(AutomationWidget):
     # ------------------------------------------------------------------
     # GUI --------------------------------------------------------------
     # ------------------------------------------------------------------
-    @property
-    def modal(self) -> Dialog:
-        """Returns the modal for the automation."""
-        if self._modal is None:
-            self._modal = Dialog(title="Automation Settings", content=self.widget, size="tiny")
-        return self._modal
-
     @property
     def enable_checkbox(self) -> Checkbox:
         if not hasattr(self, "_enable_checkbox"):

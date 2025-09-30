@@ -68,13 +68,8 @@ class BaseTrainNode(BaseCardNode):
             **kwargs,
         )
 
-        # --- modals -------------------------------------------------------------
-        self.modals = [
-            self.gui.widget,
-            self.automation.modal,
-            self.history.modal,
-            self.history.logs_modal,
-        ]
+        # --- NewExperiment widget ----------------------------------------------------------
+        self._extra_widgets = [self.gui.widget]
 
         @self.click
         def on_click():
@@ -357,7 +352,6 @@ class BaseTrainNode(BaseCardNode):
             return
 
         self.update_badge_by_key(key="Training", label=label, badge_type=badge_type)
-
 
     def _extract_epoch_progress(self, info: Optional[str]) -> Optional[str]:
         """Extracts leading epoch progress like '52/100' from info string.

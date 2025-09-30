@@ -69,7 +69,7 @@ class EmailNotificationNode(BaseCardNode):
         icon = kwargs.pop("icon", self.ICON)
         icon_color = kwargs.pop("icon_color", self.ICON_COLOR)
         icon_bg_color = kwargs.pop("icon_bg_color", self.ICON_BG_COLOR)
-        self.modal_content = self.gui._content
+        self.modal_content = self.gui.content
         super().__init__(
             title=title,
             description=description,
@@ -87,11 +87,7 @@ class EmailNotificationNode(BaseCardNode):
 
         @self.click
         def on_card_click():
-            self.gui.modal.show()
-
-    def _get_tooltip_buttons(self):
-        self.tooltip_buttons = [self.gui.apply_button, self.history.open_modal_button]
-        return self.tooltip_buttons
+            self.gui.open_modal()
 
     # ------------------------------------------------------------------
     # Handles ----------------------------------------------------------

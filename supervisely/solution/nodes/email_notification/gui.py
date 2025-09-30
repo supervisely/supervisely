@@ -15,6 +15,7 @@ from supervisely.app.widgets import (
     Widget,
 )
 from supervisely.sly_logger import logger
+from supervisely.solution.engine.modal_registry import ModalRegistry
 
 SMTP_PROVIDERS = {
     "gmail.com": ("smtp.gmail.com", 587),
@@ -100,7 +101,11 @@ class SendEmail(Widget):
         self._default_body = default_body
 
         super().__init__(widget_id=widget_id, file_path=__file__)
-        self._content = self._init_ui(show_body=show_body)
+        self.content = self._init_ui(show_body=show_body)
+
+        ModalRegistry().attach_settings_widget(
+            owner_id=self.widget_id, widget=self.content, size="tiny"
+        )
 
     @property
     def apply_button(self) -> Button:
@@ -287,13 +292,11 @@ class SendEmail(Widget):
             raise e
 
     def to_html(self):
-        return self._content.to_html()
+        return self.content.to_html()
 
     @property
     def modal(self) -> Dialog:
-        """
-        Returns the settings modal for email notifications.
-        """
-        if not hasattr(self, "_modal"):
-            self._modal = Dialog("Notification Settings", self._content, size="tiny")
-        return self._modal
+        return ModalRegistry().settings_dialog_tiny
+
+    def open_modal(self):
+        ModalRegistry().open_settings(owner_id=self.widget_id, size="tiny")

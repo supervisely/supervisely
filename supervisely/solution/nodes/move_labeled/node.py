@@ -52,8 +52,8 @@ class MoveLabeledNode(BaseCardNode):
         # --- core blocks --------------------------------------------------------
         self.automation = MoveLabeledAuto()
         self.gui = MoveLabeledGUI()
-        self.modal_content = self.gui.widget  # for BaseCardNode
-        self.history = MoveLabeledTasksHistory()
+        self.modal_content = self.gui.content  # for BaseCardNode
+        self.history = MoveLabeledTasksHistory(project_id=dst_project_id)
 
         # --- node init ----------------------------------------------------------
         title = kwargs.pop("title", self.TITLE)
@@ -74,20 +74,12 @@ class MoveLabeledNode(BaseCardNode):
 
         @self.click
         def on_click():
-            self.gui.modal.show()
+            self.gui.open_modal()
 
         @self.gui.run_btn.click
         def on_run_click():
             self.gui.modal.hide()
             self.run()
-
-        # --- modals -------------------------------------------------------------
-        self.modals = [
-            self.gui.modal,
-            self.automation.modal,
-            self.history.modal,
-            self.history.logs_modal,
-        ]
 
         @self.automation.apply_button.click
         def on_automate_click():
@@ -193,7 +185,7 @@ class MoveLabeledNode(BaseCardNode):
                 break
 
         success = task_status == self.api.task.Status.FINISHED
-        items = self._get_uploaded_ids(self.dst_project_id, task_id)
+        items = []
 
         try:
             task_info_json = {"id": task_id, "status": task_status.value}
@@ -201,6 +193,11 @@ class MoveLabeledNode(BaseCardNode):
             logger.info(f"Task {task_id} completed with status: {task_status.value}")
         except Exception as e:
             logger.error(f"Failed to update task history: {repr(e)}")
+
+        try:
+            items = self.history._get_uploaded_ids(self.dst_project_id, task_id)
+        except Exception as e:
+            logger.error(f"Failed to get uploaded IDs: {repr(e)}")
 
         try:
             if self._train_percent is not None and self._val_percent is not None:
@@ -217,7 +214,10 @@ class MoveLabeledNode(BaseCardNode):
             self._images_to_move = []
 
         if moved > 0:
-            self.send_data_moving_finished_message(success=success, items=items, items_count=moved)
+            self.history._add_moved_images(task_id, items)
+            self.send_data_moving_finished_message(
+                success=success, items=items, items_count=moved
+            )
             self.api.image.remove_batch(src_images, batch_size=200)
 
     # ------------------------------------------------------------------
@@ -294,11 +294,12 @@ class MoveLabeledNode(BaseCardNode):
             params=params,
             description=f"Moving labeled data to the Training project started by {self.api.task_id} task",
         )
-        task_info_json = self.api.task.get_info_by_id(task_info_json["id"])
+        task_id = task_info_json["id"]
+        task_info_json = self.api.task.get_info_by_id(task_id)
 
         try:
             task_info_json = {
-                "id": task_info_json["id"],
+                "id": task_id,
                 "startedAt": task_info_json["startedAt"],
                 "images_count": len(images),
                 "status": task_info_json["status"],
@@ -307,7 +308,7 @@ class MoveLabeledNode(BaseCardNode):
         except Exception as e:
             logger.error(f"Failed to add task to history: {repr(e)}")
 
-        task_id = task_info_json["id"]
+        task_id = task_id
         thread = threading.Thread(
             target=self.wait_task_complete,
             args=(task_id, images),
@@ -369,22 +370,3 @@ class MoveLabeledNode(BaseCardNode):
     def _add_to_val_collection(self, image_ids: List[int]) -> None:
         """Add the MoveLabeled node to the validation collection."""
         self._add_to_collection(image_ids, "val")
-
-    def _get_uploaded_ids(self, project_id: int, task_id: int) -> List[int]:
-        """Get the IDs of images uploaded from the project's custom data."""
-        project = self.api.project.get_info_by_id(project_id)
-        if project is None:
-            logger.warning(f"Project with ID {project_id} not found.")
-            return []
-        custom_data = project.custom_data or {}
-        history = custom_data.get("import_history", {}).get("tasks", [])
-        for record in history:
-            if record.get("task_id") == task_id:
-                break
-        else:
-            logger.warning(f"No import history found for task ID {task_id}.")
-            return []
-        uploaded_ids = []
-        for ds in record.get("datasets", []):
-            uploaded_ids.extend(list(map(int, ds.get("uploaded_images", []))))
-        return uploaded_ids
