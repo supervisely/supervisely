@@ -5,7 +5,9 @@ from supervisely.api.api import Api
 from supervisely.app.widgets import Widget
 from supervisely.app.widgets.checkbox.checkbox import Checkbox
 from supervisely.app.widgets.container.container import Container
+from supervisely.app.widgets.field.field import Field
 from supervisely.app.widgets.select.select import Select
+from supervisely.app.widgets.select_project.select_project import SelectProject
 from supervisely.app.widgets.tree_select.tree_select import TreeSelect
 from supervisely.project.project_type import ProjectType
 
@@ -97,6 +99,7 @@ class SelectDatasetTree(Widget):
         widget_id: Union[str, None] = None,
         show_select_all_datasets_checkbox: bool = True,
         width: int = 193,
+        show_selectors_labels: bool = False,
     ):
         self._api = Api.from_env()
 
@@ -160,6 +163,7 @@ class SelectDatasetTree(Widget):
         if show_select_all_datasets_checkbox:
             self._create_select_all_datasets_checkbox(select_all_datasets)
 
+        self._show_selectors_labels = show_selectors_labels
         # Group the selectors and the dataset selector into a container.
         self._content = Container(self._widgets)
         super().__init__(widget_id=widget_id, file_path=__file__)
@@ -353,13 +357,13 @@ class SelectDatasetTree(Widget):
 
             if checked:
                 self._select_dataset.select_all()
-                self._select_dataset.hide()
+                self._select_dataset_field.hide()
             else:
                 self._select_dataset.clear_selected()
-                self._select_dataset.show()
+                self._select_dataset_field.show()
 
         if select_all_datasets:
-            self._select_dataset.hide()
+            self._select_dataset_field.hide()
             select_all_datasets_checkbox.check()
 
         self._widgets.append(select_all_datasets_checkbox)
@@ -390,9 +394,10 @@ class SelectDatasetTree(Widget):
             self._select_dataset.set_selected_by_id(self._dataset_id)
         if select_all_datasets:
             self._select_dataset.select_all()
+        self._select_dataset_field = Field(self._select_dataset, title="Dataset")
 
         # Adding the dataset selector to the list of widgets to be added to the container.
-        self._widgets.append(self._select_dataset)
+        self._widgets.append(self._select_dataset_field)
 
     def _create_selectors(self, team_is_selectable: bool, workspace_is_selectable: bool):
         """Create the team, workspace, and project selectors.
@@ -435,7 +440,7 @@ class SelectDatasetTree(Widget):
                 and self._select_all_datasets_checkbox.is_checked()
             ):
                 self._select_dataset.select_all()
-                self._select_dataset.hide()
+                self._select_dataset_field.hide()
 
         self._select_team = Select(
             items=self._get_select_items(),
@@ -446,6 +451,7 @@ class SelectDatasetTree(Widget):
         self._select_team.set_value(self._team_id)
         if not team_is_selectable:
             self._select_team.disable()
+        self._select_team_field = Field(self._select_team, title="Team")
 
         self._select_workspace = Select(
             items=self._get_select_items(team_id=self._team_id),
@@ -456,6 +462,7 @@ class SelectDatasetTree(Widget):
         self._select_workspace.set_value(self._workspace_id)
         if not workspace_is_selectable:
             self._select_workspace.disable()
+        self._select_workspace_field = Field(self._select_workspace, title="Workspace")
 
         self._select_project = Select(
             items=self._get_select_items(workspace_id=self._workspace_id),
@@ -464,14 +471,17 @@ class SelectDatasetTree(Widget):
             width_px=self._width,
         )
         self._select_project.set_value(self._project_id)
+        self._select_project_field = Field(self._select_project, title="Project")
 
-        # Register the event handlers.
+        # Register the event handlers._select_project
         self._select_team.value_changed(team_selector_handler)
         self._select_workspace.value_changed(workspace_selector_handler)
         self._select_project.value_changed(project_selector_handler)
 
         # Adding widgets to the list, so they can be added to the container.
-        self._widgets.extend([self._select_team, self._select_workspace, self._select_project])
+        self._widgets.extend(
+            [self._select_team_field, self._select_workspace_field, self._select_project_field]
+        )
 
     def _get_select_items(self, **kwargs) -> List[Select.Item]:
         """Get the list of items for the team, workspace, and project selectors.
