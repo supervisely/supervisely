@@ -2246,7 +2246,16 @@ class Inference:
             _range = (_range[1], _range[0])
 
         def _notify_f(predictions: List[Prediction]):
-            self.api.video.notify_progress(
+            logger.debug(
+                "Notifying tracking progress...",
+                extra={
+                    "track_id": track_id,
+                    "range": _range,
+                    "current": inference_request.progress.current,
+                    "total": inference_request.progress.total,
+                },
+            )
+            stopped = self.api.video.notify_progress(
                 track_id=track_id,
                 video_id=video_info.id,
                 frame_start=_range[0],
@@ -2254,6 +2263,9 @@ class Inference:
                 current=inference_request.progress.current,
                 total=inference_request.progress.total,
             )
+            if stopped:
+                inference_request.stop()
+                logger.info("Tracking has been stopped by user", extra={"track_id": track_id})
 
         def _exception_handler(e: Exception):
             self.api.video.notify_tracking_error(
@@ -3038,8 +3050,8 @@ class Inference:
                 key_id_map=key_id_map,
             )
             logger.debug(f"Added {len(figures_data)} geometries to object #{object_id}")
-            if progress_cb:
-                progress_cb(len(figures_data))
+        if progress_cb:
+            progress_cb(len(predictions))
         if inference_request is not None:
             results = self._format_output(predictions)
             for result in results:
