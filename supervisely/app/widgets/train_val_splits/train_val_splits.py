@@ -49,6 +49,7 @@ class TrainValSplits(Widget):
     ):
         self._project_id = project_id
         self._project_fs = project_fs
+        self._default_to_env = default_to_env
 
         self._project_info = None
         self._project_type = None
