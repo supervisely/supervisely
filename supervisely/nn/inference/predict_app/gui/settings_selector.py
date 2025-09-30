@@ -141,7 +141,7 @@ class SettingsSelector:
         self.tracking_checkbox_field = Field(
             content=self.tracking_checkbox,
             title="Tracking",
-            description="Enable tracking for video predictions. The tracking algorith is BoT-SORT",
+            description="Enable tracking for video predictions. The tracking algorithm is BoT-SORT version improved by Supervisely team.",
         )
         # Add widgets to display ------------ #
         self.video_settings_widgets.extend([self.tracking_checkbox_field])
