@@ -53,7 +53,7 @@ class MoveLabeledNode(BaseCardNode):
         self.automation = MoveLabeledAuto()
         self.gui = MoveLabeledGUI()
         self.modal_content = self.gui.content  # for BaseCardNode
-        self.history = MoveLabeledTasksHistory()
+        self.history = MoveLabeledTasksHistory(project_id=dst_project_id)
 
         # --- node init ----------------------------------------------------------
         title = kwargs.pop("title", self.TITLE)
