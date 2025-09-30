@@ -1,26 +1,35 @@
-from supervisely.api.api import Api
-from supervisely.app.widgets import Button, TasksHistory
+from typing import List
+
+from supervisely.solution.components import TasksHistoryWidget
 
 
-class DeployCustomModelHistory(TasksHistory):
-    def __init__(self, api: Api):
-        super().__init__(api)
-        self.table_columns = [
-            "Task ID",
-            "Model Name",
-            "Experiment Name",
-            "Started At",
-            "Hardware",
-            "Device",
-        ]
-        self.columns_keys = [
-            ["id"],
-            ["model_name"],
-            ["experiment_name"],
-            ["started_at"],
-            ["hardware"],
-            ["device"],
-        ]
+class DeployCustomModelHistory(TasksHistoryWidget):
+
+    @property
+    def table_columns(self) -> List[str]:
+        """Header names for the tasks table."""
+        if not hasattr(self, "_table_columns"):
+            self._table_columns = [
+                "Task ID",
+                "Model Name",
+                "Started At",
+                "Hardware",
+                "Device",
+            ]
+        return self._table_columns
+
+    @property
+    def columns_keys(self) -> List[List[str]]:
+        """Mapping between :pyattr:`table_columns` and task dict keys."""
+        if not hasattr(self, "_columns_keys"):
+            self._columns_keys = [
+                ["id"],
+                ["model_name"],
+                ["started_at"],
+                ["hardware"],
+                ["device"],
+            ]
+        return self._columns_keys
 
     def update(self):
         self.table.clear()
@@ -30,20 +39,4 @@ class DeployCustomModelHistory(TasksHistory):
     def add_task(self, task):
         super().add_task(task)
         self.update()
-
-    @property
-    def history_btn(self) -> Button:
-        if not hasattr(self, "_history_btn"):
-            self._history_btn = Button(
-                "History",
-                icon="zmdi zmdi-format-list-bulleted",
-                button_size="mini",
-                plain=True,
-                button_type="text",
-            )
-
-            @self._history_btn.click
-            def show_history():
-                self.modal.show()
-
-        return self._history_btn
+        self.update()

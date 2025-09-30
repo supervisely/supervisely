@@ -61,9 +61,8 @@ class DeployModelNode(BaseCardNode):
 
         @self.click
         def _on_node_click():
-            self.gui.modal.show()
+            self.gui.open_modal()
 
-        self.modals = [self.history.modal, self.history.logs_modal, self.gui.modal]
         self.enable_automation()
 
     # ------------------------------------------------------------------

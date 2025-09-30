@@ -6,6 +6,7 @@ from supervisely.app.content import DataJson
 from supervisely.app.widgets import DeployModel, Dialog, Widget
 from supervisely.nn import ModelAPI
 from supervisely.sly_logger import logger
+from supervisely.solution.engine.modal_registry import ModalRegistry
 
 
 class DeployModelGUI(Widget):
@@ -22,18 +23,15 @@ class DeployModelGUI(Widget):
         super().__init__(widget_id=widget_id)
         self.content = self._init_gui()
 
+        # --- modals -------------------------------------------------------------
+        ModalRegistry().attach_settings_widget(owner_id=self.widget_id, widget=self.content)
+
     @property
     def modal(self) -> Dialog:
-        """
-        Returns the settings modal dialog for the Compare widget.
-        """
-        if not hasattr(self, "_settings_modal"):
-            self._settings_modal = Dialog(
-                title="Settings",
-                content=self.content,
-                # size="tiny",
-            )
-        return self._settings_modal
+        return ModalRegistry().settings_dialog_small
+
+    def open_modal(self):
+        ModalRegistry().open_settings(owner_id=self.widget_id)
 
     def _init_gui(self):
         return DeployModel(api=self._api, team_id=self.team_id, modes=self.MODES)
