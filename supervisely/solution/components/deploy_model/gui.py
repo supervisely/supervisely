@@ -36,7 +36,7 @@ class DeployModelGUI(Widget):
         return self._settings_modal
 
     def _init_gui(self):
-        return DeployModel(api=self._api, team_id=self.team_id, modes=self.MODES)
+        return DeployModel(api=self._api, team_id=self.team_id, modes=self.MODES, tab_type="card")
 
     def get_json_data(self) -> dict:
         return {}

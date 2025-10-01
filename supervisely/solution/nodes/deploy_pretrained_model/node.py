@@ -21,6 +21,3 @@ class DeployPretrainedModelNode(DeployModelNode):
                 "connectable": True,
             }
         ]
-
-    def enable_automation(self):
-        self._automation.apply(self._refresh_node, self._automation.REFRESH_GPU_USAGE)
