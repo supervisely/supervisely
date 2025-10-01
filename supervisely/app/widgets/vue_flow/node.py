@@ -1,15 +1,15 @@
 from abc import abstractmethod
-from typing import Callable, Dict, Literal, Optional, Union
+from typing import Any, Callable, Dict, Literal, Optional, Union
 
 from supervisely.app.fastapi import _MainServer
 from supervisely.app.widgets.vue_flow.models import (
     NodeBadge,
     NodeBadgeStyle,
-    get_badge_style,
-    node_badge_style_map,
     NodeLink,
     NodeSettings,
     TooltipProperty,
+    get_badge_style,
+    node_badge_style_map,
 )
 
 
@@ -86,9 +86,19 @@ class Node:
     # ------------------------------------------------------------------
     # Tooltip Methods --------------------------------------------------
     # ------------------------------------------------------------------
+    def _find_free_property_idx(self) -> int:
+        free_idx = 0
+        while True:
+            if not self.settings.tooltip.properties:
+                break
+            if self._format_idx(free_idx) not in self.settings.tooltip.properties.keys():
+                break
+            free_idx += 1
+        return free_idx
+
     def update_property(self, key: str, value: str, link: str = None, highlight: bool = None):
         """Updates the property of the card."""
-        for prop in self.settings.tooltip.properties:
+        for prop in self.settings.tooltip.properties.values():
             if prop.label == key:
                 prop.value = value
                 if link is not None:
@@ -103,12 +113,13 @@ class Node:
             link={"url": link} if link else None,
             highlight=highlight if highlight is not None else False,
         )
-        self.settings.tooltip.properties.append(new_prop)
+        idx = self._find_free_property_idx()
+        self.settings.tooltip.properties[self._format_idx(idx)] = new_prop
         self.update_node(self)
 
     def remove_property_by_key(self, key: str, silent: bool = True):
         """Removes the property by key of the card."""
-        for idx, prop in enumerate(self.settings.tooltip.properties):
+        for idx, prop in self.settings.tooltip.properties.items():
             if prop.label == key:
                 self.settings.tooltip.properties.pop(idx)
                 self.update_node(self)
@@ -119,36 +130,52 @@ class Node:
     # ------------------------------------------------------------------
     # Badge Methods ----------------------------------------------------
     # ------------------------------------------------------------------
+    def _format_idx(self, idx: int) -> str:
+        return f"{idx:3d}"
+
+    def _find_free_badge_idx(self) -> int:
+        free_idx = 0
+        while True:
+            if not self.settings.badges:
+                break
+            if self._format_idx(free_idx) not in self.settings.badges.keys():
+                break
+            free_idx += 1
+        return free_idx
+
     def add_badge(self, badge: Union[dict, NodeBadge]):
         """Adds a badge to the card."""
         if not isinstance(badge, (dict, NodeBadge)):
             raise TypeError("Badge must be an instance of NodeBadge or a dict")
-        self.settings.badges.append(badge)
+        idx = self._find_free_badge_idx()
+        self.settings.badges[self._format_idx(idx)] = badge
         self.update_node(self)
 
     def remove_badge(self, idx: int, silent: bool = True):
         """Removes the badge by index of the card."""
-        if not self.settings.badges or idx >= len(self.settings.badges):
+        if not self.settings.badges or self._format_idx(idx) not in self.settings.badges:
             if not silent:
                 raise IndexError("Badge index out of range")
-        self.settings.badges.pop(idx)
+            return
+        self.settings.badges.pop(self._format_idx(idx))
         self.update_node(self)
 
     def update_badge(
         self,
         idx: int,
-        label: str,
-        on_hover: str = None,
+        key: Optional[str] = None,
+        label: Optional[str] = None,
         badge_type: Literal["info", "success", "warning", "error"] = None,
         plain: Optional[bool] = None,
     ):
         """Updates the badge by index of the card."""
-        if not self.settings.badges or idx >= len(self.settings.badges):
+        if not self.settings.badges or self._format_idx(idx) not in self.settings.badges:
             raise IndexError("Badge index out of range")
-        badge = self.settings.badges[idx]
-        badge._label = label
-        if on_hover is not None:
-            badge._on_hover = on_hover
+        badge = self.settings.badges[self._format_idx(idx)]
+        if key is not None:
+            badge.label = key
+        if label is not None:
+            badge.value = label
         if plain is not None and plain:
             badge.style = NodeBadgeStyle()
         elif badge_type is not None:
@@ -160,21 +187,20 @@ class Node:
         self,
         key: str,
         label: str,
-        badge_type: Literal["info", "success", "warning", "error"] = None,
-        new_key: str = None,
-        plain: Optional[bool] = None,  # TODO: remove
+        badge_type: Optional[Literal["info", "success", "warning", "error"]] = None,
+        new_key: Optional[str] = None,
+        plain: Optional[bool] = None,
     ):
         """Updates the badge by key of the card."""
-        for badge in self.settings.badges:
+        for idx, badge in self.settings.badges.items():
             if badge.label == key:
-                badge.value = label
-                if new_key is not None:
-                    badge.label = new_key
-                if plain is not None and plain:
-                    badge.style = NodeBadgeStyle()
-                elif badge_type is not None and badge_type in node_badge_style_map.keys():
-                    badge.style = get_badge_style(badge_type)
-                self.update_node(self)
+                self.update_badge(
+                    idx=int(idx),
+                    key=new_key,
+                    label=label,
+                    badge_type=badge_type,
+                    plain=plain,
+                )
                 return
         # If badge not found, add it
         if plain:
@@ -185,10 +211,11 @@ class Node:
         new_badge = NodeBadge(label=key, value=label, style=style)
         self.add_badge(new_badge)
 
-    def remove_badge_by_key(self, key: str):
+    def remove_badge_by_key(self, key: str, silent: bool = True):
         """Removes the badge by key from the card."""
-        for idx, badge in enumerate(self.settings.badges):
+        for k, badge in self.settings.badges.items():
             if badge.label == key:
-                self.settings.badges.pop(idx)
-                self.update_node(self)
+                self.remove_badge(int(k), silent=silent)
                 return
+        if not silent:
+            raise KeyError(f"Badge with key '{key}' not found in badges.")
