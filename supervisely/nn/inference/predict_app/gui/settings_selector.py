@@ -243,7 +243,7 @@ class Preview:
         inference_settings = settings.get("inference_settings", {})
         tracking = settings.get("tracking", False)
         with self.progress("Running model:", total=frames_number) as pbar:
-            with model_api.predict(
+            with model_api.predict_detached(
                 video_id=video_id,
                 inference_settings=inference_settings,
                 tracking=tracking,
