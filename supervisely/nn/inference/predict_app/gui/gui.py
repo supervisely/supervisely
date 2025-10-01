@@ -555,15 +555,27 @@ class PredictAppGui:
         @self.input_selector.select_dataset_for_video.value_changed
         def dataset_for_video_changed(dataset_id: int):
             self.input_selector.select_video.loading = True
+            self.input_selector.select_video.clear()
             if dataset_id is None:
-                rows = []
                 self.input_selector.select_video.hide()
             else:
                 self.input_selector.select_video.show()
                 dataset_info = self.api.dataset.get_info_by_id(dataset_id)
                 videos = self.api.video.get_list(dataset_id)
-                rows = [[video.id, video.name, dataset_info.name] for video in videos]
-            self.input_selector.select_video.rows = rows
+                for video in videos:
+                    size = f"{video.frame_height}x{video.frame_width}"
+                    self.input_selector.select_video.insert_row(
+                        [
+                            video.id,
+                            video.name,
+                            size,
+                            video.duration,
+                            int(video.frames_count / video.duration),
+                            video.frames_count,
+                            dataset_info.name,
+                            dataset_info.id,
+                        ]
+                    )
             self.input_selector.select_video.loading = False
 
         # ------------------------------------------------- #

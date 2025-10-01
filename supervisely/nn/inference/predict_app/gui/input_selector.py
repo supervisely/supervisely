@@ -74,7 +74,19 @@ class InputSelector:
             workspace_is_selectable=False,
             show_select_all_datasets_checkbox=False,
         )
-        self.select_video = FastTable(columns=["id", "name", "dataset"], is_selectable=True)
+        self.select_video = FastTable(
+            columns=[
+                "Video id",
+                "Video name",
+                "Size",
+                "Duration",
+                "FPS",
+                "Frames count",
+                "Dataset name",
+                "Dataset id",
+            ],
+            is_selectable=True,
+        )
         self.select_video.hide()
         self.select_video_container = Container(
             widgets=[self.select_dataset_for_video, self.select_video]
