@@ -51,7 +51,7 @@ class MoveLabeledTasksHistory(TasksHistoryWidget):
     # ------------------------------------------------------------------
     def _on_table_row_click(self, clicked_row: FastTable.ClickedRow):
         self.gallery.clean_up()
-        if clicked_row.row[5] == "failed":
+        if clicked_row.row[3] == "failed":
             return super()._on_table_row_click(clicked_row)
         task_id = clicked_row.row[0]
         moved_images = self.moved_images.get(task_id, {})
