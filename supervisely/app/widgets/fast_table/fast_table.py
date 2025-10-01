@@ -265,7 +265,9 @@ class FastTable(Widget):
         self._sliced_data = self._slice_table_data(self._sorted_data, actual_page=self._active_page)
         self._parsed_active_data = self._unpack_pandas_table_data(self._sliced_data)
         StateJson().send_changes()
-        DataJson()[self.widget_id]["data"] = self._parsed_active_data["data"]
+        DataJson()[self.widget_id]["data"] = {
+            i: row for i, row in enumerate(self._parsed_active_data["data"])
+        }
         DataJson()[self.widget_id]["total"] = self._rows_total
         DataJson().send_changes()
         StateJson()["reactToChanges"] = True
@@ -295,7 +297,7 @@ class FastTable(Widget):
         :rtype: Dict[str, Any]
         """
         return {
-            "data": self._parsed_active_data["data"],
+            "data": {i: row for i, row in enumerate(self._parsed_active_data["data"])},
             "columns": self._parsed_source_data["columns"],
             "projectMeta": self._project_meta,
             "columnsOptions": self._columns_options,
@@ -307,7 +309,7 @@ class FastTable(Widget):
                 "isRadio": self._is_radio,
                 "isRowSelectable": self._is_selectable,
                 "maxSelectedRows": self._max_selected_rows,
-                "searchPosition": self._search_position
+                "searchPosition": self._search_position,
             },
             "pageSize": self._page_size,
             "showHeader": self._show_header,
@@ -490,7 +492,9 @@ class FastTable(Widget):
             self._sort_column_idx = None
         self._sort_order = sort.get("order", None)
         self._page_size = init_options.pop("pageSize", 10) 
-        DataJson()[self.widget_id]["data"] = self._parsed_active_data["data"]
+        DataJson()[self.widget_id]["data"] = {
+            i: row for i, row in enumerate(self._parsed_active_data["data"])
+        }
         DataJson()[self.widget_id]["columns"] = self._parsed_active_data["columns"]
         DataJson()[self.widget_id]["columnsOptions"] = self._columns_options
         DataJson()[self.widget_id]["options"] = init_options
@@ -519,7 +523,9 @@ class FastTable(Widget):
         self._parsed_active_data = self._unpack_pandas_table_data(self._sliced_data)
         self._parsed_source_data = self._unpack_pandas_table_data(self._source_data)
         self._rows_total = len(self._parsed_source_data["data"])
-        DataJson()[self.widget_id]["data"] = self._parsed_active_data["data"]
+        DataJson()[self.widget_id]["data"] = {
+            i: row for i, row in enumerate(self._parsed_active_data["data"])
+        }
         DataJson()[self.widget_id]["columns"] = self._parsed_active_data["columns"]
         DataJson()[self.widget_id]["total"] = len(self._source_data)
         DataJson().send_changes()
@@ -715,7 +721,9 @@ class FastTable(Widget):
             self._parsed_active_data,
         ) = self._prepare_working_data()
         self._rows_total = len(self._parsed_source_data["data"])
-        DataJson()[self.widget_id]["data"] = self._parsed_active_data["data"]
+        DataJson()[self.widget_id]["data"] = {
+            i: row for i, row in enumerate(self._parsed_active_data["data"])
+        }
         DataJson()[self.widget_id]["total"] = self._rows_total
         DataJson().send_changes()
         self._maybe_update_selected_row()
@@ -743,7 +751,9 @@ class FastTable(Widget):
                 self._parsed_active_data,
             ) = self._prepare_working_data()
             self._rows_total = len(self._parsed_source_data["data"])
-            DataJson()[self.widget_id]["data"] = self._parsed_active_data["data"]
+            DataJson()[self.widget_id]["data"] = {
+                i: row for i, row in enumerate(self._parsed_active_data["data"])
+            }
             DataJson()[self.widget_id]["total"] = self._rows_total
             self._maybe_update_selected_row()
             return popped_row
@@ -755,7 +765,7 @@ class FastTable(Widget):
         self._sliced_data = pd.DataFrame(columns=self._columns_first_idx)
         self._parsed_active_data = {"data": [], "columns": []}
         self._rows_total = 0
-        DataJson()[self.widget_id]["data"] = []
+        DataJson()[self.widget_id]["data"] = {}
         DataJson()[self.widget_id]["total"] = 0
         DataJson().send_changes()
         self._maybe_update_selected_row()
@@ -925,7 +935,9 @@ class FastTable(Widget):
         self._sorted_data = self._sort_table_data(self._searched_data)
         self._sliced_data = self._slice_table_data(self._sorted_data, actual_page=self._active_page)
         self._parsed_active_data = self._unpack_pandas_table_data(self._sliced_data)
-        DataJson()[self.widget_id]["data"] = self._parsed_active_data["data"]
+        DataJson()[self.widget_id]["data"] = {
+            i: row for i, row in enumerate(self._parsed_active_data["data"])
+        }
         DataJson()[self.widget_id]["total"] = self._rows_total
         self._maybe_update_selected_row()
         StateJson().send_changes()
@@ -1206,7 +1218,9 @@ class FastTable(Widget):
 
         self._sliced_data = self._slice_table_data(self._sorted_data, actual_page=self._active_page)
         self._parsed_active_data = self._unpack_pandas_table_data(self._sliced_data)
-        DataJson()[self.widget_id]["data"] = self._parsed_active_data["data"]
+        DataJson()[self.widget_id]["data"] = {
+            i: row for i, row in enumerate(self._parsed_active_data["data"])
+        }
         DataJson()[self.widget_id]["total"] = self._rows_total
         DataJson().send_changes()
         StateJson().send_changes()
