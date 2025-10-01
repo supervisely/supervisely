@@ -1,13 +1,12 @@
 from typing import Any, Dict, List
 
-from build.lib.supervisely.app.widgets.fast_table.fast_table import FastTable
 from supervisely.app.widgets import (
     Button,
     Card,
     Container,
+    FastTable,
     OneOf,
     RadioGroup,
-    RadioTable,
     SelectDatasetTree,
     Text,
 )
@@ -171,13 +170,13 @@ class InputSelector:
                 self.validator_text.set(text="Select a dataset", status="error")
                 self.validator_text.show()
                 return False
-            if len(self.select_video.rows) == 0:
+            if self.select_video._rows_total == 0:
                 self.validator_text.set(
                     text="No videos found in the selected dataset", status="error"
                 )
                 self.validator_text.show()
                 return False
-            if self.select_video.get_selected_row() == []:
+            if self.select_video.get_selected_rows() == []:
                 self.validator_text.set(text="Select a video", status="error")
                 self.validator_text.show()
                 return False
