@@ -1,5 +1,6 @@
 import os
 import random
+import shutil
 import threading
 from contextlib import contextmanager, nullcontext
 from pathlib import Path
@@ -27,11 +28,11 @@ from supervisely.app.widgets import (
 from supervisely.app.widgets.checkbox.checkbox import Checkbox
 from supervisely.nn.inference.predict_app.gui.input_selector import InputSelector
 from supervisely.nn.inference.predict_app.gui.model_selector import ModelSelector
-from supervisely.nn.model.model_api import ModelAPI
+from supervisely.nn.model.model_api import ModelAPI, Prediction
 from supervisely.nn.tracker import TrackingVisualizer
 from supervisely.project import ProjectMeta
 from supervisely.project.project_meta import ProjectType
-from supervisely.video.video import create_from_frames
+from supervisely.video.video import VideoFrameReader, create_from_frames
 from supervisely.video_annotation.video_annotation import VideoAnnotation
 
 
@@ -207,9 +208,9 @@ class Preview:
         model_api = self.get_model_api_fn()
         settings = self.get_settings_fn()
         inference_settings = settings.get("inference_settings", {})
-        with self.progress("Generating prediction:", total=1) as pbar:
+        with self.progress("Running Model:", total=1) as pbar:
             prediction = model_api.predict(
-                image_id=image_id, inference_settings=inference_settings, tqdm=self.progress_widget
+                image_id=image_id, inference_settings=inference_settings, tqdm=pbar
             )[0]
         self.image_gallery.append(
             self.image_peview_url, title="Source", annotation=prediction.annotation
@@ -241,30 +242,54 @@ class Preview:
         settings = self.get_settings_fn()
         inference_settings = settings.get("inference_settings", {})
         tracking = settings.get("tracking", False)
-        with self.progress("Generating prediction:", total=frames_number) as pbar:
-            with model_api.predict_detached(
+        with self.progress("Running model:", total=frames_number) as pbar:
+            with model_api.predict(
                 video_id=video_id,
                 inference_settings=inference_settings,
                 tracking=tracking,
                 start_frame=frame_start,
                 frames_num=frames_number,
-                tqdm=self.progress_widget,
+                tqdm=pbar,
             ) as session:
-                list(session)
-                video_annotation = session.final_result.get("video_ann", {})
+                predictions: List[Prediction] = list(session)
 
-        video_annotation = VideoAnnotation.from_json(video_annotation, project_meta=project_meta)
-        visualizer = TrackingVisualizer(
-            output_fps=fps,
-            box_thickness=video_info.frame_height // 110,
-            text_scale=video_info.frame_height / 900,
-            trajectory_thickness=video_info.frame_width // 110,
-        )
-        visualizer.visualize_video_annotation(
-            video_annotation,
-            source=self.video_preview_path,
-            output_path=self.video_preview_path,
-        )
+        if tracking:
+            video_annotation = session.final_result.get("video_ann", {})
+            if video_annotation is None:
+                raise RuntimeError("Model did not return video annotation")
+            video_annotation = VideoAnnotation.from_json(
+                video_annotation, project_meta=project_meta
+            )
+            visualizer = TrackingVisualizer(
+                output_fps=fps,
+                box_thickness=video_info.frame_height // 110,
+                text_scale=video_info.frame_height / 900,
+                trajectory_thickness=video_info.frame_width // 110,
+            )
+            visualizer.visualize_video_annotation(
+                video_annotation,
+                source=self.video_preview_path,
+                output_path=self.video_preview_path,
+            )
+        else:
+            video_writer = cv2.VideoWriter(
+                str(self.video_preview_path / "tmp"),
+                cv2.VideoWriter.fourcc(*"mp4v"),
+                fps,
+                (video_info.frame_width, video_info.frame_height),
+            )
+            with VideoFrameReader(
+                self.video_preview_path,
+                frame_indexes=list(range(frame_start, frame_start + frames_number)),
+            ) as video_reader:
+                for pred, frame in zip(predictions, video_reader):
+                    if pred.annotation is not None and len(pred.annotation.labels) > 0:
+                        img = pred.annotation.draw(frame, draw_class_names=True)
+                    else:
+                        img = frame
+                    video_writer.write(img)
+            video_writer.release()
+            shutil.move(str(self.video_preview_path / "tmp"), self.video_preview_path)
         self.video_player.set_video(self.video_peview_url)
         self.select_item(ProjectType.VIDEOS.value)
 
@@ -469,7 +494,7 @@ class SettingsSelector:
             "predictions_mode": self.predictions_mode_selector.get_value(),
             "inference_settings": self.get_inference_settings(),
         }
-        if self.input_selector.get_settings().get("video_id", None) is not None:
+        if self.input_selector.get_settings().get("video_ids", None) is not None:
             settings["tracking"] = self.tracking_checkbox.is_checked()
         return settings
 
