@@ -1,0 +1,26 @@
+<link rel="stylesheet" href="./sly/css/app/widgets/stepper_progress/style.css" />
+
+<el-steps
+  class="stepper-progress-host"
+  :active="state.{{{widget.widget_id}}}.active - 1"
+  :space="state.{{{widget.widget_id}}}.spacing"
+  :align-center="data.{{{widget.widget_id}}}.align_center"
+  :simple="data.{{{widget.widget_id}}}.simple"
+  :style="{ paddingLeft: (state.{{{widget.widget_id}}}.margin_left || 0) + 'px' }"
+>
+  <el-step
+    v-for="(item, idx) in data.{{{widget.widget_id}}}.items"
+    :key="idx"
+    :title="item.title"
+    :description="item.description || ''"
+    :icon="item.icon || ''"
+    :status="
+      (state.{{{widget.widget_id}}}.active > data.{{{widget.widget_id}}}.items.length)
+        ? 'finish'
+        : (idx + 1) < state.{{{widget.widget_id}}}.active
+          ? 'finish'
+          : (idx + 1) === state.{{{widget.widget_id}}}.active
+            ? 'process'
+            : 'wait'"
+  />
+</el-steps>

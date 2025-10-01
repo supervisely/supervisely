@@ -98,7 +98,19 @@ class Container(Widget):
     def disable(self):
         for widget in self._widgets:
             widget.disable()
+        super().disable()
 
     def enable(self):
         for widget in self._widgets:
             widget.enable()
+        super().enable()
+
+    def hide(self):
+        for widget in self._widgets:
+            widget.hide()
+        super().hide()
+
+    def show(self):
+        for widget in self._widgets:
+            widget.show()
+        super().show()

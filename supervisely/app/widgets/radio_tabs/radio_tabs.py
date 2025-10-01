@@ -41,14 +41,7 @@ class RadioTabs(Widget):
                 )
         if len(set(titles)) != len(titles):
             raise ValueError("All of tab labels should be unique.")
-        self._items = []
-        for title, widget, description in zip(titles, contents, descriptions):
-            self._items.append(
-                RadioTabs.RadioTabPane(
-                    title=title, content=widget, subtitle=description
-                )
-            )
-        self._value = titles[0]
+        self.set_content(titles, contents, descriptions)
         self._changes_handled = False
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -63,6 +56,18 @@ class RadioTabs(Widget):
             func(res)
 
         return _value_changed
+
+    def set_content(self, titles, contents, descriptions=None):
+        if descriptions is None:
+            descriptions = [""] * len(titles)
+        self._items = []
+        for title, widget, description in zip(titles, contents, descriptions):
+            self._items.append(
+                RadioTabs.RadioTabPane(
+                    title=title, content=widget, subtitle=description
+                )
+            )
+        self._value = titles[0]
 
     def get_json_data(self) -> Dict:
         return {}

@@ -199,7 +199,9 @@ class FastTable(Widget):
         self._header_right_content = header_right_content
         self._max_selected_rows = max_selected_rows
         acceptable_search_positions = ["left", "right"]
-        self._search_position = search_position if search_position in acceptable_search_positions else "left"
+        self._search_position = (
+            search_position if search_position in acceptable_search_positions else "left"
+        )
 
         # table_options
         self._page_size = page_size
@@ -307,7 +309,7 @@ class FastTable(Widget):
                 "isRadio": self._is_radio,
                 "isRowSelectable": self._is_selectable,
                 "maxSelectedRows": self._max_selected_rows,
-                "searchPosition": self._search_position
+                "searchPosition": self._search_position,
             },
             "pageSize": self._page_size,
             "showHeader": self._show_header,
@@ -417,7 +419,12 @@ class FastTable(Widget):
             filter_function = self._default_filter_function
         self._filter_function = filter_function
 
-    def read_json(self, data: Dict, meta: Dict = None, custom_columns: Optional[List[Union[str, tuple]]] = None) -> None:
+    def read_json(
+        self,
+        data: Dict,
+        meta: Dict = None,
+        custom_columns: Optional[List[Union[str, tuple]]] = None,
+    ) -> None:
         """Replace table data with options and project meta in the widget
 
         :param data: Table data with options:
@@ -486,10 +493,13 @@ class FastTable(Widget):
         sort = init_options.pop("sort", {"column": None, "order": None})
         self._active_page = 1
         self._sort_column_idx = sort.get("column", None)
-        if self._sort_column_idx is not None and self._sort_column_idx > len(self._columns_first_idx) - 1:
+        if (
+            self._sort_column_idx is not None
+            and self._sort_column_idx > len(self._columns_first_idx) - 1
+        ):
             self._sort_column_idx = None
         self._sort_order = sort.get("order", None)
-        self._page_size = init_options.pop("pageSize", 10) 
+        self._page_size = init_options.pop("pageSize", self._page_size)
         DataJson()[self.widget_id]["data"] = self._parsed_active_data["data"]
         DataJson()[self.widget_id]["columns"] = self._parsed_active_data["columns"]
         DataJson()[self.widget_id]["columnsOptions"] = self._columns_options

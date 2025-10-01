@@ -5,6 +5,9 @@ from supervisely.app.widgets import Widget
 
 
 class RandomSplitsTable(Widget):
+    class Routes:
+        VALUE_CHANGED = "value_changed"
+
     def __init__(
         self,
         items_count: int,
@@ -33,6 +36,7 @@ class RandomSplitsTable(Widget):
             "train": start_train_percent,
             "val": 100 - start_train_percent,
         }
+        self._changes_handled = False
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -90,3 +94,15 @@ class RandomSplitsTable(Widget):
 
     def get_val_split_percent(self) -> int:
         return StateJson()[self.widget_id]["percent"]["val"]
+
+    def value_changed(self, func):
+        route_path = self.get_route_path(self.Routes.VALUE_CHANGED)
+        server = self._sly_app.get_server()
+        self._changes_handled = True
+
+        @server.post(route_path)
+        async def _click():
+            res = self.get_json_state()
+            func(res)
+
+        return _click

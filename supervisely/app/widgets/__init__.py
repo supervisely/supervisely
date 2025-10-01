@@ -161,7 +161,7 @@ from supervisely.app.widgets.dropdown_checkbox_selector.dropdown_checkbox_select
 from supervisely.app.widgets.ecosystem_model_selector.ecosystem_model_selector import (
     EcosystemModelSelector,
 )
-
+from supervisely.app.widgets.stepper_progress.stepper_progress import StepperProgress
 from supervisely.app.widgets.solution_graph.solution_graph import SolutionGraph
 from supervisely.app.widgets.solution_card.solution_card import SolutionCard
 from supervisely.app.widgets.solution_project.solution_project import SolutionProject
@@ -169,3 +169,4 @@ from supervisely.app.widgets.cloud_import.cloud_import import CloudImport
 from supervisely.app.widgets.tasks_history.tasks_history import TasksHistory
 from supervisely.app.widgets.new_experiment.new_experiment import NewExperiment
 from supervisely.app.widgets.vue_flow.vue_flow import VueFlow
+from supervisely.app.widgets.project_table.project_table import ProjectDatasetTable

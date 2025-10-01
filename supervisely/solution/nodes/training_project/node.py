@@ -34,6 +34,8 @@ class TrainingProjectNode(ProjectNode):
     def _available_subscribe_methods(self) -> Dict[str, Callable]:
         """Returns a dictionary of methods that can be used for subscribing to events."""
         return {
+            "train_val_split_finished": self.refresh,
+            "add_training_data_id": self.refresh,
             "move_labeled_data_finished": self.refresh,
         }
 
@@ -71,6 +73,13 @@ class TrainingProjectNode(ProjectNode):
                 "type": "source",
                 "position": "bottom",
                 "label": "Data Versioning",
+                "connectable": True,
+            },
+            {
+                "id": "add_training_data_id",
+                "type": "source",
+                "position": "left",
+                "label": "Add Training Data",
                 "connectable": True,
             },
         ]

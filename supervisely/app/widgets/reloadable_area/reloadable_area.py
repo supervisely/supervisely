@@ -1,8 +1,8 @@
-from supervisely.app.widgets import Widget, DynamicWidget
-from supervisely.app.widgets_context import JinjaWidgets
-from supervisely.app.fastapi.websocket import WebsocketManager
-from supervisely.app.fastapi.utils import run_sync
 from supervisely.app.content import DataJson, StateJson
+from supervisely.app.fastapi.utils import run_sync
+from supervisely.app.fastapi.websocket import WebsocketManager
+from supervisely.app.widgets import DynamicWidget, Widget
+from supervisely.app.widgets_context import JinjaWidgets
 
 
 class ReloadableArea(DynamicWidget):
@@ -70,7 +70,8 @@ class ReloadableArea(DynamicWidget):
         """Reloads the widget in UI."""
         DataJson().send_changes()
         StateJson().send_changes()
-
+        if self._content is None:
+            return
         html_content = self._content.to_html()
         run_sync(
             WebsocketManager().broadcast(
@@ -85,8 +86,12 @@ class ReloadableArea(DynamicWidget):
 
     def hide(self):
         """Hides the content of the ReloadableArea."""
-        self._content.hide()
-        
+        if self._content is not None:
+            self._content.hide()
+        super().hide()
+
     def show(self):
         """Shows the content of the ReloadableArea."""
-        self._content.show()
+        if self._content is not None:
+            self._content.show()
+        super().show()

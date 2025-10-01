@@ -18,18 +18,30 @@
             </div>
 
             <el-slider v-if="scope.row.name === 'train'"
-                       v-model="state.{{{widget.widget_id}}}.percent.train"
-                       :disabled="data.{{{widget.widget_id}}}.disabled"
-                       show-input :min="1" :max="99"
-                       style="flex:1; max-width: 99%; margin-left: 15px;"
-                       @input=  "
-                                state.{{{widget.widget_id}}}.count.train =
-                                Math.min(parseInt(data.{{{widget.widget_id}}}.items_count * state.{{{widget.widget_id}}}.percent.train / 100, 10),
-                                            data.{{{widget.widget_id}}}.items_count - 1);
-                                state.{{{widget.widget_id}}}.count.train = Math.max(state.{{{widget.widget_id}}}.count.train, 1)
-                                state.{{{widget.widget_id}}}.count.val = data.{{{widget.widget_id}}}.items_count- state.{{{widget.widget_id}}}.count.train;
-                                state.{{{widget.widget_id}}}.percent.val = 100 - state.{{{widget.widget_id}}}.percent.train
-                                "
+                v-model="state.{{{widget.widget_id}}}.percent.train"
+                :disabled="data.{{{widget.widget_id}}}.disabled"
+                show-input :min="1" :max="99"
+                style="flex:1; max-width: 99%; margin-left: 15px;"
+                {% if widget._changes_handled == true %}
+                @input="
+                    state.{{{widget.widget_id}}}.count.train =
+                    Math.min(parseInt(data.{{{widget.widget_id}}}.items_count * state.{{{widget.widget_id}}}.percent.train / 100, 10),
+                            data.{{{widget.widget_id}}}.items_count - 1);
+                    state.{{{widget.widget_id}}}.count.train = Math.max(state.{{{widget.widget_id}}}.count.train, 1)
+                    state.{{{widget.widget_id}}}.count.val = data.{{{widget.widget_id}}}.items_count- state.{{{widget.widget_id}}}.count.train;
+                    state.{{{widget.widget_id}}}.percent.val = 100 - state.{{{widget.widget_id}}}.percent.train;
+                    post('/{{{widget.widget_id}}}/value_changed')
+                    "
+                {% else %}
+                @input="
+                    state.{{{widget.widget_id}}}.count.train =
+                    Math.min(parseInt(data.{{{widget.widget_id}}}.items_count * state.{{{widget.widget_id}}}.percent.train / 100, 10),
+                            data.{{{widget.widget_id}}}.items_count - 1);
+                    state.{{{widget.widget_id}}}.count.train = Math.max(state.{{{widget.widget_id}}}.count.train, 1)
+                    state.{{{widget.widget_id}}}.count.val = data.{{{widget.widget_id}}}.items_count- state.{{{widget.widget_id}}}.count.train;
+                    state.{{{widget.widget_id}}}.percent.val = 100 - state.{{{widget.widget_id}}}.percent.train
+                    "
+                {% endif %}
             ></el-slider>
         </template>
     </el-table-column>

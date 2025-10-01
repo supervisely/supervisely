@@ -1,3 +1,4 @@
+from supervisely.solution.nodes.add_training_data.node import AddTrainingDataNode
 from supervisely.solution.nodes.all_experiments.node import AllExperimentsNode
 from supervisely.solution.nodes.auto_import.node import AutoImportNode
 from supervisely.solution.nodes.best_model_evaluation_report.node import (
@@ -67,4 +68,5 @@ __all__ = [
     "PreLabelingNode",
     "DeployCustomModelNode",
     "BestModelEvaluationReportNode",
+    "AddTrainingDataNode",
 ]

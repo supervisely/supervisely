@@ -1,0 +1,60 @@
+.el-steps.stepper-progress-host,
+.stepper-progress-host .el-steps {
+	font-family: inherit;
+}
+
+.stepper-progress-host .el-step.is-success .el-step__head,
+.stepper-progress-host .el-step.is-success .el-step__icon.is-text,
+.stepper-progress-host .el-step.is-success .el-step__line-inner,
+.stepper-progress-host .el-step.is-finish .el-step__head,
+.stepper-progress-host .el-step.is-finish .el-step__icon.is-text,
+.stepper-progress-host .el-step.is-finish .el-step__line-inner {
+	background-color: #3B96FF !important;
+	border-color: #3B96FF !important;
+	color: #fff !important;
+	transition: background-color 220ms ease, border-color 220ms ease, color 220ms ease;
+}
+
+.stepper-progress-host .el-step.is-process .el-step__head,
+.stepper-progress-host .el-step.is-process .el-step__icon.is-text {
+	background-color: #3B96FF !important;
+	border-color: #3B96FF !important;
+	color: #fff !important;
+	transition: background-color 220ms ease, border-color 220ms ease, color 220ms ease;
+}
+
+.stepper-progress-host .el-step.is-wait .el-step__head,
+.stepper-progress-host .el-step.is-wait .el-step__icon.is-text {
+	background-color: #dcdfe6 !important;
+	border-color: #dcdfe6 !important;
+	color: #606266 !important;
+	transition: background-color 220ms ease, border-color 220ms ease, color 220ms ease;
+}
+
+.stepper-progress-host .el-step__title,
+.stepper-progress-host .el-step__description {
+	font-family: inherit;
+}
+
+.stepper-progress-host .el-step.is-success .el-step__line .el-step__line-inner,
+.stepper-progress-host .el-step.is-finish .el-step__line .el-step__line-inner {
+	background-color: #3B96FF !important;
+		transition: background-color 240ms ease, width 240ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.stepper-progress-host .el-step.is-success .el-step__head,
+	.stepper-progress-host .el-step.is-success .el-step__icon.is-text,
+	.stepper-progress-host .el-step.is-success .el-step__line-inner,
+	.stepper-progress-host .el-step.is-finish .el-step__head,
+	.stepper-progress-host .el-step.is-finish .el-step__icon.is-text,
+	.stepper-progress-host .el-step.is-finish .el-step__line-inner,
+	.stepper-progress-host .el-step.is-process .el-step__head,
+	.stepper-progress-host .el-step.is-process .el-step__icon.is-text,
+	.stepper-progress-host .el-step.is-wait .el-step__head,
+	.stepper-progress-host .el-step.is-wait .el-step__icon.is-text,
+	.stepper-progress-host .el-step.is-success .el-step__line .el-step__line-inner,
+	.stepper-progress-host .el-step.is-finish .el-step__line .el-step__line-inner {
+		transition: none !important;
+	}
+}

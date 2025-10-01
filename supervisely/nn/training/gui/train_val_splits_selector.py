@@ -1,19 +1,22 @@
-from typing import List
+from typing import List, Optional
 
 from supervisely import Api, Project
-from supervisely.app.widgets import Button, Card, Container, Text, TrainValSplits
-from supervisely.api.module_api import ApiField
 from supervisely.api.entities_collection_api import EntitiesCollectionInfo
+from supervisely.api.module_api import ApiField
+from supervisely.app.widgets import Button, Card, Container, Text, TrainValSplits
+
 
 class TrainValSplitsSelector:
     title = "Train / Val Splits"
     description = "Select train and val splits for training"
     lock_message = "Select previous step to unlock"
 
-    def __init__(self, api: Api, project_id: int, app_options: dict = {}):
+    def __init__(
+        self, api: Api, project_id: int = None, app_options: dict = {}, default_to_env: bool = True
+    ):
         # Init widgets
         self.train_val_splits = None
-        self.validator_text = None
+        self.validator_text = Text("")
         self.button = None
         self.container = None
         self.card = None
@@ -40,10 +43,21 @@ class TrainValSplitsSelector:
         ds_split = "Based on datasets" in split_methods
         coll_split = "Based on collections" in split_methods
 
-        self.train_val_splits = TrainValSplits(project_id, None, random_split, tag_split, ds_split, collections_splits=coll_split)
+        self.train_val_splits = TrainValSplits(
+            project_id,
+            None,
+            random_split,
+            tag_split,
+            ds_split,
+            collections_splits=coll_split,
+            default_to_env=default_to_env,
+        )
 
-        self._detect_splits(coll_split, ds_split)
+        if self.project_id is not None:
+            self._detect_splits(coll_split, ds_split)
         self.button = Button("Select")
+        if self.validator_text.text == "":
+            self.validator_text.hide()
         self.display_widgets.extend([self.train_val_splits, self.validator_text, self.button])
         # -------------------------------- #
 
@@ -78,6 +92,8 @@ class TrainValSplitsSelector:
         return [self.train_val_splits]
 
     def validate_step(self) -> bool:
+        if not self.project_id:
+            return False
         split_method = self.train_val_splits.get_split_method()
         warning_text = "Using the same data for training and validation leads to overfitting, poor generalization and biased model selection."
         ensure_text = "Ensure this is intentional."
@@ -311,6 +327,10 @@ class TrainValSplitsSelector:
     def set_sly_project(self, project: Project) -> None:
         self.train_val_splits._project_fs = project
 
+    def set_project_id(self, project_id: int, dataset_ids: Optional[List[int]] = None) -> None:
+        self.project_id = project_id
+        self.train_val_splits.set_project_id(project_id, dataset_ids)
+
     def get_split_method(self) -> str:
         return self.train_val_splits.get_split_method()
 
@@ -338,14 +358,29 @@ class TrainValSplitsSelector:
     def set_val_collection_ids(self, collection_ids: List[int]) -> None:
         self.train_val_splits._val_collections_select.set_selected_ids(collection_ids)
 
-    def _detect_splits(self, collections_split: bool, datasets_split: bool) -> bool:
+    def get_splits(self):
+        return self.train_val_splits.get_splits()
+
+    def _detect_splits(
+        self, collections_split: bool, datasets_split: bool, tag_split: bool = False
+    ) -> bool:
         """Detect splits based on the selected method"""
         self._parse_collections()
         splits_found = False
         if collections_split:
             splits_found = self._detect_collections()
+            if splits_found:
+                self.train_val_splits.set_split_method("collections")
         if not splits_found and datasets_split:
             splits_found = self._detect_datasets()
+            if splits_found:
+                self.train_val_splits.set_split_method("datasets")
+        if not splits_found and tag_split:
+            splits_found = self._detect_tags()
+            if splits_found:
+                self.train_val_splits.set_split_method("tags")
+        if not splits_found:
+            self.train_val_splits.set_split_method("random")
         return splits_found
 
     def _parse_collections(self) -> None:
@@ -360,7 +395,9 @@ class TrainValSplitsSelector:
 
         self._all_train_collections = existing_train_collections
         self._all_val_collections = existing_val_collections
-        self._latest_train_collection = self._get_latest_collection(existing_train_collections, "train")
+        self._latest_train_collection = self._get_latest_collection(
+            existing_train_collections, "train"
+        )
         self._latest_val_collection = self._get_latest_collection(existing_val_collections, "val")
 
     def _get_latest_collection(
@@ -379,7 +416,6 @@ class TrainValSplitsSelector:
                             curr_idx = collection_idx
                             curr_collection = collection
         return curr_collection
-
 
     def _detect_collections(self) -> bool:
         """Find collections with train and val prefixes and set them to train_val_splits"""
