@@ -615,6 +615,8 @@ class PredictAppGui:
             input_args["dataset_ids"] = input_dataset_ids
         elif input_project_id:
             input_args["project_id"] = input_project_id
+        elif input_video_ids:
+            pass
         else:
             raise ValueError("No valid input parameters found for prediction.")
 
