@@ -1,6 +1,9 @@
 import os
 import random
-from typing import Any, Dict, List
+import threading
+from contextlib import contextmanager, nullcontext
+from pathlib import Path
+from typing import Any, Callable, Dict, List
 
 import cv2
 import yaml
@@ -16,6 +19,7 @@ from supervisely.app.widgets import (
     GridGallery,
     Input,
     OneOf,
+    Progress,
     Select,
     Text,
     VideoPlayer,
@@ -43,35 +47,255 @@ class AddPredictionsMode:
 
 
 class Preview:
-    def __init__(self, api: Any, static_dir: str):
-        self.static_dir = static_dir
-        self.display_widgets = []
-        # Preview
-        self.gallery = None
-        self.video_player = None
-        # -------------------------------- #
+    lock_message = "Select previous step to unlock"
 
-        # Preview Directory
-        self.preview_dir = os.path.join(self.static_dir, "preview")
+    def __init__(
+        self,
+        api: Api,
+        preview_dir: str,
+        get_model_api_fn: Callable[[], ModelAPI],
+        get_input_settings_fn: Callable[[], Dict[str, Any]],
+        get_settings_fn: Callable[[], Dict[str, Any]],
+    ):
+        self.api = api
+        self.preview_dir = preview_dir
+        self.get_model_api_fn = get_model_api_fn
+        self.get_input_settings_fn = get_input_settings_fn
+        self.get_settings_fn = get_settings_fn
         os.makedirs(self.preview_dir, exist_ok=True)
-        self.image_preview_path = os.path.join(self.preview_dir, "preview.jpg")
-        self.image_peview_url = f"/static/preview/preview.jpg"
-        self.video_preview_path = os.path.join(self.preview_dir, "preview.mp4")
-        self.video_peview_url = f"/static/preview/preview.mp4"
-        # ----------------------------------- #
+        self.image_preview_path = None
+        self.image_peview_url = None
+        self.video_preview_path = None
+        self.video_peview_url = None
 
-        # Preview Widget
-        self.gallery = GridGallery(
+        self.progress_widget = Progress(show_percents=True, hide_on_finish=True)
+        self.image_gallery = GridGallery(
             2,
             sync_views=True,
             enable_zoom=True,
             resize_on_zoom=True,
-            empty_message="Click 'Preview' to see the model output.",
+            empty_message="",
         )
+        self.image_preview_container = Container(widgets=[self.image_gallery])
+
         self.video_player = VideoPlayer()
-        # Add widgets to display ------------ #
-        self.display_widgets.extend([self.gallery])
-        # ----------------------------------- #
+        self.video_preview_container = Container(widgets=[self.video_player])
+
+        self.empty_text = Text("Click preview to visualize predictions")
+        self.error_text = Text("Failed to generate preview", status="error")
+
+        self.select = Select(
+            items=[
+                Select.Item("empty", content=self.empty_text),
+                Select.Item(ProjectType.IMAGES.value, content=self.image_preview_container),
+                Select.Item(ProjectType.VIDEOS.value, content=self.video_preview_container),
+                Select.Item("error", content=self.error_text),
+                Select.Item("loading", content=Container(widgets=[])),
+                Select.Item("progress", content=self.progress_widget),
+            ]
+        )
+        self.select.set_value("empty")
+        self.oneof = OneOf(self.select)
+
+        self.run_button = Button("Preview", icon="zmdi zmdi-slideshow")
+        self.card = Card(
+            title="Preview",
+            description="Preview model predictions on a random image or video from the selected input source.",
+            content=self.oneof,
+            content_top_right=self.run_button,
+            lock_message=self.lock_message,
+        )
+        self.card.lock()
+
+        @self.run_button.click
+        def _run_preview():
+            self.run_preview()
+
+    @contextmanager
+    def progress(self, message: str, total: int, **kwargs):
+        current_item = self.select.get_value()
+        try:
+            with self.progress_widget(message=message, total=total, **kwargs) as pbar:
+                self.select_item("progress")
+                yield pbar
+        finally:
+            self.select_item(current_item)
+
+    def select_item(self, item: str):
+        self.select.set_value(item)
+
+    def _download_preview_item(self, with_progress: bool = False):
+        input_settings = self.get_input_settings_fn()
+        video_ids = input_settings.get("video_ids", None)
+        if video_ids is None:
+            project_id = input_settings.get("project_id", None)
+            dataset_ids = input_settings.get("dataset_ids", None)
+            if dataset_ids:
+                dataset_id = random.choice(dataset_ids)
+            else:
+                datasets = self.api.dataset.get_list(project_id)
+            total_items = sum(ds.items_count for ds in datasets)
+            if total_items == 0:
+                raise RuntimeError("No images found in the selected datasets")
+            images = []
+            while not images:
+                dataset_id = random.choice(datasets).id
+                images = self.api.image.get_list(dataset_id)
+            image_id = random.choice(images).id
+            image_info = self.api.image.get_info_by_id(image_id)
+            self.image_preview_path = Path(self.preview_dir, image_info.name)
+            self.api.image.download_path(image_id, self.image_preview_path)
+            self._current_item_id = image_id
+            self.image_peview_url = f"/static/preview/{image_info.name}"
+        elif len(video_ids) == 0:
+            self._current_item_id = None
+            self.video_preview_path = None
+            self.video_peview_url = None
+        else:
+            video_id = random.choice(video_ids)
+            video_id = video_ids[0]
+            video_info = self.api.video.get_info_by_id(video_id)
+            frame_start = 0
+            seconds = 5
+            video_info = self.api.video.get_info_by_id(video_id)
+            preview_path = Path(self.preview_dir, video_info.name)
+            self.video_preview_path = preview_path
+            fps = int(video_info.frames_count / video_info.duration)
+            frames_number = min(video_info.frames_count, int(fps * seconds))
+            if video_info.frames_count > 30 * 60 * 5:
+                with (
+                    self.progress(message="Downloading video frames:", total=frames_number)
+                    if with_progress
+                    else nullcontext()
+                ) as pbar:
+                    paths = [
+                        f"/tmp/{i}.jpg" for i in range(frame_start, frame_start + frames_number)
+                    ]
+                    self.api.video.download_frames(
+                        video_id,
+                        frames=list(range(frame_start, frame_start + frames_number)),
+                        paths=paths,
+                        progress_cb=pbar.update if pbar else None,
+                    )
+                    frames_gen = (cv2.imread(p) for p in paths)
+                    create_from_frames(frames_gen, self.video_preview_path, fps=fps)
+            else:
+                try:
+                    size = int(video_info.file_meta["size"])
+                except:
+                    size = None
+                with (
+                    self.progress(message="Downloading video:", total=size)
+                    if with_progress and size
+                    else nullcontext()
+                ) as pbar:
+                    self.api.video.download_path(
+                        video_id,
+                        self.video_preview_path,
+                        progress_cb=pbar.update if pbar else None,
+                    )
+            self._current_item_id = video_id
+            self.video_peview_url = f"/static/preview/{video_info.name}"
+
+    def set_image_preview(
+        self,
+    ):
+        self.image_gallery.clean_up()
+        if not self._current_item_id:
+            self._download_preview_item(with_progress=True)
+        image_id = self._current_item_id
+        model_api = self.get_model_api_fn()
+        settings = self.get_settings_fn()
+        inference_settings = settings.get("inference_settings", {})
+        with self.progress("Generating prediction:", total=1) as pbar:
+            prediction = model_api.predict(
+                image_id=image_id, inference_settings=inference_settings, tqdm=self.progress_widget
+            )[0]
+        self.image_gallery.append(
+            self.image_peview_url, title="Source", annotation=prediction.annotation
+        )
+        self.image_gallery.append(
+            self.image_peview_url, title="Prediction", annotation=prediction.annotation
+        )
+        self.select_item(ProjectType.IMAGES.value)
+
+    def set_video_preview(
+        self,
+    ):
+        self.video_player.set_video(None)
+        input_settings = self.get_input_settings_fn()
+        video_ids = input_settings.get("video_ids", None)
+        if not video_ids:
+            raise RuntimeError("No videos selected")
+        if not self._current_item_id:
+            self._download_preview_item(with_progress=True)
+        video_id = self._current_item_id
+
+        frame_start = 0
+        seconds = 5
+        video_info = self.api.video.get_info_by_id(video_id)
+        fps = int(video_info.frames_count / video_info.duration)
+        frames_number = min(video_info.frames_count, int(fps * seconds))
+        project_meta = ProjectMeta.from_json(self.api.project.get_meta(video_info.project_id))
+        model_api = self.get_model_api_fn()
+        settings = self.get_settings_fn()
+        inference_settings = settings.get("inference_settings", {})
+        tracking = settings.get("tracking", False)
+        with self.progress("Generating prediction:", total=frames_number) as pbar:
+            with model_api.predict_detached(
+                video_id=video_id,
+                inference_settings=inference_settings,
+                tracking=tracking,
+                start_frame=frame_start,
+                frames_num=frames_number,
+                tqdm=self.progress_widget,
+            ) as session:
+                list(session)
+                video_annotation = session.final_result.get("video_ann", {})
+
+        video_annotation = VideoAnnotation.from_json(video_annotation, project_meta=project_meta)
+        visualizer = TrackingVisualizer(
+            output_fps=fps,
+            box_thickness=video_info.frame_height // 110,
+            text_scale=video_info.frame_height / 900,
+            trajectory_thickness=video_info.frame_width // 110,
+        )
+        visualizer.visualize_video_annotation(
+            video_annotation,
+            source=self.video_preview_path,
+            output_path=self.video_preview_path,
+        )
+        self.video_player.set_video(self.video_peview_url)
+        self.select_item(ProjectType.VIDEOS.value)
+
+    def set_error(self, text: str):
+        self.error_text.text = text
+        self.select_item("error")
+
+    def run_preview(self):
+        self.select_item("loading")
+        try:
+            input_settings = self.get_input_settings_fn()
+            video_ids = input_settings.get("video_ids", None)
+            if video_ids is None:
+                self.set_image_preview()
+            elif len(video_ids) == 0:
+                self.set_error("No videos selected")
+            else:
+                self.set_video_preview()
+        except Exception as e:
+            logger.error(f"Failed to generate preview: {str(e)}", exc_info=True)
+            self.set_error("Failed to generate preview: " + str(e))
+
+    def _preload_item(self):
+        threading.Thread(
+            target=self._download_preview_item, kwargs={"with_progress": False}, daemon=True
+        ).start()
+
+    def update_item_type(self, item_type: str):
+        self.select_item("empty")
+        self._current_item_id = None
+        # self._preload_item() # need to handle race condition with run_preview and multiple clicks
 
 
 class SettingsSelector:
@@ -179,40 +403,13 @@ class SettingsSelector:
 
         # Preview
         self.preview_dir = os.path.join(self.static_dir, "preview")
-        os.makedirs(self.preview_dir, exist_ok=True)
-        self.image_preview_path = os.path.join(self.preview_dir, "preview.jpg")
-        self.image_peview_url = f"/static/preview/preview.jpg"
-        self.video_preview_path = os.path.join(self.preview_dir, "preview.mp4")
-        self.video_peview_url = f"/static/preview/preview.mp4"
-
-        self.run_button = Button("Preview", icon="zmdi zmdi-slideshow")
-        self.image_preview_gallery = GridGallery(
-            2,
-            sync_views=True,
-            enable_zoom=True,
-            resize_on_zoom=True,
-            empty_message="Click 'Preview' to see the model output.",
+        self.preview = Preview(
+            api=self.api,
+            preview_dir=self.preview_dir,
+            get_model_api_fn=lambda: self.model_selector.model.model_api,
+            get_input_settings_fn=self.input_selector.get_settings,
+            get_settings_fn=self.get_settings,
         )
-        self.last_video_id = None
-        self.video_player = VideoPlayer()
-        self.video_player.hide()
-        self.preview_error = Text("Failed to generate preview", status="error")
-        self.preview_error.hide()
-        self.preview_container = Container(
-            widgets=[self.image_preview_gallery, self.video_player, self.preview_error], gap=0
-        )
-        self.preview_card = Card(
-            title="Preview",
-            description="Preview model predictions on a random image or video from the selected input source.",
-            content=self.preview_container,
-            content_top_right=self.run_button,
-            lock_message=self.lock_message,
-        )
-        self.preview_card.lock()
-
-        @self.run_button.click
-        def run_preview():
-            self.run_preview()
 
         self.settings_container = Container(widgets=self.settings_widgets, gap=15)
         self.display_widgets.extend([self.settings_container])
@@ -233,9 +430,9 @@ class SettingsSelector:
             lock_message=self.lock_message,
         )
         self.settings_card.lock()
-        self.cards = [self.settings_card, self.preview_card]
+        self.cards = [self.settings_card, self.preview.card]
         self.cards_container = Container(
-            widgets=[self.settings_card, self.preview_card],
+            widgets=self.cards,
             gap=15,
             direction="horizontal",
             fractions=[3, 7],
@@ -295,102 +492,14 @@ class SettingsSelector:
 
     def update_item_type(self, item_type: str):
         if item_type == ProjectType.IMAGES.value:
-            self.image_settings_container.show()
             self.video_settings_container.hide()
-            self.video_player.hide()
-            self.image_preview_gallery.show()
+            self.image_settings_container.show()
         elif item_type == ProjectType.VIDEOS.value:
             self.image_settings_container.hide()
             self.video_settings_container.show()
-            self.image_preview_gallery.hide()
-            self.video_player.show()
         else:
             raise ValueError(f"Unsupported item type: {item_type}")
-
-    def set_image_preview(self, image_id: int):
-        with self.model_selector.model.model_api.predict_detached(
-            image_id=image_id, inference_settings=self.get_inference_settings()
-        ) as session:
-            self.api.image.download_path(image_id, self.image_preview_path)
-            prediction = list(session)[0]
-        self.image_preview_gallery.clean_up()
-        self.image_preview_gallery.append(
-            self.image_peview_url, title="Source", annotation=prediction.annotation
-        )
-        self.image_preview_gallery.append(
-            self.image_peview_url, title="Prediction", annotation=prediction.annotation
-        )
-
-    def set_video_preview(self, video_id: int):
-        self.video_player.set_video(None)
-        frame_start = 0
-        seconds = 5
-        video_info = self.api.video.get_info_by_id(video_id)
-        fps = int(video_info.frames_count / video_info.duration)
-        frames_number = min(video_info.frames_count, int(fps * seconds))
-        project_meta = ProjectMeta.from_json(self.api.project.get_meta(video_info.project_id))
-        with self.model_selector.model.model_api.predict_detached(
-            video_id=video_id,
-            inference_settings=self.get_inference_settings(),
-            tracking=True,
-            start_frame=frame_start,
-            frames_num=frames_number,
-        ) as session:
-            if self.last_video_id != video_id:
-                paths = [f"/tmp/{i}.jpg" for i in range(frame_start, frame_start + frames_number)]
-                self.api.video.download_frames(
-                    video_id,
-                    frames=list(range(frame_start, frame_start + frames_number)),
-                    paths=paths,
-                )
-                frames_gen = (cv2.imread(p) for p in paths)
-                create_from_frames(frames_gen, self.video_preview_path, fps=fps)
-                self.last_video_id = video_id
-
-            list(session)
-
-            video_annotation = session.final_result.get("video_ann", {})
-        video_annotation = VideoAnnotation.from_json(video_annotation, project_meta=project_meta)
-        visualizer = TrackingVisualizer(
-            output_fps=fps,
-            box_thickness=video_info.frame_width // 200,
-            text_scale=0.6,
-            text_thickness=video_info.frame_width // 200,
-            trajectory_thickness=video_info.frame_width // 200,
-        )
-        visualizer.visualize_video_annotation(
-            video_annotation,
-            source=self.video_preview_path,
-            output_path=self.video_preview_path,
-        )
-        self.video_player.set_video(self.video_peview_url)
-
-    def run_preview(self):
-        try:
-            self.preview_error.hide()
-            video_id = self.input_selector.get_settings().get("video_id", None)
-            if video_id is None:
-                project_id = self.input_selector.get_settings().get("project_id", None)
-                dataset_ids = self.input_selector.get_settings().get("dataset_ids", None)
-                if dataset_ids:
-                    dataset_id = random.choice(dataset_ids)
-                else:
-                    datasets = self.api.dataset.get_list(project_id)
-                    dataset_id = random.choice(datasets).id
-                images = self.api.image.get_list(dataset_id)
-                image_id = random.choice(images).id
-                self.set_image_preview(image_id)
-                self.image_preview_gallery.show()
-            else:
-                self.set_video_preview(video_id)
-                self.video_player.show()
-        except Exception as e:
-            logger.error(f"Failed to generate preview: {str(e)}", exc_info=True)
-            self.video_player.hide()
-            self.image_preview_gallery.hide()
-            self.image_preview_gallery.clean_up()
-            self.preview_error.text = f"Failed to generate preview: {str(e)}"
-            self.preview_error.show()
+        self.preview.update_item_type(item_type)
 
     def validate_step(self) -> bool:
         return True
