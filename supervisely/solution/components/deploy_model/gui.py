@@ -3,7 +3,7 @@ from typing import Dict, Optional, Tuple
 import supervisely.io.env as sly_env
 from supervisely.api.api import Api
 from supervisely.app.content import DataJson
-from supervisely.app.widgets import DeployModel, Dialog, Widget
+from supervisely.app.widgets import Container, DeployModel, Dialog, Widget
 from supervisely.nn import ModelAPI
 from supervisely.sly_logger import logger
 from supervisely.solution.engine.modal_registry import ModalRegistry
@@ -24,7 +24,9 @@ class DeployModelGUI(Widget):
         self.content = self._init_gui()
 
         # --- modals -------------------------------------------------------------
-        ModalRegistry().attach_settings_widget(owner_id=self.widget_id, widget=self.content)
+        ModalRegistry().attach_settings_widget(
+            owner_id=self.widget_id, widget=Container([self.content], gap=0)
+        )
 
     @property
     def modal(self) -> Dialog:

@@ -1,4 +1,4 @@
-from typing import Any, Dict, Iterable, List, Literal, Optional, Union
+from typing import Dict, Iterable, Literal
 
 from supervisely.app.singleton import Singleton
 from supervisely.app.widgets import Container, Dialog, Widget
@@ -94,7 +94,7 @@ class ModalRegistry(metaclass=Singleton):
     # ------------------------------------------------------------------ #
     # Automation helpers
     # ------------------------------------------------------------------ #
-    def _create_automation_dialog(self) -> None:
+    def _create_automation_dialog(self) -> Dialog:
         """Create the automation dialog if it does not exist yet."""
         return self._create_modal(self._AUTOMATION_KEY, "Automation")
 
