@@ -219,10 +219,11 @@ class DeployModel(Widget):
         def _create_layout(self) -> Container:
             frameworks = self.deploy_model.get_frameworks()
             experiment_infos = []
-            for framework_name in frameworks:
-                experiment_infos.extend(
-                    get_experiment_infos(self.api, self.team_id, framework_name=framework_name)
-                )
+            # @TODO: remove this after testing
+            # for framework_name in frameworks:
+            #     experiment_infos.extend(
+            #         get_experiment_infos(self.api, self.team_id, framework_name=framework_name)
+            #     )
             self.experiment_table = ExperimentSelector(
                 experiment_infos=experiment_infos,
                 team_id=self.team_id,

@@ -57,7 +57,7 @@ class _slyProgressBarIO:
 
     def print_progress_to_supervisely_tasks_section(self):
         """
-        Logs a message with level INFO on logger. Message contain type of progress, subtask message, currtnt and total number of iterations
+        Logs a message with level INFO on logger. Message contain type of progress, subtask message, current and total number of iterations
         """
 
         if self._n == self.progress["n"]:

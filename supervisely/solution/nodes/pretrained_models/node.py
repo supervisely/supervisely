@@ -6,7 +6,6 @@ from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 import supervisely.io.env as sly_env
 from supervisely.api.api import Api
 from supervisely.api.entities_collection_api import CollectionTypeFilter
-from supervisely.api.task_api import TaskApi
 from supervisely.sly_logger import logger
 from supervisely.solution.base_node import BaseCardNode
 from supervisely.solution.engine.models import (
@@ -24,6 +23,7 @@ from supervisely.nn.inference import RuntimeType
 
 
 class BaseTrainNode(BaseCardNode):
+    PROGRESS_BADGE_KEY = "Training"
     TITLE = "Train Model"
     DESCRIPTION = "Train a custom model using the selected dataset and predefined configurations."
     ICON = "mdi mdi-robot"
@@ -217,71 +217,48 @@ class BaseTrainNode(BaseCardNode):
 
         self.update_badge_by_key(key="Training", label="Starting Application", badge_type="info")
         # Avoid using automation.apply()
-        threading.Thread(target=self._poll_train_progress, args=(task_id,), daemon=True).start()
+        threading.Thread(target=self._monitor_training, args=(task_id, 5), daemon=True).start()
 
 
     # ------------------------------------------------------------------
     # Progress ---------------------------------------------------------
     # ------------------------------------------------------------------
-    def _poll_train_progress(self, task_id: int, interval_sec: int = 10) -> None:
-        """Poll task status every interval seconds until completion or failure."""
-        while True:
+    def _monitor_training(self, task_id: int, interval_sec: int = 10) -> None:
+        """Use base poller; on finish, fetch experiment info and publish events."""
+        success = self.poll_task_progress(task_id=task_id, interval_sec=interval_sec)
+        if success:
             try:
-                task_info = self.api.task.get_info_by_id(task_id)
+                time.sleep(5)  # wait for experiment to be registered
+                experiment_info = self.api.nn.get_experiment_info(task_id)
+                experiment_info = experiment_info.to_json()
             except Exception as e:
-                logger.error(f"Failed to get task info for task_id={task_id}: {repr(e)}")
-                break
-
-            if task_info is None:
-                logger.error(f"Task info is not found for task_id: {task_id}")
-                break
-
-            status = task_info.get("status")
-            if status == TaskApi.Status.ERROR.value:
-                self.update_badge_by_key(key="Training", label="Failed", badge_type="error")
-                break
-            if status in [TaskApi.Status.STOPPED.value, TaskApi.Status.TERMINATING.value]:
-                self.update_badge_by_key(key="Training", label="Stopped", badge_type="warning")
-                break
-            if status == TaskApi.Status.CONSUMED.value:
-                self.update_badge_by_key(key="Training", label="Consumed", badge_type="warning")
-            elif status == TaskApi.Status.QUEUED.value:
-                self.update_badge_by_key(key="Training", label="Queued", badge_type="warning")
-            elif status == TaskApi.Status.FINISHED.value:
-                self.update_badge_by_key(key="Training", label="Completed", badge_type="success")
-                try:
-                    time.sleep(5)  # wait for experiment to be registered
-                    experiment_info = self.api.nn.get_experiment_info(task_id)
-                    experiment_info = experiment_info.to_json()
-                except Exception as e:
-                    logger.warning(
-                        f"Failed to get experiment info for task_id={task_id}: {repr(e)}"
-                    )
-                    experiment_info = None
-                self._send_training_finished_message(
-                    success=True, task_id=task_id, experiment_info=experiment_info
+                logger.warning(
+                    f"Failed to get experiment info for task_id={task_id}: {repr(e)}"
                 )
-                self._send_training_output_message(
-                    success=True, task_id=task_id, experiment_info=experiment_info
-                )
-                break
-            else:
-                self._set_train_progress_from_widgets(task_id)
+                experiment_info = None
+            self._send_training_finished_message(
+                success=True, task_id=task_id, experiment_info=experiment_info
+            )
+            self._send_training_output_message(
+                success=True, task_id=task_id, experiment_info=experiment_info
+            )
 
-            time.sleep(interval_sec)
+    def get_task_progress_label(self, task_id: int) -> Optional[str]:
+        """Custom label mapping for training phases based on task progress widgets/name."""
 
-    # @TODO: Refactor?
-    def _set_train_progress_from_widgets(self, task_id: int) -> str:
-        # messages
-        start_messages = ["Application is started", "Application is started ..."]
+        # Messages mapping
+        start_messages = [
+            "Application is started",
+            "Application is started ..."
+        ]
         prepare_messages = [
+            "Preparing data for training...",
             "Downloading input data",
             "Retrieving data from cache",
-            "Preparing data for training...",
             "Applying train/val splits to project",
             "Processing splits",
             "Downloading model files",
-            "Training is in progress..."
+            "Training is in progress...",
         ]
         training_messages = ["Epochs", "Epoches", "Epoch"]
         finalize_messages = [
@@ -296,77 +273,42 @@ class BaseTrainNode(BaseCardNode):
             "Visualizations: Adding tags to predictions",
             "Speedtest: Running speedtest for batch sizes",
             "Uploading visualizations to visualizations",
+            "Visualizations: Creating difference project",
+            "Inferring model...",
         ]
-        export_messages = [f"Converting to {RuntimeType.ONNXRUNTIME}", f"Converting to {RuntimeType.TENSORRT}"]
+        export_messages = [
+            f"Converting to {RuntimeType.ONNXRUNTIME}",
+            f"Converting to {RuntimeType.TENSORRT}",
+        ]
         complete_messages = ["Training completed"]
-        error_messages = ["Ready for training"]
+        error_messages = ["Ready for training"] # message appears when training have failed
 
-        combined_messages = start_messages + prepare_messages + training_messages + finalize_messages + eval_messages + export_messages + complete_messages + error_messages
-        # --------------- #
-
-        progress_widgets_data = self.api.task.get_progress_widgets(task_id)
-        if progress_widgets_data is None:
-            return
-
-        # Debug
-        # for idx, progress_widget_data in enumerate(progress_widgets_data):
-        #     print(f"Progress widget {idx}: {progress_widget_data}")
-        #     with open('/root/projects/solution-labeling/task_progress.log', 'a') as f:
-        #         f.write(f"Progress widget {idx}: {progress_widget_data}\n\n")
-
-        progress_widget = progress_widgets_data[0]
-        message = progress_widget["message"]
-        if message is None:
-            return
-
-        if message not in combined_messages:
-            progress_widget = progress_widgets_data[1]
-            message = progress_widget["message"]
-            if message is None:
-                return
-
-        badge_type = "info"
-        if message in start_messages:
-            label = "Starting Application"
-        elif message in prepare_messages:
-            label = "Preparing Data"
-        elif message in training_messages:
-            epoch_str = self._extract_epoch_progress(progress_widget["info"])
-            if epoch_str is None:
-                label = "In Progress"
-            else:
-                label = f"{epoch_str} epochs"
-        elif message in finalize_messages or message.startswith("Uploading"):
-            label = "Finalizing"
-        elif message in eval_messages:
-            label = "Evaluating Model"
-        elif message in export_messages:
-            label = "Exporting Model"
-        elif message in complete_messages:
-            label = "Completed"
-            badge_type = "success"
-        elif message in error_messages:
-            label = "Failed"
-            badge_type = "error"
-        else:
-            return
-
-        self.update_badge_by_key(key="Training", label=label, badge_type=badge_type)
-
-    def _extract_epoch_progress(self, info: Optional[str]) -> Optional[str]:
-        """Extracts leading epoch progress like '52/100' from info string.
-
-        Returns None if it cannot be extracted.
-        """
-        if not info:
+        task_progress = self._get_task_progress(task_id)
+        message = task_progress.get("name")
+        if not message:
             return None
-        first_token = info.split(" ", 1)[0]
-        if "/" in first_token:
-            return first_token
-        match = re.match(r"\s*(\d+\/\d+)", info)
-        if match:
-            return match.group(1)
-        return None              
+
+        # Map message to label
+        if message in start_messages:
+            return "Starting Application"
+        if message in prepare_messages:
+            return "Preparing Data"
+        if message in training_messages:
+            current = task_progress.get("current")
+            total = task_progress.get("total")
+            if current is not None and total is not None:
+                return f"{current} / {total} epochs"
+        if message in finalize_messages or message.startswith("Uploading"):
+            return "Finalizing"
+        if message in eval_messages or message.startswith("Downloading annotations from"):
+            return "Evaluating Model"
+        if message in export_messages:
+            return "Exporting Model"
+        if message in complete_messages:
+            return "Completed"
+        if message in error_messages:
+            return "Failed"
+        return None           
 
     # ------------------------------------------------------------------
     # Utils ------------------------------------------------------------

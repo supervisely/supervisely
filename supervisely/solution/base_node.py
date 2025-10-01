@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import time
 from typing import Any, Callable, Dict, List, Literal, Optional, Union
 
 from supervisely.api.project_api import ProjectInfo
@@ -28,6 +29,8 @@ from supervisely.app.widgets.widget import generate_incremental_id
 from supervisely.app.widgets_context import JinjaWidgets
 from supervisely.solution.engine.events import PubSub, PubSubAsync, publish_event
 from supervisely.solution.engine.scheduler import TasksScheduler
+from supervisely._utils import logger
+from supervisely.api.task_api import TaskApi
 
 
 # ------------------------------------------------------------------
@@ -239,6 +242,7 @@ class BaseNode(Widget, VueFlow.Node, EventMixin):
 # SolutionCardNode
 class BaseCardNode(BaseNode):
     NODE_TYPE = "action"
+    PROGRESS_BADGE_KEY = "Progress"
 
     # Automation Badge Methods -----------------------------------------
     def show_automation_badge(self) -> None:
@@ -277,6 +281,102 @@ class BaseCardNode(BaseNode):
     def hide_failed_badge(self):
         """Hides the failed badge from the card."""
         self.remove_badge_by_key(key="Failed")
+
+    # ---------------------------------------------------------------
+    # Base Progress -------------------------------------------------
+    # ---------------------------------------------------------------
+    def poll_task_progress(
+        self,
+        task_id: int,
+        interval_sec: int = 10,
+        badge_key: Optional[str] = None,
+    ) -> bool:
+        """
+        Polls task status until completion/failure and updates a badge with progress.
+
+        Returns True on finished, False on error/stop.
+        """
+        badge_key = badge_key or getattr(self, "PROGRESS_BADGE_KEY", "Progress")
+        while True:
+            try:
+                task_info = self._get_task_info(task_id)
+            except Exception as e:
+                logger.error(f"Failed to get task info for task_id={task_id}: {repr(e)}")
+                return False
+
+            if task_info is None:
+                logger.error(f"Task info is not found for task_id: {task_id}")
+                return False
+
+            status = task_info.get("status")
+            if status == TaskApi.Status.ERROR.value:
+                self._update_progress_badge("Failed", "error", badge_key)
+                return False
+            if status in [TaskApi.Status.STOPPED.value, TaskApi.Status.TERMINATING.value]:
+                self._update_progress_badge("Stopped", "warning", badge_key)
+                return False
+            if status == TaskApi.Status.CONSUMED.value:
+                self._update_progress_badge("Consumed", "warning", badge_key)
+            elif status == TaskApi.Status.QUEUED.value:
+                self._update_progress_badge("Queued", "warning", badge_key)
+            elif status == TaskApi.Status.FINISHED.value:
+                self._update_progress_badge("Completed", "success", badge_key)
+                return True
+            else:
+                label = self.get_task_progress_label(task_id)
+                if label:
+                    self._update_progress_badge(label, "info", badge_key)
+            time.sleep(interval_sec)
+
+    def get_task_progress_label(self, task_id: int) -> Optional[str]:
+        """Returns a user-friendly progress label for the given task.
+
+        Default implementation uses `self.api.task.get_progress` if available and
+        formats common structures like name/current/total.
+        """
+        try:
+            progress = self._get_task_progress(task_id)
+        except Exception:
+            return None
+
+        if not progress:
+            return None
+
+        # Try to be generic across tasks
+        name = progress.get("name")
+        if name is None:
+            return None
+
+        current_label = progress.get("currentLabel")
+        total_label = progress.get("totalLabel")
+        if current_label is not None and total_label is not None:
+            return f"{name}: {current_label} / {total_label}"
+
+        current = progress.get("current")
+        total = progress.get("total")
+        if current is not None and total is not None:
+            return f"{name}: {current} / {total}"
+        return str(name)
+
+    # Helpers ---------------------------------------------------------
+    def _get_task_info(self, task_id: int) -> Optional[Dict[str, Any]]:
+        if hasattr(self, "api") and hasattr(getattr(self, "api"), "task"):
+            return self.api.task.get_info_by_id(task_id)
+        raise RuntimeError("API client is not available on this node to get task info")
+
+    def _get_task_progress(self, task_id: int) -> Optional[Dict[str, Any]]:
+        if hasattr(self, "api") and hasattr(getattr(self, "api"), "task"):
+            return self.api.task.get_progress(task_id)
+        raise RuntimeError("API client is not available on this node to get task progress")
+
+    def _update_progress_badge(
+        self,
+        label: str,
+        badge_type: Literal["info", "success", "warning", "error"] = "info",
+        badge_key: Optional[str] = None,
+    ) -> None:
+        badge_key = badge_key or getattr(self, "PROGRESS_BADGE_KEY", "Progress")
+        self.update_badge_by_key(key=badge_key, label=label, badge_type=badge_type)
 
 
 # ------------------------------------------------------------------

@@ -207,6 +207,9 @@ class NewExperiment(Widget):
                 "selectedFrameworks": self._selected_frameworks,
                 "selectedArchitectures": self._selected_architectures,
                 "allowEmptyExperimentName": True,
+                # Debug
+                "isBranch": True,
+                "version": "solutions-progress-test"
             },
         }
 
