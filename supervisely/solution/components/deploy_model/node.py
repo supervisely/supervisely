@@ -63,6 +63,7 @@ class DeployModelNode(BaseCardNode):
         @self.gui.content.on_stop
         def _on_stop():
             self.gui.model = None
+            self.gui.content.disconnect()
             self._refresh_node()
 
         @self.gui.content.select_agent.value_changed
@@ -74,13 +75,6 @@ class DeployModelNode(BaseCardNode):
             self.gui.modal.show()
 
         self.modals = [self.history.modal, self.history.logs_modal, self.gui.modal]
-        self.enable_automation()
-
-    # ------------------------------------------------------------------
-    # Automation -------------------------------------------------------
-    # ------------------------------------------------------------------
-    # def enable_automation(self):
-    #     pass
 
     # ------------------------------------------------------------------
     # Node methods -----------------------------------------------------
