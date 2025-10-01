@@ -63,7 +63,11 @@ class DeployModelNode(BaseCardNode):
         @self.gui.content.on_stop
         def _on_stop():
             self.gui.model = None
-            self.gui.content.disconnect()
+            self.gui.content.model_api = None
+            self.gui.content.set_model_status("hide")
+            self.gui.content.reset_model_info()
+            self.gui.content.show_deploy_button()
+            self.gui.content.enable_modes()
             self._refresh_node()
 
         @self.gui.content.select_agent.value_changed

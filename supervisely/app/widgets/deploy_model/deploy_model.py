@@ -2,7 +2,7 @@ import datetime
 import tempfile
 import time
 from pathlib import Path
-from threading import Thread
+from threading import Event, Thread, current_thread
 from time import sleep
 from typing import Any, Callable, Dict, List, Literal
 
@@ -307,6 +307,7 @@ class DeployModel(Widget):
         team_id: int = None,
         modes: List[Literal["connect", "pretrained", "custom"]] = None,
         widget_id: str = None,
+        tab_type: Literal["card", "border-card"] = "border-card",
     ):
         self.modes: Dict[str, DeployModel.DeployMode] = {}
         if modes is None:
@@ -327,16 +328,20 @@ class DeployModel(Widget):
         }
 
         # GUI
+        self._tab_type = tab_type
         self.layout: Widget = None
         self._init_gui(modes)
 
         self.model_api: ModelAPI = None
 
         self._status_watcher = None
-        self._deploy_cbs: List[Callable] = [self._start_status_watcher]
+        self._deploy_cbs = [self._start_status_watcher]
         self._deploy_handled = False
-        self._stop_cbs: List[Callable] = []
+        self._stop_cbs = []
         self._stop_handled = False
+        self._watcher_stop_event = Event()
+        self._watcher_finished_event = Event()
+        self._watcher_task_id = None
 
         super().__init__(widget_id=widget_id)
 
@@ -504,7 +509,7 @@ class DeployModel(Widget):
             _labels.append(label)
             _contents.append(content)
 
-        self.tabs = Tabs(labels=_labels, contents=_contents)
+        self.tabs = Tabs(labels=_labels, contents=_contents, type=self._tab_type)
         if len(self.modes) == 1:
             self.layout = _contents[0]
         else:
@@ -650,6 +655,10 @@ class DeployModel(Widget):
         else:
             if str(self.MODE.CONNECT) in self.modes:
                 self.modes[str(self.MODE.CONNECT)]._update_sessions()
+        finally:
+            if self._deploy_handled:
+                for deploy_cbs in self._deploy_cbs:
+                    deploy_cbs(self.model_api)
 
     def deploy(self) -> ModelAPI:
         mode_label = self.tabs.get_active_tab()
@@ -658,10 +667,10 @@ class DeployModel(Widget):
             if label == mode_label:
                 break
         agent_id = self.select_agent.get_value()
+        if self._status_watcher is not None and self._status_watcher.is_alive():
+            self._end_status_watcher()
         self.model_api = self.modes[mode].deploy(agent_id=agent_id)
-        if self._deploy_handled:
-            for deploy_cbs in self._deploy_cbs:
-                deploy_cbs(self.model_api)
+
         return self.model_api
 
     def stop(self) -> None:
@@ -722,33 +731,64 @@ class DeployModel(Widget):
         self._stop_handled = True
 
     def _start_status_watcher(self, *args) -> None:
-        if self.model_api is None or self._status_watcher is not None:
+        if self._stop_handled is False or self.model_api is None:
             return
-        self._status_watcher = Thread(name="deploy_status_watcher", target=self._watch_status)
+        self._watcher_stop_event.clear()
+        self._watcher_finished_event.clear()
+        self._watcher_task_id = getattr(self.model_api, "task_id", None)
+        if self._status_watcher is not None and self._status_watcher.is_alive():
+            self._end_status_watcher()
+        self._status_watcher = Thread(
+            name="deploy_status_watcher", target=self._watch_status, daemon=True
+        )
         self._status_watcher.start()
 
+    def _end_status_watcher(self) -> None:
+        watcher = self._status_watcher
+        if watcher is None:
+            return
+        self._watcher_stop_event.set()
+        if watcher.is_alive() and current_thread() is not watcher:
+            watcher.join(timeout=3)
+        self._status_watcher = None
+
     def _watch_status(self):
-        while True:
-            if not self.model_api:
-                logger.info("Model is already None, stopping watcher.")
+        try:
+            while not self._watcher_stop_event.is_set():
+                if not self.model_api:
+                    logger.info("Model is already None, stopping watcher.")
+                    break
+                if (
+                    self._watcher_task_id is not None
+                    and self.model_api.task_id != self._watcher_task_id
+                ):
+                    logger.info(
+                        f"Watcher task id {self._watcher_task_id} != current model task id {self.model_api.task_id}; stopping old watcher."
+                    )
+                    break
+                status = self.api.task.get_status(self.model_api.task_id)
+                logger.info(f"[WATCHER] Model status: {status}")
+                if not self.model_api or status in [
+                    TaskApi.Status.FINISHED,
+                    TaskApi.Status.ERROR,
+                    TaskApi.Status.STOPPED,
+                    TaskApi.Status.TERMINATING,
+                ]:
+                    logger.info(f"Model has stopped with status: {status}")
+                    break
+                if self._watcher_stop_event.wait(timeout=2):
+                    break
+        finally:
+            if self._watcher_task_id is None or (
+                self.model_api is None
+                or getattr(self.model_api, "task_id", None) == self._watcher_task_id
+            ):
                 for stop_cbs in self._stop_cbs:
-                    stop_cbs()
-                self._status_watcher = None
-                return
-            status = self.api.task.get_status(self.model_api.task_id)
-            logger.info(f"[WATCHER] Model status: {status}")
-            if not self.model_api or status in [
-                TaskApi.Status.FINISHED,
-                TaskApi.Status.ERROR,
-                TaskApi.Status.STOPPED,
-                TaskApi.Status.TERMINATING,
-            ]:
-                logger.info(f"Model has stopped with status: {status}")
-                for stop_cbs in self._stop_cbs:
-                    stop_cbs()
-                self._status_watcher = None
-                return
-            time.sleep(2)
+                    try:
+                        stop_cbs()
+                    except Exception as e:
+                        logger.error(f"Stop callback error: {e}", exc_info=True)
+            self._watcher_finished_event.set()
 
     def get_json_data(self) -> Dict[str, Any]:
         return {}
