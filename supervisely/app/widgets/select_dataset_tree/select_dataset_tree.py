@@ -117,6 +117,13 @@ class SelectDatasetTree(Widget):
         # Using environment variables to set the default values if they are not provided.
         self._project_id = project_id or env.project_id(raise_not_found=False)
         self._dataset_id = default_id or env.dataset_id(raise_not_found=False)
+        if self._project_id:
+            project_info = self._api.project.get_info_by_id(self._project_id)
+            if (
+                project_info.type not in [pt.value for pt in allowed_project_types]
+                and allowed_project_types is not None
+            ):
+                self._project_id = None
 
         self._multiselect = multiselect
         self._compact = compact
