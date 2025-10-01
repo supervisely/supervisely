@@ -1191,7 +1191,9 @@ class VideoApi(RemoveableBulkModuleApi):
                 if progress_cb is not None:
                     progress_cb(len(chunk))
 
-    def download_frames(self, video_id: int, frames: List[int], paths: List[str]) -> None:
+    def download_frames(
+        self, video_id: int, frames: List[int], paths: List[str], progress_cb=None
+    ) -> None:
         endpoint = "videos.bulk.download-frame"
         response: Response = self._api.get(
             endpoint,
@@ -1214,6 +1216,8 @@ class VideoApi(RemoveableBulkModuleApi):
                 if files[frame_n] is None:
                     file_path = file_paths[frame_n]
                     files[frame_n] = open(file_path, "wb")
+                    if progress_cb is not None:
+                        progress_cb(1)
                 f = files[frame_n]
                 f.write(part.content)
 
