@@ -157,3 +157,23 @@ class Card(Widget):
         :rtype: bool
         """
         return self._disabled["disabled"]
+
+    @property
+    def description(self) -> Optional[str]:
+        """Description of the card.
+
+        :return: Description of the card.
+        :rtype: Optional[str]
+        """
+        return self._description
+
+    @description.setter
+    def description(self, value: str) -> None:
+        """Sets the description of the card.
+
+        :param value: Description of the card.
+        :type value: str
+        """
+        self._description = value
+        StateJson()[self.widget_id]["description"] = self._description
+        StateJson().send_changes()
