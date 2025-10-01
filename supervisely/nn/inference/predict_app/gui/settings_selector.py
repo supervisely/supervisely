@@ -248,7 +248,7 @@ class Preview:
                 inference_settings=inference_settings,
                 tracking=tracking,
                 start_frame=frame_start,
-                frames_num=frames_number,
+                num_frames=frames_number,
                 tqdm=pbar,
             ) as session:
                 predictions: List[Prediction] = list(session)
