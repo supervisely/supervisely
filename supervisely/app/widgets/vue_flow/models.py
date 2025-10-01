@@ -57,7 +57,7 @@ class TooltipProperty(BaseModel):
 class NodeTooltip(BaseModel):
 
     description: Optional[str] = Field(default=None)
-    properties: List[TooltipProperty] = Field(default_factory=list)
+    properties: Dict[str, TooltipProperty] = Field(default_factory=dict)
     buttons: List[TooltipButton] = Field(default_factory=list)
 
 
@@ -105,7 +105,7 @@ class NodeSettings(BaseModel):
     type: Literal["project", "action", "queue"] = "action"
     icon: Optional[NodeIcon] = None
     previews: List[Dict[str, str]] = Field(default_factory=list)
-    badges: List[NodeBadge] = Field(default_factory=list)
+    badges: Dict[str, NodeBadge] = Field(default_factory=dict)
     tooltip: Optional[NodeTooltip] = Field(default_factory=NodeTooltip)
     queue_info: Optional[NodeQueueInfo] = Field(default_factory=NodeQueueInfo, alias="queueInfo")
     handles: List[Handle] = Field(default_factory=list)
