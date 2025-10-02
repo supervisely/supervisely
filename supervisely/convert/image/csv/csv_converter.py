@@ -89,7 +89,6 @@ class CSVConverter(ImageConverter):
 
         self._supports_links = True
         self._csv_reader = None
-        self._team_id = team_id() if self._upload_as_links else None
 
     def __str__(self):
         return AvailableImageConverters.CSV
