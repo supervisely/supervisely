@@ -24,6 +24,7 @@ from supervisely.io.fs import (
     get_file_name_with_ext,
     list_files_recursively,
 )
+from supervisely.io.env import team_id
 from supervisely.io.json import load_json_file
 from supervisely.project.project_settings import LabelingInterface
 
@@ -88,7 +89,7 @@ class CSVConverter(ImageConverter):
 
         self._supports_links = True
         self._csv_reader = None
-        self._team_id = None
+        self._team_id = team_id() if self._upload_as_links else None
 
     def __str__(self):
         return AvailableImageConverters.CSV
@@ -115,16 +116,18 @@ class CSVConverter(ImageConverter):
             return False
 
     def validate_format(self) -> bool:
-        if self.upload_as_links and self._supports_links:
-            for local_path, remote_path in self._remote_files_map.items():
-                self._api.remote_storage.download_path(remote_path, local_path)
-
         valid_files = list_files_recursively(self._input_data, self.key_file_ext)
 
         if len(valid_files) != 1:
             return False
 
         full_path = valid_files[0]
+
+        if self.upload_as_links and self._supports_links:
+            for local_path, remote_path in self._remote_files_map.items():
+                if local_path.endswith(full_path):
+                    self._api.storage.download(self._team_id, remote_path, local_path)
+                    break
 
         file_ext = get_file_ext(full_path)
         if file_ext in self.conversion_functions:
