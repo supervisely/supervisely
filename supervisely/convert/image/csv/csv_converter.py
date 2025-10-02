@@ -155,7 +155,7 @@ class CSVConverter(ImageConverter):
                         team_files = False
                     break
             if item_path is None:
-                logger.warn(f"Failed to find image path in row: {row}. Skipping.")
+                logger.warning(f"Failed to find image path in row: {row}. Skipping.")
                 continue
             ann_data = row.get("tag")
             item = CSVConverter.Item(
@@ -200,7 +200,7 @@ class CSVConverter(ImageConverter):
                 ann_json = csv_helper.rename_in_json(ann_json, renamed_classes, renamed_tags)
             return Annotation.from_json(ann_json, meta)
         except Exception as e:
-            logger.warn(f"Failed to convert annotation: {repr(e)}")
+            logger.warning(f"Failed to convert annotation: {repr(e)}")
             return item.create_empty_annotation()
 
     def process_remote_image(
@@ -217,19 +217,21 @@ class CSVConverter(ImageConverter):
         image_path = image_path.strip()
         if is_team_file:
             if not api.file.exists(team_id, image_path):
-                logger.warn(f"File {image_path} not found in Team Files. Skipping...")
+                logger.warning(f"File {image_path} not found in Team Files. Skipping...")
                 return None
             team_file_image_info = api.file.list(team_id, image_path)
             image_path = team_file_image_info[0]["fullStorageUrl"]
             if not image_path:
-                logger.warn(f"Failed to get full storage URL for file '{image_path}'. Skipping...")
+                logger.warning(
+                    f"Failed to get full storage URL for file '{image_path}'. Skipping..."
+                )
                 return None
 
         extension = os.path.splitext(image_path)[1]
         if not extension:
-            logger.warn(f"FYI: Image [{image_path}] doesn't have extension.")
+            logger.warning(f"FYI: Image [{image_path}] doesn't have extension.")
         elif extension.lower() not in SUPPORTED_IMG_EXTS:
-            logger.warn(
+            logger.warning(
                 f"Image [{image_path}] has unsupported extension [{extension}]. Skipping..."
             )
             return None
@@ -242,7 +244,7 @@ class CSVConverter(ImageConverter):
                 force_metadata_for_links=force_metadata,
             )
         except Exception:
-            logger.warn(f"Failed to upload image {image_name}. Skipping...")
+            logger.warning(f"Failed to link image {image_name}. Skipping...")
             return None
         if progress_cb is not None:
             progress_cb(1)
@@ -320,7 +322,7 @@ class CSVConverter(ImageConverter):
                     success = False
                     continue
                 if item.name not in info.name:
-                    logger.warn(
+                    logger.warning(
                         f"Batched image with name '{item.name}' doesn't match uploaded image name '{info.name}'"
                     )
                     success = False
@@ -347,4 +349,4 @@ class CSVConverter(ImageConverter):
         if success:
             logger.info(f"Dataset ID:'{dataset_id}' has been successfully uploaded.")
         else:
-            logger.warn(f"Dataset ID:'{dataset_id}' has been uploaded.")
+            logger.warning(f"Dataset ID:'{dataset_id}' has been uploaded.")
