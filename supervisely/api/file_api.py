@@ -44,6 +44,7 @@ from supervisely.io.json import load_json_file
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress, tqdm_sly
 
+
 class FileInfo(NamedTuple):
     """ """
 
@@ -61,6 +62,7 @@ class FileInfo(NamedTuple):
     updated_at: str
     full_storage_url: str
     is_dir: bool
+
 
 class FileApi(ModuleApiBase):
     """

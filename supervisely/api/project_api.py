@@ -65,6 +65,7 @@ from supervisely.project.project_type import (
     ProjectType,
 )
 
+
 class ProjectNotFound(Exception):
     """ """
 

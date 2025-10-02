@@ -410,6 +410,7 @@ class ImageInfo(NamedTuple):
         """
         return resize_image_url(self.full_storage_url)
 
+
 class ImageApi(RemoveableBulkModuleApi):
     """
     API for working with :class:`Image<supervisely.imaging.image>`. :class:`ImageApi<ImageApi>` object is immutable.
