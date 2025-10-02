@@ -78,14 +78,15 @@ class CSVConverter(ImageConverter):
     }
 
     def __init__(
-            self,
-            input_data: str,
-            labeling_interface: Optional[Union[LabelingInterface, str]],
-            upload_as_links: bool,
-            remote_files_map: Optional[Dict[str, str]] = None,
+        self,
+        input_data: str,
+        labeling_interface: Optional[Union[LabelingInterface, str]],
+        upload_as_links: bool,
+        remote_files_map: Optional[Dict[str, str]] = None,
     ):
         super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
 
+        self._supports_links = True
         self._csv_reader = None
         self._team_id = None
 
@@ -114,6 +115,10 @@ class CSVConverter(ImageConverter):
             return False
 
     def validate_format(self) -> bool:
+        if self.upload_as_links and self._supports_links:
+            for local_path, remote_path in self._remote_files_map.items():
+                self._api.remote_storage.download_path(remote_path, local_path)
+
         valid_files = list_files_recursively(self._input_data, self.key_file_ext)
 
         if len(valid_files) != 1:
