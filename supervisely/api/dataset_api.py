@@ -37,7 +37,6 @@ from supervisely.api.module_api import (
 )
 from supervisely.io.json import load_json_file
 from supervisely.project.project_type import ProjectType
-from supervisely._utils import get_dataset_storage_url
 
 if TYPE_CHECKING:
     from supervisely.project.project import ProjectMeta
@@ -99,27 +98,6 @@ class DatasetInfo(NamedTuple):
             res = abs_url(res)
         res = compress_image_url(url=res, height=200)
         return res
-
-    @property
-    def url_original(self):
-        """
-        Get Dataset original URL via storage-resources endpoint.
-
-        :return: Dataset original URL.
-        :rtype: :class:`str`
-        """
-
-        return get_dataset_storage_url(self.id, "original")
-
-    @property
-    def url_preview(self):
-        """
-        Get Dataset preview URL via storage-resources endpoint.
-
-        :return: Dataset preview URL.
-        :rtype: :class:`str`
-        """
-        return get_dataset_storage_url(self.id, "preview")
 
 
 class DatasetApi(UpdateableModule, RemoveableModuleApi):

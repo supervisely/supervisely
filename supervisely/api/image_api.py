@@ -95,7 +95,6 @@ from supervisely.project.project_type import (
     _MULTIVIEW_TAG_NAME,
 )
 from supervisely.sly_logger import logger
-from supervisely._utils import get_image_storage_url
 
 SUPPORTED_CONFLICT_RESOLUTIONS = ["skip", "rename", "replace"]
 API_DEFAULT_PER_PAGE = 500
@@ -410,27 +409,6 @@ class ImageInfo(NamedTuple):
         :rtype: :class:`str`
         """
         return resize_image_url(self.full_storage_url)
-
-    @property
-    def url_original(self):
-        """
-        Get Image original URL via storage-resources endpoint.
-
-        :return: Image original URL.
-        :rtype: :class:`str`
-        """
-        return get_image_storage_url(self.id, "original")
-
-    @property
-    def url_preview(self):
-        """
-        Get Image preview URL via storage-resources endpoint.
-
-        :return: Image preview URL.
-        :rtype: :class:`str`
-        """
-        return get_image_storage_url(self.id, "preview")
-
 
 class ImageApi(RemoveableBulkModuleApi):
     """

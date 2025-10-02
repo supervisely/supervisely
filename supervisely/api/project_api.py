@@ -64,7 +64,6 @@ from supervisely.project.project_type import (
     _MULTIVIEW_TAG_NAME,
     ProjectType,
 )
-from supervisely._utils import get_project_storage_url
 
 class ProjectNotFound(Exception):
     """ """
@@ -117,26 +116,6 @@ class ProjectInfo(NamedTuple):
                 res = abs_url(res)
             res = compress_image_url(url=res, height=200)
         return res
-
-    @property
-    def url_original(self):
-        """
-        Get Project original URL via storage-resources endpoint.
-
-        :return: Project original URL.
-        :rtype: :class:`str`
-        """
-        return get_project_storage_url(self.id, "original")
-
-    @property
-    def url_preview(self):
-        """
-        Get Project preview URL via storage-resources endpoint.
-
-        :return: Project preview URL.
-        :rtype: :class:`str`
-        """
-        return get_project_storage_url(self.id, "preview")
 
     @property
     def url(self):
