@@ -1,6 +1,7 @@
 import os
 import random
 import shutil
+import subprocess
 import threading
 from contextlib import contextmanager, nullcontext
 from pathlib import Path
@@ -64,9 +65,11 @@ class Preview:
         self.get_input_settings_fn = get_input_settings_fn
         self.get_settings_fn = get_settings_fn
         os.makedirs(self.preview_dir, exist_ok=True)
+        os.makedirs(Path(self.preview_dir, "annotated"), exist_ok=True)
         self.image_preview_path = None
         self.image_peview_url = None
         self.video_preview_path = None
+        self.video_preview_annotated_path = None
         self.video_peview_url = None
 
         self.progress_widget = Progress(show_percents=True, hide_on_finish=True)
@@ -125,6 +128,40 @@ class Preview:
     def select_item(self, item: str):
         self.select.set_value(item)
 
+    def _partial_download(self, video_id: int, duration: int, save_path: str, progress_cb=None):
+        duration_minutes = duration // 60
+        duration_hours = duration_minutes // 60
+        duration_minutes = duration_minutes % 60
+        duration_seconds = duration % 60
+        duration_str = f"{duration_hours:02}:{duration_minutes:02}:{duration_seconds:02}"
+        response = self.api.video._download(video_id, is_stream=True)
+        process = subprocess.Popen(
+            [
+                "ffmpeg",
+                "-i",
+                "pipe:0",
+                "-t",
+                duration_str,
+                "-c",
+                "copy",
+                save_path,
+            ],
+            stdin=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+
+        try:
+            for chunk in response.iter_content(chunk_size=8192):
+                process.stdin.write(chunk)
+                if progress_cb:
+                    progress_cb(len(chunk))
+        except (BrokenPipeError, IOError):
+            pass
+        finally:
+            process.stdin.close()
+            process.wait()
+            response.close()
+
     def _download_preview_item(self, with_progress: bool = False):
         input_settings = self.get_input_settings_fn()
         video_ids = input_settings.get("video_ids", None)
@@ -152,51 +189,33 @@ class Preview:
             self._current_item_id = None
             self.video_preview_path = None
             self.video_peview_url = None
+            self.video_preview_annotated_path = None
         else:
             video_id = random.choice(video_ids)
             video_id = video_ids[0]
             video_info = self.api.video.get_info_by_id(video_id)
-            frame_start = 0
             seconds = 5
             video_info = self.api.video.get_info_by_id(video_id)
-            preview_path = Path(self.preview_dir, video_info.name)
-            self.video_preview_path = preview_path
-            fps = int(video_info.frames_count / video_info.duration)
-            frames_number = min(video_info.frames_count, int(fps * seconds))
-            if video_info.frames_count > 30 * 60 * 5:
-                with (
-                    self.progress(message="Downloading video frames:", total=frames_number)
-                    if with_progress
-                    else nullcontext()
-                ) as pbar:
-                    paths = [
-                        f"/tmp/{i}.jpg" for i in range(frame_start, frame_start + frames_number)
-                    ]
-                    self.api.video.download_frames(
-                        video_id,
-                        frames=list(range(frame_start, frame_start + frames_number)),
-                        paths=paths,
-                        progress_cb=pbar.update if pbar else None,
-                    )
-                    frames_gen = (cv2.imread(p) for p in paths)
-                    create_from_frames(frames_gen, self.video_preview_path, fps=fps)
-            else:
-                try:
-                    size = int(video_info.file_meta["size"])
-                except:
-                    size = None
-                with (
-                    self.progress(message="Downloading video:", total=size)
-                    if with_progress and size
-                    else nullcontext()
-                ) as pbar:
-                    self.api.video.download_path(
-                        video_id,
-                        self.video_preview_path,
-                        progress_cb=pbar.update if pbar else None,
-                    )
+            video_path = Path(self.preview_dir, video_info.name)
+            self.video_preview_path = video_path
+            self.video_preview_annotated_path = Path(self.preview_dir, "annotated") / Path(
+                self.video_preview_path
+            ).relative_to(self.preview_dir)
+            try:
+                size = int(video_info.file_meta["size"])
+                size = int(size / video_info.duration * seconds)
+            except:
+                size = None
+            with (
+                self.progress("Downloading video:", total=size)
+                if with_progress and size
+                else nullcontext()
+            ) as pbar:
+                self._partial_download(
+                    video_id, seconds, str(self.video_preview_path), progress_cb=pbar.update
+                )
             self._current_item_id = video_id
-            self.video_peview_url = f"/static/preview/{video_info.name}"
+            self.video_peview_url = f"/static/preview/annotated/{video_info.name}"
 
     def set_image_preview(
         self,
@@ -253,6 +272,8 @@ class Preview:
             ) as session:
                 predictions: List[Prediction] = list(session)
 
+        if os.path.exists(self.video_preview_annotated_path):
+            os.remove(self.video_preview_annotated_path)
         if tracking:
             video_annotation = session.final_result.get("video_ann", {})
             if video_annotation is None:
@@ -269,11 +290,12 @@ class Preview:
             visualizer.visualize_video_annotation(
                 video_annotation,
                 source=self.video_preview_path,
-                output_path=self.video_preview_path,
+                output_path=self.video_preview_annotated_path,
             )
         else:
+            tmp_path = str(self.video_preview_path / "tmp")
             video_writer = cv2.VideoWriter(
-                str(self.video_preview_path / "tmp"),
+                tmp_path,
                 cv2.VideoWriter.fourcc(*"mp4v"),
                 fps,
                 (video_info.frame_width, video_info.frame_height),
@@ -289,7 +311,7 @@ class Preview:
                         img = frame
                     video_writer.write(img)
             video_writer.release()
-            shutil.move(str(self.video_preview_path / "tmp"), self.video_preview_path)
+            shutil.move(tmp_path, self.video_preview_annotated_path)
         self.video_player.set_video(self.video_peview_url)
         self.select_item(ProjectType.VIDEOS.value)
 
