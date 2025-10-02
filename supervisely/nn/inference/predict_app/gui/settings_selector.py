@@ -497,13 +497,24 @@ class SettingsSelector:
         ]
 
     def set_inference_settings(self, settings: Dict[str, Any]):
+        # TODO: Add set_tracking_settings
         if isinstance(settings, str):
             self.inference_settings.set_text(settings)
         else:
             self.inference_settings.set_text(yaml.safe_dump(settings))
 
     def get_inference_settings(self) -> Dict:
-        settings = yaml.safe_load(self.inference_settings.get_text())
+        text = self.inference_settings.get_text()
+        inference_settings_text = text.split("# Tracking settings")[0]
+        settings = yaml.safe_load(inference_settings_text)
+        if settings:
+            return settings
+        return {}
+
+    def get_tracking_settings(self) -> Dict:
+        text = self.inference_settings.get_text()
+        tracking_settings_text = text.split("# Tracking settings")[1]
+        settings = yaml.safe_load(tracking_settings_text)
         if settings:
             return settings
         return {}
@@ -515,6 +526,7 @@ class SettingsSelector:
             "model_prediction_suffix": self.model_prediction_suffix_input.get_value(),
             "predictions_mode": self.predictions_mode_selector.get_value(),
             "inference_settings": self.get_inference_settings(),
+            "tracking_settings": self.get_tracking_settings(),
         }
         if self.input_selector.get_settings().get("video_ids", None) is not None:
             settings["tracking"] = self.tracking_checkbox.is_checked()
