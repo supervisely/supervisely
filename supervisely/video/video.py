@@ -18,7 +18,7 @@ ALLOWED_VIDEO_EXTENSIONS = [".avi", ".mp4", ".3gp", ".flv", ".webm", ".wmv", ".m
 
 
 _SUPPORTED_CONTAINERS = {"mp4", "webm", "ogg", "ogv"}
-_SUPPORTED_CODECS = {"h264", "vp8", "vp9"}
+_SUPPORTED_CODECS = {"h264", "vp8", "vp9", "h265", "hevc", "av1"}
 
 
 class VideoExtensionError(Exception):

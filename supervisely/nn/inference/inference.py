@@ -45,7 +45,7 @@ from supervisely._utils import (
     rand_str,
 )
 from supervisely.annotation.annotation import Annotation
-from supervisely.annotation.label import Label
+from supervisely.annotation.label import Label, LabelingStatus
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.tag_collection import TagCollection
 from supervisely.annotation.tag_meta import TagMeta, TagValueType
@@ -863,6 +863,50 @@ class Inference:
                 self.gui.download_progress.hide()
         return local_model_files
 
+    def _fallback_download_custom_model_pt(self, deploy_params: dict):
+        """
+        Downloads the PyTorch checkpoint from Team Files if TensorRT is failed to load.
+        """
+        team_id = sly_env.team_id()
+
+        checkpoint_name = sly_fs.get_file_name(deploy_params["model_files"]["checkpoint"])
+        artifacts_dir = deploy_params["model_info"]["artifacts_dir"]
+        checkpoints_dir = os.path.join(artifacts_dir, "checkpoints")
+        checkpoint_ext = sly_fs.get_file_ext(deploy_params["model_info"]["checkpoints"][0])
+
+        pt_checkpoint_name = f"{checkpoint_name}{checkpoint_ext}"
+        remote_checkpoint_path = os.path.join(checkpoints_dir, pt_checkpoint_name)
+        local_checkpoint_path = os.path.join(self.model_dir, pt_checkpoint_name)
+
+        file_info = self.api.file.get_info_by_path(team_id, remote_checkpoint_path)
+        file_size = file_info.sizeb
+        if self.gui is not None:
+            with self.gui.download_progress(
+                message=f"Fallback. Downloading PyTorch checkpoint: '{pt_checkpoint_name}'",
+                total=file_size,
+                unit="bytes",
+                unit_scale=True,
+            ) as download_pbar:
+                self.gui.download_progress.show()
+                self.api.file.download(team_id, remote_checkpoint_path, local_checkpoint_path, progress_cb=download_pbar.update)
+                self.gui.download_progress.hide()
+        else:
+            self.api.file.download(team_id, remote_checkpoint_path, local_checkpoint_path)
+
+        return local_checkpoint_path
+
+    def _remove_exported_checkpoints(self, checkpoint_path: str):
+        """
+        Removes the exported checkpoints for provided PyTorch checkpoint path.
+        """
+        checkpoint_ext = sly_fs.get_file_ext(checkpoint_path)
+        onnx_path = checkpoint_path.replace(checkpoint_ext, ".onnx")
+        engine_path = checkpoint_path.replace(checkpoint_ext, ".engine")
+        if os.path.exists(onnx_path):
+            sly_fs.silent_remove(onnx_path)
+        if os.path.exists(engine_path):
+            sly_fs.silent_remove(engine_path)
+
     def _download_custom_model(self, model_files: dict, log_progress: bool = True):
         """
         Downloads the custom model data.
@@ -1060,7 +1104,41 @@ class Inference:
         self.runtime = deploy_params.get("runtime", RuntimeType.PYTORCH)
         self.model_precision = deploy_params.get("model_precision", ModelPrecision.FP32)
         self._hardware = get_hardware_info(self.device)
-        self.load_model(**deploy_params)
+
+        model_files = deploy_params.get("model_files", None)
+        if model_files is not None:
+            checkpoint_path = deploy_params["model_files"]["checkpoint"]
+            checkpoint_ext = sly_fs.get_file_ext(checkpoint_path)
+            if self.runtime == RuntimeType.TENSORRT and checkpoint_ext == ".engine":
+                try:
+                    self.load_model(**deploy_params)
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to load model with TensorRT. Downloading PyTorch to export to TensorRT. Error: {repr(e)}"
+                    )
+                    checkpoint_path = self._fallback_download_custom_model_pt(deploy_params)
+                    deploy_params["model_files"]["checkpoint"] = checkpoint_path
+                    logger.info("Exporting PyTorch model to TensorRT...")
+                    self._remove_exported_checkpoints(checkpoint_path)
+                    checkpoint_path = self.export_tensorrt(deploy_params)
+                    deploy_params["model_files"]["checkpoint"] = checkpoint_path
+                    self.load_model(**deploy_params)
+            if checkpoint_ext in (".pt", ".pth") and not self.runtime == RuntimeType.PYTORCH:
+                if self.runtime == RuntimeType.ONNXRUNTIME:
+                    logger.info("Exporting PyTorch model to ONNX...")
+                    self._remove_exported_checkpoints(checkpoint_path)
+                    checkpoint_path = self.export_onnx(deploy_params)
+                elif self.runtime == RuntimeType.TENSORRT:
+                    logger.info("Exporting PyTorch model to TensorRT...")
+                    self._remove_exported_checkpoints(checkpoint_path)
+                    checkpoint_path = self.export_tensorrt(deploy_params)
+                deploy_params["model_files"]["checkpoint"] = checkpoint_path
+                self.load_model(**deploy_params)
+            else:
+                self.load_model(**deploy_params)
+        else:
+            self.load_model(**deploy_params)
+
         self._model_served = True
         self._deploy_params = deploy_params
         if self._task_id is not None and is_production():
@@ -1269,16 +1347,16 @@ class Inference:
 
     def get_classes(self) -> List[str]:
         return self.classes
-    
+
     def _tracker_init(self, tracker: str, tracker_settings: dict):
         # Check if tracking is supported for this model
         info = self.get_info()
         tracking_support = info.get("tracking_on_videos_support", False)
-        
+
         if not tracking_support:
             logger.debug("Tracking is not supported for this model")
             return None
-        
+
         if tracker == "botsort":
             from supervisely.nn.tracker import BotSortTracker
             device = tracker_settings.get("device", self.device)
@@ -1288,7 +1366,6 @@ class Inference:
             if tracker is not None:
                 logger.warning(f"Unknown tracking type: {tracker}. Tracking is disabled.")
             return None
-
 
     def get_info(self) -> Dict[str, Any]:
         num_classes = None
@@ -1439,8 +1516,12 @@ class Inference:
                 # for example empty mask
                 continue
             if isinstance(label, list):
+                for lb in label:
+                    lb.status = LabelingStatus.AUTO
                 labels.extend(label)
                 continue
+
+            label.status = LabelingStatus.AUTO
             labels.append(label)
 
         # create annotation with correct image resolution
@@ -1872,7 +1953,7 @@ class Inference:
             n_frames = frames_reader.frames_count()
 
         self._tracker = self._tracker_init(state.get("tracker", None), state.get("tracker_settings", {}))
-        
+
         progress_total = (n_frames + step - 1) // step
         inference_request.set_stage(InferenceRequest.Stage.INFERENCE, 0, progress_total)
 
@@ -1896,32 +1977,31 @@ class Inference:
                 source=frames,
                 settings=inference_settings,
             )
-            
+
             if self._tracker is not None:
                 anns = self._apply_tracker_to_anns(frames, anns)
-                
+
             predictions = [
                 Prediction(ann, model_meta=self.model_meta, frame_index=frame_index)
                 for ann, frame_index in zip(anns, batch)
             ]
-            
+
             for pred, this_slides_data in zip(predictions, slides_data):
                 pred.extra_data["slides_data"] = this_slides_data
             batch_results = self._format_output(predictions)
-            
+
             inference_request.add_results(batch_results)
             inference_request.done(len(batch_results))
             logger.debug(f"Frames {batch[0]}-{batch[-1]} done.")
         video_ann_json = None
         if self._tracker is not None:
             inference_request.set_stage("Postprocess...", 0, 1)
-            
+
             video_ann_json = self._tracker.video_annotation.to_json()
             inference_request.done()
         result = {"ann": results, "video_ann": video_ann_json}
         inference_request.final_result = result.copy()
         return video_ann_json
-        
 
     def _inference_image_ids(
         self,
@@ -2071,7 +2151,7 @@ class Inference:
         video_id = get_value_for_keys(state, ["videoId", "video_id"], ignore_none=True)
         if video_id is None:
             raise ValueError("Video id is not provided")
-        video_info = api.video.get_info_by_id(video_id)
+        video_info = api.video.get_info_by_id(video_id, force_metadata_for_links=True)
         start_frame_index = get_value_for_keys(
             state, ["startFrameIndex", "start_frame_index", "start_frame"], ignore_none=True
         )
@@ -2102,7 +2182,7 @@ class Inference:
             n_frames = video_info.frames_count
 
         self._tracker = self._tracker_init(state.get("tracker", None), state.get("tracker_settings", {}))
-        
+
         logger.debug(
             f"Video info:",
             extra=dict(
@@ -2137,10 +2217,10 @@ class Inference:
                 source=frames,
                 settings=inference_settings,
             )
-            
+
             if self._tracker is not None:
                 anns = self._apply_tracker_to_anns(frames, anns)
-                
+
             predictions = [
                 Prediction(
                     ann,
@@ -2155,7 +2235,7 @@ class Inference:
             for pred, this_slides_data in zip(predictions, slides_data):
                 pred.extra_data["slides_data"] = this_slides_data
             batch_results = self._format_output(predictions)
-                    
+
             inference_request.add_results(batch_results)
             inference_request.done(len(batch_results))
             logger.debug(f"Frames {batch[0]}-{batch[-1]} done.")
@@ -2524,7 +2604,6 @@ class Inference:
         timer.daemon = True
         timer.start()
         self._freeze_timer = timer
-        logger.debug("Model will be frozen in %s seconds due to inactivity.", self._inactivity_timeout)
 
     def _set_served_callback(self):
         self._model_served = True
@@ -2637,6 +2716,10 @@ class Inference:
         for prediction in predictions:
             ds_predictions[prediction.dataset_id].append(prediction)
 
+        def update_labeling_status(ann: Annotation) -> Annotation:
+            for label in ann.labels:
+                label.status = LabelingStatus.AUTO
+
         def _new_name(image_info: ImageInfo):
             name = Path(image_info.name)
             stem = name.stem
@@ -2669,10 +2752,10 @@ class Inference:
             context.setdefault("created_dataset", {})[src_dataset_id] = created_dataset.id
             return created_dataset.id
 
-        created_names = []
         if context is None:
             context = {}
         for dataset_id, preds in ds_predictions.items():
+            created_names = set()
             if dst_project_id is not None:
                 # upload to the destination project
                 dst_dataset_id = _get_or_create_dataset(
@@ -2712,8 +2795,15 @@ class Inference:
                     iou=iou_merge_threshold,
                     meta=project_meta,
                 )
+
+                # Update labeling status of new predictions before upload
+                anns_with_nn_flags = []
                 for pred, ann in zip(preds, anns):
+                    update_labeling_status(ann)
                     pred.annotation = ann
+                    anns_with_nn_flags.append(ann)
+
+                anns = anns_with_nn_flags
 
                 context.setdefault("image_info", {})
                 missing = [
@@ -2741,7 +2831,7 @@ class Inference:
                     with_annotations=False,
                     save_source_date=False,
                 )
-                created_names.extend([image_info.name for image_info in dst_image_infos])
+                created_names.update([image_info.name for image_info in dst_image_infos])
                 api.annotation.upload_anns([image_info.id for image_info in dst_image_infos], anns)
             else:
                 # upload to the source dataset
@@ -2778,7 +2868,10 @@ class Inference:
                     iou=iou_merge_threshold,
                     meta=project_meta,
                 )
+
+                # Update labeling status of predicted labels before optional merge
                 for pred, ann in zip(preds, anns):
+                    update_labeling_status(ann)
                     pred.annotation = ann
 
                 if upload_mode in ["iou_merge", "append"]:
@@ -4141,14 +4234,14 @@ class Inference:
             matches = self._tracker.update(frame, ann)
             track_ids = [match["track_id"] for match in matches]
             tracked_labels = [match["label"] for match in matches]
-            
+
             filtered_annotation = ann.clone(
                 labels=tracked_labels,
                 custom_data=track_ids
             )
             updated_anns.append(filtered_annotation)
         return updated_anns
-                
+
     def _add_workflow_input(self, model_source: str, model_files: dict, model_info: dict):
         if model_source == ModelSource.PRETRAINED:
             checkpoint_url = model_info["meta"]["model_files"]["checkpoint"]
@@ -4198,6 +4291,11 @@ class Inference:
             return
         self.gui.model_source_tabs.set_active_tab(ModelSource.PRETRAINED)
 
+    def export_onnx(self, deploy_params: dict):
+        raise NotImplementedError("Have to be implemented in child class after inheritance")
+
+    def export_tensorrt(self, deploy_params: dict):
+        raise NotImplementedError("Have to be implemented in child class after inheritance")
 
 def _exclude_duplicated_predictions(
     api: Api,
@@ -4347,8 +4445,8 @@ def _get_log_extra_for_inference_request(
         "has_result": inference_request.final_result is not None,
         "pending_results": inference_request.pending_num(),
         "exception": inference_request.exception_json(),
-        "result": inference_request._final_result,
         "preparing_progress": progress,
+        "result": inference_request.final_result is not None,  # for backward compatibility
     }
     return log_extra
 
