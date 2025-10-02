@@ -33,8 +33,14 @@ from supervisely.nn.model.model_api import ModelAPI
 from supervisely.nn.model.prediction import Prediction
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import ProjectType
+from supervisely.video_annotation.frame_collection import Frame, FrameCollection
 from supervisely.video_annotation.key_id_map import KeyIdMap
-from supervisely.video_annotation.video_annotation import VideoAnnotation
+from supervisely.video_annotation.video_annotation import (
+    VideoAnnotation,
+    VideoFigure,
+    VideoObjectCollection,
+)
+from supervisely.video_annotation.video_figure import VideoObject
 
 
 class StepFlow:
@@ -750,7 +756,7 @@ class PredictAppGui:
 
         # Run prediction
         self.set_validator_text("Running prediction...", "info")
-        predictions = []
+        predictions: List[Prediction] = []
         self._is_running = True
         try:
             if input_video_ids:
@@ -775,10 +781,38 @@ class PredictAppGui:
                             if self._stop_flag:
                                 logger.info("Prediction stopped by user.")
                                 raise StopIteration("Stopped by user.")
-                    prediction_video_annotation: VideoAnnotation = VideoAnnotation.from_json(
-                        session.final_result["video_ann"],
-                        project_meta=project_meta,
-                    )
+
+                    if kwargs.get("tracking", False):
+                        prediction_video_annotation: VideoAnnotation = VideoAnnotation.from_json(
+                            session.final_result["video_ann"],
+                            project_meta=project_meta,
+                        )
+                    else:
+                        objects = {}
+                        frames = []
+                        for i, prediction in enumerate(predictions):
+                            figures = []
+                            for label in prediction.annotation.labels:
+                                obj_name = label.obj_class.name
+                                if not obj_name in objects:
+                                    obj_class = project_meta.get_obj_class(obj_name)
+                                    if obj_class is None:
+                                        continue
+                                    objects[obj_name] = VideoObject(obj_class)
+
+                                vid_object = objects[obj_name]
+                                if vid_object:
+                                    figures.append(
+                                        VideoFigure(vid_object, label.geometry, frame_index=i)
+                                    )
+                            frame = Frame(i, figures=figures)
+                            frames.append(frame)
+                        prediction_video_annotation = VideoAnnotation(
+                            img_size=(created_video.frame_height, created_video.frame_width),
+                            frames_count=created_video.frames_count,
+                            objects=VideoObjectCollection(list(objects.values())),
+                            frames=FrameCollection(frames),
+                        )
                     if upload_to_source_project:
                         if prediction_mode in [
                             AddPredictionsMode.REPLACE_EXISTING_LABELS,
