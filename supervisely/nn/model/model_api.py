@@ -72,6 +72,15 @@ class ModelAPI:
         else:
             return self._post("get_custom_inference_settings", {})["settings"]
 
+    def get_tracking_settings(self):
+        # @TODO: botsort hardcoded 
+        # Add dropdown selector for tracking algorithms later
+        if self.task_id is not None:
+            return self.api.task.send_request(self.task_id, "get_tracking_settings", {})["botsort"]
+        else:
+            return self._post("get_tracking_settings", {})["botsort"]
+
+
     def get_model_meta(self):
         if self.task_id is not None:
             return ProjectMeta.from_json(

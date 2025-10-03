@@ -498,10 +498,20 @@ class SettingsSelector:
 
     def set_inference_settings(self, settings: Dict[str, Any]):
         # TODO: Add set_tracking_settings
+        settings = "# Inference settings\n" + settings
         if isinstance(settings, str):
             self.inference_settings.set_text(settings)
         else:
             self.inference_settings.set_text(yaml.safe_dump(settings))
+
+    def set_tracking_settings(self, settings: Dict[str, Any]):
+        current_settings = self.inference_settings.get_text()
+        if isinstance(settings, str):
+            all_settings = current_settings + "\n\n# Tracking settings\n" + settings
+            self.inference_settings.set_text(all_settings)
+        else:
+            all_settings = current_settings + "\n\n# Tracking settings\n" + yaml.safe_dump(settings)
+            self.inference_settings.set_text(all_settings)    
 
     def get_inference_settings(self) -> Dict:
         text = self.inference_settings.get_text()

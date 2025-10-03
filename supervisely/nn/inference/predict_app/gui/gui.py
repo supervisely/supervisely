@@ -270,6 +270,9 @@ class PredictAppGui:
             inference_settings = model_api.get_settings()
             self.settings_selector.set_inference_settings(inference_settings)
 
+            tracking_settings = model_api.get_tracking_settings()
+            self.settings_selector.set_tracking_settings(tracking_settings)
+
         def reset_entity_meta():
             empty_meta = ProjectMeta()
             if self.classes_selector is not None:
