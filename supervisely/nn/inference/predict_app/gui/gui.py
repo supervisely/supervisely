@@ -270,8 +270,9 @@ class PredictAppGui:
             inference_settings = model_api.get_settings()
             self.settings_selector.set_inference_settings(inference_settings)
 
-            tracking_settings = model_api.get_tracking_settings()
-            self.settings_selector.set_tracking_settings(tracking_settings)
+            if self.input_selector.radio.get_value() == ProjectType.VIDEOS.value:
+                tracking_settings = model_api.get_tracking_settings()
+                self.settings_selector.set_tracking_settings(tracking_settings)
 
         def reset_entity_meta():
             empty_meta = ProjectMeta()
