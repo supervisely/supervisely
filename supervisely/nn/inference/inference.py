@@ -193,7 +193,6 @@ class Inference:
         self._task_id = None
         self._sliding_window_mode = sliding_window_mode
         self._autostart_delay_time = 5 * 60  # 5 min
-        self._tracker = None
         self._hardware: str = None
         if custom_inference_settings is None:
             if self.INFERENCE_SETTINGS is not None:
@@ -1400,6 +1399,41 @@ class Inference:
         }
 
     # pylint: enable=method-hidden
+    
+    def get_tracking_settings(self) -> Dict[str, Dict[str, Any]]:
+        """
+        Get default parameters for all available tracking algorithms.
+        
+        Returns:
+            {"botsort": {"track_high_thresh": 0.6, ...}}
+            Empty dict if tracking not supported.
+        """
+        info = self.get_info()
+        trackers_params = {}
+        
+        tracking_support = info.get("tracking_on_videos_support")
+        if not tracking_support:
+            return trackers_params
+        
+        tracking_algorithms = info.get("tracking_algorithms", [])
+        
+        for tracker_name in tracking_algorithms:
+            try:
+                if tracker_name == "botsort":
+                    from supervisely.nn.tracker import BotSortTracker
+                    trackers_params[tracker_name] = BotSortTracker.get_default_params()
+                # Add other trackers here as elif blocks
+                else:
+                    logger.debug(f"Tracker '{tracker_name}' not implemented")
+            except Exception as e:
+                logger.warning(f"Failed to get params for '{tracker_name}': {e}")
+                
+        INTERNAL_FIELDS = {"device", "fps"}
+        for tracker_name, params in trackers_params.items():
+            trackers_params[tracker_name] = {
+                k: v for k, v in params.items() if k not in INTERNAL_FIELDS
+                }
+        return trackers_params
 
     def get_human_readable_info(self, replace_none_with: Optional[str] = None):
         hr_info = {}
@@ -1952,7 +1986,7 @@ class Inference:
         else:
             n_frames = frames_reader.frames_count()
 
-        self._tracker = self._tracker_init(state.get("tracker", None), state.get("tracker_settings", {}))
+        inference_request.tracker = self._tracker_init(state.get("tracker", None), state.get("tracker_settings", {}))
 
         progress_total = (n_frames + step - 1) // step
         inference_request.set_stage(InferenceRequest.Stage.INFERENCE, 0, progress_total)
@@ -1978,8 +2012,8 @@ class Inference:
                 settings=inference_settings,
             )
 
-            if self._tracker is not None:
-                anns = self._apply_tracker_to_anns(frames, anns)
+            if inference_request.tracker is not None:
+                anns = self._apply_tracker_to_anns(frames, anns, inference_request.tracker)
 
             predictions = [
                 Prediction(ann, model_meta=self.model_meta, frame_index=frame_index)
@@ -1994,10 +2028,9 @@ class Inference:
             inference_request.done(len(batch_results))
             logger.debug(f"Frames {batch[0]}-{batch[-1]} done.")
         video_ann_json = None
-        if self._tracker is not None:
+        if inference_request.tracker is not None:
             inference_request.set_stage("Postprocess...", 0, 1)
-
-            video_ann_json = self._tracker.video_annotation.to_json()
+            video_ann_json = inference_request.tracker.video_annotation.to_json()
             inference_request.done()
         result = {"ann": results, "video_ann": video_ann_json}
         inference_request.final_result = result.copy()
@@ -2181,7 +2214,7 @@ class Inference:
         else:
             n_frames = video_info.frames_count
 
-        self._tracker = self._tracker_init(state.get("tracker", None), state.get("tracker_settings", {}))
+        inference_request.tracker = self._tracker_init(state.get("tracker", None), state.get("tracker_settings", {}))
 
         logger.debug(
             f"Video info:",
@@ -2218,8 +2251,8 @@ class Inference:
                 settings=inference_settings,
             )
 
-            if self._tracker is not None:
-                anns = self._apply_tracker_to_anns(frames, anns)
+            if inference_request.tracker is not None:
+                anns = self._apply_tracker_to_anns(frames, anns, inference_request.tracker)
 
             predictions = [
                 Prediction(
@@ -2240,9 +2273,9 @@ class Inference:
             inference_request.done(len(batch_results))
             logger.debug(f"Frames {batch[0]}-{batch[-1]} done.")
         video_ann_json = None
-        if self._tracker is not None:
+        if inference_request.tracker is not None:
             inference_request.set_stage("Postprocess...", 0, 1)
-            video_ann_json = self._tracker.video_annotation.to_json()
+            video_ann_json = inference_request.tracker.video_annotation.to_json()
             inference_request.done()
         inference_request.final_result = {"video_ann": video_ann_json}
         return video_ann_json
@@ -3021,6 +3054,11 @@ class Inference:
         @self._check_serve_before_call
         def get_session_info(response: Response):
             return self.get_info()
+
+        @server.post("/get_tracking_settings")
+        @self._check_serve_before_call
+        def get_tracking_settings(response: Response):
+            return self.get_tracking_settings()
 
         @server.post("/get_custom_inference_settings")
         def get_custom_inference_settings():
@@ -4228,10 +4266,10 @@ class Inference:
                 self._args.draw,
             )
 
-    def _apply_tracker_to_anns(self, frames: List[np.ndarray], anns: List[Annotation]):
+    def _apply_tracker_to_anns(self, frames: List[np.ndarray], anns: List[Annotation], tracker):
         updated_anns = []
         for frame, ann in zip(frames, anns):
-            matches = self._tracker.update(frame, ann)
+            matches = tracker.update(frame, ann)
             track_ids = [match["track_id"] for match in matches]
             tracked_labels = [match["label"] for match in matches]
 
