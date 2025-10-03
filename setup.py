@@ -78,7 +78,7 @@ version = get_version()
 
 INSTALL_REQUIRES = [
     "cachetools>=4.2.3, <=5.5.0",
-    "numpy>=1.19, <2.0.0",
+    "numpy>=1.19, <2.3.3",
     "opencv-python>=4.6.0.66, <5.0.0.0",
     "PTable>=0.9.2, <1.0.0",
     "pillow>=5.4.1, <=10.4.0",
@@ -107,7 +107,7 @@ INSTALL_REQUIRES = [
     "MarkupSafe>=2.1.1, <3.0.0",
     "arel>=0.2.0, <1.0.0",
     "tqdm>=4.62.3, <5.0.0",
-    "pandas>=1.1.3, <=2.1.4",
+    "pandas>=1.1.3, <=2.3.2",
     "async_asgi_testclient",
     "PyYAML>=5.4.0",
     "distinctipy",
