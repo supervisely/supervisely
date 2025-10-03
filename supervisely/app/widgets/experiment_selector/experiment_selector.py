@@ -721,6 +721,14 @@ class ExperimentSelector(Widget):
     def enable(self):
         return self.table.enable()
 
+    @property
+    def loading(self):
+        return self.table.loading
+
+    @loading.setter
+    def loading(self, value: bool):
+        self.table.loading = value
+
     def get_json_data(self):
         return {}
 

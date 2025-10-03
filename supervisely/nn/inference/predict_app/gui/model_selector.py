@@ -5,7 +5,7 @@ from supervisely.app.widgets import Button, Card, Container, DeployModel, Text
 
 
 class ModelSelector:
-    title = "Select Model"
+    title = "Model"
     description = "Connect to deployed model or deploy new model"
     lock_message = "Select previous step to unlock"
 
@@ -36,9 +36,8 @@ class ModelSelector:
         # Base Widgets
         self.validator_text = Text("")
         self.validator_text.hide()
-        self.button = Button("Select")
         # Add widgets to display ------------ #
-        self.display_widgets.extend([self.validator_text, self.button])
+        self.display_widgets.extend([self.validator_text])
         # ----------------------------------- #
 
         # Card Layout
