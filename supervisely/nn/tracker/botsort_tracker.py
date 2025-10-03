@@ -54,8 +54,8 @@ class BotSortTracker(BaseTracker):
             self.settings.update(settings)
         
         args = SimpleNamespace(**self.settings)
-        device = self.device
         args.name = "BotSORT"
+        args.device = self.device
             
         self.tracker = BoTSORT(args=args)
         
