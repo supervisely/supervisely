@@ -75,7 +75,7 @@ class ObjectDetectionVisualizer(BaseVisualizer):
 
     def _create_widgets(self):
         # get cv task
-        # Modal Gellery
+        # Modal Gallery
         self.diff_modal = self._create_diff_modal_table()
         self.explore_modal = self._create_explore_modal_table(
             click_gallery_id=self.diff_modal.id, hover_text="Compare with GT"
