@@ -169,16 +169,26 @@ class Preview:
             project_id = input_settings.get("project_id", None)
             dataset_ids = input_settings.get("dataset_ids", None)
             if dataset_ids:
-                dataset_id = random.choice(dataset_ids)
+                images = []
+                candidate_ids = list(dataset_ids)
+                random.shuffle(candidate_ids)
+                dataset_id = None
+                for ds_id in candidate_ids:
+                    images = self.api.image.get_list(ds_id)
+                    if images:
+                        dataset_id = ds_id
+                        break
+                if not images:
+                    raise RuntimeError("No images found in the selected datasets")
             else:
                 datasets = self.api.dataset.get_list(project_id)
-            total_items = sum(ds.items_count for ds in datasets)
-            if total_items == 0:
-                raise RuntimeError("No images found in the selected datasets")
-            images = []
-            while not images:
-                dataset_id = random.choice(datasets).id
-                images = self.api.image.get_list(dataset_id)
+                total_items = sum(ds.items_count for ds in datasets)
+                if total_items == 0:
+                    raise RuntimeError("No images found in the selected datasets")
+                images = []
+                while not images:
+                    dataset_id = random.choice(datasets).id
+                    images = self.api.image.get_list(dataset_id)
             image_id = random.choice(images).id
             image_info = self.api.image.get_info_by_id(image_id)
             self.image_preview_path = Path(self.preview_dir, image_info.name)
