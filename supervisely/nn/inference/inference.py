@@ -3471,6 +3471,12 @@ class Inference:
             #     results.update(final_result)
             # return results
             return {"message": "Track task started."}
+        
+        @server.post("/track")
+        def track(self, api: Api, state: Dict, context: Dict):
+            fn = self.send_error_data(api, context)(self._tracking_by_detection)
+            self.inference_requests_manager.schedule_task(fn, api, context)
+            return {"message": "Track task started."}
 
         @server.post("/inference_project_id_async")
         def inference_project_id_async(response: Response, request: Request):
