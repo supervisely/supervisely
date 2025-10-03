@@ -255,6 +255,36 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         """
         return self._get_info_by_id(id, "tasks.info")
 
+    # @TODO: Remove?
+    def get_progress(self, task_id: int) -> int:
+        """
+        Get progress by task ID.
+        """
+        response = self._api.post(method="tasks.info", data={"id": task_id, "withProgress": True})
+        if response is not None:
+            response_json = response.json()
+            return response_json.get("progress", None)
+        return None
+
+    # @TODO: Rename?
+    def get_progress_widgets(self, task_id: int) -> int:
+        """
+        Get progress by task ID.
+        """
+        response = self._api.post(method="tasks.info", data={"id": task_id, "withProgress": True})
+        if response is not None:
+            response_json = response.json()
+
+            settings = response_json.get("settings", {})
+            if settings:
+                custom_data = settings.get("customData", {})
+                if custom_data:
+                    data = custom_data.get("data", [])
+                    if data:
+                        progress_items_data = [data[item] for item in data if item.startswith("Progress")]
+                        return progress_items_data
+        return None
+
     def get_status(self, task_id: int) -> Status:
         """
         Check status of Task by ID.

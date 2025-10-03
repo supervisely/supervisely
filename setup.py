@@ -49,6 +49,7 @@ def get_release_commit(tag: str):
 
 
 def get_version():
+    return "v6.73.417+solution-wip-3"
     version = os.getenv("RELEASE_VERSION", None)
     if version is not None:
         return version
@@ -202,6 +203,7 @@ setup(
             "imaging/colors.json.gz",
             "nn/benchmark/*/*.yaml",
             "nn/tracker/botsort/botsort_config.yaml",
+            "app/widgets/vue_flow/vue_flow_ui/**/*",
         ],
     },
     entry_points={

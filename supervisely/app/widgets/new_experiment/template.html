@@ -1,0 +1,19 @@
+<div>
+    <sly-new-experiment-wizard :visible="state.{{{widget.widget_id}}}.visible"
+        :user-id="data.{{{widget.widget_id}}}.userId" :team-id="data.{{{widget.widget_id}}}.teamId" :workspace-id="data.{{{widget.widget_id}}}.workspaceId" {% if
+        widget._visible_handled==true %}
+        @update:visible="state.{{{widget.widget_id}}}.visible = $event; post('/{{{widget.widget_id}}}/visible_changed_cb')"
+        {% else %} @update:visible="state.{{{widget.widget_id}}}.visible = $event" {% endif %} {% if
+        widget._app_started_handled==true %} @app-started="({ appId, taskId, modelId }) => {
+            state.{{{widget.widget_id}}}.appId = appId;
+            state.{{{widget.widget_id}}}.taskId = taskId;
+            state.{{{widget.widget_id}}}.modelId = modelId;
+            post('/{{{widget.widget_id}}}/app_started_cb');
+        }" {% else %} @app-started="({ appId, taskId, modelId }) => {
+            state.{{{widget.widget_id}}}.appId = appId;
+            state.{{{widget.widget_id}}}.taskId = taskId;
+            state.{{{widget.widget_id}}}.modelId = modelId;
+        }" {% endif %} :options="data.{{{widget.widget_id}}}.options" :initial-form="state.{{{widget.widget_id}}}.form" :step="state.{{{widget.widget_id}}}.step"
+        @click.native.stop>
+    </sly-new-experiment-wizard>
+</div>

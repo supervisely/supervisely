@@ -1277,3 +1277,40 @@ def call_on_autostart(
 
 def get_name_from_env(default="Supervisely App"):
     return os.environ.get("APP_NAME", default)
+
+
+def restore_data_state(task_id: Optional[int] = None):
+    """Restore data and state from task if application is restarted."""
+
+    from supervisely.app.content import DataJson, Field, StateJson
+
+    logger.debug("Checking if previous data state exists...")
+    api = Api()
+    if task_id is None:
+        task_id = sly_env.task_id()
+
+    task_info = api.task.get_info_by_id(task_id)
+    if task_info is None:
+        raise ValueError(f"Task with ID {task_id} not found.")
+
+    if not task_info.get("settings"):
+        logger.debug(f"Task Info (ID: {task_id}) has no settings field.")
+        return
+
+    if not task_info["settings"].get("customData"):
+        logger.debug(f"Task Info (ID: {task_id}) has no customData field in settings. ")
+        return
+
+    old_data = task_info["settings"]["customData"].get(Field.DATA.value)
+    if not old_data:
+        logger.debug(f"Not found DATA in Task Info (ID: {task_id}). Nothing to restore.")
+    else:
+        DataJson().update(old_data)
+        DataJson().send_changes()
+
+    old_state = task_info["settings"]["customData"].get(Field.STATE.value)
+    if not old_state:
+        logger.debug(f"Not found STATE in Task Info (ID: {task_id}). Nothing to restore.")
+    else:
+        StateJson().update(old_state)
+        StateJson().send_changes()

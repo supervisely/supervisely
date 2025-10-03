@@ -1,0 +1,284 @@
+from __future__ import annotations
+
+import os
+from typing import Callable, Dict, Optional, Union
+
+from supervisely.api.api import Api
+from supervisely.api.project_api import ProjectInfo
+from supervisely.io.env import project_id as env_project_id
+from supervisely.solution.base_node import BaseCardNode
+from supervisely.solution.engine.models import (
+    EmbeddingsStatusMessage,
+    ImportFinishedMessage,
+    SampleFinishedMessage,
+)
+from supervisely.solution.utils import get_interval_period
+
+from .automation import SmartSamplingAutomation
+from .gui import SamplingMode, SmartSamplingGUI
+from .history import SmartSamplingTasksHistory
+
+
+class SmartSamplingNode(BaseCardNode):
+    PROGRESS_BADGE_KEY = "Sampling"
+    TITLE = "Smart Sampling"
+    DESCRIPTION = "Selects a data sample from the input project and copies it to the labeling project. Supports various sampling strategies: random, k-means clustering, diversity-based, or using embeddings precomputed by the “AI Index” node for smarter selection."
+    ICON = "mdi mdi-image-multiple"
+    ICON_COLOR = "#1976D2"
+    ICON_BG_COLOR = "#E3F2FD"
+
+    def __init__(self, project_id: int = None, dst_project: int = None, *args, **kwargs):
+        """Node for sampling data from the input project and copying it to the labeling project."""
+        self.api = Api.from_env()
+        self.project_id = project_id or env_project_id()
+        self.dst_project = dst_project or os.getenv("LABELING_PROJECT_ID")
+        self.project = self.api.project.get_info_by_id(project_id)
+        self._click_handled = True
+        self._embeddings_ready = False
+
+        # --- core blocks --------------------------------------------------------
+        self.gui = SmartSamplingGUI(project=self.project, dst_project_id=dst_project)
+        self.modal_content = self.gui.content
+        self.automation = SmartSamplingAutomation()
+        self.history = SmartSamplingTasksHistory(
+            self.api, project_id=self.project_id, dst_project_id=self.dst_project
+        )
+
+        # --- init node ------------------------------------------------------
+        title = kwargs.pop("title", self.TITLE)
+        description = kwargs.pop("description", self.DESCRIPTION)
+        icon = kwargs.pop("icon", self.ICON)
+        icon_color = kwargs.pop("icon_color", self.ICON_COLOR)
+        icon_bg_color = kwargs.pop("icon_bg_color", self.ICON_BG_COLOR)
+        super().__init__(
+            title=title,
+            description=description,
+            icon=icon,
+            icon_color=icon_color,
+            icon_bg_color=icon_bg_color,
+            *args,
+            **kwargs,
+        )
+
+        # --- events -------------------------------------------------------------
+        self._update_widgets()
+
+        @self.click
+        def on_sampling_setup_btn_click():
+            """Show the sampling settings modal."""
+            self.gui.open_modal()
+            self._configure_button_status_by_sampling_mode()
+
+        @self.gui.save_settings_button.click
+        def on_save_settings_click():
+            self.gui.close_modal()
+            self._update_widgets()
+
+        @self.gui.run_button.click
+        def on_run_button_click():
+            self.gui.close_modal()
+            self.gui.show_status_text()
+            self.gui.set_status_text("Sampling is in progress...", "info")
+            self.run()
+            self.gui.hide_status_text()
+
+        @self.automation.apply_button.click
+        def on_apply_automation_click():
+            self.automation.modal.hide()
+            self.apply_automation()
+
+        @self.gui.sampling_mode.value_changed
+        def on_sampling_mode_change(value: str):
+            """Update the sampling settings based on the selected mode."""
+            self.gui.collapse_preview()
+            self.gui.preview_gallery.clean_up()
+            self._configure_button_status_by_sampling_mode()
+
+        @self.gui.preview_button.click
+        def preview_button_clicked():
+            self.gui.hide_status_text()
+            self.gui.uncollapse_preview()
+            self.gui.preview_gallery.loading = True
+            sampling_settings = self.gui.get_settings()
+            if sampling_settings.get("sample_size", 0) > 6:
+                sampling_settings["sample_size"] = 6
+            if sampling_settings.get("limit", 0) > 6:
+                sampling_settings["limit"] = 6
+
+            diffs = self.history.calculate_differences()
+            sampled_images = self.gui._sample(diffs, sampling_settings)
+            self.gui._update_gallery(sampled_images)
+            self.gui.preview_gallery.loading = False
+
+    def _get_tooltip_buttons(self):
+        return [self.history.open_modal_button, self.automation.open_modal_button]
+
+    def configure_automation(self, *args, **kwargs):
+        self.automation.func = self.run
+
+    # ------------------------------------------------------------------
+    # Handels ----------------------------------------------------------
+    # ------------------------------------------------------------------
+    def _get_handles(self):
+        return [
+            {
+                "id": "project_updated",
+                "type": "target",
+                "position": "top",
+                "connectable": True,
+            },
+            {
+                "id": "embedding_status_response",
+                "type": "target",
+                "position": "left",
+                "connectable": True,
+            },
+            {
+                "id": "sampling_finished",
+                "type": "source",
+                "position": "bottom",
+                "connectable": True,
+            },
+            {
+                "id": "start_pre_labeling",
+                "type": "source",
+                "position": "right",
+                "connectable": True,
+            },
+        ]
+
+    # ------------------------------------------------------------------
+    # Automation -------------------------------------------------------
+    # ------------------------------------------------------------------
+    def apply_automation(self):
+        enabled, _, _, sec = self.automation.get_details()
+        self.show_automation_info(enabled, sec)
+        self.automation.apply(func=self.run)
+
+    def show_automation_info(self, enabled, sec):
+        period, interval = get_interval_period(sec)
+        if enabled is True:
+            self.show_automation_badge()
+            self.update_property("Run every", f"{interval} {period}", highlight=True)
+        else:
+            self.hide_automation_badge()
+            self.remove_property_by_key("Run every")
+
+    def update_automation_widgets(self):
+        enabled, _, _, sec = self.automation.get_details()
+        self.automation.save_details(enabled, sec)
+        self.show_automation_info(enabled, sec)
+
+    # ------------------------------------------------------------------
+    # Events -----------------------------------------------------------
+    # ------------------------------------------------------------------
+    def _available_publish_methods(self) -> Dict[str, Callable]:
+        """Returns a dictionary of methods that can be used for publishing events."""
+        return {
+            "sampling_finished": self._send_sampling_finished_message,
+            "start_pre_labeling": self._send_start_pre_labeling_message,
+        }
+
+    def _available_subscribe_methods(self) -> Dict[str, Callable]:
+        """Returns a dictionary of methods that can be used for subscribing to events."""
+        return {
+            "project_updated": self._update_widgets,
+            "embedding_status_response": self._process_embeddings_status_message,
+        }
+
+    def _send_sampling_finished_message(
+        self, src: dict, dst: dict, items_count: int
+    ) -> SampleFinishedMessage:
+        return SampleFinishedMessage(items_count=items_count, success=True, src=src, dst=dst)
+
+    def _send_start_pre_labeling_message(
+        self, src: dict, dst: dict, items_count: int
+    ) -> SampleFinishedMessage:
+        return SampleFinishedMessage(items_count=items_count, success=True, src=src, dst=dst)
+
+    def _send_output_message(self, src: dict, dst: dict, items_count: int) -> None:
+        self._send_sampling_finished_message(src=src, dst=dst, items_count=items_count)
+        self._send_start_pre_labeling_message(src=src, dst=dst, items_count=items_count)
+
+    # callback method (accepts Message object)
+    def _update_widgets(self) -> None:
+        """Update the sampling inputs based on the difference."""
+        self.project = self.api.project.get_info_by_id(self.project_id)
+        self.items_count = self.project.items_count
+        self.gui.set_total_num_text(self.items_count)
+        sampling_settings = self.gui.get_settings()
+
+        diff = self.gui.calculate_diff_count(self.history.calculate_differences())
+        self.gui.update_widgets(diff, sampling_settings)
+
+        if diff == 0:
+            self.remove_badge_by_key("New Data")
+        else:
+            self.update_badge_by_key("New Data", str(diff), "info")
+        self.update_property("New Data", str(diff))
+
+        mode = sampling_settings.get("mode", SamplingMode.RANDOM.value)
+        self.update_property("mode", mode)
+        if mode in [SamplingMode.RANDOM.value, SamplingMode.DIVERSE.value]:
+            sample_size = sampling_settings.get("sample_size", 0)
+            self.update_property("Sample size", str(sample_size))
+        elif mode == SamplingMode.AI_SEARCH.value:
+            prompt = sampling_settings.get("prompt", "")
+            limit = sampling_settings.get("limit", 0)
+            threshold = sampling_settings.get("threshold", 0.05)
+            self.update_property("Prompt", prompt)
+            self.update_property("Limit", str(limit))
+            self.update_property("Threshold", f"{threshold:.2f}")
+
+    # ------------------------------------------------------------------
+    # Methods --------------------------------------------------------
+    # ------------------------------------------------------------------
+    def _configure_button_status_by_sampling_mode(self):
+        """Send message to check embeddings status."""
+        if (
+            self.gui.sampling_mode.get_value() == SamplingMode.RANDOM.value
+            or self._embeddings_ready
+        ):
+            self.gui.preview_button.enable()
+            self.gui.run_button.enable()
+        else:
+            self.gui.preview_button.disable()
+            self.gui.run_button.disable()
+
+    def _process_embeddings_status_message(self, message: EmbeddingsStatusMessage) -> None:
+        """Process the embeddings status message."""
+        is_ready = message.status
+        self._embeddings_ready = is_ready
+        if is_ready or self.gui.sampling_mode.get_value() == SamplingMode.RANDOM.value:
+            self.gui.preview_button.enable()
+            self.gui.run_button.enable()
+            self.gui.hide_status_text()
+        else:
+            self.gui.preview_button.disable()
+            self.gui.run_button.disable()
+            self.gui.set_status_text("Embeddings are being prepared. Please wait...", "warning")
+
+    # ------------------------------------------------------------------
+    # Run --------------------------------------------------------------
+    # ------------------------------------------------------------------
+    def run(self) -> None:
+        try:
+            self.show_in_progress_badge("Sampling")
+            diffs = self.history.calculate_differences()
+            task_id, status, src = self.gui.run(diffs)
+            if src is not None:
+                dst = self.history._get_uploaded_ids(self.dst_project, task_id)
+                images_count = sum(len(imgs) for imgs in src.values())
+            else:
+                dst = {}
+                images_count = 0
+            settings = self.gui.get_settings()
+            self.history.add_task(task_id, settings, images_count, status)
+            self._update_widgets()
+            if images_count > 0:
+                self.history._add_sampled_images(task_id, src)
+                self._send_output_message(src=src, dst=dst, items_count=images_count)
+        except Exception as e:
+            raise e
+        finally:
+            self.hide_in_progress_badge("Sampling")
