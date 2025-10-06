@@ -3,6 +3,8 @@ from typing import List, Union
 
 import numpy as np
 
+from supervisely.api.api import Api
+
 
 class Projection(ABC):
     """
@@ -64,15 +66,21 @@ class Projection(ABC):
                 for test_dim in range(4, dim, -1):
                     if points.shape[1] == test_dim:
                         new_shape = test_dim - 1
-                        assert np.array_equal(points[:, new_shape], np.ones(points.shape[0]))
+                        assert np.array_equal(
+                            points[:, new_shape], np.ones(points.shape[0])
+                        )
                         points = points[:, 0:new_shape]
 
             if concatenate and points.shape[1] == (dim - 1):
-                points = np.concatenate((np.array(points), np.ones((points.shape[0], 1))), axis=1)
+                points = np.concatenate(
+                    (np.array(points), np.ones((points.shape[0], 1))), axis=1
+                )
 
             if points.shape[1] != dim:
                 raise AssertionError(
-                    "Points.shape[1] == dim failed ({} != {})".format(points.shape[1], dim)
+                    "Points.shape[1] == dim failed ({} != {})".format(
+                        points.shape[1], dim
+                    )
                 )
             return points
         except AssertionError as e:
@@ -92,7 +100,13 @@ class SphericalProjection(Projection):
             focal_length if isinstance(focal_length, (float, int)) else focal_length[0]
         )
 
-    def project_3d_to_2d(self, cam_points: Union[np.ndarray, List], invalid_value=np.nan):
+    @property
+    def name(self):
+        return "spherical_equidist"
+
+    def project_3d_to_2d(
+        self, cam_points: Union[np.ndarray, List], invalid_value=np.nan
+    ):
         camera_points = super().ensure_point_list(points=cam_points, dim=3)
 
         r = np.linalg.norm(camera_points, axis=1)
@@ -105,7 +119,9 @@ class SphericalProjection(Projection):
         uv[r == 0] = invalid_value
         return uv
 
-    def project_2d_to_3d(self, image_points: Union[np.ndarray, List], norms: Union[np.ndarray, List]):
+    def project_2d_to_3d(
+        self, image_points: Union[np.ndarray, List], norms: Union[np.ndarray, List]
+    ):
         image_points = super().ensure_point_list(points=image_points, dim=2)
         norms = super().ensure_point_list(points=norms, dim=1)
 
@@ -122,26 +138,37 @@ class SphericalProjection(Projection):
 class CylindricalProjection(Projection):
     """Projection model for cylindrical coordinates, where 3D points are projected onto a cylinder."""
 
-    def __init__(self, focal_length: Union[float, list]):
+    def __init__(self, focal_length: Union[float, int, list]):
         self.focal_length = (
             focal_length if isinstance(focal_length, (float, int)) else focal_length[0]
         )
 
-    def project_3d_to_2d(self, cam_points: Union[np.ndarray, List], invalid_value=np.nan):
+    @property
+    def name(self):
+        return "cylindrical_equidist"
+
+    def project_3d_to_2d(
+        self, cam_points: Union[np.ndarray, List], invalid_value=np.nan
+    ):
         camera_points = super().ensure_point_list(cam_points, dim=3)
 
         theta = np.arctan2(camera_points.T[0], camera_points.T[2])
         chi = np.sqrt(
-            camera_points.T[0] * camera_points.T[0] + camera_points.T[2] * camera_points.T[2]
+            camera_points.T[0] * camera_points.T[0]
+            + camera_points.T[2] * camera_points.T[2]
         )
 
         uv = np.zeros((camera_points.shape[0], 2))
         uv.T[0] = self.focal_length * theta
-        uv.T[1] = self.focal_length * camera_points.T[1] * np.divide(1, chi, where=(chi != 0))
+        uv.T[1] = (
+            self.focal_length * camera_points.T[1] * np.divide(1, chi, where=(chi != 0))
+        )
         uv[chi == 0] = invalid_value
         return uv
 
-    def project_2d_to_3d(self, image_points: Union[np.ndarray, List], norms: Union[np.ndarray, List]):
+    def project_2d_to_3d(
+        self, image_points: Union[np.ndarray, List], norms: Union[np.ndarray, List]
+    ):
         image_points = super().ensure_point_list(points=image_points, dim=2)
         norms = super().ensure_point_list(points=norms, dim=1)
 
@@ -150,7 +177,10 @@ class CylindricalProjection(Projection):
         theta = image_points.T[0] / self.focal_length
         scale = np.divide(
             norms.flat,
-            np.sqrt(image_points.T[1] * image_points.T[1] + self.focal_length * self.focal_length),
+            np.sqrt(
+                image_points.T[1] * image_points.T[1]
+                + self.focal_length * self.focal_length
+            ),
         )
         outs.T[0] = self.focal_length * np.sin(theta) * scale
         outs.T[1] = image_points.T[1] * scale
@@ -165,20 +195,31 @@ class RadialPolyCamProjection(Projection):
         self.coefficients = np.asarray(distortion_params)
         self.power = np.array([np.arange(start=1, stop=self.coefficients.size + 1)]).T
 
-    def project_3d_to_2d(self, cam_points: Union[np.ndarray, List], invalid_value: float=np.nan):
+    @property
+    def name(self):
+        return "radial_polycam"
+
+    def project_3d_to_2d(
+        self, cam_points: Union[np.ndarray, List], invalid_value: float = np.nan
+    ):
         camera_points = super().ensure_point_list(points=cam_points, dim=3)
         chi = np.sqrt(
-            camera_points.T[0] * camera_points.T[0] + camera_points.T[1] * camera_points.T[1]
+            camera_points.T[0] * camera_points.T[0]
+            + camera_points.T[1] * camera_points.T[1]
         )
         theta = np.pi / 2.0 - np.arctan2(camera_points.T[2], chi)
         rho = self._theta_to_rho(theta)
-        lens_points = np.divide(rho, chi, where=(chi != 0))[:, np.newaxis] * camera_points[:, 0:2]
+        lens_points = (
+            np.divide(rho, chi, where=(chi != 0))[:, np.newaxis] * camera_points[:, 0:2]
+        )
 
         # set (0, 0, 0) = np.nan
         lens_points[(chi == 0) & (cam_points[:, 2] == 0)] = invalid_value
         return lens_points
 
-    def project_2d_to_3d(self, lens_points: Union[np.ndarray, List], norms: Union[np.ndarray, List]):
+    def project_2d_to_3d(
+        self, lens_points: Union[np.ndarray, List], norms: Union[np.ndarray, List]
+    ):
         lens_points = super().ensure_point_list(points=lens_points, dim=2)
         norms = super().ensure_point_list(points=norms, dim=1).reshape(norms.size)
 
@@ -215,7 +256,7 @@ class Camera:
         principle_point: np.ndarray,
         aspect_ratio: float = 1.0,
     ):
-        self.lens = lens
+        self._lens = lens
         self.size = np.array([size[0], size[1]], dtype=int)
         pose = np.eye(4)
         pose[0:3, 3] = translation
@@ -223,55 +264,69 @@ class Camera:
         self._pose = np.asarray(pose, dtype=float)
         self._inv_pose = np.linalg.inv(self._pose)
         self._principle_point = (
-            0.5 * self.size + np.array([principle_point[0], principle_point[1]], dtype=float) - 0.5
+            0.5 * self.size
+            + np.array([principle_point[0], principle_point[1]], dtype=float)
+            - 0.5
         )
         self._aspect_ratio = np.array([1, aspect_ratio], dtype=float)
 
     @property
-    def width(self):
+    def lens(self) -> Projection:
+        return self._lens
+
+    @property
+    def width(self) -> int:
         return self.size[0]
 
     @property
-    def height(self):
+    def height(self) -> int:
         return self.size[1]
 
     @property
-    def cx(self):
+    def cx(self) -> float:
         return self._principle_point[0]
 
     @property
-    def cy(self):
+    def cy(self) -> float:
         return self._principle_point[1]
 
     @property
-    def cx_offset(self):
+    def cx_offset(self) -> float:
         return self._principle_point[0] - 0.5 * self.size[0] + 0.5
 
     @property
-    def cy_offset(self):
+    def cy_offset(self) -> float:
         return self._principle_point[1] - 0.5 * self.size[1] + 0.5
 
     @property
-    def aspect_ratio(self):
+    def aspect_ratio(self) -> float:
         return self._aspect_ratio[1]
 
     @property
-    def rotation_matrix(self):
+    def rotation_matrix(self) -> np.ndarray:
         return self._pose[0:3, 0:3]
 
     @property
-    def translation_vector(self):
+    def translation_vector(self) -> np.ndarray:
         return self._pose[0:3, 3]
 
-    def project_3d_to_2d(self, world_points: np.ndarray, do_clip=False, invalid_value=np.nan):
+    def project_3d_to_2d(
+        self, world_points: np.ndarray, do_clip=False, invalid_value=np.nan
+    ):
         world_points = Projection.ensure_point_list(points=world_points, dim=4)
 
         camera_points = world_points @ self._inv_pose.T
-        lens_points = self.lens.project_3d_to_2d(camera_points[:, 0:3], invalid_value=invalid_value)
+        lens_points = self.lens.project_3d_to_2d(
+            camera_points[:, 0:3], invalid_value=invalid_value
+        )
         screen_points = (lens_points * self._aspect_ratio) + self._principle_point
-        return self._apply_clip(screen_points, screen_points) if do_clip else screen_points
+        return (
+            self._apply_clip(screen_points, screen_points) if do_clip else screen_points
+        )
 
-    def project_2d_to_3d(self, screen_points: np.ndarray, norm: np.ndarray, do_clip=False):
+    def project_2d_to_3d(
+        self, screen_points: np.ndarray, norm: np.ndarray, do_clip=False
+    ):
         screen_points = Projection.ensure_point_list(
             points=screen_points, dim=2, concatenate=False, crop=False
         )
@@ -279,7 +334,9 @@ class Camera:
             points=norm[:, np.newaxis], dim=1, concatenate=False, crop=False
         )
         lens_points = (screen_points - self._principle_point) / self._aspect_ratio
-        lens_points = self._apply_clip(lens_points, screen_points) if do_clip else lens_points
+        lens_points = (
+            self._apply_clip(lens_points, screen_points) if do_clip else lens_points
+        )
 
         camera_points = self.lens.project_2d_to_3d(lens_points, norm)
 
@@ -300,12 +357,32 @@ class Camera:
         points[mask] = [np.nan]
         return points
 
+    def to_json(self):
+        if isinstance(self.lens, RadialPolyCamProjection): # <-- no focal length in this model
+            raise NotImplementedError("RadialPolyCamProjection not supported yet")
+        return {
+            "calibration": {
+                "intrinsic": {
+                    "cx": float(self.cx),
+                    "cy": float(self.cy),
+                    "fx": float(self.lens.focal_length / 0.005),
+                    "fy": float(self.lens.focal_length * self.aspect_ratio / 0.005),
+                    "cameraModel": self.lens.name,
+                }
+            }
+        }
+
 
 def create_img_projection_maps(source_cam: Camera, destination_cam: Camera):
     """generates maps for cv2.remap to remap from one camera to another"""
     import cv2
-    u_map = np.zeros((destination_cam.height, destination_cam.width, 1), dtype=np.float32)
-    v_map = np.zeros((destination_cam.height, destination_cam.width, 1), dtype=np.float32)
+
+    u_map = np.zeros(
+        (destination_cam.height, destination_cam.width, 1), dtype=np.float32
+    )
+    v_map = np.zeros(
+        (destination_cam.height, destination_cam.width, 1), dtype=np.float32
+    )
 
     destination_points_b = np.arange(destination_cam.height)
 
@@ -319,5 +396,18 @@ def create_img_projection_maps(source_cam: Camera, destination_cam: Camera):
         u_map.T[0][u_px] = source_points.T[0]
         v_map.T[0][u_px] = source_points.T[1]
 
-    map1, map2 = cv2.convertMaps(u_map, v_map, dstmap1type=cv2.CV_16SC2, nninterpolation=False)
+    map1, map2 = cv2.convertMaps(
+        u_map, v_map, dstmap1type=cv2.CV_16SC2, nninterpolation=False
+    )
     return map1, map2
+
+def add_projection_meta(api: Api, image_id: int, camera: Camera):
+    """Add the camera projection info to an image's metadata using API.
+
+    :param api: Supervisely API instance.
+    :param image_id: ID of the image to update.
+    :param camera: Camera instance with projection information.
+    :return: Updated image metadata in JSON format.
+    :rtype: dict
+    """
+    return api.image.update_meta(image_id, camera.to_json())
