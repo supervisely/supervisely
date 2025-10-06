@@ -15,7 +15,6 @@ from supervisely.nn.inference.predict_app.gui.classes_selector import ClassesSel
 from supervisely.nn.inference.predict_app.gui.input_selector import InputSelector
 from supervisely.nn.inference.predict_app.gui.model_selector import ModelSelector
 from supervisely.nn.inference.predict_app.gui.output_selector import OutputSelector
-from supervisely.nn.inference.predict_app.gui.preview import Preview
 from supervisely.nn.inference.predict_app.gui.settings_selector import (
     AddPredictionsMode,
     SettingsSelector,
@@ -212,7 +211,7 @@ class PredictAppGui:
             self.tags_selector = TagsSelector()
             self.steps.append(self.tags_selector.card)
 
-        # 5. Settings selector
+        # 5. Settings selector & Preview
         self.settings_selector = SettingsSelector(
             api=self.api,
             static_dir=self.static_dir,
@@ -221,13 +220,7 @@ class PredictAppGui:
         )
         self.steps.append(self.settings_selector.cards_container)
 
-        # 6. Preview
-        self.preview = None
-        if False:
-            self.preview = Preview(api, static_dir)
-            self.steps.append(self.preview.card)
-
-        # 7. Output selector
+        # 6. Output selector
         self.output_selector = OutputSelector(self.api)
         self.steps.append(self.output_selector.card)
         # -------------------------------- #
@@ -290,103 +283,6 @@ class PredictAppGui:
                 self.settings_selector.inference_settings.readonly = False
             else:
                 self.settings_selector.inference_settings.readonly = True
-
-        def generate_preview():
-            def _get_frame_annotation(
-                video_info: VideoInfo, frame_index: int, project_meta: ProjectMeta
-            ) -> Annotation:
-                video_annotation = VideoAnnotation.from_json(
-                    self.api.video.annotation.download(video_info.id, frame_index),
-                    project_meta=project_meta,
-                    key_id_map=KeyIdMap(),
-                )
-                frame = video_annotation.frames.get(frame_index)
-                img_size = (video_info.frame_height, video_info.frame_width)
-                if frame is None:
-                    return Annotation(img_size)
-                labels = []
-                for figure in frame.figures:
-                    labels.append(Label(figure.geometry, figure.video_object.obj_class))
-                ann = Annotation(img_size, labels=labels)
-                return ann
-
-            if self.preview is None:
-                return
-
-            self.preview.validator_text.hide()
-            self.preview.gallery.clean_up()
-            self.preview.gallery.show()
-            self.preview.gallery.loading = True
-            try:
-                items_settings = self.input_selector.get_settings()
-                if "video_ids" in items_settings:
-                    video_ids = items_settings["video_ids"]
-                    video_id = video_ids[0]
-                    video_info = self.api.video.get_info_by_id(video_id)
-                    video_frame = random.randint(0, video_info.frames_count - 1)
-                    self.api.video.frame.download_path(
-                        video_info.id, video_frame, self.preview.preview_path
-                    )
-                    img_url = self.preview.peview_url
-                    project_meta = ProjectMeta.from_json(
-                        self.api.project.get_meta(video_info.project_id)
-                    )
-                    input_ann = _get_frame_annotation(video_info, video_frame, project_meta)
-                    prediction = self.model_selector.model.model_api.predict(
-                        input=self.preview.preview_path, **self.settings_selector.get_settings()
-                    )[0]
-                    output_ann = prediction.annotation
-                else:
-                    if "project_id" in items_settings:
-                        project_id = items_settings["project_id"]
-                        dataset_infos = self.api.dataset.get_list(project_id, recursive=True)
-                        dataset_infos = [ds for ds in dataset_infos if ds.items_count > 0]
-                        if not dataset_infos:
-                            raise ValueError("No datasets with items found in the project.")
-                        dataset_info = random.choice(dataset_infos)
-                    elif "dataset_ids" in items_settings:
-                        dataset_ids = items_settings["dataset_ids"]
-                        dataset_infos = [
-                            self.api.dataset.get_info_by_id(dataset_id)
-                            for dataset_id in dataset_ids
-                        ]
-                        dataset_infos = [ds for ds in dataset_infos if ds.items_count > 0]
-                        if not dataset_infos:
-                            raise ValueError("No items in selected datasets.")
-                        dataset_info = random.choice(dataset_infos)
-                    else:
-                        raise ValueError("No valid item settings found for preview.")
-                    images = self.api.image.get_list(dataset_info.id)
-                    image_info = random.choice(images)
-                    img_url = image_info.preview_url
-
-                    project_meta = ProjectMeta.from_json(
-                        self.api.project.get_meta(dataset_info.project_id)
-                    )
-                    input_ann = Annotation.from_json(
-                        self.api.annotation.download(image_info.id).annotation,
-                        project_meta=project_meta,
-                    )
-                    prediction = self.model_selector.model.model_api.predict(
-                        image_id=image_info.id, **self.settings_selector.get_settings()
-                    )[0]
-                    output_ann = prediction.annotation
-
-                self.preview.gallery.append(img_url, input_ann, "Input")
-                self.preview.gallery.append(img_url, output_ann, "Output")
-                self.preview.validator_text.hide()
-                self.preview.gallery.show()
-                return prediction
-            except Exception as e:
-                self.preview.gallery.hide()
-                self.preview.validator_text.set(
-                    text=f"Error during preview: {str(e)}", status="error"
-                )
-                self.preview.validator_text.show()
-                self.preview.gallery.clean_up()
-            finally:
-                self.preview.gallery.loading = False
-
         # ---------------------------- #
 
         # StepFlow callbacks and wiring
@@ -424,11 +320,15 @@ class PredictAppGui:
             if model_api is not None:
                 self.step_flow.stepper.set_active_step(current_position + 1)
                 set_entity_meta()
+                # @TODO: move to def connect and def deploy
+                # So card unlocks only after stop and disconnect buttons appear
                 self.classes_selector.card.unlock()
             else:
                 self.step_flow.stepper.set_active_step(current_position)
                 reset_entity_meta()
-                self.classes_selector.card.lock()
+                # @TODO: move to def connect and def deploy
+                # So card locks only after stop and disconnect buttons appear
+                self.classes_selector.card.lock() 
             return model_api
 
         def stop_and_reset_step():
@@ -478,7 +378,7 @@ class PredictAppGui:
             )
             position += 1
 
-        # 5. Settings selector
+        # 5. Settings selector & Preview
         self.step_flow.register_step(
             "settings_selector",
             self.settings_selector.cards,
@@ -492,20 +392,7 @@ class PredictAppGui:
         self.step_flow.add_on_select_actions("settings_selector", [disable_settings_editor], True)
         position += 1
 
-        # 6. Preview
-        if self.preview is not None:
-            self.step_flow.register_step(
-                "preview",
-                self.preview.card,
-                self.preview.button,
-                self.preview.widgets_to_disable,
-                self.preview.validator_text,
-                self.preview.validate_step,
-                position=position,
-            ).add_on_select_actions("preview", [generate_preview])
-            position += 1
-
-        # 7. Output selector
+        # 6. Output selector
         self.step_flow.register_step(
             "output_selector",
             self.output_selector.card,
@@ -520,7 +407,6 @@ class PredictAppGui:
         has_model_selector = self.model_selector is not None
         has_classes_selector = self.classes_selector is not None
         has_tags_selector = self.tags_selector is not None
-        has_preview = self.preview is not None
 
         # Step 1 -> Step 2
         prev_step = "input_selector"
@@ -539,10 +425,6 @@ class PredictAppGui:
         self.step_flow.set_next_steps(prev_step, ["settings_selector"])
         prev_step = "settings_selector"
         # Step 5 -> Step 6
-        if has_preview:
-            self.step_flow.set_next_steps(prev_step, ["preview"])
-            prev_step = "preview"
-        # Step 6 -> Step 7
         self.step_flow.set_next_steps(prev_step, ["output_selector"])
 
         # Create all wrappers and set button handlers
@@ -925,14 +807,10 @@ class PredictAppGui:
         if self.tags_selector is not None:
             self.tags_selector.load_from_json(data.get("tags", {}))
 
-        # 5. Settings selector
+        # 5. Settings selector & Preview
         self.settings_selector.load_from_json(data.get("settings", {}))
 
-        # 6. Preview (No need?)
-        if self.preview is not None:
-            self.preview.load_from_json(data.get("preview", {}))
-
-        # 7. Output selector
+        # 6. Output selector
         self.output_selector.load_from_json(data.get("output", {}))
 
     def set_validator_text(self, text: str, status: str = "text"):
