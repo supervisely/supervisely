@@ -1,36 +1,37 @@
 # coding: utf-8
+# isort: skip_file
 
+import os
 import concurrent.futures
 import json
-import os
-import threading
 import traceback
 from copy import deepcopy
 from queue import Queue
+import threading
 
 from supervisely.annotation.annotation import Annotation
-from supervisely.api.api import Api
 from supervisely.function_wrapper import function_wrapper, function_wrapper_nofail
 from supervisely.imaging.image import drop_image_alpha_channel
 from supervisely.nn.legacy.hosted.inference_modes import (
-    MODE,
-    NAME,
     InferenceModeFactory,
     InfModeFullImage,
+    MODE,
+    NAME,
     get_effective_inference_mode_config,
 )
 from supervisely.project.project_meta import ProjectMeta
-
-# from supervisely.worker_proto import worker_api_pb2 as api_proto  # Import moved to methods where needed
-from supervisely.task.progress import report_agent_rpc_ready
 from supervisely.worker_api.agent_api import AgentAPI
 from supervisely.worker_api.agent_rpc import (
     decode_image,
-    download_data_from_remote,
     download_image_from_remote,
+    download_data_from_remote,
     send_from_memory_generator,
 )
 from supervisely.worker_api.interfaces import SingleImageInferenceInterface
+
+# from supervisely.worker_proto import worker_api_pb2 as api_proto  # Import moved to methods where needed
+from supervisely.task.progress import report_agent_rpc_ready
+from supervisely.api.api import Api
 
 REQUEST_TYPE = 'request_type'
 GET_OUT_META = 'get_out_meta'
