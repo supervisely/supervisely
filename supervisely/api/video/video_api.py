@@ -2610,3 +2610,41 @@ class VideoApi(RemoveableBulkModuleApi):
 
             tasks.append(task)
         await asyncio.gather(*tasks)
+
+    def rename(
+        self,
+        id: int,
+        name: str,
+    ) -> VideoInfo:
+        """Renames Video with given ID to a new name.
+
+        :param id: Video ID in Supervisely.
+        :type id: int
+        :param name: New Video name.
+        :type name: str
+        :return: Information about updated Video.
+        :rtype: :class:`VideoInfo`
+
+        :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            api = sly.Api.from_env()
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+
+            video_id = 123456
+            new_video_name = "VID_3333_new.mp4"
+
+            api.video.rename(id=video_id, name=new_video_name)
+        """
+
+        data = {
+            ApiField.ID: id,
+            ApiField.NAME: name,
+        }
+
+        response = self._api.post("images.editInfo", data)
+        return self._convert_json_info(response.json())

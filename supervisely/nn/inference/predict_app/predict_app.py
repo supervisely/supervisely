@@ -3,13 +3,13 @@ from typing import Dict, List, Optional
 
 from fastapi import BackgroundTasks, Request
 
+import supervisely.io.fs as sly_fs
 from supervisely._utils import logger
 from supervisely.api.api import Api
 from supervisely.app.fastapi.subapp import Application
 from supervisely.nn.inference.predict_app.gui.gui import PredictAppGui
-from supervisely.nn.model.prediction import Prediction
 from supervisely.nn.inference.predict_app.gui.utils import disable_enable
-import supervisely.io.fs as sly_fs
+from supervisely.nn.model.prediction import Prediction
 
 
 class PredictApp:
@@ -91,14 +91,16 @@ class PredictApp:
                         # "mode": "custom",
                         # "train_task_id": 123
                     },
-                    "items": {
+                    "input": {
                         "project_id": 123,
                         # "dataset_ids": [...],
                         # "video_id": 123
                     },
-                    "inference_settings": {
-                        "confidence_threshold": 0.5
-                    },
+                    "settings": {
+                        "inference_settings": {
+                            "confidence_threshold": 0.5
+                        },
+                    }
                     "output": {
                         "mode": "create",
                         "project_name": "Predictions",
@@ -153,7 +155,7 @@ class PredictApp:
                     "inference_settings": {
                         "conf": 0.6,
                     },
-                    "item": {
+                    "input": {
                         # "project_id": ...,
                         # "dataset_ids": [...],
                         "image_ids": [1148679, 1148675],
@@ -162,17 +164,7 @@ class PredictApp:
                 }
             """
             state = request.state.state
-            run_parameters = {
-                "item": state["item"],
-            }
-            if "inference_settings" in state:
-                run_parameters["inference_settings"] = state["inference_settings"]
-            if "output" in state:
-                run_parameters["output"] = state["output"]
-            else:
-                run_parameters["output"] = {"mode": None}
-
-            predictions = self.run(run_parameters)
+            predictions = self.run(state)
             return [prediction.to_json() for prediction in predictions]
 
         @server.post("/run")

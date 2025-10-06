@@ -24,6 +24,8 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.video_annotation.video_object import VideoObject
 from supervisely.video_annotation.video_object_collection import VideoObjectCollection
 
+from supervisely.annotation.label import LabelingStatus
+
 
 class OutOfImageBoundsException(Exception):
     pass
@@ -55,6 +57,8 @@ class VideoFigure:
     :type smart_tool_input: dict, optional
     :param priority: Priority of the figure (position of the figure relative to other overlapping or underlying figures).
     :type priority: int, optional
+    :param status: Sets labeling status. Shows how label was created and corrected.
+    :type status: LabelingStatus, optional
     :Usage example:
 
      .. code-block:: python
@@ -86,7 +90,9 @@ class VideoFigure:
         #             ],
         #             "interior": []
         #         }
-        #     }
+        #     },
+        #    "nnCreated": false,
+        #    "nnUpdated": false
         # }
     """
 
@@ -103,6 +109,7 @@ class VideoFigure:
         track_id: Optional[str] = None,
         smart_tool_input: Optional[Dict] = None,
         priority: Optional[int] = None,
+        status: Optional[LabelingStatus] = None,
     ):
         self._video_object = video_object
         self._set_geometry_inplace(geometry)
@@ -115,6 +122,11 @@ class VideoFigure:
         self.track_id = track_id
         self._smart_tool_input = smart_tool_input
         self._priority = priority
+
+        if status is None:
+            status = LabelingStatus.MANUAL
+        self._status = status
+        self._nn_created, self._nn_updated = LabelingStatus.to_flags(self.status)
 
     def _add_creation_info(self, d):
         if self.labeler_login is not None:
@@ -339,9 +351,9 @@ class VideoFigure:
             #             "interior": []
             #         }
             #     },
-            #     "meta": {
-            #         "frame": 7
-            #     }
+            #     "meta": {"frame": 7},
+            #     "nnCreated": false,
+            #     "nnUpdated": false
             # }
         """
         data_json = {
@@ -349,6 +361,8 @@ class VideoFigure:
             OBJECT_KEY: self.parent_object.key().hex,
             ApiField.GEOMETRY_TYPE: self.geometry.geometry_name(),
             ApiField.GEOMETRY: self.geometry.to_json(),
+            ApiField.NN_CREATED: self._nn_created,
+            ApiField.NN_UPDATED: self._nn_updated,
         }
 
         if key_id_map is not None:
@@ -473,6 +487,10 @@ class VideoFigure:
         smart_tool_input = data.get(ApiField.SMART_TOOL_INPUT, None)
         priority = data.get(ApiField.PRIORITY, None)
 
+        nn_created = data.get(ApiField.NN_CREATED, False)
+        nn_updated = data.get(ApiField.NN_UPDATED, False)
+        status = LabelingStatus.from_flags(nn_created, nn_updated)
+
         return cls(
             object,
             geometry,
@@ -485,6 +503,7 @@ class VideoFigure:
             track_id=track_id,
             smart_tool_input=smart_tool_input,
             priority=priority,
+            status=status,
         )
 
     def clone(
@@ -500,6 +519,7 @@ class VideoFigure:
         track_id: Optional[str] = None,
         smart_tool_input: Optional[Dict] = None,
         priority: Optional[int] = None,
+        status: Optional[LabelingStatus] = None,
     ) -> VideoFigure:
         """
         Makes a copy of VideoFigure with new fields, if fields are given, otherwise it will use fields of the original VideoFigure.
@@ -526,6 +546,8 @@ class VideoFigure:
         :type smart_tool_input: dict, optional
         :param priority: Priority of the figure (position of the figure relative to other overlapping or underlying figures).
         :type priority: int, optional
+        :param status: Sets labeling status. Specifies if the VideoFigure was created by NN model, manually or created by NN and then manually corrected.
+        :type status: LabelingStatus, optional
         :return: VideoFigure object
         :rtype: :class:`VideoFigure`
 
@@ -582,7 +604,19 @@ class VideoFigure:
             track_id=take_with_default(track_id, self.track_id),
             smart_tool_input=take_with_default(smart_tool_input, self._smart_tool_input),
             priority=take_with_default(priority, self._priority),
+            status=take_with_default(status, self.status),
         )
+
+    @property
+    def status(self) -> LabelingStatus:
+        """Labeling status. Specifies if the VideoFigure was created by NN model, manually or created by NN and then manually corrected."""
+        return self._status
+
+    @status.setter
+    def status(self, status: LabelingStatus):
+        """Set labeling status."""
+        self._status = status
+        self._nn_created, self._nn_updated = LabelingStatus.to_flags(self.status)
 
     def validate_bounds(
         self, img_size: Tuple[int, int], _auto_correct: Optional[bool] = False

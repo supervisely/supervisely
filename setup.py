@@ -81,7 +81,7 @@ INSTALL_REQUIRES = [
     "numpy>=1.19, <2.0.0",
     "opencv-python>=4.6.0.66, <5.0.0.0",
     "PTable>=0.9.2, <1.0.0",
-    "pillow>=5.4.1, <=10.2.0",
+    "pillow>=5.4.1, <=10.4.0",
     "python-json-logger>=0.1.11, <3.0.0",
     "requests>=2.27.1, <3.0.0",
     "requests-toolbelt>=0.9.1",  # , <1.0.0
@@ -275,6 +275,7 @@ setup(
             "decord",
             "gdown",
             "torch",
+            "motmetrics",
         ],
         "model-benchmark": [
             "pycocotools",
