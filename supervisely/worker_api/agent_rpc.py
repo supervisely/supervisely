@@ -1,11 +1,12 @@
 # coding: utf-8
+# isort: skip_file
 
 import cv2
 import numpy as np
 
-from .chunking import load_to_memory_chunked, load_to_memory_chunked_image
+from .chunking import load_to_memory_chunked_image, load_to_memory_chunked
 
-# api_proto import moved to functions where it's used
+# from ..worker_proto import worker_api_pb2 as api_proto # Import moved to methods where needed
 
 
 class SimpleCache:
