@@ -266,8 +266,11 @@ class Preview:
         video_info = self.api.video.get_info_by_id(video_id)
         fps = int(video_info.frames_count / video_info.duration)
         frames_number = min(video_info.frames_count, int(fps * seconds))
-        project_meta = ProjectMeta.from_json(self.api.project.get_meta(video_info.project_id))
         model_api = self.get_model_api_fn()
+        model_meta = model_api.get_model_meta()
+        src_project_meta = ProjectMeta.from_json(self.api.project.get_meta(video_info.project_id))
+        project_meta = src_project_meta.merge(model_meta)
+        
         settings = self.get_settings_fn()
         inference_settings = settings.get("inference_settings", {})
         tracking = settings.get("tracking", False)
