@@ -127,6 +127,7 @@ class DeployModel(Widget):
             deploy_parameters = self.get_deploy_parameters()
             logger.info(f"Connecting to model with parameters:", extra=deploy_parameters)
             session_id = deploy_parameters["session_id"]
+            session_id = 49135
             model_api = self.api.nn.connect(task_id=session_id)
             return model_api
 
