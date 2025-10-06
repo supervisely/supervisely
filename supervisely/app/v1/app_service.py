@@ -1,34 +1,37 @@
-import asyncio
-import concurrent.futures
-import functools
+# isort: skip_file
+
 import json
 import os
-import queue
-import random
-import re
-import signal
-import sys
 import time
 import traceback
+import functools
+import sys
+import asyncio
+import signal
+import random
+import concurrent.futures
+import queue
+import re
 
-from supervisely._utils import _remove_sensitive_information, take_with_default
-from supervisely.api.api import Api
-from supervisely.app.v1.constants import (
-    CONTEXT,
-    IMAGE_ANNOTATION_EVENTS,
-    STATE,
-    STOP_COMMAND,
-)
-
-# from supervisely.worker_proto import worker_api_pb2 as api_proto  # Import moved to methods where needed
-from supervisely.function_wrapper import function_wrapper
-from supervisely.io.fs import file_exists, get_file_name_with_ext, list_files, mkdir
-from supervisely.io.fs_cache import FileCache
-from supervisely.io.json import load_json_file
-from supervisely.sly_logger import EventType
-from supervisely.sly_logger import logger as default_logger
 from supervisely.worker_api.agent_api import AgentAPI
+
+# from supervisely.worker_proto import worker_api_pb2 as api_proto # Import moved to methods where needed
+from supervisely.function_wrapper import function_wrapper
+from supervisely._utils import take_with_default
+from supervisely.sly_logger import logger as default_logger
+from supervisely.sly_logger import EventType
+from supervisely.app.v1.constants import (
+    STATE,
+    CONTEXT,
+    STOP_COMMAND,
+    IMAGE_ANNOTATION_EVENTS,
+)
+from supervisely.api.api import Api
+from supervisely.io.fs import file_exists, mkdir, list_files, get_file_name_with_ext
+from supervisely.io.json import load_json_file
+from supervisely._utils import _remove_sensitive_information
 from supervisely.worker_api.agent_rpc import send_from_memory_generator
+from supervisely.io.fs_cache import FileCache
 
 # https://www.roguelynn.com/words/asyncio-we-did-it-wrong/
 
