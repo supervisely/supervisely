@@ -284,14 +284,13 @@ class PredictAppGui:
             else:
                 self.settings_selector.inference_settings.readonly = True
 
+        def enable_preview_button():
+            self.settings_selector.preview.empty_text.set("Click preview to visualize predictions", "text")
+            self.settings_selector.preview.run_button.enable()
+
         def disable_preview_button():
-            if self.settings_selector.preview.run_button.disabled:
-                self.settings_selector.preview.empty_text.set("Click preview to visualize predictions", "text")
-                self.settings_selector.preview.run_button.enable()
-                
-            else:
-                self.settings_selector.preview.empty_text.set("Select inference settings first", "text")
-                self.settings_selector.preview.run_button.disable()
+            self.settings_selector.preview.empty_text.set("Select inference settings to preview", "text")
+            self.settings_selector.preview.run_button.disable()
         # ---------------------------- #
 
         # StepFlow callbacks and wiring
@@ -310,6 +309,8 @@ class PredictAppGui:
         )
         position += 1
         self.step_flow.add_on_select_actions("input_selector", [self.update_item_type])
+        self.step_flow.add_on_select_actions("input_selector", [disable_preview_button])
+        self.step_flow.add_on_select_actions("input_selector", [disable_preview_button], True)
 
         # 2. Model selector
         self.step_flow.register_step(
@@ -321,6 +322,8 @@ class PredictAppGui:
             self.model_selector.validate_step,
             position=position,
         )
+        self.step_flow.add_on_select_actions("model_selector", [disable_preview_button])
+        self.step_flow.add_on_select_actions("model_selector", [disable_preview_button], True)
 
         current_position = position + 1
 
@@ -373,6 +376,8 @@ class PredictAppGui:
                 position=position,
             )
             position += 1
+            self.step_flow.add_on_select_actions("classes_selector", [disable_preview_button])
+            self.step_flow.add_on_select_actions("classes_selector", [disable_preview_button], True)
 
         # 4. Tags selector
         if self.tags_selector is not None:
@@ -386,6 +391,9 @@ class PredictAppGui:
                 position=position,
             )
             position += 1
+            self.step_flow.add_on_select_actions("tags_selector", [enable_preview_button])
+            self.step_flow.add_on_select_actions("tags_selector", [disable_preview_button], True)
+
 
         # 5. Settings selector & Preview
         self.step_flow.register_step(
@@ -399,7 +407,7 @@ class PredictAppGui:
         )
         self.step_flow.add_on_select_actions("settings_selector", [disable_settings_editor])
         self.step_flow.add_on_select_actions("settings_selector", [disable_settings_editor], True)
-        self.step_flow.add_on_select_actions("settings_selector", [disable_preview_button])
+        self.step_flow.add_on_select_actions("settings_selector", [enable_preview_button])
         self.step_flow.add_on_select_actions("settings_selector", [disable_preview_button], True)
         position += 1
 
