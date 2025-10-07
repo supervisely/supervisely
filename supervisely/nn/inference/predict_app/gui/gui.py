@@ -283,6 +283,15 @@ class PredictAppGui:
                 self.settings_selector.inference_settings.readonly = False
             else:
                 self.settings_selector.inference_settings.readonly = True
+
+        def disable_preview_button():
+            if self.settings_selector.preview.run_button.disabled:
+                self.settings_selector.preview.empty_text.set("Click preview to visualize predictions", "text")
+                self.settings_selector.preview.run_button.enable()
+                
+            else:
+                self.settings_selector.preview.empty_text.set("Select inference settings first", "text")
+                self.settings_selector.preview.run_button.disable()
         # ---------------------------- #
 
         # StepFlow callbacks and wiring
@@ -390,6 +399,8 @@ class PredictAppGui:
         )
         self.step_flow.add_on_select_actions("settings_selector", [disable_settings_editor])
         self.step_flow.add_on_select_actions("settings_selector", [disable_settings_editor], True)
+        self.step_flow.add_on_select_actions("settings_selector", [disable_preview_button])
+        self.step_flow.add_on_select_actions("settings_selector", [disable_preview_button], True)
         position += 1
 
         # 6. Output selector
@@ -444,6 +455,11 @@ class PredictAppGui:
         def input_selector_type_changed(value: str):
             self.input_selector.validator_text.hide()
 
+        @self.input_selector.select_dataset_for_video.project_changed
+        def project_for_videos_changed(project_id: int):
+            self.input_selector.select_video.clear()
+            self.input_selector.select_video.hide()
+
         @self.input_selector.select_dataset_for_video.value_changed
         def dataset_for_video_changed(dataset_id: int):
             self.input_selector.select_video.loading = True
@@ -456,13 +472,17 @@ class PredictAppGui:
                 videos = self.api.video.get_list(dataset_id)
                 for video in videos:
                     size = f"{video.frame_height}x{video.frame_width}"
+                    try:
+                        frame_rate = int(video.frames_count / video.duration)
+                    except:
+                        frame_rate = "N/A"
                     self.input_selector.select_video.insert_row(
                         [
                             video.id,
                             video.name,
                             size,
                             video.duration,
-                            int(video.frames_count / video.duration),
+                            frame_rate,
                             video.frames_count,
                             dataset_info.name,
                             dataset_info.id,

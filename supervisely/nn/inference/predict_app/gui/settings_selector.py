@@ -85,7 +85,7 @@ class Preview:
         self.video_player = VideoPlayer()
         self.video_preview_container = Container(widgets=[self.video_player])
 
-        self.empty_text = Text("Click preview to visualize predictions")
+        self.empty_text = Text("Select inference settings first")
         self.error_text = Text("Failed to generate preview", status="error")
 
         self.select = Select(
@@ -102,6 +102,7 @@ class Preview:
         self.oneof = OneOf(self.select)
 
         self.run_button = Button("Preview", icon="zmdi zmdi-slideshow")
+        self.run_button.disable()
         self.card = Card(
             title="Preview",
             description="Preview model predictions on a random image or video from the selected input source.",
@@ -510,7 +511,6 @@ class SettingsSelector:
         ]
 
     def set_inference_settings(self, settings: Dict[str, Any]):
-        # TODO: Add set_tracking_settings
         settings = "# Inference settings\n" + settings
         if isinstance(settings, str):
             self.inference_settings.set_text(settings)

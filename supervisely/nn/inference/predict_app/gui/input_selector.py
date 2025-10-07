@@ -125,9 +125,16 @@ class InputSelector:
     @property
     def widgets_to_disable(self) -> list:
         return [
+            # Images Selector
             self.select_dataset_for_images,
+            self.select_dataset_for_images._select_project,
+            self.select_dataset_for_images._select_dataset,
+            # Videos Selector
             self.select_dataset_for_video,
+            self.select_dataset_for_video._select_project,
+            self.select_dataset_for_video._select_dataset,
             self.select_video,
+            # Controls
             self.radio,
             self.one_of,
         ]
