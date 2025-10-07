@@ -2333,6 +2333,151 @@ class Inference:
         inference_request.final_result = {"video_ann": video_ann_json}
         return video_ann_json
 
+    def _track(self, api: Api, params: dict, inference_request: InferenceRequest):
+        logger.debug("Starting detection+tracking...", extra={"params": params})
+        
+        inference_settings = self._get_inference_settings(params)
+        logger.debug(f"Inference settings:", extra=inference_settings)
+        batch_size = self._get_batch_size_from_state(params)
+        
+        video_id = get_value_for_keys(
+            params, ["videoId", "video_id"], ignore_none=True
+        )
+        if video_id is None:
+            raise ValueError("Video id is not provided")
+        
+        video_info = api.video.get_info_by_id(video_id)
+        
+        start_frame_index = get_value_for_keys(
+            params, ["frameIndex", "frame_index", "startFrameIndex", "start_frame_index"], 
+            ignore_none=True
+        )
+        if start_frame_index is None:
+            start_frame_index = 0
+        
+        frames_count = get_value_for_keys(
+            params, ["frames", "framesCount", "frames_count", "num_frames"], 
+            ignore_none=True
+        )
+        
+        step = get_value_for_keys(params, ["stride", "step"], ignore_none=True)
+        if step is None:
+            step = 1
+        
+        direction = params.get("direction", "forward")
+        direction_n = 1 if direction == "forward" else -1
+        
+        track_id = get_value_for_keys(params, ["trackId", "track_id"], ignore_none=True)
+        
+        if frames_count is None:
+            end_frame_index = get_value_for_keys(
+                params, ["endFrameIndex", "end_frame_index", "end_frame"], ignore_none=True
+            )
+            duration = params.get("duration", None)
+            
+            if end_frame_index is not None:
+                frames_count = abs(end_frame_index - start_frame_index)
+            elif duration is not None:
+                fps = video_info.frames_count / video_info.duration
+                frames_count = int(duration * fps)
+            else:
+                frames_count = video_info.frames_count - start_frame_index
+        
+        self._tracker = self._tracker_init(
+            params.get("tracker", "botsort"), 
+            params.get("tracker_settings", {})
+        )
+        
+        logger.info(
+            "Detection + Tracking started",
+            extra={
+                "video_id": video_id,
+                "start_frame": start_frame_index,
+                "frames_count": frames_count,
+                "direction": direction,
+                "tracker": params.get("tracker", "botsort"),
+            }
+        )
+        
+        self.cache.run_cache_task_manually(api, None, video_id=video_id)
+        
+        progress_total = (frames_count + step - 1) // step
+        inference_request.set_stage(InferenceRequest.Stage.INFERENCE, 0, progress_total)
+        
+        _upload_f = partial(
+            self.upload_predictions_to_video,
+            api=api,
+            video_info=video_info,
+            track_id=track_id,
+            context=inference_request.context,
+            progress_cb=inference_request.done,
+            inference_request=inference_request,
+        )
+        
+        def _exception_handler(e: Exception):
+            logger.error(f"Error during tracking: {str(e)}", exc_info=True)
+            raise e
+        
+        with Uploader(
+            upload_f=_upload_f,
+            exception_handler=_exception_handler,
+            logger=logger,
+        ) as uploader:
+            for batch in batched(
+                range(
+                    start_frame_index, 
+                    start_frame_index + direction_n * frames_count, 
+                    direction_n * step
+                ),
+                batch_size,
+            ):
+                if inference_request.is_stopped():
+                    logger.debug(
+                        "Cancelling inference video...",
+                        extra={"inference_request_uuid": inference_request.uuid},
+                    )
+                    break
+                
+                logger.debug(f"Inferring frames {batch[0]}-{batch[-1]}:")
+                frames = self.cache.download_frames(api, video_info.id, batch, redownload_video=True)
+                
+                anns, slides_data = self._inference_auto(
+                    source=frames,
+                    settings=inference_settings,
+                )
+                
+                if self._tracker is not None:
+                    anns = self._apply_tracker_to_anns(frames, anns)
+                
+                predictions = [
+                    Prediction(
+                        ann,
+                        model_meta=self.model_meta,
+                        frame_index=frame_index,
+                        video_id=video_info.id,
+                        dataset_id=video_info.dataset_id,
+                        project_id=video_info.project_id,
+                    )
+                    for ann, frame_index in zip(anns, batch)
+                ]
+                
+                for pred, this_slides_data in zip(predictions, slides_data):
+                    pred.extra_data["slides_data"] = this_slides_data
+                
+                uploader.put(predictions)
+                
+                inference_request.done(len(batch))
+                logger.debug(f"Frames {batch[0]}-{batch[-1]} done.")
+        
+        video_ann_json = None
+        if self._tracker is not None:
+            inference_request.set_stage("Postprocess...", 0, 1)
+            video_ann_json = self._tracker.video_annotation.to_json()
+            inference_request.done()
+        
+        inference_request.final_result = {"video_ann": video_ann_json}
+        return video_ann_json
+
     def _inference_project_id(self, api: Api, state: dict, inference_request: InferenceRequest):
         """Inference project images.
         If "output_project_id" in state, upload images and annotations to the output project.
@@ -3473,10 +3618,24 @@ class Inference:
             return {"message": "Track task started."}
         
         @server.post("/track")
-        def track(self, api: Api, state: Dict, context: Dict):
-            fn = self.send_error_data(api, context)(self._tracking_by_detection)
-            self.inference_requests_manager.schedule_task(fn, api, context)
-            return {"message": "Track task started."}
+        def track(response: Response, request: Request):
+            state = request.state.state
+            context = request.state.context if hasattr(request.state, 'context') else {}
+            logger.debug("Received a request to 'track'", extra={"state": state, "context": context})
+            self.validate_inference_state(state)
+            api = self.api_from_request(request)
+            
+            merged_params = {**state, **context}
+            
+            inference_request, _ = self.inference_requests_manager.schedule_task(
+                self._track, api, merged_params
+            )
+            return {
+                "message": "Track task started.",
+                "inference_request_uuid": inference_request.uuid,
+            }
+
+
 
         @server.post("/inference_project_id_async")
         def inference_project_id_async(response: Response, request: Request):
