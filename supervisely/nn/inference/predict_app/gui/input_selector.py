@@ -168,7 +168,12 @@ class InputSelector:
     def validate_step(self) -> bool:
         self.validator_text.hide()
         if self.radio.get_value() == ProjectType.IMAGES.value:
-            if len(self.select_dataset_for_images.get_selected_ids()) == 0:
+            selected_ids = self.select_dataset_for_images.get_selected_ids()
+            if selected_ids is None:
+                self.validator_text.set(text="Select a project", status="error")
+                self.validator_text.show()
+                return False
+            if len(selected_ids) == 0:
                 self.validator_text.set(text="Select at least one dataset", status="error")
                 self.validator_text.show()
                 return False

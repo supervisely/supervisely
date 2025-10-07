@@ -98,25 +98,37 @@ class StepFlow:
 
         for step_name in reversed(valid_sequence):
             step = self.steps[step_name]
-
             cards_to_unlock = []
-            for next_step_name in step["next_steps"]:
-                if next_step_name in self.steps:
-                    if isinstance(self.steps[next_step_name]["card"], list):
-                        cards_to_unlock.extend(self.steps[next_step_name]["card"])
+            visited = set()
+            queue = list(step["next_steps"])
+            while queue:
+                nxt = queue.pop(0)
+                if nxt in visited:
+                    continue
+                visited.add(nxt)
+                if nxt in self.steps:
+                    nxt_step = self.steps[nxt]
+                    if isinstance(nxt_step["card"], list):
+                        cards_to_unlock.extend(nxt_step["card"])
                     else:
-                        cards_to_unlock.append(self.steps[next_step_name]["card"])
+                        cards_to_unlock.append(nxt_step["card"])
+                    queue.extend(nxt_step.get("next_steps", []))
 
             callback = None
             if step["next_steps"] and step["has_button"]:
-                for next_step_name in step["next_steps"]:
-                    if (
-                        next_step_name in self.steps
-                        and self.steps[next_step_name].get("wrapper")
-                        and self.steps[next_step_name]["has_button"]
-                    ):
-                        callback = self.steps[next_step_name]["wrapper"]
-                        break
+                visited = set()
+                queue = list(step["next_steps"])
+                while queue:
+                    next_step_name = queue.pop(0)
+                    if next_step_name in visited:
+                        continue
+                    visited.add(next_step_name)
+                    if next_step_name in self.steps:
+                        next_step = self.steps[next_step_name]
+                        if next_step.get("wrapper") and next_step["has_button"]:
+                            callback = next_step["wrapper"]
+                            break
+                        queue.extend(next_step.get("next_steps", []))
 
             if step["has_button"]:
                 wrapper = wrap_button_click(
@@ -285,11 +297,9 @@ class PredictAppGui:
                 self.settings_selector.inference_settings.readonly = True
 
         def enable_preview_button():
-            self.settings_selector.preview.empty_text.set("Click preview to visualize predictions", "text")
             self.settings_selector.preview.run_button.enable()
 
         def disable_preview_button():
-            self.settings_selector.preview.empty_text.set("Select inference settings to preview", "text")
             self.settings_selector.preview.run_button.disable()
         # ---------------------------- #
 
@@ -376,8 +386,6 @@ class PredictAppGui:
                 position=position,
             )
             position += 1
-            self.step_flow.add_on_select_actions("classes_selector", [disable_preview_button])
-            self.step_flow.add_on_select_actions("classes_selector", [disable_preview_button], True)
 
         # 4. Tags selector
         if self.tags_selector is not None:
@@ -391,8 +399,18 @@ class PredictAppGui:
                 position=position,
             )
             position += 1
+
+        # Enable preview button after selecting tags if tags selector is present
+        if self.tags_selector is not None:
             self.step_flow.add_on_select_actions("tags_selector", [enable_preview_button])
             self.step_flow.add_on_select_actions("tags_selector", [disable_preview_button], True)
+            if self.classes_selector is not None:
+                self.step_flow.add_on_select_actions("classes_selector", [disable_preview_button])
+                self.step_flow.add_on_select_actions("classes_selector", [disable_preview_button], True)
+        # Enable preview button after selecting classes
+        else:
+            self.step_flow.add_on_select_actions("classes_selector", [enable_preview_button])
+            self.step_flow.add_on_select_actions("classes_selector", [disable_preview_button], True)
 
 
         # 5. Settings selector & Preview
@@ -407,8 +425,8 @@ class PredictAppGui:
         )
         self.step_flow.add_on_select_actions("settings_selector", [disable_settings_editor])
         self.step_flow.add_on_select_actions("settings_selector", [disable_settings_editor], True)
-        self.step_flow.add_on_select_actions("settings_selector", [enable_preview_button])
-        self.step_flow.add_on_select_actions("settings_selector", [disable_preview_button], True)
+        self.step_flow.add_on_select_actions("settings_selector", [disable_preview_button])
+        self.step_flow.add_on_select_actions("settings_selector", [enable_preview_button], True)
         position += 1
 
         # 6. Output selector

@@ -83,7 +83,7 @@ def wrap_button_click(
     bid = button.widget_id
     button_clicked[bid] = False
 
-    def button_click(button_clicked_value: Optional[bool] = None):
+    def button_click(button_clicked_value: Optional[bool] = None, suppress_actions: bool = False):
         if button_clicked_value is None or button_clicked_value is False:
             if validation_func is not None:
                 success = validation_func()
@@ -97,12 +97,12 @@ def wrap_button_click(
 
         if button_clicked[bid] and upd_params:
             update_custom_button_params(button, reselect_params)
-            if on_select_click is not None:
+            if not suppress_actions and on_select_click is not None:
                 for func in on_select_click:
                     func()
         else:
             update_custom_button_params(button, select_params)
-            if on_reselect_click is not None:
+            if not suppress_actions and on_reselect_click is not None:
                 for func in on_reselect_click:
                     func()
             validation_text.hide()
@@ -117,7 +117,7 @@ def wrap_button_click(
             disable=button_clicked[bid],
         )
         if callback is not None and not button_clicked[bid]:
-            callback(False)
+            callback(False, True)
 
         if collapse_card is not None:
             card, collapse = collapse_card

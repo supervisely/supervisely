@@ -85,7 +85,7 @@ class Preview:
         self.video_player = VideoPlayer()
         self.video_preview_container = Container(widgets=[self.video_player])
 
-        self.empty_text = Text("Select inference settings first")
+        self.empty_text = Text("Click preview to visualize predictions")
         self.error_text = Text("Failed to generate preview", status="error")
 
         self.select = Select(
