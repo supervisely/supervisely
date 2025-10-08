@@ -12,6 +12,7 @@ import yaml
 
 from supervisely._utils import logger
 from supervisely.api.api import Api
+from supervisely.api.video.video_api import VideoInfo
 from supervisely.app.widgets import (
     Button,
     Card,
@@ -73,6 +74,11 @@ class Preview:
         self.video_peview_url = None
 
         self.progress_widget = Progress(show_percents=True, hide_on_finish=True)
+        self.download_error = Text("", status="warning")
+        self.download_error.hide()
+        self.progress_container = Container(self.download_error, self.progress_widget)
+        self.loading_container = Container(widgets=[self.download_error, Text("Loading...")])
+
         self.image_gallery = GridGallery(
             2,
             sync_views=True,
@@ -94,8 +100,8 @@ class Preview:
                 Select.Item(ProjectType.IMAGES.value, content=self.image_preview_container),
                 Select.Item(ProjectType.VIDEOS.value, content=self.video_preview_container),
                 Select.Item("error", content=self.error_text),
-                Select.Item("loading", content=Container(widgets=[])),
-                Select.Item("progress", content=self.progress_widget),
+                Select.Item("loading", content=self.loading_container),
+                Select.Item("progress", content=self.progress_container),
             ]
         )
         self.select.set_value("empty")
@@ -129,7 +135,107 @@ class Preview:
     def select_item(self, item: str):
         self.select.set_value(item)
 
+    def _download_video_by_frames(
+        self, video_info: VideoInfo, save_path: str, frames_number=150, progress_cb=None
+    ):
+        if Path(save_path).exists():
+            Path(save_path).unlink()
+        tmp_dir = Path(self.preview_dir, "tmp_frames")
+        if tmp_dir.exists():
+            shutil.rmtree(tmp_dir)
+        os.makedirs(tmp_dir, exist_ok=True)
+        self.api.video.download_frames(
+            video_info.id,
+            frames=list(range(frames_number)),
+            paths=[str(tmp_dir / f"frame_{i}.jpg") for i in range(frames_number)],
+            progress_cb=progress_cb,
+        )
+        fps = int(video_info.frames_count / video_info.duration)
+        fourcc = cv2.VideoWriter.fourcc(*"mp4v")  # or 'avc1', 'XVID', 'H264'
+        out = cv2.VideoWriter(
+            save_path, fourcc, fps, (video_info.frame_width, video_info.frame_height)
+        )
+        for i in range(frames_number):
+            frame_path = tmp_dir / f"frame_{i}.jpg"
+            if not frame_path.exists():
+                continue
+            img = cv2.imread(str(frame_path))
+            out.write(img)
+        out.release()
+        shutil.rmtree(tmp_dir)
+
+    def _download_full_video(self, video_id: int, save_path: str, progress_cb=None):
+        if Path(save_path).exists():
+            Path(save_path).unlink()
+        self.api.video.download_path(video_id, save_path, progress_cb=progress_cb)
+
+    def _download_video_preview(self, video_info: VideoInfo, with_progress=True):
+        video_id = video_info.id
+        seconds = 5
+        video_path = Path(self.preview_dir, video_info.name)
+        self.video_preview_path = video_path
+        self.video_preview_annotated_path = Path(self.preview_dir, "annotated") / Path(
+            self.video_preview_path
+        ).relative_to(self.preview_dir)
+        success = False
+        try:
+            try:
+                size = int(video_info.file_meta["size"])
+                size = int(size / video_info.duration * seconds)
+            except:
+                size = None
+            with (
+                self.progress("Downloading video part:", total=size, unit="B", unit_scale=True)
+                if with_progress and size
+                else nullcontext()
+            ) as pbar:
+                success = self._partial_download(
+                    video_id, seconds, str(self.video_preview_path), progress_cb=pbar.update
+                )
+        except Exception as e:
+            logger.warning(f"Partial download failed: {str(e)}", exc_info=True)
+            success = False
+        if success:
+            return
+
+        video_length_threshold = 60  # seconds
+        if video_info.duration > video_length_threshold:
+            self.download_error.text = (
+                f"Partial download failed. Will Download separate video frames"
+            )
+            self.download_error.show()
+
+            fps = int(video_info.frames_count / video_info.duration)
+            frames_number = min(video_info.frames_count, int(fps * seconds))
+            with (
+                self.progress(
+                    "Downloading video frames:", total=frames_number, unit="it", unit_scale=False
+                )
+                if with_progress
+                else nullcontext()
+            ) as pbar:
+                self._download_video_by_frames(
+                    video_info,
+                    str(self.video_preview_path),
+                    frames_number=frames_number,
+                    progress_cb=pbar.update,
+                )
+        else:
+            self.download_error.text = f"Partial download failed. Will Download full video"
+            self.download_error.show()
+            size = int(video_info.file_meta["size"])
+            with (
+                self.progress("Downloading video:", total=size, unit="B", unit_scale=True)
+                if with_progress
+                else nullcontext()
+            ) as pbar:
+                self._download_full_video(
+                    video_info, str(self.video_preview_path), progress_cb=pbar.update
+                )
+
     def _partial_download(self, video_id: int, duration: int, save_path: str, progress_cb=None):
+        if Path(save_path).exists():
+            Path(save_path).unlink()
         duration_minutes = duration // 60
         duration_hours = duration_minutes // 60
         duration_minutes = duration_minutes % 60
@@ -139,10 +245,17 @@ class Preview:
         process = subprocess.Popen(
             [
                 "ffmpeg",
-                "-i",
-                "pipe:0",
+                "-y",
                 "-t",
                 duration_str,
+                "-probesize",
+                "50M",
+                "-analyzeduration",
+                "50M",
+                "-i",
+                "pipe:0",
+                "-movflags",
+                "frag_keyframe+empty_moov+default_base_moof",
                 "-c",
                 "copy",
                 save_path,
@@ -151,17 +264,26 @@ class Preview:
             stderr=subprocess.PIPE,
         )
 
+        bytes_written = 0
         try:
             for chunk in response.iter_content(chunk_size=8192):
                 process.stdin.write(chunk)
+                bytes_written += len(chunk)
                 if progress_cb:
                     progress_cb(len(chunk))
         except (BrokenPipeError, IOError):
+            logger.debug("FFmpeg process closed the pipe, stopping download.", exc_info=True)
             pass
         finally:
             process.stdin.close()
             process.wait()
             response.close()
+            logger.debug("FFmpeg exited with code: " + str(process.returncode))
+            logger.debug(f"FFmpeg stderr: {process.stderr.read().decode()}")
+            logger.debug(f"Total bytes written: {bytes_written}")
+        if Path(save_path).exists() and os.path.getsize(save_path) > 0:
+            return True
+        return False
 
     def _download_preview_item(self, with_progress: bool = False):
         input_settings = self.get_input_settings_fn()
@@ -205,32 +327,11 @@ class Preview:
             video_id = random.choice(video_ids)
             video_id = video_ids[0]
             video_info = self.api.video.get_info_by_id(video_id)
-            seconds = 5
-            video_info = self.api.video.get_info_by_id(video_id)
-            video_path = Path(self.preview_dir, video_info.name)
-            self.video_preview_path = video_path
-            self.video_preview_annotated_path = Path(self.preview_dir, "annotated") / Path(
-                self.video_preview_path
-            ).relative_to(self.preview_dir)
-            try:
-                size = int(video_info.file_meta["size"])
-                size = int(size / video_info.duration * seconds)
-            except:
-                size = None
-            with (
-                self.progress("Downloading video:", total=size)
-                if with_progress and size
-                else nullcontext()
-            ) as pbar:
-                self._partial_download(
-                    video_id, seconds, str(self.video_preview_path), progress_cb=pbar.update
-                )
+            self._download_video_preview(video_info, with_progress)
             self._current_item_id = video_id
             self.video_peview_url = f"/static/preview/annotated/{video_info.name}"
 
-    def set_image_preview(
-        self,
-    ):
+    def set_image_preview(self):
         self.image_gallery.clean_up()
         if not self._current_item_id:
             self._download_preview_item(with_progress=True)
@@ -271,7 +372,7 @@ class Preview:
         model_meta = model_api.get_model_meta()
         src_project_meta = ProjectMeta.from_json(self.api.project.get_meta(video_info.project_id))
         project_meta = src_project_meta.merge(model_meta)
-        
+
         settings = self.get_settings_fn()
         inference_settings = settings.get("inference_settings", {})
         tracking = settings.get("tracking", False)
@@ -334,6 +435,7 @@ class Preview:
         self.select_item("error")
 
     def run_preview(self):
+        self.download_error.hide()
         self.select_item("loading")
         try:
             input_settings = self.get_input_settings_fn()
@@ -356,6 +458,7 @@ class Preview:
     def update_item_type(self, item_type: str):
         self.select_item("empty")
         self._current_item_id = None
+        self.download_error.hide()
         # self._preload_item() # need to handle race condition with run_preview and multiple clicks
 
 
