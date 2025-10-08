@@ -76,7 +76,7 @@ class Preview:
         self.progress_widget = Progress(show_percents=True, hide_on_finish=True)
         self.download_error = Text("", status="warning")
         self.download_error.hide()
-        self.progress_container = Container(self.download_error, self.progress_widget)
+        self.progress_container = Container(widgets=[self.download_error, self.progress_widget])
         self.loading_container = Container(widgets=[self.download_error, Text("Loading...")])
 
         self.image_gallery = GridGallery(
@@ -230,7 +230,7 @@ class Preview:
                 else nullcontext()
             ) as pbar:
                 self._download_full_video(
-                    video_info, str(self.video_preview_path), progress_cb=pbar.update
+                    video_info.id, str(self.video_preview_path), progress_cb=pbar.update
                 )
 
     def _partial_download(self, video_id: int, duration: int, save_path: str, progress_cb=None):
@@ -281,9 +281,13 @@ class Preview:
             logger.debug("FFmpeg exited with code: " + str(process.returncode))
             logger.debug(f"FFmpeg stderr: {process.stderr.read().decode()}")
             logger.debug(f"Total bytes written: {bytes_written}")
-        if Path(save_path).exists() and os.path.getsize(save_path) > 0:
+        try:
+            with VideoFrameReader(save_path) as reader:
+                if len(reader.read_frames()) == 0:
+                    return False
             return True
-        return False
+        except Exception as e:
+            return False
 
     def _download_preview_item(self, with_progress: bool = False):
         input_settings = self.get_input_settings_fn()
