@@ -135,7 +135,7 @@ class AgentRPCServicerBase:
     def _send_data(self, out_msg, req_id):
         try:
             from supervisely.worker_proto import worker_api_pb2 as api_proto
-        except ImportError as e:
+        except Exception as e:
             from supervisely.app.v1.constants import PROTOBUF_REQUIRED_ERROR
 
             raise ImportError(PROTOBUF_REQUIRED_ERROR) from e
@@ -192,7 +192,7 @@ class AgentRPCServicerBase:
     def run_inf_loop(self):
         try:
             from supervisely.worker_proto import worker_api_pb2 as api_proto
-        except ImportError as e:
+        except Exception as e:
             from supervisely.app.v1.constants import PROTOBUF_REQUIRED_ERROR
 
             raise ImportError(PROTOBUF_REQUIRED_ERROR) from e

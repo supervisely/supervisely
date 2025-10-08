@@ -26,7 +26,7 @@ class SimpleCache:
 def download_image_from_remote(agent_api, image_hash, src_node_token, logger):
     try:
         from ..worker_proto import worker_api_pb2 as api_proto
-    except ImportError as e:
+    except Exception as e:
         from supervisely.app.v1.constants import PROTOBUF_REQUIRED_ERROR
 
         raise ImportError(PROTOBUF_REQUIRED_ERROR) from e
@@ -45,7 +45,7 @@ def download_image_from_remote(agent_api, image_hash, src_node_token, logger):
 def download_data_from_remote(agent_api, req_id, logger):
     try:
         from ..worker_proto import worker_api_pb2 as api_proto
-    except ImportError as e:
+    except Exception as e:
         from supervisely.app.v1.constants import PROTOBUF_REQUIRED_ERROR
 
         raise ImportError(PROTOBUF_REQUIRED_ERROR) from e
@@ -65,7 +65,7 @@ def batched(seq, batch_size):
 def send_from_memory_generator(out_bytes, chunk_size):
     try:
         from ..worker_proto import worker_api_pb2 as api_proto
-    except ImportError as e:
+    except Exception as e:
         from supervisely.app.v1.constants import PROTOBUF_REQUIRED_ERROR
 
         raise ImportError(PROTOBUF_REQUIRED_ERROR) from e

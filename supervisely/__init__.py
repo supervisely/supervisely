@@ -129,11 +129,11 @@ from supervisely.worker_api.chunking import (
     ChunkedFileReader,
 )
 
-# Global import of api_proto works only if protobuf is installed
+# Global import of api_proto works only if protobuf is installed and compatible
 # Otherwise, we use a placeholder that raises an error when accessed
 try:
     import supervisely.worker_proto.worker_api_pb2 as api_proto
-except ImportError:
+except Exception:
     api_proto = _ApiProtoNotAvailable()
 
 

@@ -394,7 +394,7 @@ class AppService:
     def publish_sync(self, initial_events=None):
         try:
             from supervisely.worker_proto import worker_api_pb2 as api_proto
-        except ImportError as e:
+        except Exception as e:
             from supervisely.app.v1.constants import PROTOBUF_REQUIRED_ERROR
 
             raise ImportError(PROTOBUF_REQUIRED_ERROR) from e
@@ -518,7 +518,7 @@ class AppService:
     def send_response(self, request_id, data):
         try:
             from supervisely.worker_proto import worker_api_pb2 as api_proto
-        except ImportError as e:
+        except Exception as e:
             from supervisely.app.v1.constants import PROTOBUF_REQUIRED_ERROR
 
             raise ImportError(PROTOBUF_REQUIRED_ERROR) from e
