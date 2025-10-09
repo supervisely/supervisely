@@ -770,6 +770,8 @@ class PredictAppGui:
                         progress_cb=secondary_pbar.update,
                     )
                 main_pbar.update()
+        self.set_validator_text("Project successfully processed", "success")
+        self.output_selector.set_result_thumbnail(output_project_id)
         return all_predictictions
 
     def _run_images(self, run_parameters: Dict[str, Any] = None) -> List[Prediction]:
@@ -934,6 +936,8 @@ class PredictAppGui:
                     logger.info("Prediction stopped by user.")
                     raise StopIteration("Stopped by user.")
                 predictions.append(prediction)
+        self.set_validator_text("Project successfully processed", "success")
+        self.output_selector.set_result_thumbnail(output_project_id)
         return predictions
 
     def run(self, run_parameters: Dict[str, Any] = None) -> List[Prediction]:
@@ -947,16 +951,7 @@ class PredictAppGui:
                 run_f = self._run_videos
             else:
                 run_f = self._run_images
-            predictions = run_f(run_parameters)
-            if predictions:
-                output_project_id = predictions[
-                    0
-                ].project_id  # normally all predictions belong to the same project
-                self.set_validator_text("Project successfully processed", "success")
-                self.output_selector.set_result_thumbnail(output_project_id)
-            else:
-                # items were skipped
-                pass
+            return run_f(run_parameters)
         except StopIteration:
             logger.info("Prediction stopped by user.")
             self.set_validator_text("Prediction stopped by user.", "warning")
