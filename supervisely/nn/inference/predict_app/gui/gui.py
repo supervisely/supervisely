@@ -185,14 +185,16 @@ class PredictAppGui:
             valid = self.input_selector.validate_step()
             if not valid:
                 return
+            current_item_type = self.input_selector.radio.get_value()
             self.update_item_type()
             if self.model_api:
-                inference_settings = self.model_api.get_settings()
-                self.settings_selector.set_inference_settings(inference_settings)
+                if current_item_type == self.input_selector.radio.get_value():
+                    inference_settings = self.model_api.get_settings()
+                    self.settings_selector.set_inference_settings(inference_settings)
 
-                if self.input_selector.radio.get_value() == ProjectType.VIDEOS.value:
-                    tracking_settings = self.model_api.get_tracking_settings()
-                    self.settings_selector.set_tracking_settings(tracking_settings)
+                    if self.input_selector.radio.get_value() == ProjectType.VIDEOS.value:
+                        tracking_settings = self.model_api.get_tracking_settings()
+                        self.settings_selector.set_tracking_settings(tracking_settings)
             self.input_selector.disable()
             update_custom_button_params(self.input_selector.button, reselect_params)
 
