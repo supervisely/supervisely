@@ -2201,10 +2201,6 @@ class Inference:
         direction = 1 if direction == "forward" else -1
         track_id = get_value_for_keys(state, ["trackId", "track_id"], ignore_none=True)
 
-        # TODO: 1. device default auto - same as model
-        # TODO: 2. fps remove from user defined, get from video
-        # TODO: 3. self._tracker -> inference_request.tracker
-
         if frames_count is not None:
             n_frames = frames_count
         elif end_frame_index is not None:
@@ -2265,7 +2261,7 @@ class Inference:
                 frame_start=_range[0],
                 frame_end=_range[1],
                 current=inference_request.progress.current,
-                total=inference_request.progress.total,
+                    total=inference_request.progress.total,
             )
             # if stopped:
             #     inference_request.stop()
@@ -2289,7 +2285,7 @@ class Inference:
                 range(
                     start_frame_index, start_frame_index + direction * n_frames, direction * step
                 ),
-                batch_size,
+                        batch_size,
             ):
                 if inference_request.is_stopped():
                     logger.debug(

@@ -43,9 +43,10 @@ class Uploader:
     def _notify_loop(self):
         try:
             while (
-                not self._stop_event.is_set() or not self._notify_q.empty() or not self._q.empty()
+                not self._stop_event.is_set() or not self._notify_q.empty() or not self._q.empty() or (self._upload_thread is not None and self._upload_thread.is_alive())
             ):
                 if self._exception_event.is_set():
+                    logger.debug("Notify loop stopped due to exception event")
                     return
                 items = []
                 try:
@@ -65,9 +66,11 @@ class Uploader:
                 except Empty:
                     continue
         except StopIteration:
+            logger.debug("Notify loop stopped by StopIteration")
             self.stop()
             return
         except Exception as e:
+            logger.debug("Exception in notify loop: %s", str(e))
             try:
                 raise RuntimeError("Error in notify loop") from e
             except RuntimeError as e_:
@@ -77,7 +80,8 @@ class Uploader:
             if self.raise_from_notify and not self._exception_event.is_set():
                 self.set_exception(e)
             return
-
+        finally:
+            logger.debug(f"self notify q: {self._notify_q.qsize()} upload q: {self._q.qsize()}")
     def _upload_loop(self):
         try:
             while not self._stop_event.is_set() or not self._q.empty():
