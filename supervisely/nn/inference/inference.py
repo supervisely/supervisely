@@ -4373,16 +4373,18 @@ def _filter_duplicated_predictions_from_ann_cpu(
     new_labels = []
     pred_cls_bboxes = defaultdict(list)
     for label in pred_ann.labels:
-        pred_cls_bboxes[label.obj_class.name].append(label)
+        name_shape = (label.obj_class.name, label.geometry.name())
+        pred_cls_bboxes[name_shape].append(label)
 
     gt_cls_bboxes = defaultdict(list)
     for label in gt_ann.labels:
-        if label.obj_class.name not in pred_cls_bboxes:
+        name_shape = (label.obj_class.name, label.geometry.name())
+        if name_shape not in pred_cls_bboxes:
             continue
-        gt_cls_bboxes[label.obj_class.name].append(label)
+        gt_cls_bboxes[name_shape].append(label)
 
-    for name, pred in pred_cls_bboxes.items():
-        gt = gt_cls_bboxes[name]
+    for name_shape, pred in pred_cls_bboxes.items():
+        gt = gt_cls_bboxes[name_shape]
         if len(gt) == 0:
             new_labels.extend(pred)
             continue
@@ -4503,16 +4505,18 @@ def _filter_duplicated_predictions_from_ann(
     new_labels = []
     pred_cls_bboxes = defaultdict(list)
     for label in pred_ann.labels:
-        pred_cls_bboxes[label.obj_class.name].append(label)
+        name_shape = (label.obj_class.name, label.geometry.name())
+        pred_cls_bboxes[name_shape].append(label)
 
     gt_cls_bboxes = defaultdict(list)
     for label in gt_ann.labels:
-        if label.obj_class.name not in pred_cls_bboxes:
+        name_shape = (label.obj_class.name, label.geometry.name())
+        if name_shape not in pred_cls_bboxes:
             continue
-        gt_cls_bboxes[label.obj_class.name].append(label)
+        gt_cls_bboxes[name_shape].append(label)
 
-    for name, pred in pred_cls_bboxes.items():
-        gt = gt_cls_bboxes[name]
+    for name_shape, pred in pred_cls_bboxes.items():
+        gt = gt_cls_bboxes[name_shape]
         if len(gt) == 0:
             new_labels.extend(pred)
             continue
