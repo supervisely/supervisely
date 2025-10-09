@@ -164,14 +164,51 @@ class Preview:
         out.release()
         shutil.rmtree(tmp_dir)
 
-    def _download_full_video(self, video_id: int, save_path: str, progress_cb=None):
+    def _download_full_video(
+        self, video_id: int, save_path: str, duration: int = 5, progress_cb=None
+    ):
         if Path(save_path).exists():
             Path(save_path).unlink()
-        self.api.video.download_path(video_id, save_path, progress_cb=progress_cb)
+        temp = Path(self.preview_dir) / f"temp_{video_id}.mp4"
+        if temp.exists():
+            temp.unlink()
+        self.api.video.download_path(video_id, temp, progress_cb=progress_cb)
+        minutes = duration // 60
+        hours = minutes // 60
+        minutes = minutes % 60
+        seconds = duration % 60
+        duration_str = f"{hours:02}:{minutes:02}:{seconds:02}"
+        try:
+            process = subprocess.Popen(
+                [
+                    "ffmpeg",
+                    "-y",
+                    "-i",
+                    str(temp),
+                    "-c",
+                    "copy",
+                    "-t",
+                    duration_str,
+                    save_path,
+                ],
+                stderr=subprocess.PIPE,
+            )
+            process.wait()
+            logger.debug("FFmpeg exited with code: " + str(process.returncode))
+            logger.debug(f"FFmpeg stderr: {process.stderr.read().decode()}")
+            if len(VideoFrameReader(save_path).read_frames()) == 0:
+                raise RuntimeError("No frames read from the video")
+            temp.unlink()
+        except Exception as e:
+            if Path(save_path).exists():
+                Path(save_path).unlink()
+            shutil.copy(temp, save_path)
+            temp.unlink()
+            logger.warning(f"FFmpeg trimming failed: {str(e)}", exc_info=True)
 
     def _download_video_preview(self, video_info: VideoInfo, with_progress=True):
         video_id = video_info.id
-        seconds = 5
+        duration = 5
         video_path = Path(self.preview_dir, video_info.name)
         self.video_preview_path = video_path
         self.video_preview_annotated_path = Path(self.preview_dir, "annotated") / Path(
@@ -181,7 +218,7 @@ class Preview:
         try:
             try:
                 size = int(video_info.file_meta["size"])
-                size = int(size / video_info.duration * seconds)
+                size = int(size / video_info.duration * duration)
             except:
                 size = None
             with (
@@ -190,7 +227,7 @@ class Preview:
                 else nullcontext()
             ) as pbar:
                 success = self._partial_download(
-                    video_id, seconds, str(self.video_preview_path), progress_cb=pbar.update
+                    video_id, duration, str(self.video_preview_path), progress_cb=pbar.update
                 )
         except Exception as e:
             logger.warning(f"Partial download failed: {str(e)}", exc_info=True)
@@ -198,7 +235,7 @@ class Preview:
         if success:
             return
 
-        video_length_threshold = 60  # seconds
+        video_length_threshold = 120  # seconds
         if video_info.duration > video_length_threshold:
             self.download_error.text = (
                 f"Partial download failed. Will Download separate video frames"
@@ -206,7 +243,7 @@ class Preview:
             self.download_error.show()
 
             fps = int(video_info.frames_count / video_info.duration)
-            frames_number = min(video_info.frames_count, int(fps * seconds))
+            frames_number = min(video_info.frames_count, int(fps * duration))
             with (
                 self.progress(
                     "Downloading video frames:", total=frames_number, unit="it", unit_scale=False
@@ -230,7 +267,10 @@ class Preview:
                 else nullcontext()
             ) as pbar:
                 self._download_full_video(
-                    video_info.id, str(self.video_preview_path), progress_cb=pbar.update
+                    video_info.id,
+                    str(self.video_preview_path),
+                    duration=duration,
+                    progress_cb=pbar.update,
                 )
 
     def _partial_download(self, video_id: int, duration: int, save_path: str, progress_cb=None):
