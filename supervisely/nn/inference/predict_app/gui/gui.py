@@ -123,19 +123,23 @@ class StepFlow:
     def _reactivate_dependents(self, step_name: str, visited=None):
         if visited is None:
             visited = set()
-        for step in self.steps.values():
-            if step_name in step["depends_on"] and not step_name in visited:
-                self.reactivate_step(step_name, False)
+        for dep_name, step in self.steps.items():
+            if step_name in step["depends_on"] and not dep_name in visited:
+                self._reactivate_step(dep_name, visited)
 
-    def reactivate_step(self, step_name: str, update_stepper: bool = True):
+    def _reactivate_step(self, step_name: str, visited=None):
         step = self.steps[step_name]
-        self._reactivate_dependents(step_name, visited={step_name})
         if step["on_reactivate"] is not None:
             step["on_reactivate"]()
         step["is_selected"] = False
-        if update_stepper:
-            self.update_stepper()
-            self.update_locks()
+        if visited is None:
+            visited = set()
+        self._reactivate_dependents(step_name, visited)
+
+    def reactivate_step(self, step_name: str):
+        self._reactivate_step(step_name)
+        self.update_stepper()
+        self.update_locks()
 
     def select_step(self, step_name: str):
         step = self.steps[step_name]
