@@ -87,8 +87,10 @@ class OutputSelector:
         # Progress
         self.progress = Progress(hide_on_finish=False)
         self.progress.hide()
+        self.secondary_progress = Progress(hide_on_finish=True)
+        self.secondary_progress.hide()
         # Add widgets to display ------------ #
-        self.display_widgets.extend([self.progress])
+        self.display_widgets.extend([self.progress, self.secondary_progress])
         # ----------------------------------- #
 
         # Result

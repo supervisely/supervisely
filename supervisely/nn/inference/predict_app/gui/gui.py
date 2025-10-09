@@ -8,6 +8,7 @@ from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.label import Label
 from supervisely.api.annotation_api import AnnotationInfo
 from supervisely.api.api import Api
+from supervisely.api.image_api import ImageInfo
 from supervisely.api.video.video_api import VideoInfo
 from supervisely.app.widgets import Button, Card, Container, Stepper, Widget
 from supervisely.io import env
@@ -412,7 +413,6 @@ class PredictAppGui:
             self.step_flow.add_on_select_actions("classes_selector", [enable_preview_button])
             self.step_flow.add_on_select_actions("classes_selector", [disable_preview_button], True)
 
-
         # 5. Settings selector & Preview
         self.step_flow.register_step(
             "settings_selector",
@@ -425,7 +425,6 @@ class PredictAppGui:
         )
         self.step_flow.add_on_select_actions("settings_selector", [disable_settings_editor])
         self.step_flow.add_on_select_actions("settings_selector", [disable_settings_editor], True)
-        self.step_flow.add_on_select_actions("settings_selector", [disable_preview_button])
         self.step_flow.add_on_select_actions("settings_selector", [enable_preview_button], True)
         position += 1
 
@@ -518,203 +517,181 @@ class PredictAppGui:
 
         # ------------------------------------------------- #
 
+    @property
+    def model_api(self) -> Optional[ModelAPI]:
+        return self.model_selector.model.model_api
+
     def update_item_type(self):
         item_type = self.input_selector.radio.get_value()
         self.settings_selector.update_item_type(item_type)
         self.output_selector.update_item_type(item_type)
 
-    def run(self, run_parameters: Dict[str, Any] = None) -> List[Prediction]:
-        self.show_validator_text()
+    def _run_videos(self, run_parameters: Dict[str, Any]) -> List[Prediction]:
+        if self.model_api is None:
+            self.set_validator_text("Deploying model...", "info")
+            self.model_selector.model._deploy()
+        if self.model_api is None:
+            logger.error("Model Deployed with an error")
+            raise RuntimeError("Model Deployed with an error")
+
         self.set_validator_text("Preparing settings for prediction...", "info")
         if run_parameters is None:
             run_parameters = self.get_run_parameters()
 
-        if self.model_selector.model.model_api is None:
-            self.model_selector.model._deploy()
-
-        model_api = self.model_selector.model.model_api
-        if model_api is None:
-            logger.error("Model Deployed with an error")
-            self.set_validator_text("Model Deployed with an error", "error")
-            return
-
-        kwargs = {}
-
-        # Input
-        input_args = {}
         input_parameters = run_parameters["input"]
-        input_project_id = input_parameters.get("project_id", None)
-        input_dataset_ids = input_parameters.get("dataset_ids", [])
-        input_image_ids = input_parameters.get("image_ids", [])
-        input_video_ids = input_parameters.get("video_ids", None)
-        if input_image_ids:
-            input_args["image_ids"] = input_image_ids
-        elif input_dataset_ids:
-            input_args["dataset_ids"] = input_dataset_ids
-        elif input_project_id:
-            input_args["project_id"] = input_project_id
-        elif input_video_ids:
-            pass
-        else:
-            raise ValueError("No valid input parameters found for prediction.")
+        input_video_ids = input_parameters["video_ids"]
+        if not input_video_ids:
+            raise ValueError("No video IDs provided for video prediction.")
 
-        source_project_id = None
-        if input_project_id is not None:
-            source_project_id = input_project_id
-        elif input_dataset_ids:
-            dataset_info = self.api.dataset.get_info_by_id(input_dataset_ids[0])
-            source_project_id = dataset_info.project_id
-        elif input_video_ids:
-            video_info = self.api.video.get_info_by_id(input_video_ids[0])
-            source_project_id = video_info.project_id
-
+        predict_kwargs = {}
         # Settings
         settings = run_parameters["settings"]
         prediction_mode = settings.pop("predictions_mode")
-        upload_mode = None
-        with_annotations = None
-        if prediction_mode == AddPredictionsMode.REPLACE_EXISTING_LABELS:
-            upload_mode = "replace"
-            with_annotations = False
-        elif prediction_mode == AddPredictionsMode.MERGE_WITH_EXISTING_LABELS:
-            upload_mode = "append"
-            with_annotations = True
-        elif prediction_mode == AddPredictionsMode.REPLACE_EXISTING_LABELS_AND_SAVE_IMAGE_TAGS:
-            upload_mode = "replace"
-            with_annotations = True
-        kwargs.update(settings)
-        kwargs["upload_mode"] = upload_mode
+        tracking = settings.pop("tracking", False)
+        predict_kwargs.update(settings)
 
         # Classes
         classes = run_parameters["classes"]
         if classes:
-            kwargs["classes"] = classes
+            predict_kwargs["classes"] = classes
 
-        # Output
-        # Сreate new project if needed
-        # The actual inference will happen inplace
         output_parameters = run_parameters["output"]
         project_name = output_parameters.get("project_name", "")
         upload_to_source_project = output_parameters.get("upload_to_source_project", False)
         skip_project_versioning = output_parameters.get("skip_project_versioning", False)
-        created_videos = []
-        if upload_to_source_project:
-            output_project_id = input_project_id
-            if not skip_project_versioning and not is_development():
-                logger.info("Creating new project version...")
-                input_project_info = self.api.project.get_info_by_id(input_project_id)
-                version_id = self.api.project.version.create(
-                    input_project_info,
-                    "Created by Predict App. Task Id: " + str(env.task_id()),
-                )
-                logger.info("New project version created: " + str(version_id))
-        elif input_video_ids:
-            if not project_name:
-                source_project_info = self.api.project.get_info_by_id(source_project_id)
-                project_name = source_project_info.name + " [Predictions]"
-                logger.warning("Project name is empty, using auto-generated name: " + project_name)
-            # Create new project
-            self.set_validator_text("Creating project...", "info")
-            created_project = create_project(
-                api=self.api,
-                project_id=source_project_id,
-                project_name=project_name,
-                workspace_id=self.workspace_id,
-                copy_meta=with_annotations,
-                project_type=ProjectType.VIDEOS,
-            )
-            video_infos = self.api.video.get_info_by_id_batch(input_video_ids)
-            created_videos = copy_items_to_project(
-                api=self.api,
-                src_project_id=source_project_id,
-                items=video_infos,
-                dst_project_id=created_project.id,
-                with_annotations=with_annotations,
-                progress=self.output_selector.progress,
-                project_type=ProjectType.VIDEOS,
-            )
-            output_project_id = created_project.id
-        else:
-            if not project_name:
-                source_project_info = self.api.project.get_info_by_id(source_project_id)
-                project_name = source_project_info.name + " [Predictions]"
-                logger.warning("Project name is empty, using auto-generated name: " + project_name)
+        skip_annotated = output_parameters.get("skip_annotated", False)
 
-            item_ids = None
-            if not output_parameters.get("skip_annotated", False):
-                item_ids = []
-                src_project_meta = ProjectMeta.from_json(
-                    self.api.project.get_meta(source_project_id)
+        video_infos_by_project_id: Dict[int, List[VideoInfo]] = {}
+        video_infos_by_dataset_id: Dict[int, List[VideoInfo]] = {}
+        for info in self.api.video.get_info_by_id_batch(input_video_ids):
+            video_infos_by_project_id.setdefault(info.project_id, []).append(info)
+            video_infos_by_dataset_id.setdefault(info.dataset_id, []).append(info)
+        src_project_metas: Dict[int, ProjectMeta] = {}
+        for project_id in video_infos_by_project_id.keys():
+            src_project_metas[project_id] = ProjectMeta.from_json(
+                self.api.project.get_meta(project_id)
+            )
+
+        video_ids_to_skip = set()
+        if skip_annotated:
+            self.set_validator_text("Checking for already annotated videos...", "info")
+            secondary_pbar = self.output_selector.secondary_progress(
+                message="Checking for already annotated videos...", total=len(input_video_ids)
+            )
+            self.output_selector.secondary_progress.show()
+            for dataset_id, video_infos in video_infos_by_dataset_id.items():
+                annotations = self.api.video.annotation.download_bulk(
+                    dataset_id, [info.id for info in video_infos]
                 )
-                existing_ann_infos: List[AnnotationInfo] = []
-                if input_dataset_ids:
-                    for dataset_id in input_dataset_ids:
-                        existing_ann_infos.extend(
-                            self.api.annotation.get_list(dataset_id)
-                        )
-                else:
-                    datasets = self.api.dataset.get_list(source_project_id, recursive=True)
-                    for dataset in datasets:
-                        existing_ann_infos.extend(
-                            self.api.annotation.get_list(dataset.id)
-                        )
-                for ann_info in existing_ann_infos:
-                    annotation = Annotation.from_json(ann_info.annotation, project_meta=src_project_meta)
-                    if len(annotation.labels) == 0:
-                        item_ids.append(ann_info.item_id)
-                if len(item_ids) == 0:
+                for ann_json, video_info in zip(annotations, video_infos):
+                    if ann_json:
+                        project_meta = src_project_metas[video_info.project_id]
+                        ann = VideoAnnotation.from_json(ann_json, project_meta=project_meta)
+                        if len(ann.figures) > 0:
+                            video_ids_to_skip.add(video_info.id)
+                    secondary_pbar.update()
+            self.output_selector.secondary_progress.hide()
+            if video_ids_to_skip:
+                video_infos_by_project_id = {
+                    pid: [info for info in infos if info.id not in video_ids_to_skip]
+                    for pid, infos in video_infos_by_project_id.items()
+                }
+
+        main_pbar_str = "Processing videos..."
+        if video_ids_to_skip:
+            main_pbar_str += f" (Skipped {len(video_ids_to_skip)} already annotated videos)"
+        total_videos = sum(len(v) for v in video_infos_by_project_id.values())
+        if total_videos == 0:
+            self.set_validator_text(
+                f"No videos to process. Skipped {len(video_ids_to_skip)} already annotated videos",
+                "warning",
+            )
+            return []
+        main_pbar = self.output_selector.progress(message=main_pbar_str, total=total_videos)
+        self.output_selector.progress.show()
+        all_predictictions: List[Prediction] = []
+        for src_project_id, src_video_infos in video_infos_by_project_id.items():
+            if len(src_video_infos) == 0:
+                continue
+            project_info = self.api.project.get_info_by_id(src_project_id)
+            project_validator_text_str = (
+                f"Processing project: {project_info.name} [id: {src_project_id}]"
+            )
+            if upload_to_source_project:
+                if not skip_project_versioning and not is_development():
+                    logger.info("Creating new project version...")
                     self.set_validator_text(
-                        "All items are already annotated. Nothing to predict.", "warning"
+                        project_validator_text_str + ": Creating project version",
+                        "info",
                     )
-                    return []
-
-            # Copy project
-            self.set_validator_text("Copying project...", "info")
-            created_project = copy_project(
-                api=self.api,
-                project_id=source_project_id,
-                workspace_id=self.workspace_id,
-                project_name=project_name,
-                items_ids=item_ids,
-                with_annotations=with_annotations,
-                progress=self.output_selector.progress,
-            )
-            output_project_id = created_project.id
-            input_args = {
-                "project_id": output_project_id,
-            }
-
-        # ------------------------ #
-
-        # Run prediction
-        self.set_validator_text("Running prediction...", "info")
-        predictions: List[Prediction] = []
-        self._is_running = True
-        try:
-            if input_video_ids:
-                project_meta = model_api.get_model_meta()
-                src_project_meta = ProjectMeta.from_json(
-                    self.api.project.get_meta(source_project_id)
+                    version_id = self.api.project.version.create(
+                        project_info,
+                        "Created by Predict App. Task Id: " + str(env.task_id()),
+                    )
+                    logger.info("New project version created: " + str(version_id))
+                output_project_id = src_project_id
+                output_videos: List[VideoInfo] = src_video_infos
+            else:
+                self.set_validator_text(
+                    project_validator_text_str + ": Creating project...", "info"
                 )
-                project_meta = src_project_meta.merge(project_meta)
-                project_meta = self.api.project.update_meta(output_project_id, project_meta)
+                if not project_name:
+                    project_name = project_info.name + " [Predictions]"
+                    logger.warning(
+                        "Project name is empty, using auto-generated name: " + project_name
+                    )
+                with_annotations = prediction_mode == AddPredictionsMode.MERGE_WITH_EXISTING_LABELS
+                created_project = create_project(
+                    api=self.api,
+                    project_id=src_project_id,
+                    project_name=project_name,
+                    workspace_id=self.workspace_id,
+                    copy_meta=with_annotations,
+                    project_type=ProjectType.VIDEOS,
+                )
+                output_project_id = created_project.id
+                output_videos: List[VideoInfo] = copy_items_to_project(
+                    api=self.api,
+                    src_project_id=src_project_id,
+                    items=src_video_infos,
+                    dst_project_id=created_project.id,
+                    with_annotations=with_annotations,
+                    progress=self.output_selector.secondary_progress,
+                    project_type=ProjectType.VIDEOS,
+                )
 
-                for input_video_id, created_video in zip(input_video_ids, created_videos):
-                    with model_api.predict_detached(
-                        video_id=input_video_id,
-                        tqdm=self.output_selector.progress(),
-                        **kwargs,
-                    ) as session:
-                        self.output_selector.progress.show()
-                        i = 0
-                        for prediction in session:
-                            predictions.append(prediction)
-                            i += 1
-                            if self._stop_flag:
-                                logger.info("Prediction stopped by user.")
-                                raise StopIteration("Stopped by user.")
-
-                    if kwargs.get("tracking", False):
+            self.set_validator_text(
+                project_validator_text_str + ": Merging project meta",
+                "info",
+            )
+            model_meta = self.model_api.get_model_meta()
+            project_meta = src_project_metas[src_project_id]
+            project_meta = project_meta.merge(model_meta)
+            project_meta = self.api.project.update_meta(output_project_id, project_meta)
+            for src_video_info, output_video_info in zip(src_video_infos, output_videos):
+                video_validator_text_str = (
+                    project_validator_text_str
+                    + f", video: {src_video_info.name} [id: {src_video_info.id}]"
+                )
+                self.set_validator_text(
+                    video_validator_text_str + ": Predicting",
+                    "info",
+                )
+                frames_predictions: List[Prediction] = []
+                with self.model_api.predict_detached(
+                    video_id=src_video_info.id,
+                    tqdm=self.output_selector.secondary_progress(),
+                    tracking=tracking,
+                    **predict_kwargs,
+                ) as session:
+                    self.output_selector.secondary_progress.show()
+                    for prediction in session:
+                        if self._stop_flag:
+                            logger.info("Prediction stopped by user.")
+                            raise StopIteration("Stopped by user.")
+                        frames_predictions.append(prediction)
+                    all_predictictions.extend(frames_predictions)
+                    if tracking:
                         prediction_video_annotation: VideoAnnotation = VideoAnnotation.from_json(
                             session.final_result["video_ann"],
                             project_meta=project_meta,
@@ -722,7 +699,7 @@ class PredictAppGui:
                     else:
                         objects = {}
                         frames = []
-                        for i, prediction in enumerate(predictions):
+                        for i, prediction in enumerate(frames_predictions):
                             figures = []
                             for label in prediction.annotation.labels:
                                 obj_name = label.obj_class.name
@@ -740,67 +717,260 @@ class PredictAppGui:
                             frame = Frame(i, figures=figures)
                             frames.append(frame)
                         prediction_video_annotation = VideoAnnotation(
-                            img_size=(created_video.frame_height, created_video.frame_width),
-                            frames_count=created_video.frames_count,
+                            img_size=(src_video_info.frame_height, src_video_info.frame_width),
+                            frames_count=src_video_info.frames_count,
                             objects=VideoObjectCollection(list(objects.values())),
                             frames=FrameCollection(frames),
                         )
-                    if upload_to_source_project:
-                        if prediction_mode in [
-                            AddPredictionsMode.REPLACE_EXISTING_LABELS,
-                            AddPredictionsMode.REPLACE_EXISTING_LABELS_AND_SAVE_IMAGE_TAGS,
-                        ]:
-                            with open("/tmp/prediction_video_annotation.json", "w") as f:
-                                json.dump(prediction_video_annotation.to_json(), f)
-                            self.api.video.annotation.upload_paths(
-                                video_ids=[input_video_id],
-                                paths=["/tmp/prediction_video_annotation.json"],
-                                project_meta=project_meta,
-                            )
-                        else:
-                            self.api.video.annotation.append(
-                                video_id=input_video_id,
-                                ann=prediction_video_annotation,
-                                key_id_map=KeyIdMap(),
-                            )
-                    else:
-                        self.api.video.annotation.append(
-                            video_id=created_video.id, ann=prediction_video_annotation
+                if prediction_video_annotation is None:
+                    logger.warning(
+                        f"No predictions were made for video {src_video_info.name} [id: {src_video_info.id}]"
+                    )
+                    main_pbar.update()
+                    continue
+                self.set_validator_text(
+                    video_validator_text_str + ": Uploading predictions",
+                    "info",
+                )
+                if upload_to_source_project:
+                    if prediction_mode in [
+                        AddPredictionsMode.REPLACE_EXISTING_LABELS,
+                        AddPredictionsMode.REPLACE_EXISTING_LABELS_AND_SAVE_IMAGE_TAGS,
+                    ]:
+                        self.output_selector.secondary_progress.hide()
+                        with open("/tmp/prediction_video_annotation.json", "w") as f:
+                            json.dump(prediction_video_annotation.to_json(), f)
+                        self.api.video.annotation.upload_paths(
+                            video_ids=[src_video_info.id],
+                            paths=["/tmp/prediction_video_annotation.json"],
+                            project_meta=project_meta,
                         )
-            else:
-                with model_api.predict_detached(
-                    **input_args,
-                    tqdm=self.output_selector.progress(),
-                    **kwargs,
-                ) as session:
-                    self.output_selector.progress.show()
-                    i = 0
-                    for prediction in session:
-                        predictions.append(prediction)
-                        i += 1
-                        if self._stop_flag:
-                            logger.info("Prediction stopped by user.")
-                            break
+                    else:
+                        secondary_pbar = self.output_selector.secondary_progress(
+                            message="Uploading annotations...",
+                            total=len(prediction_video_annotation.figures),
+                        )
+                        self.output_selector.secondary_progress.show()
+                        self.api.video.annotation.append(
+                            video_id=src_video_info.id,
+                            ann=prediction_video_annotation,
+                            key_id_map=KeyIdMap(),
+                            progress_cb=secondary_pbar.update,
+                        )
+                else:
+                    secondary_pbar = self.output_selector.secondary_progress(
+                        message="Uploading annotations...",
+                        total=len(prediction_video_annotation.figures),
+                    )
+                    self.output_selector.secondary_progress.show()
+                    self.api.video.annotation.append(
+                        video_id=output_video_info.id,
+                        ann=prediction_video_annotation,
+                        key_id_map=KeyIdMap(),
+                        progress_cb=secondary_pbar.update,
+                    )
+                main_pbar.update()
+        return all_predictictions
 
-            self.output_selector.progress.hide()
+    def _run_images(self, run_parameters: Dict[str, Any] = None) -> List[Prediction]:
+        if self.model_api is None:
+            self.set_validator_text("Deploying model...", "info")
+            self.model_selector.model._deploy()
+        if self.model_api is None:
+            logger.error("Model Deployed with an error")
+            raise RuntimeError("Model Deployed with an error")
+
+        self.set_validator_text("Preparing settings for prediction...", "info")
+        if run_parameters is None:
+            run_parameters = self.get_run_parameters()
+
+        predict_kwargs = {}
+        # Input
+        input_args = {}
+        input_parameters = run_parameters["input"]
+        input_project_id = input_parameters.get("project_id", None)
+        input_dataset_ids = input_parameters.get("dataset_ids", [])
+        input_image_ids = input_parameters.get("image_ids", [])
+        if input_image_ids:
+            input_args["image_ids"] = input_image_ids
+        elif input_dataset_ids:
+            input_args["dataset_ids"] = input_dataset_ids
+        elif input_project_id:
+            input_args["project_id"] = input_project_id
+        else:
+            raise ValueError("No valid input parameters found for prediction.")
+
+        # Settings
+        settings = run_parameters["settings"]
+        prediction_mode = settings.pop("predictions_mode")
+        upload_mode = None
+        with_annotations = None
+        if prediction_mode == AddPredictionsMode.REPLACE_EXISTING_LABELS:
+            upload_mode = "replace"
+            with_annotations = False
+        elif prediction_mode == AddPredictionsMode.MERGE_WITH_EXISTING_LABELS:
+            upload_mode = "append"
+            with_annotations = True
+        elif prediction_mode == AddPredictionsMode.REPLACE_EXISTING_LABELS_AND_SAVE_IMAGE_TAGS:
+            upload_mode = "replace"
+            with_annotations = True
+        predict_kwargs.update(settings)
+        predict_kwargs["upload_mode"] = upload_mode
+
+        # Classes
+        classes = run_parameters["classes"]
+        if classes:
+            predict_kwargs["classes"] = classes
+
+        # Output
+        output_parameters = run_parameters["output"]
+        upload_to_source_project = output_parameters.get("upload_to_source_project", False)
+        skip_project_versioning = output_parameters.get("skip_project_versioning", False)
+        skip_annotated = output_parameters.get("skip_annotated", False)
+
+        image_infos = []
+        if input_image_ids:
+            image_infos = self.api.image.get_info_by_id_batch(input_image_ids)
+        elif input_dataset_ids:
+            for dataset_id in input_dataset_ids:
+                image_infos.extend(self.api.image.get_list(dataset_id))
+        elif input_project_id:
+            datasets = self.api.dataset.get_list(input_project_id, recursive=True)
+            for dataset in datasets:
+                image_infos.extend(self.api.image.get_list(dataset.id))
+        if len(image_infos) == 0:
+            raise ValueError("No images found for the given input parameters.")
+
+        to_skip = []
+        if skip_annotated:
+            to_skip = [image_info.id for image_info in image_infos if image_info.labels_count == 0]
+        if to_skip:
+            image_infos = [info for info in image_infos if info.id not in to_skip]
+        if len(image_infos) == 0:
+            self.set_validator_text(
+                f"All images are already annotated. Nothing to predict.", "warning"
+            )
+            return []
+
+        image_infos_by_project_id: Dict[int, List[ImageInfo]] = {}
+        image_infos_by_dataset_id: Dict[int, List[ImageInfo]] = {}
+        for info in image_infos:
+            image_infos_by_project_id.setdefault(info.project_id, []).append(info)
+            image_infos_by_dataset_id.setdefault(info.dataset_id, []).append(info)
+        src_project_metas: Dict[int, ProjectMeta] = {}
+        for project_id in image_infos_by_project_id.keys():
+            src_project_metas[project_id] = ProjectMeta.from_json(
+                self.api.project.get_meta(project_id)
+            )
+
+        self.output_selector.progress.show()
+        for src_project_id, infos in image_infos_by_project_id.items():
+            if len(infos) == 0:
+                continue
+            project_info = self.api.project.get_info_by_id(src_project_id)
+            project_validator_text_str = (
+                f"Processing project: {project_info.name} [id: {src_project_id}]"
+            )
+            if upload_to_source_project:
+                if not skip_project_versioning and not is_development():
+                    logger.info("Creating new project version...")
+                    self.set_validator_text(
+                        project_validator_text_str + ": Creating project version", "info"
+                    )
+                    version_id = self.api.project.version.create(
+                        project_info,
+                        "Created by Predict App. Task Id: " + str(env.task_id()),
+                    )
+                    logger.info("New project version created: " + str(version_id))
+                output_project_id = src_project_id
+                output_image_infos: List[ImageInfo] = infos
+            else:
+                self.set_validator_text(
+                    project_validator_text_str + ": Creating project...", "info"
+                )
+                if not project_name:
+                    project_name = project_info.name + " [Predictions]"
+                    logger.warning(
+                        "Project name is empty, using auto-generated name: " + project_name
+                    )
+                created_project = create_project(
+                    api=self.api,
+                    project_id=src_project_id,
+                    project_name=project_name,
+                    workspace_id=self.workspace_id,
+                    copy_meta=with_annotations,
+                    project_type=ProjectType.IMAGES,
+                )
+                output_project_id = created_project.id
+                output_image_infos: List[ImageInfo] = copy_items_to_project(
+                    api=self.api,
+                    src_project_id=src_project_id,
+                    items=infos,
+                    dst_project_id=created_project.id,
+                    with_annotations=with_annotations,
+                    progress=self.output_selector.progress,
+                    project_type=ProjectType.IMAGES,
+                )
+            self.set_validator_text(
+                project_validator_text_str + ": Merging project meta",
+                "info",
+            )
+            model_meta = self.model_api.get_model_meta()
+            project_meta = src_project_metas[src_project_id]
+            project_meta = project_meta.merge(model_meta)
+            project_meta = self.api.project.update_meta(output_project_id, project_meta)
+
+        # Run prediction
+        self.set_validator_text("Running prediction...", "info")
+        predictions: List[Prediction] = []
+        self._is_running = True
+        with self.model_api.predict_detached(
+            image_ids=[info.id for info in output_image_infos],
+            **predict_kwargs,
+            tqdm=self.output_selector.progress(),
+        ) as session:
+            for prediction in session:
+                if self._stop_flag:
+                    logger.info("Prediction stopped by user.")
+                    raise StopIteration("Stopped by user.")
+                predictions.append(prediction)
+        return predictions
+
+    def run(self, run_parameters: Dict[str, Any] = None) -> List[Prediction]:
+        self.show_validator_text()
+        if run_parameters is None:
+            run_parameters = self.get_run_parameters()
+        input_parameters = run_parameters["input"]
+        video_ids = input_parameters.get("video_ids", None)
+        try:
+            if video_ids:
+                run_f = self._run_videos
+            else:
+                run_f = self._run_images
+            predictions = run_f(run_parameters)
+            if predictions:
+                output_project_id = predictions[
+                    0
+                ].project_id  # normally all predictions belong to the same project
+                self.set_validator_text("Project successfully processed", "success")
+                self.output_selector.set_result_thumbnail(output_project_id)
+            else:
+                # items were skipped
+                pass
+        except StopIteration:
+            logger.info("Prediction stopped by user.")
+            self.set_validator_text("Prediction stopped by user.", "warning")
+            raise
         except Exception as e:
-            self.output_selector.progress.hide()
             logger.error(f"Error during prediction: {str(e)}")
             self.set_validator_text(f"Error during prediction: {str(e)}", "error")
             disable_enable(self.output_selector.widgets_to_disable, False)
-            self._is_running = False
-            self._stop_flag = False
-            raise e
+            raise
         finally:
+            self.output_selector.secondary_progress.hide()
+            self.output_selector.progress.hide()
             self._is_running = False
             self._stop_flag = False
-        # ------------------------ #
-
-        # Set result thumbnail
-        self.set_validator_text("Project successfully processed", "success")
-        self.output_selector.set_result_thumbnail(output_project_id)
-        # ------------------------ #
-        return predictions
 
     def stop(self):
         logger.info("Stopping prediction...")
