@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 from tqdm import tqdm
 
@@ -31,6 +31,8 @@ from supervisely.io.fs import (
     unpack_archive,
 )
 from supervisely.project.project import Project
+from supervisely.project.project import Dataset
+from supervisely import OpenMode, ProjectMeta
 from supervisely.project.project_settings import LabelingInterface
 from supervisely.project.project_type import ProjectType
 from supervisely.sly_logger import logger
@@ -277,3 +279,184 @@ class ImportManager:
             )
             progress_cb = progress.update
         return progress, progress_cb
+
+
+class ExportManager:
+    def __init__(self, api: Optional[Api] = None):
+        self._api = api or Api.from_env()
+
+    def _prepare_local_sly_from_project(
+        self, project_id: int, dataset_ids: Optional[List[int]] = None, save_images: bool = True
+    ) -> Tuple[Project, ProjectMeta]:
+        """Download selected project/datasets to a local SLY folder and return fs objects."""
+        export_root = os.path.join(get_data_dir(), "exports")
+        mkdir(export_root, remove_content_if_exists=False)
+        local_dir = os.path.join(export_root, f"project_{project_id}")
+        mkdir(local_dir, remove_content_if_exists=True)
+
+        Project.download(
+            api=self._api,
+            project_id=project_id,
+            dest_dir=local_dir,
+            dataset_ids=dataset_ids,
+            log_progress=True,
+            save_images=save_images,
+        )
+        project_fs = Project(local_dir, OpenMode.READ)
+        return project_fs, project_fs.meta
+
+    def _prepare_local_sly_from_dataset(
+        self, dataset_id: int, save_images: bool = True
+    ) -> Tuple[Dataset, ProjectMeta]:
+        """Download single dataset to a local SLY project folder and return fs objects."""
+        ds_info = self._api.dataset.get_info_by_id(dataset_id, raise_error=True)
+        project_fs, _ = self._prepare_local_sly_from_project(
+            ds_info.project_id, [dataset_id], save_images
+        )
+        dataset_fs = project_fs.datasets.get(ds_info.name)
+        return dataset_fs, project_fs.meta
+
+    # def get_available_formats(self, project_id: int) -> Dict[str, bool]:
+    #     """Lightweight validation of export formats by ProjectMeta."""
+    #     meta_json = self._api.project.get_meta(project_id, with_settings=True)
+    #     meta = ProjectMeta.from_json(meta_json)
+    #     geom_names = {obj_class.geometry_type.geometry_name() for obj_class in meta.obj_classes}
+
+    #     has_bboxes = "rectangle" in geom_names
+    #     has_polygons = "polygon" in geom_names
+    #     has_bitmaps = "bitmap" in geom_names
+    #     has_keypoints = "graph_nodes" in geom_names
+
+    #     return {
+    #         "supervisely": True,
+    #         "yolo_detect": has_bboxes,
+    #         "yolo_segment": has_polygons or has_bitmaps,
+    #         "yolo_pose": has_keypoints,
+    #         "coco": has_bboxes or has_polygons or has_bitmaps or has_keypoints,
+    #         "coco_keypoints": has_keypoints,
+    #         "pascal_voc": has_bboxes or has_polygons or has_bitmaps,
+    #     }
+
+    def from_supervisely(
+        self,
+        *,
+        format: str,
+        dest_dir: str,
+        project_id: Optional[int] = None,
+        dataset_id: Optional[int] = None,
+        dataset_ids: Optional[List[int]] = None,
+        save_images: bool = True,
+        only_annotated: Optional[bool] = None,
+        with_annotations: bool = True,
+        yolo_task: str = "detect",
+        coco_with_captions: bool = False,
+        val_datasets: Optional[List[str]] = None,
+        is_val: Optional[bool] = None,
+        log_progress: bool = True,
+        upload_to: Optional[str] = None,
+        remote_dir: Optional[str] = None,
+        team_id: Optional[int] = None,
+        change_name_if_conflict: bool = True,
+    ) -> str:
+        """
+        Entry point for Export Wizard backend: prepare local SLY data and dispatch to target format.
+
+        Parameters are intentionally high-level and map to actual converter options inside.
+        """
+        mkdir(dest_dir, remove_content_if_exists=False)
+
+        input_data: Union[Project, Dataset]
+        meta: ProjectMeta
+
+        if project_id is not None:
+            input_data, meta = self._prepare_local_sly_from_project(
+                project_id, dataset_ids, save_images
+            )
+        elif dataset_id is not None:
+            input_data, meta = self._prepare_local_sly_from_dataset(dataset_id, save_images)
+        else:
+            raise ValueError("Either project_id or dataset_id must be provided for export.")
+
+        if not with_annotations:
+            return str(Path(input_data.path))
+
+        format_lower = format.lower()
+        if format_lower.startswith("yolo"):
+            from supervisely.convert.image.yolo.yolo_helper import to_yolo
+
+            return str(
+                to_yolo(
+                    input_data=input_data,
+                    dest_dir=dest_dir,
+                    task_type=yolo_task,  # detect/segment/pose
+                    meta=meta if isinstance(input_data, Dataset) else None,
+                    log_progress=log_progress,
+                    val_datasets=val_datasets,
+                    is_val=is_val,
+                )
+            )
+
+        if format_lower.startswith("coco"):
+            from supervisely.convert.image.coco.coco_helper import to_coco
+
+            return_dir = to_coco(
+                input_data=input_data,
+                dest_dir=dest_dir,
+                meta=meta if isinstance(input_data, Dataset) else None,
+                copy_images=True,
+                with_captions=coco_with_captions,
+                log_progress=log_progress,
+            )
+            return str(return_dir) if return_dir is not None else dest_dir
+
+        if format_lower in ("pascal", "pascal_voc", "voc"):
+            from supervisely.convert.image.pascal_voc.pascal_voc_helper import to_pascal_voc
+
+            return_dir = to_pascal_voc(
+                input_data=input_data,
+                dest_dir=dest_dir,
+                meta=meta if isinstance(input_data, Dataset) else None,
+            )
+            return str(return_dir) if return_dir is not None else dest_dir
+
+        if format_lower in ("supervisely", "sly"):
+            result_path = str(Path(input_data.path))
+        else:
+            result_path = dest_dir
+
+        self._upload_destination(
+            local_dir=result_path,
+            upload_to=upload_to,
+            remote_dir=remote_dir,
+            team_id=team_id or env_team_id(),
+            change_name_if_conflict=change_name_if_conflict,
+        )
+        return result_path
+
+    def _upload_destination(
+        self,
+        *,
+        local_dir: str,
+        upload_to: str,
+        remote_dir: str,
+        team_id: int,
+        change_name_if_conflict: bool,
+    ) -> str:
+        """Upload a local directory to Team Files or Cloud Storage."""
+        upload_to_lower = upload_to.lower()
+        # @TODO: archive and upload file
+        if upload_to_lower in ("team_files", "teamfiles", "files", "file"):
+            return self._api.storage.upload_directory(
+                team_id=team_id,
+                local_dir=local_dir,
+                remote_dir=remote_dir,
+                change_name_if_conflict=change_name_if_conflict,
+            )
+        if upload_to_lower in ("cloud_storage", "cloud", "storage"):
+            return self._api.storage.upload_directory(
+                team_id=team_id,
+                local_dir=local_dir,
+                remote_dir=remote_dir,
+                change_name_if_conflict=change_name_if_conflict,
+            )
+        raise ValueError(f"Unsupported upload destination: {upload_to}")
