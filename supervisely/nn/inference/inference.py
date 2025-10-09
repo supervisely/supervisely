@@ -67,6 +67,7 @@ from supervisely.decorators.inference import (
     process_images_batch_sliding_window,
 )
 from supervisely.geometry.any_geometry import AnyGeometry
+from supervisely.geometry.geometry import Geometry
 from supervisely.imaging.color import get_predefined_colors
 from supervisely.io.fs import list_files
 from supervisely.nn.experiments import ExperimentInfo
@@ -1399,7 +1400,7 @@ class Inference:
         }
 
     # pylint: enable=method-hidden
-    
+
     def get_tracking_settings(self) -> Dict[str, Dict[str, Any]]:
         """
         Get default parameters for all available tracking algorithms.
@@ -1410,13 +1411,13 @@ class Inference:
         """
         info = self.get_info()
         trackers_params = {}
-        
+
         tracking_support = info.get("tracking_on_videos_support")
         if not tracking_support:
             return trackers_params
-        
+
         tracking_algorithms = info.get("tracking_algorithms", [])
-        
+
         for tracker_name in tracking_algorithms:
             try:
                 if tracker_name == "botsort":
@@ -1427,7 +1428,7 @@ class Inference:
                     logger.debug(f"Tracker '{tracker_name}' not implemented")
             except Exception as e:
                 logger.warning(f"Failed to get params for '{tracker_name}': {e}")
-                
+
         INTERNAL_FIELDS = {"device", "fps"}
         for tracker_name, params in trackers_params.items():
             trackers_params[tracker_name] = {
@@ -4335,6 +4336,72 @@ class Inference:
     def export_tensorrt(self, deploy_params: dict):
         raise NotImplementedError("Have to be implemented in child class after inheritance")
 
+
+def _filter_duplicated_predictions_from_ann_cpu(
+    gt_ann: Annotation, pred_ann: Annotation, iou_threshold: float
+):
+    """
+    Filter out predicted labels whose bboxes have IoU > iou_threshold with any GT label.
+    Uses Shapely for geometric operations.
+
+    Args:
+        pred_ann: Predicted annotation object
+        gt_ann: Ground truth annotation object
+        iou_threshold: IoU threshold for filtering
+
+    Returns:
+        New annotation with filtered labels
+    """
+    if not iou_threshold:
+        return pred_ann
+
+    from shapely.geometry import box
+
+    def calculate_iou(geom1: Geometry, geom2: Geometry):
+        """Calculate IoU between two geometries using Shapely."""
+        bbox1 = geom1.to_bbox()
+        bbox2 = geom2.to_bbox()
+
+        box1 = box(bbox1.left, bbox1.top, bbox1.right, bbox1.bottom)
+        box2 = box(bbox2.left, bbox2.top, bbox2.right, bbox2.bottom)
+
+        intersection = box1.intersection(box2).area
+        union = box1.union(box2).area
+
+        return intersection / union if union > 0 else 0.0
+
+    new_labels = []
+    pred_cls_bboxes = defaultdict(list)
+    for label in pred_ann.labels:
+        pred_cls_bboxes[label.obj_class.name].append(label)
+
+    gt_cls_bboxes = defaultdict(list)
+    for label in gt_ann.labels:
+        if label.obj_class.name not in pred_cls_bboxes:
+            continue
+        gt_cls_bboxes[label.obj_class.name].append(label)
+
+    for name, pred in pred_cls_bboxes.items():
+        gt = gt_cls_bboxes[name]
+        if len(gt) == 0:
+            new_labels.extend(pred)
+            continue
+
+        for pred_label in pred:
+            # Check if this prediction has IoU < threshold with ALL GT boxes
+            keep = True
+            for gt_label in gt:
+                iou = calculate_iou(pred_label.geometry, gt_label.geometry)
+                if iou >= iou_threshold:
+                    keep = False
+                    break
+
+            if keep:
+                new_labels.append(pred_label)
+
+    return pred_ann.clone(labels=new_labels)
+
+
 def _exclude_duplicated_predictions(
     api: Api,
     pred_anns: List[Annotation],
@@ -4420,13 +4487,15 @@ def _filter_duplicated_predictions_from_ann(
     - Predictions with classes not present in ground truth will be kept
     - Requires PyTorch and torchvision for IoU calculations
     """
+    if not iou_threshold:
+        return pred_ann
 
     try:
         import torch
         from torchvision.ops import box_iou
 
     except ImportError:
-        raise ImportError("Please install PyTorch and torchvision to use this feature.")
+        return _filter_duplicated_predictions_from_ann_cpu(gt_ann, pred_ann, iou_threshold)
 
     def _to_tensor(geom):
         return torch.tensor([geom.left, geom.top, geom.right, geom.bottom]).float()
