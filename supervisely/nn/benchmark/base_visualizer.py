@@ -42,6 +42,7 @@ class BaseVisMetrics:
     ) -> None:
         self.vis_texts = vis_texts
         self.eval_results = eval_results
+        self.projects_exist = all([eval_result.project_exists for eval_result in eval_results])
         self.explore_modal_table = explore_modal_table
         self.diff_modal_table = diff_modal_table
         self.clickable = False
@@ -91,7 +92,11 @@ class BaseVisualizer:
     def _get_eval_project_infos(self, eval_result):
         # get project infos
         if self.gt_project_info is None:
-            self.gt_project_info = self.api.project.get_info_by_id(eval_result.gt_project_id)
+            # self.gt_project_info = self.api.project.get_info_by_id(eval_result.gt_project_id)
+            self.gt_project_info = eval_result.project_info
+            assert self.gt_project_info.id == eval_result.gt_project_id, RuntimeError(
+                "GT project ID from eval_result does not match the fetched project info ID"
+            )
         eval_result.gt_project_info = self.gt_project_info
         eval_result.pred_project_info = self.api.project.get_info_by_id(eval_result.pred_project_id)
 
@@ -100,7 +105,7 @@ class BaseVisualizer:
             self.gt_project_meta = ProjectMeta.from_json(
                 self.api.project.get_meta(eval_result.gt_project_id)
             )
-        eval_result.gt_project_meta = self.gt_project_meta
+        eval_result.gt_project_meta = self.gt_project_meta or eval_result.project_meta
         eval_result.pred_project_meta = ProjectMeta.from_json(
             self.api.project.get_meta(eval_result.pred_project_id)
         )
@@ -116,11 +121,17 @@ class BaseVisualizer:
                 }
             ]
         if self.gt_dataset_infos is None:
-            self.gt_dataset_infos = self.api.dataset.get_list(
-                eval_result.gt_project_id,
-                filters=filters,
-                recursive=True,
-            )
+            # self.gt_dataset_infos = self.api.dataset.get_list(
+            #     eval_result.gt_project_id,
+            #     filters=filters,
+            #     recursive=True,
+            # )
+            self.gt_dataset_infos = eval_result.dataset_infos
+            if eval_result.gt_dataset_ids is not None:
+                dataset_ids = [ds.id for ds in self.gt_dataset_infos]
+                assert set(dataset_ids) == set(eval_result.gt_dataset_ids), RuntimeError(
+                    "Fetched GT datasets do not match the GT dataset IDs"
+                )
         eval_result.gt_dataset_infos = self.gt_dataset_infos
         filters = [
             {
@@ -129,6 +140,7 @@ class BaseVisualizer:
                 ApiField.VALUE: [ds.name for ds in self.gt_dataset_infos],
             }
         ]
+        # TODO: evaluate how to handle prediction project and its datasets
         eval_result.pred_dataset_infos = self.api.dataset.get_list(
             eval_result.pred_project_id, filters=filters, recursive=True
         )

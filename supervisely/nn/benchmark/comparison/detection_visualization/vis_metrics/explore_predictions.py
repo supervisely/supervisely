@@ -39,6 +39,8 @@ class ExplorePredictions(BaseVisMetrics):
         return gallery
 
     def _get_sample_data(self) -> Tuple[List[ImageInfo], List[Annotation], List[ProjectMeta]]:
+        if not self.projects_exist:
+            return [], [], [], [], 0.0
         images = []
         annotations = []
         metas = [self.eval_results[0].gt_project_meta]
@@ -99,6 +101,8 @@ class ExplorePredictions(BaseVisMetrics):
 
     def get_click_data_explore_all(self) -> dict:
         res = {}
+        if not self.projects_exist:
+            return res
 
         res["projectMeta"] = self.eval_results[0].gt_project_meta.to_json()
         res["layoutTemplate"] = [None, None, None]
@@ -133,7 +137,6 @@ class ExplorePredictions(BaseVisMetrics):
                 current_images_ids = []
                 current_images_names = []
                 for ds in dataset_infos:
-
                     image_infos = api.image.get_list(
                         ds.id, filters=filters, force_metadata_for_links=False
                     )

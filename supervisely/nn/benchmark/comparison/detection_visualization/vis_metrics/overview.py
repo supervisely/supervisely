@@ -167,7 +167,7 @@ class Overview(BaseVisMetrics):
             datasets = eval_result.gt_dataset_infos
             val_imgs_cnt = sum(ds.items_count for ds in datasets)
         else:
-            val_imgs_cnt = eval_result.gt_project_info.items_count
+            val_imgs_cnt = total_imgs_cnt
 
         if train_info:
             train_task_id = train_info.get("app_session_id")

@@ -64,6 +64,7 @@ class ModelComparison:
             eval_result.report_path = Path(eval_dir, "visualizations", "template.vue").as_posix()
             eval_result.color = rgb2hex(colors[i])
 
+            self._check_project_existence(eval_result)
             self.eval_results.append(eval_result)
 
         self.images_partially_matched = False
@@ -78,23 +79,25 @@ class ModelComparison:
         self.visualizer: ComparisonVisualizer = None
         self.remote_dir = None
 
-    # @TODO: rewrite
     def _check_project_existence(self, eval_result):
         """
         Check if the ground truth project exists for the evaluation result.
-        If not, raise an error.
         """
         if eval_result.gt_project_id is not None:
+            eval_result.project_exists = True
             if not self.api.project.exists(eval_result.gt_project_id):
-                raise ValueError(
+                logger.warning(
                     f"Ground truth project with ID {eval_result.gt_project_id} not found."
                 )
+                eval_result.project_exists = False
 
         if eval_result.pred_project_id is not None:
+            eval_result.project_exists = True
             if not self.api.project.exists(eval_result.pred_project_id):
-                raise ValueError(
+                logger.warning(
                     f"Prediction project with ID {eval_result.pred_project_id} not found."
                 )
+                eval_result.project_exists = False
 
     def _validate_task_type(self):
         """

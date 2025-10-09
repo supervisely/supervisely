@@ -59,6 +59,8 @@ class ExplorePredictions(BaseVisMetrics):
         return gallery
 
     def _get_sample_data(self) -> Tuple[List[ImageInfo], List[Annotation]]:
+        if not self.projects_exist:
+            return [], []
         images = []
         annotations = []
         api: Api = self.eval_results[0].api
@@ -116,6 +118,8 @@ class ExplorePredictions(BaseVisMetrics):
         return images, annotations
 
     def get_click_data_explore_all(self) -> dict:
+        if not self.projects_exist:
+            return {}
         res = {}
 
         res["projectMeta"] = self._merged_meta().to_json()

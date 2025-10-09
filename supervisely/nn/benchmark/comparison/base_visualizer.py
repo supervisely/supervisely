@@ -16,6 +16,7 @@ from supervisely.nn.benchmark.visualization.widgets.notification.notification im
     NotificationWidget,
 )
 from supervisely.project.project_meta import ProjectMeta
+from supervisely.sly_logger import logger
 
 
 class BaseComparisonVisualizer:
@@ -115,48 +116,66 @@ class BaseComparisonVisualizer:
 
     def _get_eval_project_infos(self, eval_result):
         # get project infos
-        if self.gt_project_info is None:
+        if getattr(eval_result, "gt_project_info", None) is None:
             project_info = self.api.project.get_info_by_id(eval_result.gt_project_id)
-            if project_info is None:
-                raise ValueError(
-                    f"Ground truth project with ID {eval_result.gt_project_id} not found."
-                )
-            self.gt_project_info = project_info
-        eval_result.gt_project_info = self.gt_project_info
-        eval_result.pred_project_info = self.api.project.get_info_by_id(eval_result.pred_project_id)
+            # if project_info is None:
+            #     logger.warning(
+            #         "Ground truth project with ID %s not found.", eval_result.gt_project_id
+            #     )
+            self.gt_project_info = project_info or eval_result.project_info
+            eval_result.gt_project_info = self.gt_project_info
+
+        if getattr(eval_result, "pred_project_info", None) is None:
+            try:
+                project_info = self.api.project.get_info_by_id(eval_result.pred_project_id)
+                if project_info is None:
+                    logger.warning(
+                        "Prediction project with ID %s not found.", eval_result.pred_project_id
+                    )
+                else:
+                    eval_result.pred_project_info = project_info
+            except Exception as e:
+                logger.warning("Error retrieving prediction project info: %s", e)
 
         # get project metas
-        if self.gt_project_meta is None:
+        if getattr(eval_result, "gt_project_meta", None) is None:
             project_meta_json = self.api.project.get_meta(eval_result.gt_project_id)
-            if project_meta_json is None:
-                raise ValueError(
-                    f"Ground truth project meta for project ID {eval_result.gt_project_id} not found."
-                )
+            # if project_meta_json is None:
+            #     logger.warning(
+            #         "Ground truth project meta for project ID %s not found.",
+            #         eval_result.gt_project_id,
+            #     )
             self.gt_project_meta = ProjectMeta.from_json(project_meta_json)
-        eval_result.gt_project_meta = self.gt_project_meta
-        eval_result.pred_project_meta = ProjectMeta.from_json(
-            self.api.project.get_meta(eval_result.pred_project_id)
-        )
+            eval_result.gt_project_meta = self.gt_project_meta or eval_result.project_meta
+
+        if getattr(eval_result, "pred_project_meta", None) is None:
+            pred_project_meta_json = self.api.project.get_meta(eval_result.pred_project_id)
+            if pred_project_meta_json is None:
+                logger.warning(
+                    "Prediction project meta for project ID %s not found.",
+                    eval_result.pred_project_id,
+                )
+            else:
+                eval_result.pred_project_meta = ProjectMeta.from_json(pred_project_meta_json)
 
         # get dataset infos
-        filters = None
-        if eval_result.gt_dataset_ids is not None:
-            filters = [
-                {
-                    ApiField.FIELD: ApiField.ID,
-                    ApiField.OPERATOR: "in",
-                    ApiField.VALUE: eval_result.gt_dataset_ids,
-                }
-            ]
-        eval_result.gt_dataset_infos = self.api.dataset.get_list(
-            eval_result.gt_project_id,
-            filters=filters,
-            recursive=True,
-        )
-
-        # eval_result.pred_dataset_infos = self.api.dataset.get_list(
-        #     eval_result.pred_project_id, recursive=True
-        # )
+        if getattr(eval_result, "gt_dataset_infos", None) is None:
+            filters = None
+            if eval_result.gt_dataset_ids is not None:
+                filters = [
+                    {
+                        ApiField.FIELD: ApiField.ID,
+                        ApiField.OPERATOR: "in",
+                        ApiField.VALUE: eval_result.gt_dataset_ids,
+                    }
+                ]
+            eval_result.gt_dataset_infos = self.api.dataset.get_list(
+                eval_result.gt_project_id,
+                filters=filters,
+                recursive=True,
+            )
+            if eval_result.gt_dataset_infos is None:
+                eval_result.gt_dataset_infos = eval_result.dataset_infos
 
     def _create_warning_notification_if_needed(self):
         NOTIFICATION = "overlap_notification"
