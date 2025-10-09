@@ -84,13 +84,11 @@ class StepFlow:
         self.update_locks()
 
     def _create_stepper(self):
-        titles = []
         widgets = []
         for step_name in self.steps_sequence:
             step = self.steps[step_name]
-            titles.append(step_name)
             widgets.append(step["widget"])
-        self._stepper = Stepper(titles=titles, widgets=widgets)
+        self._stepper = Stepper(widgets=widgets)
 
     @property
     def stepper(self):
@@ -364,13 +362,23 @@ class PredictAppGui:
         def input_selector_type_changed(value: str):
             self.input_selector.validator_text.hide()
 
+        @self.input_selector.select_dataset_for_images.project_changed
+        def project_for_images_changed(project_id: int):
+            self.input_selector.validator_text.hide()
+
+        @self.input_selector.select_dataset_for_images.value_changed
+        def dataset_for_images_changed(dataset_id: int):
+            self.input_selector.validator_text.hide()
+
         @self.input_selector.select_dataset_for_video.project_changed
         def project_for_videos_changed(project_id: int):
             self.input_selector.select_video.clear()
             self.input_selector.select_video.hide()
+            self.input_selector.validator_text.hide()
 
         @self.input_selector.select_dataset_for_video.value_changed
         def dataset_for_video_changed(dataset_id: int):
+            self.input_selector.validator_text.hide()
             self.input_selector.select_video.loading = True
             self.input_selector.select_video.clear()
             if dataset_id is None:
