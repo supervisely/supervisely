@@ -724,6 +724,7 @@ class PredictAppGui:
 
         # Output
         output_parameters = run_parameters["output"]
+        project_name = output_parameters.get("project_name", None)
         upload_to_source_project = output_parameters.get("upload_to_source_project", False)
         skip_project_versioning = output_parameters.get("skip_project_versioning", False)
         skip_annotated = output_parameters.get("skip_annotated", False)
@@ -754,9 +755,15 @@ class PredictAppGui:
 
         image_infos_by_project_id: Dict[int, List[ImageInfo]] = {}
         image_infos_by_dataset_id: Dict[int, List[ImageInfo]] = {}
+        ds_project_mapping: Dict[int, int] = {}
         for info in image_infos:
-            image_infos_by_project_id.setdefault(info.project_id, []).append(info)
             image_infos_by_dataset_id.setdefault(info.dataset_id, []).append(info)
+            if info.dataset_id not in ds_project_mapping:
+                ds_info = self.api.dataset.get_info_by_id(info.dataset_id)
+                ds_project_mapping[info.dataset_id] = ds_info.project_id
+            project_id = ds_project_mapping[info.dataset_id]
+            image_infos_by_project_id.setdefault(project_id, []).append(info)
+
         src_project_metas: Dict[int, ProjectMeta] = {}
         for project_id in image_infos_by_project_id.keys():
             src_project_metas[project_id] = ProjectMeta.from_json(
