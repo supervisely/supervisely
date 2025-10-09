@@ -818,14 +818,6 @@ class PredictAppGui:
                     progress=self.output_selector.progress,
                     project_type=ProjectType.IMAGES,
                 )
-            self.set_validator_text(
-                project_validator_text_str + ": Merging project meta",
-                "info",
-            )
-            model_meta = self.model_api.get_model_meta()
-            project_meta = src_project_metas[src_project_id]
-            project_meta = project_meta.merge(model_meta)
-            project_meta = self.api.project.update_meta(output_project_id, project_meta)
 
         # Run prediction
         self.set_validator_text("Running prediction...", "info")
