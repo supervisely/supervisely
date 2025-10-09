@@ -666,11 +666,17 @@ class SettingsSelector:
 
     def disable(self):
         for widget in self.widgets_to_disable:
-            widget.disable()
+            if isinstance(widget, Editor):
+                widget.readonly = True
+            else:
+                widget.disable()
 
     def enable(self):
         for widget in self.widgets_to_disable:
-            widget.enable()
+            if isinstance(widget, Editor):
+                widget.readonly = False
+            else:
+                widget.enable()
 
     @property
     def widgets_to_disable(self) -> List[Widget]:
