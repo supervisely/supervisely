@@ -11,6 +11,7 @@ import cv2
 import yaml
 
 from supervisely._utils import logger
+from supervisely.annotation.annotation import Annotation
 from supervisely.api.api import Api
 from supervisely.api.video.video_api import VideoInfo
 from supervisely.app.widgets import (
@@ -371,6 +372,9 @@ class Preview:
             self.image_preview_path = Path(self.preview_dir, image_info.name)
             self.api.image.download_path(image_id, self.image_preview_path)
             self._current_item_id = image_id
+            ann_info = self.api.annotation.download(image_id)
+            project_meta = ProjectMeta.from_json(self.api.project.get_meta(image_info.project_id))
+            self._image_annotation = Annotation.from_json(ann_info.annotation, project_meta)
             self.image_peview_url = f"/static/preview/{image_info.name}"
         elif len(video_ids) == 0:
             self._current_item_id = None
@@ -397,12 +401,8 @@ class Preview:
             prediction = model_api.predict(
                 image_id=image_id, inference_settings=inference_settings, tqdm=pbar
             )[0]
-            ann_info = self.api.annotation.download(image_id)
-            source_annotation = VideoAnnotation.from_json(
-                ann_info.annotation, project_meta=model_api.get_model_meta()
-            )
         self.image_gallery.append(
-            self.image_peview_url, title="Source", annotation=source_annotation
+            self.image_peview_url, title="Source", annotation=self._image_annotation
         )
         self.image_gallery.append(
             self.image_peview_url, title="Prediction", annotation=prediction.annotation
