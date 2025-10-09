@@ -397,8 +397,12 @@ class Preview:
             prediction = model_api.predict(
                 image_id=image_id, inference_settings=inference_settings, tqdm=pbar
             )[0]
+            ann_info = self.api.annotation.download(image_id)
+            source_annotation = VideoAnnotation.from_json(
+                ann_info.annotation, project_meta=model_api.get_model_meta()
+            )
         self.image_gallery.append(
-            self.image_peview_url, title="Source", annotation=prediction.annotation
+            self.image_peview_url, title="Source", annotation=source_annotation
         )
         self.image_gallery.append(
             self.image_peview_url, title="Prediction", annotation=prediction.annotation
