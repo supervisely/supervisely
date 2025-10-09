@@ -413,7 +413,8 @@ class Preview:
                 AddPredictionsMode.MERGE_WITH_EXISTING_LABELS,
                 AddPredictionsMode.REPLACE_EXISTING_LABELS_AND_SAVE_IMAGE_TAGS,
             ]:
-                pred = _filter_duplicated_predictions_from_ann(source, pred, iou_threshold)
+                if iou_threshold:
+                    pred = _filter_duplicated_predictions_from_ann(source, pred, iou_threshold)
                 return source.merge(pred)
             else:
                 raise RuntimeError(f"Unknown predictions mode: {predictions_mode}")
