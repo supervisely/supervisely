@@ -2267,9 +2267,9 @@ class Inference:
                 current=inference_request.progress.current,
                 total=inference_request.progress.total,
             )
-            if stopped:
-                inference_request.stop()
-                logger.info("Tracking has been stopped by user", extra={"track_id": track_id})
+            # if stopped:
+            #     inference_request.stop()
+            #     logger.info("Tracking has been stopped by user", extra={"track_id": track_id})
 
         def _exception_handler(e: Exception):
             self.api.video.notify_tracking_error(
@@ -2354,9 +2354,8 @@ class Inference:
         )
         if start_frame_index is None:
             start_frame_index = 0
-        
         frames_count = get_value_for_keys(
-            params, ["frames", "framesCount", "frames_count", "num_frames"], 
+            params, ["framesCount", "frames_count", "num_frames"], 
             ignore_none=True
         )
         
@@ -2382,6 +2381,11 @@ class Inference:
                 frames_count = int(duration * fps)
             else:
                 frames_count = video_info.frames_count - start_frame_index
+
+            logger.info(
+                f"Using all remaining frames: {frames_count}",
+                extra={"video_total_frames": video_info.frames_count}
+            )
         
         self._tracker = self._tracker_init(
             params.get("tracker", "botsort"), 
