@@ -812,6 +812,8 @@ def _init(
     @app.middleware("http")
     async def get_state_from_request(request: Request, call_next):
         # Start timer for response time measurement
+        logger.info("query parameters:", extra={"qp": request.query_params})
+        logger.info(f"userId: {request.query_params.get('userId', None)}")
         start_time = time.perf_counter()
         if headless is False:
             await StateJson.from_request(request)
