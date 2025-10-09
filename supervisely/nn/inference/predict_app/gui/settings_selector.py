@@ -30,6 +30,10 @@ from supervisely.app.widgets import (
 )
 from supervisely.app.widgets.checkbox.checkbox import Checkbox
 from supervisely.app.widgets.widget import Widget
+from supervisely.nn.inference.inference import (
+    _filter_duplicated_predictions_from_ann,
+    update_meta_and_ann,
+)
 from supervisely.nn.inference.predict_app.gui.input_selector import InputSelector
 from supervisely.nn.inference.predict_app.gui.model_selector import ModelSelector
 from supervisely.nn.model.model_api import ModelAPI, Prediction
@@ -373,8 +377,10 @@ class Preview:
             self.api.image.download_path(image_id, self.image_preview_path)
             self._current_item_id = image_id
             ann_info = self.api.annotation.download(image_id)
-            project_meta = ProjectMeta.from_json(self.api.project.get_meta(image_info.project_id))
-            self._image_annotation = Annotation.from_json(ann_info.annotation, project_meta)
+            self._project_meta = ProjectMeta.from_json(
+                self.api.project.get_meta(image_info.project_id)
+            )
+            self._image_annotation = Annotation.from_json(ann_info.annotation, self._project_meta)
             self.image_peview_url = f"/static/preview/{image_info.name}"
         elif len(video_ids) == 0:
             self._current_item_id = None
@@ -390,6 +396,28 @@ class Preview:
             self.video_peview_url = f"/static/preview/annotated/{video_info.name}"
 
     def set_image_preview(self):
+
+        def _maybe_merge_annotations(
+            source: Annotation,
+            pred: Annotation,
+            predictions_mode: str,
+            model_prediction_suffix: str,
+            iou_threshold: float = None,
+        ):
+            project_meta, pred, _ = update_meta_and_ann(
+                self._project_meta, pred, model_prediction_suffix
+            )
+            if predictions_mode == AddPredictionsMode.REPLACE_EXISTING_LABELS:
+                return pred
+            elif predictions_mode in [
+                AddPredictionsMode.MERGE_WITH_EXISTING_LABELS,
+                AddPredictionsMode.REPLACE_EXISTING_LABELS_AND_SAVE_IMAGE_TAGS,
+            ]:
+                pred = _filter_duplicated_predictions_from_ann(source, pred, iou_threshold)
+                return source.merge(pred)
+            else:
+                raise RuntimeError(f"Unknown predictions mode: {predictions_mode}")
+
         self.image_gallery.clean_up()
         if not self._current_item_id:
             self._download_preview_item(with_progress=True)
@@ -401,11 +429,20 @@ class Preview:
             prediction = model_api.predict(
                 image_id=image_id, inference_settings=inference_settings, tqdm=pbar
             )[0]
+            prediction_annotation = _maybe_merge_annotations(
+                source=self._image_annotation,
+                pred=prediction.annotation,
+                predictions_mode=settings.get(
+                    "predictions_mode", AddPredictionsMode.MERGE_WITH_EXISTING_LABELS
+                ),
+                model_prediction_suffix=settings.get("model_prediction_suffix", ""),
+                iou_threshold=inference_settings.get("existing_objects_iou_thresh"),
+            )
         self.image_gallery.append(
             self.image_peview_url, title="Source", annotation=self._image_annotation
         )
         self.image_gallery.append(
-            self.image_peview_url, title="Prediction", annotation=prediction.annotation
+            self.image_peview_url, title="Prediction", annotation=prediction_annotation
         )
         self.select_item(ProjectType.IMAGES.value)
 
