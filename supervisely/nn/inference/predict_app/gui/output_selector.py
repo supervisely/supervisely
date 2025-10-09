@@ -108,8 +108,13 @@ class OutputSelector:
             content=self.container,
             lock_message=self.lock_message,
         )
-        self.card.lock()
         # ----------------------------------- #
+
+    def lock(self):
+        self.card.lock(self.lock_message)
+
+    def unlock(self):
+        self.card.unlock()
 
     @property
     def widgets_to_disable(self) -> list:

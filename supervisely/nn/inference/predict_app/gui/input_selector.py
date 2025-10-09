@@ -10,6 +10,7 @@ from supervisely.app.widgets import (
     SelectDatasetTree,
     Text,
 )
+from supervisely.app.widgets.widget import Widget
 from supervisely.project.project import ProjectType
 
 
@@ -122,8 +123,16 @@ class InputSelector:
         )
         # ----------------------------------- #
 
+    def disable(self):
+        for widget in self.widgets_to_disable:
+            widget.disable()
+
+    def enable(self):
+        for widget in self.widgets_to_disable:
+            widget.enable()
+
     @property
-    def widgets_to_disable(self) -> list:
+    def widgets_to_disable(self) -> List[Widget]:
         return [
             # Images Selector
             self.select_dataset_for_images,

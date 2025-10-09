@@ -27,6 +27,7 @@ from supervisely.nn.inference.predict_app.gui.utils import (
     create_project,
     disable_enable,
     set_stepper_step,
+    update_custom_button_params,
     wrap_button_click,
 )
 from supervisely.nn.model.model_api import ModelAPI
@@ -44,144 +45,117 @@ from supervisely.video_annotation.video_figure import VideoObject
 
 
 class StepFlow:
-
-    def __init__(self, stepper: Stepper):
-        self.stepper = stepper
+    def __init__(self):
+        self._stepper = None
         self.steps = {}
-        self.step_sequence = []
+        self.steps_sequence = []
 
-    def register_step(
+    def add_step(
         self,
         name: str,
-        card: Union[Card, List[Card]],
+        widget: Widget,
+        on_select: Optional[Callable] = None,
+        on_reactivate: Optional[Callable] = None,
+        depends_on: Optional[List[Widget]] = None,
+        on_lock: Optional[Callable] = None,
+        on_unlock: Optional[Callable] = None,
         button: Optional[Button] = None,
-        widgets_to_disable: Optional[List[Widget]] = None,
-        validation_text: Optional[Widget] = None,
-        validation_func: Optional[Callable] = None,
         position: Optional[int] = None,
-    ) -> "StepFlow":
+    ):
+        if depends_on is None:
+            depends_on = []
         self.steps[name] = {
-            "card": card,
+            "widget": widget,
+            "on_select": on_select,
+            "on_reactivate": on_reactivate,
+            "depends_on": depends_on,
+            "on_lock": on_lock,
+            "on_unlock": on_unlock,
             "button": button,
-            "widgets_to_disable": widgets_to_disable or [],
-            "validation_text": validation_text,
-            "validation_func": validation_func,
-            "position": position,
-            "next_steps": [],
-            "on_select_click": [],
-            "on_reselect_click": [],
-            "wrapper": None,
-            "has_button": button is not None,
+            "is_selected": False,
+            "is_locked": False,
         }
-
+        if button is not None:
+            self._wrap_button(button, name)
         if position is not None:
-            while len(self.step_sequence) <= position:
-                self.step_sequence.append(None)
-            self.step_sequence[position] = name
+            self.steps_sequence.insert(position, name)
+        else:
+            self.steps_sequence.append(name)
+        self.update_locks()
 
-        return self
-
-    def set_next_steps(self, step_name: str, next_steps: List[str]) -> "StepFlow":
-        if step_name in self.steps:
-            self.steps[step_name]["next_steps"] = next_steps
-        return self
-
-    def add_on_select_actions(
-        self, step_name: str, actions: List[Callable], is_reselect: bool = False
-    ) -> "StepFlow":
-        if step_name in self.steps:
-            key = "on_reselect_click" if is_reselect else "on_select_click"
-            self.steps[step_name][key].extend(actions)
-        return self
-
-    def build_wrappers(self) -> Dict[str, Callable]:
-        valid_sequence = [s for s in self.step_sequence if s is not None and s in self.steps]
-
-        for step_name in reversed(valid_sequence):
+    def _create_stepper(self):
+        titles = []
+        widgets = []
+        for step_name in self.steps_sequence:
             step = self.steps[step_name]
-            cards_to_unlock = []
+            titles.append(step_name)
+            widgets.append(step["widget"])
+        self._stepper = Stepper(titles=titles, widgets=widgets)
+
+    @property
+    def stepper(self):
+        if self._stepper is None:
+            self._create_stepper()
+        return self._stepper
+
+    def update_stepper(self):
+        for i, step_name in enumerate(self.steps_sequence):
+            step = self.steps[step_name]
+            if not step["is_selected"]:
+                self.stepper.set_active_step(i + 1)
+                return
+
+    def update_locks(self):
+        for step in self.steps.values():
+            should_lock = False
+            for dep_name in step["depends_on"]:
+                dep = self.steps[dep_name]
+                if not dep["is_selected"]:
+                    should_lock = True
+                    break
+            if should_lock and not step["is_locked"]:
+                if step["on_lock"] is not None:
+                    step["on_lock"]()
+                step["is_locked"] = True
+            if not should_lock and step["is_locked"]:
+                if step["on_unlock"]:
+                    step["on_unlock"]()
+                step["is_locked"] = False
+
+    def _reactivate_dependents(self, step_name: str, visited=None):
+        if visited is None:
             visited = set()
-            queue = list(step["next_steps"])
-            while queue:
-                nxt = queue.pop(0)
-                if nxt in visited:
-                    continue
-                visited.add(nxt)
-                if nxt in self.steps:
-                    nxt_step = self.steps[nxt]
-                    if isinstance(nxt_step["card"], list):
-                        cards_to_unlock.extend(nxt_step["card"])
-                    else:
-                        cards_to_unlock.append(nxt_step["card"])
-                    queue.extend(nxt_step.get("next_steps", []))
+        for step in self.steps.values():
+            if step_name in step["depends_on"] and not step_name in visited:
+                self.reactivate_step(step_name, False)
 
-            callback = None
-            if step["next_steps"] and step["has_button"]:
-                visited = set()
-                queue = list(step["next_steps"])
-                while queue:
-                    next_step_name = queue.pop(0)
-                    if next_step_name in visited:
-                        continue
-                    visited.add(next_step_name)
-                    if next_step_name in self.steps:
-                        next_step = self.steps[next_step_name]
-                        if next_step.get("wrapper") and next_step["has_button"]:
-                            callback = next_step["wrapper"]
-                            break
-                        queue.extend(next_step.get("next_steps", []))
+    def reactivate_step(self, step_name: str, update_stepper: bool = True):
+        step = self.steps[step_name]
+        self._reactivate_dependents(step_name, visited={step_name})
+        if step["on_reactivate"] is not None:
+            step["on_reactivate"]()
+        step["is_selected"] = False
+        if update_stepper:
+            self.update_stepper()
+            self.update_locks()
 
-            if step["has_button"]:
-                wrapper = wrap_button_click(
-                    button=step["button"],
-                    cards_to_unlock=cards_to_unlock,
-                    widgets_to_disable=step["widgets_to_disable"],
-                    callback=callback,
-                    validation_text=step["validation_text"],
-                    validation_func=step["validation_func"],
-                    on_select_click=step["on_select_click"],
-                    on_reselect_click=step["on_reselect_click"],
-                    collapse_card=None,
-                )
+    def select_step(self, step_name: str):
+        step = self.steps[step_name]
+        if step["on_select"] is not None:
+            step["on_select"]()
+        step["is_selected"] = True
+        self.update_stepper()
+        self.update_locks()
 
-                step["wrapper"] = wrapper
+    def select_or_reactivate(self, step_name: str):
+        step = self.steps[step_name]
+        if step["is_selected"]:
+            self.reactivate_step(step_name)
+        else:
+            self.select_step(step_name)
 
-        return {
-            name: self.steps[name]["wrapper"]
-            for name in self.steps
-            if self.steps[name].get("wrapper") and self.steps[name]["has_button"]
-        }
-
-    def setup_button_handlers(self) -> None:
-        positions = {}
-        pos = 1
-
-        for i, step_name in enumerate(self.step_sequence):
-            if step_name is not None and step_name in self.steps:
-                positions[step_name] = pos
-                pos += 1
-
-        for step_name, step in self.steps.items():
-            if step_name in positions and step.get("wrapper") and step["has_button"]:
-
-                button = step["button"]
-                wrapper = step["wrapper"]
-                position = positions[step_name]
-                next_position = position + 1
-
-                def create_handler(btn, cb, next_pos):
-                    def handler():
-                        cb()
-                        set_stepper_step(self.stepper, btn, next_pos=next_pos)
-
-                    return handler
-
-                button.click(create_handler(button, wrapper, next_position))
-
-    def build(self) -> Dict[str, Callable]:
-        wrappers = self.build_wrappers()
-        self.setup_button_handlers()
-        return wrappers
+    def _wrap_button(self, button: Button, step_name: str):
+        button.click(lambda: self.select_or_reactivate(step_name))
 
 
 class PredictAppGui:
@@ -202,27 +176,78 @@ class PredictAppGui:
 
         # GUI
         # Steps
-        self.steps = []
+        self.step_flow = StepFlow()
+        select_params = {"icon": None, "plain": False, "text": "Select"}
+        reselect_params = {"icon": "zmdi zmdi-refresh", "plain": True, "text": "Reselect"}
 
         # 1. Input selector
         self.input_selector = InputSelector(self.workspace_id)
-        self.steps.append(self.input_selector.card)
+
+        def _on_input_select():
+            valid = self.input_selector.validate_step()
+            if not valid:
+                return
+            self.update_item_type()
+            if self.model_api:
+                inference_settings = self.model_api.get_settings()
+                self.settings_selector.set_inference_settings(inference_settings)
+
+                if self.input_selector.radio.get_value() == ProjectType.VIDEOS.value:
+                    tracking_settings = self.model_api.get_tracking_settings()
+                    self.settings_selector.set_tracking_settings(tracking_settings)
+            self.input_selector.disable()
+            update_custom_button_params(self.input_selector.button, reselect_params)
+
+        def _on_input_reactivate():
+            self.input_selector.enable()
+            update_custom_button_params(self.input_selector.button, select_params)
+
+        self.step_flow.add_step(
+            name="input_selector",
+            widget=self.input_selector.card,
+            on_select=_on_input_select,
+            on_reactivate=_on_input_reactivate,
+            button=self.input_selector.button,
+        )
 
         # 2. Model selector
         self.model_selector = ModelSelector(self.api, self.team_id)
-        self.steps.append(self.model_selector.card)
+
+        self.step_flow.add_step(
+            name="model_selector",
+            widget=self.model_selector.card,
+        )
 
         # 3. Classes selector
-        self.classes_selector = None
-        if True:
-            self.classes_selector = ClassesSelector()
-            self.steps.append(self.classes_selector.card)
+        self.classes_selector = ClassesSelector()
+
+        def _on_classes_select():
+            valid = self.classes_selector.validate_step()
+            if not valid:
+                return
+            self.classes_selector.classes_table.disable()
+            update_custom_button_params(self.classes_selector.button, reselect_params)
+
+        def _on_classes_reactivate():
+            self.classes_selector.classes_table.enable()
+            update_custom_button_params(self.classes_selector.button, select_params)
+
+        self.step_flow.add_step(
+            name="classes_selector",
+            widget=self.classes_selector.card,
+            on_select=_on_classes_select,
+            on_reactivate=_on_classes_reactivate,
+            depends_on=["model_selector"],
+            on_lock=self.classes_selector.lock,
+            on_unlock=self.classes_selector.unlock,
+            button=self.classes_selector.button,
+        )
 
         # 4. Tags selector
         self.tags_selector = None
         if False:
             self.tags_selector = TagsSelector()
-            self.steps.append(self.tags_selector.card)
+            self.step_flow.add_step("tags_selector", self.tags_selector.card)
 
         # 5. Settings selector & Preview
         self.settings_selector = SettingsSelector(
@@ -231,36 +256,51 @@ class PredictAppGui:
             model_selector=self.model_selector,
             input_selector=self.input_selector,
         )
-        self.steps.append(self.settings_selector.cards_container)
+
+        def _on_settings_select():
+            valid = self.settings_selector.validate_step()
+            if not valid:
+                return
+            self.settings_selector.disable()
+            update_custom_button_params(self.settings_selector.button, reselect_params)
+
+        def _on_settings_reactivate():
+            self.settings_selector.enable()
+            update_custom_button_params(self.settings_selector.button, select_params)
+
+        self.step_flow.add_step(
+            name="settings_selector",
+            widget=self.settings_selector.cards_container,
+            on_select=_on_settings_select,
+            on_reactivate=_on_settings_reactivate,
+            depends_on=["input_selector", "model_selector"],
+            on_lock=self.settings_selector.lock,
+            on_unlock=self.settings_selector.unlock,
+            button=self.settings_selector.button,
+        )
+        self.settings_selector.preview.run_button.disable()
 
         # 6. Output selector
         self.output_selector = OutputSelector(self.api)
-        self.steps.append(self.output_selector.card)
+
+        self.step_flow.add_step(
+            "output_selector",
+            self.output_selector.card,
+            depends_on=[
+                "input_selector",
+                "model_selector",
+                "classes_selector",
+                # "tags_selector",
+                "settings_selector",
+            ],
+            on_lock=self.output_selector.lock,
+            on_unlock=self.output_selector.unlock,
+        )
         # -------------------------------- #
 
-        # Stepper
-        self.stepper = Stepper(widgets=self.steps)
-        # ---------------------------- #
-
         # Layout
-        self.layout = Container([self.stepper])
+        self.layout = Container([self.step_flow.stepper])
         # ---------------------------- #
-
-        # Button Utils
-        def deploy_model() -> ModelAPI:
-            self.model_selector.validator_text.hide()
-            model_api = None
-            try:
-                model_api = type(self.model_selector.model).deploy(self.model_selector.model)
-            except:
-                self.output_selector.start_button.disable()
-                raise
-            else:
-                self.output_selector.start_button.enable()
-            return model_api
-
-        # Reimplement deploy method for DeployModel widget
-        self.model_selector.model.deploy = deploy_model
 
         def set_entity_meta():
             model_api = self.model_selector.model.model_api
@@ -291,188 +331,32 @@ class PredictAppGui:
 
             self.settings_selector.set_inference_settings("")
 
-        def disable_settings_editor():
-            if self.settings_selector.inference_settings.readonly:
-                self.settings_selector.inference_settings.readonly = False
-            else:
-                self.settings_selector.inference_settings.readonly = True
-
-        def enable_preview_button():
-            self.settings_selector.preview.run_button.enable()
-
-        def disable_preview_button():
-            self.settings_selector.preview.run_button.disable()
-        # ---------------------------- #
-
-        # StepFlow callbacks and wiring
-        self.step_flow = StepFlow(self.stepper)
-        position = 0
-
-        # 1. Input selector
-        self.step_flow.register_step(
-            "input_selector",
-            self.input_selector.card,
-            self.input_selector.button,
-            self.input_selector.widgets_to_disable,
-            self.input_selector.validator_text,
-            self.input_selector.validate_step,
-            position=position,
-        )
-        position += 1
-        self.step_flow.add_on_select_actions("input_selector", [self.update_item_type])
-        self.step_flow.add_on_select_actions("input_selector", [disable_preview_button])
-        self.step_flow.add_on_select_actions("input_selector", [disable_preview_button], True)
-
-        # 2. Model selector
-        self.step_flow.register_step(
-            "model_selector",
-            self.model_selector.card,
-            None,
-            self.model_selector.widgets_to_disable,
-            self.model_selector.validator_text,
-            self.model_selector.validate_step,
-            position=position,
-        )
-        self.step_flow.add_on_select_actions("model_selector", [disable_preview_button])
-        self.step_flow.add_on_select_actions("model_selector", [disable_preview_button], True)
-
-        current_position = position + 1
-
         def deploy_and_set_step():
+            self.model_selector.validator_text.hide()
             model_api = type(self.model_selector.model).deploy(self.model_selector.model)
             if model_api is not None:
-                self.step_flow.stepper.set_active_step(current_position + 1)
                 set_entity_meta()
-                # @TODO: move to def connect and def deploy
-                # So card unlocks only after stop and disconnect buttons appear
-                self.classes_selector.card.unlock()
+                self.step_flow.select_step("model_selector")
             else:
-                self.step_flow.stepper.set_active_step(current_position)
                 reset_entity_meta()
-                # @TODO: move to def connect and def deploy
-                # So card locks only after stop and disconnect buttons appear
-                self.classes_selector.card.lock() 
+                self.step_flow.reactivate_step("model_selector")
             return model_api
 
         def stop_and_reset_step():
             type(self.model_selector.model).stop(self.model_selector.model)
-            self.step_flow.stepper.set_active_step(current_position)
+            self.step_flow.reactivate_step("model_selector")
             reset_entity_meta()
-            self.classes_selector.card.lock()
 
         def disconnect_and_reset_step():
             type(self.model_selector.model).disconnect(self.model_selector.model)
-            self.step_flow.stepper.set_active_step(current_position)
+            self.step_flow.reactivate_step("model_selector")
             reset_entity_meta()
-            self.classes_selector.card.lock()
 
+        # Replace deploy methods for DeployModel widget
         self.model_selector.model.deploy = deploy_and_set_step
         self.model_selector.model.stop = stop_and_reset_step
         self.model_selector.model.disconnect = disconnect_and_reset_step
-        self.step_flow.add_on_select_actions("model_selector", [set_entity_meta])
-        self.step_flow.add_on_select_actions(
-            "model_selector", [reset_entity_meta], is_reselect=True
-        )
-        position += 1
 
-        # 3. Classes selector
-        if self.classes_selector is not None:
-            self.step_flow.register_step(
-                "classes_selector",
-                self.classes_selector.card,
-                self.classes_selector.button,
-                self.classes_selector.widgets_to_disable,
-                self.classes_selector.validator_text,
-                self.classes_selector.validate_step,
-                position=position,
-            )
-            position += 1
-
-        # 4. Tags selector
-        if self.tags_selector is not None:
-            self.step_flow.register_step(
-                "tags_selector",
-                self.tags_selector.card,
-                self.tags_selector.button,
-                self.tags_selector.widgets_to_disable,
-                self.tags_selector.validator_text,
-                self.tags_selector.validate_step,
-                position=position,
-            )
-            position += 1
-
-        # Enable preview button after selecting tags if tags selector is present
-        if self.tags_selector is not None:
-            self.step_flow.add_on_select_actions("tags_selector", [enable_preview_button])
-            self.step_flow.add_on_select_actions("tags_selector", [disable_preview_button], True)
-            if self.classes_selector is not None:
-                self.step_flow.add_on_select_actions("classes_selector", [disable_preview_button])
-                self.step_flow.add_on_select_actions("classes_selector", [disable_preview_button], True)
-        # Enable preview button after selecting classes
-        else:
-            self.step_flow.add_on_select_actions("classes_selector", [enable_preview_button])
-            self.step_flow.add_on_select_actions("classes_selector", [disable_preview_button], True)
-
-        # 5. Settings selector & Preview
-        self.step_flow.register_step(
-            "settings_selector",
-            self.settings_selector.cards,
-            self.settings_selector.button,
-            self.settings_selector.widgets_to_disable,
-            self.settings_selector.validator_text,
-            self.settings_selector.validate_step,
-            position=position,
-        )
-        self.step_flow.add_on_select_actions("settings_selector", [disable_settings_editor])
-        self.step_flow.add_on_select_actions("settings_selector", [disable_settings_editor], True)
-        self.step_flow.add_on_select_actions("settings_selector", [enable_preview_button], True)
-        position += 1
-
-        # 6. Output selector
-        self.step_flow.register_step(
-            "output_selector",
-            self.output_selector.card,
-            None,
-            self.output_selector.widgets_to_disable,
-            self.output_selector.validator_text,
-            self.output_selector.validate_step,
-            position=position,
-        )
-
-        # Dependencies Chain
-        has_model_selector = self.model_selector is not None
-        has_classes_selector = self.classes_selector is not None
-        has_tags_selector = self.tags_selector is not None
-
-        # Step 1 -> Step 2
-        prev_step = "input_selector"
-        if has_model_selector:
-            self.step_flow.set_next_steps(prev_step, ["model_selector"])
-            prev_step = "model_selector"
-        # Step 2 -> Step 3
-        if has_classes_selector:
-            self.step_flow.set_next_steps(prev_step, ["classes_selector"])
-            prev_step = "classes_selector"
-        # Step 3 -> Step 4
-        if has_tags_selector:
-            self.step_flow.set_next_steps(prev_step, ["tags_selector"])
-            prev_step = "tags_selector"
-        # Step 4 -> Step 5
-        self.step_flow.set_next_steps(prev_step, ["settings_selector"])
-        prev_step = "settings_selector"
-        # Step 5 -> Step 6
-        self.step_flow.set_next_steps(prev_step, ["output_selector"])
-
-        # Create all wrappers and set button handlers
-        wrappers = self.step_flow.build()
-
-        self.input_selector_cb = wrappers.get("input_selector")
-        self.classes_selector_cb = wrappers.get("classes_selector")
-        self.tags_selector_cb = wrappers.get("tags_selector")
-        self.model_selector_cb = wrappers.get("model_selector")
-        self.settings_selector_cb = wrappers.get("settings_selector")
-        self.preview_cb = wrappers.get("preview")
-        self.output_selector_cb = wrappers.get("output_selector")
         # ------------------------------------------------- #
 
         # Other Handlers

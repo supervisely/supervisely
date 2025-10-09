@@ -28,6 +28,7 @@ from supervisely.app.widgets import (
     VideoPlayer,
 )
 from supervisely.app.widgets.checkbox.checkbox import Checkbox
+from supervisely.app.widgets.widget import Widget
 from supervisely.nn.inference.predict_app.gui.input_selector import InputSelector
 from supervisely.nn.inference.predict_app.gui.model_selector import ModelSelector
 from supervisely.nn.model.model_api import ModelAPI, Prediction
@@ -91,11 +92,13 @@ class Preview:
         self.video_player = VideoPlayer()
         self.video_preview_container = Container(widgets=[self.video_player])
 
+        self.locked_text = Text("Select input and model to unlock", status="info")
         self.empty_text = Text("Click preview to visualize predictions")
         self.error_text = Text("Failed to generate preview", status="error")
 
         self.select = Select(
             items=[
+                Select.Item("locked", content=self.locked_text),
                 Select.Item("empty", content=self.empty_text),
                 Select.Item(ProjectType.IMAGES.value, content=self.image_preview_container),
                 Select.Item(ProjectType.VIDEOS.value, content=self.video_preview_container),
@@ -116,11 +119,18 @@ class Preview:
             content_top_right=self.run_button,
             lock_message=self.lock_message,
         )
-        self.card.lock()
 
         @self.run_button.click
         def _run_preview():
             self.run_preview()
+
+    def lock(self):
+        self.run_button.disable()
+        self.card.lock(self.lock_message)
+
+    def unlock(self):
+        self.run_button.enable()
+        self.card.unlock()
 
     @contextmanager
     def progress(self, message: str, total: int, **kwargs):
@@ -542,7 +552,7 @@ class SettingsSelector:
         # self.model_prediction_suffix_checkbox = None
         self.predictions_mode_selector = None
         self.predictions_mode_field = None
-        self.inference_settings = None
+        self.inference_settings_editor = None
         # -------------------------------- #
 
         self.settings_widgets = []
@@ -604,9 +614,9 @@ class SettingsSelector:
         # ----------------------------------- #
 
         # Inference Settings
-        self.inference_settings = Editor("", language_mode="yaml", height_px=300)
+        self.inference_settings_editor = Editor("", language_mode="yaml", height_px=300)
         # Add widgets to display ------------ #
-        self.settings_widgets.extend([self.inference_settings])
+        self.settings_widgets.extend([self.inference_settings_editor])
         # ----------------------------------- #
 
         # Preview
@@ -637,7 +647,6 @@ class SettingsSelector:
             content=self.container,
             lock_message=self.lock_message,
         )
-        self.settings_card.lock()
         self.cards = [self.settings_card, self.preview.card]
         self.cards_container = Container(
             widgets=self.cards,
@@ -647,37 +656,53 @@ class SettingsSelector:
         )
         # ----------------------------------- #
 
+    def lock(self):
+        self.settings_card.lock(self.lock_message)
+        self.preview.lock()
+
+    def unlock(self):
+        self.settings_card.unlock()
+        self.preview.unlock()
+
+    def disable(self):
+        for widget in self.widgets_to_disable:
+            widget.disable()
+
+    def enable(self):
+        for widget in self.widgets_to_disable:
+            widget.enable()
+
     @property
-    def widgets_to_disable(self) -> list:
+    def widgets_to_disable(self) -> List[Widget]:
         return [
             # self.inference_mode_selector,
             self.model_prediction_suffix_input,
             # self.model_prediction_suffix_checkbox,
             self.predictions_mode_selector,
-            self.inference_settings,
+            self.inference_settings_editor,
         ]
 
     def set_inference_settings(self, settings: Dict[str, Any]):
         settings = "# Inference settings\n" + settings
         if isinstance(settings, str):
-            self.inference_settings.set_text(settings)
+            self.inference_settings_editor.set_text(settings)
         else:
-            self.inference_settings.set_text(yaml.safe_dump(settings))
+            self.inference_settings_editor.set_text(yaml.safe_dump(settings))
 
     def set_tracking_settings(self, settings: Dict[str, Any]):
         if self.input_selector.radio.get_value() != ProjectType.VIDEOS.value:
             return
-            
-        current_settings = self.inference_settings.get_text()
+
+        current_settings = self.inference_settings_editor.get_text()
         if isinstance(settings, str):
             all_settings = current_settings + "\n\n# Tracking settings\n" + settings
-            self.inference_settings.set_text(all_settings)
+            self.inference_settings_editor.set_text(all_settings)
         else:
             all_settings = current_settings + "\n\n# Tracking settings\n" + yaml.safe_dump(settings)
-            self.inference_settings.set_text(all_settings)    
+            self.inference_settings_editor.set_text(all_settings)
 
     def get_inference_settings(self) -> Dict:
-        text = self.inference_settings.get_text()
+        text = self.inference_settings_editor.get_text()
         inference_settings_text = text.split("# Tracking settings")[0]
         settings = yaml.safe_load(inference_settings_text)
         if settings:
@@ -688,7 +713,7 @@ class SettingsSelector:
         if self.input_selector.radio.get_value() != ProjectType.VIDEOS.value:
             return {}
 
-        text = self.inference_settings.get_text()
+        text = self.inference_settings_editor.get_text()
         text_parts = text.split("# Tracking settings")
         if len(text_parts) > 1:
             tracking_settings_text = text_parts[1]
