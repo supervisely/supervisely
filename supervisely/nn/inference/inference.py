@@ -95,7 +95,11 @@ from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress
 from supervisely.video.video import ALLOWED_VIDEO_EXTENSIONS, VideoFrameReader
+from supervisely.video_annotation.frame import Frame
+from supervisely.video_annotation.frame_collection import FrameCollection
 from supervisely.video_annotation.video_annotation import VideoAnnotation
+from supervisely.video_annotation.video_figure import VideoFigure
+from supervisely.video_annotation.video_object import VideoObject
 from supervisely.video_annotation.video_object_collection import VideoObjectCollection
 from supervisely.video_annotation.video_tag_collection import VideoTagCollection
 
@@ -4850,8 +4854,8 @@ def update_meta_and_ann_for_video_annotation(
     #         extra={"replaced_classes": {old: new for old, new in replaced_classes_in_meta}},
     #     )
 
-    new_objects = []
-    new_figures = []
+    new_objects: List[VideoObject] = []
+    new_figures: List[VideoFigure] = []
     any_object_updated = False
     for video_object in ann.objects:
         this_object_figures = [
@@ -4908,7 +4912,16 @@ def update_meta_and_ann_for_video_annotation(
             ]
         new_figures.extend(this_object_figures)
     if any_object_updated:
-        ann = ann.clone(objects=new_objects, figures=new_figures)
+        frames_figures = {}
+        for figure in new_figures:
+            frames_figures.setdefault(figure.frame_index, []).append(figure)
+        new_frames = FrameCollection(
+            [
+                Frame(index=frame_index, figures=figures)
+                for frame_index, figures in frames_figures.items()
+            ]
+        )
+        ann = ann.clone(objects=new_objects, frames=new_frames)
 
     # check if tag metas are in project meta
     # if not, add them with suffix
