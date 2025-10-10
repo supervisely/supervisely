@@ -148,6 +148,7 @@ class Inference:
     """Default batch size for inference"""
     INFERENCE_SETTINGS: str = None
     """Path to file with custom inference settings"""
+    DEFAULT_IOU_MERGE_THRESHOLD: float = 0.9
 
     def __init__(
         self,
@@ -2070,7 +2071,7 @@ class Inference:
         upload_mode = state.get("upload_mode", None)
         iou_merge_threshold = inference_settings.get("existing_objects_iou_thresh", None)
         if upload_mode == "iou_merge" and iou_merge_threshold is None:
-            iou_merge_threshold = 0.7
+            iou_merge_threshold = self.DEFAULT_IOU_MERGE_THRESHOLD  # TODO: change to 0.9
 
         images_infos = api.image.get_info_by_id_batch(image_ids)
         images_infos_dict = {im_info.id: im_info for im_info in images_infos}
@@ -2309,7 +2310,7 @@ class Inference:
         upload_mode = state.get("upload_mode", None)
         iou_merge_threshold = inference_settings.get("existing_objects_iou_thresh", None)
         if upload_mode == "iou_merge" and iou_merge_threshold is None:
-            iou_merge_threshold = 0.7
+            iou_merge_threshold = self.DEFAULT_IOU_MERGE_THRESHOLD
         cache_project_on_model = state.get("cache_project_on_model", False)
 
         project_info = api.project.get_info_by_id(project_id)
