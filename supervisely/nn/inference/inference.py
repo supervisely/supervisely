@@ -95,6 +95,9 @@ from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress
 from supervisely.video.video import ALLOWED_VIDEO_EXTENSIONS, VideoFrameReader
+from supervisely.video_annotation.video_annotation import VideoAnnotation
+from supervisely.video_annotation.video_object_collection import VideoObjectCollection
+from supervisely.video_annotation.video_tag_collection import VideoTagCollection
 
 try:
     from typing import Literal
@@ -4403,64 +4406,6 @@ def _filter_duplicated_predictions_from_ann_cpu(
 
     return pred_ann.clone(labels=new_labels)
 
-
-def _exclude_duplicated_predictions(
-    api: Api,
-    pred_anns: List[Annotation],
-    dataset_id: int,
-    gt_image_ids: List[int],
-    iou: float = None,
-    meta: Optional[ProjectMeta] = None,
-):
-    """
-    Filter out predictions that significantly overlap with ground truth (GT) objects.
-
-    This is a wrapper around the `_filter_duplicated_predictions_from_ann` method that does the following:
-    - Checks inference settings for the IoU threshold (`existing_objects_iou_thresh`)
-    - Gets ProjectMeta object if not provided
-    - Downloads GT annotations for the specified image IDs
-    - Filters out predictions that have an IoU greater than or equal to the specified threshold with any GT object
-
-    :param api: Supervisely API object
-    :type api: Api
-    :param pred_anns: List of Annotation objects containing predictions
-    :type pred_anns: List[Annotation]
-    :param dataset_id: ID of the dataset containing the images
-    :type dataset_id: int
-    :param gt_image_ids: List of image IDs to filter predictions. All images should belong to the same dataset
-    :type gt_image_ids: List[int]
-    :param iou: IoU threshold (0.0-1.0). Predictions with IoU >= threshold with any
-                    ground truth box of the same class will be removed. None if no filtering is needed
-    :type iou: Optional[float]
-    :param meta: ProjectMeta object
-    :type meta: Optional[ProjectMeta]
-    :return: List of Annotation objects containing filtered predictions
-    :rtype: List[Annotation]
-
-    Notes:
-    ------
-    - Requires PyTorch and torchvision for IoU calculations
-    - This method is useful for identifying new objects that aren't already annotated in the ground truth
-    """
-    if isinstance(iou, float) and 0 < iou <= 1:
-        if meta is None:
-            ds = api.dataset.get_info_by_id(dataset_id)
-            meta = ProjectMeta.from_json(api.project.get_meta(ds.project_id))
-        gt_anns = api.annotation.download_json_batch(dataset_id, gt_image_ids)
-        gt_anns = [Annotation.from_json(ann, meta) for ann in gt_anns]
-        for i in range(0, len(pred_anns)):
-            before = len(pred_anns[i].labels)
-            with Timer() as timer:
-                pred_anns[i] = _filter_duplicated_predictions_from_ann(
-                    gt_anns[i], pred_anns[i], iou
-                )
-            after = len(pred_anns[i].labels)
-            logger.debug(
-                f"{[i]}: applied NMS with IoU={iou}. Before: {before}, After: {after}. Time: {timer.get_time():.3f}ms"
-            )
-    return pred_anns
-
-
 def _filter_duplicated_predictions_from_ann(
     gt_ann: Annotation, pred_ann: Annotation, iou_threshold: float
 ) -> Annotation:
@@ -4528,6 +4473,63 @@ def _filter_duplicated_predictions_from_ann(
         new_labels.extend([pred[i] for i in keep_indices])
 
     return pred_ann.clone(labels=new_labels)
+
+
+def _exclude_duplicated_predictions(
+    api: Api,
+    pred_anns: List[Annotation],
+    dataset_id: int,
+    gt_image_ids: List[int],
+    iou: float = None,
+    meta: Optional[ProjectMeta] = None,
+):
+    """
+    Filter out predictions that significantly overlap with ground truth (GT) objects.
+
+    This is a wrapper around the `_filter_duplicated_predictions_from_ann` method that does the following:
+    - Checks inference settings for the IoU threshold (`existing_objects_iou_thresh`)
+    - Gets ProjectMeta object if not provided
+    - Downloads GT annotations for the specified image IDs
+    - Filters out predictions that have an IoU greater than or equal to the specified threshold with any GT object
+
+    :param api: Supervisely API object
+    :type api: Api
+    :param pred_anns: List of Annotation objects containing predictions
+    :type pred_anns: List[Annotation]
+    :param dataset_id: ID of the dataset containing the images
+    :type dataset_id: int
+    :param gt_image_ids: List of image IDs to filter predictions. All images should belong to the same dataset
+    :type gt_image_ids: List[int]
+    :param iou: IoU threshold (0.0-1.0). Predictions with IoU >= threshold with any
+                    ground truth box of the same class will be removed. None if no filtering is needed
+    :type iou: Optional[float]
+    :param meta: ProjectMeta object
+    :type meta: Optional[ProjectMeta]
+    :return: List of Annotation objects containing filtered predictions
+    :rtype: List[Annotation]
+
+    Notes:
+    ------
+    - Requires PyTorch and torchvision for IoU calculations
+    - This method is useful for identifying new objects that aren't already annotated in the ground truth
+    """
+    if isinstance(iou, float) and 0 < iou <= 1:
+        if meta is None:
+            ds = api.dataset.get_info_by_id(dataset_id)
+            meta = ProjectMeta.from_json(api.project.get_meta(ds.project_id))
+        gt_anns = api.annotation.download_json_batch(dataset_id, gt_image_ids)
+        gt_anns = [Annotation.from_json(ann, meta) for ann in gt_anns]
+        for i in range(0, len(pred_anns)):
+            before = len(pred_anns[i].labels)
+            with Timer() as timer:
+                pred_anns[i] = _filter_duplicated_predictions_from_ann(
+                    gt_anns[i], pred_anns[i], iou
+                )
+            after = len(pred_anns[i].labels)
+            logger.debug(
+                f"{[i]}: applied NMS with IoU={iou}. Before: {before}, After: {after}. Time: {timer.get_time():.3f}ms"
+            )
+    return pred_anns
 
 
 def _get_log_extra_for_inference_request(
@@ -4817,7 +4819,171 @@ def update_meta_and_ann(meta: ProjectMeta, ann: Annotation, model_prediction_suf
                 img_tags = None
             if not any_label_updated:
                 labels = None
-            ann = ann.clone(img_tags=TagCollection(img_tags))
+            ann = ann.clone(img_tags=img_tags)
+    return meta, ann, meta_changed
+
+
+def update_meta_and_ann_for_video_annotation(
+    meta: ProjectMeta, ann: VideoAnnotation, model_prediction_suffix: str = None
+):
+    """Update project meta and annotation to match each other
+    If obj class or tag meta from annotation conflicts with project meta
+    add suffix to obj class or tag meta.
+    Return tuple of updated project meta, annotation and boolean flag if meta was changed.
+    """
+    obj_classes_suffixes = ["_nn"]
+    tag_meta_suffixes = ["_nn"]
+    if model_prediction_suffix is not None:
+        obj_classes_suffixes = [model_prediction_suffix]
+        tag_meta_suffixes = [model_prediction_suffix]
+        logger.debug(
+            f"Using custom suffixes for obj classes and tag metas: {obj_classes_suffixes}, {tag_meta_suffixes}"
+        )
+    logger.debug("source meta", extra={"meta": meta.to_json()})
+    meta_changed = False
+
+    # meta, ann, replaced_classes_in_meta, replaced_classes_in_ann = _fix_classes_names(meta, ann)
+    # if replaced_classes_in_meta:
+    #     meta_changed = True
+    #     logger.warning(
+    #         "Some classes names were fixed in project meta",
+    #         extra={"replaced_classes": {old: new for old, new in replaced_classes_in_meta}},
+    #     )
+
+    new_objects = []
+    new_figures = []
+    any_object_updated = False
+    for video_object in ann.objects:
+        this_object_figures = [
+            figure for figure in ann.figures if figure.video_object.key() == video_object.key()
+        ]
+        this_object_changed = False
+        original_obj_class_name = video_object.obj_class.name
+        suffix_found = False
+        for suffix in ["", *obj_classes_suffixes]:
+            obj_class = video_object.obj_class
+            obj_class_name = obj_class.name + suffix
+            if suffix:
+                obj_class = obj_class.clone(name=obj_class_name)
+                video_object = video_object.clone(obj_class=obj_class)
+                any_object_updated = True
+                this_object_changed = True
+            meta_obj_class = meta.get_obj_class(obj_class_name)
+            if meta_obj_class is None:
+                # obj class is not in meta, add it with suffix
+                meta = meta.add_obj_class(obj_class)
+                new_objects.append(video_object)
+                meta_changed = True
+                suffix_found = True
+                break
+            elif (
+                meta_obj_class.geometry_type.geometry_name()
+                == video_object.obj_class.geometry_type.geometry_name()
+            ):
+                # if object geometry is the same as in meta, use meta obj class
+                video_object = video_object.clone(obj_class=meta_obj_class)
+                new_objects.append(video_object)
+                suffix_found = True
+                any_object_updated = True
+                this_object_changed = True
+                break
+            elif meta_obj_class.geometry_type.geometry_name() == AnyGeometry.geometry_name():
+                # if meta obj class is AnyGeometry, use it in object
+                video_object = video_object.clone(obj_class=meta_obj_class)
+                new_objects.append(video_object)
+                suffix_found = True
+                any_object_updated = True
+                this_object_changed = True
+                break
+        if not suffix_found:
+            # if no suffix found, raise error
+            raise ValueError(
+                f"Can't add obj class {original_obj_class_name} to project meta. "
+                "Tried with suffixes: " + ", ".join(obj_classes_suffixes) + ". "
+                "Please check if model geometry type is compatible with existing obj classes."
+            )
+        elif this_object_changed:
+            this_object_figures = [
+                figure.clone(video_object=video_object) for figure in this_object_figures
+            ]
+        new_figures.extend(this_object_figures)
+    if any_object_updated:
+        ann = ann.clone(objects=new_objects, figures=new_figures)
+
+    # check if tag metas are in project meta
+    # if not, add them with suffix
+    ann_tag_metas: Dict[str, TagMeta] = {}
+    for video_object in ann.objects:
+        for tag in video_object.tags:
+            tag_name = tag.meta.name
+            if tag_name not in ann_tag_metas:
+                ann_tag_metas[tag_name] = tag.meta
+    for tag in ann.tags:
+        tag_name = tag.meta.name
+        if tag_name not in ann_tag_metas:
+            ann_tag_metas[tag_name] = tag.meta
+
+    changed_tag_metas = {}
+    for ann_tag_meta in ann_tag_metas.values():
+        meta_tag_meta = meta.get_tag_meta(ann_tag_meta.name)
+        if meta_tag_meta is None:
+            meta = meta.add_tag_meta(ann_tag_meta)
+            meta_changed = True
+        elif not meta_tag_meta.is_compatible(ann_tag_meta):
+            suffix_found = False
+            for suffix in tag_meta_suffixes:
+                new_tag_meta_name = ann_tag_meta.name + suffix
+                meta_tag_meta = meta.get_tag_meta(new_tag_meta_name)
+                if meta_tag_meta is None:
+                    new_tag_meta = ann_tag_meta.clone(name=new_tag_meta_name)
+                    meta = meta.add_tag_meta(new_tag_meta)
+                    changed_tag_metas[ann_tag_meta.name] = new_tag_meta
+                    meta_changed = True
+                    suffix_found = True
+                    break
+                if meta_tag_meta.is_compatible(ann_tag_meta):
+                    changed_tag_metas[ann_tag_meta.name] = meta_tag_meta
+                    suffix_found = True
+                    break
+            if not suffix_found:
+                raise ValueError(f"Can't add tag meta {ann_tag_meta.name} to project meta")
+
+    if changed_tag_metas:
+        objects = []
+        any_object_updated = False
+        for video_object in ann.objects:
+            any_tag_updated = False
+            object_tags = []
+            for tag in video_object.tags:
+                if tag.meta.name in changed_tag_metas:
+                    object_tags.append(tag.clone(meta=changed_tag_metas[tag.meta.name]))
+                    any_tag_updated = True
+                else:
+                    object_tags.append(tag)
+            if any_tag_updated:
+                video_object = video_object.clone(tags=TagCollection(object_tags))
+                any_object_updated = True
+            objects.append(video_object)
+
+        video_tags = []
+        any_tag_updated = False
+        for tag in ann.tags:
+            if tag.meta.name in changed_tag_metas:
+                video_tags.append(tag.clone(meta=changed_tag_metas[tag.meta.name]))
+                any_tag_updated = True
+            else:
+                video_tags.append(tag)
+        if any_tag_updated or any_object_updated:
+            if any_tag_updated:
+                video_tags = VideoTagCollection(video_tags)
+            else:
+                video_tags = None
+            if any_object_updated:
+                objects = VideoObjectCollection(objects)
+            else:
+                objects = None
+            ann = ann.clone(tags=video_tags, objects=objects)
+
     return meta, ann, meta_changed
 
 
