@@ -1,17 +1,18 @@
+import hashlib
 import inspect
 import json
 import os
 import signal
 import sys
 import time
-from contextlib import suppress
+from contextlib import contextmanager, suppress
 from contextvars import ContextVar
 from functools import wraps
 from pathlib import Path
 from threading import Event as ThreadingEvent
 from threading import Thread
 from time import sleep
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union
 
 import arel
 import jinja2
@@ -604,6 +605,75 @@ class Event:
                 )
 
 
+def _parse_int(value):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _user_identity_from_cookie(request: Request) -> Optional[str]:
+    cookie_header = request.headers.get("cookie")
+    if not cookie_header:
+        return None
+    return hashlib.sha256(cookie_header.encode("utf-8")).hexdigest()
+
+
+async def _resolve_user_id_from_request(request: Request) -> Optional[Union[int, str]]:
+    if not sly_env.is_multiuser_mode_enabled():
+        return None
+    user_id = _parse_int(request.query_params.get("userId"))
+    if user_id is None:
+        header_user = _parse_int(request.headers.get("x-user-id"))
+        if header_user is not None:
+            user_id = header_user
+    if user_id is None:
+        referer = request.headers.get("referer", "")
+        if referer:
+            from urllib.parse import parse_qs, urlparse
+
+            try:
+                parsed_url = urlparse(referer)
+                query_params = parse_qs(parsed_url.query)
+                referer_user = query_params.get("userId", [None])[0]
+                user_id = _parse_int(referer_user)
+            except Exception as e:
+                logger.error(f"Error parsing userId from referer: {e}")
+    if user_id is None and "application/json" in request.headers.get("Content-Type", ""):
+        try:
+            payload = await request.json()
+        except Exception:
+            payload = {}
+        context = payload.get("context") or {}
+        user_id = _parse_int(context.get("userId") or context.get(ApiField.USER_ID))
+        if user_id is None:
+            state_payload = payload.get("state") or {}
+            user_id = _parse_int(state_payload.get("userId") or state_payload.get(ApiField.USER_ID))
+    if user_id is None:
+        user_id = _user_identity_from_cookie(request)
+    return user_id
+
+
+@contextmanager
+def _multiuser_scope(user_id: Optional[Union[int, str]]):
+    if not sly_env.is_multiuser_mode_enabled() or user_id is None:
+        yield
+        return
+    token = sly_env.set_user_for_multiuser_app(user_id)
+    try:
+        yield
+    finally:
+        sly_env.reset_user_for_multiuser_app(token)
+
+
+def _remember_cookie(request: Request, user_id: Optional[Union[int, str]]):
+    if not sly_env.is_multiuser_mode_enabled() or user_id is None:
+        return
+    cookie_header = request.headers.get("cookie")
+    if cookie_header:
+        WebsocketManager().remember_user_cookie(cookie_header, user_id)
+
+
 def create(
     process_id=None,
     headless=False,
@@ -623,22 +693,90 @@ def create(
         shutdown(process_id, before_shutdown_callbacks)
 
     if headless is False:
-
         @app.post("/data")
         async def send_data(request: Request):
-            data = DataJson()
-            response = JSONResponse(content=dict(data))
+            user_id = await _resolve_user_id_from_request(request)
+            _remember_cookie(request, user_id)
+            with _multiuser_scope(user_id):
+                data = DataJson(user_id=user_id)
+                response = JSONResponse(content=dict(data))
             return response
 
         @app.post("/state")
         async def send_state(request: Request):
-            state = StateJson()
-
-            response = JSONResponse(content=dict(state))
+            user_id = await _resolve_user_id_from_request(request)
+            _remember_cookie(request, user_id)
+            with _multiuser_scope(user_id):
+                state = StateJson(user_id=user_id)
+                response = JSONResponse(content=dict(state))
             gettrace = getattr(sys, "gettrace", None)
             if (gettrace is not None and gettrace()) or is_development():
                 response.headers["x-debug-mode"] = "1"
             return response
+
+        # @app.post("/data")
+        # async def send_data(request: Request):
+        #     user_id = None
+        #     if sly_env.is_multiuser_mode_enabled():
+        #         # user_id = request.headers.get("X-User-ID")
+        #         # user_id = 8  # TODO remove after testing
+        #         # query_params = dict(request.query_params)
+        #         # user_id = query_params.get("userId", None)
+        #         user_id = None
+        #         referer = request.headers.get("referer", "")
+        #         if referer:
+        #             from urllib.parse import urlparse, parse_qs
+
+        #             try:
+        #                 parsed_url = urlparse(referer)
+        #                 query_params = parse_qs(parsed_url.query)
+        #                 if "userId" in query_params:
+        #                     user_id = query_params["userId"][0]
+        #             except Exception as e:
+        #                 logger.error(f"Error parsing userId from referer: {e}")
+
+        #         # query_params = dict(request.query_params)
+        #         # user_id = query_params.get("userId", None)
+        #         if user_id is not None:
+        #             user_id = int(user_id)
+        #             sly_env.set_user_for_multiuser_app(user_id)
+        #     data = DataJson(user_id=user_id)
+        #     response = JSONResponse(content=dict(data))
+        #     return response
+
+        # @app.post("/state")
+        # async def send_state(request: Request):
+        #     user_id = None
+        #     if sly_env.is_multiuser_mode_enabled():
+        #         query_params = dict(request.query_params)
+        #         user_id = query_params.get("userId", None)
+        #         # user_id = request.headers.get("X-User-ID")
+        #         # user_id = 8  # TODO remove after testing
+        #         user_id = None
+        #         referer = request.headers.get("referer", "")
+        #         if referer:
+        #             from urllib.parse import urlparse, parse_qs
+
+        #             try:
+        #                 parsed_url = urlparse(referer)
+        #                 query_params = parse_qs(parsed_url.query)
+        #                 if "userId" in query_params:
+        #                     user_id = query_params["userId"][0]
+        #             except Exception as e:
+        #                 logger.error(f"Error parsing userId from referer: {e}")
+
+        #         # query_params = dict(request.query_params)
+        #         # user_id = query_params.get("userId", None)
+        #         if user_id is not None:
+        #             user_id = int(user_id)
+        #             sly_env.set_user_for_multiuser_app(user_id)
+        #     state = StateJson(user_id=user_id)
+
+        #     response = JSONResponse(content=dict(state))
+        #     gettrace = getattr(sys, "gettrace", None)
+        #     if (gettrace is not None and gettrace()) or is_development():
+        #         response.headers["x-debug-mode"] = "1"
+        #     return response
 
         @app.post("/session-info")
         async def send_session_info(request: Request):
@@ -813,41 +951,39 @@ def _init(
     async def get_state_from_request(request: Request, call_next):
         # Start timer for response time measurement
         start_time = time.perf_counter()
-        if headless is False:
-            await StateJson.from_request(request)
 
-        if not ("application/json" not in request.headers.get("Content-Type", "")):
-            # {'command': 'inference_batch_ids', 'context': {}, 'state': {'dataset_id': 49711, 'batch_ids': [3120204], 'settings': None}, 'user_api_key': 'XXX', 'api_token': 'XXX', 'instance_type': None, 'server_address': 'https://app.supervisely.com'}
-            content = await request.json()
+        user_id = await _resolve_user_id_from_request(request)
+        _remember_cookie(request, user_id)
 
-            request.state.context = content.get("context")
-            request.state.state = content.get("state")
-            request.state.api_token = content.get(
-                "api_token",
-                (
-                    request.state.context.get("apiToken")
-                    if request.state.context is not None
-                    else None
-                ),
-            )
-            # logger.debug(f"middleware request api_token {request.state.api_token}")
-            request.state.server_address = content.get(
-                "server_address", sly_env.server_address(raise_not_found=False)
-            )
-            # request.state.server_address = sly_env.server_address(raise_not_found=False)
-            # logger.debug(f"middleware request server_address {request.state.server_address}")
-            # logger.debug(f"middleware request context {request.state.context}")
-            # logger.debug(f"middleware request state {request.state.state}")
-            if request.state.server_address is not None and request.state.api_token is not None:
-                request.state.api = Api(request.state.server_address, request.state.api_token)
-            else:
-                request.state.api = None
+        with _multiuser_scope(user_id):
+            if headless is False:
+                await StateJson.from_request(request, user_id=user_id)
 
-        try:
-            response = await call_next(request)
-        except Exception as exc:
-            need_to_handle_error = is_production()
-            response = await process_server_error(request, exc, need_to_handle_error)
+            if "application/json" in request.headers.get("Content-Type", ""):
+                content = await request.json()
+                request.state.context = content.get("context")
+                request.state.state = content.get("state")
+                request.state.api_token = content.get(
+                    "api_token",
+                    (
+                        request.state.context.get("apiToken")
+                        if request.state.context is not None
+                        else None
+                    ),
+                )
+                request.state.server_address = content.get(
+                    "server_address", sly_env.server_address(raise_not_found=False)
+                )
+                if request.state.server_address is not None and request.state.api_token is not None:
+                    request.state.api = Api(request.state.server_address, request.state.api_token)
+                else:
+                    request.state.api = None
+
+            try:
+                response = await call_next(request)
+            except Exception as exc:
+                need_to_handle_error = is_production()
+                response = await process_server_error(request, exc, need_to_handle_error)
         # Calculate response time and set it for uvicorn logger in ms
         elapsed_ms = round((time.perf_counter() - start_time) * 1000)
         response_time_ctx.set(elapsed_ms)
