@@ -512,47 +512,28 @@ class Preview:
                 text_scale=video_info.frame_height / 900,
                 trajectory_thickness=video_info.frame_height // 110,
             )
-            visualizer.visualize_video_annotation(
-                pred_video_annotation,
-                source=self.video_preview_path,
-                output_path=self.video_preview_annotated_path,
-            )
         else:
             pred_video_annotation = video_annotation_from_predictions(
                 predictions,
                 model_api.get_model_meta(),
                 frame_size=(video_info.frame_height, video_info.frame_width),
             )
-            _, pred_video_annotation, _ = update_meta_and_ann_for_video_annotation(
-                self._project_meta,
-                pred_video_annotation,
-                settings.get("model_prediction_suffix", ""),
+            visualizer = TrackingVisualizer(
+                output_fps=fps,
+                box_thickness=video_info.frame_height // 110,
+                text_scale=video_info.frame_height / 900,
+                show_trajectories=False,
             )
-            tmp_path = str(self.video_preview_path / "tmp")
-            video_writer = cv2.VideoWriter(
-                tmp_path,
-                cv2.VideoWriter.fourcc(*"mp4v"),
-                fps,
-                (video_info.frame_width, video_info.frame_height),
-            )
-            with VideoFrameReader(
-                self.video_preview_path,
-                frame_indexes=list(range(frame_start, frame_start + frames_number)),
-            ) as video_reader:
-                for i, frame in enumerate(video_reader, frame_start):
-                    ann_frame = pred_video_annotation.frames.get(i)
-                    if ann_frame and len(ann_frame.figures) > 0:
-                        for figure in ann_frame.figures:
-                            label = Label(figure.geometry, figure.video_object.obj_class)
-                            label.draw(
-                                frame,
-                                color=figure.video_object.obj_class.color,
-                                draw_class_name=True,
-                                thickness=video_info.frame_height // 110,
-                            )
-                    video_writer.write(frame)
-            video_writer.release()
-            shutil.move(tmp_path, self.video_preview_annotated_path)
+        _, pred_video_annotation, _ = update_meta_and_ann_for_video_annotation(
+            self._project_meta,
+            pred_video_annotation,
+            settings.get("model_prediction_suffix", ""),
+        )
+        visualizer.visualize_video_annotation(
+            pred_video_annotation,
+            source=self.video_preview_path,
+            output_path=self.video_preview_annotated_path,
+        )
         self.video_player.set_video(self.video_peview_url)
         self.select_item(ProjectType.VIDEOS.value)
 
