@@ -12,6 +12,7 @@ from supervisely.api.image_api import ImageInfo
 from supervisely.api.video.video_api import VideoInfo
 from supervisely.app.widgets import Button, Card, Container, Stepper, Widget
 from supervisely.io import env
+from supervisely.nn.inference.inference import update_meta_and_ann_for_video_annotation
 from supervisely.nn.inference.predict_app.gui.classes_selector import ClassesSelector
 from supervisely.nn.inference.predict_app.gui.input_selector import InputSelector
 from supervisely.nn.inference.predict_app.gui.model_selector import ModelSelector
@@ -444,6 +445,7 @@ class PredictAppGui:
         predict_kwargs = {}
         # Settings
         settings = run_parameters["settings"]
+        model_prediction_suffix = settings.pop("model_prediction_suffix", "")
         prediction_mode = settings.pop("predictions_mode")
         tracking = settings.pop("tracking", False)
         predict_kwargs.update(settings)
@@ -562,10 +564,7 @@ class PredictAppGui:
                 project_validator_text_str + ": Merging project meta",
                 "info",
             )
-            model_meta = self.model_api.get_model_meta()
             project_meta = src_project_metas[src_project_id]
-            project_meta = project_meta.merge(model_meta)
-            project_meta = self.api.project.update_meta(output_project_id, project_meta)
             for src_video_info, output_video_info in zip(src_video_infos, output_videos):
                 video_validator_text_str = (
                     project_validator_text_str
@@ -630,6 +629,15 @@ class PredictAppGui:
                     video_validator_text_str + ": Uploading predictions",
                     "info",
                 )
+                project_meta, prediction_video_annotation, meta_changed = (
+                    update_meta_and_ann_for_video_annotation(
+                        meta=project_meta,
+                        ann=prediction_video_annotation,
+                        model_prediction_suffix=model_prediction_suffix,
+                    )
+                )
+                if meta_changed:
+                    self.api.project.update_meta(output_project_id, project_meta)
                 if upload_to_source_project:
                     if prediction_mode in [
                         AddPredictionsMode.REPLACE_EXISTING_LABELS,
