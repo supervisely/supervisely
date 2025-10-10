@@ -174,6 +174,13 @@ class InputSelector:
             self.select_video.select_row_by_value("id", data["video_id"])
             self.radio.set_value(ProjectType.VIDEOS.value)
 
+    def get_project_id(self) -> int:
+        if self.radio.get_value() == ProjectType.IMAGES.value:
+            return self.select_dataset_for_images.project_id
+        if self.radio.get_value() == ProjectType.VIDEOS.value:
+            return self.select_dataset_for_video.project_id
+        return None
+
     def validate_step(self) -> bool:
         self.validator_text.hide()
         if self.radio.get_value() == ProjectType.IMAGES.value:

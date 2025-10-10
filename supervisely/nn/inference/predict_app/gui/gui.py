@@ -158,6 +158,9 @@ class PredictAppGui:
         self.team_id = env.team_id()
         self.workspace_id = env.workspace_id()
         self.project_id = env.project_id(raise_not_found=False)
+        self.project_meta = None
+        if self.project_id:
+            self.project_meta = ProjectMeta.from_json(self.api.project.get_meta(self.project_id))
         # -------------------------------- #
 
         # Flags
@@ -189,6 +192,10 @@ class PredictAppGui:
                         tracking_settings = self.model_api.get_tracking_settings()
                         self.settings_selector.set_tracking_settings(tracking_settings)
             self.input_selector.disable()
+
+            self.project_id = self.input_selector.get_project_id()
+            if self.project_id:
+                self.project_meta = ProjectMeta.from_json(self.api.project.get_meta(self.project_id))
             update_custom_button_params(self.input_selector.button, reselect_params)
 
         def _on_input_reactivate():
@@ -219,6 +226,35 @@ class PredictAppGui:
             if not valid:
                 return
             self.classes_selector.classes_table.disable()
+
+            # Find conflict between project meta and model meta
+            selected_classes_names = self.classes_selector.get_selected_classes()
+            project_meta = self.project_meta
+            model_meta = self.model_api.get_model_meta()
+
+            conflict_obj_classes = []
+            for class_name in selected_classes_names:
+                project_obj_class = project_meta.get_obj_class(class_name)
+                if project_obj_class is None:
+                    continue
+
+                # or break early? we don't care how many conflicts are there
+                # just check if there is at least one conflict to show suffix input?
+                # else:
+                #   break
+
+                model_obj_class = model_meta.get_obj_class(class_name)
+                project_obj_class_geometry_type = project_obj_class.geometry_type.name()
+                model_obj_class_geometry_type = model_obj_class.geometry_type.name()
+                if project_obj_class_geometry_type != model_obj_class_geometry_type:
+                    conflict_obj_classes.append(class_name)
+            
+            if conflict_obj_classes:
+                # self.settings_selector.validator_text.set(text="Some classes have different geometry types in project meta and model meta", status="warning")
+                # @TODO: Add conflict classes behavior
+                pass
+            # ------------------------------------------------ #
+
             update_custom_button_params(self.classes_selector.button, reselect_params)
 
         def _on_classes_reactivate():
