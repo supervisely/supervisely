@@ -12,6 +12,7 @@ import yaml
 
 from supervisely._utils import logger
 from supervisely.annotation.annotation import Annotation
+from supervisely.annotation.label import Label
 from supervisely.api.api import Api
 from supervisely.api.video.video_api import VideoInfo
 from supervisely.app.widgets import (
@@ -33,15 +34,19 @@ from supervisely.app.widgets.widget import Widget
 from supervisely.nn.inference.inference import (
     _filter_duplicated_predictions_from_ann,
     update_meta_and_ann,
+    update_meta_and_ann_for_video_annotation,
 )
 from supervisely.nn.inference.predict_app.gui.input_selector import InputSelector
 from supervisely.nn.inference.predict_app.gui.model_selector import ModelSelector
+from supervisely.nn.inference.predict_app.gui.utils import (
+    video_annotation_from_predictions,
+)
 from supervisely.nn.model.model_api import ModelAPI, Prediction
 from supervisely.nn.tracker import TrackingVisualizer
 from supervisely.project import ProjectMeta
 from supervisely.project.project_meta import ProjectType
-from supervisely.video.video import VideoFrameReader, create_from_frames
-from supervisely.video_annotation.video_annotation import VideoAnnotation
+from supervisely.video.video import VideoFrameReader
+from supervisely.video_annotation.video_annotation import KeyIdMap, VideoAnnotation
 
 
 class InferenceMode:
@@ -394,6 +399,12 @@ class Preview:
             self._download_video_preview(video_info, with_progress)
             self._current_item_id = video_id
             self.video_peview_url = f"/static/preview/annotated/{video_info.name}"
+            self._project_meta = ProjectMeta.from_json(
+                self.api.project.get_meta(video_info.project_id)
+            )
+            self._video_annotation = VideoAnnotation.from_json(
+                self.api.video.annotation.download(video_id), self._project_meta, KeyIdMap()
+            )
 
     def set_image_preview(self):
 
@@ -465,9 +476,7 @@ class Preview:
         fps = int(video_info.frames_count / video_info.duration)
         frames_number = min(video_info.frames_count, int(fps * seconds))
         model_api = self.get_model_api_fn()
-        model_meta = model_api.get_model_meta()
-        src_project_meta = ProjectMeta.from_json(self.api.project.get_meta(video_info.project_id))
-        project_meta = src_project_meta.merge(model_meta)
+        project_meta = ProjectMeta.from_json(self.api.project.get_meta(video_info.project_id))
 
         settings = self.get_settings_fn()
         inference_settings = settings.get("inference_settings", {})
@@ -486,24 +495,39 @@ class Preview:
         if os.path.exists(self.video_preview_annotated_path):
             os.remove(self.video_preview_annotated_path)
         if tracking:
-            video_annotation = session.final_result.get("video_ann", {})
-            if video_annotation is None:
+            pred_video_annotation = session.final_result.get("video_ann", {})
+            if pred_video_annotation is None:
                 raise RuntimeError("Model did not return video annotation")
-            video_annotation = VideoAnnotation.from_json(
-                video_annotation, project_meta=project_meta
+            pred_video_annotation = VideoAnnotation.from_json(
+                pred_video_annotation, project_meta=project_meta
+            )
+            _, pred_video_annotation, _ = update_meta_and_ann_for_video_annotation(
+                self._project_meta,
+                pred_video_annotation,
+                settings.get("model_prediction_suffix", ""),
             )
             visualizer = TrackingVisualizer(
                 output_fps=fps,
                 box_thickness=video_info.frame_height // 110,
                 text_scale=video_info.frame_height / 900,
-                trajectory_thickness=video_info.frame_width // 110,
+                trajectory_thickness=video_info.frame_height // 110,
             )
             visualizer.visualize_video_annotation(
-                video_annotation,
+                pred_video_annotation,
                 source=self.video_preview_path,
                 output_path=self.video_preview_annotated_path,
             )
         else:
+            pred_video_annotation = video_annotation_from_predictions(
+                predictions,
+                model_api.get_model_meta(),
+                frame_size=(video_info.frame_height, video_info.frame_width),
+            )
+            _, pred_video_annotation, _ = update_meta_and_ann_for_video_annotation(
+                self._project_meta,
+                pred_video_annotation,
+                settings.get("model_prediction_suffix", ""),
+            )
             tmp_path = str(self.video_preview_path / "tmp")
             video_writer = cv2.VideoWriter(
                 tmp_path,
@@ -515,12 +539,18 @@ class Preview:
                 self.video_preview_path,
                 frame_indexes=list(range(frame_start, frame_start + frames_number)),
             ) as video_reader:
-                for pred, frame in zip(predictions, video_reader):
-                    if pred.annotation is not None and len(pred.annotation.labels) > 0:
-                        img = pred.annotation.draw(frame, draw_class_names=True)
-                    else:
-                        img = frame
-                    video_writer.write(img)
+                for i, frame in enumerate(video_reader, frame_start):
+                    ann_frame = pred_video_annotation.frames.get(i)
+                    if ann_frame and len(ann_frame.figures) > 0:
+                        for figure in ann_frame.figures:
+                            label = Label(figure.geometry, figure.video_object.obj_class)
+                            label.draw(
+                                frame,
+                                color=figure.video_object.obj_class.color,
+                                draw_class_name=True,
+                                thickness=video_info.frame_height // 110,
+                            )
+                    video_writer.write(frame)
             video_writer.release()
             shutil.move(tmp_path, self.video_preview_annotated_path)
         self.video_player.set_video(self.video_peview_url)

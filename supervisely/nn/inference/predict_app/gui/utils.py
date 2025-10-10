@@ -7,8 +7,16 @@ from supervisely.api.image_api import ImageInfo
 from supervisely.api.project_api import ProjectInfo
 from supervisely.app import DataJson
 from supervisely.app.widgets import Button, Card, Progress, Stepper, Text, Widget
+from supervisely.nn.model.prediction import Prediction
 from supervisely.project.project import ProjectType
+from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.video_project import VideoInfo
+from supervisely.video_annotation.frame import Frame
+from supervisely.video_annotation.frame_collection import FrameCollection
+from supervisely.video_annotation.video_annotation import VideoAnnotation
+from supervisely.video_annotation.video_figure import VideoFigure
+from supervisely.video_annotation.video_object import VideoObject
+from supervisely.video_annotation.video_object_collection import VideoObjectCollection
 
 button_clicked = {}
 
@@ -343,3 +351,31 @@ def copy_project(
         project_type=dst_project.type,
     )
     return dst_project
+
+
+def video_annotation_from_predictions(
+    predictions: List[Prediction], project_meta: ProjectMeta, frame_size: Tuple[int, int]
+) -> VideoAnnotation:
+    objects = {}
+    frames = []
+    for i, prediction in enumerate(predictions):
+        figures = []
+        for label in prediction.annotation.labels:
+            obj_name = label.obj_class.name
+            if not obj_name in objects:
+                obj_class = project_meta.get_obj_class(obj_name)
+                if obj_class is None:
+                    continue
+                objects[obj_name] = VideoObject(obj_class)
+
+            vid_object = objects[obj_name]
+            if vid_object:
+                figures.append(VideoFigure(vid_object, label.geometry, frame_index=i))
+        frame = Frame(i, figures=figures)
+        frames.append(frame)
+    return VideoAnnotation(
+        img_size=frame_size,
+        frames_count=len(frames),
+        objects=VideoObjectCollection(list(objects.values())),
+        frames=FrameCollection(frames),
+    )
