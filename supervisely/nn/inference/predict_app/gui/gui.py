@@ -248,7 +248,7 @@ class PredictAppGui:
                 model_obj_class_geometry_type = model_obj_class.geometry_type.name()
                 if project_obj_class_geometry_type != model_obj_class_geometry_type:
                     conflict_obj_classes.append(class_name)
-            
+
             if conflict_obj_classes:
                 # self.settings_selector.validator_text.set(text="Some classes have different geometry types in project meta and model meta", status="warning")
                 # @TODO: Add conflict classes behavior
@@ -564,7 +564,10 @@ class PredictAppGui:
                     logger.warning(
                         "Project name is empty, using auto-generated name: " + project_name
                     )
-                with_annotations = prediction_mode == AddPredictionsMode.MERGE_WITH_EXISTING_LABELS
+                with_annotations = prediction_mode in [
+                    AddPredictionsMode.APPEND,
+                    AddPredictionsMode.IOU_MERGE,
+                ]
                 created_project = create_project(
                     api=self.api,
                     project_id=src_project_id,
@@ -644,7 +647,7 @@ class PredictAppGui:
                     self.api.project.update_meta(output_project_id, project_meta)
                 if upload_to_source_project:
                     if prediction_mode in [
-                        AddPredictionsMode.REPLACE_EXISTING_LABELS,
+                        AddPredictionsMode.REPLACE,
                         AddPredictionsMode.REPLACE_EXISTING_LABELS_AND_SAVE_IMAGE_TAGS,
                     ]:
                         self.output_selector.secondary_progress.hide()
@@ -717,11 +720,14 @@ class PredictAppGui:
         prediction_mode = settings.pop("predictions_mode")
         upload_mode = None
         with_annotations = None
-        if prediction_mode == AddPredictionsMode.REPLACE_EXISTING_LABELS:
+        if prediction_mode == AddPredictionsMode.REPLACE:
             upload_mode = "replace"
             with_annotations = False
-        elif prediction_mode == AddPredictionsMode.MERGE_WITH_EXISTING_LABELS:
+        elif prediction_mode == AddPredictionsMode.APPEND:
             upload_mode = "append"
+            with_annotations = True
+        elif prediction_mode == AddPredictionsMode.IOU_MERGE:
+            upload_mode = "iou_merge"
             with_annotations = True
         elif prediction_mode == AddPredictionsMode.REPLACE_EXISTING_LABELS_AND_SAVE_IMAGE_TAGS:
             upload_mode = "replace"

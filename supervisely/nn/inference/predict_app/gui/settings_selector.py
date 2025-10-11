@@ -23,6 +23,7 @@ from supervisely.app.widgets import (
     Field,
     GridGallery,
     Input,
+    InputNumber,
     OneOf,
     Progress,
     Select,
@@ -30,6 +31,7 @@ from supervisely.app.widgets import (
     VideoPlayer,
 )
 from supervisely.app.widgets.checkbox.checkbox import Checkbox
+from supervisely.app.widgets.empty.empty import Empty
 from supervisely.app.widgets.widget import Widget
 from supervisely.nn.inference.inference import (
     _filter_duplicated_predictions_from_ann,
@@ -55,8 +57,9 @@ class InferenceMode:
 
 
 class AddPredictionsMode:
-    MERGE_WITH_EXISTING_LABELS = "Merge with existing labels"
-    REPLACE_EXISTING_LABELS = "Replace existing labels"
+    APPEND = "Merge with existing labels"
+    REPLACE = "Replace existing labels"
+    IOU_MERGE = "Merge by IoU threshold"
     REPLACE_EXISTING_LABELS_AND_SAVE_IMAGE_TAGS = "Replace existing labels and save image tags"
 
 
@@ -418,14 +421,16 @@ class Preview:
             project_meta, pred, _ = update_meta_and_ann(
                 self._project_meta, pred, model_prediction_suffix
             )
-            if predictions_mode == AddPredictionsMode.REPLACE_EXISTING_LABELS:
+            if predictions_mode == AddPredictionsMode.REPLACE:
                 return pred
+            elif predictions_mode == AddPredictionsMode.IOU_MERGE:
+                iou_threshold = iou_threshold if iou_threshold is not None else 0.9
+                pred = _filter_duplicated_predictions_from_ann(source, pred, iou_threshold)
+                return source.merge(pred)
             elif predictions_mode in [
-                AddPredictionsMode.MERGE_WITH_EXISTING_LABELS,
+                AddPredictionsMode.APPEND,
                 AddPredictionsMode.REPLACE_EXISTING_LABELS_AND_SAVE_IMAGE_TAGS,
             ]:
-                if iou_threshold:
-                    pred = _filter_duplicated_predictions_from_ann(source, pred, iou_threshold)
                 return source.merge(pred)
             else:
                 raise RuntimeError(f"Unknown predictions mode: {predictions_mode}")
@@ -444,9 +449,7 @@ class Preview:
             prediction_annotation = _maybe_merge_annotations(
                 source=self._image_annotation,
                 pred=prediction.annotation,
-                predictions_mode=settings.get(
-                    "predictions_mode", AddPredictionsMode.MERGE_WITH_EXISTING_LABELS
-                ),
+                predictions_mode=settings.get("predictions_mode", AddPredictionsMode.APPEND),
                 model_prediction_suffix=settings.get("model_prediction_suffix", ""),
                 iou_threshold=inference_settings.get("existing_objects_iou_thresh"),
             )
@@ -614,16 +617,30 @@ class SettingsSelector:
 
         # Prediction Mode
         self.prediction_modes = [
-            AddPredictionsMode.MERGE_WITH_EXISTING_LABELS,
-            AddPredictionsMode.REPLACE_EXISTING_LABELS,
+            AddPredictionsMode.APPEND,
+            AddPredictionsMode.REPLACE,
+            AddPredictionsMode.IOU_MERGE,
             # AddPredictionsMode.REPLACE_EXISTING_LABELS_AND_SAVE_IMAGE_TAGS, # @TODO: Implement later
         ]
+        self.iou_merge_input = InputNumber(value=0.9, min=0.0, max=1.0, step=0.05, controls=False)
+        self.iou_merge_input_field = Field(
+            content=self.iou_merge_input,
+            title="IoU Threshold",
+            description="IoU threshold for merging predictions with existing labels. Predictions with IoU above this threshold will be considered duplicates and removed.",
+        )
+        self.prediction_modes_contents = [Empty(), Empty(), self.iou_merge_input_field]
         self.predictions_mode_selector = Select(
-            items=[Select.Item(mode) for mode in self.prediction_modes]
+            items=[
+                Select.Item(mode, content=content)
+                for mode, content in zip(self.prediction_modes, self.prediction_modes_contents)
+            ]
         )
         self.predictions_mode_selector.set_value(self.prediction_modes[0])
+        self.predicitons_mode_one_of = OneOf(self.predictions_mode_selector)
         self.predictions_mode_field = Field(
-            content=self.predictions_mode_selector,
+            content=Container(
+                widgets=[self.predictions_mode_selector, self.predicitons_mode_one_of]
+            ),
             title="Add predictions mode",
             description="Select how to add predictions to the project: by merging with existing labels or by replacing them.",
         )
@@ -734,10 +751,9 @@ class SettingsSelector:
     @property
     def widgets_to_disable(self) -> List[Widget]:
         return [
-            # self.inference_mode_selector,
-            self.model_prediction_suffix_input,
-            # self.model_prediction_suffix_checkbox,
+            self.tracking_checkbox,
             self.predictions_mode_selector,
+            self.model_prediction_suffix_input,
             self.inference_settings_editor,
         ]
 
@@ -764,9 +780,13 @@ class SettingsSelector:
         text = self.inference_settings_editor.get_text()
         inference_settings_text = text.split("# Tracking settings")[0]
         settings = yaml.safe_load(inference_settings_text)
-        if settings:
-            return settings
-        return {}
+        settings = settings if settings is not None else {}
+        if (
+            self.input_selector.radio.get_value() == ProjectType.IMAGES.value
+            and self.predictions_mode_selector.get_value() == AddPredictionsMode.IOU_MERGE
+        ):
+            settings["existing_objects_iou_thresh"] = self.iou_merge_input.get_value()
+        return settings
 
     def get_tracking_settings(self) -> Dict:
         if self.input_selector.radio.get_value() != ProjectType.VIDEOS.value:
