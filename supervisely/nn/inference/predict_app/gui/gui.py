@@ -7,6 +7,7 @@ from supervisely.api.api import Api
 from supervisely.api.image_api import ImageInfo
 from supervisely.api.video.video_api import VideoInfo
 from supervisely.app.widgets import Button, Card, Container, Stepper, Widget
+from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely.io import env
 from supervisely.nn.inference.inference import update_meta_and_ann_for_video_annotation
 from supervisely.nn.inference.predict_app.gui.classes_selector import ClassesSelector
@@ -232,27 +233,26 @@ class PredictAppGui:
             project_meta = self.project_meta
             model_meta = self.model_api.get_model_meta()
 
-            conflict_obj_classes = []
+            has_conflict = False
             for class_name in selected_classes_names:
                 project_obj_class = project_meta.get_obj_class(class_name)
                 if project_obj_class is None:
                     continue
 
-                # or break early? we don't care how many conflicts are there
-                # just check if there is at least one conflict to show suffix input?
-                # else:
-                #   break
-
                 model_obj_class = model_meta.get_obj_class(class_name)
-                project_obj_class_geometry_type = project_obj_class.geometry_type.name()
-                model_obj_class_geometry_type = model_obj_class.geometry_type.name()
-                if project_obj_class_geometry_type != model_obj_class_geometry_type:
-                    conflict_obj_classes.append(class_name)
+                if model_obj_class.geometry_type.name() == AnyGeometry.name():
+                    continue
 
-            if conflict_obj_classes:
-                # self.settings_selector.validator_text.set(text="Some classes have different geometry types in project meta and model meta", status="warning")
-                # @TODO: Add conflict classes behavior
-                pass
+                if project_obj_class.geometry_type.name() == model_obj_class.geometry_type.name():
+                    continue
+
+                has_conflict = True
+                break
+
+            if has_conflict:
+                self.settings_selector.model_prediction_suffix_container.show()
+            else:
+                self.settings_selector.model_prediction_suffix_container.hide()
             # ------------------------------------------------ #
 
             update_custom_button_params(self.classes_selector.button, reselect_params)
@@ -266,7 +266,7 @@ class PredictAppGui:
             widget=self.classes_selector.card,
             on_select=_on_classes_select,
             on_reactivate=_on_classes_reactivate,
-            depends_on=["model_selector"],
+            depends_on=["input_selector", "model_selector"],
             on_lock=self.classes_selector.lock,
             on_unlock=self.classes_selector.unlock,
             button=self.classes_selector.button,
@@ -302,7 +302,7 @@ class PredictAppGui:
             widget=self.settings_selector.cards_container,
             on_select=_on_settings_select,
             on_reactivate=_on_settings_reactivate,
-            depends_on=["input_selector", "model_selector"],
+            depends_on=["input_selector", "model_selector", "classes_selector"],
             on_lock=self.settings_selector.lock,
             on_unlock=self.settings_selector.unlock,
             button=self.settings_selector.button,

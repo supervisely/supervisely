@@ -670,6 +670,10 @@ class SettingsSelector:
         self.model_prediction_suffix_input = Input(
             value="_model", minlength=1, placeholder="Enter suffix e.g: _model"
         )
+        self.model_meta_has_conflicting_names_text = Text(
+            text="Project and Model metas have conflicting names. This suffix will be added to conflicting class and tag names of model predictions",
+            status="info",
+        )
         self.model_prediction_suffix_field = Field(
             content=self.model_prediction_suffix_input,
             title="Class and tag suffix",
@@ -679,14 +683,26 @@ class SettingsSelector:
                 "then suffix will be added to the model predictions to avoid conflicts. E.g. 'person_model'."
             ),
         )
+        self.model_prediction_suffix_container = Container(
+            widgets=[
+                self.model_meta_has_conflicting_names_text,
+                self.model_prediction_suffix_field,
+            ],
+            gap=5,
+        )
+        self.model_prediction_suffix_container.hide()
         # Add widgets to display ------------ #
-        self.settings_widgets.extend([self.model_prediction_suffix_field])
+        self.settings_widgets.extend([self.model_prediction_suffix_container])
         # ----------------------------------- #
 
         # Inference Settings
         self.inference_settings_editor = Editor("", language_mode="yaml", height_px=300)
+        self.inference_settings_field = Field(
+            content=self.inference_settings_editor,
+            title="Inference and Tracking Settings",
+        )
         # Add widgets to display ------------ #
-        self.settings_widgets.extend([self.inference_settings_editor])
+        self.settings_widgets.extend([self.inference_settings_field])
         # ----------------------------------- #
 
         # Preview
