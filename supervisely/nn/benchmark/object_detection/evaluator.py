@@ -46,10 +46,12 @@ class ObjectDetectionEvalResult(BaseEvalResult):
         if speedtest_info_path.exists():
             self.speedtest_info = load_json_file(str(speedtest_info_path))
 
+        self.project_info = None
         project_info_path = Path(path) / "project_info.json"
         if project_info_path.exists():
             self.project_info = ProjectInfo(**load_json_file(str(project_info_path)))
 
+        self.project_meta = None
         project_meta_path = Path(path) / "project_meta.json"
         if project_meta_path.exists():
             self.project_meta = ProjectMeta.from_json(load_json_file(str(project_meta_path)))

@@ -169,14 +169,19 @@ class BaseComparisonVisualizer:
                         ApiField.VALUE: eval_result.gt_dataset_ids,
                     }
                 ]
-            eval_result.gt_dataset_infos = self.api.dataset.get_list(
-                eval_result.gt_project_id,
-                filters=filters,
-                recursive=True,
-            )
+            try:
+                eval_result.gt_dataset_infos = self.api.dataset.get_list(
+                    eval_result.gt_project_id,
+                    filters=filters,
+                    recursive=True,
+                )
+            except Exception as e:
+                logger.warning("Error retrieving ground truth dataset infos: %s", e)
+                eval_result.gt_dataset_infos = None
             if eval_result.gt_dataset_infos is None:
                 eval_result.gt_dataset_infos = eval_result.dataset_infos
 
+    # @TODO: evaluate whether project existance notification is needed
     def _create_warning_notification_if_needed(self):
         NOTIFICATION = "overlap_notification"
         images_overlap_partial = bool(getattr(self.comparison, "images_partially_matched", False))

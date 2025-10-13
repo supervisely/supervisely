@@ -38,10 +38,19 @@ class Overview(BaseVisMetrics):
             model_name = model_name.replace("_", "\_")
             model_names.append(model_name)
 
+            gt_project_info = getattr(eval_result, "gt_project_info", None)
+            if not gt_project_info:
+                from pathlib import Path
+
+                project_id, project_name = Path(eval_result.report_path).parts[2].split("_")
+            else:
+                project_id = gt_project_info.id
+                project_name = gt_project_info.name
+
             info.append(
                 [
-                    eval_result.gt_project_info.id,
-                    eval_result.gt_project_info.name,
+                    project_id,
+                    project_name,
                     eval_result.inference_info.get("task_type"),
                 ]
             )

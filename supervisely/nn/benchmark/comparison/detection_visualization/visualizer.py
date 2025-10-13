@@ -209,6 +209,12 @@ class DetectionComparisonVisualizer(BaseComparisonVisualizer):
             (0, self.cal_score_confidence_score_md_2),
             (0, self.cal_score_collapse_conf_score),
         ]
+        if not all(
+            eval_result.project_exists for eval_result in self.comparison.eval_results
+        ):
+            # -> remove explore predictions widgets
+            is_anchors_widgets.pop(6)
+            is_anchors_widgets.pop(7)
         if self._warning_notification:
             is_anchors_widgets.insert(1, (0, self._warning_notification))
         if self.speedtest_present:

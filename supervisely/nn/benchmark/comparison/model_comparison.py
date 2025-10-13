@@ -85,19 +85,19 @@ class ModelComparison:
         """
         if eval_result.gt_project_id is not None:
             eval_result.project_exists = True
-            if not self.api.project.exists(eval_result.gt_project_id):
+            if not self.api.project.get_info_by_id(eval_result.gt_project_id):
                 logger.warning(
                     f"Ground truth project with ID {eval_result.gt_project_id} not found."
                 )
                 eval_result.project_exists = False
 
-        if eval_result.pred_project_id is not None:
-            eval_result.project_exists = True
-            if not self.api.project.exists(eval_result.pred_project_id):
-                logger.warning(
-                    f"Prediction project with ID {eval_result.pred_project_id} not found."
-                )
-                eval_result.project_exists = False
+        # if eval_result.pred_project_id is not None:
+        #     eval_result.project_exists = True
+        #     if not self.api.project.get_info_by_id(eval_result.pred_project_id):
+        #         logger.warning(
+        #             f"Prediction project with ID {eval_result.pred_project_id} not found."
+        #         )
+        #         eval_result.project_exists = False
 
     def _validate_task_type(self):
         """
