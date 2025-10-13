@@ -813,6 +813,9 @@ def set_user_for_multiuser_app(user_id: Optional[Union[int, str]]) -> Token:
 
     :param user_id: The user ID (or session key) to set for the current request.
     :type user_id: int | str
+    :return: A context token that can be used to reset the user ID later.
+    :rtype: Token
+    :raises RuntimeError: If multiuser app mode is not enabled.
     """
     if not is_multiuser_mode_enabled():
         raise RuntimeError("Multiuser app mode is not enabled. Cannot set user ID.")
@@ -843,10 +846,3 @@ def user_from_multiuser_app() -> Optional[Union[int, str]]:
     user_id = _MULTIUSER_USER_CTX.get(None)
     if user_id is not None:
         return user_id
-    return _parse_from_env(
-        name="user_from_multiuser_app",
-        keys=["SUPERVISELY_MULTIUSER_APP_CURRENT_USER_ID"],
-        postprocess_fn=_int_from_env,
-        default=None,
-        raise_not_found=False,
-    )
