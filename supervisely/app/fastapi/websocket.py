@@ -61,10 +61,7 @@ class WebsocketManager(metaclass=Singleton):
             targets = list(self.active_connections)
 
         for connection in list(targets):
-            try:
-                await connection.send_json(d)
-            except Exception:
-                self.disconnect(connection)
+            await connection.send_json(d)
 
     async def endpoint(self, websocket: WebSocket):
         await self.connect(websocket)
@@ -73,12 +70,6 @@ class WebsocketManager(metaclass=Singleton):
                 data = await websocket.receive_text()
         except WebSocketDisconnect:
             self.disconnect(websocket)
-            try:
-                while True:
-                    await websocket.receive_text()
-            except Exception as e:
-                print("WebSocket error:", e)
-                self.disconnect(websocket)
 
     def _resolve_user_id(self, websocket: WebSocket) -> Optional[int]:
         if not sly_env.is_multiuser_mode_enabled():
