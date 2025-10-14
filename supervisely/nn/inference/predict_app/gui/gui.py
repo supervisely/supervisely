@@ -176,7 +176,7 @@ class PredictAppGui:
         reselect_params = {"icon": "zmdi zmdi-refresh", "plain": True, "text": "Reselect"}
 
         # 1. Input selector
-        self.input_selector = InputSelector(self.workspace_id)
+        self.input_selector = InputSelector(self.workspace_id, self.api)
 
         def _on_input_select():
             valid = self.input_selector.validate_step()
@@ -385,58 +385,6 @@ class PredictAppGui:
         self.model_selector.model.deploy = deploy_and_set_step
         self.model_selector.model.stop = stop_and_reset_step
         self.model_selector.model.disconnect = disconnect_and_reset_step
-
-        # ------------------------------------------------- #
-
-        # Other Handlers
-        @self.input_selector.radio.value_changed
-        def input_selector_type_changed(value: str):
-            self.input_selector.validator_text.hide()
-
-        @self.input_selector.select_dataset_for_images.project_changed
-        def project_for_images_changed(project_id: int):
-            self.input_selector.validator_text.hide()
-
-        @self.input_selector.select_dataset_for_images.value_changed
-        def dataset_for_images_changed(dataset_id: int):
-            self.input_selector.validator_text.hide()
-
-        @self.input_selector.select_dataset_for_video.project_changed
-        def project_for_videos_changed(project_id: int):
-            self.input_selector.select_video.clear()
-            self.input_selector.select_video.hide()
-            self.input_selector.validator_text.hide()
-
-        @self.input_selector.select_dataset_for_video.value_changed
-        def dataset_for_video_changed(dataset_id: int):
-            self.input_selector.validator_text.hide()
-            self.input_selector.select_video.loading = True
-            self.input_selector.select_video.clear()
-            if dataset_id is None:
-                self.input_selector.select_video.hide()
-            else:
-                self.input_selector.select_video.show()
-                dataset_info = self.api.dataset.get_info_by_id(dataset_id)
-                videos = self.api.video.get_list(dataset_id)
-                for video in videos:
-                    size = f"{video.frame_height}x{video.frame_width}"
-                    try:
-                        frame_rate = int(video.frames_count / video.duration)
-                    except:
-                        frame_rate = "N/A"
-                    self.input_selector.select_video.insert_row(
-                        [
-                            video.id,
-                            video.name,
-                            size,
-                            video.duration,
-                            frame_rate,
-                            video.frames_count,
-                            dataset_info.name,
-                            dataset_info.id,
-                        ]
-                    )
-            self.input_selector.select_video.loading = False
 
         # ------------------------------------------------- #
 

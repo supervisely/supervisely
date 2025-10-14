@@ -1,5 +1,7 @@
+import threading
 from typing import Any, Dict, List
 
+from supervisely.api.api import Api
 from supervisely.app.widgets import (
     Button,
     Card,
@@ -19,9 +21,10 @@ class InputSelector:
     description = "Select input data on which to run model for prediction"
     lock_message = None
 
-    def __init__(self, workspace_id: int):
+    def __init__(self, workspace_id: int, api: Api):
         # Init Step
         self.workspace_id = workspace_id
+        self.api = api
         self.display_widgets: List[Any] = []
         # -------------------------------- #
 
@@ -65,26 +68,28 @@ class InputSelector:
 
         # Videos
         self.select_dataset_for_video = SelectDatasetTree(
+            multiselect=True,
             flat=True,
-            select_all_datasets=False,
+            select_all_datasets=True,
             allowed_project_types=[ProjectType.VIDEOS],
             always_open=False,
             compact=False,
             team_is_selectable=False,
             workspace_is_selectable=False,
-            show_select_all_datasets_checkbox=False,
+            show_select_all_datasets_checkbox=True,
         )
+        self._video_table_columns = [
+            "Video id",
+            "Video name",
+            "Size",
+            "Duration",
+            "FPS",
+            "Frames count",
+            "Dataset name",
+            "Dataset id",
+        ]
         self.select_video = FastTable(
-            columns=[
-                "Video id",
-                "Video name",
-                "Size",
-                "Duration",
-                "FPS",
-                "Frames count",
-                "Dataset name",
-                "Dataset id",
-            ],
+            columns=self._video_table_columns,
             is_selectable=True,
         )
         self.select_video.hide()
@@ -122,6 +127,80 @@ class InputSelector:
             lock_message=self.lock_message,
         )
         # ----------------------------------- #
+
+        self._refresh_table_lock = threading.Lock()
+        self._refresh_table_thread: threading.Thread = None
+        self._refresh_called = False
+
+        @self.radio.value_changed
+        def input_selector_type_changed(value: str):
+            self.validator_text.hide()
+
+        @self.select_dataset_for_images.project_changed
+        def _images_project_changed(project_id):
+            self.validator_text.hide()
+
+        @self.select_dataset_for_images.value_changed
+        def _images_dataset_changed(dataset_ids):
+            self.validator_text.hide()
+
+        @self.select_dataset_for_video.project_changed
+        def _videos_project_changed(project_id: int):
+            self._refresh_video_table_called()
+
+        @self.select_dataset_for_video.value_changed
+        def _videos_dataset_changed(datasets_ids):
+            self._refresh_video_table_called()
+
+    def _refresh_video_table_called(self):
+        with self._refresh_table_lock:
+            self._refresh_called = True
+            if self._refresh_table_thread is None or not self._refresh_table_thread.is_alive():
+                self._refresh_table_thread = threading.Thread(target=self._refresh_video_table_loop)
+        if self._refresh_table_thread is not None and not self._refresh_table_thread.is_alive():
+            self._refresh_table_thread.start()
+
+    def _refresh_video_table_loop(self):
+        while self._refresh_called:
+            with self._refresh_table_lock:
+                self._refresh_called = False
+            self.select_video.loading = True
+            self._refresh_video_table()
+            if not self._refresh_called:
+                self.select_video.loading = False
+
+    def _refresh_video_table(self):
+        self.validator_text.hide()
+        self.select_video.clear()
+        selected_datasets = self.select_dataset_for_video.get_selected_ids()
+        if not selected_datasets:
+            self.select_video.hide()
+        else:
+            rows = []
+            self.select_video.show()
+            for dataset_id in selected_datasets:
+                dataset_info = self.api.dataset.get_info_by_id(dataset_id)
+                videos = self.api.video.get_list(dataset_id)
+                for video in videos:
+                    size = f"{video.frame_height}x{video.frame_width}"
+                    try:
+                        frame_rate = int(video.frames_count / video.duration)
+                    except:
+                        frame_rate = "N/A"
+                    rows.append(
+                        [
+                            video.id,
+                            video.name,
+                            size,
+                            video.duration,
+                            frame_rate,
+                            video.frames_count,
+                            dataset_info.name,
+                            dataset_info.id,
+                        ]
+                    )
+
+            self.select_video.add_rows(rows)
 
     def disable(self):
         for widget in self.widgets_to_disable:
@@ -194,7 +273,7 @@ class InputSelector:
                 self.validator_text.show()
                 return False
         if self.radio.get_value() == ProjectType.VIDEOS.value:
-            if self.select_dataset_for_video.get_selected_id() is None:
+            if not self.select_dataset_for_video.get_selected_ids():
                 self.validator_text.set(text="Select a dataset", status="error")
                 self.validator_text.show()
                 return False
