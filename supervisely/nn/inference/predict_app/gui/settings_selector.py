@@ -848,6 +848,16 @@ class SettingsSelector:
         if inference_settings is not None:
             self.set_inference_settings(inference_settings)
 
+        tracking_settings = data.get("tracking_settings", None)
+        if tracking_settings is not None:
+            self.set_tracking_settings(tracking_settings)
+
+        tracking = data.get("tracking", None)
+        if tracking == True:
+            self.tracking_checkbox.check()
+        elif tracking == False:
+            self.tracking_checkbox.uncheck()
+
     def update_item_type(self, item_type: str):
         if item_type == ProjectType.IMAGES.value:
             self.video_settings_container.hide()
