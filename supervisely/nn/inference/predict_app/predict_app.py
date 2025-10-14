@@ -1,19 +1,13 @@
-import os
 from typing import Dict, List, Optional
 
 from fastapi import BackgroundTasks, Request
 
 import supervisely.io.fs as sly_fs
-from supervisely._utils import is_development, logger
+from supervisely._utils import logger
 from supervisely.api.api import Api
 from supervisely.app.fastapi.subapp import Application
-from supervisely.io import env
 from supervisely.nn.inference.predict_app.gui.gui import PredictAppGui
-from supervisely.nn.inference.predict_app.gui.settings_selector import (
-    AddPredictionsMode,
-)
-from supervisely.nn.inference.predict_app.gui.utils import copy_project, disable_enable
-from supervisely.nn.model.model_api import ModelAPI
+from supervisely.nn.inference.predict_app.gui.utils import disable_enable
 from supervisely.nn.model.prediction import Prediction
 
 
