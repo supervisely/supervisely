@@ -995,6 +995,10 @@ def upload_pointcloud_episode_project(
             items_infos["paths"].append(item_path)
             items_infos["metas"].append(item_meta)
 
+        if not items_infos["names"]:
+            logger.info(f"Dataset {dataset.name} has no items, skipping upload")
+            continue
+
         ds_progress = progress_cb
         if log_progress:
             ds_progress = tqdm_sly(
