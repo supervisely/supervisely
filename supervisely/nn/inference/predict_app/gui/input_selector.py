@@ -242,16 +242,25 @@ class InputSelector:
             return {"video_ids": video_ids}
 
     def load_from_json(self, data):
-        if "project_id" in data:
+        if "video_ids" in data:
+            video_ids = data["video_ids"]
+            if not video_ids:
+                raise ValueError("Video ids cannot be empty")
+            video_infos = self.api.video.get_info_by_id_batch(video_ids)
+            if not video_infos:
+                raise ValueError(f"Videos with video ids {video_ids} are not found")
+            project_id = video_infos[0].project_id
+            self.select_dataset_for_video.set_project_id(project_id)
+            self.select_dataset_for_video.select_all()
+            self.select_video.select_row_by_value("id", data["video_ids"])
+            self.radio.set_value(ProjectType.VIDEOS.value)
+        elif "dataset_ids" in data:
+            self.select_dataset_for_images.set_dataset_ids(data["dataset_ids"])
+            self.radio.set_value(ProjectType.IMAGES.value)
+        elif "project_id" in data:
             self.select_dataset_for_images.set_project_id(data["project_id"])
             self.select_dataset_for_images.select_all()
             self.radio.set_value(ProjectType.IMAGES.value)
-        if "dataset_ids" in data:
-            self.select_dataset_for_images.set_dataset_ids(data["dataset_ids"])
-            self.radio.set_value(ProjectType.IMAGES.value)
-        if "video_id" in data:
-            self.select_video.select_row_by_value("id", data["video_id"])
-            self.radio.set_value(ProjectType.VIDEOS.value)
 
     def get_project_id(self) -> int:
         if self.radio.get_value() == ProjectType.IMAGES.value:
