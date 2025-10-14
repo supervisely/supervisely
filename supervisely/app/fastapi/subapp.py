@@ -635,7 +635,7 @@ def create(
             user_id = await multi_user.extract_user_id_from_request(request)
             multi_user.remember_cookie(request, user_id)
             with multi_user.session_context(user_id):
-                data = DataJson(user_id=user_id)
+                data = DataJson()
                 response = JSONResponse(content=dict(data))
             return response
 
@@ -648,7 +648,7 @@ def create(
                 user_id = await multi_user.extract_user_id_from_request(request)
                 multi_user.remember_cookie(request, user_id)
                 with multi_user.session_context(user_id):
-                    state = StateJson(user_id=user_id)
+                    state = StateJson()
                     response = JSONResponse(content=dict(state))
             gettrace = getattr(sys, "gettrace", None)
             if (gettrace is not None and gettrace()) or is_development():
