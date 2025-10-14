@@ -128,6 +128,7 @@ INSTALL_REQUIRES = [
     "aiofiles",
     "httpx[http2]==0.27.2",
     "debugpy",
+    "Setuptools<81",
 ]
 
 ALT_INSTALL_REQUIRES = {
