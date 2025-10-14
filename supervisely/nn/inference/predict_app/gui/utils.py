@@ -170,24 +170,36 @@ def _copy_items_to_dataset(
     dst_dataset: DatasetInfo,
     project_type: str,
     with_annotations: bool = True,
+    progress_cb: Callable = None,
     progress: Progress = None,
     items_infos: List[Union[ImageInfo, VideoInfo]] = None,
 ) -> Union[List[ImageInfo], List[VideoInfo]]:
     if progress is None:
         progress = Progress()
+
+    def combined_progress(n):
+        progress_cb(n)
+        pbar.update(n)
+
     if project_type == ProjectType.IMAGES:
         if items_infos is None:
             items_infos = api.image.get_list(src_dataset_id)
         with progress(
             message=f"Copying items from dataset: {dst_dataset.name}", total=len(items_infos)
         ) as pbar:
+
+            if progress_cb:
+                _progress_cb = combined_progress
+            else:
+                _progress_cb = pbar.update
+
             progress.show()
             copied = api.image.copy_batch_optimized(
                 src_dataset_id=src_dataset_id,
                 src_image_infos=items_infos,
                 dst_dataset_id=dst_dataset.id,
                 with_annotations=with_annotations,
-                progress_cb=pbar.update,
+                progress_cb=_progress_cb,
             )
             progress.hide()
     elif project_type == ProjectType.VIDEOS:
@@ -197,12 +209,16 @@ def _copy_items_to_dataset(
         with progress(
             message=f"Copying items from dataset: {dst_dataset.name}", total=len(items_infos)
         ) as pbar:
+            if progress_cb:
+                _progress_cb = combined_progress
+            else:
+                _progress_cb = pbar.update
             progress.show()
             copied = api.video.copy_batch(
                 dst_dataset_id=dst_dataset.id,
                 ids=[info.id for info in items_infos],
                 with_annotations=with_annotations,
-                progress_cb=pbar.update,
+                progress_cb=_progress_cb,
             )
             progress.hide()
     else:
@@ -228,7 +244,8 @@ def copy_items_to_project(
     items: Union[List[ImageInfo], List[VideoInfo]],
     dst_project_id: int,
     with_annotations: bool = True,
-    progress: Progress = None,
+    progress_cb: Progress = None,
+    ds_progress: Progress = None,
     project_type: str = None,
     src_datasets_tree: Dict[DatasetInfo, Dict] = None,
 ) -> Union[List[ImageInfo], List[VideoInfo]]:
@@ -282,7 +299,8 @@ def copy_items_to_project(
                 dst_dataset=created_datasets[dataset_id],
                 project_type=project_type,
                 with_annotations=with_annotations,
-                progress=progress,
+                progress_cb=progress_cb,
+                progress=ds_progress,
                 items_infos=items_infos,
             )
             for src_info, dst_info in zip(items_infos, copied_ds_items):
@@ -347,7 +365,7 @@ def copy_project(
         items=items,
         dst_project_id=dst_project.id,
         with_annotations=with_annotations,
-        progress=progress,
+        ds_progress=progress,
         project_type=dst_project.type,
     )
     return dst_project

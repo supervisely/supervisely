@@ -531,7 +531,7 @@ class PredictAppGui:
                     items=src_video_infos,
                     dst_project_id=created_project.id,
                     with_annotations=with_annotations,
-                    progress=self.output_selector.secondary_progress,
+                    ds_progress=self.output_selector.secondary_progress,
                     project_type=ProjectType.VIDEOS,
                 )
 
@@ -737,6 +737,8 @@ class PredictAppGui:
             )
 
         self.output_selector.progress.show()
+        total_items = sum(len(v) for v in image_infos_by_project_id.values())
+        main_pbar = self.output_selector.progress(message=f"Copying images...", total=total_items)
         for src_project_id, infos in image_infos_by_project_id.items():
             if len(infos) == 0:
                 continue
@@ -781,7 +783,8 @@ class PredictAppGui:
                     items=infos,
                     dst_project_id=created_project.id,
                     with_annotations=with_annotations,
-                    progress=self.output_selector.progress,
+                    ds_progress=self.output_selector.secondary_progress,
+                    progress_cb=main_pbar.update,
                     project_type=ProjectType.IMAGES,
                 )
 

@@ -61,7 +61,7 @@ class OutputSelector:
             title="New Project Name",
             description="Name of the new project to create for the results. The created project will have the same dataset structure as the input project.",
         )
-        self.skip_annotated_checkbox = Checkbox("Skip annotated images", False)
+        self.skip_annotated_checkbox = Checkbox("Skip annotated items", False)
         self._tab_names = ["Create New Project", "Update source project"]
         self._tab_contents = [self.project_name_field, self.skip_annotated_checkbox]
         self.tabs = RadioGroup(
@@ -87,7 +87,7 @@ class OutputSelector:
         # Progress
         self.progress = Progress(hide_on_finish=False)
         self.progress.hide()
-        self.secondary_progress = Progress(hide_on_finish=True)
+        self.secondary_progress = Progress(hide_on_finish=False)
         self.secondary_progress.hide()
         # Add widgets to display ------------ #
         self.display_widgets.extend([self.progress, self.secondary_progress])
