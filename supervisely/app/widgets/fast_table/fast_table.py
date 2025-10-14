@@ -728,6 +728,26 @@ class FastTable(Widget):
         DataJson().send_changes()
         self._maybe_update_selected_row()
 
+    def add_rows(self, rows: List):
+        for row in rows:
+            self._validate_table_sizes(row)
+            self._validate_row_values_types(row)
+        self._source_data = pd.concat(
+            [self._source_data, pd.DataFrame(rows, columns=self._source_data.columns)]
+        ).reset_index(drop=True)
+        (
+            self._parsed_source_data,
+            self._sliced_data,
+            self._parsed_active_data,
+        ) = self._prepare_working_data()
+        self._rows_total = len(self._parsed_source_data["data"])
+        DataJson()[self.widget_id]["data"] = {
+            i: row for i, row in enumerate(self._parsed_active_data["data"])
+        }
+        DataJson()[self.widget_id]["total"] = self._rows_total
+        DataJson().send_changes()
+        self._maybe_update_selected_row()
+
     def pop_row(self, index: Optional[int] = -1) -> List:
         """Removes a row from the table at the specified position and returns it.
 
