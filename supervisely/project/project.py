@@ -4624,7 +4624,7 @@ def upload_project(
                 if os.path.isfile(path):
                     valid_indices.append(i)
                     valid_paths.append(path)
-                else:
+                elif len(project_fs.blob_files) > 0:
                     offset_indices.append(i)
             img_paths = valid_paths
             ann_paths = list(filter(lambda x: os.path.isfile(x), ann_paths))
