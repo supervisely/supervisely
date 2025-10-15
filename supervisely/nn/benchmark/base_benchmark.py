@@ -443,9 +443,25 @@ class BaseBenchmark:
             session.set_inference_settings(inference_settings)
         return session
 
-    def _dump_project_info(self, project_info: ProjectInfo, project_path):
-        project_info_path = os.path.join(project_path, "project_info.json")
+    def _dump_project_info(self, project_info: ProjectInfo, project_path: str):
+        from shutil import copyfile
+
+        result_dir = self.get_eval_results_dir()
+        project_info_path = os.path.join(result_dir, "project_info.json")
         json.dump_json_file(project_info._asdict(), project_info_path, indent=2)
+
+        project_meta_path = os.path.join(project_path, "meta.json")
+        if os.path.exists(project_meta_path):
+            copyfile(project_meta_path, os.path.join(result_dir, "project_meta.json"))
+
+        if self.gt_dataset_infos is not None:
+            ds_infos_path = os.path.join(result_dir, "dataset_infos.json")
+            datasets = {ds.id: ds._asdict() for ds in self.gt_dataset_infos}
+            json.dump_json_file(
+                datasets,
+                ds_infos_path,
+                indent=2,
+            )
         return project_info_path
 
     def _dump_eval_inference_info(self, eval_inference_info):

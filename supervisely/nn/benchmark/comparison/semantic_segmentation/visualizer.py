@@ -30,7 +30,7 @@ class SemanticSegmentationComparisonVisualizer(BaseComparisonVisualizer):
         self.eval_results: List[SemanticSegmentationEvalResult]
 
     def _create_widgets(self):
-        # Modal Gellery
+        # Modal Gallery
         self.diff_modal = self._create_diff_modal_table()
         self.explore_modal = self._create_explore_modal_table(
             click_gallery_id=self.diff_modal.id, hover_text="Compare with GT"
@@ -126,6 +126,8 @@ class SemanticSegmentationComparisonVisualizer(BaseComparisonVisualizer):
             (1, self.frequently_confused_md),
             (0, self.frequently_confused_chart),
         ]
+        if self._warning_notification:
+            is_anchors_widgets.insert(1, (0, self._warning_notification))
         if self.speedtest_present:
             is_anchors_widgets.extend(
                 [

@@ -76,7 +76,7 @@ class SemanticSegmentationVisualizer(BaseVisualizer):
         return CVTask.SEMANTIC_SEGMENTATION
 
     def _create_widgets(self):
-        # Modal Gellery
+        # Modal Gallery
         self.diff_modal = self._create_diff_modal_table()
         self.explore_modal = self._create_explore_modal_table(
             click_gallery_id=self.diff_modal.id, hover_text="Compare with GT"
@@ -208,6 +208,8 @@ class SemanticSegmentationVisualizer(BaseVisualizer):
         return layout
 
     def _init_match_data(self):
+        if not self.eval_result.project_exists:
+            return
         gt_project = Project(self.gt_project_path, OpenMode.READ)
         pred_project = Project(self.pred_project_path, OpenMode.READ)
         diff_map = {ds.id: ds for ds in self.eval_result.diff_dataset_infos}
@@ -283,11 +285,16 @@ class SemanticSegmentationVisualizer(BaseVisualizer):
         """Get sample images with annotations for visualization (preview gallery)"""
         sample_images = []
         limit = 9
-        for ds_info in self.eval_result.pred_dataset_infos:
-            images = self.api.image.get_list(
-                ds_info.id, limit=limit, force_metadata_for_links=False
-            )
-            sample_images.extend(images)
+        try:
+            for ds_info in self.eval_result.pred_dataset_infos:
+                images = self.api.image.get_list(
+                    ds_info.id, limit=limit, force_metadata_for_links=False
+                )
+                sample_images.extend(images)
+        except Exception as e:
+            self.eval_result.sample_images = []
+            self.eval_result.sample_anns = []
+            return
         if len(sample_images) > limit:
             sample_images = random.sample(sample_images, limit)
         self.eval_result.sample_images = sample_images
