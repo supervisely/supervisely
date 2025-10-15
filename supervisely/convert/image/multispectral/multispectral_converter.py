@@ -1,12 +1,12 @@
 import os
 from collections import defaultdict, namedtuple
-from typing import Dict, List
+from typing import Any, Dict, List
 
 import cv2
 import nrrd
 import numpy as np
 
-from supervisely import is_development, logger, ProjectMeta
+from supervisely import ProjectMeta, is_development, logger
 from supervisely.api.api import Api, ApiContext
 from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
@@ -56,6 +56,19 @@ class MultiSpectralImageConverter(ImageConverter):
                 upload_images = list_files(images_dir)
 
             group_map[checked_directory] = ImageGroup(split_images, upload_images)
+
+        if not group_map:  # -> try to autodetect multi-channel images
+            all_images = list_files(self._input_data, filter_fn=is_valid_ext)
+            filter_fn = lambda x: self._get_image_channel_cnt(x) > 3
+            if not any(filter_fn(img) for img in all_images):
+                return {}
+            split, upload = [], []
+            for img in all_images:
+                if filter_fn(img):
+                    split.append(img)
+                else:
+                    upload.append(img)
+            group_map[self._input_data] = ImageGroup(split, upload)
 
         return group_map
 
@@ -112,7 +125,7 @@ class MultiSpectralImageConverter(ImageConverter):
                 progress.close()
         logger.info(f"Dataset '{dataset.name}' has been successfully uploaded.")
 
-    def _get_image_channels(self, file_path: str) -> List[np.ndarray]:
+    def _read_image(self, file_path: str) -> Any:
         file_ext = get_file_ext(file_path).lower()
         logger.debug(f"Working with file {file_path} with extension {file_ext}.")
 
@@ -132,4 +145,16 @@ class MultiSpectralImageConverter(ImageConverter):
             logger.warning(f"Failed to read image {file_path}.")
             return
 
+        return image
+
+    def _get_image_channels(self, file_path: str) -> List[np.ndarray]:
+        image = self._read_image(file_path)
+        if not image:
+            return
         return [image[:, :, i] for i in range(image.shape[2])]
+
+    def _get_image_channel_cnt(self, file_path: str) -> int:
+        image = self._read_image(file_path)
+        if not image:
+            return
+        return image.shape[2]
