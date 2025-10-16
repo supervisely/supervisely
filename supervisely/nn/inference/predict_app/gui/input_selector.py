@@ -4,9 +4,9 @@ from supervisely.app.widgets import (
     Button,
     Card,
     Container,
+    FastTable,
     OneOf,
     RadioGroup,
-    RadioTable,
     SelectDatasetTree,
     Text,
 )
@@ -14,7 +14,7 @@ from supervisely.project.project import ProjectType
 
 
 class InputSelector:
-    title = "Select Input"
+    title = "Input data"
     description = "Select input data on which to run model for prediction"
     lock_message = None
 
@@ -48,7 +48,7 @@ class InputSelector:
         self.select_dataset_for_images = SelectDatasetTree(
             multiselect=True,
             flat=True,
-            select_all_datasets=False,
+            select_all_datasets=True,
             allowed_project_types=[ProjectType.IMAGES],
             always_open=False,
             compact=False,
@@ -73,7 +73,20 @@ class InputSelector:
             workspace_is_selectable=False,
             show_select_all_datasets_checkbox=False,
         )
-        self.select_video = RadioTable(columns=["id", "name", "dataset"], rows=[])
+        self.select_video = FastTable(
+            columns=[
+                "Video id",
+                "Video name",
+                "Size",
+                "Duration",
+                "FPS",
+                "Frames count",
+                "Dataset name",
+                "Dataset id",
+            ],
+            is_selectable=True,
+        )
+        self.select_video.hide()
         self.select_video_container = Container(
             widgets=[self.select_dataset_for_video, self.select_video]
         )
@@ -83,9 +96,9 @@ class InputSelector:
         # -------------------------------- #
 
         # Data type Radio Selector
-        # self.radio = RadioGroup(items=[self._radio_item_images, self._radio_item_videos])
-        self.radio = RadioGroup(items=[self._radio_item_images])
-        self.radio.hide()
+        self.radio = RadioGroup(items=[self._radio_item_images, self._radio_item_videos])
+        # self.radio = RadioGroup(items=[self._radio_item_images])
+        # self.radio.hide()
         self.one_of = OneOf(conditional_widget=self.radio)
         # Add widgets to display ------------ #
         self.display_widgets.extend([self.radio, self.one_of])
@@ -126,7 +139,12 @@ class InputSelector:
                 "dataset_ids": self.select_dataset_for_images.get_selected_ids(),
             }
         if self.radio.get_value() == ProjectType.VIDEOS.value:
-            return {"video_id": self.select_video.get_selected_row()}
+            rows = self.select_video.get_selected_rows()
+            if rows:
+                video_ids = [row.row[0] for row in rows]
+            else:
+                video_ids = None
+            return {"video_ids": video_ids}
 
     def load_from_json(self, data):
         if "project_id" in data:
@@ -152,13 +170,13 @@ class InputSelector:
                 self.validator_text.set(text="Select a dataset", status="error")
                 self.validator_text.show()
                 return False
-            if len(self.select_video.rows) == 0:
+            if self.select_video._rows_total == 0:
                 self.validator_text.set(
                     text="No videos found in the selected dataset", status="error"
                 )
                 self.validator_text.show()
                 return False
-            if self.select_video.get_selected_row() == []:
+            if self.select_video.get_selected_rows() == []:
                 self.validator_text.set(text="Select a video", status="error")
                 self.validator_text.show()
                 return False

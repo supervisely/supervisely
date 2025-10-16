@@ -1,12 +1,12 @@
+import json
 import random
 import time
-from typing import Any, Callable, Dict, List, Optional
-
-import yaml
+from typing import Any, Callable, Dict, List, Optional, Union
 
 from supervisely._utils import is_development, logger
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.label import Label
+from supervisely.api.annotation_api import AnnotationInfo
 from supervisely.api.api import Api
 from supervisely.api.video.video_api import VideoInfo
 from supervisely.app.widgets import Button, Card, Container, Stepper, Widget
@@ -22,7 +22,9 @@ from supervisely.nn.inference.predict_app.gui.settings_selector import (
 )
 from supervisely.nn.inference.predict_app.gui.tags_selector import TagsSelector
 from supervisely.nn.inference.predict_app.gui.utils import (
+    copy_items_to_project,
     copy_project,
+    create_project,
     disable_enable,
     set_stepper_step,
     wrap_button_click,
@@ -30,8 +32,15 @@ from supervisely.nn.inference.predict_app.gui.utils import (
 from supervisely.nn.model.model_api import ModelAPI
 from supervisely.nn.model.prediction import Prediction
 from supervisely.project.project_meta import ProjectMeta
+from supervisely.project.project_type import ProjectType
+from supervisely.video_annotation.frame_collection import Frame, FrameCollection
 from supervisely.video_annotation.key_id_map import KeyIdMap
-from supervisely.video_annotation.video_annotation import VideoAnnotation
+from supervisely.video_annotation.video_annotation import (
+    VideoAnnotation,
+    VideoFigure,
+    VideoObjectCollection,
+)
+from supervisely.video_annotation.video_figure import VideoObject
 
 
 class StepFlow:
@@ -44,7 +53,7 @@ class StepFlow:
     def register_step(
         self,
         name: str,
-        card: Card,
+        card: Union[Card, List[Card]],
         button: Optional[Button] = None,
         widgets_to_disable: Optional[List[Widget]] = None,
         validation_text: Optional[Widget] = None,
@@ -94,7 +103,10 @@ class StepFlow:
             cards_to_unlock = []
             for next_step_name in step["next_steps"]:
                 if next_step_name in self.steps:
-                    cards_to_unlock.append(self.steps[next_step_name]["card"])
+                    if isinstance(self.steps[next_step_name]["card"], list):
+                        cards_to_unlock.extend(self.steps[next_step_name]["card"])
+                    else:
+                        cards_to_unlock.append(self.steps[next_step_name]["card"])
 
             callback = None
             if step["next_steps"] and step["has_button"]:
@@ -201,8 +213,13 @@ class PredictAppGui:
             self.steps.append(self.tags_selector.card)
 
         # 5. Settings selector
-        self.settings_selector = SettingsSelector()
-        self.steps.append(self.settings_selector.card)
+        self.settings_selector = SettingsSelector(
+            api=self.api,
+            static_dir=self.static_dir,
+            model_selector=self.model_selector,
+            input_selector=self.input_selector,
+        )
+        self.steps.append(self.settings_selector.cards_container)
 
         # 6. Preview
         self.preview = None
@@ -244,7 +261,7 @@ class PredictAppGui:
 
             model_meta = model_api.get_model_meta()
             if self.classes_selector is not None:
-                self.classes_selector.classes_table.set_project_meta(model_meta)
+                self.classes_selector.set_project_meta(model_meta)
                 self.classes_selector.classes_table.show()
             if self.tags_selector is not None:
                 self.tags_selector.tags_table.set_project_meta(model_meta)
@@ -253,22 +270,20 @@ class PredictAppGui:
             inference_settings = model_api.get_settings()
             self.settings_selector.set_inference_settings(inference_settings)
 
-            if self.preview is not None:
-                self.preview.inference_settings = inference_settings
+            if self.input_selector.radio.get_value() == ProjectType.VIDEOS.value:
+                tracking_settings = model_api.get_tracking_settings()
+                self.settings_selector.set_tracking_settings(tracking_settings)
 
         def reset_entity_meta():
             empty_meta = ProjectMeta()
             if self.classes_selector is not None:
-                self.classes_selector.classes_table.set_project_meta(empty_meta)
+                self.classes_selector.set_project_meta(empty_meta)
                 self.classes_selector.classes_table.hide()
             if self.tags_selector is not None:
                 self.tags_selector.tags_table.set_project_meta(empty_meta)
                 self.tags_selector.tags_table.hide()
 
             self.settings_selector.set_inference_settings("")
-
-            if self.preview is not None:
-                self.preview.inference_settings = None
 
         def disable_settings_editor():
             if self.settings_selector.inference_settings.readonly:
@@ -304,8 +319,9 @@ class PredictAppGui:
             self.preview.gallery.loading = True
             try:
                 items_settings = self.input_selector.get_settings()
-                if "video_id" in items_settings:
-                    video_id = items_settings["video_id"]
+                if "video_ids" in items_settings:
+                    video_ids = items_settings["video_ids"]
+                    video_id = video_ids[0]
                     video_info = self.api.video.get_info_by_id(video_id)
                     video_frame = random.randint(0, video_info.frames_count - 1)
                     self.api.video.frame.download_path(
@@ -388,17 +404,48 @@ class PredictAppGui:
             position=position,
         )
         position += 1
+        self.step_flow.add_on_select_actions("input_selector", [self.update_item_type])
 
         # 2. Model selector
         self.step_flow.register_step(
             "model_selector",
             self.model_selector.card,
-            self.model_selector.button,
+            None,
             self.model_selector.widgets_to_disable,
             self.model_selector.validator_text,
             self.model_selector.validate_step,
             position=position,
         )
+
+        current_position = position + 1
+
+        def deploy_and_set_step():
+            model_api = type(self.model_selector.model).deploy(self.model_selector.model)
+            if model_api is not None:
+                self.step_flow.stepper.set_active_step(current_position + 1)
+                set_entity_meta()
+                self.classes_selector.card.unlock()
+            else:
+                self.step_flow.stepper.set_active_step(current_position)
+                reset_entity_meta()
+                self.classes_selector.card.lock()
+            return model_api
+
+        def stop_and_reset_step():
+            type(self.model_selector.model).stop(self.model_selector.model)
+            self.step_flow.stepper.set_active_step(current_position)
+            reset_entity_meta()
+            self.classes_selector.card.lock()
+
+        def disconnect_and_reset_step():
+            type(self.model_selector.model).disconnect(self.model_selector.model)
+            self.step_flow.stepper.set_active_step(current_position)
+            reset_entity_meta()
+            self.classes_selector.card.lock()
+
+        self.model_selector.model.deploy = deploy_and_set_step
+        self.model_selector.model.stop = stop_and_reset_step
+        self.model_selector.model.disconnect = disconnect_and_reset_step
         self.step_flow.add_on_select_actions("model_selector", [set_entity_meta])
         self.step_flow.add_on_select_actions(
             "model_selector", [reset_entity_meta], is_reselect=True
@@ -434,7 +481,7 @@ class PredictAppGui:
         # 5. Settings selector
         self.step_flow.register_step(
             "settings_selector",
-            self.settings_selector.card,
+            self.settings_selector.cards,
             self.settings_selector.button,
             self.settings_selector.widgets_to_disable,
             self.settings_selector.validator_text,
@@ -518,16 +565,35 @@ class PredictAppGui:
         @self.input_selector.select_dataset_for_video.value_changed
         def dataset_for_video_changed(dataset_id: int):
             self.input_selector.select_video.loading = True
+            self.input_selector.select_video.clear()
             if dataset_id is None:
-                rows = []
+                self.input_selector.select_video.hide()
             else:
+                self.input_selector.select_video.show()
                 dataset_info = self.api.dataset.get_info_by_id(dataset_id)
                 videos = self.api.video.get_list(dataset_id)
-                rows = [[video.id, video.name, dataset_info.name] for video in videos]
-            self.input_selector.select_video.rows = rows
+                for video in videos:
+                    size = f"{video.frame_height}x{video.frame_width}"
+                    self.input_selector.select_video.insert_row(
+                        [
+                            video.id,
+                            video.name,
+                            size,
+                            video.duration,
+                            int(video.frames_count / video.duration),
+                            video.frames_count,
+                            dataset_info.name,
+                            dataset_info.id,
+                        ]
+                    )
             self.input_selector.select_video.loading = False
 
         # ------------------------------------------------- #
+
+    def update_item_type(self):
+        item_type = self.input_selector.radio.get_value()
+        self.settings_selector.update_item_type(item_type)
+        self.output_selector.update_item_type(item_type)
 
     def run(self, run_parameters: Dict[str, Any] = None) -> List[Prediction]:
         self.show_validator_text()
@@ -547,22 +613,32 @@ class PredictAppGui:
         kwargs = {}
 
         # Input
-        # Input would be newely created project
         input_args = {}
         input_parameters = run_parameters["input"]
         input_project_id = input_parameters.get("project_id", None)
-        if input_project_id is None:
-            raise ValueError("Input project ID is required for prediction.")
         input_dataset_ids = input_parameters.get("dataset_ids", [])
         input_image_ids = input_parameters.get("image_ids", [])
-        if not (input_dataset_ids or input_image_ids):
-            raise ValueError("At least one dataset must be selected for prediction.")
+        input_video_ids = input_parameters.get("video_ids", None)
         if input_image_ids:
             input_args["image_ids"] = input_image_ids
         elif input_dataset_ids:
             input_args["dataset_ids"] = input_dataset_ids
-        else:
+        elif input_project_id:
             input_args["project_id"] = input_project_id
+        elif input_video_ids:
+            pass
+        else:
+            raise ValueError("No valid input parameters found for prediction.")
+
+        source_project_id = None
+        if input_project_id is not None:
+            source_project_id = input_project_id
+        elif input_dataset_ids:
+            dataset_info = self.api.dataset.get_info_by_id(input_dataset_ids[0])
+            source_project_id = dataset_info.project_id
+        elif input_video_ids:
+            video_info = self.api.video.get_info_by_id(input_video_ids[0])
+            source_project_id = video_info.project_id
 
         # Settings
         settings = run_parameters["settings"]
@@ -587,29 +663,93 @@ class PredictAppGui:
             kwargs["classes"] = classes
 
         # Output
-        # Always create new project
-        # But the actual inference will happen inplace
+        # Сreate new project if needed
+        # The actual inference will happen inplace
         output_parameters = run_parameters["output"]
         project_name = output_parameters.get("project_name", "")
         upload_to_source_project = output_parameters.get("upload_to_source_project", False)
+        skip_project_versioning = output_parameters.get("skip_project_versioning", False)
+        created_videos = []
         if upload_to_source_project:
             output_project_id = input_project_id
+            if not skip_project_versioning and not is_development():
+                logger.info("Creating new project version...")
+                input_project_info = self.api.project.get_info_by_id(input_project_id)
+                version_id = self.api.project.version.create(
+                    input_project_info,
+                    "Created by Predict App. Task Id: " + str(env.task_id()),
+                )
+                logger.info("New project version created: " + str(version_id))
+        elif input_video_ids:
+            if not project_name:
+                source_project_info = self.api.project.get_info_by_id(source_project_id)
+                project_name = source_project_info.name + " [Predictions]"
+                logger.warning("Project name is empty, using auto-generated name: " + project_name)
+            # Create new project
+            self.set_validator_text("Creating project...", "info")
+            created_project = create_project(
+                api=self.api,
+                project_id=source_project_id,
+                project_name=project_name,
+                workspace_id=self.workspace_id,
+                copy_meta=with_annotations,
+                project_type=ProjectType.VIDEOS,
+            )
+            video_infos = self.api.video.get_info_by_id_batch(input_video_ids)
+            created_videos = copy_items_to_project(
+                api=self.api,
+                src_project_id=source_project_id,
+                items=video_infos,
+                dst_project_id=created_project.id,
+                with_annotations=with_annotations,
+                progress=self.output_selector.progress,
+                project_type=ProjectType.VIDEOS,
+            )
+            output_project_id = created_project.id
         else:
             if not project_name:
-                input_project_info = self.api.project.get_info_by_id(input_project_id)
-                project_name = input_project_info.name + " [Predictions]"
+                source_project_info = self.api.project.get_info_by_id(source_project_id)
+                project_name = source_project_info.name + " [Predictions]"
                 logger.warning("Project name is empty, using auto-generated name: " + project_name)
+
+            item_ids = None
+            if not output_parameters.get("skip_annotated", False):
+                item_ids = []
+                src_project_meta = ProjectMeta.from_json(
+                    self.api.project.get_meta(source_project_id)
+                )
+                existing_ann_infos: List[AnnotationInfo] = []
+                if input_dataset_ids:
+                    for dataset_id in input_dataset_ids:
+                        existing_ann_infos.extend(
+                            self.api.annotation.get_list(dataset_id)
+                        )
+                else:
+                    datasets = self.api.dataset.get_list(source_project_id, recursive=True)
+                    for dataset in datasets:
+                        existing_ann_infos.extend(
+                            self.api.annotation.get_list(dataset.id)
+                        )
+                for ann_info in existing_ann_infos:
+                    annotation = Annotation.from_json(ann_info.annotation, project_meta=src_project_meta)
+                    if len(annotation.labels) == 0:
+                        item_ids.append(ann_info.item_id)
+                if len(item_ids) == 0:
+                    self.set_validator_text(
+                        "All items are already annotated. Nothing to predict.", "warning"
+                    )
+                    return []
 
             # Copy project
             self.set_validator_text("Copying project...", "info")
             created_project = copy_project(
-                self.api,
-                project_name,
-                self.workspace_id,
-                input_project_id,
-                input_dataset_ids,
-                with_annotations,
-                self.output_selector.progress,
+                api=self.api,
+                project_id=source_project_id,
+                workspace_id=self.workspace_id,
+                project_name=project_name,
+                items_ids=item_ids,
+                with_annotations=with_annotations,
+                progress=self.output_selector.progress,
             )
             output_project_id = created_project.id
             input_args = {
@@ -620,22 +760,100 @@ class PredictAppGui:
 
         # Run prediction
         self.set_validator_text("Running prediction...", "info")
-        predictions = []
+        predictions: List[Prediction] = []
         self._is_running = True
         try:
-            with model_api.predict_detached(
-                **input_args,
-                tqdm=self.output_selector.progress(),
-                **kwargs,
-            ) as session:
-                self.output_selector.progress.show()
-                i = 0
-                for prediction in session:
-                    predictions.append(prediction)
-                    i += 1
-                    if self._stop_flag:
-                        logger.info("Prediction stopped by user.")
-                        break
+            if input_video_ids:
+                project_meta = model_api.get_model_meta()
+                src_project_meta = ProjectMeta.from_json(
+                    self.api.project.get_meta(source_project_id)
+                )
+                project_meta = src_project_meta.merge(project_meta)
+                project_meta = self.api.project.update_meta(output_project_id, project_meta)
+
+                for input_video_id, created_video in zip(input_video_ids, created_videos):
+                    with model_api.predict_detached(
+                        video_id=input_video_id,
+                        tqdm=self.output_selector.progress(),
+                        **kwargs,
+                    ) as session:
+                        self.output_selector.progress.show()
+                        i = 0
+                        for prediction in session:
+                            predictions.append(prediction)
+                            i += 1
+                            if self._stop_flag:
+                                logger.info("Prediction stopped by user.")
+                                raise StopIteration("Stopped by user.")
+
+                    if kwargs.get("tracking", False):
+                        prediction_video_annotation: VideoAnnotation = VideoAnnotation.from_json(
+                            session.final_result["video_ann"],
+                            project_meta=project_meta,
+                        )
+                    else:
+                        objects = {}
+                        frames = []
+                        for i, prediction in enumerate(predictions):
+                            figures = []
+                            for label in prediction.annotation.labels:
+                                obj_name = label.obj_class.name
+                                if not obj_name in objects:
+                                    obj_class = project_meta.get_obj_class(obj_name)
+                                    if obj_class is None:
+                                        continue
+                                    objects[obj_name] = VideoObject(obj_class)
+
+                                vid_object = objects[obj_name]
+                                if vid_object:
+                                    figures.append(
+                                        VideoFigure(vid_object, label.geometry, frame_index=i)
+                                    )
+                            frame = Frame(i, figures=figures)
+                            frames.append(frame)
+                        prediction_video_annotation = VideoAnnotation(
+                            img_size=(created_video.frame_height, created_video.frame_width),
+                            frames_count=created_video.frames_count,
+                            objects=VideoObjectCollection(list(objects.values())),
+                            frames=FrameCollection(frames),
+                        )
+                    if upload_to_source_project:
+                        if prediction_mode in [
+                            AddPredictionsMode.REPLACE_EXISTING_LABELS,
+                            AddPredictionsMode.REPLACE_EXISTING_LABELS_AND_SAVE_IMAGE_TAGS,
+                        ]:
+                            with open("/tmp/prediction_video_annotation.json", "w") as f:
+                                json.dump(prediction_video_annotation.to_json(), f)
+                            self.api.video.annotation.upload_paths(
+                                video_ids=[input_video_id],
+                                paths=["/tmp/prediction_video_annotation.json"],
+                                project_meta=project_meta,
+                            )
+                        else:
+                            self.api.video.annotation.append(
+                                video_id=input_video_id,
+                                ann=prediction_video_annotation,
+                                key_id_map=KeyIdMap(),
+                            )
+                    else:
+                        self.api.video.annotation.append(
+                            video_id=created_video.id, ann=prediction_video_annotation
+                        )
+            else:
+                with model_api.predict_detached(
+                    **input_args,
+                    tqdm=self.output_selector.progress(),
+                    **kwargs,
+                ) as session:
+                    self.output_selector.progress.show()
+                    i = 0
+                    for prediction in session:
+                        predictions.append(prediction)
+                        i += 1
+                        if self._stop_flag:
+                            logger.info("Prediction stopped by user.")
+                            break
+
             self.output_selector.progress.hide()
         except Exception as e:
             self.output_selector.progress.hide()
