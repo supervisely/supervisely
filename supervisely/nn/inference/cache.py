@@ -771,7 +771,7 @@ class InferenceImageCache:
     def _download_many(
         self,
         indexes: List[Union[int, str]],
-        name_cunstructor: Callable[[int], str],
+        name_constructor: Callable[[int], str],
         load_generator: Callable[
             [List[int]],
             Generator[Tuple[Union[int, str], np.ndarray], None, None],
@@ -785,23 +785,35 @@ class InferenceImageCache:
         all_frames = [None for _ in range(len(indexes))]
 
         def get_one_image(item):
-            pos, index = item
+            pos, hash_or_id = item
             if video_id in self._cache:
-                return pos, self.get_frame_from_cache(video_id, index)
-            return pos, self._cache.get_image(name_cunstructor(index))
+                try:
+                    frame = self.get_frame_from_cache(video_id, hash_or_id)
+                except Exception as e:
+                    logger.error(f"Error retrieving frame from cache: {e}", exc_info=True)
+                    ids_to_load.append(hash_or_id)
+                    return pos, None
+                return pos, frame
+            try:
+                image = self._cache.get_image(name_constructor(hash_or_id))
+            except Exception as e:
+                logger.error(f"Error retrieving image from cache: {e}", exc_info=True)
+                ids_to_load.append(hash_or_id)
+                return pos, None
+            return pos, image
 
         position = 0
         batch_size = 4
         for batch in batched(indexes, batch_size):
-            indexes_to_load = []
+            ids_to_load = []
             items = []
             for hash_or_id in batch:
-                name = name_cunstructor(hash_or_id)
+                name = name_constructor(hash_or_id)
                 self._wait_if_in_queue(name, logger)
 
                 if name not in self._cache and video_id not in self._cache:
                     self._load_queue.set(name, hash_or_id)
-                    indexes_to_load.append(hash_or_id)
+                    ids_to_load.append(hash_or_id)
                     pos_by_name[name] = position
                 elif return_images is True:
                     items.append((position, hash_or_id))
@@ -810,14 +822,16 @@ class InferenceImageCache:
             if len(items) > 0:
                 with ThreadPoolExecutor(min(64, len(items))) as executor:
                     for pos, image in executor.map(get_one_image, items):
+                        if image is None:
+                            continue
                         all_frames[pos] = image
                         if progress_cb is not None:
                             progress_cb()
 
             download_time = time.monotonic()
-            if len(indexes_to_load) > 0:
-                for id_or_hash, image in load_generator(indexes_to_load):
-                    name = name_cunstructor(id_or_hash)
+            if len(ids_to_load) > 0:
+                for id_or_hash, image in load_generator(ids_to_load):
+                    name = name_constructor(id_or_hash)
                     self._add_to_cache(name, image)
 
                     if return_images:
@@ -828,13 +842,13 @@ class InferenceImageCache:
             download_time = time.monotonic() - download_time
 
             # logger.debug(f"All stored files: {sorted(os.listdir(self.tmp_path))}")
-            if indexes_to_load:
-                indexes_to_load = list(indexes_to_load)
+            if ids_to_load:
+                ids_to_load = list(ids_to_load)
                 logger.debug(
-                    f"Images/Frames added to cache: {indexes_to_load} in {download_time:.2f} sec",
-                    extra={"indexes": indexes_to_load, "download_time": download_time},
+                    f"Images/Frames added to cache: {ids_to_load} in {download_time:.2f} sec",
+                    extra={"indexes": ids_to_load, "download_time": download_time},
                 )
-            found = set(batch).difference(indexes_to_load)
+            found = set(batch).difference(ids_to_load)
             if found:
                 logger.debug(f"Images/Frames found in cache: {list(found)}")
 
