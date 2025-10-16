@@ -19,6 +19,7 @@ import jinja2
 import numpy as np
 import psutil
 from async_asgi_testclient import TestClient
+from cachetools import TTLCache
 from fastapi import (
     Depends,
     FastAPI,
@@ -69,6 +70,9 @@ HEALTH_ENDPOINTS = ["/health", "/is_ready"]
 
 # Context variable for response time
 response_time_ctx: ContextVar[float] = ContextVar("response_time", default=None)
+
+# Mapping from user_id to Api instance
+_USER_API_CACHE = TTLCache(maxsize=500, ttl=60 * 15)  # Cache up to 15 minutes
 
 
 class ReadyzFilter(logging.Filter):
@@ -852,6 +856,10 @@ def _init(
                     request.state.api = Api(
                         request.state.server_address, request.state.api_token
                     )
+                    if sly_env.is_multiuser_mode_enabled():
+                        user_id = sly_env.user_from_multiuser_app()
+                        if user_id is not None:
+                            _USER_API_CACHE[user_id] = request.state.api
                 else:
                     request.state.api = None
 
@@ -1306,3 +1314,12 @@ def call_on_autostart(
 
 def get_name_from_env(default="Supervisely App"):
     return os.environ.get("APP_NAME", default)
+
+def session_user_api() -> Optional[Api]:
+    """Returns the API instance for the current session user."""
+    if not sly_env.is_multiuser_mode_enabled():
+        return Api.from_env()
+    user_id = sly_env.user_from_multiuser_app()
+    if user_id is None:
+        return None
+    return _USER_API_CACHE.get(user_id, None)
