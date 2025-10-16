@@ -810,11 +810,11 @@ class InferenceImageCache:
             for hash_or_id in batch:
                 name = name_constructor(hash_or_id)
                 self._wait_if_in_queue(name, logger)
-
+                pos_by_name[name] = position
                 if name not in self._cache and video_id not in self._cache:
                     self._load_queue.set(name, hash_or_id)
                     ids_to_load.append(hash_or_id)
-                    pos_by_name[name] = position
+
                 elif return_images is True:
                     items.append((position, hash_or_id))
                 position += 1
