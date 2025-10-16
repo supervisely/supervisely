@@ -771,7 +771,7 @@ class InferenceImageCache:
     def _download_many(
         self,
         indexes: List[Union[int, str]],
-        name_cunstructor: Callable[[int], str],
+        name_constructor: Callable[[int], str],
         load_generator: Callable[
             [List[int]],
             Generator[Tuple[Union[int, str], np.ndarray], None, None],
@@ -795,7 +795,7 @@ class InferenceImageCache:
                     return pos, None
                 return pos, frame
             try:
-                image = self._cache.get_image(name_cunstructor(hash_or_id))
+                image = self._cache.get_image(name_constructor(hash_or_id))
             except Exception as e:
                 logger.error(f"Error retrieving image from cache: {e}", exc_info=True)
                 ids_to_load.append(hash_or_id)
@@ -808,7 +808,7 @@ class InferenceImageCache:
             ids_to_load = []
             items = []
             for hash_or_id in batch:
-                name = name_cunstructor(hash_or_id)
+                name = name_constructor(hash_or_id)
                 self._wait_if_in_queue(name, logger)
 
                 if name not in self._cache and video_id not in self._cache:
@@ -831,7 +831,7 @@ class InferenceImageCache:
             download_time = time.monotonic()
             if len(ids_to_load) > 0:
                 for id_or_hash, image in load_generator(ids_to_load):
-                    name = name_cunstructor(id_or_hash)
+                    name = name_constructor(id_or_hash)
                     self._add_to_cache(name, image)
 
                     if return_images:
