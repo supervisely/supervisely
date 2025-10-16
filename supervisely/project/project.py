@@ -4584,6 +4584,7 @@ def upload_project(
         blob_file_infos = []
 
     for ds_fs in project_fs.datasets:
+        logger.debug(f"Processing dataset: {ds_fs.name}")
         if len(ds_fs.parents) > 0:
             parent = f"{os.path.sep}".join(ds_fs.parents)
             parent_id = dataset_map.get(parent)
@@ -4626,6 +4627,13 @@ def upload_project(
                     valid_paths.append(path)
                 elif len(project_fs.blob_files) > 0:
                     offset_indices.append(i)
+                else:
+                    if img_infos[i] is not None:
+                        logger.debug(f"Image will be uploaded by image_info: {names[i]}")
+                    else:
+                        logger.warning(
+                            f"Image and image info file not found, image will be skipped: {names[i]}"
+                        )
             img_paths = valid_paths
             ann_paths = list(filter(lambda x: os.path.isfile(x), ann_paths))
             # Create a mapping from name to index position for quick lookups
