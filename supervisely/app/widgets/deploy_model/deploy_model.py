@@ -1,10 +1,10 @@
 import datetime
 import tempfile
+import threading
 from pathlib import Path
 from typing import Any, Dict, List, Literal
 
 import pandas as pd
-import yaml
 
 from supervisely._utils import logger
 from supervisely.api.api import Api
@@ -12,8 +12,6 @@ from supervisely.api.app_api import ModuleInfo
 from supervisely.app.widgets.agent_selector.agent_selector import AgentSelector
 from supervisely.app.widgets.button.button import Button
 from supervisely.app.widgets.container.container import Container
-from supervisely.app.widgets.card.card import Card
-from supervisely.app.widgets.model_info.model_info import ModelInfo
 from supervisely.app.widgets.ecosystem_model_selector.ecosystem_model_selector import (
     EcosystemModelSelector,
 )
@@ -23,7 +21,8 @@ from supervisely.app.widgets.experiment_selector.experiment_selector import (
 from supervisely.app.widgets.fast_table.fast_table import FastTable
 from supervisely.app.widgets.field.field import Field
 from supervisely.app.widgets.flexbox.flexbox import Flexbox
-from supervisely.app.widgets.tabs.tabs import Tabs
+from supervisely.app.widgets.model_info.model_info import ModelInfo
+from supervisely.app.widgets.radio_tabs.radio_tabs import RadioTabs
 from supervisely.app.widgets.text.text import Text
 from supervisely.app.widgets.widget import Widget
 from supervisely.io import env
@@ -211,23 +210,30 @@ class DeployModel(Widget):
             return self._layout
 
         def _create_layout(self) -> Container:
-            frameworks = self.deploy_model.get_frameworks()
-            experiment_infos = []
-            for framework_name in frameworks:
-                experiment_infos.extend(
-                    get_experiment_infos(self.api, self.team_id, framework_name=framework_name)
-                )
             self.experiment_table = ExperimentSelector(
-                experiment_infos=experiment_infos,
-                team_id=self.team_id,
                 api=self.api,
+                team_id=self.team_id,
             )
 
             @self.experiment_table.checkpoint_changed
             def _checkpoint_changed(row: ExperimentSelector.ModelRow, checkpoint_value: str):
                 print(f"Checkpoint changed for {row._experiment_info.task_id}: {checkpoint_value}")
 
+            threading.Thread(target=self.refresh_experiments, daemon=True).start()
+
             return self.experiment_table
+
+        def refresh_experiments(self):
+            self.experiment_table.loading = True
+            frameworks = self.deploy_model.get_frameworks()
+            experiment_infos = []
+            for framework_name in frameworks:
+                experiment_infos.extend(
+                    get_experiment_infos(self.api, self.team_id, framework_name=framework_name)
+                )
+
+            self.experiment_table.set_experiment_infos(experiment_infos)
+            self.experiment_table.loading = False
 
         def get_deploy_parameters(self) -> Dict[str, Any]:
             experiment_info = self.experiment_table.get_selected_experiment_info()
@@ -267,8 +273,8 @@ class DeployModel(Widget):
     MODES = [str(MODE.CONNECT), str(MODE.PRETRAINED), str(MODE.CUSTOM)]
     MODE_TO_CLASS = {
         str(MODE.CONNECT): Connect,
-        str(MODE.PRETRAINED): Pretrained,
         str(MODE.CUSTOM): Custom,
+        str(MODE.PRETRAINED): Pretrained,
     }
 
     def __init__(
@@ -294,6 +300,11 @@ class DeployModel(Widget):
             self.MODE.CONNECT: "Connect",
             self.MODE.PRETRAINED: "Pretrained",
             self.MODE.CUSTOM: "Custom",
+        }
+        self.modes_descriptions = {
+            self.MODE.CONNECT: "Connect to an already deployed model",
+            self.MODE.PRETRAINED: "Deploy a pretrained model from the ecosystem",
+            self.MODE.CUSTOM: "Deploy a custom model from your experiments",
         }
 
         # GUI
@@ -444,31 +455,41 @@ class DeployModel(Widget):
 
         self._init_modes(modes)
         _labels = []
+        _descriptions = []
         _contents = []
+        self.statuses_widgets = Container(
+            widgets=[
+                self.sesson_link,
+                self._model_info_container,
+            ],
+            gap=20,
+        )
+        self.statuses_widgets.hide()
         for mode_name, mode in self.modes.items():
             label = self.modes_labels[mode_name]
+            description = self.modes_descriptions[mode_name]
             if mode_name == str(self.MODE.CONNECT):
                 widgets = [
                     mode.layout,
-                    self._model_info_card,
-                    self.connect_stop_buttons,
                     self.status,
-                    self.sesson_link,
+                    self.statuses_widgets,
+                    self.connect_stop_buttons,
                 ]
             else:
                 widgets = [
                     mode.layout,
-                    self._model_info_card,
                     self.select_agent_field,
-                    self.deploy_stop_buttons,
                     self.status,
-                    self.sesson_link,
+                    self.statuses_widgets,
+                    self.deploy_stop_buttons,
                 ]
+
             content = Container(widgets=widgets, gap=20)
             _labels.append(label)
+            _descriptions.append(description)
             _contents.append(content)
 
-        self.tabs = Tabs(labels=_labels, contents=_contents)
+        self.tabs = RadioTabs(titles=_labels, descriptions=_descriptions, contents=_contents)
         if len(self.modes) == 1:
             self.layout = _contents[0]
         else:
@@ -490,7 +511,7 @@ class DeployModel(Widget):
         def _disconnect_button_clicked():
             self.disconnect()
 
-        @self.tabs.click
+        @self.tabs.value_changed
         def _active_tab_changed(tab_name: str):
             self.set_model_message_by_tab(tab_name)
 
@@ -573,6 +594,7 @@ class DeployModel(Widget):
                 f"Model {framework}: {model_name} deployed with session ID {model_api.task_id}."
             )
             self.model_api = model_api
+            self.statuses_widgets.show()
             self.set_model_status("connected")
             self.set_session_info(task_info)
             self.set_model_info(model_api.task_id)
@@ -603,12 +625,14 @@ class DeployModel(Widget):
             self.set_session_info(task_info)
             self.set_model_info(model_api.task_id)
             self.show_stop()
+            self.statuses_widgets.show()
         except Exception as e:
             logger.error(f"Failed to deploy model: {e}", exc_info=True)
             self.set_model_status("error", str(e))
             self.set_session_info(None)
             self.reset_model_info()
             self.show_deploy_button()
+            self.statuses_widgets.hide()
             self.enable_modes()
         else:
             if str(self.MODE.CONNECT) in self.modes:
@@ -634,6 +658,7 @@ class DeployModel(Widget):
         self.enable_modes()
         self.reset_model_info()
         self.show_deploy_button()
+        self.statuses_widgets.hide()
         if str(self.MODE.CONNECT) in self.modes:
             self.modes[str(self.MODE.CONNECT)]._update_sessions()
 
@@ -645,6 +670,7 @@ class DeployModel(Widget):
         self.set_session_info(None)
         self.reset_model_info()
         self.show_deploy_button()
+        self.statuses_widgets.hide()
         self.enable_modes()
 
     def load_from_json(self, data: Dict[str, Any]) -> None:
@@ -690,29 +716,24 @@ class DeployModel(Widget):
             title="Model Info",
             description="Information about the deployed model",
         )
-
-        self._model_info_container = Container([self._model_info_widget_field])
-        self._model_info_container.hide()
         self._model_info_message = Text("Connect to model to see the session information.")
-
-        self._model_info_card = Card(
-            title="Session Info",
-            description="Model parameters and classes",
-            collapsable=True,
-            content=Container([self._model_info_container, self._model_info_message]),
+        self._model_info_container = Container(
+            [self._model_info_widget_field, self._model_info_message], gap=0
         )
-        self._model_info_card.collapse()
+        self._model_info_widget_field.hide()
+
+        self._model_info_container.hide()
 
     def set_model_info(self, session_id):
-        self._model_info_widget.set_model_info(session_id)
+        self._model_info_widget.set_session_id(session_id)
 
         self._model_info_message.hide()
+        self._model_info_widget_field.show()
         self._model_info_container.show()
-        self._model_info_card.uncollapse()
 
     def reset_model_info(self):
-        self._model_info_card.collapse()
         self._model_info_container.hide()
+        self._model_info_widget_field.hide()
         self._model_info_message.show()
 
     def set_model_message_by_tab(self, tab_name: str):
@@ -724,6 +745,6 @@ class DeployModel(Widget):
             self._model_info_message.set(
                 "Deploy model to see the session information.", status="text"
             )
-        self._model_info_card.collapse()
+        self._model_info_widget_field.hide()
 
     # ------------------------------------------------------------ #

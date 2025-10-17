@@ -264,6 +264,8 @@ class TreeSelect(Widget):
 
         def _get_all_items(items: List[TreeSelect.Item]) -> List[TreeSelect.Item]:
             res = []
+            if not items:
+                return res
             for item in items:
                 res.append(item)
                 res.extend(_get_all_items(item.children))

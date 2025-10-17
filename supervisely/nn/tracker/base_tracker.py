@@ -36,9 +36,19 @@ class BaseTracker:
     def video_annotation(self) -> VideoAnnotation:
         """Return the accumulated VideoAnnotation."""
         raise NotImplementedError("This method should be overridden by subclasses.")
+    
+    @classmethod
+    def get_default_params(cls) -> Dict[str, Any]:
+        """
+        Get default configurable parameters for this tracker.
+        Must be implemented in subclass.
+        """
+        raise NotImplementedError(
+            f"Method get_default_params() must be implemented in {cls.__name__}"
+        )
 
     def _validate_device(self) -> None:
         if self.device != 'cpu' and not self.device.startswith('cuda'):
             raise ValueError(
                 f"Invalid device '{self.device}'. Supported devices are 'cpu' or 'cuda'."
-            )
+            )   
