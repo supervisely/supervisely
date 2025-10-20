@@ -255,12 +255,31 @@ class InputSelector:
             self.select_video.select_row_by_value("id", data["video_ids"])
             self.radio.set_value(ProjectType.VIDEOS.value)
         elif "dataset_ids" in data:
-            self.select_dataset_for_images.set_dataset_ids(data["dataset_ids"])
-            self.radio.set_value(ProjectType.IMAGES.value)
+            dataset_ids = data["dataset_ids"]
+            if len(dataset_ids) == 0:
+                raise ValueError("Dataset ids cannot be empty")
+            dataset_id = dataset_ids[0]
+            dataset_info = self.api.dataset.get_info_by_id(dataset_id)
+            project_info = self.api.project.get_info_by_id(dataset_info.project_id)
+            if project_info.type == ProjectType.VIDEOS:
+                self.select_dataset_for_video.set_project_id(project_info.id)
+                self.select_dataset_for_video.set_dataset_ids(dataset_ids)
+                self.radio.set_value(ProjectType.VIDEOS.value)
+            else:
+                self.select_dataset_for_images.set_project_id(project_info.id)
+                self.select_dataset_for_images.set_dataset_ids(dataset_ids)
+                self.radio.set_value(ProjectType.IMAGES.value)
         elif "project_id" in data:
-            self.select_dataset_for_images.set_project_id(data["project_id"])
-            self.select_dataset_for_images.select_all()
-            self.radio.set_value(ProjectType.IMAGES.value)
+            project_id = data["project_id"]
+            project_info = self.api.project.get_info_by_id(project_id)
+            if project_info.type == ProjectType.VIDEOS:
+                self.select_dataset_for_video.set_project_id(project_id)
+                self.select_dataset_for_video.select_all()
+                self.radio.set_value(ProjectType.VIDEOS.value)
+            else:
+                self.select_dataset_for_images.set_project_id(project_id)
+                self.select_dataset_for_images.select_all()
+                self.radio.set_value(ProjectType.IMAGES.value)
 
     def get_project_id(self) -> int:
         if self.radio.get_value() == ProjectType.IMAGES.value:
