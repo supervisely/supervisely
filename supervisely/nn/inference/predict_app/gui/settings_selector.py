@@ -389,7 +389,7 @@ class Preview:
                 self.api.project.get_meta(image_info.project_id)
             )
             self._image_annotation = Annotation.from_json(ann_info.annotation, self._project_meta)
-            self.image_peview_url = f"/static/preview/{image_info.name}"
+            self.image_peview_url = f"./static/preview/{image_info.name}"
         elif len(video_ids) == 0:
             self._current_item_id = None
             self.video_preview_path = None
@@ -401,7 +401,7 @@ class Preview:
             video_info = self.api.video.get_info_by_id(video_id)
             self._download_video_preview(video_info, with_progress)
             self._current_item_id = video_id
-            self.video_peview_url = f"/static/preview/annotated/{video_info.name}"
+            self.video_peview_url = f"./static/preview/annotated/{video_info.name}"
             self._project_meta = ProjectMeta.from_json(
                 self.api.project.get_meta(video_info.project_id)
             )
