@@ -566,7 +566,7 @@ class PredictAppGui:
                     if tracking:
                         prediction_video_annotation: VideoAnnotation = VideoAnnotation.from_json(
                             session.final_result["video_ann"],
-                            project_meta=project_meta,
+                            project_meta=self.model_api.get_model_meta(),
                         )
                     else:
                         prediction_video_annotation = video_annotation_from_predictions(
