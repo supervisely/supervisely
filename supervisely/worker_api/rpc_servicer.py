@@ -1,4 +1,5 @@
 # coding: utf-8
+# isort: skip_file
 
 import os
 import concurrent.futures
@@ -11,17 +12,26 @@ import threading
 from supervisely.annotation.annotation import Annotation
 from supervisely.function_wrapper import function_wrapper, function_wrapper_nofail
 from supervisely.imaging.image import drop_image_alpha_channel
-from supervisely.nn.legacy.hosted.inference_modes import InferenceModeFactory, InfModeFullImage, \
-    MODE, NAME, get_effective_inference_mode_config
+from supervisely.nn.legacy.hosted.inference_modes import (
+    InferenceModeFactory,
+    InfModeFullImage,
+    MODE,
+    NAME,
+    get_effective_inference_mode_config,
+)
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.worker_api.agent_api import AgentAPI
-from supervisely.worker_api.agent_rpc import decode_image, download_image_from_remote, download_data_from_remote, \
-    send_from_memory_generator
+from supervisely.worker_api.agent_rpc import (
+    decode_image,
+    download_image_from_remote,
+    download_data_from_remote,
+    send_from_memory_generator,
+)
 from supervisely.worker_api.interfaces import SingleImageInferenceInterface
-from supervisely.worker_proto import worker_api_pb2 as api_proto
+
+# from supervisely.worker_proto import worker_api_pb2 as api_proto  # Import moved to methods where needed
 from supervisely.task.progress import report_agent_rpc_ready
 from supervisely.api.api import Api
-
 
 REQUEST_TYPE = 'request_type'
 GET_OUT_META = 'get_out_meta'
@@ -123,6 +133,13 @@ class AgentRPCServicerBase:
             self.thread_pool.submit(function_wrapper_nofail, self._send_data, res_msg, req_id)  # skip errors
 
     def _send_data(self, out_msg, req_id):
+        try:
+            from supervisely.worker_proto import worker_api_pb2 as api_proto
+        except Exception as e:
+            from supervisely.app.v1.constants import PROTOBUF_REQUIRED_ERROR
+
+            raise ImportError(PROTOBUF_REQUIRED_ERROR) from e
+
         self.logger.trace('Will send output data.', extra={REQUEST_ID: req_id})
         out_bytes = json.dumps(out_msg).encode('utf-8')
 
@@ -173,6 +190,13 @@ class AgentRPCServicerBase:
             self._load_data_if_required(event_obj)
 
     def run_inf_loop(self):
+        try:
+            from supervisely.worker_proto import worker_api_pb2 as api_proto
+        except Exception as e:
+            from supervisely.app.v1.constants import PROTOBUF_REQUIRED_ERROR
+
+            raise ImportError(PROTOBUF_REQUIRED_ERROR) from e
+
         def seq_inf_wrapped():
             function_wrapper(self._sequential_final_processing)  # exit if raised
 
