@@ -99,7 +99,7 @@ INSTALL_REQUIRES = [
     "uvicorn[standard]>=0.18.2, <1.0.0",
     "pydantic>=1.7.4, <=2.11.3",
     "anyio>=3.7.1,<=4.2.0",  # TODO: remove after upgrade fastapi version up to 0.103.1
-    "fastapi>=0.79.0, <=0.109.0",
+    "fastapi>=0.79.0, <1.0.0",
     "websockets>=10.3, <=13.1",
     "jinja2>=3.0.3, <4.0.0",
     "psutil>=5.9.0, <6.0.0",
