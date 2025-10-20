@@ -1,10 +1,14 @@
 # coding: utf-8
 import json
 import os
+from contextvars import ContextVar, Token
 from typing import Callable, List, Literal, Optional, Union
 
 RAISE_IF_NOT_FOUND = True
-
+_MULTIUSER_USER_CTX: ContextVar[Optional[Union[int, str]]] = ContextVar(
+    "supervisely_multiuser_app_user_id",
+    default=None,
+)
 
 def flag_from_env(s: str) -> bool:
     """Returns True if passed string is a flag, False otherwise.
@@ -771,3 +775,74 @@ def add_uploaded_ids_to_env(dataset_id: int, ids: List[int]) -> None:
     else:
         uploaded[str(dataset_id)].extend(ids)
     os.environ["UPLOADED_IDS"] = json.dumps(uploaded)
+
+
+def is_multiuser_mode_enabled() -> bool:
+    """Returns multiuser app mode flag from environment variable using following keys:
+        - SUPERVISELY_MULTIUSER_APP_MODE
+    :return: multiuser app mode flag
+    :rtype: bool
+    """
+    return _parse_from_env(
+        name="is_multiuser_mode_enabled",
+        keys=["SUPERVISELY_MULTIUSER_APP_MODE"],
+        default=False,
+        raise_not_found=False,
+        postprocess_fn=flag_from_env,
+    )
+
+
+def enable_multiuser_app_mode() -> None:
+    """
+    Enables multiuser app mode by setting the environment variable.
+    This function can be used to activate multiuser mode in the application allowing
+    separation of user DataJson/StateJson.
+    """
+    os.environ["SUPERVISELY_MULTIUSER_APP_MODE"] = "true"
+
+
+def disable_multiuser_app_mode() -> None:
+    """Disables multiuser app mode by removing the environment variable."""
+    os.environ.pop("SUPERVISELY_MULTIUSER_APP_MODE", None)
+
+
+def set_user_for_multiuser_app(user_id: Optional[Union[int, str]]) -> Token:
+    """
+    Sets the user ID for multiuser app mode by setting the environment variable.
+    This function should be used in multiuser mode to separate user DataJson/StateJson.
+
+    :param user_id: The user ID (or session key) to set for the current request.
+    :type user_id: int | str
+    :return: A context token that can be used to reset the user ID later.
+    :rtype: Token
+    :raises RuntimeError: If multiuser app mode is not enabled.
+    """
+    if not is_multiuser_mode_enabled():
+        raise RuntimeError("Multiuser app mode is not enabled. Cannot set user ID.")
+    return _MULTIUSER_USER_CTX.set(user_id)
+
+
+def reset_user_for_multiuser_app(token: Token) -> None:
+    """
+    Resets the user ID for multiuser app mode using the provided context token.
+
+    :param token: Context token obtained from `set_user_for_multiuser_app`.
+    :type token: Token
+    """
+    if not is_multiuser_mode_enabled():
+        return
+    _MULTIUSER_USER_CTX.reset(token)
+
+
+def user_from_multiuser_app() -> Optional[Union[int, str]]:
+    """
+    Retrieves the user ID for multiuser app mode from the environment variable.
+
+    :return: The user ID if set, otherwise None.
+    :rtype: Optional[Union[int, str]]
+    """
+    if not is_multiuser_mode_enabled():
+        return None
+    user_id = _MULTIUSER_USER_CTX.get(None)
+    if user_id is not None:
+        return user_id
