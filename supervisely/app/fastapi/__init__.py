@@ -5,6 +5,7 @@ from supervisely.app.fastapi.subapp import (
     Application,
     get_name_from_env,
     _MainServer,
+    session_user_api,
 )
 from supervisely.app.fastapi.templating import Jinja2Templates
 from supervisely.app.fastapi.websocket import WebsocketManager
