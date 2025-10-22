@@ -6,7 +6,6 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 
 
