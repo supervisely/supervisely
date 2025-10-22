@@ -96,7 +96,8 @@ INSTALL_REQUIRES = [
     "python-magic>=0.4.25, <1.0.0",
     "trimesh>=3.11.2, <=4.5.0",
     "uvicorn[standard]>=0.18.2, <1.0.0",
-    "pydantic>=1.7.4, <=2.11.3",
+    "starlette<=0.47.3",  # if update to 0.48.0+ change supervisely/app/fastapi/custom_static_files.py line 45
+    "pydantic>=1.7.4, <=2.12.3",
     "fastapi>=0.103.1, <=0.119.1",
     "websockets>=10.3, <=13.1",
     "jinja2>=3.0.3, <4.0.0",
