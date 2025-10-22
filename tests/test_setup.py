@@ -531,6 +531,14 @@ class SetupTests(unittest.TestCase):
                 msg=f"Failed to import supervisely with [{extra_name}] (Python {python_version})",
             )
 
+            # List all installed packages and their versions
+            print(f"\n{'='*80}")
+            print(f"Installed packages for [{extra_name}] (Python {python_version})")
+            print(f"{'='*80}\n")
+
+            list_packages_cmd = [test_pip, "list"]
+            subprocess.run(list_packages_cmd, stdout=sys.stdout, stderr=sys.stderr)
+
             print(f"\n{'='*80}")
             print(
                 f"✓ Successfully tested installation with [{extra_name}] for Python {python_version}"
@@ -611,6 +619,7 @@ class SetupTests(unittest.TestCase):
                     install_cmd = [
                         test_pip,
                         "install",
+                        "--no-cache-dir",
                         "-e",
                         self.project_root,
                     ]
@@ -665,6 +674,14 @@ class SetupTests(unittest.TestCase):
                         0,
                         msg=f"Failed to import supervisely package for Python {version}",
                     )
+
+                    # List all installed packages and their versions
+                    print(f"\n{'='*80}")
+                    print(f"Installed packages for Python {version}")
+                    print(f"{'='*80}\n")
+
+                    list_packages_cmd = [test_pip, "list"]
+                    subprocess.run(list_packages_cmd, stdout=sys.stdout, stderr=sys.stderr)
 
                     print(f"\n{'='*80}")
                     print(f"✓ Base installation test passed for Python {version}")
