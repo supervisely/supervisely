@@ -270,8 +270,7 @@ setup(
             "cython_bbox",
             "termcolor",
             "scikit-learn",
-            "faiss-gpu; python_version < '3.11'",  # Not supported in Python 3.11+
-            "faiss-cpu; python_version >= '3.11'",  # Fallback for Python 3.11+
+            "faiss-gpu",  # Not supported in Python 3.11+
             "tabulate",
             "tensorboard",
             "decord",

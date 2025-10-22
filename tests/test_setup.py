@@ -815,15 +815,33 @@ Examples:
 
     # Set the test versions if specified
     if args.python_versions:
-        # Validate versions
-        invalid_versions = [v for v in args.python_versions if v not in SetupTests.PYTHON_VERSIONS]
-        if invalid_versions:
-            print(f"Error: Invalid Python version(s): {', '.join(invalid_versions)}")
-            print(f"Valid versions are: {', '.join(SetupTests.PYTHON_VERSIONS)}")
-            sys.exit(1)
+        # Separate Python versions from test names
+        # Python versions are in format X.Y or X.YY
+        python_versions = []
+        test_names = []
 
-        SetupTests.TEST_VERSIONS = args.python_versions
-        print(f"Testing only Python versions: {', '.join(args.python_versions)}\n")
+        for arg in args.python_versions:
+            # Check if it looks like a Python version (e.g., "3.8", "3.11")
+            if arg.replace(".", "").isdigit() and arg.count(".") == 1:
+                python_versions.append(arg)
+            else:
+                # Treat as test name
+                test_names.append(arg)
+
+        # Validate Python versions
+        if python_versions:
+            invalid_versions = [v for v in python_versions if v not in SetupTests.PYTHON_VERSIONS]
+            if invalid_versions:
+                print(f"Error: Invalid Python version(s): {', '.join(invalid_versions)}")
+                print(f"Valid versions are: {', '.join(SetupTests.PYTHON_VERSIONS)}")
+                sys.exit(1)
+
+            SetupTests.TEST_VERSIONS = python_versions
+            print(f"Testing only Python versions: {', '.join(python_versions)}\n")
+
+        # Add test names to remaining args for unittest
+        if test_names:
+            remaining = test_names + remaining
     else:
         print(f"Testing all Python versions: {', '.join(SetupTests.PYTHON_VERSIONS)}\n")
 
