@@ -127,6 +127,7 @@ INSTALL_REQUIRES = [
     "aiofiles",
     "httpx[http2]==0.27.2",
     "debugpy",
+    "setuptools<81.0.0",
 ]
 
 ALT_INSTALL_REQUIRES = {
@@ -232,7 +233,7 @@ setup(
             "matplotlib>=3.3.2, <4.0.0",
             "pascal-voc-writer>=0.1.4, <1.0.0",
             "scipy>=1.8.0, <2.0.0",
-            "pandas>=1.1.3, <1.4.0",
+            "pandas>=1.1.3, <=2.3.3",
             "ruamel.yaml==0.17.21",
         ],
         "apps": [
@@ -245,7 +246,7 @@ setup(
             "MarkupSafe>=2.1.1, <3.0.0",
             "arel>=0.2.0, <1.0.0",
             "tqdm>=4.62.3, <5.0.0",
-            "pandas>=1.1.3, <1.4.0",
+            "pandas>=1.1.3, <=2.3.3",
         ],
         "docs": [
             "sphinx==4.4.0",
@@ -269,7 +270,8 @@ setup(
             "cython_bbox",
             "termcolor",
             "scikit-learn",
-            "faiss-gpu",
+            "faiss-gpu; python_version < '3.11'",  # Not supported in Python 3.11+
+            "faiss-cpu; python_version >= '3.11'",  # Fallback for Python 3.11+
             "tabulate",
             "tensorboard",
             "decord",
