@@ -277,6 +277,9 @@ class Api:
         "MINIMUM_INSTANCE_VERSION_FOR_SDK". If set to a string, will use this string as the version to check.
         If set to False, will skip the check.
     :type check_instance_version: bool or str, optional
+    :param timeouts: A tuple of two integers representing the connection timeout and read timeout in seconds.
+        If not provided and not set as environment variable SUPERVISELY_API_TIMEOUTS, the default timeouts will be used.
+    :type timeouts: tuple(int, int), optional
     :raises: :class:`ValueError`, if token is None or it length != 128
     :Usage example:
 
