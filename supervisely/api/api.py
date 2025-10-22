@@ -84,6 +84,9 @@ SERVER_ADDRESS = "SERVER_ADDRESS"
 SUPERVISELY_API_SERVER_ADDRESS = "SUPERVISELY_API_SERVER_ADDRESS"
 API_TOKEN = "API_TOKEN"
 TASK_ID = "TASK_ID"
+SUPERVISELY_API_TIMEOUTS = "SUPERVISELY_API_TIMEOUTS" # e.g., "30,120" (connect_timeout, read_timeout)
+SUPERVISELY_API_DEFAULT_CONNECT_TIMEOUT = 30
+SUPERVISELY_API_DEFAULT_READ_TIMEOUT = 120
 SUPERVISELY_ENV_FILE = os.path.join(Path.home(), "supervisely.env")
 
 
@@ -190,7 +193,7 @@ class UserSession:
         """
         self.server_address = Api.normalize_server_address(self.server_address)
         if not self.server_address.startswith("https://"):
-            response = requests.get(self.server_address, allow_redirects=False)
+            response = requests.get(self.server_address, allow_redirects=False, timeout=self.timeouts)
             if (300 <= response.status_code < 400) or (
                 response.headers.get("Location", "").startswith("https://")
             ):
@@ -198,7 +201,7 @@ class UserSession:
         result = urlparse(self.server_address)
         if all([result.scheme, result.netloc]):
             try:
-                response = requests.get(self.server_address)
+                response = requests.get(self.server_address, timeout=self.timeouts)
                 if response.status_code == 200:
                     return True
             except requests.RequestException:
@@ -238,7 +241,7 @@ class UserSession:
         """
         login_url = urljoin(self.server_address, "api/account")
         payload = {"login": login, "password": password}
-        response = requests.post(login_url, data=payload)
+        response = requests.post(login_url, data=payload, timeout=self.timeouts)
         del password
         gc.collect()
         if response.status_code == 200:
@@ -306,6 +309,7 @@ class Api:
         ignore_task_id: bool = False,
         api_server_address: Optional[str] = None,
         check_instance_version: Union[bool, str] = False,
+        timeouts: Optional[tuple[int, int]] = None,
     ):
         self.logger = external_logger or logger
 
@@ -333,6 +337,13 @@ class Api:
         if retry_sleep_sec is None:
             retry_sleep_sec = int(os.getenv(SUPERVISELY_PUBLIC_API_RETRY_SLEEP_SEC, "1"))
 
+        if timeouts is None:
+            try:
+                timeouts = tuple(map(int, os.getenv(SUPERVISELY_API_TIMEOUTS, "").split(",")))
+            except ValueError:
+                timeouts = (SUPERVISELY_API_DEFAULT_CONNECT_TIMEOUT, SUPERVISELY_API_DEFAULT_READ_TIMEOUT)
+
+        self.timeouts = timeouts
         self.token = token
         self.headers = {}
         if token is not None:
@@ -683,20 +694,21 @@ class Api:
             response = None
             try:
                 if type(data) is bytes:
-                    response = requests.post(url, data=data, headers=self.headers, stream=stream)
+                    response = requests.post(url, data=data, headers=self.headers, stream=stream, timeout=self.timeouts)
                 elif type(data) is MultipartEncoderMonitor or type(data) is MultipartEncoder:
                     response = requests.post(
                         url,
                         data=data,
                         headers={**self.headers, "Content-Type": data.content_type},
                         stream=stream,
+                        timeout=self.timeouts,
                     )
                 else:
                     json_body = data
                     if type(data) is dict:
                         json_body = {**data, **self.additional_fields}
                     response = requests.post(
-                        url, json=json_body, headers=self.headers, stream=stream
+                        url, json=json_body, headers=self.headers, stream=stream, timeout=self.timeouts
                     )
 
                 if response.status_code != requests.codes.ok:  # pylint: disable=no-member
@@ -775,7 +787,7 @@ class Api:
                 if type(params) is dict:
                     json_body = {**params, **self.additional_fields}
                 response = requests.get(
-                    url, params=json_body, data=data, headers=self.headers, stream=stream
+                    url, params=json_body, data=data, headers=self.headers, stream=stream, timeout=self.timeouts
                 )
 
                 if response.status_code != requests.codes.ok:  # pylint: disable=no-member
