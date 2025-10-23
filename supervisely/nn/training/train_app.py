@@ -1598,13 +1598,18 @@ class TrainApp:
                 project_id = self.project_id
 
             dataset_infos = [dataset for _, dataset in self._api.dataset.tree(project_id)]
+            id_to_info = {ds.id: ds for ds in dataset_infos}
             ds_infos_dict = {}
             for dataset in dataset_infos:
-                if dataset.parent_id is not None:
-                    parent_ds = self._api.dataset.get_info_by_id(dataset.parent_id)
-                    dataset_name = f"{parent_ds.name}/{dataset.name}"
-                else:
-                    dataset_name = dataset.name
+                name_parts = [dataset.name]
+                parent_id = dataset.parent_id
+                while parent_id is not None:
+                    parent_ds = id_to_info.get(parent_id)
+                    if parent_ds is None:
+                        parent_ds = self._api.dataset.get_info_by_id(parent_id)
+                    name_parts.append(parent_ds.name)
+                    parent_id = parent_ds.parent_id
+                dataset_name = "/".join(reversed(name_parts))
                 ds_infos_dict[dataset_name] = dataset
 
             def get_image_infos_by_split(ds_infos_dict: dict, split: list):

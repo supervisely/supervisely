@@ -8,6 +8,22 @@ try:
 except TypeError as e:
     __version__ = "development"
 
+
+class _ApiProtoNotAvailable:
+    """Placeholder class that raises an error when accessing any attribute"""
+
+    def __getattr__(self, name):
+        from supervisely.app.v1.constants import PROTOBUF_REQUIRED_ERROR
+
+        raise ImportError(f"Cannot access `api_proto.{name}` : " + PROTOBUF_REQUIRED_ERROR)
+
+    def __bool__(self):
+        return False
+
+    def __repr__(self):
+        return "<api_proto: not available - install supervisely[agent] to enable>"
+
+
 from supervisely.sly_logger import (
     logger,
     ServiceType,
@@ -112,7 +128,14 @@ from supervisely.worker_api.chunking import (
     ChunkedFileWriter,
     ChunkedFileReader,
 )
-import supervisely.worker_proto.worker_api_pb2 as api_proto
+
+# Global import of api_proto works only if protobuf is installed and compatible
+# Otherwise, we use a placeholder that raises an error when accessed
+try:
+    import supervisely.worker_proto.worker_api_pb2 as api_proto
+except Exception:
+    api_proto = _ApiProtoNotAvailable()
+
 
 from supervisely.api.api import Api, UserSession, ApiContext
 from supervisely.api import api

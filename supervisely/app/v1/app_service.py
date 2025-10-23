@@ -1,3 +1,5 @@
+# isort: skip_file
+
 import json
 import os
 import time
@@ -12,7 +14,8 @@ import queue
 import re
 
 from supervisely.worker_api.agent_api import AgentAPI
-from supervisely.worker_proto import worker_api_pb2 as api_proto
+
+# from supervisely.worker_proto import worker_api_pb2 as api_proto # Import moved to methods where needed
 from supervisely.function_wrapper import function_wrapper
 from supervisely._utils import take_with_default
 from supervisely.sly_logger import logger as default_logger
@@ -29,7 +32,6 @@ from supervisely.io.json import load_json_file
 from supervisely._utils import _remove_sensitive_information
 from supervisely.worker_api.agent_rpc import send_from_memory_generator
 from supervisely.io.fs_cache import FileCache
-
 
 # https://www.roguelynn.com/words/asyncio-we-did-it-wrong/
 
@@ -390,6 +392,13 @@ class AppService:
         )
 
     def publish_sync(self, initial_events=None):
+        try:
+            from supervisely.worker_proto import worker_api_pb2 as api_proto
+        except Exception as e:
+            from supervisely.app.v1.constants import PROTOBUF_REQUIRED_ERROR
+
+            raise ImportError(PROTOBUF_REQUIRED_ERROR) from e
+
         if initial_events is not None:
             for event_obj in initial_events:
                 event_obj["api_token"] = os.environ[API_TOKEN]
@@ -507,6 +516,13 @@ class AppService:
             self._error = error
 
     def send_response(self, request_id, data):
+        try:
+            from supervisely.worker_proto import worker_api_pb2 as api_proto
+        except Exception as e:
+            from supervisely.app.v1.constants import PROTOBUF_REQUIRED_ERROR
+
+            raise ImportError(PROTOBUF_REQUIRED_ERROR) from e
+
         out_bytes = json.dumps(data).encode("utf-8")
         self.api.put_stream_with_data(
             "SendGeneralEventData",
