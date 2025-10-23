@@ -792,6 +792,14 @@ class SettingsSelector:
             all_settings = current_settings + "\n\n# Tracking settings\n" + yaml.safe_dump(settings)
             self.inference_settings_editor.set_text(all_settings)
 
+    def set_default_tracking_settings(self):
+        nn_dir = Path(__file__).parents[3]
+        config_path = nn_dir / "tracker" / "botsort" / "botsort_config.yaml"
+
+        with open(config_path, "r", encoding="utf-8") as file:
+            botsort_config = yaml.safe_load(file)
+        self.set_tracking_settings(botsort_config)
+
     def get_inference_settings(self) -> Dict:
         text = self.inference_settings_editor.get_text()
         inference_settings_text = text.split("# Tracking settings")[0]

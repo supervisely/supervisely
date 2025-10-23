@@ -1,6 +1,9 @@
 import json
 import time
+from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
+
+import yaml
 
 from supervisely._utils import is_development, logger
 from supervisely.api.api import Api
@@ -190,8 +193,14 @@ class PredictAppGui:
                     self.settings_selector.set_inference_settings(inference_settings)
 
                     if self.input_selector.radio.get_value() == ProjectType.VIDEOS.value:
-                        tracking_settings = self.model_api.get_tracking_settings()
-                        self.settings_selector.set_tracking_settings(tracking_settings)
+                        try:
+                            tracking_settings = self.model_api.get_tracking_settings()
+                            self.settings_selector.set_tracking_settings(tracking_settings)
+                        except Exception as e:
+                            logger.warning(
+                                "Unable to get tracking settings from the model. Settings defaults"
+                            )
+                            self.settings_selector.set_default_tracking_settings()
             self.input_selector.disable()
 
             self.project_id = self.input_selector.get_project_id()
@@ -346,8 +355,14 @@ class PredictAppGui:
             self.settings_selector.set_inference_settings(inference_settings)
 
             if self.input_selector.radio.get_value() == ProjectType.VIDEOS.value:
-                tracking_settings = model_api.get_tracking_settings()
-                self.settings_selector.set_tracking_settings(tracking_settings)
+                try:
+                    tracking_settings = model_api.get_tracking_settings()
+                    self.settings_selector.set_tracking_settings(tracking_settings)
+                except Exception as e:
+                    logger.warning(
+                        "Unable to get tracking settings from the model. Settings defaults"
+                    )
+                    self.settings_selector.set_default_tracking_settings()
 
         def reset_entity_meta():
             empty_meta = ProjectMeta()
