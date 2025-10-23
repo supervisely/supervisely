@@ -308,6 +308,7 @@ setup(
         "aug": [
             "imgaug>=0.4.0, <1.0.0",
             "imagecorruptions>=1.1.2, <2.0.0",
+            "numpy>=1.19, <2.0.0",
         ],
         "agent": [
             "protobuf>=3.19.5, <=3.20.3",
