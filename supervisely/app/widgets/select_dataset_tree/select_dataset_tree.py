@@ -119,11 +119,9 @@ class SelectDatasetTree(Widget):
         self._dataset_id = default_id or env.dataset_id(raise_not_found=False)
         if self._project_id:
             project_info = self._api.project.get_info_by_id(self._project_id)
-            if (
-                project_info.type not in [pt.value for pt in allowed_project_types]
-                and allowed_project_types is not None
-            ):
-                self._project_id = None
+            if allowed_project_types is not None:
+                if project_info.type not in [pt.value for pt in allowed_project_types]:
+                    self._project_id = None
 
         self._multiselect = multiselect
         self._compact = compact
@@ -326,26 +324,22 @@ class SelectDatasetTree(Widget):
             raise ValueError("This method can only be called when multiselect is enabled.")
         self._select_dataset.set_selected_by_id(dataset_ids)
 
-    
     def team_changed(self, func: Callable) -> Callable:
-        """Decorator to set the callback function for the team changed event.
-        """
+        """Decorator to set the callback function for the team changed event."""
         if self._compact:
             raise ValueError("callback 'team_changed' is not available in compact mode.")
         self._team_changed_callbacks.append(func)
         return func
 
     def workspace_changed(self, func: Callable) -> Callable:
-        """Decorator to set the callback function for the workspace changed event.
-        """
+        """Decorator to set the callback function for the workspace changed event."""
         if self._compact:
             raise ValueError("callback 'workspace_changed' is not available in compact mode.")
         self._workspace_changed_callbacks.append(func)
         return func
 
     def project_changed(self, func: Callable) -> Callable:
-        """Decorator to set the callback function for the project changed event.
-        """
+        """Decorator to set the callback function for the project changed event."""
         if self._compact:
             raise ValueError("callback 'project_changed' is not available in compact mode.")
         self._project_changed_callbacks.append(func)
@@ -484,7 +478,7 @@ class SelectDatasetTree(Widget):
             ):
                 self._select_dataset.select_all()
                 self._select_dataset_field.hide()
-            
+
             for callback in self._project_changed_callbacks:
                 callback(project_id)
 
