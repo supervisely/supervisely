@@ -797,7 +797,7 @@ class InferenceImageCache:
             try:
                 image = self._cache.get_image(name_constructor(hash_or_id))
             except Exception as e:
-                logger.error(f"Error retrieving image from cache: {e}. Image will be re-downloaded", exc_info=True)
+                logger.error(f"Error retrieving image from cache: {repr(e)}. Image will be re-downloaded", exc_info=True)
                 ids_to_load.append(hash_or_id)
                 return pos, None
             return pos, image
