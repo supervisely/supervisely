@@ -1,26 +1,30 @@
+import threading
 from typing import Any, Dict, List
 
+from supervisely.api.api import Api
 from supervisely.app.widgets import (
     Button,
     Card,
     Container,
+    FastTable,
     OneOf,
     RadioGroup,
-    RadioTable,
     SelectDatasetTree,
     Text,
 )
+from supervisely.app.widgets.widget import Widget
 from supervisely.project.project import ProjectType
 
 
 class InputSelector:
-    title = "Select Input"
+    title = "Input data"
     description = "Select input data on which to run model for prediction"
     lock_message = None
 
-    def __init__(self, workspace_id: int):
+    def __init__(self, workspace_id: int, api: Api):
         # Init Step
         self.workspace_id = workspace_id
+        self.api = api
         self.display_widgets: List[Any] = []
         # -------------------------------- #
 
@@ -48,7 +52,7 @@ class InputSelector:
         self.select_dataset_for_images = SelectDatasetTree(
             multiselect=True,
             flat=True,
-            select_all_datasets=False,
+            select_all_datasets=True,
             allowed_project_types=[ProjectType.IMAGES],
             always_open=False,
             compact=False,
@@ -64,16 +68,31 @@ class InputSelector:
 
         # Videos
         self.select_dataset_for_video = SelectDatasetTree(
+            multiselect=True,
             flat=True,
-            select_all_datasets=False,
+            select_all_datasets=True,
             allowed_project_types=[ProjectType.VIDEOS],
             always_open=False,
             compact=False,
             team_is_selectable=False,
             workspace_is_selectable=False,
-            show_select_all_datasets_checkbox=False,
+            show_select_all_datasets_checkbox=True,
         )
-        self.select_video = RadioTable(columns=["id", "name", "dataset"], rows=[])
+        self._video_table_columns = [
+            "Video id",
+            "Video name",
+            "Size",
+            "Duration",
+            "FPS",
+            "Frames count",
+            "Dataset name",
+            "Dataset id",
+        ]
+        self.select_video = FastTable(
+            columns=self._video_table_columns,
+            is_selectable=True,
+        )
+        self.select_video.hide()
         self.select_video_container = Container(
             widgets=[self.select_dataset_for_video, self.select_video]
         )
@@ -83,9 +102,9 @@ class InputSelector:
         # -------------------------------- #
 
         # Data type Radio Selector
-        # self.radio = RadioGroup(items=[self._radio_item_images, self._radio_item_videos])
-        self.radio = RadioGroup(items=[self._radio_item_images])
-        self.radio.hide()
+        self.radio = RadioGroup(items=[self._radio_item_images, self._radio_item_videos])
+        # self.radio = RadioGroup(items=[self._radio_item_images])
+        # self.radio.hide()
         self.one_of = OneOf(conditional_widget=self.radio)
         # Add widgets to display ------------ #
         self.display_widgets.extend([self.radio, self.one_of])
@@ -109,12 +128,101 @@ class InputSelector:
         )
         # ----------------------------------- #
 
+        self._refresh_table_lock = threading.Lock()
+        self._refresh_table_thread: threading.Thread = None
+        self._refresh_called = False
+
+        @self.radio.value_changed
+        def input_selector_type_changed(value: str):
+            self.validator_text.hide()
+
+        @self.select_dataset_for_images.project_changed
+        def _images_project_changed(project_id):
+            self.validator_text.hide()
+
+        @self.select_dataset_for_images.value_changed
+        def _images_dataset_changed(dataset_ids):
+            self.validator_text.hide()
+
+        @self.select_dataset_for_video.project_changed
+        def _videos_project_changed(project_id: int):
+            self._refresh_video_table_called()
+
+        @self.select_dataset_for_video.value_changed
+        def _videos_dataset_changed(datasets_ids):
+            self._refresh_video_table_called()
+
+    def _refresh_video_table_called(self):
+        with self._refresh_table_lock:
+            self._refresh_called = True
+            if self._refresh_table_thread is None or not self._refresh_table_thread.is_alive():
+                self._refresh_table_thread = threading.Thread(target=self._refresh_video_table_loop)
+        if self._refresh_table_thread is not None and not self._refresh_table_thread.is_alive():
+            self._refresh_table_thread.start()
+
+    def _refresh_video_table_loop(self):
+        while self._refresh_called:
+            with self._refresh_table_lock:
+                self._refresh_called = False
+            self.select_video.loading = True
+            self._refresh_video_table()
+            if not self._refresh_called:
+                self.select_video.loading = False
+
+    def _refresh_video_table(self):
+        self.validator_text.hide()
+        self.select_video.clear()
+        selected_datasets = self.select_dataset_for_video.get_selected_ids()
+        if not selected_datasets:
+            self.select_video.hide()
+        else:
+            rows = []
+            self.select_video.show()
+            for dataset_id in selected_datasets:
+                dataset_info = self.api.dataset.get_info_by_id(dataset_id)
+                videos = self.api.video.get_list(dataset_id)
+                for video in videos:
+                    size = f"{video.frame_height}x{video.frame_width}"
+                    try:
+                        frame_rate = int(video.frames_count / video.duration)
+                    except:
+                        frame_rate = "N/A"
+                    rows.append(
+                        [
+                            video.id,
+                            video.name,
+                            size,
+                            video.duration,
+                            frame_rate,
+                            video.frames_count,
+                            dataset_info.name,
+                            dataset_info.id,
+                        ]
+                    )
+
+            self.select_video.add_rows(rows)
+
+    def disable(self):
+        for widget in self.widgets_to_disable:
+            widget.disable()
+
+    def enable(self):
+        for widget in self.widgets_to_disable:
+            widget.enable()
+
     @property
-    def widgets_to_disable(self) -> list:
+    def widgets_to_disable(self) -> List[Widget]:
         return [
+            # Images Selector
             self.select_dataset_for_images,
+            self.select_dataset_for_images._select_project,
+            self.select_dataset_for_images._select_dataset,
+            # Videos Selector
             self.select_dataset_for_video,
+            self.select_dataset_for_video._select_project,
+            self.select_dataset_for_video._select_dataset,
             self.select_video,
+            # Controls
             self.radio,
             self.one_of,
         ]
@@ -126,39 +234,84 @@ class InputSelector:
                 "dataset_ids": self.select_dataset_for_images.get_selected_ids(),
             }
         if self.radio.get_value() == ProjectType.VIDEOS.value:
-            return {"video_id": self.select_video.get_selected_row()}
+            rows = self.select_video.get_selected_rows()
+            if rows:
+                video_ids = [row.row[0] for row in rows]
+            else:
+                video_ids = None
+            return {"video_ids": video_ids}
 
     def load_from_json(self, data):
-        if "project_id" in data:
-            self.select_dataset_for_images.set_project_id(data["project_id"])
-            self.select_dataset_for_images.select_all()
-            self.radio.set_value(ProjectType.IMAGES.value)
-        if "dataset_ids" in data:
-            self.select_dataset_for_images.set_dataset_ids(data["dataset_ids"])
-            self.radio.set_value(ProjectType.IMAGES.value)
-        if "video_id" in data:
-            self.select_video.select_row_by_value("id", data["video_id"])
+        if "video_ids" in data:
+            video_ids = data["video_ids"]
+            if not video_ids:
+                raise ValueError("Video ids cannot be empty")
+            video_infos = self.api.video.get_info_by_id_batch(video_ids)
+            if not video_infos:
+                raise ValueError(f"Videos with video ids {video_ids} are not found")
+            project_id = video_infos[0].project_id
+            self.select_dataset_for_video.set_project_id(project_id)
+            self.select_dataset_for_video.select_all()
+            self.select_video.select_row_by_value("id", data["video_ids"])
             self.radio.set_value(ProjectType.VIDEOS.value)
+        elif "dataset_ids" in data:
+            dataset_ids = data["dataset_ids"]
+            if len(dataset_ids) == 0:
+                raise ValueError("Dataset ids cannot be empty")
+            dataset_id = dataset_ids[0]
+            dataset_info = self.api.dataset.get_info_by_id(dataset_id)
+            project_info = self.api.project.get_info_by_id(dataset_info.project_id)
+            if project_info.type == ProjectType.VIDEOS:
+                self.select_dataset_for_video.set_project_id(project_info.id)
+                self.select_dataset_for_video.set_dataset_ids(dataset_ids)
+                self.radio.set_value(ProjectType.VIDEOS.value)
+            else:
+                self.select_dataset_for_images.set_project_id(project_info.id)
+                self.select_dataset_for_images.set_dataset_ids(dataset_ids)
+                self.radio.set_value(ProjectType.IMAGES.value)
+        elif "project_id" in data:
+            project_id = data["project_id"]
+            project_info = self.api.project.get_info_by_id(project_id)
+            if project_info.type == ProjectType.VIDEOS:
+                self.select_dataset_for_video.set_project_id(project_id)
+                self.select_dataset_for_video.select_all()
+                self.radio.set_value(ProjectType.VIDEOS.value)
+            else:
+                self.select_dataset_for_images.set_project_id(project_id)
+                self.select_dataset_for_images.select_all()
+                self.radio.set_value(ProjectType.IMAGES.value)
+
+    def get_project_id(self) -> int:
+        if self.radio.get_value() == ProjectType.IMAGES.value:
+            return self.select_dataset_for_images.project_id
+        if self.radio.get_value() == ProjectType.VIDEOS.value:
+            return self.select_dataset_for_video.project_id
+        return None
 
     def validate_step(self) -> bool:
         self.validator_text.hide()
         if self.radio.get_value() == ProjectType.IMAGES.value:
-            if len(self.select_dataset_for_images.get_selected_ids()) == 0:
+            selected_ids = self.select_dataset_for_images.get_selected_ids()
+            if selected_ids is None:
+                self.validator_text.set(text="Select a project", status="error")
+                self.validator_text.show()
+                return False
+            if len(selected_ids) == 0:
                 self.validator_text.set(text="Select at least one dataset", status="error")
                 self.validator_text.show()
                 return False
         if self.radio.get_value() == ProjectType.VIDEOS.value:
-            if self.select_dataset_for_video.get_selected_id() is None:
+            if not self.select_dataset_for_video.get_selected_ids():
                 self.validator_text.set(text="Select a dataset", status="error")
                 self.validator_text.show()
                 return False
-            if len(self.select_video.rows) == 0:
+            if self.select_video._rows_total == 0:
                 self.validator_text.set(
                     text="No videos found in the selected dataset", status="error"
                 )
                 self.validator_text.show()
                 return False
-            if self.select_video.get_selected_row() == []:
+            if self.select_video.get_selected_rows() == []:
                 self.validator_text.set(text="Select a video", status="error")
                 self.validator_text.show()
                 return False

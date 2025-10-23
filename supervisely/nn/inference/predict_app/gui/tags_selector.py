@@ -1,4 +1,5 @@
 from typing import Any, Dict
+
 from supervisely.app.widgets import Button, Card, Container, TagsTable, Text
 
 
@@ -45,7 +46,6 @@ class TagsSelector:
             content=self.container,
             lock_message=self.lock_message,
         )
-        self.card.lock()
         # -------------------------------- #
 
     @property
