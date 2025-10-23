@@ -261,7 +261,7 @@ class InputSelector:
             dataset_id = dataset_ids[0]
             dataset_info = self.api.dataset.get_info_by_id(dataset_id)
             project_info = self.api.project.get_info_by_id(dataset_info.project_id)
-            if project_info.type == ProjectType.VIDEOS:
+            if project_info.type == ProjectType.VIDEOS.value:
                 self.select_dataset_for_video.set_project_id(project_info.id)
                 self.select_dataset_for_video.set_dataset_ids(dataset_ids)
                 self.radio.set_value(ProjectType.VIDEOS.value)
@@ -272,7 +272,7 @@ class InputSelector:
         elif "project_id" in data:
             project_id = data["project_id"]
             project_info = self.api.project.get_info_by_id(project_id)
-            if project_info.type == ProjectType.VIDEOS:
+            if project_info.type == ProjectType.VIDEOS.value:
                 self.select_dataset_for_video.set_project_id(project_id)
                 self.select_dataset_for_video.select_all()
                 self.radio.set_value(ProjectType.VIDEOS.value)
