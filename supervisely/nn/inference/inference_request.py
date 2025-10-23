@@ -59,6 +59,8 @@ class InferenceRequest:
         self._created_at = time.monotonic()
         self._updated_at = self._created_at
         self._finished = False
+        
+        self.tracker = None
 
         self.global_progress = None
         self.global_progress_total = 1
@@ -250,8 +252,7 @@ class InferenceRequest:
             status_data.pop(key, None)
         status_data.update(self.get_usage())
         return status_data
-
-
+    
 class GlobalProgress:
     def __init__(self):
         self.progress = Progress(message="Ready", total_cnt=1)
