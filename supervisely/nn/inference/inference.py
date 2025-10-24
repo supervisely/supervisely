@@ -435,7 +435,7 @@ class Inference:
 
                 device = "cuda" if torch.cuda.is_available() else "cpu"
             except Exception as e:
-                logger.warn(
+                logger.warning(
                     f"Device auto detection failed, set to default 'cpu', reason: {repr(e)}"
                 )
                 device = "cpu"
@@ -1383,15 +1383,15 @@ class Inference:
             if classes is not None:
                 num_classes = len(classes)
         except NotImplementedError:
-            logger.warn(f"get_classes() function not implemented for {type(self)} object.")
+            logger.warning(f"get_classes() function not implemented for {type(self)} object.")
         except AttributeError:
-            logger.warn("Probably, get_classes() function not working without model deploy.")
+            logger.warning("Probably, get_classes() function not working without model deploy.")
         except Exception as exc:
-            logger.warn("Unknown exception. Please, contact support")
+            logger.warning("Unknown exception. Please, contact support")
             logger.exception(exc)
 
         if num_classes is None:
-            logger.warn(f"get_classes() function return {classes}; skip classes processing.")
+            logger.warning(f"get_classes() function return {classes}; skip classes processing.")
 
         return {
             "app_name": get_name_from_env(default="Neural Network Serving"),
@@ -4644,7 +4644,7 @@ def get_gpu_count():
         gpu_count = len(re.findall(r"GPU \d+:", nvidia_smi_output))
         return gpu_count
     except (subprocess.CalledProcessError, FileNotFoundError) as exc:
-        logger.warn("Calling nvidia-smi caused a error: {exc}. Assume there is no any GPU.")
+        logger.warning("Calling nvidia-smi caused a error: {exc}. Assume there is no any GPU.")
         return 0
 
 
