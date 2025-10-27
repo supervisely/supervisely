@@ -440,47 +440,60 @@ class SessionJSON:
         current = 0
         prev_current = 0
         if preparing_cb:
-            # wait for inference status
-            resp = self._get_preparing_progress()
-            awaiting_preparing_progress = 0
-            break_flag = False
-            while resp.get("status") is None:
-                time.sleep(1)
-                awaiting_preparing_progress += 1
-                if awaiting_preparing_progress > 30:
-                    break_flag = True
+            try:
+                # wait for inference status
                 resp = self._get_preparing_progress()
-            if break_flag:
-                logger.warning(
-                    "Unable to get preparing progress. Continue without prepaing progress status."
-                )
-            if not break_flag:
-                if resp["status"] == "download_info":
-                    progress_widget = preparing_cb(
-                        message="Downloading infos", total=resp["total"], unit="it"
-                    )
-                while resp["status"] == "download_info":
-                    current = resp["current"]
-                    # pylint: disable=possibly-used-before-assignment
-                    progress_widget.update(current - prev_current)
-                    prev_current = current
+                status = resp.get("status")
+                awaiting_preparing_progress = 0
+                while status is None:
+                    time.sleep(1)
+                    awaiting_preparing_progress += 1
                     resp = self._get_preparing_progress()
+                    status = resp.get("status")
+                    if (
+                        status not in [None, "download_info", "download_project", "warmup"]
+                        and awaiting_preparing_progress > 30
+                    ):
+                        logger.warning(
+                            "Unable to get preparing progress. Continue without preparing progress status."
+                        )
+                        break
+                    if status == "download_info":
+                        progress_widget = preparing_cb(
+                            message="Downloading infos", total=resp["total"], unit="it"
+                        )
+                        while status == "download_info":
+                            current = resp["current"]
+                            progress_widget.update(current - prev_current)
+                            prev_current = current
+                            resp = self._get_preparing_progress()
+                            status = resp.get("status")
 
-                if resp["status"] == "download_project":
-                    progress_widget = preparing_cb(message="Download project", total=resp["total"])
-                while resp["status"] == "download_project":
-                    current = resp["current"]
-                    progress_widget.update(current - prev_current)
-                    prev_current = current
-                    resp = self._get_preparing_progress()
+                    if status == "download_project":
+                        progress_widget = preparing_cb(
+                            message="Download project", total=resp["total"]
+                        )
+                        while status == "download_project":
+                            current = resp["current"]
+                            progress_widget.update(current - prev_current)
+                            prev_current = current
+                            resp = self._get_preparing_progress()
+                            status = resp.get("status")
 
-                if resp["status"] == "warmup":
-                    progress_widget = preparing_cb(message="Running warmup", total=resp["total"])
-                while resp["status"] == "warmup":
-                    current = resp["current"]
-                    progress_widget.update(current - prev_current)
-                    prev_current = current
-                    resp = self._get_preparing_progress()
+                    if status == "warmup":
+                        progress_widget = preparing_cb(
+                            message="Running warmup", total=resp["total"]
+                        )
+                        while status == "warmup":
+                            current = resp["current"]
+                            progress_widget.update(current - prev_current)
+                            prev_current = current
+                            resp = self._get_preparing_progress()
+                            status = resp.get("status")
+            except Exception as e:
+                logger.warning(f"An error occurred while getting preparing progress: {e}")
+                logger.warning("Continue without preparing progress status.")
+                preparing_cb._close_active_session()
 
         logger.info("Inference has started:", extra={"response": resp})
         resp, has_started = self._wait_for_async_inference_start()
