@@ -444,10 +444,10 @@ class SessionJSON:
             try:
                 resp = self._get_preparing_progress()
                 for i in range(30):
-                    time.sleep(1)
                     resp = self._get_preparing_progress()
                     if resp.get("status") is not None:
                         break
+                    time.sleep(1)
                 if not resp.get("status"):
                     raise RuntimeError("Preparing progress status is not available.")
 
