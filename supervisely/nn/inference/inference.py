@@ -3201,6 +3201,8 @@ class Inference:
         @server.post("/inference_video_id_async")
         def inference_video_id_async(response: Response, request: Request):
             context = request.state.context
+            logger.debug('context')
+            print(context)
             state = request.state.state
             if context is not None and context.get('tracking') == True:
                 state.update(context)
