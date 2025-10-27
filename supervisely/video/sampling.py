@@ -103,7 +103,6 @@ def _upload_annotations(api: Api, image_ids, frame_indices, video_annotation: Vi
     api.annotation.upload_anns(image_ids, anns=anns)
 
 
-
 def _upload_frames(
     api: Api,
     frames: List[np.ndarray],
@@ -229,8 +228,8 @@ def sample_video(
     with VideoFrameReader(video_path, frame_indices) as reader:
         for batch in batched_iter(zip(reader, frame_indices), 10):
             frames, indices = zip(*batch)
-            for frame in frames:
-                if resize:
+            if resize:
+                for frame in frames:
                     cv2.resize(frame, [*resize, frame.shape[2]], interpolation=cv2.INTER_LINEAR)
 
             image_ids = _upload_frames(
