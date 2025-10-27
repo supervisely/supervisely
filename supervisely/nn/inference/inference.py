@@ -3200,7 +3200,10 @@ class Inference:
 
         @server.post("/inference_video_id_async")
         def inference_video_id_async(response: Response, request: Request):
+            context = request.state.context
             state = request.state.state
+            if context is not None and context.get('tracking') == True:
+                state.update(context)
             logger.debug("Received a request to 'inference_video_id_async'", extra={"state": state})
             self.validate_inference_state(state)
             api = self.api_from_request(request)
