@@ -120,7 +120,12 @@ class SelectDatasetTree(Widget):
         if self._project_id:
             project_info = self._api.project.get_info_by_id(self._project_id)
             if allowed_project_types is not None:
-                if project_info.type not in [pt.value for pt in allowed_project_types]:
+                allowed_values = None
+                if isinstance(allowed_project_types[0], ProjectType):
+                    allowed_values = [str(pt) for pt in allowed_project_types]
+                elif isinstance(allowed_project_types[0], str):
+                    allowed_values = allowed_project_types
+                if project_info.type not in allowed_values:
                     self._project_id = None
 
         self._multiselect = multiselect
