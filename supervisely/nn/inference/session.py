@@ -520,9 +520,7 @@ class SessionJSON:
 
     def _get_preparing_progress(self) -> Dict[str, Any]:
         endpoint = "get_preparing_progress"
-        resp = self._get_from_endpoint_for_async_inference(endpoint)
-        resp["status"] = None
-        return resp
+        return self._get_from_endpoint_for_async_inference(endpoint)
 
     def _pop_pending_results(self) -> Dict[str, Any]:
         endpoint = "pop_inference_results"
