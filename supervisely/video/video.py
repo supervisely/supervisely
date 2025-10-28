@@ -610,7 +610,7 @@ class VideoFrameReader:
         return self.iterate_frames()
 
     def __next__(self):
-        if not hasattr(self, "_frame_generator") or self._frame_generator is None:
+        if not hasattr(self, "_frame_generator"):
             self._frame_generator = self.iterate_frames()
         try:
             return next(self._frame_generator)
