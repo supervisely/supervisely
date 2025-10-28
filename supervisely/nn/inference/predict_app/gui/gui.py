@@ -34,7 +34,12 @@ from supervisely.nn.model.prediction import Prediction
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import ProjectType
 from supervisely.video_annotation.key_id_map import KeyIdMap
-from supervisely.video_annotation.video_annotation import VideoAnnotation
+from supervisely.video_annotation.video_annotation import (
+    VideoAnnotation,
+    VideoFigure,
+    VideoObjectCollection,
+)
+from supervisely.video_annotation.video_figure import VideoObject
 
 
 class StepFlow:

@@ -800,6 +800,18 @@ class SettingsSelector:
             botsort_config = yaml.safe_load(file)
         self.set_tracking_settings(botsort_config)
 
+    def set_tracking_settings(self, settings: Dict[str, Any]):
+        if self.input_selector.radio.get_value() != ProjectType.VIDEOS.value:
+            return
+            
+        current_settings = self.inference_settings.get_text()
+        if isinstance(settings, str):
+            all_settings = current_settings + "\n\n# Tracking settings\n" + settings
+            self.inference_settings.set_text(all_settings)
+        else:
+            all_settings = current_settings + "\n\n# Tracking settings\n" + yaml.safe_dump(settings)
+            self.inference_settings.set_text(all_settings)    
+
     def get_inference_settings(self) -> Dict:
         text = self.inference_settings_editor.get_text()
         inference_settings_text = text.split("# Tracking settings")[0]
