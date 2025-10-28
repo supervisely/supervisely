@@ -444,6 +444,9 @@ class SessionJSON:
             try:
                 resp = self._get_preparing_progress()
                 for i in range(30):
+                    logger.info(
+                        f"Waiting for preparing progress... {30 - i} seconds left until timeout"
+                    )
                     resp = self._get_preparing_progress()
                     if resp.get("status") is not None:
                         break
@@ -452,6 +455,7 @@ class SessionJSON:
                     raise RuntimeError("Preparing progress status is not available.")
 
                 if resp.get("status") == "download_info":
+                    logger.info("Downloading infos...")
                     progress_widget = preparing_cb(
                         message="Downloading infos", total=resp["total"], unit="it"
                     )
@@ -463,6 +467,7 @@ class SessionJSON:
                         resp = self._get_preparing_progress()
 
                 if resp.get("status") == "download_project":
+                    logger.info("Downloading project...")
                     progress_widget = preparing_cb(message="Download project", total=resp["total"])
                     while resp.get("status") == "download_project":
                         current = resp["current"]
@@ -471,6 +476,7 @@ class SessionJSON:
                         resp = self._get_preparing_progress()
 
                 if resp.get("status") == "warmup":
+                    logger.info("Running warmup...")
                     progress_widget = preparing_cb(message="Running warmup", total=resp["total"])
                     while resp.get("status") == "warmup":
                         current = resp["current"]
