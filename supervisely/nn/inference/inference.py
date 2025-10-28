@@ -2325,10 +2325,6 @@ class Inference:
         direction = 1 if direction == "forward" else -1
         track_id = get_value_for_keys(state, ["trackId", "track_id"], ignore_none=True)
 
-        # TODO: 1. device default auto - same as model
-        # TODO: 2. fps remove from user defined, get from video
-        # TODO: 3. self._tracker -> inference_request.tracker
-
         if frames_count is not None:
             n_frames = frames_count
         elif end_frame_index is not None:
@@ -2339,9 +2335,7 @@ class Inference:
         else:
             n_frames = video_info.frames_count
 
-        self._tracker = self._tracker_init(
-            state.get("tracker", "botsort"), state.get("tracker_settings", {})
-        )
+        inference_request.tracker = self._tracker_init(state.get("tracker", None), state.get("tracker_settings", {}))
 
         logger.debug(
             f"Video info:",
@@ -2432,8 +2426,8 @@ class Inference:
                     settings=inference_settings,
                 )
 
-                if self._tracker is not None:
-                    anns = self._apply_tracker_to_anns(frames, anns)
+                if inference_request.tracker is not None:
+                    anns = self._apply_tracker_to_anns(frames, anns, inference_request.tracker)
 
                 predictions = [
                     Prediction(
@@ -2500,9 +2494,7 @@ class Inference:
         else:
             n_frames = video_info.frames_count
 
-        self._tracker = self._tracker_init(
-            state.get("tracker", "botsort"), state.get("tracker_settings", {})
-        )
+        inference_request.tracker = self._tracker_init(state.get("tracker", None), state.get("tracker_settings", {}))
 
         logger.debug(
             f"Video info:",
@@ -2593,8 +2585,8 @@ class Inference:
                     settings=inference_settings,
                 )
 
-                if self._tracker is not None:
-                    anns = self._apply_tracker_to_anns(frames, anns)
+                if inference_request.tracker is not None:
+                    anns = self._apply_tracker_to_anns(frames, anns, inference_request.tracker)
 
                 predictions = [
                     Prediction(
@@ -2611,7 +2603,7 @@ class Inference:
                     pred.extra_data["slides_data"] = this_slides_data
                 uploader.put(predictions)
         video_ann_json = None
-        if self._tracker is not None:
+        if inference_request.tracker is not None:
             inference_request.set_stage("Postprocess...", 0, 1)
             video_ann_json = self._tracker.video_annotation.to_json()
             inference_request.done()
@@ -3761,6 +3753,10 @@ class Inference:
         @server.post("/tracking_by_detection")
         def tracking_by_detection(response: Response, request: Request):
             state = request.state.state
+            context = request.state.context
+            context.setdefault("tracker", "botsort")
+            state.update(context)
+
             logger.debug("Received a request to 'tracking_by_detection'", extra={"state": state})
             self.validate_inference_state(state)
             api = self.api_from_request(request)
