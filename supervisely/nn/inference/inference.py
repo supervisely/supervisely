@@ -1408,41 +1408,6 @@ class Inference:
         }
 
     # pylint: enable=method-hidden
-    
-    def get_tracking_settings(self) -> Dict[str, Dict[str, Any]]:
-        """
-        Get default parameters for all available tracking algorithms.
-        
-        Returns:
-            {"botsort": {"track_high_thresh": 0.6, ...}}
-            Empty dict if tracking not supported.
-        """
-        info = self.get_info()
-        trackers_params = {}
-        
-        tracking_support = info.get("tracking_on_videos_support")
-        if not tracking_support:
-            return trackers_params
-        
-        tracking_algorithms = info.get("tracking_algorithms", [])
-        
-        for tracker_name in tracking_algorithms:
-            try:
-                if tracker_name == "botsort":
-                    from supervisely.nn.tracker import BotSortTracker
-                    trackers_params[tracker_name] = BotSortTracker.get_default_params()
-                # Add other trackers here as elif blocks
-                else:
-                    logger.debug(f"Tracker '{tracker_name}' not implemented")
-            except Exception as e:
-                logger.warning(f"Failed to get params for '{tracker_name}': {e}")
-                
-        INTERNAL_FIELDS = {"device", "fps"}
-        for tracker_name, params in trackers_params.items():
-            trackers_params[tracker_name] = {
-                k: v for k, v in params.items() if k not in INTERNAL_FIELDS
-                }
-        return trackers_params
 
     def get_tracking_settings(self) -> Dict[str, Dict[str, Any]]:
         """
