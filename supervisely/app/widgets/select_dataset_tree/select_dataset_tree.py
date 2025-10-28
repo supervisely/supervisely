@@ -7,7 +7,6 @@ from supervisely.app.widgets.checkbox.checkbox import Checkbox
 from supervisely.app.widgets.container.container import Container
 from supervisely.app.widgets.field.field import Field
 from supervisely.app.widgets.select.select import Select
-from supervisely.app.widgets.select_project.select_project import SelectProject
 from supervisely.app.widgets.tree_select.tree_select import TreeSelect
 from supervisely.project.project_type import ProjectType
 
@@ -120,11 +119,14 @@ class SelectDatasetTree(Widget):
         if self._project_id:
             project_info = self._api.project.get_info_by_id(self._project_id)
             if allowed_project_types is not None:
-                allowed_values = None
-                if isinstance(allowed_project_types[0], ProjectType):
-                    allowed_values = [str(pt) for pt in allowed_project_types]
-                elif isinstance(allowed_project_types[0], str):
-                    allowed_values = allowed_project_types
+                allowed_values = []
+                if not isinstance(allowed_project_types, list):
+                    allowed_project_types = [allowed_project_types]
+
+                for pt in allowed_project_types:
+                    if isinstance(pt, (ProjectType, str)):
+                        allowed_values.append(str(pt))
+
                 if project_info.type not in allowed_values:
                     self._project_id = None
 
