@@ -2224,6 +2224,8 @@ class Inference:
             n_frames = video_info.frames_count
 
         inference_request.tracker = self._tracker_init(state.get("tracker", None), state.get("tracker_settings", {}))
+        logger.debug("tracker check")
+        print(inference_request.tracker)
 
         logger.debug(
             f"Video info:",
