@@ -3205,6 +3205,7 @@ class Inference:
             print(context)
             state = request.state.state
             if context is not None and context.get('trackByDetection') == True:
+                context.setdefault("tracker", "botsort")
                 logger.debug('state before update')
                 print(state)
                 state.update(context)
