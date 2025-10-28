@@ -726,7 +726,7 @@ class DeployModel(Widget):
         self._model_info_container.hide()
 
     def set_model_info(self, session_id):
-        self._model_info_widget.set_model_info(session_id)
+        self._model_info_widget.set_session_id(session_id)
 
         self._model_info_message.hide()
         self._model_info_widget_field.show()

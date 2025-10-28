@@ -67,6 +67,7 @@ from supervisely.decorators.inference import (
     process_images_batch_sliding_window,
 )
 from supervisely.geometry.any_geometry import AnyGeometry
+from supervisely.geometry.geometry import Geometry
 from supervisely.imaging.color import get_predefined_colors
 from supervisely.io.fs import list_files
 from supervisely.nn.experiments import ExperimentInfo
@@ -94,6 +95,13 @@ from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress
 from supervisely.video.video import ALLOWED_VIDEO_EXTENSIONS, VideoFrameReader
+from supervisely.video_annotation.frame import Frame
+from supervisely.video_annotation.frame_collection import FrameCollection
+from supervisely.video_annotation.video_annotation import VideoAnnotation
+from supervisely.video_annotation.video_figure import VideoFigure
+from supervisely.video_annotation.video_object import VideoObject
+from supervisely.video_annotation.video_object_collection import VideoObjectCollection
+from supervisely.video_annotation.video_tag_collection import VideoTagCollection
 
 try:
     from typing import Literal
@@ -140,6 +148,7 @@ class Inference:
     """Default batch size for inference"""
     INFERENCE_SETTINGS: str = None
     """Path to file with custom inference settings"""
+    DEFAULT_IOU_MERGE_THRESHOLD: float = 0.9
 
     def __init__(
         self,
@@ -426,7 +435,7 @@ class Inference:
 
                 device = "cuda" if torch.cuda.is_available() else "cpu"
             except Exception as e:
-                logger.warn(
+                logger.warning(
                     f"Device auto detection failed, set to default 'cpu', reason: {repr(e)}"
                 )
                 device = "cpu"
@@ -1374,15 +1383,15 @@ class Inference:
             if classes is not None:
                 num_classes = len(classes)
         except NotImplementedError:
-            logger.warn(f"get_classes() function not implemented for {type(self)} object.")
+            logger.warning(f"get_classes() function not implemented for {type(self)} object.")
         except AttributeError:
-            logger.warn("Probably, get_classes() function not working without model deploy.")
+            logger.warning("Probably, get_classes() function not working without model deploy.")
         except Exception as exc:
-            logger.warn("Unknown exception. Please, contact support")
+            logger.warning("Unknown exception. Please, contact support")
             logger.exception(exc)
 
         if num_classes is None:
-            logger.warn(f"get_classes() function return {classes}; skip classes processing.")
+            logger.warning(f"get_classes() function return {classes}; skip classes processing.")
 
         return {
             "app_name": get_name_from_env(default="Neural Network Serving"),
@@ -1428,6 +1437,41 @@ class Inference:
             except Exception as e:
                 logger.warning(f"Failed to get params for '{tracker_name}': {e}")
                 
+        INTERNAL_FIELDS = {"device", "fps"}
+        for tracker_name, params in trackers_params.items():
+            trackers_params[tracker_name] = {
+                k: v for k, v in params.items() if k not in INTERNAL_FIELDS
+                }
+        return trackers_params
+
+    def get_tracking_settings(self) -> Dict[str, Dict[str, Any]]:
+        """
+        Get default parameters for all available tracking algorithms.
+        
+        Returns:
+            {"botsort": {"track_high_thresh": 0.6, ...}}
+            Empty dict if tracking not supported.
+        """
+        info = self.get_info()
+        trackers_params = {}
+
+        tracking_support = info.get("tracking_on_videos_support")
+        if not tracking_support:
+            return trackers_params
+
+        tracking_algorithms = info.get("tracking_algorithms", [])
+
+        for tracker_name in tracking_algorithms:
+            try:
+                if tracker_name == "botsort":
+                    from supervisely.nn.tracker import BotSortTracker
+                    trackers_params[tracker_name] = BotSortTracker.get_default_params()
+                # Add other trackers here as elif blocks
+                else:
+                    logger.debug(f"Tracker '{tracker_name}' not implemented")
+            except Exception as e:
+                logger.warning(f"Failed to get params for '{tracker_name}': {e}")
+
         INTERNAL_FIELDS = {"device", "fps"}
         for tracker_name, params in trackers_params.items():
             trackers_params[tracker_name] = {
@@ -2062,7 +2106,7 @@ class Inference:
         upload_mode = state.get("upload_mode", None)
         iou_merge_threshold = inference_settings.get("existing_objects_iou_thresh", None)
         if upload_mode == "iou_merge" and iou_merge_threshold is None:
-            iou_merge_threshold = 0.7
+            iou_merge_threshold = self.DEFAULT_IOU_MERGE_THRESHOLD  # TODO: change to 0.9
 
         images_infos = api.image.get_info_by_id_batch(image_ids)
         images_infos_dict = {im_info.id: im_info for im_info in images_infos}
@@ -2301,7 +2345,7 @@ class Inference:
         upload_mode = state.get("upload_mode", None)
         iou_merge_threshold = inference_settings.get("existing_objects_iou_thresh", None)
         if upload_mode == "iou_merge" and iou_merge_threshold is None:
-            iou_merge_threshold = 0.7
+            iou_merge_threshold = self.DEFAULT_IOU_MERGE_THRESHOLD
         cache_project_on_model = state.get("cache_project_on_model", False)
 
         project_info = api.project.get_info_by_id(project_id)
@@ -4335,6 +4379,142 @@ class Inference:
     def export_tensorrt(self, deploy_params: dict):
         raise NotImplementedError("Have to be implemented in child class after inheritance")
 
+
+def _filter_duplicated_predictions_from_ann_cpu(
+    gt_ann: Annotation, pred_ann: Annotation, iou_threshold: float
+):
+    """
+    Filter out predicted labels whose bboxes have IoU > iou_threshold with any GT label.
+    Uses Shapely for geometric operations.
+
+    Args:
+        pred_ann: Predicted annotation object
+        gt_ann: Ground truth annotation object
+        iou_threshold: IoU threshold for filtering
+
+    Returns:
+        New annotation with filtered labels
+    """
+    if not iou_threshold:
+        return pred_ann
+
+    from shapely.geometry import box
+
+    def calculate_iou(geom1: Geometry, geom2: Geometry):
+        """Calculate IoU between two geometries using Shapely."""
+        bbox1 = geom1.to_bbox()
+        bbox2 = geom2.to_bbox()
+
+        box1 = box(bbox1.left, bbox1.top, bbox1.right, bbox1.bottom)
+        box2 = box(bbox2.left, bbox2.top, bbox2.right, bbox2.bottom)
+
+        intersection = box1.intersection(box2).area
+        union = box1.union(box2).area
+
+        return intersection / union if union > 0 else 0.0
+
+    new_labels = []
+    pred_cls_bboxes = defaultdict(list)
+    for label in pred_ann.labels:
+        name_shape = (label.obj_class.name, label.geometry.name())
+        pred_cls_bboxes[name_shape].append(label)
+
+    gt_cls_bboxes = defaultdict(list)
+    for label in gt_ann.labels:
+        name_shape = (label.obj_class.name, label.geometry.name())
+        if name_shape not in pred_cls_bboxes:
+            continue
+        gt_cls_bboxes[name_shape].append(label)
+
+    for name_shape, pred in pred_cls_bboxes.items():
+        gt = gt_cls_bboxes[name_shape]
+        if len(gt) == 0:
+            new_labels.extend(pred)
+            continue
+
+        for pred_label in pred:
+            # Check if this prediction has IoU < threshold with ALL GT boxes
+            keep = True
+            for gt_label in gt:
+                iou = calculate_iou(pred_label.geometry, gt_label.geometry)
+                if iou >= iou_threshold:
+                    keep = False
+                    break
+
+            if keep:
+                new_labels.append(pred_label)
+
+    return pred_ann.clone(labels=new_labels)
+
+def _filter_duplicated_predictions_from_ann(
+    gt_ann: Annotation, pred_ann: Annotation, iou_threshold: float
+) -> Annotation:
+    """
+    Filter out predictions that significantly overlap with ground truth annotations.
+
+    This function compares each prediction with ground truth annotations of the same class
+    and removes predictions that have an IoU (Intersection over Union) greater than or equal
+    to the specified threshold with any ground truth annotation. This is useful for identifying
+    new objects that aren't already annotated in the ground truth.
+
+    :param gt_ann: Annotation object containing ground truth labels
+    :type gt_ann: Annotation
+    :param pred_ann: Annotation object containing prediction labels to be filtered
+    :type pred_ann: Annotation
+    :param iou_threshold:   IoU threshold (0.0-1.0). Predictions with IoU >= threshold with any
+                            ground truth box of the same class will be removed
+    :type iou_threshold: float
+    :return: A new annotation object containing only predictions that don't significantly
+                overlap with ground truth annotations
+    :rtype: Annotation
+
+
+    Notes:
+    ------
+    - Predictions with classes not present in ground truth will be kept
+    - Requires PyTorch and torchvision for IoU calculations
+    """
+    if not iou_threshold:
+        return pred_ann
+
+    try:
+        import torch
+        from torchvision.ops import box_iou
+
+    except ImportError:
+        return _filter_duplicated_predictions_from_ann_cpu(gt_ann, pred_ann, iou_threshold)
+
+    def _to_tensor(geom):
+        return torch.tensor([geom.left, geom.top, geom.right, geom.bottom]).float()
+
+    new_labels = []
+    pred_cls_bboxes = defaultdict(list)
+    for label in pred_ann.labels:
+        name_shape = (label.obj_class.name, label.geometry.name())
+        pred_cls_bboxes[name_shape].append(label)
+
+    gt_cls_bboxes = defaultdict(list)
+    for label in gt_ann.labels:
+        name_shape = (label.obj_class.name, label.geometry.name())
+        if name_shape not in pred_cls_bboxes:
+            continue
+        gt_cls_bboxes[name_shape].append(label)
+
+    for name_shape, pred in pred_cls_bboxes.items():
+        gt = gt_cls_bboxes[name_shape]
+        if len(gt) == 0:
+            new_labels.extend(pred)
+            continue
+        pred_bboxes = torch.stack([_to_tensor(l.geometry.to_bbox()) for l in pred]).float()
+        gt_bboxes = torch.stack([_to_tensor(l.geometry.to_bbox()) for l in gt]).float()
+        iou_matrix = box_iou(pred_bboxes, gt_bboxes)
+        iou_matrix = iou_matrix.cpu().numpy()
+        keep_indices = np.where(np.all(iou_matrix < iou_threshold, axis=1))[0]
+        new_labels.extend([pred[i] for i in keep_indices])
+
+    return pred_ann.clone(labels=new_labels)
+
+
 def _exclude_duplicated_predictions(
     api: Api,
     pred_anns: List[Annotation],
@@ -4390,71 +4570,6 @@ def _exclude_duplicated_predictions(
                 f"{[i]}: applied NMS with IoU={iou}. Before: {before}, After: {after}. Time: {timer.get_time():.3f}ms"
             )
     return pred_anns
-
-
-def _filter_duplicated_predictions_from_ann(
-    gt_ann: Annotation, pred_ann: Annotation, iou_threshold: float
-) -> Annotation:
-    """
-    Filter out predictions that significantly overlap with ground truth annotations.
-
-    This function compares each prediction with ground truth annotations of the same class
-    and removes predictions that have an IoU (Intersection over Union) greater than or equal
-    to the specified threshold with any ground truth annotation. This is useful for identifying
-    new objects that aren't already annotated in the ground truth.
-
-    :param gt_ann: Annotation object containing ground truth labels
-    :type gt_ann: Annotation
-    :param pred_ann: Annotation object containing prediction labels to be filtered
-    :type pred_ann: Annotation
-    :param iou_threshold:   IoU threshold (0.0-1.0). Predictions with IoU >= threshold with any
-                            ground truth box of the same class will be removed
-    :type iou_threshold: float
-    :return: A new annotation object containing only predictions that don't significantly
-                overlap with ground truth annotations
-    :rtype: Annotation
-
-
-    Notes:
-    ------
-    - Predictions with classes not present in ground truth will be kept
-    - Requires PyTorch and torchvision for IoU calculations
-    """
-
-    try:
-        import torch
-        from torchvision.ops import box_iou
-
-    except ImportError:
-        raise ImportError("Please install PyTorch and torchvision to use this feature.")
-
-    def _to_tensor(geom):
-        return torch.tensor([geom.left, geom.top, geom.right, geom.bottom]).float()
-
-    new_labels = []
-    pred_cls_bboxes = defaultdict(list)
-    for label in pred_ann.labels:
-        pred_cls_bboxes[label.obj_class.name].append(label)
-
-    gt_cls_bboxes = defaultdict(list)
-    for label in gt_ann.labels:
-        if label.obj_class.name not in pred_cls_bboxes:
-            continue
-        gt_cls_bboxes[label.obj_class.name].append(label)
-
-    for name, pred in pred_cls_bboxes.items():
-        gt = gt_cls_bboxes[name]
-        if len(gt) == 0:
-            new_labels.extend(pred)
-            continue
-        pred_bboxes = torch.stack([_to_tensor(l.geometry.to_bbox()) for l in pred]).float()
-        gt_bboxes = torch.stack([_to_tensor(l.geometry.to_bbox()) for l in gt]).float()
-        iou_matrix = box_iou(pred_bboxes, gt_bboxes)
-        iou_matrix = iou_matrix.cpu().numpy()
-        keep_indices = np.where(np.all(iou_matrix < iou_threshold, axis=1))[0]
-        new_labels.extend([pred[i] for i in keep_indices])
-
-    return pred_ann.clone(labels=new_labels)
 
 
 def _get_log_extra_for_inference_request(
@@ -4564,7 +4679,7 @@ def get_gpu_count():
         gpu_count = len(re.findall(r"GPU \d+:", nvidia_smi_output))
         return gpu_count
     except (subprocess.CalledProcessError, FileNotFoundError) as exc:
-        logger.warn("Calling nvidia-smi caused a error: {exc}. Assume there is no any GPU.")
+        logger.warning("Calling nvidia-smi caused a error: {exc}. Assume there is no any GPU.")
         return 0
 
 
@@ -4744,7 +4859,180 @@ def update_meta_and_ann(meta: ProjectMeta, ann: Annotation, model_prediction_suf
                 img_tags = None
             if not any_label_updated:
                 labels = None
-            ann = ann.clone(img_tags=TagCollection(img_tags))
+            ann = ann.clone(img_tags=img_tags)
+    return meta, ann, meta_changed
+
+
+def update_meta_and_ann_for_video_annotation(
+    meta: ProjectMeta, ann: VideoAnnotation, model_prediction_suffix: str = None
+):
+    """Update project meta and annotation to match each other
+    If obj class or tag meta from annotation conflicts with project meta
+    add suffix to obj class or tag meta.
+    Return tuple of updated project meta, annotation and boolean flag if meta was changed.
+    """
+    obj_classes_suffixes = ["_nn"]
+    tag_meta_suffixes = ["_nn"]
+    if model_prediction_suffix is not None:
+        obj_classes_suffixes = [model_prediction_suffix]
+        tag_meta_suffixes = [model_prediction_suffix]
+        logger.debug(
+            f"Using custom suffixes for obj classes and tag metas: {obj_classes_suffixes}, {tag_meta_suffixes}"
+        )
+    logger.debug("source meta", extra={"meta": meta.to_json()})
+    meta_changed = False
+
+    # meta, ann, replaced_classes_in_meta, replaced_classes_in_ann = _fix_classes_names(meta, ann)
+    # if replaced_classes_in_meta:
+    #     meta_changed = True
+    #     logger.warning(
+    #         "Some classes names were fixed in project meta",
+    #         extra={"replaced_classes": {old: new for old, new in replaced_classes_in_meta}},
+    #     )
+
+    new_objects: List[VideoObject] = []
+    new_figures: List[VideoFigure] = []
+    any_object_updated = False
+    for video_object in ann.objects:
+        this_object_figures = [
+            figure for figure in ann.figures if figure.video_object.key() == video_object.key()
+        ]
+        this_object_changed = False
+        original_obj_class_name = video_object.obj_class.name
+        suffix_found = False
+        for suffix in ["", *obj_classes_suffixes]:
+            obj_class = video_object.obj_class
+            obj_class_name = obj_class.name + suffix
+            if suffix:
+                obj_class = obj_class.clone(name=obj_class_name)
+                video_object = video_object.clone(obj_class=obj_class)
+                any_object_updated = True
+                this_object_changed = True
+            meta_obj_class = meta.get_obj_class(obj_class_name)
+            if meta_obj_class is None:
+                # obj class is not in meta, add it with suffix
+                meta = meta.add_obj_class(obj_class)
+                new_objects.append(video_object)
+                meta_changed = True
+                suffix_found = True
+                break
+            elif (
+                meta_obj_class.geometry_type.geometry_name()
+                == video_object.obj_class.geometry_type.geometry_name()
+            ):
+                # if object geometry is the same as in meta, use meta obj class
+                video_object = video_object.clone(obj_class=meta_obj_class)
+                new_objects.append(video_object)
+                suffix_found = True
+                any_object_updated = True
+                this_object_changed = True
+                break
+            elif meta_obj_class.geometry_type.geometry_name() == AnyGeometry.geometry_name():
+                # if meta obj class is AnyGeometry, use it in object
+                video_object = video_object.clone(obj_class=meta_obj_class)
+                new_objects.append(video_object)
+                suffix_found = True
+                any_object_updated = True
+                this_object_changed = True
+                break
+        if not suffix_found:
+            # if no suffix found, raise error
+            raise ValueError(
+                f"Can't add obj class {original_obj_class_name} to project meta. "
+                "Tried with suffixes: " + ", ".join(obj_classes_suffixes) + ". "
+                "Please check if model geometry type is compatible with existing obj classes."
+            )
+        elif this_object_changed:
+            this_object_figures = [
+                figure.clone(video_object=video_object) for figure in this_object_figures
+            ]
+        new_figures.extend(this_object_figures)
+    if any_object_updated:
+        frames_figures = {}
+        for figure in new_figures:
+            frames_figures.setdefault(figure.frame_index, []).append(figure)
+        new_frames = FrameCollection(
+            [
+                Frame(index=frame_index, figures=figures)
+                for frame_index, figures in frames_figures.items()
+            ]
+        )
+        ann = ann.clone(objects=new_objects, frames=new_frames)
+
+    # check if tag metas are in project meta
+    # if not, add them with suffix
+    ann_tag_metas: Dict[str, TagMeta] = {}
+    for video_object in ann.objects:
+        for tag in video_object.tags:
+            tag_name = tag.meta.name
+            if tag_name not in ann_tag_metas:
+                ann_tag_metas[tag_name] = tag.meta
+    for tag in ann.tags:
+        tag_name = tag.meta.name
+        if tag_name not in ann_tag_metas:
+            ann_tag_metas[tag_name] = tag.meta
+
+    changed_tag_metas = {}
+    for ann_tag_meta in ann_tag_metas.values():
+        meta_tag_meta = meta.get_tag_meta(ann_tag_meta.name)
+        if meta_tag_meta is None:
+            meta = meta.add_tag_meta(ann_tag_meta)
+            meta_changed = True
+        elif not meta_tag_meta.is_compatible(ann_tag_meta):
+            suffix_found = False
+            for suffix in tag_meta_suffixes:
+                new_tag_meta_name = ann_tag_meta.name + suffix
+                meta_tag_meta = meta.get_tag_meta(new_tag_meta_name)
+                if meta_tag_meta is None:
+                    new_tag_meta = ann_tag_meta.clone(name=new_tag_meta_name)
+                    meta = meta.add_tag_meta(new_tag_meta)
+                    changed_tag_metas[ann_tag_meta.name] = new_tag_meta
+                    meta_changed = True
+                    suffix_found = True
+                    break
+                if meta_tag_meta.is_compatible(ann_tag_meta):
+                    changed_tag_metas[ann_tag_meta.name] = meta_tag_meta
+                    suffix_found = True
+                    break
+            if not suffix_found:
+                raise ValueError(f"Can't add tag meta {ann_tag_meta.name} to project meta")
+
+    if changed_tag_metas:
+        objects = []
+        any_object_updated = False
+        for video_object in ann.objects:
+            any_tag_updated = False
+            object_tags = []
+            for tag in video_object.tags:
+                if tag.meta.name in changed_tag_metas:
+                    object_tags.append(tag.clone(meta=changed_tag_metas[tag.meta.name]))
+                    any_tag_updated = True
+                else:
+                    object_tags.append(tag)
+            if any_tag_updated:
+                video_object = video_object.clone(tags=TagCollection(object_tags))
+                any_object_updated = True
+            objects.append(video_object)
+
+        video_tags = []
+        any_tag_updated = False
+        for tag in ann.tags:
+            if tag.meta.name in changed_tag_metas:
+                video_tags.append(tag.clone(meta=changed_tag_metas[tag.meta.name]))
+                any_tag_updated = True
+            else:
+                video_tags.append(tag)
+        if any_tag_updated or any_object_updated:
+            if any_tag_updated:
+                video_tags = VideoTagCollection(video_tags)
+            else:
+                video_tags = None
+            if any_object_updated:
+                objects = VideoObjectCollection(objects)
+            else:
+                objects = None
+            ann = ann.clone(tags=video_tags, objects=objects)
+
     return meta, ann, meta_changed
 
 

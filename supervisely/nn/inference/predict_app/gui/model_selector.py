@@ -48,7 +48,6 @@ class ModelSelector:
             content=self.container,
             lock_message=self.lock_message,
         )
-        self.card.lock()
         # ----------------------------------- #
 
     @property

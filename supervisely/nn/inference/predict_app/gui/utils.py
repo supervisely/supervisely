@@ -7,8 +7,16 @@ from supervisely.api.image_api import ImageInfo
 from supervisely.api.project_api import ProjectInfo
 from supervisely.app import DataJson
 from supervisely.app.widgets import Button, Card, Progress, Stepper, Text, Widget
+from supervisely.nn.model.prediction import Prediction
 from supervisely.project.project import ProjectType
+from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.video_project import VideoInfo
+from supervisely.video_annotation.frame import Frame
+from supervisely.video_annotation.frame_collection import FrameCollection
+from supervisely.video_annotation.video_annotation import VideoAnnotation
+from supervisely.video_annotation.video_figure import VideoFigure
+from supervisely.video_annotation.video_object import VideoObject
+from supervisely.video_annotation.video_object_collection import VideoObjectCollection
 
 button_clicked = {}
 
@@ -83,7 +91,7 @@ def wrap_button_click(
     bid = button.widget_id
     button_clicked[bid] = False
 
-    def button_click(button_clicked_value: Optional[bool] = None):
+    def button_click(button_clicked_value: Optional[bool] = None, suppress_actions: bool = False):
         if button_clicked_value is None or button_clicked_value is False:
             if validation_func is not None:
                 success = validation_func()
@@ -97,12 +105,12 @@ def wrap_button_click(
 
         if button_clicked[bid] and upd_params:
             update_custom_button_params(button, reselect_params)
-            if on_select_click is not None:
+            if not suppress_actions and on_select_click is not None:
                 for func in on_select_click:
                     func()
         else:
             update_custom_button_params(button, select_params)
-            if on_reselect_click is not None:
+            if not suppress_actions and on_reselect_click is not None:
                 for func in on_reselect_click:
                     func()
             validation_text.hide()
@@ -117,7 +125,7 @@ def wrap_button_click(
             disable=button_clicked[bid],
         )
         if callback is not None and not button_clicked[bid]:
-            callback(False)
+            callback(False, True)
 
         if collapse_card is not None:
             card, collapse = collapse_card
@@ -162,24 +170,36 @@ def _copy_items_to_dataset(
     dst_dataset: DatasetInfo,
     project_type: str,
     with_annotations: bool = True,
+    progress_cb: Callable = None,
     progress: Progress = None,
     items_infos: List[Union[ImageInfo, VideoInfo]] = None,
 ) -> Union[List[ImageInfo], List[VideoInfo]]:
     if progress is None:
         progress = Progress()
+
+    def combined_progress(n):
+        progress_cb(n)
+        pbar.update(n)
+
     if project_type == ProjectType.IMAGES:
         if items_infos is None:
             items_infos = api.image.get_list(src_dataset_id)
         with progress(
             message=f"Copying items from dataset: {dst_dataset.name}", total=len(items_infos)
         ) as pbar:
+
+            if progress_cb:
+                _progress_cb = combined_progress
+            else:
+                _progress_cb = pbar.update
+
             progress.show()
             copied = api.image.copy_batch_optimized(
                 src_dataset_id=src_dataset_id,
                 src_image_infos=items_infos,
                 dst_dataset_id=dst_dataset.id,
                 with_annotations=with_annotations,
-                progress_cb=pbar.update,
+                progress_cb=_progress_cb,
             )
             progress.hide()
     elif project_type == ProjectType.VIDEOS:
@@ -189,12 +209,16 @@ def _copy_items_to_dataset(
         with progress(
             message=f"Copying items from dataset: {dst_dataset.name}", total=len(items_infos)
         ) as pbar:
+            if progress_cb:
+                _progress_cb = combined_progress
+            else:
+                _progress_cb = pbar.update
             progress.show()
             copied = api.video.copy_batch(
                 dst_dataset_id=dst_dataset.id,
                 ids=[info.id for info in items_infos],
                 with_annotations=with_annotations,
-                progress_cb=pbar.update,
+                progress_cb=_progress_cb,
             )
             progress.hide()
     else:
@@ -220,7 +244,8 @@ def copy_items_to_project(
     items: Union[List[ImageInfo], List[VideoInfo]],
     dst_project_id: int,
     with_annotations: bool = True,
-    progress: Progress = None,
+    progress_cb: Progress = None,
+    ds_progress: Progress = None,
     project_type: str = None,
     src_datasets_tree: Dict[DatasetInfo, Dict] = None,
 ) -> Union[List[ImageInfo], List[VideoInfo]]:
@@ -274,7 +299,8 @@ def copy_items_to_project(
                 dst_dataset=created_datasets[dataset_id],
                 project_type=project_type,
                 with_annotations=with_annotations,
-                progress=progress,
+                progress_cb=progress_cb,
+                progress=ds_progress,
                 items_infos=items_infos,
             )
             for src_info, dst_info in zip(items_infos, copied_ds_items):
@@ -339,7 +365,35 @@ def copy_project(
         items=items,
         dst_project_id=dst_project.id,
         with_annotations=with_annotations,
-        progress=progress,
+        ds_progress=progress,
         project_type=dst_project.type,
     )
     return dst_project
+
+
+def video_annotation_from_predictions(
+    predictions: List[Prediction], project_meta: ProjectMeta, frame_size: Tuple[int, int]
+) -> VideoAnnotation:
+    objects = {}
+    frames = []
+    for i, prediction in enumerate(predictions):
+        figures = []
+        for label in prediction.annotation.labels:
+            obj_name = label.obj_class.name
+            if not obj_name in objects:
+                obj_class = project_meta.get_obj_class(obj_name)
+                if obj_class is None:
+                    continue
+                objects[obj_name] = VideoObject(obj_class)
+
+            vid_object = objects[obj_name]
+            if vid_object:
+                figures.append(VideoFigure(vid_object, label.geometry, frame_index=i))
+        frame = Frame(i, figures=figures)
+        frames.append(frame)
+    return VideoAnnotation(
+        img_size=frame_size,
+        frames_count=len(frames),
+        objects=VideoObjectCollection(list(objects.values())),
+        frames=FrameCollection(frames),
+    )

@@ -1,4 +1,3 @@
-import os
 from typing import Dict, List, Optional
 
 from fastapi import BackgroundTasks, Request
@@ -29,7 +28,8 @@ class PredictApp:
         @self.gui.output_selector.start_button.click
         def start_prediction():
             if self.gui.output_selector.validate_step():
-                disable_enable(self.gui.output_selector.widgets_to_disable, True)
+                widgets_to_disable = self.gui.output_selector.widgets_to_disable + [self.gui.settings_selector.preview.run_button]
+                disable_enable(widgets_to_disable, True)
                 self.gui.run()
                 self.shutdown_serving_app()
                 self.shutdown_predict_app()

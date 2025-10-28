@@ -85,8 +85,16 @@ class ClassesSelector:
             content=self.container,
             lock_message=self.lock_message,
         )
-        self.card.lock()
         # -------------------------------- #
+
+    def lock(self):
+        self.card.lock()
+        self.classes_table.hide()
+        self.validator_text.hide()
+
+    def unlock(self):
+        self.card.unlock()
+        self.classes_table.show()
 
     @property
     def widgets_to_disable(self) -> list:
