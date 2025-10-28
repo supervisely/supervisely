@@ -3204,8 +3204,12 @@ class Inference:
             logger.debug('context')
             print(context)
             state = request.state.state
-            if context is not None and context.get('tracking') == True:
+            if context is not None and context.get('trackByDetection') == True:
+                logger.debug('state before update')
+                print(state)
                 state.update(context)
+                logger.debug('state after update')
+                print(state)
             logger.debug("Received a request to 'inference_video_id_async'", extra={"state": state})
             self.validate_inference_state(state)
             api = self.api_from_request(request)
