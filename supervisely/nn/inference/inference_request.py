@@ -47,6 +47,8 @@ class InferenceRequest:
         self._final_result = None
         self._exception = None
         self._stopped = threading.Event()
+        self._progress_log_interval = 5.0
+        self._last_progress_report_time = 0
         self.progress = Progress(
             message=self._stage,
             total_cnt=1,
@@ -57,6 +59,8 @@ class InferenceRequest:
         self._created_at = time.monotonic()
         self._updated_at = self._created_at
         self._finished = False
+        
+        self.tracker = None
 
         self.global_progress = None
         self.global_progress_total = 1
@@ -135,9 +139,19 @@ class InferenceRequest:
                 )
             self._updated()
 
+    def set_progress_log_interval(self, interval: float):
+        self._progress_log_interval = interval
+
     def done(self, n=1):
         with self._lock:
-            self.progress.iters_done_report(n)
+            if (
+                self._progress_log_interval is None
+                or time.monotonic() - self._last_progress_report_time > self._progress_log_interval
+            ) or (self.progress.current + n >= self.progress.total):
+                self.progress.iters_done_report(n)
+                self._last_progress_report_time = time.monotonic()
+            else:
+                self.progress.iters_done(n)
             if self._stage == InferenceRequest.Stage.INFERENCE:
                 self.global_progress_current += n
                 if self.manager is not None:
@@ -238,8 +252,7 @@ class InferenceRequest:
             status_data.pop(key, None)
         status_data.update(self.get_usage())
         return status_data
-
-
+    
 class GlobalProgress:
     def __init__(self):
         self.progress = Progress(message="Ready", total_cnt=1)

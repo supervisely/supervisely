@@ -1431,3 +1431,41 @@ class PointcloudApi(RemoveableBulkModuleApi):
             )
             tasks.append(task)
         await asyncio.gather(*tasks)
+
+    def rename(
+        self,
+        id: int,
+        name: str,
+    ) -> PointcloudInfo:
+        """Renames Pointcloud with given ID to a new name.
+
+        :param id: Pointcloud ID in Supervisely.
+        :type id: int
+        :param name: New Pointcloud name.
+        :type name: str
+        :return: Information about updated Pointcloud.
+        :rtype: :class:`PointcloudInfo`
+
+        :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            api = sly.Api.from_env()
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+
+            pointcloud_id = 123456
+            new_pointcloud_name = "3333_new.pcd"
+
+            api.pointcloud.rename(id=pointcloud_id, name=new_pointcloud_name)
+        """
+
+        data = {
+            ApiField.ID: id,
+            ApiField.NAME: name,
+        }
+
+        response = self._api.post("images.editInfo", data)
+        return self._convert_json_info(response.json())

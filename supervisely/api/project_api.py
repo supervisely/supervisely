@@ -47,6 +47,7 @@ from supervisely.api.module_api import (
     RemoveableModuleApi,
     UpdateableModule,
 )
+from supervisely.io.env import upload_count, uploaded_ids
 from supervisely.io.json import dump_json_file, load_json_file
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_meta import ProjectMetaJsonFields as MetaJsonF
@@ -2658,5 +2659,77 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         ):
             infos.append((src_info, dst_info))
 
-
         return infos
+
+    def add_import_history(self, id: int, task_id: int) -> None:
+        """
+        Adds import history to project info. Gets task info and adds it to project custom data.
+
+        :param id: Project ID
+        :type id: int
+        :param task_id: Task ID
+        :type task_id: int
+        :return: None
+        :rtype: :class:`NoneType`
+        :Usage example:
+         .. code-block:: python
+            import os
+            from dotenv import load_dotenv
+
+            import supervisely as sly
+
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            load_dotenv(os.path.expanduser("~/supervisely.env"))
+            api = sly.Api.from_env()
+
+            project_id = 123
+            task_id = 456
+            api.project.add_import_history(project_id, task_id)
+        """
+
+        task_info = self._api.task.get_info_by_id(task_id)
+        module_id = task_info.get("meta", {}).get("app", {}).get("moduleId")
+        slug = None
+        if module_id is not None:
+            module_info = self._api.app.get_ecosystem_module_info(module_id)
+            slug = module_info.slug
+
+        items_count = upload_count()
+        items_count = {int(k): v for k, v in items_count.items()}
+        uploaded_images = uploaded_ids()
+        uploaded_images = {int(k): v for k, v in uploaded_images.items()}
+        total_items = sum(items_count.values()) if len(items_count) > 0 else 0
+        app = task_info.get("meta", {}).get("app")
+        app_name = app.get("name") if app else None
+        app_version = app.get("version") if app else None
+        data = {
+            "task_id": task_id,
+            "app": {"name": app_name, "version": app_version},
+            "slug": slug,
+            "status": task_info.get(ApiField.STATUS),
+            "user_id": task_info.get(ApiField.USER_ID),
+            "team_id": task_info.get(ApiField.TEAM_ID),
+            "timestamp": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
+            "source_state": task_info.get("settings", {}).get("message", {}).get("state"),
+            "items_count": total_items,
+            "datasets": [
+                {
+                    "id": ds,
+                    "items_count": items_count[ds],
+                    "uploaded_images": uploaded_images.get(ds, []),
+                }
+                for ds in items_count.keys()
+            ],
+        }
+
+        project_info = self.get_info_by_id(id)
+
+        custom_data = project_info.custom_data or {}
+        if "import_history" not in custom_data:
+            custom_data["import_history"] = {"tasks": []}
+        if "tasks" not in custom_data["import_history"]:
+            custom_data["import_history"]["tasks"] = []
+        custom_data["import_history"]["tasks"].append(data)
+
+        self.edit_info(id, custom_data=custom_data)

@@ -254,6 +254,7 @@ class TrainGUI:
         self.app_options = app_options
         self.collapsable = self.app_options.get("collapsable", False)
         self.need_convert_shapes = False
+        self._start_training = False
 
         self.team_id = sly_env.team_id(raise_not_found=False)
         self.workspace_id = sly_env.workspace_id(raise_not_found=False)
@@ -844,6 +845,7 @@ class TrainGUI:
                     },
                 },
                 "experiment_name": "My Experiment",
+                "start_training": False,
             }
         """
         if isinstance(app_state, str):
@@ -888,6 +890,8 @@ class TrainGUI:
 
         if validate_steps:
             logger.info(f"All steps have been validated successfully")
+
+        self._start_training = app_state.get("start_training", False)
         # ------------------------------------------------------------------ #
 
     def _init_input(

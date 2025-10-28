@@ -441,46 +441,52 @@ class SessionJSON:
         prev_current = 0
         if preparing_cb:
             # wait for inference status
-            resp = self._get_preparing_progress()
-            awaiting_preparing_progress = 0
-            break_flag = False
-            while resp.get("status") is None:
-                time.sleep(1)
-                awaiting_preparing_progress += 1
-                if awaiting_preparing_progress > 30:
-                    break_flag = True
+            try:
                 resp = self._get_preparing_progress()
-            if break_flag:
-                logger.warning(
-                    "Unable to get preparing progress. Continue without prepaing progress status."
-                )
-            if not break_flag:
-                if resp["status"] == "download_info":
+                for i in range(30):
+                    logger.info(
+                        f"Waiting for preparing progress... {30 - i} seconds left until timeout"
+                    )
+                    resp = self._get_preparing_progress()
+                    if resp.get("status") is not None:
+                        break
+                    time.sleep(1)
+                if not resp.get("status"):
+                    raise RuntimeError("Preparing progress status is not available.")
+
+                if resp.get("status") == "download_info":
+                    logger.info("Downloading infos...")
                     progress_widget = preparing_cb(
                         message="Downloading infos", total=resp["total"], unit="it"
                     )
-                while resp["status"] == "download_info":
-                    current = resp["current"]
-                    # pylint: disable=possibly-used-before-assignment
-                    progress_widget.update(current - prev_current)
-                    prev_current = current
-                    resp = self._get_preparing_progress()
+                    while resp["status"] == "download_info":
+                        current = resp["current"]
+                        # pylint: disable=possibly-used-before-assignment
+                        progress_widget.update(current - prev_current)
+                        prev_current = current
+                        resp = self._get_preparing_progress()
 
-                if resp["status"] == "download_project":
+                if resp.get("status") == "download_project":
+                    logger.info("Downloading project...")
                     progress_widget = preparing_cb(message="Download project", total=resp["total"])
-                while resp["status"] == "download_project":
-                    current = resp["current"]
-                    progress_widget.update(current - prev_current)
-                    prev_current = current
-                    resp = self._get_preparing_progress()
+                    while resp.get("status") == "download_project":
+                        current = resp["current"]
+                        progress_widget.update(current - prev_current)
+                        prev_current = current
+                        resp = self._get_preparing_progress()
 
-                if resp["status"] == "warmup":
+                if resp.get("status") == "warmup":
+                    logger.info("Running warmup...")
                     progress_widget = preparing_cb(message="Running warmup", total=resp["total"])
-                while resp["status"] == "warmup":
-                    current = resp["current"]
-                    progress_widget.update(current - prev_current)
-                    prev_current = current
-                    resp = self._get_preparing_progress()
+                    while resp.get("status") == "warmup":
+                        current = resp["current"]
+                        progress_widget.update(current - prev_current)
+                        prev_current = current
+                        resp = self._get_preparing_progress()
+            except Exception as ex:
+                logger.warning(
+                    f"An error occurred while getting preparing progress: {ex}. Continue without preparing progress status."
+                )
 
         logger.info("Inference has started:", extra={"response": resp})
         resp, has_started = self._wait_for_async_inference_start()
@@ -537,7 +543,7 @@ class SessionJSON:
         t0 = time.time()
         while not has_started and not timeout_exceeded:
             resp = self._get_inference_progress()
-            has_started = bool(resp["result"]) or resp["progress"]["total"] != 1
+            has_started = bool(resp.get("result")) or resp["progress"]["total"] != 1
             if not has_started:
                 time.sleep(delay)
             timeout_exceeded = timeout and time.time() - t0 > timeout

@@ -70,6 +70,11 @@ from supervisely.api.module_api import (
     _get_single_item,
 )
 from supervisely.imaging import image as sly_image
+from supervisely.io.env import (
+    add_uploaded_ids_to_env,
+    app_categories,
+    increment_upload_count,
+)
 from supervisely.io.fs import (
     OFFSETS_PKL_BATCH_SIZE,
     OFFSETS_PKL_SUFFIX,
@@ -392,6 +397,9 @@ class ImageInfo(NamedTuple):
     #: Format: "YYYY-MM-DDTHH:MM:SS.sssZ"
     embeddings_updated_at: Optional[str] = None
 
+    #: :class:`int`: :class:`Dataset<supervisely.project.project.Project>` ID in Supervisely.
+    project_id: int = None
+
     # DO NOT DELETE THIS COMMENT
     #! New fields must be added with default values to keep backward compatibility.
 
@@ -471,6 +479,7 @@ class ImageApi(RemoveableBulkModuleApi):
             ApiField.OFFSET_END,
             ApiField.AI_SEARCH_META,
             ApiField.EMBEDDINGS_UPDATED_AT,
+            ApiField.PROJECT_ID,
         ]
 
     @staticmethod
@@ -2613,6 +2622,16 @@ class ImageApi(RemoveableBulkModuleApi):
                             info_json_copy[ApiField.EXT] = info_json[ApiField.MIME].split("/")[1]
                         # results.append(self.InfoType(*[info_json_copy[field_name] for field_name in self.info_sequence()]))
                         results.append(self._convert_json_info(info_json_copy))
+
+                    try:
+                        if "import" in app_categories():
+                            ids = [info.id for info in results[-len(batch_names) :]]
+                            if len(ids) > 0:
+                                increment_upload_count(dataset_id, len(ids))
+                                add_uploaded_ids_to_env(dataset_id, ids)
+                    except:
+                        pass
+
                     break
                 except HTTPError as e:
                     error_details = e.response.json().get("details", {})
@@ -5508,3 +5527,66 @@ class ImageApi(RemoveableBulkModuleApi):
             method,
             {ApiField.IMAGES: images},
         )
+
+    def get_subsequent_image_ids(
+        self,
+        image_id: int,
+        images_count: Optional[int] = None,
+        job_id: Optional[int] = None,
+        params: Optional[dict] = None,
+        dataset_id: Optional[int] = None,
+        project_id: Optional[int] = None,
+    ) -> List[int]:
+        """
+        Get list of subsequent image IDs after the specified image ID.
+
+        :param image_id: Image ID in Supervisely.
+        :type image_id: int
+        :param images_count: Number of subsequent images to retrieve. If None, retrieves all subsequent images.
+        :type images_count: int, optional
+        :param job_id: Job ID to filter images. If None, does not filter by job ID.
+        :type job_id: int, optional
+        :param params: Additional parameters for filtering and sorting images.
+        :type params: dict, optional
+        :param dataset_id: Dataset ID to filter images.
+        :type dataset_id: int, optional
+        :param project_id: Project ID to filter images. If None, makes a request to retrieve it from the specified image.
+        :type project_id: int, optional
+        """
+        data = {
+            "recursive": True,
+            "projectId": project_id,
+            "filters": [],
+            "sort": "name",
+            "sort_order": "asc",
+        }
+
+        if params is not None:
+            data.update(params)
+
+        if data["projectId"] is None:
+            image_info = self.get_info_by_id(image_id)
+            if image_info is None:
+                raise ValueError(f"Image with ID {image_id} not found.")
+            project_id = self._api.dataset.get_info_by_id(image_info.dataset_id).project_id
+        if job_id is not None:
+            self._api.add_header("x-job-id", str(job_id))
+        if dataset_id is not None:
+            data["datasetId"] = dataset_id
+
+        image_infos = self.get_list_all_pages(
+            "images.list",
+            data,
+            limit=None,
+            return_first_response=False,
+        )
+        self._api.headers.pop("x-job-id", None)
+        image_ids = [img_info.id for img_info in image_infos]
+        if len(image_ids) == 0:
+            raise ValueError("No images found with the specified criteria.")
+        elif image_id not in image_ids:
+            raise ValueError(f"Image with ID {image_id} not found in the specified entity.")
+
+        target_idx = image_ids.index(image_id) + 1
+        to_idx = target_idx + images_count if images_count is not None else len(image_ids)
+        return image_ids[target_idx:to_idx]

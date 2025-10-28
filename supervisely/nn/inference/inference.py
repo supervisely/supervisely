@@ -46,7 +46,7 @@ from supervisely._utils import (
     rand_str,
 )
 from supervisely.annotation.annotation import Annotation
-from supervisely.annotation.label import Label
+from supervisely.annotation.label import Label, LabelingStatus
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.tag_collection import TagCollection
 from supervisely.annotation.tag_meta import TagMeta, TagValueType
@@ -69,6 +69,7 @@ from supervisely.decorators.inference import (
     process_images_batch_sliding_window,
 )
 from supervisely.geometry.any_geometry import AnyGeometry
+from supervisely.geometry.geometry import Geometry
 from supervisely.imaging.color import get_predefined_colors
 from supervisely.io.fs import list_files
 from supervisely.nn.experiments import ExperimentInfo
@@ -96,6 +97,13 @@ from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress
 from supervisely.video.video import ALLOWED_VIDEO_EXTENSIONS, VideoFrameReader
+from supervisely.video_annotation.frame import Frame
+from supervisely.video_annotation.frame_collection import FrameCollection
+from supervisely.video_annotation.video_annotation import VideoAnnotation
+from supervisely.video_annotation.video_figure import VideoFigure
+from supervisely.video_annotation.video_object import VideoObject
+from supervisely.video_annotation.video_object_collection import VideoObjectCollection
+from supervisely.video_annotation.video_tag_collection import VideoTagCollection
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.video_annotation.video_object_collection import (
     VideoObject,
@@ -147,6 +155,7 @@ class Inference:
     """Default batch size for inference"""
     INFERENCE_SETTINGS: str = None
     """Path to file with custom inference settings"""
+    DEFAULT_IOU_MERGE_THRESHOLD: float = 0.9
 
     def __init__(
         self,
@@ -200,7 +209,6 @@ class Inference:
         self._task_id = None
         self._sliding_window_mode = sliding_window_mode
         self._autostart_delay_time = 5 * 60  # 5 min
-        self._tracker = None
         self._hardware: str = None
         if custom_inference_settings is None:
             if self.INFERENCE_SETTINGS is not None:
@@ -434,7 +442,7 @@ class Inference:
 
                 device = "cuda" if torch.cuda.is_available() else "cpu"
             except Exception as e:
-                logger.warn(
+                logger.warning(
                     f"Device auto detection failed, set to default 'cpu', reason: {repr(e)}"
                 )
                 device = "cpu"
@@ -870,6 +878,50 @@ class Inference:
                 self.gui.download_progress.hide()
         return local_model_files
 
+    def _fallback_download_custom_model_pt(self, deploy_params: dict):
+        """
+        Downloads the PyTorch checkpoint from Team Files if TensorRT is failed to load.
+        """
+        team_id = sly_env.team_id()
+
+        checkpoint_name = sly_fs.get_file_name(deploy_params["model_files"]["checkpoint"])
+        artifacts_dir = deploy_params["model_info"]["artifacts_dir"]
+        checkpoints_dir = os.path.join(artifacts_dir, "checkpoints")
+        checkpoint_ext = sly_fs.get_file_ext(deploy_params["model_info"]["checkpoints"][0])
+
+        pt_checkpoint_name = f"{checkpoint_name}{checkpoint_ext}"
+        remote_checkpoint_path = os.path.join(checkpoints_dir, pt_checkpoint_name)
+        local_checkpoint_path = os.path.join(self.model_dir, pt_checkpoint_name)
+
+        file_info = self.api.file.get_info_by_path(team_id, remote_checkpoint_path)
+        file_size = file_info.sizeb
+        if self.gui is not None:
+            with self.gui.download_progress(
+                message=f"Fallback. Downloading PyTorch checkpoint: '{pt_checkpoint_name}'",
+                total=file_size,
+                unit="bytes",
+                unit_scale=True,
+            ) as download_pbar:
+                self.gui.download_progress.show()
+                self.api.file.download(team_id, remote_checkpoint_path, local_checkpoint_path, progress_cb=download_pbar.update)
+                self.gui.download_progress.hide()
+        else:
+            self.api.file.download(team_id, remote_checkpoint_path, local_checkpoint_path)
+
+        return local_checkpoint_path
+
+    def _remove_exported_checkpoints(self, checkpoint_path: str):
+        """
+        Removes the exported checkpoints for provided PyTorch checkpoint path.
+        """
+        checkpoint_ext = sly_fs.get_file_ext(checkpoint_path)
+        onnx_path = checkpoint_path.replace(checkpoint_ext, ".onnx")
+        engine_path = checkpoint_path.replace(checkpoint_ext, ".engine")
+        if os.path.exists(onnx_path):
+            sly_fs.silent_remove(onnx_path)
+        if os.path.exists(engine_path):
+            sly_fs.silent_remove(engine_path)
+
     def _download_custom_model(self, model_files: dict, log_progress: bool = True):
         """
         Downloads the custom model data.
@@ -1067,7 +1119,41 @@ class Inference:
         self.runtime = deploy_params.get("runtime", RuntimeType.PYTORCH)
         self.model_precision = deploy_params.get("model_precision", ModelPrecision.FP32)
         self._hardware = get_hardware_info(self.device)
-        self.load_model(**deploy_params)
+
+        model_files = deploy_params.get("model_files", None)
+        if model_files is not None:
+            checkpoint_path = deploy_params["model_files"]["checkpoint"]
+            checkpoint_ext = sly_fs.get_file_ext(checkpoint_path)
+            if self.runtime == RuntimeType.TENSORRT and checkpoint_ext == ".engine":
+                try:
+                    self.load_model(**deploy_params)
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to load model with TensorRT. Downloading PyTorch to export to TensorRT. Error: {repr(e)}"
+                    )
+                    checkpoint_path = self._fallback_download_custom_model_pt(deploy_params)
+                    deploy_params["model_files"]["checkpoint"] = checkpoint_path
+                    logger.info("Exporting PyTorch model to TensorRT...")
+                    self._remove_exported_checkpoints(checkpoint_path)
+                    checkpoint_path = self.export_tensorrt(deploy_params)
+                    deploy_params["model_files"]["checkpoint"] = checkpoint_path
+                    self.load_model(**deploy_params)
+            if checkpoint_ext in (".pt", ".pth") and not self.runtime == RuntimeType.PYTORCH:
+                if self.runtime == RuntimeType.ONNXRUNTIME:
+                    logger.info("Exporting PyTorch model to ONNX...")
+                    self._remove_exported_checkpoints(checkpoint_path)
+                    checkpoint_path = self.export_onnx(deploy_params)
+                elif self.runtime == RuntimeType.TENSORRT:
+                    logger.info("Exporting PyTorch model to TensorRT...")
+                    self._remove_exported_checkpoints(checkpoint_path)
+                    checkpoint_path = self.export_tensorrt(deploy_params)
+                deploy_params["model_files"]["checkpoint"] = checkpoint_path
+                self.load_model(**deploy_params)
+            else:
+                self.load_model(**deploy_params)
+        else:
+            self.load_model(**deploy_params)
+
         self._model_served = True
         self._deploy_params = deploy_params
         if self._task_id is not None and is_production():
@@ -1304,15 +1390,15 @@ class Inference:
             if classes is not None:
                 num_classes = len(classes)
         except NotImplementedError:
-            logger.warn(f"get_classes() function not implemented for {type(self)} object.")
+            logger.warning(f"get_classes() function not implemented for {type(self)} object.")
         except AttributeError:
-            logger.warn("Probably, get_classes() function not working without model deploy.")
+            logger.warning("Probably, get_classes() function not working without model deploy.")
         except Exception as exc:
-            logger.warn("Unknown exception. Please, contact support")
+            logger.warning("Unknown exception. Please, contact support")
             logger.exception(exc)
 
         if num_classes is None:
-            logger.warn(f"get_classes() function return {classes}; skip classes processing.")
+            logger.warning(f"get_classes() function return {classes}; skip classes processing.")
 
         return {
             "app_name": get_name_from_env(default="Neural Network Serving"),
@@ -1329,6 +1415,41 @@ class Inference:
         }
 
     # pylint: enable=method-hidden
+
+    def get_tracking_settings(self) -> Dict[str, Dict[str, Any]]:
+        """
+        Get default parameters for all available tracking algorithms.
+        
+        Returns:
+            {"botsort": {"track_high_thresh": 0.6, ...}}
+            Empty dict if tracking not supported.
+        """
+        info = self.get_info()
+        trackers_params = {}
+
+        tracking_support = info.get("tracking_on_videos_support")
+        if not tracking_support:
+            return trackers_params
+
+        tracking_algorithms = info.get("tracking_algorithms", [])
+
+        for tracker_name in tracking_algorithms:
+            try:
+                if tracker_name == "botsort":
+                    from supervisely.nn.tracker import BotSortTracker
+                    trackers_params[tracker_name] = BotSortTracker.get_default_params()
+                # Add other trackers here as elif blocks
+                else:
+                    logger.debug(f"Tracker '{tracker_name}' not implemented")
+            except Exception as e:
+                logger.warning(f"Failed to get params for '{tracker_name}': {e}")
+
+        INTERNAL_FIELDS = {"device", "fps"}
+        for tracker_name, params in trackers_params.items():
+            trackers_params[tracker_name] = {
+                k: v for k, v in params.items() if k not in INTERNAL_FIELDS
+                }
+        return trackers_params
 
     def get_human_readable_info(self, replace_none_with: Optional[str] = None):
         hr_info = {}
@@ -1445,8 +1566,12 @@ class Inference:
                 # for example empty mask
                 continue
             if isinstance(label, list):
+                for lb in label:
+                    lb.status = LabelingStatus.AUTO
                 labels.extend(label)
                 continue
+
+            label.status = LabelingStatus.AUTO
             labels.append(label)
 
         # create annotation with correct image resolution
@@ -1877,7 +2002,7 @@ class Inference:
         else:
             n_frames = frames_reader.frames_count()
 
-        self._tracker = self._tracker_init(state.get("tracker", None), state.get("tracker_settings", {}))
+        inference_request.tracker = self._tracker_init(state.get("tracker", None), state.get("tracker_settings", {}))
 
         progress_total = (n_frames + step - 1) // step
         inference_request.set_stage(InferenceRequest.Stage.INFERENCE, 0, progress_total)
@@ -1903,8 +2028,8 @@ class Inference:
                 settings=inference_settings,
             )
 
-            if self._tracker is not None:
-                anns = self._apply_tracker_to_anns(frames, anns)
+            if inference_request.tracker is not None:
+                anns = self._apply_tracker_to_anns(frames, anns, inference_request.tracker)
 
             predictions = [
                 Prediction(ann, model_meta=self.model_meta, frame_index=frame_index)
@@ -1919,10 +2044,9 @@ class Inference:
             inference_request.done(len(batch_results))
             logger.debug(f"Frames {batch[0]}-{batch[-1]} done.")
         video_ann_json = None
-        if self._tracker is not None:
+        if inference_request.tracker is not None:
             inference_request.set_stage("Postprocess...", 0, 1)
-
-            video_ann_json = self._tracker.video_annotation.to_json()
+            video_ann_json = inference_request.tracker.video_annotation.to_json()
             inference_request.done()
         result = {"ann": results, "video_ann": video_ann_json}
         inference_request.final_result = result.copy()
@@ -1954,7 +2078,7 @@ class Inference:
         upload_mode = state.get("upload_mode", None)
         iou_merge_threshold = inference_settings.get("existing_objects_iou_thresh", None)
         if upload_mode == "iou_merge" and iou_merge_threshold is None:
-            iou_merge_threshold = 0.7
+            iou_merge_threshold = self.DEFAULT_IOU_MERGE_THRESHOLD  # TODO: change to 0.9
 
         images_infos = api.image.get_info_by_id_batch(image_ids)
         images_infos_dict = {im_info.id: im_info for im_info in images_infos}
@@ -2076,7 +2200,7 @@ class Inference:
         video_id = get_value_for_keys(state, ["videoId", "video_id"], ignore_none=True)
         if video_id is None:
             raise ValueError("Video id is not provided")
-        video_info = api.video.get_info_by_id(video_id)
+        video_info = api.video.get_info_by_id(video_id, force_metadata_for_links=True)
         start_frame_index = get_value_for_keys(
             state, ["startFrameIndex", "start_frame_index", "start_frame"], ignore_none=True
         )
@@ -2106,7 +2230,7 @@ class Inference:
         else:
             n_frames = video_info.frames_count
 
-        self._tracker = self._tracker_init(state.get("tracker", None), state.get("tracker_settings", {}))
+        inference_request.tracker = self._tracker_init(state.get("tracker", None), state.get("tracker_settings", {}))
 
         logger.debug(
             f"Video info:",
@@ -2143,8 +2267,8 @@ class Inference:
                 settings=inference_settings,
             )
 
-            if self._tracker is not None:
-                anns = self._apply_tracker_to_anns(frames, anns)
+            if inference_request.tracker is not None:
+                anns = self._apply_tracker_to_anns(frames, anns, inference_request.tracker)
 
             predictions = [
                 Prediction(
@@ -2165,9 +2289,170 @@ class Inference:
             inference_request.done(len(batch_results))
             logger.debug(f"Frames {batch[0]}-{batch[-1]} done.")
         video_ann_json = None
+        if inference_request.tracker is not None:
+            inference_request.set_stage("Postprocess...", 0, 1)
+            video_ann_json = inference_request.tracker.video_annotation.to_json()
+            inference_request.done()
+        inference_request.final_result = {"video_ann": video_ann_json}
+        return video_ann_json
+
+    def _tracking_by_detection(self, api: Api, state: dict, inference_request: InferenceRequest):
+        logger.debug("Inferring video_id...", extra={"state": state})
+        inference_settings = self._get_inference_settings(state)
+        logger.debug(f"Inference settings:", extra=inference_settings)
+        batch_size = self._get_batch_size_from_state(state)
+        video_id = get_value_for_keys(state, ["videoId", "video_id"], ignore_none=True)
+        if video_id is None:
+            raise ValueError("Video id is not provided")
+        video_info = api.video.get_info_by_id(video_id)
+        start_frame_index = get_value_for_keys(
+            state, ["startFrameIndex", "start_frame_index", "start_frame"], ignore_none=True
+        )
+        if start_frame_index is None:
+            start_frame_index = 0
+        step = get_value_for_keys(state, ["stride", "step"], ignore_none=True)
+        if step is None:
+            step = 1
+        end_frame_index = get_value_for_keys(
+            state, ["endFrameIndex", "end_frame_index", "end_frame"], ignore_none=True
+        )
+        duration = state.get("duration", None)
+        frames_count = get_value_for_keys(
+            state, ["framesCount", "frames_count", "num_frames"], ignore_none=True
+        )
+        tracking = state.get("tracker", None)
+        direction = state.get("direction", "forward")
+        direction = 1 if direction == "forward" else -1
+        track_id = get_value_for_keys(state, ["trackId", "track_id"], ignore_none=True)
+
+        # TODO: 1. device default auto - same as model
+        # TODO: 2. fps remove from user defined, get from video
+        # TODO: 3. self._tracker -> inference_request.tracker
+
+        if frames_count is not None:
+            n_frames = frames_count
+        elif end_frame_index is not None:
+            n_frames = end_frame_index - start_frame_index
+        elif duration is not None:
+            fps = video_info.frames_count / video_info.duration
+            n_frames = int(duration * fps)
+        else:
+            n_frames = video_info.frames_count
+
+        self._tracker = self._tracker_init(
+            state.get("tracker", "botsort"), state.get("tracker_settings", {})
+        )
+
+        logger.debug(
+            f"Video info:",
+            extra=dict(
+                w=video_info.frame_width,
+                h=video_info.frame_height,
+                start_frame_index=start_frame_index,
+                n_frames=n_frames,
+            ),
+        )
+
+        # start downloading video in background
+        self.cache.run_cache_task_manually(api, None, video_id=video_id)
+
+        progress_total = (n_frames + step - 1) // step
+        inference_request.set_stage(InferenceRequest.Stage.INFERENCE, 0, progress_total)
+
+        _upload_f = partial(
+            self.upload_predictions_to_video,
+            api=api,
+            video_info=video_info,
+            track_id=track_id,
+            context=inference_request.context,
+            progress_cb=inference_request.done,
+            inference_request=inference_request,
+        )
+
+        _range = (start_frame_index, start_frame_index + direction * n_frames)
+        if _range[0] > _range[1]:
+            _range = (_range[1], _range[0])
+
+        def _notify_f(predictions: List[Prediction]):
+            logger.debug(
+                "Notifying tracking progress...",
+                extra={
+                    "track_id": track_id,
+                    "range": _range,
+                    "current": inference_request.progress.current,
+                    "total": inference_request.progress.total,
+                },
+            )
+            stopped = self.api.video.notify_progress(
+                track_id=track_id,
+                video_id=video_info.id,
+                frame_start=_range[0],
+                frame_end=_range[1],
+                current=inference_request.progress.current,
+                total=inference_request.progress.total,
+            )
+            if stopped:
+                inference_request.stop()
+                logger.info("Tracking has been stopped by user", extra={"track_id": track_id})
+
+        def _exception_handler(e: Exception):
+            self.api.video.notify_tracking_error(
+                track_id=track_id,
+                error=str(type(e)),
+                message=str(e),
+            )
+            raise e
+
+        with Uploader(
+            upload_f=_upload_f,
+            notify_f=_notify_f,
+            exception_handler=_exception_handler,
+            logger=logger,
+        ) as uploader:
+            for batch in batched(
+                range(
+                    start_frame_index, start_frame_index + direction * n_frames, direction * step
+                ),
+                batch_size,
+            ):
+                if inference_request.is_stopped():
+                    logger.debug(
+                        f"Cancelling inference video...",
+                        extra={"inference_request_uuid": inference_request.uuid},
+                    )
+                    break
+                logger.debug(
+                    f"Inferring frames {batch[0]}-{batch[-1]}:",
+                )
+                frames = self.cache.download_frames(
+                    api, video_info.id, batch, redownload_video=True
+                )
+                anns, slides_data = self._inference_auto(
+                    source=frames,
+                    settings=inference_settings,
+                )
+
+                if self._tracker is not None:
+                    anns = self._apply_tracker_to_anns(frames, anns)
+
+                predictions = [
+                    Prediction(
+                        ann,
+                        model_meta=self.model_meta,
+                        frame_index=frame_index,
+                        video_id=video_info.id,
+                        dataset_id=video_info.dataset_id,
+                        project_id=video_info.project_id,
+                    )
+                    for ann, frame_index in zip(anns, batch)
+                ]
+                for pred, this_slides_data in zip(predictions, slides_data):
+                    pred.extra_data["slides_data"] = this_slides_data
+                uploader.put(predictions)
+        video_ann_json = None
         if self._tracker is not None:
             inference_request.set_stage("Postprocess...", 0, 1)
-            video_ann_json = self._tracker.video_annotation.to_json()
+            video_ann_json = inference_request.tracker.video_annotation.to_json()
             inference_request.done()
         inference_request.final_result = {"video_ann": video_ann_json}
         return video_ann_json
@@ -2354,7 +2639,7 @@ class Inference:
         upload_mode = state.get("upload_mode", None)
         iou_merge_threshold = inference_settings.get("existing_objects_iou_thresh", None)
         if upload_mode == "iou_merge" and iou_merge_threshold is None:
-            iou_merge_threshold = 0.7
+            iou_merge_threshold = self.DEFAULT_IOU_MERGE_THRESHOLD
         cache_project_on_model = state.get("cache_project_on_model", False)
 
         project_info = api.project.get_info_by_id(project_id)
@@ -2690,7 +2975,6 @@ class Inference:
         timer.daemon = True
         timer.start()
         self._freeze_timer = timer
-        logger.debug("Model will be frozen in %s seconds due to inactivity.", self._inactivity_timeout)
 
     def _set_served_callback(self):
         self._model_served = True
@@ -2803,6 +3087,10 @@ class Inference:
         for prediction in predictions:
             ds_predictions[prediction.dataset_id].append(prediction)
 
+        def update_labeling_status(ann: Annotation) -> Annotation:
+            for label in ann.labels:
+                label.status = LabelingStatus.AUTO
+
         def _new_name(image_info: ImageInfo):
             name = Path(image_info.name)
             stem = name.stem
@@ -2835,10 +3123,10 @@ class Inference:
             context.setdefault("created_dataset", {})[src_dataset_id] = created_dataset.id
             return created_dataset.id
 
-        created_names = []
         if context is None:
             context = {}
         for dataset_id, preds in ds_predictions.items():
+            created_names = set()
             if dst_project_id is not None:
                 # upload to the destination project
                 dst_dataset_id = _get_or_create_dataset(
@@ -2878,8 +3166,15 @@ class Inference:
                     iou=iou_merge_threshold,
                     meta=project_meta,
                 )
+
+                # Update labeling status of new predictions before upload
+                anns_with_nn_flags = []
                 for pred, ann in zip(preds, anns):
+                    update_labeling_status(ann)
                     pred.annotation = ann
+                    anns_with_nn_flags.append(ann)
+
+                anns = anns_with_nn_flags
 
                 context.setdefault("image_info", {})
                 missing = [
@@ -2907,7 +3202,7 @@ class Inference:
                     with_annotations=False,
                     save_source_date=False,
                 )
-                created_names.extend([image_info.name for image_info in dst_image_infos])
+                created_names.update([image_info.name for image_info in dst_image_infos])
                 api.annotation.upload_anns([image_info.id for image_info in dst_image_infos], anns)
             else:
                 # upload to the source dataset
@@ -2944,7 +3239,10 @@ class Inference:
                     iou=iou_merge_threshold,
                     meta=project_meta,
                 )
+
+                # Update labeling status of predicted labels before optional merge
                 for pred, ann in zip(preds, anns):
+                    update_labeling_status(ann)
                     pred.annotation = ann
 
                 if upload_mode in ["iou_merge", "append"]:
@@ -3171,6 +3469,11 @@ class Inference:
         @self._check_serve_before_call
         def get_session_info(response: Response):
             return self.get_info()
+
+        @server.post("/get_tracking_settings")
+        @self._check_serve_before_call
+        def get_tracking_settings(response: Response):
+            return self.get_tracking_settings()
 
         @server.post("/get_custom_inference_settings")
         def get_custom_inference_settings():
@@ -4395,10 +4698,10 @@ class Inference:
                 self._args.draw,
             )
 
-    def _apply_tracker_to_anns(self, frames: List[np.ndarray], anns: List[Annotation]):
+    def _apply_tracker_to_anns(self, frames: List[np.ndarray], anns: List[Annotation], tracker):
         updated_anns = []
         for frame, ann in zip(frames, anns):
-            matches = self._tracker.update(frame, ann)
+            matches = tracker.update(frame, ann)
             track_ids = [match["track_id"] for match in matches]
             tracked_labels = [match["label"] for match in matches]
 
@@ -4458,6 +4761,147 @@ class Inference:
             return
         self.gui.model_source_tabs.set_active_tab(ModelSource.PRETRAINED)
 
+    def export_onnx(self, deploy_params: dict):
+        raise NotImplementedError("Have to be implemented in child class after inheritance")
+
+    def export_tensorrt(self, deploy_params: dict):
+        raise NotImplementedError("Have to be implemented in child class after inheritance")
+
+
+def _filter_duplicated_predictions_from_ann_cpu(
+    gt_ann: Annotation, pred_ann: Annotation, iou_threshold: float
+):
+    """
+    Filter out predicted labels whose bboxes have IoU > iou_threshold with any GT label.
+    Uses Shapely for geometric operations.
+
+    Args:
+        pred_ann: Predicted annotation object
+        gt_ann: Ground truth annotation object
+        iou_threshold: IoU threshold for filtering
+
+    Returns:
+        New annotation with filtered labels
+    """
+    if not iou_threshold:
+        return pred_ann
+
+    from shapely.geometry import box
+
+    def calculate_iou(geom1: Geometry, geom2: Geometry):
+        """Calculate IoU between two geometries using Shapely."""
+        bbox1 = geom1.to_bbox()
+        bbox2 = geom2.to_bbox()
+
+        box1 = box(bbox1.left, bbox1.top, bbox1.right, bbox1.bottom)
+        box2 = box(bbox2.left, bbox2.top, bbox2.right, bbox2.bottom)
+
+        intersection = box1.intersection(box2).area
+        union = box1.union(box2).area
+
+        return intersection / union if union > 0 else 0.0
+
+    new_labels = []
+    pred_cls_bboxes = defaultdict(list)
+    for label in pred_ann.labels:
+        name_shape = (label.obj_class.name, label.geometry.name())
+        pred_cls_bboxes[name_shape].append(label)
+
+    gt_cls_bboxes = defaultdict(list)
+    for label in gt_ann.labels:
+        name_shape = (label.obj_class.name, label.geometry.name())
+        if name_shape not in pred_cls_bboxes:
+            continue
+        gt_cls_bboxes[name_shape].append(label)
+
+    for name_shape, pred in pred_cls_bboxes.items():
+        gt = gt_cls_bboxes[name_shape]
+        if len(gt) == 0:
+            new_labels.extend(pred)
+            continue
+
+        for pred_label in pred:
+            # Check if this prediction has IoU < threshold with ALL GT boxes
+            keep = True
+            for gt_label in gt:
+                iou = calculate_iou(pred_label.geometry, gt_label.geometry)
+                if iou >= iou_threshold:
+                    keep = False
+                    break
+
+            if keep:
+                new_labels.append(pred_label)
+
+    return pred_ann.clone(labels=new_labels)
+
+def _filter_duplicated_predictions_from_ann(
+    gt_ann: Annotation, pred_ann: Annotation, iou_threshold: float
+) -> Annotation:
+    """
+    Filter out predictions that significantly overlap with ground truth annotations.
+
+    This function compares each prediction with ground truth annotations of the same class
+    and removes predictions that have an IoU (Intersection over Union) greater than or equal
+    to the specified threshold with any ground truth annotation. This is useful for identifying
+    new objects that aren't already annotated in the ground truth.
+
+    :param gt_ann: Annotation object containing ground truth labels
+    :type gt_ann: Annotation
+    :param pred_ann: Annotation object containing prediction labels to be filtered
+    :type pred_ann: Annotation
+    :param iou_threshold:   IoU threshold (0.0-1.0). Predictions with IoU >= threshold with any
+                            ground truth box of the same class will be removed
+    :type iou_threshold: float
+    :return: A new annotation object containing only predictions that don't significantly
+                overlap with ground truth annotations
+    :rtype: Annotation
+
+
+    Notes:
+    ------
+    - Predictions with classes not present in ground truth will be kept
+    - Requires PyTorch and torchvision for IoU calculations
+    """
+    if not iou_threshold:
+        return pred_ann
+
+    try:
+        import torch
+        from torchvision.ops import box_iou
+
+    except ImportError:
+        return _filter_duplicated_predictions_from_ann_cpu(gt_ann, pred_ann, iou_threshold)
+
+    def _to_tensor(geom):
+        return torch.tensor([geom.left, geom.top, geom.right, geom.bottom]).float()
+
+    new_labels = []
+    pred_cls_bboxes = defaultdict(list)
+    for label in pred_ann.labels:
+        name_shape = (label.obj_class.name, label.geometry.name())
+        pred_cls_bboxes[name_shape].append(label)
+
+    gt_cls_bboxes = defaultdict(list)
+    for label in gt_ann.labels:
+        name_shape = (label.obj_class.name, label.geometry.name())
+        if name_shape not in pred_cls_bboxes:
+            continue
+        gt_cls_bboxes[name_shape].append(label)
+
+    for name_shape, pred in pred_cls_bboxes.items():
+        gt = gt_cls_bboxes[name_shape]
+        if len(gt) == 0:
+            new_labels.extend(pred)
+            continue
+        pred_bboxes = torch.stack([_to_tensor(l.geometry.to_bbox()) for l in pred]).float()
+        gt_bboxes = torch.stack([_to_tensor(l.geometry.to_bbox()) for l in gt]).float()
+        iou_matrix = box_iou(pred_bboxes, gt_bboxes)
+        iou_matrix = iou_matrix.cpu().numpy()
+        keep_indices = np.where(np.all(iou_matrix < iou_threshold, axis=1))[0]
+        new_labels.extend([pred[i] for i in keep_indices])
+
+    return pred_ann.clone(labels=new_labels)
+
 
 def _exclude_duplicated_predictions(
     api: Api,
@@ -4516,71 +4960,6 @@ def _exclude_duplicated_predictions(
     return pred_anns
 
 
-def _filter_duplicated_predictions_from_ann(
-    gt_ann: Annotation, pred_ann: Annotation, iou_threshold: float
-) -> Annotation:
-    """
-    Filter out predictions that significantly overlap with ground truth annotations.
-
-    This function compares each prediction with ground truth annotations of the same class
-    and removes predictions that have an IoU (Intersection over Union) greater than or equal
-    to the specified threshold with any ground truth annotation. This is useful for identifying
-    new objects that aren't already annotated in the ground truth.
-
-    :param gt_ann: Annotation object containing ground truth labels
-    :type gt_ann: Annotation
-    :param pred_ann: Annotation object containing prediction labels to be filtered
-    :type pred_ann: Annotation
-    :param iou_threshold:   IoU threshold (0.0-1.0). Predictions with IoU >= threshold with any
-                            ground truth box of the same class will be removed
-    :type iou_threshold: float
-    :return: A new annotation object containing only predictions that don't significantly
-                overlap with ground truth annotations
-    :rtype: Annotation
-
-
-    Notes:
-    ------
-    - Predictions with classes not present in ground truth will be kept
-    - Requires PyTorch and torchvision for IoU calculations
-    """
-
-    try:
-        import torch
-        from torchvision.ops import box_iou
-
-    except ImportError:
-        raise ImportError("Please install PyTorch and torchvision to use this feature.")
-
-    def _to_tensor(geom):
-        return torch.tensor([geom.left, geom.top, geom.right, geom.bottom]).float()
-
-    new_labels = []
-    pred_cls_bboxes = defaultdict(list)
-    for label in pred_ann.labels:
-        pred_cls_bboxes[label.obj_class.name].append(label)
-
-    gt_cls_bboxes = defaultdict(list)
-    for label in gt_ann.labels:
-        if label.obj_class.name not in pred_cls_bboxes:
-            continue
-        gt_cls_bboxes[label.obj_class.name].append(label)
-
-    for name, pred in pred_cls_bboxes.items():
-        gt = gt_cls_bboxes[name]
-        if len(gt) == 0:
-            new_labels.extend(pred)
-            continue
-        pred_bboxes = torch.stack([_to_tensor(l.geometry.to_bbox()) for l in pred]).float()
-        gt_bboxes = torch.stack([_to_tensor(l.geometry.to_bbox()) for l in gt]).float()
-        iou_matrix = box_iou(pred_bboxes, gt_bboxes)
-        iou_matrix = iou_matrix.cpu().numpy()
-        keep_indices = np.where(np.all(iou_matrix < iou_threshold, axis=1))[0]
-        new_labels.extend([pred[i] for i in keep_indices])
-
-    return pred_ann.clone(labels=new_labels)
-
-
 def _get_log_extra_for_inference_request(
     inference_request_uuid, inference_request: Union[InferenceRequest, dict]
 ):
@@ -4607,8 +4986,8 @@ def _get_log_extra_for_inference_request(
         "has_result": inference_request.final_result is not None,
         "pending_results": inference_request.pending_num(),
         "exception": inference_request.exception_json(),
-        "result": inference_request._final_result,
         "preparing_progress": progress,
+        "result": inference_request.final_result is not None,  # for backward compatibility
     }
     return log_extra
 
@@ -4688,7 +5067,7 @@ def get_gpu_count():
         gpu_count = len(re.findall(r"GPU \d+:", nvidia_smi_output))
         return gpu_count
     except (subprocess.CalledProcessError, FileNotFoundError) as exc:
-        logger.warn("Calling nvidia-smi caused a error: {exc}. Assume there is no any GPU.")
+        logger.warning("Calling nvidia-smi caused a error: {exc}. Assume there is no any GPU.")
         return 0
 
 
@@ -4868,7 +5247,180 @@ def update_meta_and_ann(meta: ProjectMeta, ann: Annotation, model_prediction_suf
                 img_tags = None
             if not any_label_updated:
                 labels = None
-            ann = ann.clone(img_tags=TagCollection(img_tags))
+            ann = ann.clone(img_tags=img_tags)
+    return meta, ann, meta_changed
+
+
+def update_meta_and_ann_for_video_annotation(
+    meta: ProjectMeta, ann: VideoAnnotation, model_prediction_suffix: str = None
+):
+    """Update project meta and annotation to match each other
+    If obj class or tag meta from annotation conflicts with project meta
+    add suffix to obj class or tag meta.
+    Return tuple of updated project meta, annotation and boolean flag if meta was changed.
+    """
+    obj_classes_suffixes = ["_nn"]
+    tag_meta_suffixes = ["_nn"]
+    if model_prediction_suffix is not None:
+        obj_classes_suffixes = [model_prediction_suffix]
+        tag_meta_suffixes = [model_prediction_suffix]
+        logger.debug(
+            f"Using custom suffixes for obj classes and tag metas: {obj_classes_suffixes}, {tag_meta_suffixes}"
+        )
+    logger.debug("source meta", extra={"meta": meta.to_json()})
+    meta_changed = False
+
+    # meta, ann, replaced_classes_in_meta, replaced_classes_in_ann = _fix_classes_names(meta, ann)
+    # if replaced_classes_in_meta:
+    #     meta_changed = True
+    #     logger.warning(
+    #         "Some classes names were fixed in project meta",
+    #         extra={"replaced_classes": {old: new for old, new in replaced_classes_in_meta}},
+    #     )
+
+    new_objects: List[VideoObject] = []
+    new_figures: List[VideoFigure] = []
+    any_object_updated = False
+    for video_object in ann.objects:
+        this_object_figures = [
+            figure for figure in ann.figures if figure.video_object.key() == video_object.key()
+        ]
+        this_object_changed = False
+        original_obj_class_name = video_object.obj_class.name
+        suffix_found = False
+        for suffix in ["", *obj_classes_suffixes]:
+            obj_class = video_object.obj_class
+            obj_class_name = obj_class.name + suffix
+            if suffix:
+                obj_class = obj_class.clone(name=obj_class_name)
+                video_object = video_object.clone(obj_class=obj_class)
+                any_object_updated = True
+                this_object_changed = True
+            meta_obj_class = meta.get_obj_class(obj_class_name)
+            if meta_obj_class is None:
+                # obj class is not in meta, add it with suffix
+                meta = meta.add_obj_class(obj_class)
+                new_objects.append(video_object)
+                meta_changed = True
+                suffix_found = True
+                break
+            elif (
+                meta_obj_class.geometry_type.geometry_name()
+                == video_object.obj_class.geometry_type.geometry_name()
+            ):
+                # if object geometry is the same as in meta, use meta obj class
+                video_object = video_object.clone(obj_class=meta_obj_class)
+                new_objects.append(video_object)
+                suffix_found = True
+                any_object_updated = True
+                this_object_changed = True
+                break
+            elif meta_obj_class.geometry_type.geometry_name() == AnyGeometry.geometry_name():
+                # if meta obj class is AnyGeometry, use it in object
+                video_object = video_object.clone(obj_class=meta_obj_class)
+                new_objects.append(video_object)
+                suffix_found = True
+                any_object_updated = True
+                this_object_changed = True
+                break
+        if not suffix_found:
+            # if no suffix found, raise error
+            raise ValueError(
+                f"Can't add obj class {original_obj_class_name} to project meta. "
+                "Tried with suffixes: " + ", ".join(obj_classes_suffixes) + ". "
+                "Please check if model geometry type is compatible with existing obj classes."
+            )
+        elif this_object_changed:
+            this_object_figures = [
+                figure.clone(video_object=video_object) for figure in this_object_figures
+            ]
+        new_figures.extend(this_object_figures)
+    if any_object_updated:
+        frames_figures = {}
+        for figure in new_figures:
+            frames_figures.setdefault(figure.frame_index, []).append(figure)
+        new_frames = FrameCollection(
+            [
+                Frame(index=frame_index, figures=figures)
+                for frame_index, figures in frames_figures.items()
+            ]
+        )
+        ann = ann.clone(objects=new_objects, frames=new_frames)
+
+    # check if tag metas are in project meta
+    # if not, add them with suffix
+    ann_tag_metas: Dict[str, TagMeta] = {}
+    for video_object in ann.objects:
+        for tag in video_object.tags:
+            tag_name = tag.meta.name
+            if tag_name not in ann_tag_metas:
+                ann_tag_metas[tag_name] = tag.meta
+    for tag in ann.tags:
+        tag_name = tag.meta.name
+        if tag_name not in ann_tag_metas:
+            ann_tag_metas[tag_name] = tag.meta
+
+    changed_tag_metas = {}
+    for ann_tag_meta in ann_tag_metas.values():
+        meta_tag_meta = meta.get_tag_meta(ann_tag_meta.name)
+        if meta_tag_meta is None:
+            meta = meta.add_tag_meta(ann_tag_meta)
+            meta_changed = True
+        elif not meta_tag_meta.is_compatible(ann_tag_meta):
+            suffix_found = False
+            for suffix in tag_meta_suffixes:
+                new_tag_meta_name = ann_tag_meta.name + suffix
+                meta_tag_meta = meta.get_tag_meta(new_tag_meta_name)
+                if meta_tag_meta is None:
+                    new_tag_meta = ann_tag_meta.clone(name=new_tag_meta_name)
+                    meta = meta.add_tag_meta(new_tag_meta)
+                    changed_tag_metas[ann_tag_meta.name] = new_tag_meta
+                    meta_changed = True
+                    suffix_found = True
+                    break
+                if meta_tag_meta.is_compatible(ann_tag_meta):
+                    changed_tag_metas[ann_tag_meta.name] = meta_tag_meta
+                    suffix_found = True
+                    break
+            if not suffix_found:
+                raise ValueError(f"Can't add tag meta {ann_tag_meta.name} to project meta")
+
+    if changed_tag_metas:
+        objects = []
+        any_object_updated = False
+        for video_object in ann.objects:
+            any_tag_updated = False
+            object_tags = []
+            for tag in video_object.tags:
+                if tag.meta.name in changed_tag_metas:
+                    object_tags.append(tag.clone(meta=changed_tag_metas[tag.meta.name]))
+                    any_tag_updated = True
+                else:
+                    object_tags.append(tag)
+            if any_tag_updated:
+                video_object = video_object.clone(tags=TagCollection(object_tags))
+                any_object_updated = True
+            objects.append(video_object)
+
+        video_tags = []
+        any_tag_updated = False
+        for tag in ann.tags:
+            if tag.meta.name in changed_tag_metas:
+                video_tags.append(tag.clone(meta=changed_tag_metas[tag.meta.name]))
+                any_tag_updated = True
+            else:
+                video_tags.append(tag)
+        if any_tag_updated or any_object_updated:
+            if any_tag_updated:
+                video_tags = VideoTagCollection(video_tags)
+            else:
+                video_tags = None
+            if any_object_updated:
+                objects = VideoObjectCollection(objects)
+            else:
+                objects = None
+            ann = ann.clone(tags=video_tags, objects=objects)
+
     return meta, ann, meta_changed
 
 
