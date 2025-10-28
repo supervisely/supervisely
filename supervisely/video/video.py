@@ -560,7 +560,7 @@ class VideoFrameReader:
     def __del__(self):
         self.close()
 
-    def iterate_frames(self, frame_indexes: Optional[List[int]] = None):
+    def iterate_frames(self, frame_indexes: Optional[List[int]] = None) -> Generator[np.ndarray, None, None]:
         self._ensure_initialized()
         if frame_indexes is None:
             frame_indexes = self.frame_indexes
