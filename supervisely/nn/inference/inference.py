@@ -2444,7 +2444,7 @@ class Inference:
                     pred.extra_data["slides_data"] = this_slides_data
                 uploader.put(predictions)
         video_ann_json = None
-        if self._tracker is not None:
+        if inference_request.tracker is not None:
             inference_request.set_stage("Postprocess...", 0, 1)
             video_ann_json = inference_request.tracker.video_annotation.to_json()
             inference_request.done()
