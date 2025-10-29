@@ -10,6 +10,8 @@ import cv2
 import numpy as np
 from tqdm import tqdm
 
+from supervisely.api.dataset_api import DatasetInfo
+from supervisely.api.project_api import ProjectInfo
 from supervisely.io.json import load_json_file
 from supervisely.nn.benchmark.base_evaluator import BaseEvalResult, BaseEvaluator
 from supervisely.nn.benchmark.semantic_segmentation.metric_provider import (
@@ -42,6 +44,19 @@ class SemanticSegmentationEvalResult(BaseEvalResult):
         speedtest_info_path = Path(path).parent / "speedtest" / "speedtest.json"
         if speedtest_info_path.exists():
             self.speedtest_info = load_json_file(str(speedtest_info_path))
+
+        project_info_path = Path(path) / "project_info.json"
+        if project_info_path.exists():
+            self.project_info = ProjectInfo(**load_json_file(str(project_info_path)))
+
+        project_meta_path = Path(path) / "project_meta.json"
+        if project_meta_path.exists():
+            self.project_meta = ProjectMeta.from_json(load_json_file(str(project_meta_path)))
+
+        self.dataset_infos = None
+        dataset_infos_path = Path(path) / "dataset_infos.json"
+        if dataset_infos_path.exists():
+            self.dataset_infos = DatasetInfo(**load_json_file(str(dataset_infos_path)))
 
     def _prepare_data(self) -> None:
         """Prepare data to allow easy access to the most important parts"""
