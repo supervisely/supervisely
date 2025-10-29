@@ -3597,6 +3597,8 @@ class Inference:
             state = request.state.state
             context = request.state.context
             state.update(context)
+            if state.get("tracker") is None:
+                state["tracker"] = "botsort"
 
             logger.debug("Received a request to 'tracking_by_detection'", extra={"state": state})
             self.validate_inference_state(state)
