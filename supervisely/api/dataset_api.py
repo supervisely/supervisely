@@ -1021,13 +1021,62 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
 
         return dataset_tree
 
-    def tree(self, project_id: int) -> Generator[Tuple[List[str], DatasetInfo], None, None]:
+    def _yield_tree(
+        self, tree: Dict[DatasetInfo, Dict], path: List[str]
+    ) -> Generator[Tuple[List[str], DatasetInfo], None, None]:
+        """Yields tuples of (path, dataset) for all datasets in the tree.
+        
+        :param tree: Tree structure to yield from.
+        :type tree: Dict[DatasetInfo, Dict]
+        :param path: Current path (used for recursion).
+        :type path: List[str]
+        :return: Generator of tuples of (path, dataset).
+        :rtype: Generator[Tuple[List[str], DatasetInfo], None, None]
+        """
+        for dataset, children in tree.items():
+            yield path, dataset
+            new_path = path + [dataset.name]
+            if children:
+                yield from self._yield_tree(children, new_path)
+
+    def _find_dataset_in_tree(
+        self, tree: Dict[DatasetInfo, Dict], target_id: int, path: List[str] = None
+    ) -> Tuple[Optional[DatasetInfo], Optional[Dict], List[str]]:
+        """Find a specific dataset in the tree and return its subtree and path.
+        
+        :param tree: Tree structure to search in.
+        :type tree: Dict[DatasetInfo, Dict]
+        :param target_id: ID of the dataset to find.
+        :type target_id: int
+        :param path: Current path (used for recursion).
+        :type path: List[str], optional
+        :return: Tuple of (found_dataset, its_subtree, path_to_dataset).
+        :rtype: Tuple[Optional[DatasetInfo], Optional[Dict], List[str]]
+        """
+        if path is None:
+            path = []
+            
+        for dataset, children in tree.items():
+            if dataset.id == target_id:
+                return dataset, children, path
+            # Search in children
+            found_dataset, found_children, found_path = self._find_dataset_in_tree(
+                children, target_id, path + [dataset.name]
+            )
+            if found_dataset is not None:
+                return found_dataset, found_children, found_path
+        return None, None, []
+
+    def tree(self, project_id: int, dataset_id: Optional[int] = None) -> Generator[Tuple[List[str], DatasetInfo], None, None]:
         """Yields tuples of (path, dataset) for all datasets in the project.
         Path of the dataset is a list of parents, e.g. ["ds1", "ds2", "ds3"].
         For root datasets, the path is an empty list.
 
         :param project_id: Project ID in which the Dataset is located.
         :type project_id: int
+        :param dataset_id: Optional Dataset ID to start the tree from. If provided, only yields
+            the subtree starting from this dataset (including the dataset itself and all its children).
+        :type dataset_id: Optional[int]
         :return: Generator of tuples of (path, dataset).
         :rtype: Generator[Tuple[List[str], DatasetInfo], None, None]
         :Usage example:
@@ -1040,11 +1089,17 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
 
             project_id = 123
 
+            # Get all datasets in the project
             for parents, dataset in api.dataset.tree(project_id):
                 parents: List[str]
                 dataset: sly.DatasetInfo
                 print(parents, dataset.name)
 
+            # Get only a specific branch starting from dataset_id = 456
+            for parents, dataset in api.dataset.tree(project_id, dataset_id=456):
+                parents: List[str]
+                dataset: sly.DatasetInfo
+                print(parents, dataset.name)
 
             # Output:
             # [] ds1
@@ -1052,17 +1107,20 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             # ["ds1", "ds2"] ds3
         """
 
-        def yield_tree(
-            tree: Dict[DatasetInfo, Dict], path: List[str]
-        ) -> Generator[Tuple[List[str], DatasetInfo], None, None]:
-            """Yields tuples of (path, dataset) for all datasets in the tree."""
-            for dataset, children in tree.items():
-                yield path, dataset
-                new_path = path + [dataset.name]
-                if children:
-                    yield from yield_tree(children, new_path)
-
-        yield from yield_tree(self.get_tree(project_id), [])
+        full_tree = self.get_tree(project_id)
+        
+        if dataset_id is None:
+            # Return the full tree
+            yield from self._yield_tree(full_tree, [])
+        else:
+            # Find the specific dataset and return only its subtree
+            target_dataset, subtree, dataset_path = self._find_dataset_in_tree(full_tree, dataset_id)
+            if target_dataset is not None:
+                # Yield the target dataset first, then its children
+                yield dataset_path, target_dataset
+                if subtree:
+                    new_path = dataset_path + [target_dataset.name]
+                    yield from self._yield_tree(subtree, new_path)
 
     def get_nested(self, project_id: int, dataset_id: int) -> List[DatasetInfo]:
         """Returns a list of all nested datasets in the specified dataset.
