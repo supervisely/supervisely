@@ -225,28 +225,48 @@ def sample_video(
         progress.miniters = 1
         progress.refresh()
 
-    with VideoFrameReader(video_path, frame_indices) as reader:
-        for batch in batched_iter(zip(reader, frame_indices), 10):
-            frames, indices = zip(*batch)
-            if resize:
-                for frame in frames:
-                    cv2.resize(frame, [*resize, frame.shape[2]], interpolation=cv2.INTER_LINEAR)
+    batch_size = 50
+    try:
+        with VideoFrameReader(video_path, frame_indices) as reader:
+            for batch_indices in batched_iter(frame_indices, batch_size):
+                batch_indices_list = list(batch_indices)
+                frames = reader.read_batch(batch_indices_list)
 
-            image_ids = _upload_frames(
-                api=api,
-                frames=frames,
-                video_name=video_info.name,
-                video_frames_count=video_info.frames_count,
-                indices=indices,
-                dataset_id=dst_dataset_info.id,
-                sample_info=sample_info,
-                context=context,
-                copy_annotations=copy_annotations,
-                video_annotation=video_annotation,
-            )
+                if resize:
+                    resized_frames = []
+                    for frame in frames:
+                        resized_frame = cv2.resize(
+                            frame,
+                            (resize[1], resize[0]),  # (width, height)
+                            interpolation=cv2.INTER_LINEAR,
+                        )
+                        resized_frames.append(resized_frame)
+                    frames = resized_frames
 
-            if progress is not None:
-                progress.update(len(image_ids))
+                image_ids = _upload_frames(
+                    api=api,
+                    frames=frames,
+                    video_name=video_info.name,
+                    video_frames_count=video_info.frames_count,
+                    indices=batch_indices_list,
+                    dataset_id=dst_dataset_info.id,
+                    sample_info=sample_info,
+                    context=context,
+                    copy_annotations=copy_annotations,
+                    video_annotation=video_annotation,
+                )
+
+                if progress is not None:
+                    progress.update(len(image_ids))
+
+                # Free memory after each batch
+                del frames
+                if resize:
+                    del resized_frames
+    finally:
+        import os
+        if os.path.exists(video_path):
+            os.remove(video_path)
 
 
 def _get_or_create_dst_dataset(
