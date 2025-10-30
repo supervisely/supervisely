@@ -23,10 +23,9 @@ from supervisely.app.widgets.experiment_selector.experiment_selector import (
 from supervisely.app.widgets.pretrained_models_selector.pretrained_models_selector import (
     PretrainedModelsSelector,
 )
-from supervisely.nn.experiments import get_experiment_infos
+from supervisely.nn.experiments import ExperimentInfo, get_experiment_infos
 from supervisely.nn.inference.gui.serving_gui import ServingGUI
 from supervisely.nn.utils import ModelSource, RuntimeType, _get_model_name
-from supervisely.nn.experiments import ExperimentInfo
 
 
 class ServingGUITemplate(ServingGUI):
@@ -191,6 +190,10 @@ class ServingGUITemplate(ServingGUI):
             return model_meta.get("model_files", {})
         else:
             experiment_info = self.experiment_selector.get_selected_experiment_info()
+            if experiment_info is None:
+                raise ValueError(
+                    "No experiment selected. Please select an experiment before serving."
+                )
             artifacts_dir = experiment_info.artifacts_dir
             model_files = experiment_info.model_files
             full_model_files = {
