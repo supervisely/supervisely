@@ -3606,12 +3606,6 @@ class Inference:
             inference_request, future = self.inference_requests_manager.schedule_task(
                 self._tracking_by_detection, api, state
             )
-            # future.result()
-            # results = {"ann": inference_request.pop_pending_results()}
-            # final_result = inference_request.final_result
-            # if final_result is not None:
-            #     results.update(final_result)
-            # return results
             return {"message": "Track task started."}
 
         @server.post("/inference_project_id_async")
