@@ -329,6 +329,7 @@ class SelectDatasetTree(Widget):
         """
         if not self._multiselect:
             raise ValueError("This method can only be called when multiselect is enabled.")
+        self._select_all_datasets_checkbox.uncheck()
         self._select_dataset.set_selected_by_id(dataset_ids)
 
     def team_changed(self, func: Callable) -> Callable:

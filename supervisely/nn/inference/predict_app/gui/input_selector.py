@@ -2,6 +2,9 @@ import threading
 from typing import Any, Dict, List
 
 from supervisely.api.api import Api
+from supervisely.api.dataset_api import DatasetInfo
+from supervisely.api.project_api import ProjectInfo
+from supervisely.api.video.video_api import VideoInfo
 from supervisely.app.widgets import (
     Button,
     Card,
@@ -202,6 +205,53 @@ class InputSelector:
 
             self.select_video.add_rows(rows)
 
+    def select_project(self, project_id: int, project_info: ProjectInfo = None):
+        if project_info is None:
+            project_info = self.api.project.get_info_by_id(project_id)
+        if project_info.type == ProjectType.IMAGES.value:
+            self.select_dataset_for_images.set_project_id(project_id)
+            self.select_dataset_for_images.select_all()
+            self.radio.set_value(ProjectType.IMAGES.value)
+        elif project_info.type == ProjectType.VIDEOS.value:
+            self.select_dataset_for_video.set_project_id(project_id)
+            self.select_dataset_for_video.select_all()
+            self._refresh_video_table()
+            self.select_video.select_rows(list(range(len(self.select_video._rows_total))))
+            self.radio.set_value(ProjectType.VIDEOS.value)
+        else:
+            raise ValueError(f"Project of type {project_info.type} is not supported.")
+
+    def select_datasets(self, dataset_ids: List[int], dataset_infos: List[DatasetInfo] = None):
+        if dataset_infos is None:
+            dataset_infos = [self.api.dataset.get_info_by_id(ds_id) for ds_id in dataset_ids]
+        project_ids = set(ds.project_id for ds in dataset_infos)
+        if len(project_ids) > 1:
+            raise ValueError("Cannot select datasets from different projects")
+        project_id = project_ids.pop()
+        project_info = self.api.project.get_info_by_id(project_id)
+        if project_info.type == ProjectType.IMAGES.value:
+            self.select_dataset_for_images.set_project_id(project_id)
+            self.select_dataset_for_images.set_dataset_ids(dataset_ids)
+            self.radio.set_value(ProjectType.IMAGES.value)
+        elif project_info.type == ProjectType.VIDEOS.value:
+            self.select_dataset_for_video.set_project_id(project_id)
+            self.select_dataset_for_video.set_dataset_ids(dataset_ids)
+            self._refresh_video_table()
+            self.select_video.select_rows(list(range(self.select_video._rows_total)))
+            self.radio.set_value(ProjectType.VIDEOS.value)
+        else:
+            raise ValueError(f"Project of type {project_info.type} is not supported.")
+
+    def select_videos(self, video_ids: List[int], video_infos: List[VideoInfo] = None):
+        if video_infos is None:
+            video_infos = self.api.video.get_info_by_id_batch(video_ids)
+        project_id = video_infos[0].project_id
+        self.select_dataset_for_video.set_project_id(project_id)
+        self.select_dataset_for_video.select_all()
+        self._refresh_video_table()
+        self.select_video.select_row_by_value("id", video_ids)
+        self.radio.set_value(ProjectType.VIDEOS.value)
+
     def disable(self):
         for widget in self.widgets_to_disable:
             widget.disable()
@@ -249,37 +299,13 @@ class InputSelector:
             video_infos = self.api.video.get_info_by_id_batch(video_ids)
             if not video_infos:
                 raise ValueError(f"Videos with video ids {video_ids} are not found")
-            project_id = video_infos[0].project_id
-            self.select_dataset_for_video.set_project_id(project_id)
-            self.select_dataset_for_video.select_all()
-            self.select_video.select_row_by_value("id", data["video_ids"])
-            self.radio.set_value(ProjectType.VIDEOS.value)
+            self.select_videos(video_ids, video_infos)
         elif "dataset_ids" in data:
             dataset_ids = data["dataset_ids"]
-            if len(dataset_ids) == 0:
-                raise ValueError("Dataset ids cannot be empty")
-            dataset_id = dataset_ids[0]
-            dataset_info = self.api.dataset.get_info_by_id(dataset_id)
-            project_info = self.api.project.get_info_by_id(dataset_info.project_id)
-            if project_info.type == ProjectType.VIDEOS:
-                self.select_dataset_for_video.set_project_id(project_info.id)
-                self.select_dataset_for_video.set_dataset_ids(dataset_ids)
-                self.radio.set_value(ProjectType.VIDEOS.value)
-            else:
-                self.select_dataset_for_images.set_project_id(project_info.id)
-                self.select_dataset_for_images.set_dataset_ids(dataset_ids)
-                self.radio.set_value(ProjectType.IMAGES.value)
+            self.select_datasets(dataset_ids)
         elif "project_id" in data:
             project_id = data["project_id"]
-            project_info = self.api.project.get_info_by_id(project_id)
-            if project_info.type == ProjectType.VIDEOS:
-                self.select_dataset_for_video.set_project_id(project_id)
-                self.select_dataset_for_video.select_all()
-                self.radio.set_value(ProjectType.VIDEOS.value)
-            else:
-                self.select_dataset_for_images.set_project_id(project_id)
-                self.select_dataset_for_images.select_all()
-                self.radio.set_value(ProjectType.IMAGES.value)
+            self.select_project(project_id)
 
     def get_project_id(self) -> int:
         if self.radio.get_value() == ProjectType.IMAGES.value:
