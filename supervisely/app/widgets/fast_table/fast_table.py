@@ -901,6 +901,7 @@ class FastTable(Widget):
             filtered_data = self._source_data.copy()
 
         if search_value == "":
+            self._search_str = search_value
             return filtered_data
         if self._search_str != search_value:
             self._active_page = 1
