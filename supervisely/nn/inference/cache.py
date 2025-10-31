@@ -790,14 +790,20 @@ class InferenceImageCache:
                 try:
                     frame = self.get_frame_from_cache(video_id, hash_or_id)
                 except Exception as e:
-                    logger.error(f"Error retrieving frame from cache: {e}", exc_info=True)
+                    logger.error(
+                        f"Error retrieving frame from cache: {repr(e)}. Frame will be re-downloaded",
+                        exc_info=True,
+                    )
                     ids_to_load.append(hash_or_id)
                     return pos, None
                 return pos, frame
             try:
                 image = self._cache.get_image(name_constructor(hash_or_id))
             except Exception as e:
-                logger.error(f"Error retrieving image from cache: {repr(e)}. Image will be re-downloaded", exc_info=True)
+                logger.error(
+                    f"Error retrieving image from cache: {repr(e)}. Image will be re-downloaded",
+                    exc_info=True,
+                )
                 ids_to_load.append(hash_or_id)
                 return pos, None
             return pos, image
