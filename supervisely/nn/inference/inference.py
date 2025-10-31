@@ -1374,6 +1374,7 @@ class Inference:
 
         if tracker == "botsort":
             from supervisely.nn.tracker import BotSortTracker
+
             device = tracker_settings.get("device", self.device)
             logger.debug(f"Initializing BotSort tracker with device: {device}")
             return BotSortTracker(settings=tracker_settings, device=device)
@@ -1419,7 +1420,7 @@ class Inference:
     def get_tracking_settings(self) -> Dict[str, Dict[str, Any]]:
         """
         Get default parameters for all available tracking algorithms.
-        
+
         Returns:
             {"botsort": {"track_high_thresh": 0.6, ...}}
             Empty dict if tracking not supported.
@@ -1437,6 +1438,7 @@ class Inference:
             try:
                 if tracker_name == "botsort":
                     from supervisely.nn.tracker import BotSortTracker
+
                     trackers_params[tracker_name] = BotSortTracker.get_default_params()
                 # Add other trackers here as elif blocks
                 else:
@@ -1448,7 +1450,7 @@ class Inference:
         for tracker_name, params in trackers_params.items():
             trackers_params[tracker_name] = {
                 k: v for k, v in params.items() if k not in INTERNAL_FIELDS
-                }
+            }
         return trackers_params
 
     def get_human_readable_info(self, replace_none_with: Optional[str] = None):
@@ -2277,8 +2279,8 @@ class Inference:
                     frame_index=frame_index,
                     video_id=video_info.id,
                     dataset_id=video_info.dataset_id,
-                        project_id=video_info.project_id,
-                    )
+                    project_id=video_info.project_id,
+                )
                 for ann, frame_index in zip(anns, batch)
             ]
             for pred, this_slides_data in zip(predictions, slides_data):
@@ -3671,10 +3673,7 @@ class Inference:
             data = {**inference_request.to_json(), **log_extra}
             if inference_request.stage != InferenceRequest.Stage.INFERENCE:
                 data["progress"] = {"current": 0, "total": 1}
-            logger.debug(
-                f"Sending inference progress with uuid:",
-                extra=data,
-            )
+            logger.debug(f"Sending inference progress with uuid:", extra=data)
             return data
 
         @server.post(f"/pop_inference_results")
@@ -4667,6 +4666,7 @@ def _filter_duplicated_predictions_from_ann_cpu(
 
     return pred_ann.clone(labels=new_labels)
 
+
 def _filter_duplicated_predictions_from_ann(
     gt_ann: Annotation, pred_ann: Annotation, iou_threshold: float
 ) -> Annotation:
@@ -5367,7 +5367,8 @@ def get_value_for_keys(data: dict, keys: List, ignore_none: bool = False):
             return data[key]
     return None
 
-def torch_load_safe(checkpoint_path: str, device:str = "cpu"):
+
+def torch_load_safe(checkpoint_path: str, device: str = "cpu"):
     import torch  # pylint: disable=import-error
 
     # TODO: handle torch.load(weights_only=True) - change in torch 2.6.0
