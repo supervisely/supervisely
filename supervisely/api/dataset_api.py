@@ -1024,7 +1024,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
     def _yield_tree(
         self, tree: Dict[DatasetInfo, Dict], path: List[str]
     ) -> Generator[Tuple[List[str], DatasetInfo], None, None]:
-         """
+        """
         Helper method for recursive tree traversal.
         Yields tuples of (path, dataset) for all datasets in the tree. For each node (dataset) at the current level,
         yields its (path, dataset) before recursively traversing and yielding from its children.
