@@ -2012,6 +2012,15 @@ class Inference:
                 )
                 results = []
                 break
+            if inference_request.is_paused():
+                max_pause_time = 10 * 60
+                pause_duration = inference_request.time_paused()
+                if pause_duration > max_pause_time:
+                    raise RuntimeError(
+                        f"Inference request is inactive for {pause_duration/60:.1f} minutes"
+                    )
+                time.sleep(5)
+
             logger.debug(
                 f"Inferring frames {batch[0]}-{batch[-1]}:",
             )
@@ -2156,6 +2165,14 @@ class Inference:
                         extra={"inference_request_uuid": inference_request.uuid},
                     )
                     break
+                if inference_request.is_paused():
+                    max_pause_time = 10 * 60
+                    pause_duration = inference_request.time_paused()
+                    if pause_duration > max_pause_time:
+                        raise RuntimeError(
+                            f"Inference request is inactive for {pause_duration/60:.1f} minutes"
+                        )
+                    time.sleep(5)
 
                 images_nps = [self.cache.download_image(api, img_id) for img_id in image_ids_batch]
                 anns, slides_data = self._inference_auto(
@@ -2251,6 +2268,14 @@ class Inference:
                     extra={"inference_request_uuid": inference_request.uuid},
                 )
                 break
+            if inference_request.is_paused():
+                max_pause_time = 10 * 60
+                pause_duration = inference_request.time_paused()
+                if pause_duration > max_pause_time:
+                    raise RuntimeError(
+                        f"Inference request is inactive for {pause_duration/60:.1f} minutes"
+                    )
+                time.sleep(5)
             logger.debug(
                 f"Inferring frames {batch[0]}-{batch[-1]}:",
             )
@@ -2405,6 +2430,14 @@ class Inference:
                             extra={"inference_request_uuid": inference_request.uuid},
                         )
                         return
+                    if inference_request.is_paused():
+                        max_pause_time = 10 * 60
+                        pause_duration = inference_request.time_paused()
+                        if pause_duration > max_pause_time:
+                            raise RuntimeError(
+                                f"Inference request is inactive for {pause_duration/60:.1f} minutes"
+                            )
+                        time.sleep(5)
                     if uploader.has_exception():
                         exception = uploader.exception
                         raise exception
@@ -2534,6 +2567,14 @@ class Inference:
                         extra={"inference_request_uuid": inference_request.uuid},
                     )
                     return
+                if inference_request.is_paused():
+                    max_pause_time = 10 * 60
+                    pause_duration = inference_request.time_paused()
+                    if pause_duration > max_pause_time:
+                        raise RuntimeError(
+                            f"Inference request is inactive for {pause_duration/60:.1f} minutes"
+                        )
+                    time.sleep(5)
                 if uploader.has_exception():
                     exception = uploader.exception
                     raise exception

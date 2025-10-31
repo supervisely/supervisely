@@ -44,9 +44,13 @@ class InferenceRequest:
         self._lock = threading.Lock()
         self._stage = InferenceRequest.Stage.PREPARING
         self._pending_results = []
+        self._max_pending_results = 500
+        self._max_results_per_pop = 100
         self._final_result = None
         self._exception = None
         self._stopped = threading.Event()
+        self._paused = threading.Event()
+        self._paused_timestamp = None
         self._progress_log_interval = 5.0
         self._last_progress_report_time = 0
         self.progress = Progress(
@@ -59,7 +63,7 @@ class InferenceRequest:
         self._created_at = time.monotonic()
         self._updated_at = self._created_at
         self._finished = False
-        
+
         self.tracker = None
 
         self.global_progress = None
@@ -100,6 +104,13 @@ class InferenceRequest:
         with self._lock:
             self._pending_results.extend(results)
             self._updated()
+            if self.pending_num() > self._max_pending_results:
+                logger.info(
+                    "Too many pending results (%s > %s). Pausing inference request to save resources",
+                    self.pending_num(),
+                    self._max_pending_results,
+                )
+                self.pause()
 
     def pop_pending_results(self, n: int = None):
         with self._lock:
@@ -109,9 +120,12 @@ class InferenceRequest:
                 n = len(self._pending_results)
             if n > len(self._pending_results):
                 n = len(self._pending_results)
+            if n > self._max_results_per_pop:
+                n = self._max_results_per_pop
             results = self._pending_results[:n]
             self._pending_results = self._pending_results[n:]
             self._updated()
+            self.continue_if_paused()
             return results
 
     def pending_num(self):
@@ -175,6 +189,17 @@ class InferenceRequest:
         self._stopped.set()
         self._updated()
 
+    def pause(self):
+        self._paused.set()
+        self._paused_timestamp = time.monotonic()
+        self._updated()
+
+    def continue_if_paused(self):
+        if self.is_paused():
+            self._paused.clear()
+            self._paused_timestamp = None
+            self._updated()
+
     def is_stopped(self):
         return self._stopped.is_set()
 
@@ -185,6 +210,12 @@ class InferenceRequest:
         if self._ttl is None:
             return False
         return time.monotonic() - self._updated_at > self._ttl
+
+    def is_paused(self):
+        return self._paused.is_set()
+
+    def time_paused(self):
+        return time.monotonic() - self._paused_timestamp
 
     def progress_json(self):
         return {
@@ -252,7 +283,7 @@ class InferenceRequest:
             status_data.pop(key, None)
         status_data.update(self.get_usage())
         return status_data
-    
+
 class GlobalProgress:
     def __init__(self):
         self.progress = Progress(message="Ready", total_cnt=1)
