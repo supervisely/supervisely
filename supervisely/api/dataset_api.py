@@ -1024,7 +1024,10 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
     def _yield_tree(
         self, tree: Dict[DatasetInfo, Dict], path: List[str]
     ) -> Generator[Tuple[List[str], DatasetInfo], None, None]:
-        """Yields tuples of (path, dataset) for all datasets in the tree.
+         """
+        Helper method for recursive tree traversal.
+        Yields tuples of (path, dataset) for all datasets in the tree. For each node (dataset) at the current level,
+        yields its (path, dataset) before recursively traversing and yielding from its children.
         
         :param tree: Tree structure to yield from.
         :type tree: Dict[DatasetInfo, Dict]
@@ -1060,11 +1063,12 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             if dataset.id == target_id:
                 return dataset, children, path
             # Search in children
-            found_dataset, found_children, found_path = self._find_dataset_in_tree(
-                children, target_id, path + [dataset.name]
-            )
-            if found_dataset is not None:
-                return found_dataset, found_children, found_path
+            if children:
+                found_dataset, found_children, found_path = self._find_dataset_in_tree(
+                    children, target_id, path + [dataset.name]
+                )
+                if found_dataset is not None:
+                    return found_dataset, found_children, found_path
         return None, None, []
 
     def tree(self, project_id: int, dataset_id: Optional[int] = None) -> Generator[Tuple[List[str], DatasetInfo], None, None]:
