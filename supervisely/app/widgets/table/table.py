@@ -1,3 +1,5 @@
+# isort: skip_file
+
 import copy
 import io
 
@@ -54,8 +56,10 @@ class PackerUnpacker:
 
     @staticmethod
     def pandas_unpacker(data: pd.DataFrame):
-        data = data.replace({np.nan: None})
-        # data = data.astype(object).replace(np.nan, "-") # TODO: replace None later
+        # Replace NaN with empty string for better compatibility with frontend
+        data = data.replace({np.nan: ""})
+        # Also replace None with empty string
+        data = data.replace({None: ""})
 
         unpacked_data = {
             "columns": data.columns.to_list(),
@@ -383,6 +387,10 @@ class Table(Widget):
         StateJson().send_changes()
 
     def delete_row(self, key_column_name, key_cell_value):
+        # Convert None to empty string for backward compatibility
+        if key_cell_value is None:
+            key_cell_value = ""
+
         col_index = self._parsed_data["columns"].index(key_column_name)
         row_indices = []
         for idx, row in enumerate(self._parsed_data["data"]):
@@ -397,6 +405,10 @@ class Table(Widget):
         self.pop_row(row_indices[0])
 
     def update_cell_value(self, key_column_name, key_cell_value, column_name, new_value):
+        # Convert None to empty string for backward compatibility
+        if key_cell_value is None:
+            key_cell_value = ""
+
         key_col_index = self._parsed_data["columns"].index(key_column_name)
         row_indices = []
         for idx, row in enumerate(self._parsed_data["data"]):
@@ -415,6 +427,10 @@ class Table(Widget):
         DataJson().send_changes()
 
     def update_matching_cells(self, key_column_name, key_cell_value, column_name, new_value):
+        # Convert None to empty string for backward compatibility
+        if key_cell_value is None:
+            key_cell_value = ""
+
         key_col_index = self._parsed_data["columns"].index(key_column_name)
         row_indices = []
         for idx, row in enumerate(self._parsed_data["data"]):
