@@ -548,5 +548,276 @@ class TestFastTableEdgeCases:
         assert third_value == [3, 7]
 
 
+class TestFastTableNoneHandling:
+    """Test suite for proper None/NaN handling in FastTable."""
+
+    def setup_method(self):
+        """Setup test data with None values."""
+        self.data_with_none = [
+            [1, None, 3, "text"],
+            [None, 6, None, "value"],
+            [9, 10, 11, None],
+        ]
+        self.columns = ["col1", "col2", "col3", "col4"]
+
+    def test_none_values_preserved_in_source_data(self):
+        """Test that None values are preserved in _source_data (as NaN in pandas)."""
+        table = FastTable(data=self.data_with_none, columns=self.columns)
+
+        # None is converted to NaN by pandas, which should be preserved in source data
+        assert pd.isna(table._source_data.iloc[0, 1])
+        assert pd.isna(table._source_data.iloc[1, 0])
+        assert pd.isna(table._source_data.iloc[1, 2])
+        assert pd.isna(table._source_data.iloc[2, 3])
+
+    def test_none_values_converted_to_empty_string_in_json(self):
+        """Test that None values are converted to empty strings in JSON output."""
+        table = FastTable(data=self.data_with_none, columns=self.columns)
+
+        json_data = table.get_json_data()
+
+        # None should be converted to "" for display
+        assert json_data["data"][0]["items"][1] == ""
+        assert json_data["data"][1]["items"][0] == ""
+        assert json_data["data"][1]["items"][2] == ""
+        assert json_data["data"][2]["items"][3] == ""
+
+        # Non-None values should be preserved
+        assert json_data["data"][0]["items"][0] == 1
+        assert json_data["data"][0]["items"][3] == "text"
+
+    def test_to_pandas_preserves_none_values(self):
+        """Test that to_pandas() returns DataFrame with NaN values (pandas behavior)."""
+        table = FastTable(data=self.data_with_none, columns=self.columns)
+
+        exported_df = table.to_pandas()
+
+        # pandas converts None to NaN, which should be preserved
+        assert pd.isna(exported_df.iloc[0, 1])
+        assert pd.isna(exported_df.iloc[1, 0])
+        assert pd.isna(exported_df.iloc[1, 2])
+        assert pd.isna(exported_df.iloc[2, 3])
+
+    def test_get_clicked_row_returns_none_values(self):
+        """Test that get_clicked_row returns NaN values from source (not empty strings)."""
+        table = FastTable(data=self.data_with_none, columns=self.columns)
+
+        # Directly get data from source for row 1
+        row_data = table._source_data.loc[1].values.tolist()
+
+        # Row should have NaN values (pandas converts None to NaN)
+        assert pd.isna(row_data[0])  # col1
+        assert pd.isna(row_data[2])  # col3
+        assert row_data[1] == 6  # col2
+        assert row_data[3] == "value"  # col4
+
+    def test_get_clicked_cell_returns_none_value(self):
+        """Test that get_clicked_cell returns NaN value from source."""
+        import json
+
+        from supervisely.app.content import StateJson
+
+        table = FastTable(data=self.data_with_none, columns=self.columns)
+
+        # Manually set clicked cell state to simulate cell click
+        StateJson()[table.widget_id]["selectedCell"] = {
+            "idx": 0,
+            "column": 1,
+            "row": [1, None, 3, "text"],  # This gets ignored, we read from source
+        }
+
+        clicked_cell = table.get_clicked_cell()
+
+        # Should return NaN from source data (pandas converts None to NaN)
+        assert pd.isna(clicked_cell.column_value)
+        assert clicked_cell.column_name == "col2"
+        assert clicked_cell.row_index == 0
+
+    def test_select_row_by_value_with_none(self):
+        """Test working with NaN values in source data."""
+        import numpy as np
+
+        table = FastTable(data=self.data_with_none, columns=self.columns, is_selectable=True)
+
+        # pandas converts None to NaN
+        # Verify that NaN values exist in source
+        col_idx = table._columns_first_idx.index("col2")
+        col_tuple = table._source_data.columns[col_idx]
+        nan_rows = table._source_data[table._source_data[col_tuple].isna()]
+
+        assert len(nan_rows) > 0, "Should have NaN values in col2"
+        assert pd.isna(table._source_data.iloc[0, 1]), "First row col2 should be NaN"
+
+    def test_select_rows_by_value_with_none(self):
+        """Test searching for NaN values using pandas isna()."""
+        table = FastTable(data=self.data_with_none, columns=self.columns, is_selectable=True)
+
+        # Find rows where col3 is NaN using pandas
+        col_idx = table._columns_first_idx.index("col3")
+        col_tuple = table._source_data.columns[col_idx]
+        nan_rows = table._source_data[table._source_data[col_tuple].isna()]
+
+        # Select those rows manually
+        indices = nan_rows.index.tolist()
+        table.select_rows(indices)
+
+        selected = table.get_selected_rows()
+        assert len(selected) == 1
+        assert selected[0].row_index == 1
+        assert pd.isna(selected[0].row[2])
+
+    def test_pop_row_returns_none_values(self):
+        """Test that pop_row returns row with NaN values."""
+        table = FastTable(data=self.data_with_none, columns=self.columns)
+
+        popped = table.pop_row(0)
+
+        # pandas converts None to NaN
+        assert pd.isna(popped[1])
+        assert popped[0] == 1
+        assert popped[2] == 3
+
+    def test_update_cell_with_none(self):
+        """Test updating a cell to None value (becomes NaN in pandas)."""
+        table = FastTable(data=[[1, 2, 3]], columns=["a", "b", "c"])
+
+        # Update cell to None
+        table.update_cell_value(row=0, column=1, value=None)
+
+        # Source data should have NaN (pandas converts None to NaN)
+        assert pd.isna(table._source_data.iloc[0, 1])
+
+        # JSON output should have ""
+        json_data = table.get_json_data()
+        assert json_data["data"][0]["items"][1] == ""
+
+        # to_pandas should have NaN
+        exported = table.to_pandas()
+        assert pd.isna(exported.iloc[0, 1])
+
+    def test_insert_row_with_none_values(self):
+        """Test inserting a row containing None values."""
+        table = FastTable(data=[[1, 2, 3]], columns=["a", "b", "c"])
+
+        new_row = [None, 5, None]
+        table.insert_row(new_row, index=0)
+
+        # Source data should preserve None
+        assert table._source_data.iloc[0, 0] is None
+        assert table._source_data.iloc[0, 2] is None
+        assert table._source_data.iloc[0, 1] == 5
+
+    def test_add_rows_with_none_values(self):
+        """Test adding multiple rows with None values (become NaN in pandas)."""
+        table = FastTable(data=[[1, 2]], columns=["a", "b"])
+
+        table.add_rows([[None, 4], [5, None], [None, None]])
+
+        # Verify None values are preserved as NaN
+        assert pd.isna(table._source_data.iloc[1, 0])
+        assert pd.isna(table._source_data.iloc[2, 1])
+        assert pd.isna(table._source_data.iloc[3, 0])
+        assert pd.isna(table._source_data.iloc[3, 1])
+
+    def test_search_with_none_values(self):
+        """Test that search works correctly with NaN values."""
+        table = FastTable(data=self.data_with_none, columns=self.columns)
+
+        # Search for "6" should find row with NaN values
+        searched = table._search("6")
+
+        assert len(searched) == 1
+        assert pd.isna(searched.iloc[0, 0])  # NaN is preserved
+        assert searched.iloc[0, 1] == 6
+
+    def test_sort_with_none_values(self):
+        """Test that sorting works with None values."""
+        data = [[3, None], [1, "b"], [None, "a"], [2, "c"]]
+        table = FastTable(data=data, columns=["num", "letter"], sort_column_idx=0, sort_order="asc")
+
+        sorted_df = table._sorted_data
+
+        # None values should be handled during sort
+        assert sorted_df is not None
+        assert len(sorted_df) == 4
+
+    def test_filter_with_none_values(self):
+        """Test custom filter function with None values."""
+        table = FastTable(data=self.data_with_none, columns=self.columns)
+
+        def filter_non_none_in_col2(data, value):
+            # Filter rows where col2 is not None
+            col_tuple = data.columns[1]  # col2
+            return data[data[col_tuple].notna()]
+
+        table.set_filter(filter_non_none_in_col2)
+        table.filter(True)
+
+        # Should only have rows where col2 is not None
+        assert table._rows_total == 2  # rows 1 and 2 (indices 1 and 2)
+
+    def test_dataframe_with_nan_values(self):
+        """Test that pandas NaN values are also handled correctly."""
+        import numpy as np
+
+        df = pd.DataFrame({"a": [1, np.nan, 3], "b": [np.nan, 2, 3], "c": [1, 2, np.nan]})
+
+        table = FastTable(data=df)
+
+        # NaN should be converted to "" in JSON
+        json_data = table.get_json_data()
+        assert json_data["data"][0]["items"][1] == ""
+        assert json_data["data"][1]["items"][0] == ""
+        assert json_data["data"][2]["items"][2] == ""
+
+        # But preserved in to_pandas
+        exported = table.to_pandas()
+        assert pd.isna(exported.iloc[0, 1])
+        assert pd.isna(exported.iloc[1, 0])
+        assert pd.isna(exported.iloc[2, 2])
+
+    def test_to_json_converts_none_to_empty_string(self):
+        """Test that to_json exports None as empty strings."""
+        table = FastTable(data=self.data_with_none, columns=self.columns)
+
+        json_export = table.to_json()
+
+        # None should be "" in JSON export
+        assert json_export["data"][0][1] == ""
+        assert json_export["data"][1][0] == ""
+        assert json_export["data"][1][2] == ""
+
+    def test_active_page_with_none_preserves_values(self):
+        """Test that to_pandas(active_page=True) preserves NaN values."""
+        table = FastTable(data=self.data_with_none, columns=self.columns, page_size=2)
+
+        # Get active page
+        exported = table.to_pandas(active_page=True)
+
+        # Should preserve NaN values from active page
+        assert pd.isna(exported.iloc[0, 1])
+        assert pd.isna(exported.iloc[1, 0])
+
+    def test_multiindex_with_none_values(self):
+        """Test None handling with duplicate column names (MultiIndex)."""
+        data = [[1, None, 3], [None, 5, None]]
+        columns = ["value", "value", "other"]
+
+        table = FastTable(data=data, columns=columns)
+
+        # Verify MultiIndex is created
+        assert isinstance(table._source_data.columns, pd.MultiIndex)
+
+        # None is converted to NaN by pandas and should be preserved in source
+        assert pd.isna(table._source_data.iloc[0, 1])
+        assert pd.isna(table._source_data.iloc[1, 0])
+        assert pd.isna(table._source_data.iloc[1, 2])
+
+        # to_pandas should preserve NaN
+        exported = table.to_pandas()
+        assert pd.isna(exported.iloc[0, 1])
+        assert pd.isna(exported.iloc[1, 0])
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

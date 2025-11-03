@@ -583,10 +583,17 @@ class FastTable(Widget):
         :rtype: pd.DataFrame
         """
         if active_page is True:
-            temp_parsed_data = [d["items"] for d in self._parsed_active_data["data"]]
+            # Return sliced data directly from source to preserve None/NaN values
+            packed_data = self._sliced_data.copy()
+            # Reset column names to first level only
+            if isinstance(packed_data.columns, pd.MultiIndex):
+                packed_data.columns = packed_data.columns.get_level_values("first")
         else:
-            temp_parsed_data = [d["items"] for d in self._parsed_source_data["data"]]
-        packed_data = pd.DataFrame(data=temp_parsed_data, columns=self._columns_first_idx)
+            # Return source data directly to preserve None/NaN values
+            packed_data = self._source_data.copy()
+            # Reset column names to first level only
+            if isinstance(packed_data.columns, pd.MultiIndex):
+                packed_data.columns = packed_data.columns.get_level_values("first")
         return packed_data
 
     def clear_selection(self) -> None:
@@ -626,8 +633,12 @@ class FastTable(Widget):
             rows = []
             for row in selected_rows:
                 row_index = row["idx"]
-                row_data = row.get("row", row.get("items", None))
-                if row_index is None or row_data is None:
+                if row_index is None:
+                    continue
+                # Get original data from source_data to preserve None/NaN values
+                try:
+                    row_data = self._source_data.loc[row_index].values.tolist()
+                except (KeyError, IndexError):
                     continue
                 rows.append(self.ClickedRow(row_data, row_index))
             return rows
@@ -638,8 +649,12 @@ class FastTable(Widget):
         if clicked_row is None:
             return None
         row_index = clicked_row["idx"]
-        row = clicked_row["row"]
-        if row_index is None or row is None:
+        if row_index is None:
+            return None
+        # Get original data from source_data to preserve None/NaN values
+        try:
+            row = self._source_data.loc[row_index].values.tolist()
+        except (KeyError, IndexError):
             return None
         return self.ClickedRow(row, row_index)
 
@@ -653,11 +668,15 @@ class FastTable(Widget):
         if cell_data is None:
             return None
         row_index = cell_data["idx"]
-        row = cell_data["row"]
         column_index = cell_data["column"]
+        if column_index is None or row_index is None:
+            return None
         column_name = self._columns_first_idx[column_index]
-        column_value = row[column_index]
-        if column_index is None or row is None:
+        # Get original data from source_data to preserve None/NaN values
+        try:
+            row = self._source_data.loc[row_index].values.tolist()
+            column_value = row[column_index]
+        except (KeyError, IndexError):
             return None
         return self.ClickedCell(row, column_index, row_index, column_name, column_value)
 
@@ -927,12 +946,24 @@ class FastTable(Widget):
         else:
             ascending = False
         try:
-            # Try to convert to numeric for proper sorting, fallback to original if not possible
             column = data.columns[column_idx]
-            sort_key = pd.to_numeric(data[column], errors="ignore")
-            data = data.iloc[sort_key.argsort()]
-            if not ascending:
-                data = data.iloc[::-1]
+            # Try to convert to numeric for proper sorting
+            numeric_column = pd.to_numeric(data[column], errors="coerce")
+
+            # Check if column contains numeric data (has at least one non-NaN numeric value)
+            if numeric_column.notna().sum() > 0:
+                # Create temporary column for sorting
+                data_copy = data.copy()
+                data_copy["_sort_key"] = numeric_column
+                # Sort by numeric values with NaN at the end
+                data_copy = data_copy.sort_values(
+                    by="_sort_key", ascending=ascending, na_position="last"
+                )
+                # Remove temporary column and return original data in sorted order
+                data = data.loc[data_copy.index]
+            else:
+                # Sort as strings with NaN values at the end
+                data = data.sort_values(by=column, ascending=ascending, na_position="last")
         except IndexError as e:
             e.args = (
                 f"Sorting by column idx = {column_idx} is not possible, your table has only {len(data.columns)} columns with idx from 0 to {len(data.columns) - 1}",
@@ -1068,20 +1099,21 @@ class FastTable(Widget):
     def _get_pandas_unpacked_data(self, data: pd.DataFrame) -> dict:
         if not isinstance(data, pd.DataFrame):
             raise TypeError("Cannot parse input data, please use Pandas Dataframe as input data")
-        # Replace NaN with empty string for better compatibility with frontend
-        data = data.replace({np.nan: ""})
-        # Also replace None with empty string
-        data = data.replace({None: ""})
+
+        # Create a copy for frontend display to avoid modifying source data
+        display_data = data.copy()
+        # Replace NaN and None with empty string only for display
+        display_data = display_data.replace({np.nan: "", None: ""})
 
         # Handle MultiIndex columns - extract only the first level
-        if isinstance(data.columns, pd.MultiIndex):
-            columns = data.columns.get_level_values("first").tolist()
+        if isinstance(display_data.columns, pd.MultiIndex):
+            columns = display_data.columns.get_level_values("first").tolist()
         else:
-            columns = data.columns.to_list()
+            columns = display_data.columns.to_list()
 
         unpacked_data = {
             "columns": columns,
-            "data": data.values.tolist(),
+            "data": display_data.values.tolist(),
         }
         return unpacked_data
 
@@ -1328,10 +1360,6 @@ class FastTable(Widget):
         :param value: Value to select row by
         :type value: Any
         """
-        # Convert None to empty string for backward compatibility
-        if value is None:
-            value = ""
-
         if not self._is_selectable and not self._is_radio:
             raise ValueError(
                 "Table is not selectable. Set 'is_selectable' to True to use this method."
@@ -1362,9 +1390,6 @@ class FastTable(Widget):
         :param values: List of values to select rows by
         :type values: List
         """
-        # Convert None to empty string for backward compatibility
-        values = ["" if v is None else v for v in values]
-
         if not self._is_selectable:
             raise ValueError(
                 "Table is not selectable. Set 'is_selectable' to True to use this method."
