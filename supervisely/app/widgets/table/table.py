@@ -1,3 +1,5 @@
+# isort: skip_file
+
 import copy
 import io
 
@@ -54,9 +56,8 @@ class PackerUnpacker:
 
     @staticmethod
     def pandas_unpacker(data: pd.DataFrame):
-        data = data.replace({np.nan: None})
-        # data = data.astype(object).replace(np.nan, "-") # TODO: replace None later
-
+        # Keep None/NaN values in source data, don't replace them
+        # They will be converted to "" only when sending to frontend
         unpacked_data = {
             "columns": data.columns.to_list(),
             "data": data.values.tolist(),
@@ -169,9 +170,35 @@ class Table(Widget):
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
+    def _prepare_data_for_frontend(self, data_dict):
+        """Convert None and NaN values to empty strings for frontend display.
+        This preserves the original None/NaN values in _parsed_data.
+        """
+        import math
+
+        display_data = copy.deepcopy(data_dict)
+
+        # Convert None/NaN in data rows
+        for row in display_data.get("data", []):
+            for i in range(len(row)):
+                value = row[i]
+                # Check for None or NaN (NaN is a float that doesn't equal itself)
+                if value is None or (isinstance(value, float) and math.isnan(value)):
+                    row[i] = ""
+
+        # Convert None/NaN in summary row if present
+        if "summaryRow" in display_data and display_data["summaryRow"] is not None:
+            summary_row = display_data["summaryRow"]
+            for i in range(len(summary_row)):
+                value = summary_row[i]
+                if value is None or (isinstance(value, float) and math.isnan(value)):
+                    summary_row[i] = ""
+
+        return display_data
+
     def get_json_data(self):
         return {
-            "table_data": self._parsed_data,
+            "table_data": self._prepare_data_for_frontend(self._parsed_data),
             "table_options": {
                 "perPage": self._per_page,
                 "pageSizes": self._page_sizes,
@@ -255,13 +282,17 @@ class Table(Widget):
 
     def read_json(self, value: dict) -> None:
         self._update_table_data(input_data=value)
-        DataJson()[self.widget_id]["table_data"] = self._parsed_data
+        DataJson()[self.widget_id]["table_data"] = self._prepare_data_for_frontend(
+            self._parsed_data
+        )
         DataJson().send_changes()
         self.clear_selection()
 
     def read_pandas(self, value: pd.DataFrame) -> None:
         self._update_table_data(input_data=value)
-        DataJson()[self.widget_id]["table_data"] = self._parsed_data
+        DataJson()[self.widget_id]["table_data"] = self._prepare_data_for_frontend(
+            self._parsed_data
+        )
         DataJson().send_changes()
         self.clear_selection()
 
@@ -272,7 +303,9 @@ class Table(Widget):
         index = len(table_data) if index > len(table_data) or index < 0 else index
 
         self._parsed_data["data"].insert(index, data)
-        DataJson()[self.widget_id]["table_data"] = self._parsed_data
+        DataJson()[self.widget_id]["table_data"] = self._prepare_data_for_frontend(
+            self._parsed_data
+        )
         DataJson().send_changes()
 
     def pop_row(self, index=-1):
@@ -284,7 +317,9 @@ class Table(Widget):
 
         if len(self._parsed_data["data"]) != 0:
             popped_row = self._parsed_data["data"].pop(index)
-            DataJson()[self.widget_id]["table_data"] = self._parsed_data
+            DataJson()[self.widget_id]["table_data"] = self._prepare_data_for_frontend(
+                self._parsed_data
+            )
             DataJson().send_changes()
             return popped_row
 
@@ -382,11 +417,27 @@ class Table(Widget):
         StateJson()[self.widget_id]["selected_row"] = {}
         StateJson().send_changes()
 
+    @staticmethod
+    def _values_equal(val1, val2):
+        """Compare two values, handling NaN specially."""
+        import math
+
+        # Check if both are NaN
+        is_nan1 = isinstance(val1, float) and math.isnan(val1)
+        is_nan2 = isinstance(val2, float) and math.isnan(val2)
+        if is_nan1 and is_nan2:
+            return True
+        # Check if both are None
+        if val1 is None and val2 is None:
+            return True
+        # Regular comparison
+        return val1 == val2
+
     def delete_row(self, key_column_name, key_cell_value):
         col_index = self._parsed_data["columns"].index(key_column_name)
         row_indices = []
         for idx, row in enumerate(self._parsed_data["data"]):
-            if row[col_index] == key_cell_value:
+            if self._values_equal(row[col_index], key_cell_value):
                 row_indices.append(idx)
         if len(row_indices) == 0:
             raise ValueError('Column "{key_column_name}" does not have value "{key_cell_value}"')
@@ -400,7 +451,7 @@ class Table(Widget):
         key_col_index = self._parsed_data["columns"].index(key_column_name)
         row_indices = []
         for idx, row in enumerate(self._parsed_data["data"]):
-            if row[key_col_index] == key_cell_value:
+            if self._values_equal(row[key_col_index], key_cell_value):
                 row_indices.append(idx)
         if len(row_indices) == 0:
             raise ValueError('Column "{key_column_name}" does not have value "{key_cell_value}"')
@@ -411,20 +462,24 @@ class Table(Widget):
 
         col_index = self._parsed_data["columns"].index(column_name)
         self._parsed_data["data"][row_indices[0]][col_index] = new_value
-        DataJson()[self.widget_id]["table_data"] = self._parsed_data
+        DataJson()[self.widget_id]["table_data"] = self._prepare_data_for_frontend(
+            self._parsed_data
+        )
         DataJson().send_changes()
 
     def update_matching_cells(self, key_column_name, key_cell_value, column_name, new_value):
         key_col_index = self._parsed_data["columns"].index(key_column_name)
         row_indices = []
         for idx, row in enumerate(self._parsed_data["data"]):
-            if row[key_col_index] == key_cell_value:
+            if self._values_equal(row[key_col_index], key_cell_value):
                 row_indices.append(idx)
 
         col_index = self._parsed_data["columns"].index(column_name)
         for row_idx in row_indices:
             self._parsed_data["data"][row_idx][col_index] = new_value
-        DataJson()[self.widget_id]["table_data"] = self._parsed_data
+        DataJson()[self.widget_id]["table_data"] = self._prepare_data_for_frontend(
+            self._parsed_data
+        )
         DataJson().send_changes()
 
     def sort(self, column_id: int = None, direction: Optional[Literal["asc", "desc"]] = None):

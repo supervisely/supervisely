@@ -105,12 +105,17 @@ jobs:
         run: |
           python_files=()
           while IFS= read -r changed_file; do
+            # Skip files in tests/ folder
+            if [[ $changed_file == tests/* ]]; then
+              echo "Skipping test file: $changed_file"
+              continue
+            fi
             if [[ $changed_file == *.py ]] && [ -f "$changed_file" ]; then
               python_files+=("$changed_file")
             fi
           done < changed_files.txt
           if [ "${#python_files[@]}" -gt 0 ]; then
-            pylint_output=$(pylint --ignore=tests "${python_files[@]}" --generated-members=cv2.*,signal.*,zstd.*) || true
+            pylint_output=$(pylint "${python_files[@]}" --generated-members=cv2.*,signal.*,zstd.*) || true
             if [[ $pylint_output == *"E"* ]] || [[ $pylint_output == *"F"* ]]; then
               # Save pylint output to a file
               echo "$pylint_output" > pylint_errors.txt
