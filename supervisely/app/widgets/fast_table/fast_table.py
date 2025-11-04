@@ -425,6 +425,8 @@ class FastTable(Widget):
     def read_json(self, data: Dict, meta: Dict = None, custom_columns: Optional[List[Union[str, tuple]]] = None) -> None:
         """Replace table data with options and project meta in the widget
 
+        More about options in `Developer Portal <https://developer.supervisely.com/app-development/widgets/tables/fasttable#read_json>`_
+
         :param data: Table data with options:
             - data: table data
             - columns: list of column names
@@ -480,12 +482,7 @@ class FastTable(Widget):
         table_data = data.get("data", None)
         self._validate_input_data(table_data)
         self._source_data = self._prepare_input_data(table_data)
-        (
-            self._parsed_source_data,
-            self._sliced_data,
-            self._parsed_active_data,
-        ) = self._prepare_working_data()
-        self._rows_total = len(self._parsed_source_data["data"])
+        
         init_options = DataJson()[self.widget_id]["options"]
         init_options.update(self._table_options)
         sort = init_options.pop("sort", {"column": None, "order": None})
@@ -494,7 +491,14 @@ class FastTable(Widget):
         if self._sort_column_idx is not None and self._sort_column_idx > len(self._columns_first_idx) - 1:
             self._sort_column_idx = None
         self._sort_order = sort.get("order", None)
-        self._page_size = init_options.pop("pageSize", 10) 
+        self._page_size = init_options.pop("pageSize", 10)
+        
+        # Apply sorting before preparing working data
+        self._sorted_data = self._sort_table_data(self._source_data)
+        self._sliced_data = self._slice_table_data(self._sorted_data, actual_page=self._active_page)
+        self._parsed_active_data = self._unpack_pandas_table_data(self._sliced_data)
+        self._parsed_source_data = self._unpack_pandas_table_data(self._source_data)
+        self._rows_total = len(self._parsed_source_data["data"]) 
         DataJson()[self.widget_id]["data"] = list(self._parsed_active_data["data"])
         DataJson()[self.widget_id]["columns"] = self._parsed_active_data["columns"]
         DataJson()[self.widget_id]["columnsOptions"] = self._columns_options
