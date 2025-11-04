@@ -60,7 +60,9 @@ class Heatmap(Widget):
         self._heatmap_url = None
         self._width = width
         self._height = height
-        self._opacity = 75
+        self._opacity = 70
+        self._min_value = 0
+        self._max_value = 0
         self.static_dir = static_dir
         super().__init__(widget_id, file_path=file_path)
 
@@ -110,6 +112,8 @@ class Heatmap(Widget):
             self._max_value = mask.max()
         except Exception as e:
             self._heatmap_url = None
+            self._min_value = None
+            self._max_value = None
         finally:
             DataJson()[self.widget_id]["heatmapUrl"] = self._heatmap_url
             DataJson()[self.widget_id]["minValue"] = self._min_value
@@ -147,7 +151,7 @@ class Heatmap(Widget):
 
     def set_heatmap_from_annotations(self, anns: List[Annotation], object_name: str = None):
         if len(anns) == 0:
-            raise ValueError("asdasd")
+            raise ValueError("Annotations list should have at least one element")
         sizes = [ann.img_size for ann in anns]
         avg_size = (
             sum(size[0] for size in sizes) / len(sizes),

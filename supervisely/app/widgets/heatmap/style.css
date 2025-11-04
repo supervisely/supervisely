@@ -4,7 +4,6 @@
   cursor: pointer;
   overflow: hidden;
   background-color: #E2E8F0;
-  border: 4px solid white;
   border-radius: 1rem;
   box-sizing: border-box;
   transition: height 0.2s ease;
