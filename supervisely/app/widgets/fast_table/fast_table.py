@@ -976,28 +976,58 @@ class FastTable(Widget):
         return data
 
     def sort(
-        self, column_idx: Optional[int] = None, order: Optional[Literal["asc", "desc"]] = None
+        self,
+        column_idx: Optional[int] = None,
+        order: Optional[Literal["asc", "desc"]] = None,
+        reset: bool = False,
     ) -> None:
         """Sorts table data by column index and order.
 
-        :param column_idx: Index of the column to sort by
+        :param column_idx: Index of the column to sort by. If None, keeps current column (unless reset=True).
         :type column_idx: Optional[int]
-        :param order: Sorting order
+        :param order: Sorting order. If None, keeps current order (unless reset=True).
         :type order: Optional[Literal["asc", "desc"]]
+        :param reset: If True, clears sorting completely. Default is False.
+        :type reset: bool
+
+        :Usage example:
+
+        .. code-block:: python
+            # Sorting examples
+            sort(column_idx=0, order="asc") # sort by column 0 ascending
+            sort(column_idx=1) # sort by column 1, keep current order
+            sort(order="desc") # keep current column, change order to descending
+            sort(reset=True) # clear sorting completely
         """
-        self._sort_column_idx = column_idx
-        self._sort_order = order
+        # If reset=True, clear sorting completely
+        if reset:
+            self._sort_column_idx = None
+            self._sort_order = None
+        else:
+            # Preserve current values if new ones are not provided
+            if column_idx is not None:
+                self._sort_column_idx = column_idx
+            # else: keep current self._sort_column_idx
+
+            if order is not None:
+                self._sort_order = order
+            # else: keep current self._sort_order
+
         self._validate_sort_attrs()
-        if self._sort_column_idx is not None:
-            StateJson()[self.widget_id]["sort"]["column"] = self._sort_column_idx
-        if self._sort_order is not None:
-            StateJson()[self.widget_id]["sort"]["order"] = self._sort_order
+
+        # Always update StateJson with current values (including None)
+        StateJson()[self.widget_id]["sort"]["column"] = self._sort_column_idx
+        StateJson()[self.widget_id]["sort"]["order"] = self._sort_order
+
+        # Apply filter, search, sort pipeline
         self._filtered_data = self._filter(self._filter_value)
         self._searched_data = self._search(self._search_str)
         self._rows_total = len(self._searched_data)
         self._sorted_data = self._sort_table_data(self._searched_data)
         self._sliced_data = self._slice_table_data(self._sorted_data, actual_page=self._active_page)
         self._parsed_active_data = self._unpack_pandas_table_data(self._sliced_data)
+
+        # Update DataJson with sorted and paginated data
         DataJson()[self.widget_id]["data"] = list(self._parsed_active_data["data"])
         DataJson()[self.widget_id]["total"] = self._rows_total
         self._maybe_update_selected_row()

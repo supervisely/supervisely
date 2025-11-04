@@ -819,5 +819,495 @@ class TestFastTableNoneHandling:
         assert pd.isna(exported.iloc[1, 0])
 
 
+class TestFastTableSorting:
+    """Comprehensive test suite for FastTable sorting functionality."""
+
+    def test_sort_numeric_ascending(self):
+        """Test sorting numeric column in ascending order."""
+        data = [[5, "e"], [2, "b"], [8, "h"], [1, "a"]]
+        table = FastTable(data=data, columns=["num", "letter"])
+
+        table.sort(column_idx=0, order="asc")
+
+        sorted_df = table._sorted_data
+        assert sorted_df.iloc[:, 0].tolist() == [1, 2, 5, 8]
+        # Verify data is synchronized
+        assert table._rows_total == 4
+        assert len(table._parsed_active_data["data"]) == 4
+
+    def test_sort_numeric_descending(self):
+        """Test sorting numeric column in descending order."""
+        data = [[5, "e"], [2, "b"], [8, "h"], [1, "a"]]
+        table = FastTable(data=data, columns=["num", "letter"])
+
+        table.sort(column_idx=0, order="desc")
+
+        sorted_df = table._sorted_data
+        assert sorted_df.iloc[:, 0].tolist() == [8, 5, 2, 1]
+
+    def test_sort_string_ascending(self):
+        """Test sorting string column in ascending order."""
+        data = [["zebra", 1], ["apple", 2], ["mango", 3], ["banana", 4]]
+        table = FastTable(data=data, columns=["fruit", "count"])
+
+        table.sort(column_idx=0, order="asc")
+
+        sorted_df = table._sorted_data
+        assert sorted_df.iloc[:, 0].tolist() == ["apple", "banana", "mango", "zebra"]
+
+    def test_sort_string_descending(self):
+        """Test sorting string column in descending order."""
+        data = [["zebra", 1], ["apple", 2], ["mango", 3], ["banana", 4]]
+        table = FastTable(data=data, columns=["fruit", "count"])
+
+        table.sort(column_idx=0, order="desc")
+
+        sorted_df = table._sorted_data
+        assert sorted_df.iloc[:, 0].tolist() == ["zebra", "mango", "banana", "apple"]
+
+    def test_sort_numeric_strings_as_numbers(self):
+        """Test that numeric strings are sorted numerically, not alphabetically."""
+        data = [["100", "a"], ["3", "b"], ["29", "c"], ["5", "d"]]
+        table = FastTable(data=data, columns=["num_str", "letter"])
+
+        table.sort(column_idx=0, order="asc")
+
+        sorted_df = table._sorted_data
+        # Should sort as numbers: 3, 5, 29, 100 (not "100", "29", "3", "5")
+        assert sorted_df.iloc[:, 0].tolist() == ["3", "5", "29", "100"]
+
+    def test_sort_mixed_numeric_strings_descending(self):
+        """Test numeric strings sorted descending."""
+        data = [["100", "a"], ["3", "b"], ["29", "c"], ["5", "d"]]
+        table = FastTable(data=data, columns=["num_str", "letter"])
+
+        table.sort(column_idx=0, order="desc")
+
+        sorted_df = table._sorted_data
+        assert sorted_df.iloc[:, 0].tolist() == ["100", "29", "5", "3"]
+
+    def test_sort_with_none_values_ascending(self):
+        """Test that None values are placed at the end when sorting ascending."""
+        data = [[3, "c"], [None, "none1"], [1, "a"], [None, "none2"], [2, "b"]]
+        table = FastTable(data=data, columns=["num", "letter"])
+
+        table.sort(column_idx=0, order="asc")
+
+        sorted_df = table._sorted_data
+        # None values should be at the end
+        values = sorted_df.iloc[:, 0].tolist()
+        assert values[:3] == [1, 2, 3]
+        assert pd.isna(values[3])
+        assert pd.isna(values[4])
+
+    def test_sort_with_none_values_descending(self):
+        """Test that None values are placed at the end when sorting descending."""
+        data = [[3, "c"], [None, "none1"], [1, "a"], [None, "none2"], [2, "b"]]
+        table = FastTable(data=data, columns=["num", "letter"])
+
+        table.sort(column_idx=0, order="desc")
+
+        sorted_df = table._sorted_data
+        values = sorted_df.iloc[:, 0].tolist()
+        assert values[:3] == [3, 2, 1]
+        assert pd.isna(values[3])
+        assert pd.isna(values[4])
+
+    def test_sort_with_nan_values(self):
+        """Test sorting with NaN values from pandas."""
+        import numpy as np
+
+        df = pd.DataFrame({"num": [3, np.nan, 1, np.nan, 2], "letter": ["c", "n1", "a", "n2", "b"]})
+        table = FastTable(data=df)
+
+        table.sort(column_idx=0, order="asc")
+
+        sorted_df = table._sorted_data
+        values = sorted_df.iloc[:, 0].tolist()
+        assert values[:3] == [1, 2, 3]
+        assert pd.isna(values[3])
+        assert pd.isna(values[4])
+
+    def test_sort_initialization_with_params(self):
+        """Test that table is sorted correctly when sort params are passed to constructor."""
+        data = [[5, "e"], [2, "b"], [8, "h"], [1, "a"]]
+        table = FastTable(data=data, columns=["num", "letter"], sort_column_idx=0, sort_order="asc")
+
+        # Should be sorted on initialization
+        sorted_df = table._sorted_data
+        assert sorted_df.iloc[:, 0].tolist() == [1, 2, 5, 8]
+
+    def test_sort_none_column_idx(self):
+        """Test that passing None parameters without reset preserves current sorting."""
+        data = [[5, "e"], [2, "b"], [8, "h"], [1, "a"]]
+        table = FastTable(data=data, columns=["num", "letter"])
+
+        # First sort
+        table.sort(column_idx=0, order="asc")
+        assert table._sorted_data.iloc[:, 0].tolist() == [1, 2, 5, 8]
+
+        # Call with None params (without reset) - should preserve current sorting
+        table.sort(column_idx=None, order=None)
+
+        # Should keep current sorting
+        assert table._sorted_data.iloc[:, 0].tolist() == [1, 2, 5, 8]
+        assert table._sort_column_idx == 0
+        assert table._sort_order == "asc"
+
+    def test_sort_none_order(self):
+        """Test that passing only order=None keeps current column."""
+        data = [[5, "e"], [2, "b"], [8, "h"], [1, "a"]]
+        # Don't sort on initialization
+        table = FastTable(data=data, columns=["num", "letter"])
+
+        # Sort the table first
+        table.sort(column_idx=0, order="asc")
+        assert table._sorted_data.iloc[:, 0].tolist() == [1, 2, 5, 8]
+        assert table._sort_column_idx == 0
+        assert table._sort_order == "asc"
+
+        # Change only order, keep column
+        table.sort(order="desc")
+        assert table._sorted_data.iloc[:, 0].tolist() == [8, 5, 2, 1]
+        assert table._sort_column_idx == 0  # Column preserved
+        assert table._sort_order == "desc"
+
+    def test_sort_none_column_keeps_order(self):
+        """Test that passing only column_idx=None keeps current order."""
+        data = [[5, "e"], [2, "b"], [8, "h"], [1, "a"]]
+        table = FastTable(data=data, columns=["num", "letter"])
+
+        # Sort by column 0 ascending
+        table.sort(column_idx=0, order="asc")
+        assert table._sort_column_idx == 0
+        assert table._sort_order == "asc"
+
+        # Change to column 1, keep order
+        table.sort(column_idx=1)
+        assert table._sorted_data.iloc[:, 1].tolist() == ["a", "b", "e", "h"]
+        assert table._sort_column_idx == 1
+        assert table._sort_order == "asc"  # Order preserved
+
+    def test_sort_reset_clears_sorting(self):
+        """Test that reset=True clears sorting completely."""
+        data = [[5, "e"], [2, "b"], [8, "h"], [1, "a"]]
+        table = FastTable(data=data, columns=["num", "letter"])
+
+        # Sort the table first
+        table.sort(column_idx=0, order="asc")
+        assert table._sorted_data.iloc[:, 0].tolist() == [1, 2, 5, 8]
+        assert table._sort_column_idx == 0
+        assert table._sort_order == "asc"
+
+        # Clear sorting with reset=True
+        table.sort(reset=True)
+
+        # Should return to original order
+        assert table._sorted_data.iloc[:, 0].tolist() == [5, 2, 8, 1]
+        assert table._sort_column_idx is None
+        assert table._sort_order is None
+
+    def test_sort_no_params_preserves_state(self):
+        """Test that sort() without parameters preserves current sorting state."""
+        data = [[5, "e"], [2, "b"], [8, "h"], [1, "a"]]
+        table = FastTable(data=data, columns=["num", "letter"])
+
+        # Sort the table first
+        table.sort(column_idx=0, order="asc")
+        assert table._sort_column_idx == 0
+        assert table._sort_order == "asc"
+
+        # Call sort without params - should preserve state
+        table.sort()
+        assert table._sort_column_idx == 0
+        assert table._sort_order == "asc"
+
+    def test_sort_invalid_column_idx(self):
+        """Test that invalid column index raises an error."""
+        data = [[5, "e"], [2, "b"]]
+        table = FastTable(data=data, columns=["num", "letter"])
+
+        with pytest.raises(IndexError) as exc_info:
+            table.sort(column_idx=10, order="asc")
+
+        assert "column idx = 10 is not possible" in str(exc_info.value)
+
+    def test_sort_negative_column_idx_validation(self):
+        """Test that negative column index is validated and set to None."""
+        data = [[5, "e"], [2, "b"]]
+        table = FastTable(data=data, columns=["num", "letter"])
+
+        table.sort(column_idx=-1, order="asc")
+
+        # Should be set to None and no sorting applied
+        assert table._sort_column_idx is None
+        assert table._sorted_data.iloc[:, 0].tolist() == [5, 2]
+
+    def test_sort_invalid_order_validation(self):
+        """Test that invalid order value is validated and set to None."""
+        data = [[5, "e"], [2, "b"]]
+        table = FastTable(data=data, columns=["num", "letter"])
+
+        table.sort(column_idx=0, order="invalid")
+
+        # Should be set to None and no sorting applied
+        assert table._sort_order is None
+        assert table._sorted_data.iloc[:, 0].tolist() == [5, 2]
+
+    def test_sort_with_pagination(self):
+        """Test that sorting works correctly with pagination."""
+        data = [[i, chr(ord("a") + i)] for i in range(10, 0, -1)]  # 10, 9, ..., 1
+        table = FastTable(data=data, columns=["num", "letter"], page_size=3)
+
+        table.sort(column_idx=0, order="asc")
+
+        # First page should have 1, 2, 3
+        parsed_data = table._parsed_active_data["data"]
+        assert len(parsed_data) == 3
+        assert parsed_data[0]["items"][0] == 1
+        assert parsed_data[1]["items"][0] == 2
+        assert parsed_data[2]["items"][0] == 3
+
+    def test_sort_with_search(self):
+        """Test that sorting works correctly after search filtering."""
+        data = [[5, "apple"], [2, "banana"], [8, "apricot"], [1, "avocado"], [3, "berry"]]
+        table = FastTable(data=data, columns=["num", "fruit"])
+
+        # Search for fruits starting with 'a'
+        table.search("a")
+
+        # Sort the filtered results
+        table.sort(column_idx=0, order="asc")
+
+        sorted_df = table._sorted_data
+        # Should have only filtered items, sorted: 1, 5, 8
+        assert len(sorted_df) == 4  # apple, apricot, avocado, banana
+        assert sorted_df.iloc[0, 0] == 1  # avocado
+
+    def test_sort_with_filter(self):
+        """Test that sorting works correctly after custom filtering."""
+        data = [[5, "e"], [2, "b"], [8, "h"], [1, "a"], [6, "f"]]
+        table = FastTable(data=data, columns=["num", "letter"])
+
+        # Set custom filter to keep only values > 3
+        def filter_gt_3(df, value):
+            if value is None:
+                return df
+            col_tuple = df.columns[0]
+            return df[df[col_tuple] > value]
+
+        table.set_filter(filter_gt_3)
+        table.filter(3)
+
+        # Sort filtered results
+        table.sort(column_idx=0, order="asc")
+
+        sorted_df = table._sorted_data
+        # Should have only 5, 6, 8 sorted
+        assert sorted_df.iloc[:, 0].tolist() == [5, 6, 8]
+
+    def test_sort_preserves_row_indices(self):
+        """Test that sorting preserves original row indices in parsed data."""
+        data = [[5, "e"], [2, "b"], [8, "h"], [1, "a"]]
+        table = FastTable(data=data, columns=["num", "letter"])
+
+        table.sort(column_idx=0, order="asc")
+
+        # Check that idx values correspond to original positions
+        parsed_data = table._parsed_active_data["data"]
+        assert parsed_data[0]["idx"] == 3  # Row with value 1 was at index 3
+        assert parsed_data[1]["idx"] == 1  # Row with value 2 was at index 1
+        assert parsed_data[2]["idx"] == 0  # Row with value 5 was at index 0
+        assert parsed_data[3]["idx"] == 2  # Row with value 8 was at index 2
+
+    def test_sort_updates_state_json(self):
+        """Test that sort method updates StateJson correctly."""
+        data = [[5, "e"], [2, "b"]]
+        table = FastTable(data=data, columns=["num", "letter"])
+
+        table.sort(column_idx=1, order="desc")
+
+        # Verify StateJson is updated
+        from supervisely.app.content import StateJson
+
+        assert StateJson()[table.widget_id]["sort"]["column"] == 1
+        assert StateJson()[table.widget_id]["sort"]["order"] == "desc"
+
+    def test_sort_updates_data_json(self):
+        """Test that sort method updates DataJson with sorted data."""
+        data = [[5, "e"], [2, "b"], [8, "h"], [1, "a"]]
+        table = FastTable(data=data, columns=["num", "letter"])
+
+        table.sort(column_idx=0, order="asc")
+
+        # Verify DataJson contains sorted data
+        from supervisely.app import DataJson
+
+        data_items = DataJson()[table.widget_id]["data"]
+        assert data_items[0]["items"][0] == 1
+        assert data_items[1]["items"][0] == 2
+        assert data_items[2]["items"][0] == 5
+        assert data_items[3]["items"][0] == 8
+
+    def test_sort_second_column(self):
+        """Test sorting by second column."""
+        data = [[1, "z"], [2, "a"], [3, "m"], [4, "b"]]
+        table = FastTable(data=data, columns=["num", "letter"])
+
+        table.sort(column_idx=1, order="asc")
+
+        sorted_df = table._sorted_data
+        assert sorted_df.iloc[:, 1].tolist() == ["a", "b", "m", "z"]
+
+    def test_sort_switch_column(self):
+        """Test switching sort column."""
+        data = [[5, "e"], [2, "b"], [8, "a"], [1, "z"]]
+        table = FastTable(data=data, columns=["num", "letter"])
+
+        # First sort by column 0
+        table.sort(column_idx=0, order="asc")
+        assert table._sorted_data.iloc[:, 0].tolist() == [1, 2, 5, 8]
+
+        # Then sort by column 1
+        table.sort(column_idx=1, order="asc")
+        assert table._sorted_data.iloc[:, 1].tolist() == ["a", "b", "e", "z"]
+
+    def test_sort_switch_order(self):
+        """Test switching sort order on same column."""
+        data = [[5, "e"], [2, "b"], [8, "h"], [1, "a"]]
+        table = FastTable(data=data, columns=["num", "letter"])
+
+        # Sort ascending
+        table.sort(column_idx=0, order="asc")
+        assert table._sorted_data.iloc[:, 0].tolist() == [1, 2, 5, 8]
+
+        # Sort descending
+        table.sort(column_idx=0, order="desc")
+        assert table._sorted_data.iloc[:, 0].tolist() == [8, 5, 2, 1]
+
+    def test_sort_empty_table(self):
+        """Test sorting an empty table doesn't cause errors."""
+        table = FastTable(data=None, columns=["num", "letter"])
+
+        table.sort(column_idx=0, order="asc")
+
+        assert len(table._sorted_data) == 0
+        assert table._rows_total == 0
+
+    def test_sort_single_row(self):
+        """Test sorting a table with single row."""
+        data = [[5, "e"]]
+        table = FastTable(data=data, columns=["num", "letter"])
+
+        table.sort(column_idx=0, order="asc")
+
+        assert table._sorted_data.iloc[0, 0] == 5
+        assert len(table._sorted_data) == 1
+
+    def test_sort_duplicate_values(self):
+        """Test sorting with duplicate values maintains stability."""
+        data = [[5, "a"], [5, "b"], [5, "c"], [1, "d"]]
+        table = FastTable(data=data, columns=["num", "letter"])
+
+        table.sort(column_idx=0, order="asc")
+
+        sorted_df = table._sorted_data
+        # First value should be 1
+        assert sorted_df.iloc[0, 0] == 1
+        # Rest should be 5's (order may vary)
+        assert sorted_df.iloc[1, 0] == 5
+        assert sorted_df.iloc[2, 0] == 5
+        assert sorted_df.iloc[3, 0] == 5
+
+    def test_sort_mixed_types_column(self):
+        """Test sorting column with mixed numeric strings and pure strings."""
+        data = [["10", "a"], ["abc", "b"], ["2", "c"], ["xyz", "d"]]
+        table = FastTable(data=data, columns=["mixed", "letter"])
+
+        table.sort(column_idx=0, order="asc")
+
+        sorted_df = table._sorted_data
+        # Numeric strings should be sorted first numerically, then non-numeric alphabetically
+        values = sorted_df.iloc[:, 0].tolist()
+        # Should have: 2, 10, abc, xyz
+        assert values == ["2", "10", "abc", "xyz"]
+
+    def test_custom_sort_function(self):
+        """Test using a custom sort function."""
+        data = [[5, "e"], [2, "b"], [8, "h"], [1, "a"]]
+        table = FastTable(data=data, columns=["num", "letter"])
+
+        # Custom sort: reverse alphabetical on second column
+        def custom_sort(data, column_idx, order):
+            col = data.columns[column_idx]
+            ascending = order == "asc"
+            # Reverse the ascending flag for custom behavior
+            return data.sort_values(by=col, ascending=not ascending)
+
+        table.set_sort(custom_sort)
+        table.sort(column_idx=1, order="asc")
+
+        # With reversed logic, "asc" should give descending
+        sorted_df = table._sorted_data
+        assert sorted_df.iloc[:, 1].tolist() == ["h", "e", "b", "a"]
+
+    def test_sort_after_insert_row(self):
+        """Test that sorting works correctly after inserting a row."""
+        data = [[5, "e"], [2, "b"], [8, "h"]]
+        table = FastTable(data=data, columns=["num", "letter"])
+
+        table.sort(column_idx=0, order="asc")
+
+        # Insert new row
+        table.insert_row([1, "a"], index=0)
+
+        # Re-sort
+        table.sort(column_idx=0, order="asc")
+
+        sorted_df = table._sorted_data
+        assert sorted_df.iloc[:, 0].tolist() == [1, 2, 5, 8]
+
+    def test_sort_after_pop_row(self):
+        """Test that sorting works correctly after removing a row."""
+        data = [[5, "e"], [2, "b"], [8, "h"], [1, "a"]]
+        table = FastTable(data=data, columns=["num", "letter"])
+
+        table.sort(column_idx=0, order="asc")
+
+        # Remove a row
+        table.pop_row(0)
+
+        # Re-sort
+        table.sort(column_idx=0, order="asc")
+
+        sorted_df = table._sorted_data
+        # Should have 3 rows now
+        assert len(sorted_df) == 3
+
+    def test_sort_with_all_none_column(self):
+        """Test sorting a column that contains only None values."""
+        data = [[None, "a"], [None, "b"], [None, "c"]]
+        table = FastTable(data=data, columns=["num", "letter"])
+
+        table.sort(column_idx=0, order="asc")
+
+        # Should not crash, all values are None
+        sorted_df = table._sorted_data
+        assert len(sorted_df) == 3
+        assert all(pd.isna(sorted_df.iloc[:, 0]))
+
+    def test_sort_preserves_data_types(self):
+        """Test that sorting doesn't change data types."""
+        data = [[5.5, "e"], [2.1, "b"], [8.9, "h"], [1.0, "a"]]
+        table = FastTable(data=data, columns=["num", "letter"])
+
+        table.sort(column_idx=0, order="asc")
+
+        sorted_df = table._sorted_data
+        # Verify floats are preserved
+        assert sorted_df.iloc[0, 0] == 1.0
+        assert isinstance(sorted_df.iloc[0, 0], float)
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
