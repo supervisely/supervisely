@@ -425,6 +425,8 @@ class FastTable(Widget):
     def read_json(self, data: Dict, meta: Dict = None, custom_columns: Optional[List[Union[str, tuple]]] = None) -> None:
         """Replace table data with options and project meta in the widget
 
+        More about options in `Developer Portal <https://developer.supervisely.com/app-development/widgets/tables/fasttable#read_json>`_
+
         :param data: Table data with options:
             - data: table data
             - columns: list of column names
@@ -480,12 +482,7 @@ class FastTable(Widget):
         table_data = data.get("data", None)
         self._validate_input_data(table_data)
         self._source_data = self._prepare_input_data(table_data)
-        (
-            self._parsed_source_data,
-            self._sliced_data,
-            self._parsed_active_data,
-        ) = self._prepare_working_data()
-        self._rows_total = len(self._parsed_source_data["data"])
+
         init_options = DataJson()[self.widget_id]["options"]
         init_options.update(self._table_options)
         sort = init_options.pop("sort", {"column": None, "order": None})
@@ -494,7 +491,14 @@ class FastTable(Widget):
         if self._sort_column_idx is not None and self._sort_column_idx > len(self._columns_first_idx) - 1:
             self._sort_column_idx = None
         self._sort_order = sort.get("order", None)
-        self._page_size = init_options.pop("pageSize", 10) 
+        self._page_size = init_options.pop("pageSize", 10)
+
+        # Apply sorting before preparing working data
+        self._sorted_data = self._sort_table_data(self._source_data)
+        self._sliced_data = self._slice_table_data(self._sorted_data, actual_page=self._active_page)
+        self._parsed_active_data = self._unpack_pandas_table_data(self._sliced_data)
+        self._parsed_source_data = self._unpack_pandas_table_data(self._source_data)
+        self._rows_total = len(self._parsed_source_data["data"]) 
         DataJson()[self.widget_id]["data"] = list(self._parsed_active_data["data"])
         DataJson()[self.widget_id]["columns"] = self._parsed_active_data["columns"]
         DataJson()[self.widget_id]["columnsOptions"] = self._columns_options
@@ -972,28 +976,58 @@ class FastTable(Widget):
         return data
 
     def sort(
-        self, column_idx: Optional[int] = None, order: Optional[Literal["asc", "desc"]] = None
+        self,
+        column_idx: Optional[int] = None,
+        order: Optional[Literal["asc", "desc"]] = None,
+        reset: bool = False,
     ) -> None:
         """Sorts table data by column index and order.
 
-        :param column_idx: Index of the column to sort by
+        :param column_idx: Index of the column to sort by. If None, keeps current column (unless reset=True).
         :type column_idx: Optional[int]
-        :param order: Sorting order
+        :param order: Sorting order. If None, keeps current order (unless reset=True).
         :type order: Optional[Literal["asc", "desc"]]
+        :param reset: If True, clears sorting completely. Default is False.
+        :type reset: bool
+
+        :Usage example:
+
+        .. code-block:: python
+            # Sorting examples
+            sort(column_idx=0, order="asc") # sort by column 0 ascending
+            sort(column_idx=1) # sort by column 1, keep current order
+            sort(order="desc") # keep current column, change order to descending
+            sort(reset=True) # clear sorting completely
         """
-        self._sort_column_idx = column_idx
-        self._sort_order = order
+        # If reset=True, clear sorting completely
+        if reset:
+            self._sort_column_idx = None
+            self._sort_order = None
+        else:
+            # Preserve current values if new ones are not provided
+            if column_idx is not None:
+                self._sort_column_idx = column_idx
+            # else: keep current self._sort_column_idx
+
+            if order is not None:
+                self._sort_order = order
+            # else: keep current self._sort_order
+
         self._validate_sort_attrs()
-        if self._sort_column_idx is not None:
-            StateJson()[self.widget_id]["sort"]["column"] = self._sort_column_idx
-        if self._sort_order is not None:
-            StateJson()[self.widget_id]["sort"]["order"] = self._sort_order
+
+        # Always update StateJson with current values (including None)
+        StateJson()[self.widget_id]["sort"]["column"] = self._sort_column_idx
+        StateJson()[self.widget_id]["sort"]["order"] = self._sort_order
+
+        # Apply filter, search, sort pipeline
         self._filtered_data = self._filter(self._filter_value)
         self._searched_data = self._search(self._search_str)
         self._rows_total = len(self._searched_data)
         self._sorted_data = self._sort_table_data(self._searched_data)
         self._sliced_data = self._slice_table_data(self._sorted_data, actual_page=self._active_page)
         self._parsed_active_data = self._unpack_pandas_table_data(self._sliced_data)
+
+        # Update DataJson with sorted and paginated data
         DataJson()[self.widget_id]["data"] = list(self._parsed_active_data["data"])
         DataJson()[self.widget_id]["total"] = self._rows_total
         self._maybe_update_selected_row()
@@ -1002,22 +1036,22 @@ class FastTable(Widget):
     def _prepare_json_data(self, data: dict, key: str):
         if key in ("data", "columns"):
             default_value = []
+        elif key == "options":
+            default_value = {}
         else:
             default_value = None
+
         source_data = data.get(key, default_value)
-        if key == "data":
-            source_data = self._sort_table_data(
-                pd.DataFrame(data=source_data, columns=self._multi_idx_columns)
-            )
-        if key == "options":
-            options = data.get(key, default_value)
-            if options is not None:
-                sort = options.get("sort", None)
-                if sort is not None:
-                    column_idx = sort.get("columnIndex", None)
-                    if column_idx is not None:
-                        sort["column"] = sort.get("columnIndex")
-                        sort.pop("columnIndex")
+
+        # Normalize options format: convert "columnIndex" to "column"
+        if key == "options" and source_data is not None:
+            sort = source_data.get("sort", None)
+            if sort is not None:
+                column_idx = sort.get("columnIndex", None)
+                if column_idx is not None:
+                    sort["column"] = column_idx
+                    sort.pop("columnIndex")
+
         return source_data
 
     def _validate_sort(
