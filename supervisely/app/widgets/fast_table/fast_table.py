@@ -482,7 +482,7 @@ class FastTable(Widget):
         table_data = data.get("data", None)
         self._validate_input_data(table_data)
         self._source_data = self._prepare_input_data(table_data)
-        
+
         init_options = DataJson()[self.widget_id]["options"]
         init_options.update(self._table_options)
         sort = init_options.pop("sort", {"column": None, "order": None})
@@ -492,7 +492,7 @@ class FastTable(Widget):
             self._sort_column_idx = None
         self._sort_order = sort.get("order", None)
         self._page_size = init_options.pop("pageSize", 10)
-        
+
         # Apply sorting before preparing working data
         self._sorted_data = self._sort_table_data(self._source_data)
         self._sliced_data = self._slice_table_data(self._sorted_data, actual_page=self._active_page)
@@ -1006,22 +1006,22 @@ class FastTable(Widget):
     def _prepare_json_data(self, data: dict, key: str):
         if key in ("data", "columns"):
             default_value = []
+        elif key == "options":
+            default_value = {}
         else:
             default_value = None
+
         source_data = data.get(key, default_value)
-        if key == "data":
-            source_data = self._sort_table_data(
-                pd.DataFrame(data=source_data, columns=self._multi_idx_columns)
-            )
-        if key == "options":
-            options = data.get(key, default_value)
-            if options is not None:
-                sort = options.get("sort", None)
-                if sort is not None:
-                    column_idx = sort.get("columnIndex", None)
-                    if column_idx is not None:
-                        sort["column"] = sort.get("columnIndex")
-                        sort.pop("columnIndex")
+
+        # Normalize options format: convert "columnIndex" to "column"
+        if key == "options" and source_data is not None:
+            sort = source_data.get("sort", None)
+            if sort is not None:
+                column_idx = sort.get("columnIndex", None)
+                if column_idx is not None:
+                    sort["column"] = column_idx
+                    sort.pop("columnIndex")
+
         return source_data
 
     def _validate_sort(
