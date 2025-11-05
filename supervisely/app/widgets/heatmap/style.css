@@ -1,10 +1,13 @@
+.heatmap-container {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
 .image-wrapper {
   position: relative;
-  width: 100%;
+  max-width: 100%;
   cursor: pointer;
-  overflow: hidden;
-  background-color: #E2E8F0;
-  border-radius: 1rem;
+  overflow: visible; /* Allow popup to overflow */
   box-sizing: border-box;
   transition: height 0.2s ease;
 }
@@ -12,18 +15,25 @@
 .image-wrapper img {
   width: 100%;
   height: auto;
+  display: block;
   object-fit: contain;
   object-position: center;
+  -webkit-user-drag: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  pointer-events: auto;
 }
 
 .overlay-image {
   position: absolute;
   top: 0;
   left: 0;
-  right: 0;
-  bottom: 0;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
-  z-index: 1;  /* Added explicit z-index */
+  object-fit: contain;
 }
 
 .heatmap-header {
@@ -95,6 +105,12 @@
   z-index: 1001;
   transform: translate(-50%, -50%);
   animation: click-appear 0.3s ease;
+  transition: opacity 0.3s ease;
+}
+
+.click-indicator.hiding {
+  opacity: 0;
+  transition: opacity 0.3s ease;
 }
 
 @keyframes click-appear {
@@ -115,7 +131,6 @@
   box-sizing: border-box;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), 0 0 0 2px rgba(59, 130, 246, 0.2);
   animation: pulse-ring 1.5s ease-out infinite;
-  margin-left: 3px;
 }
 
 @keyframes pulse-ring {
@@ -132,7 +147,7 @@
 
 .value-popup {
   position: absolute;
-  background: rgba(255, 255, 255);
+  background: rgba(255, 255, 255, 0.95);
   color: #333;
   padding: 6px 12px;
   border-radius: 6px;
@@ -141,17 +156,19 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
   white-space: nowrap;
   animation: popup-fade-in 0.2s ease;
-  transform: translate(calc(-50% + 1px), calc(-100% - 14px));
+  transition: opacity 0.3s ease;
+}
+
+.value-popup.hiding {
+  opacity: 0;
 }
 
 @keyframes popup-fade-in {
   from {
     opacity: 0;
-    transform: scale(0.9);
   }
   to {
     opacity: 1;
-    transform: scale(1);
   }
 }
 
@@ -171,9 +188,38 @@
   position: absolute;
   width: 8px;
   height: 8px;
-  background: rgba(255, 255, 255);
-  transform: rotate(45deg);
+  background: rgba(255, 255, 255, 0.95);
+}
+
+/* Arrow positions and rotations for different popup positions */
+.popup-position-top .value-popup-arrow {
   bottom: -4px;
   left: 50%;
   margin-left: -4px;
+  transform: rotate(45deg);
+  box-shadow: 2px 2px 3px rgba(0, 0, 0, 0.1);
+}
+
+.popup-position-bottom .value-popup-arrow {
+  top: -4px;
+  left: 50%;
+  margin-left: -4px;
+  transform: rotate(45deg);
+  box-shadow: -2px -2px 3px rgba(0, 0, 0, 0.1);
+}
+
+.popup-position-right .value-popup-arrow {
+  left: -4px;
+  top: 50%;
+  margin-top: -4px;
+  transform: rotate(45deg);
+  box-shadow: -2px 2px 3px rgba(0, 0, 0, 0.1);
+}
+
+.popup-position-left .value-popup-arrow {
+  right: -4px;
+  top: 50%;
+  margin-top: -4px;
+  transform: rotate(45deg);
+  box-shadow: 2px -2px 3px rgba(0, 0, 0, 0.1);
 }
