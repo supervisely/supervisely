@@ -50,6 +50,10 @@ def colormap_to_hex_list(colormap=cv2.COLORMAP_JET, n=5):
 
 
 class Heatmap(Widget):
+    """
+    Supervisely widget that displays an interactive heatmap overlay
+    on top of a background image.
+    """
 
     class Routes:
         CLICK = "heatmap_clicked_cb"
@@ -68,6 +72,32 @@ class Heatmap(Widget):
         widget_id: str = None,
         file_path: str = __file__,
     ):
+        """
+        Initializes the Heatmap widget.
+
+        :param static_dir: Path to the directory where static files (images, CSS, etc.) are stored.
+        :type static_dir: str
+        :param background_image: Background image to display under the heatmap. Can be a path to an image file or a NumPy array.
+        :type background_image: Union[str, np.ndarray], optional
+        :param heatmap_mask: NumPy array representing the heatmap mask values.
+        :type heatmap_mask: np.ndarray, optional
+        :param vmin: Minimum value for normalizing the heatmap. If None, it is inferred from the mask.
+        :type vmin: Any, optional
+        :param vmax: Maximum value for normalizing the heatmap. If None, it is inferred from the mask.
+        :type vmax: Any, optional
+        :param transparent_low: Whether to make low values in the heatmap transparent.
+        :type transparent_low: bool, optional
+        :param colormap: OpenCV colormap used to colorize the heatmap (e.g., cv2.COLORMAP_JET).
+        :type colormap: int, optional
+        :param width: Width of the output heatmap in pixels.
+        :type width: int, optional
+        :param height: Height of the output heatmap in pixels.
+        :type height: int, optional
+        :param widget_id: Unique identifier for the widget instance.
+        :type widget_id: str, optional
+        :param file_path: Path to the file where the widget is defined (used for static resource resolution).
+        :type file_path: str, optional
+        """
         self._background_url = None
         self._heatmap_url = None
         self._mask_data = None
