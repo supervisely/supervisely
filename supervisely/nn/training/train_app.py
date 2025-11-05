@@ -18,6 +18,7 @@ import httpx
 import yaml
 from fastapi import Request, Response
 from fastapi.responses import StreamingResponse
+from requests import HTTPError
 from starlette.background import BackgroundTask
 
 import supervisely.io.env as sly_env
@@ -43,6 +44,7 @@ from supervisely import (
     logger,
 )
 from supervisely._utils import abs_url, get_filename_from_headers
+from supervisely.api.entities_collection_api import EntitiesCollectionInfo
 from supervisely.api.file_api import FileInfo
 from supervisely.app import get_synced_data_dir, show_dialog
 from supervisely.app.widgets import Progress
@@ -72,7 +74,6 @@ from supervisely.project.download import (
     is_cached,
 )
 from supervisely.template.experiment.experiment_generator import ExperimentGenerator
-from supervisely.api.entities_collection_api import EntitiesCollectionInfo
 
 
 class TrainApp:
@@ -3162,8 +3163,11 @@ class TrainApp:
 
         # Case 1: Use existing collections for training. No need to create new collections
         split_method = self.gui.train_val_splits_selector.get_split_method()
+        self.gui.train_val_splits_selector._parse_collections()  # <-- ensure collections are up-to-date
         all_train_collections = self.gui.train_val_splits_selector.all_train_collections
         all_val_collections = self.gui.train_val_splits_selector.all_val_collections
+        latest_train_collection = self.gui.train_val_splits_selector.latest_train_collection
+        latest_val_collection = self.gui.train_val_splits_selector.latest_val_collection
         if split_method == "Based on collections":
             current_selected_train_collection_ids = self.gui.train_val_splits_selector.train_val_splits.get_train_collections_ids()
             train_match = _check_match(current_selected_train_collection_ids, all_train_collections)
@@ -3191,42 +3195,53 @@ class TrainApp:
             return None
 
         # Get train collection with max idx
-        if len(all_train_collections) > 0:
-            train_indices = [_extract_index_from_col_name(collection.name, "train") for collection in all_train_collections]
-            train_indices = [idx for idx in train_indices if idx is not None]
-            if len(train_indices) > 0:
-                train_collection_idx = max(train_indices) + 1
+        if latest_train_collection:
+            train_collection_idx = (
+                _extract_index_from_col_name(latest_train_collection, "train") + 1
+            )
 
         # Get val collection with max idx
-        if len(all_val_collections) > 0:
-            val_indices = [_extract_index_from_col_name(collection.name, "val") for collection in all_val_collections]
-            val_indices = [idx for idx in val_indices if idx is not None]
-            if len(val_indices) > 0:
-                val_collection_idx = max(val_indices) + 1
+        if latest_val_collection:
+            val_collection_idx = _extract_index_from_col_name(latest_val_collection, "val") + 1
         # -------------------------------- #
+
+        def _create_collection_safely(prefix, col_idx):
+            for attempt in range(5):
+                try:
+                    collection_name = f"{prefix}_{col_idx:03d}"
+                    collection_description = (
+                        f"Collection with {prefix} {item_type} for experiment: {experiment_name}"
+                    )
+                    collection = self._api.entities_collection.create(
+                        self.project_id, collection_name, collection_description
+                    )
+                    collection_id = getattr(collection, "id", None)
+                    if collection_id is None:
+                        raise AttributeError(
+                            f"{prefix.capitalize()} EntitiesCollectionInfo object does not have 'id' attribute"
+                        )
+                    return collection_id
+                except HTTPError as e:
+                    if e.code == 400 and "already exists" in str(e):
+                        logger.warning(
+                            f"Name collision detected for collection '{collection_name}'. Retrying with a new index."
+                        )
+                        col_idx += 1
+                    else:
+                        raise e
 
         # Create Train Collection
         train_img_ids = list(self._train_split_item_ids)
-        train_collection_description = f"Collection with train {item_type} for experiment: {experiment_name}"
-        train_collection = self._api.entities_collection.create(self.project_id, f"train_{train_collection_idx:03d}", train_collection_description)
-        train_collection_id = getattr(train_collection, "id", None)
-        if train_collection_id is None:
-            raise AttributeError("Train EntitiesCollectionInfo object does not have 'id' attribute")
-        self._api.entities_collection.add_items(train_collection_id, train_img_ids)
-        self._train_collection_id = train_collection_id
+        self._train_collection_id = _create_collection_safely("train", train_collection_idx)
+        self._api.entities_collection.add_items(self._train_collection_id, train_img_ids)
 
         # Create Val Collection
         val_img_ids = list(self._val_split_item_ids)
-        val_collection_description = f"Collection with val {item_type} for experiment: {experiment_name}"
-        val_collection = self._api.entities_collection.create(self.project_id, f"val_{val_collection_idx:03d}", val_collection_description)
-        val_collection_id = getattr(val_collection, "id", None)
-        if val_collection_id is None:
-            raise AttributeError("Val EntitiesCollectionInfo object does not have 'id' attribute")
-        self._api.entities_collection.add_items(val_collection_id, val_img_ids)
-        self._val_collection_id = val_collection_id
+        self._val_collection_id = _create_collection_safely("val", val_collection_idx)
+        self._api.entities_collection.add_items(self._val_collection_id, val_img_ids)
 
         # Update Project Custom Data
-        self._update_project_custom_data(train_collection_id, val_collection_id)
+        self._update_project_custom_data(self._train_collection_id, self._val_collection_id)
 
     def _update_project_custom_data(self, train_collection_id: int, val_collection_id: int):
         train_info = {
