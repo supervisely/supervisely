@@ -72,16 +72,12 @@ class BBoxTracking(BaseTracking):
             inference_request.done(len(items))
 
         def _notify_f(items: List):
-            frame_range = [
-                min(frame_index for (_, _, frame_index) in items),
-                max(frame_index for (_, _, frame_index) in items),
-            ]
             pos_inc = inference_request.progress.current - video_interface.global_pos
 
             video_interface._notify(
                 pos_increment=pos_inc,
-                fstart=frame_range[0],
-                fend=frame_range[1],
+                fstart=range_of_frames[0],
+                fend=range_of_frames[1],
                 task=inference_request.stage,
             )
 
