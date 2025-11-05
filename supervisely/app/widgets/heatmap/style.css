@@ -3,8 +3,6 @@
   max-width: 100%;
   cursor: pointer;
   overflow: visible; /* Allow popup to overflow */
-  background-color: #E2E8F0;
-  border-radius: 1rem;
   box-sizing: border-box;
   transition: height 0.2s ease;
 }
@@ -102,6 +100,12 @@
   z-index: 1001;
   transform: translate(-50%, -50%);
   animation: click-appear 0.3s ease;
+  transition: opacity 0.3s ease;
+}
+
+.click-indicator.hiding {
+  opacity: 0;
+  transition: opacity 0.3s ease;
 }
 
 @keyframes click-appear {
@@ -147,6 +151,11 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
   white-space: nowrap;
   animation: popup-fade-in 0.2s ease;
+  transition: opacity 0.3s ease;
+}
+
+.value-popup.hiding {
+  opacity: 0;
 }
 
 @keyframes popup-fade-in {

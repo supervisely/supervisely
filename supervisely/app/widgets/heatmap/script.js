@@ -33,6 +33,7 @@ Vue.component('heatmap-image', {
       ref="wrapper"
       :style="imageWrapperStyle"
       @click.stop="handleImageClick"
+      @mouseleave="handleMouseLeave"
     >
       <img
       class="base-image"
@@ -50,6 +51,7 @@ Vue.component('heatmap-image', {
       <div 
         v-if="clickedValue !== null" 
         class="click-indicator"
+        :class="{ 'hiding': isHiding }"
         :style="indicatorStyle"
       >
         <div class="click-dot"></div>
@@ -58,7 +60,7 @@ Vue.component('heatmap-image', {
       <div 
         v-if="clickedValue !== null" 
         class="value-popup"
-        :class="'popup-position-' + popupPosition"
+        :class="['popup-position-' + popupPosition, { 'hiding': isHiding }]"
         :style="popupStyle"
       >
         <div class="value-popup-content">
@@ -79,6 +81,7 @@ Vue.component('heatmap-image', {
       popupX: 0,
       popupY: 0,
       popupPosition: 'top', // 'top', 'bottom', 'right', 'left'
+      isHiding: false, // Flag for fade-out animation
     };
   },
   computed: {
@@ -269,6 +272,9 @@ Vue.component('heatmap-image', {
       this.$emit('update:mask-x', maskX);
       this.$emit('update:mask-y', maskY);
       
+      // Reset hiding state for new click
+      this.isHiding = false;
+      
       // Don't set clicked-value here - server will set it after getting value from mask
       this.$emit('update:clicked-value', null);
 
@@ -278,6 +284,18 @@ Vue.component('heatmap-image', {
           this.onImageClick();
         });
       }
+    },
+    handleMouseLeave() {
+      if (this.clickedValue === null) return;
+      
+      this.isHiding = true;
+      
+      setTimeout(() => {
+        this.$emit('update:clicked-value', null);
+        this.$emit('update:mask-x', null);
+        this.$emit('update:mask-y', null);
+        this.isHiding = false;
+      }, 300);
     },
     formatValue(value) {
       if (value === null || value === undefined) return 'N/A';
