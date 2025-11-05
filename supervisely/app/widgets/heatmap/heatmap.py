@@ -1,4 +1,5 @@
 import shutil
+import time
 from pathlib import Path
 from typing import Any, Callable, List, Union
 from urllib.parse import urlparse
@@ -147,7 +148,7 @@ class Heatmap(Widget):
         try:
             if isinstance(background_image, np.ndarray):
                 self._save_to_static(background_image, "background.png")
-                self._background_url = f"/static/{self.widget_id}/background.png"
+                self._background_url = f"/static/{self.widget_id}/background.png?t={time.time()}"
             elif isinstance(background_image, str):
                 parsed = urlparse(background_image)
                 bg_image_path = Path(background_image)
@@ -157,7 +158,7 @@ class Heatmap(Widget):
                     img_name = bg_image_path.name
                     dst_path = self.static_path / self.widget_id / img_name
                     shutil.copyfile(bg_image_path, dst_path)
-                    self._background_url = f"/static/{self.widget_id}/{img_name}"
+                    self._background_url = f"/static/{self.widget_id}/{img_name}?t={time.time()}"
                 else:
                     raise ValueError(f"Unable to find image at {background_image}")
             else:
@@ -178,7 +179,7 @@ class Heatmap(Widget):
                 transparent_low=self._transparent_low,
             )
             self._save_to_static(heatmap, name="mask.png")
-            self._heatmap_url = f"/static/{self.widget_id}/mask.png"
+            self._heatmap_url = f"/static/{self.widget_id}/mask.png?t={time.time()}"
             self._min_value = mask.min()
             self._max_value = mask.max()
             self._mask_data = mask.tolist()
