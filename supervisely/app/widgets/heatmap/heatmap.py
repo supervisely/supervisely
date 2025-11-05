@@ -112,8 +112,7 @@ class Heatmap(Widget):
         """
         self._background_url = None
         self._heatmap_url = None
-        self._mask_data = None  # Store mask data on server side only
-        self._mask_array = None  # Store numpy array for efficient value lookup
+        self._mask_data = None  # Store numpy array for efficient value lookup
         self._click_callback = None  # Optional user callback
         self._vmin = vmin
         self._vmax = vmax
@@ -148,13 +147,12 @@ class Heatmap(Widget):
     def get_json_data(self):
         # Get mask dimensions if available
         mask_height, mask_width = 0, 0
-        if self._mask_array is not None:
-            mask_height, mask_width = self._mask_array.shape[:2]
+        if self._mask_data is not None:
+            mask_height, mask_width = self._mask_data.shape[:2]
 
         return {
             "backgroundUrl": self._background_url,
             "heatmapUrl": self._heatmap_url,
-            "maskData": None,  # Don't send mask data to frontend
             "width": self._width,
             "height": self._height,
             "maskWidth": mask_width,
@@ -210,14 +208,14 @@ class Heatmap(Widget):
             self._max_value = to_json_safe(mask.max())
 
             # Store mask as numpy array for efficient server-side value lookup
-            self._mask_array = mask.copy()
+            self._mask_data = mask.copy()
 
         except Exception as e:
             logger.error(f"Error setting heatmap: {e}", exc_info=True)
             self._heatmap_url = None
             self._min_value = None
             self._max_value = None
-            self._mask_array = None
+            self._mask_data = None
             raise
         finally:
             DataJson()[self.widget_id]["heatmapUrl"] = self._heatmap_url
@@ -225,8 +223,8 @@ class Heatmap(Widget):
             DataJson()[self.widget_id]["maxValue"] = self._max_value
 
             # Update mask dimensions
-            if self._mask_array is not None:
-                h, w = self._mask_array.shape[:2]
+            if self._mask_data is not None:
+                h, w = self._mask_data.shape[:2]
                 DataJson()[self.widget_id]["maskWidth"] = w
                 DataJson()[self.widget_id]["maskHeight"] = h
             else:
@@ -329,15 +327,15 @@ class Heatmap(Widget):
             y = StateJson()[self.widget_id]["maskY"]
 
             logger.debug(
-                f"Heatmap click: x={x}, y={y}, mask_array shape={self._mask_array.shape if self._mask_array is not None else None}"
+                f"Heatmap click: x={x}, y={y}, mask_array shape={self._mask_data.shape if self._mask_data is not None else None}"
             )
 
             # Get value from server-side mask array
             clicked_value = None
-            if self._mask_array is not None and x is not None and y is not None:
-                h, w = self._mask_array.shape[:2]
+            if self._mask_data is not None and x is not None and y is not None:
+                h, w = self._mask_data.shape[:2]
                 if 0 <= y < h and 0 <= x < w:
-                    clicked_value = float(self._mask_array[y, x])
+                    clicked_value = float(self._mask_data[y, x])
                     # Update state with the value
                     StateJson()[self.widget_id]["clickedValue"] = clicked_value
                     StateJson().send_changes()
@@ -345,7 +343,7 @@ class Heatmap(Widget):
                 else:
                     logger.warning(f"Coordinates out of bounds: x={x}, y={y}, shape=({h}, {w})")
             else:
-                if self._mask_array is None:
+                if self._mask_data is None:
                     logger.warning("Mask array is None")
                 if x is None:
                     logger.warning("x coordinate is None")
