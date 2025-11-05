@@ -7,6 +7,7 @@ from urllib.parse import urlparse
 import cv2
 import numpy as np
 
+from supervisely._utils import logger
 from supervisely.annotation.annotation import Annotation
 from supervisely.app.content import DataJson, StateJson
 from supervisely.app.widgets import Widget
@@ -48,6 +49,16 @@ def colormap_to_hex_list(colormap=cv2.COLORMAP_JET, n=5):
     colors_bgr = cv2.applyColorMap(values[:, None], colormap)
     colors_rgb = colors_bgr[:, 0, ::-1]
     return [f"#{r:02X}{g:02X}{b:02X}" for r, g, b in colors_rgb]
+
+
+def to_json_safe(val):
+    if val is None:
+        return None
+    if isinstance(val, (np.integer, int)):
+        return int(val)
+    if isinstance(val, (np.floating, float)):
+        return float(val)
+    return str(val)
 
 
 class Heatmap(Widget):
@@ -165,6 +176,7 @@ class Heatmap(Widget):
                 raise ValueError(f"Unsupported background_image type: {type(background_image)}")
         except Exception as e:
             self._background_url = None
+            raise
         finally:
             DataJson()[self.widget_id]["backgroundUrl"] = self._background_url
             DataJson().send_changes()
@@ -180,14 +192,15 @@ class Heatmap(Widget):
             )
             self._save_to_static(heatmap, name="mask.png")
             self._heatmap_url = f"/static/{self.widget_id}/mask.png?t={time.time()}"
-            self._min_value = mask.min()
-            self._max_value = mask.max()
+            self._min_value = to_json_safe(mask.min())
+            self._max_value = to_json_safe(mask.max())
             self._mask_data = mask.tolist()
         except Exception as e:
             self._heatmap_url = None
             self._min_value = None
             self._max_value = None
             self._mask_data = None
+            raise
         finally:
             DataJson()[self.widget_id]["heatmapUrl"] = self._heatmap_url
             DataJson()[self.widget_id]["minValue"] = self._min_value
