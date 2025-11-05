@@ -112,7 +112,9 @@ class Heatmap(Widget):
         """
         self._background_url = None
         self._heatmap_url = None
-        self._mask_data = None
+        self._mask_data = None  # Store mask data on server side only
+        self._mask_array = None  # Store numpy array for efficient value lookup
+        self._click_callback = None  # Optional user callback
         self._vmin = vmin
         self._vmax = vmax
         self._transparent_low = transparent_low
@@ -123,30 +125,40 @@ class Heatmap(Widget):
         self._min_value = 0
         self._max_value = 0
         self.static_dir = static_dir
+        self.static_path = Path(static_dir)  # Initialize static_path early
         super().__init__(widget_id, file_path=file_path)
 
-        if background_image:
+        if background_image is not None:
             self.set_background(background_image)
 
-        if heatmap_mask:
+        if heatmap_mask is not None:
             self.set_heatmap(heatmap_mask)
 
         script_path = "./sly/css/app/widgets/heatmap/script.js"
         JinjaWidgets().context["__widget_scripts__"][self.__class__.__name__] = script_path
 
+        # Register default click handler to update value from server-side mask
+        self._register_click_handler()
+
     def _save_to_static(self, img: np.ndarray, name: str):
-        self.static_path = Path(self.static_dir)
         self.static_path.mkdir(parents=True, exist_ok=True)
         img_path = self.static_path / self.widget_id / name
         write(str(img_path), img, remove_alpha_channel=False)
 
     def get_json_data(self):
+        # Get mask dimensions if available
+        mask_height, mask_width = 0, 0
+        if self._mask_array is not None:
+            mask_height, mask_width = self._mask_array.shape[:2]
+
         return {
             "backgroundUrl": self._background_url,
             "heatmapUrl": self._heatmap_url,
-            "maskData": self._mask_data,
+            "maskData": None,  # Don't send mask data to frontend
             "width": self._width,
             "height": self._height,
+            "maskWidth": mask_width,
+            "maskHeight": mask_height,
             "minValue": self._min_value,
             "maxValue": self._max_value,
             "legendColors": colormap_to_hex_list(self._colormap),
@@ -168,6 +180,7 @@ class Heatmap(Widget):
                 elif bg_image_path.exists() and bg_image_path.is_file():
                     img_name = bg_image_path.name
                     dst_path = self.static_path / self.widget_id / img_name
+                    dst_path.parent.mkdir(parents=True, exist_ok=True)
                     shutil.copyfile(bg_image_path, dst_path)
                     self._background_url = f"/static/{self.widget_id}/{img_name}?t={time.time()}"
                 else:
@@ -175,6 +188,7 @@ class Heatmap(Widget):
             else:
                 raise ValueError(f"Unsupported background_image type: {type(background_image)}")
         except Exception as e:
+            logger.error(f"Error setting background: {e}", exc_info=True)
             self._background_url = None
             raise
         finally:
@@ -194,18 +208,32 @@ class Heatmap(Widget):
             self._heatmap_url = f"/static/{self.widget_id}/mask.png?t={time.time()}"
             self._min_value = to_json_safe(mask.min())
             self._max_value = to_json_safe(mask.max())
-            self._mask_data = mask.tolist()
+
+            # Store mask as numpy array for efficient server-side value lookup
+            self._mask_array = mask.copy()
+
         except Exception as e:
+            logger.error(f"Error setting heatmap: {e}", exc_info=True)
             self._heatmap_url = None
             self._min_value = None
             self._max_value = None
-            self._mask_data = None
+            self._mask_array = None
             raise
         finally:
             DataJson()[self.widget_id]["heatmapUrl"] = self._heatmap_url
             DataJson()[self.widget_id]["minValue"] = self._min_value
             DataJson()[self.widget_id]["maxValue"] = self._max_value
-            DataJson()[self.widget_id]["maskData"] = self._mask_data
+
+            # Update mask dimensions
+            if self._mask_array is not None:
+                h, w = self._mask_array.shape[:2]
+                DataJson()[self.widget_id]["maskWidth"] = w
+                DataJson()[self.widget_id]["maskHeight"] = h
+            else:
+                DataJson()[self.widget_id]["maskWidth"] = 0
+                DataJson()[self.widget_id]["maskHeight"] = 0
+
+            # Don't send maskData - will be fetched on-demand when user clicks
             DataJson().send_changes()
 
     def set_heatmap_from_annotations(self, anns: List[Annotation], object_name: str = None):
@@ -290,6 +318,44 @@ class Heatmap(Widget):
     def click_value(self):
         return StateJson()[self.widget_id]["clickedValue"]
 
+    def _register_click_handler(self):
+        """Register internal click handler to update value from server-side mask."""
+        route_path = self.get_route_path(self.Routes.CLICK)
+        server = self._sly_app.get_server()
+
+        @server.post(route_path)
+        def _click():
+            x = StateJson()[self.widget_id]["maskX"]
+            y = StateJson()[self.widget_id]["maskY"]
+
+            logger.debug(
+                f"Heatmap click: x={x}, y={y}, mask_array shape={self._mask_array.shape if self._mask_array is not None else None}"
+            )
+
+            # Get value from server-side mask array
+            clicked_value = None
+            if self._mask_array is not None and x is not None and y is not None:
+                h, w = self._mask_array.shape[:2]
+                if 0 <= y < h and 0 <= x < w:
+                    clicked_value = float(self._mask_array[y, x])
+                    # Update state with the value
+                    StateJson()[self.widget_id]["clickedValue"] = clicked_value
+                    StateJson().send_changes()
+                    logger.debug(f"Heatmap click value: {clicked_value}")
+                else:
+                    logger.warning(f"Coordinates out of bounds: x={x}, y={y}, shape=({h}, {w})")
+            else:
+                if self._mask_array is None:
+                    logger.warning("Mask array is None")
+                if x is None:
+                    logger.warning("x coordinate is None")
+                if y is None:
+                    logger.warning("y coordinate is None")
+
+            # Call user callback if registered
+            if self._click_callback is not None:
+                self._click_callback(y, x, clicked_value)
+
     def click(self, func: Callable[[int, int, float], None]) -> Callable[[], None]:
         """
         Registers a callback for heatmap click events.
@@ -298,17 +364,7 @@ class Heatmap(Widget):
         where:
             - y: row index (height axis)
             - x: column index (width axis)
-            - value: clicked pixel value
+            - value: clicked pixel value (fetched from server-side mask)
         """
-        route_path = self.get_route_path(self.Routes.CLICK)
-        server = self._sly_app.get_server()
-        self._click_handled = True
-
-        @server.post(route_path)
-        def _click():
-            x = StateJson()[self.widget_id]["maskX"]
-            y = StateJson()[self.widget_id]["maskY"]
-            clicked_value = StateJson()[self.widget_id]["clickedValue"]
-            func(y, x, clicked_value)
-
-        return _click
+        self._click_callback = func
+        return func
