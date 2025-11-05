@@ -157,7 +157,6 @@ Vue.component('heatmap-image', {
     handleImageClick(event) {
       const wrapper = this.$refs.wrapper;
       if (!wrapper) {
-        console.warn('Wrapper not found');
         return;
       }
 
@@ -225,18 +224,16 @@ Vue.component('heatmap-image', {
       }
 
       // Use mask dimensions from server
-      const maskWidth = this.maskWidth || 640;
-      const maskHeight = this.maskHeight || 480;
+      const maskWidth = this.maskWidth;
+      const maskHeight = this.maskHeight;
       
       if (!maskWidth || !maskHeight) {
-        console.warn('Mask dimensions not available');
         return;
       }
 
       // Get image element to calculate scaling
       const imgEl = wrapper.querySelector('.overlay-image');
       if (!imgEl) {
-        console.warn('Overlay image element not found');
         return;
       }
       
@@ -248,7 +245,6 @@ Vue.component('heatmap-image', {
       
       // Check if click is within image bounds
       if (imgRelativeX < 0 || imgRelativeY < 0 || imgRelativeX > imgRect.width || imgRelativeY > imgRect.height) {
-        console.warn('Click outside image bounds');
         return;
       }
       

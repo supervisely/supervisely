@@ -131,6 +131,7 @@
   box-sizing: border-box;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), 0 0 0 2px rgba(59, 130, 246, 0.2);
   animation: pulse-ring 1.5s ease-out infinite;
+  transform: translate(1px, -1px);
 }
 
 @keyframes pulse-ring {
