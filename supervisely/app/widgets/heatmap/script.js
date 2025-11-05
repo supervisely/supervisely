@@ -264,16 +264,6 @@ Vue.component('heatmap-image', {
       maskX = Math.min(Math.max(maskX, 0), maskWidth - 1);
       maskY = Math.min(Math.max(maskY, 0), maskHeight - 1);
 
-      console.log('Click coordinates:', { 
-        maskX, maskY, 
-        maskWidth, maskHeight,
-        displayWidth: imgRect.width,
-        displayHeight: imgRect.height,
-        scaleX, scaleY,
-        clickX: this.clickX,
-        clickY: this.clickY
-      });
-
       // Update state - this will trigger server-side callback
       this.$emit('update:mask-x', maskX);
       this.$emit('update:mask-y', maskY);
@@ -328,7 +318,6 @@ Vue.component('heatmap-image', {
   props: {
     backgroundUrl: String,
     maskUrl: String,
-    maskData: Array,
     opacity: Number,
     width: [Number, String],
     height: [Number, String],
