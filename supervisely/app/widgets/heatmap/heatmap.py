@@ -327,10 +327,10 @@ class Heatmap(Widget):
             y = StateJson()[self.widget_id]["maskY"]
 
             logger.debug(
-                f"Heatmap click: x={x}, y={y}, mask_array shape={self._mask_data.shape if self._mask_data is not None else None}"
+                f"Heatmap click: x={x}, y={y}, _mask_data shape={self._mask_data.shape if self._mask_data is not None else None}"
             )
 
-            # Get value from server-side mask array
+            # Get value from server-side mask data
             clicked_value = None
             if self._mask_data is not None and x is not None and y is not None:
                 h, w = self._mask_data.shape[:2]
@@ -344,7 +344,7 @@ class Heatmap(Widget):
                     logger.warning(f"Coordinates out of bounds: x={x}, y={y}, shape=({h}, {w})")
             else:
                 if self._mask_data is None:
-                    logger.warning("Mask array is None")
+                    logger.warning("Mask data is None")
                 if x is None:
                     logger.warning("x coordinate is None")
                 if y is None:

@@ -95,10 +95,16 @@ Vue.component('heatmap-image', {
       
       if (this.width) {
         styles.width = typeof this.width === 'number' ? `${this.width}px` : this.width;
-      } else if (this.height && this.naturalWidth && this.naturalHeight) {
-        const heightValue = typeof this.height === 'number' ? this.height : parseFloat(this.height);
-        const aspectRatio = this.naturalWidth / this.naturalHeight;
-        styles.width = `${heightValue * aspectRatio}px`;
+      } else if (this.height) {
+        // Use naturalWidth/Height from loaded image, or fallback to maskWidth/Height
+        const effectiveWidth = this.naturalWidth || this.maskWidth;
+        const effectiveHeight = this.naturalHeight || this.maskHeight;
+        
+        if (effectiveWidth && effectiveHeight) {
+          const heightValue = typeof this.height === 'number' ? this.height : parseFloat(this.height);
+          const aspectRatio = effectiveWidth / effectiveHeight;
+          styles.width = `${heightValue * aspectRatio}px`;
+        }
       }
       
       return styles;
@@ -111,9 +117,13 @@ Vue.component('heatmap-image', {
         styles.maxHeight = typeof this.height === 'number' ? `${this.height}px` : this.height;
       }
       
-      // Always use aspect-ratio if we have natural dimensions
-      if (this.naturalWidth && this.naturalHeight) {
-        styles.aspectRatio = `${this.naturalWidth} / ${this.naturalHeight}`;
+      // Use naturalWidth/Height from loaded image, or fallback to maskWidth/Height
+      const effectiveWidth = this.naturalWidth || this.maskWidth;
+      const effectiveHeight = this.naturalHeight || this.maskHeight;
+      
+      // Always use aspect-ratio if we have dimensions
+      if (effectiveWidth && effectiveHeight) {
+        styles.aspectRatio = `${effectiveWidth} / ${effectiveHeight}`;
       }
       
       return styles;
@@ -157,33 +167,54 @@ Vue.component('heatmap-image', {
     handleImageClick(event) {
       const wrapper = this.$refs.wrapper;
       if (!wrapper) {
+        console.warn('[Heatmap] Wrapper not found', { maskUrl: this.maskUrl, backgroundUrl: this.backgroundUrl });
         return;
       }
 
-      // Get click position relative to wrapper for visual indicator
-      const wrapperRect = wrapper.getBoundingClientRect();
-      const relativeX = event.clientX - wrapperRect.left;
-      const relativeY = event.clientY - wrapperRect.top;
+      // Get image element first to calculate position relative to actual image
+      const imgEl = wrapper.querySelector('.overlay-image');
+      if (!imgEl) {
+        console.warn('[Heatmap] Overlay image element not found', { maskUrl: this.maskUrl, backgroundUrl: this.backgroundUrl });
+        return;
+      }
       
-      this.clickX = relativeX;
-      this.clickY = relativeY;
-      this.popupX = relativeX;
-      this.popupY = relativeY;
+      const imgRect = imgEl.getBoundingClientRect();
+      
+      // Get click position relative to actual image (not wrapper!)
+      const relativeX = event.clientX - imgRect.left;
+      const relativeY = event.clientY - imgRect.top;
+      
+      // Check if click is within image bounds with small tolerance for edge cases
+      const tolerance = 1; // 1px tolerance for edge clicks with browser zoom
+      if (relativeX < -tolerance || relativeY < -tolerance || 
+          relativeX > imgRect.width + tolerance || relativeY > imgRect.height + tolerance) {
+        return;
+      }
+      
+      // Clamp coordinates to image bounds (handle edge cases from browser zoom)
+      const clampedX = Math.max(0, Math.min(relativeX, imgRect.width - 0.01));
+      const clampedY = Math.max(0, Math.min(relativeY, imgRect.height - 0.01));
+      
+      // Set visual indicator position (relative to image, not wrapper)
+      this.clickX = clampedX;
+      this.clickY = clampedY;
+      this.popupX = clampedX;
+      this.popupY = clampedY;
       
       // Determine best popup position based on click location
       const popupHeight = 40; // Approximate popup height
       const popupWidth = 80; // Approximate popup width (half width for centered popup)
       const margin = 20; // Minimum margin from edges
       
-      // Check available space in each direction
-      const spaceTop = relativeY;
-      const spaceBottom = wrapperRect.height - relativeY;
-      const spaceLeft = relativeX;
-      const spaceRight = wrapperRect.width - relativeX;
+      // Check available space in each direction (relative to image, not wrapper)
+      const spaceTop = clampedY;
+      const spaceBottom = imgRect.height - clampedY;
+      const spaceLeft = clampedX;
+      const spaceRight = imgRect.width - clampedX;
       
       // Check if popup would overflow horizontally when positioned top/bottom
-      const wouldOverflowLeft = relativeX < (popupWidth / 2);
-      const wouldOverflowRight = (wrapperRect.width - relativeX) < (popupWidth / 2);
+      const wouldOverflowLeft = clampedX < (popupWidth / 2);
+      const wouldOverflowRight = (imgRect.width - clampedX) < (popupWidth / 2);
       
       // Logic: prefer top, but if at edges use left/right
       if (spaceTop > popupHeight + margin && !wouldOverflowLeft && !wouldOverflowRight) {
@@ -228,33 +259,44 @@ Vue.component('heatmap-image', {
       const maskHeight = this.maskHeight;
       
       if (!maskWidth || !maskHeight) {
-        return;
-      }
-
-      // Get image element to calculate scaling
-      const imgEl = wrapper.querySelector('.overlay-image');
-      if (!imgEl) {
-        return;
-      }
-      
-      const imgRect = imgEl.getBoundingClientRect();
-      
-      // Calculate click position relative to overlay image
-      const imgRelativeX = event.clientX - imgRect.left;
-      const imgRelativeY = event.clientY - imgRect.top;
-      
-      // Check if click is within image bounds
-      if (imgRelativeX < 0 || imgRelativeY < 0 || imgRelativeX > imgRect.width || imgRelativeY > imgRect.height) {
+        console.warn('[Heatmap] Mask dimensions not available', { 
+          maskUrl: this.maskUrl,
+          maskWidth: this.maskWidth,
+          maskHeight: this.maskHeight
+        });
         return;
       }
       
-      // Calculate pixel coordinates in the mask
-      // Scale from displayed size to mask size
-      const scaleX = maskWidth / imgRect.width;
-      const scaleY = maskHeight / imgRect.height;
+      // Get PNG file dimensions (naturalWidth/Height of the loaded image)
+      const pngWidth = imgEl.naturalWidth;
+      const pngHeight = imgEl.naturalHeight;
       
-      let maskX = Math.floor(imgRelativeX * scaleX);
-      let maskY = Math.floor(imgRelativeY * scaleY);
+      if (!pngWidth || !pngHeight) {
+        console.warn('[Heatmap] PNG dimensions not available', {
+          maskUrl: this.maskUrl,
+          naturalWidth: imgEl.naturalWidth,
+          naturalHeight: imgEl.naturalHeight
+        });
+        return;
+      }
+      
+      // Two-step coordinate transformation:
+      // 1. From screen coordinates to PNG coordinates
+      // 2. From PNG coordinates to mask coordinates
+      
+      // Step 1: Scale from displayed size to PNG size
+      const displayToImageScaleX = pngWidth / imgRect.width;
+      const displayToImageScaleY = pngHeight / imgRect.height;
+      
+      const pngX = clampedX * displayToImageScaleX;
+      const pngY = clampedY * displayToImageScaleY;
+      
+      // Step 2: Scale from PNG size to mask size
+      const imageTomaskScaleX = maskWidth / pngWidth;
+      const imageTomaskScaleY = maskHeight / pngHeight;
+      
+      let maskX = Math.floor(pngX * imageTomaskScaleX);
+      let maskY = Math.floor(pngY * imageTomaskScaleY);
       
       // Clamp to mask bounds
       maskX = Math.min(Math.max(maskX, 0), maskWidth - 1);
