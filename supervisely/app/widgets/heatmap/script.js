@@ -1,9 +1,11 @@
 Vue.component('heatmap-image', {
   template: `
   <div
+    class="heatmap-container"
+    :style="widthStyle"
     @click="$emit('click')"
   >
-    <div class="heatmap-header" :style="widthStyle">
+    <div class="heatmap-header">
       <div class="opacity-slider" @click.stop>
         <div class="opacity-label">
           <span class="opacity-label-text">Opacity:</span>
@@ -104,9 +106,13 @@ Vue.component('heatmap-image', {
     imageWrapperStyle() {
       const styles = { ...this.widthStyle };
       
+      // Use max-height instead of height to allow responsive scaling
       if (this.height) {
-        styles.height = typeof this.height === 'number' ? `${this.height}px` : this.height;
-      } else if (this.naturalWidth && this.naturalHeight) {
+        styles.maxHeight = typeof this.height === 'number' ? `${this.height}px` : this.height;
+      }
+      
+      // Always use aspect-ratio if we have natural dimensions
+      if (this.naturalWidth && this.naturalHeight) {
         styles.aspectRatio = `${this.naturalWidth} / ${this.naturalHeight}`;
       }
       

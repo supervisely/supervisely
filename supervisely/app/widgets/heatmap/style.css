@@ -1,3 +1,8 @@
+.heatmap-container {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
 .image-wrapper {
   position: relative;
   max-width: 100%;
