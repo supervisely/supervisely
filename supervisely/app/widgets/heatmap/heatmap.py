@@ -127,7 +127,6 @@ class Heatmap(Widget):
         width: int = None,
         height: int = None,
         widget_id: str = None,
-        file_path: str = __file__,
     ):
         self._background_url = None
         self._heatmap_url = None
@@ -142,7 +141,7 @@ class Heatmap(Widget):
         self._opacity = 70
         self._min_value = 0
         self._max_value = 0
-        super().__init__(widget_id, file_path=file_path)
+        super().__init__(widget_id, file_path=__file__)
 
         if background_image is not None:
             self.set_background(background_image)
