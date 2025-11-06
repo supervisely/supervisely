@@ -63,8 +63,56 @@ def to_json_safe(val):
 
 class Heatmap(Widget):
     """
-    Supervisely widget that displays an interactive heatmap overlay
-    on top of a background image.
+    Supervisely widget that displays an interactive heatmap overlay on top of a background image.
+
+    :param static_dir: Path to the directory where static files (images, CSS, etc.) are stored
+    :type static_dir: str
+    :param background_image: Background image to display under the heatmap. Can be a path to an image file or a NumPy array
+    :type background_image: Union[str, np.ndarray], optional
+    :param heatmap_mask: NumPy array representing the heatmap mask values
+    :type heatmap_mask: np.ndarray, optional
+    :param vmin: Minimum value for normalizing the heatmap. If None, it is inferred from the mask
+    :type vmin: Any, optional
+    :param vmax: Maximum value for normalizing the heatmap. If None, it is inferred from the mask
+    :type vmax: Any, optional
+    :param transparent_low: Whether to make low values in the heatmap transparent
+    :type transparent_low: bool, optional
+    :param colormap: OpenCV colormap used to colorize the heatmap (e.g., cv2.COLORMAP_JET)
+    :type colormap: int, optional
+    :param width: Width of the output heatmap in pixels
+    :type width: int, optional
+    :param height: Height of the output heatmap in pixels
+    :type height: int, optional
+    :param widget_id: Unique identifier for the widget instance
+    :type widget_id: str, optional
+    :param file_path: Path to the file where the widget is defined (used for static resource resolution)
+    :type file_path: str, optional
+
+    This widget provides an interactive visualization for numerical data as colored overlays.
+    Users can click on the heatmap to get exact values at specific coordinates.
+    The widget supports various colormaps, transparency controls, and value normalization.
+
+    :Usage example:
+
+     .. code-block:: python
+
+        import numpy as np
+        from supervisely.app.widgets import Heatmap
+
+        # Create temperature heatmap
+        temp_data = np.random.uniform(-20, 40, size=(100, 100))
+        heatmap = Heatmap(
+            static_dir="/path/to/static",
+            background_image="/path/to/background.jpg",
+            heatmap_mask=temp_data,
+            vmin=-20,
+            vmax=40,
+            colormap=cv2.COLORMAP_JET
+        )
+
+        @heatmap.click
+        def handle_click(y: int, x: int, value: float):
+            print(f"Temperature at ({x}, {y}): {value:.1f}°C")
     """
 
     class Routes:
@@ -84,32 +132,6 @@ class Heatmap(Widget):
         widget_id: str = None,
         file_path: str = __file__,
     ):
-        """
-        Initializes the Heatmap widget.
-
-        :param static_dir: Path to the directory where static files (images, CSS, etc.) are stored.
-        :type static_dir: str
-        :param background_image: Background image to display under the heatmap. Can be a path to an image file or a NumPy array.
-        :type background_image: Union[str, np.ndarray], optional
-        :param heatmap_mask: NumPy array representing the heatmap mask values.
-        :type heatmap_mask: np.ndarray, optional
-        :param vmin: Minimum value for normalizing the heatmap. If None, it is inferred from the mask.
-        :type vmin: Any, optional
-        :param vmax: Maximum value for normalizing the heatmap. If None, it is inferred from the mask.
-        :type vmax: Any, optional
-        :param transparent_low: Whether to make low values in the heatmap transparent.
-        :type transparent_low: bool, optional
-        :param colormap: OpenCV colormap used to colorize the heatmap (e.g., cv2.COLORMAP_JET).
-        :type colormap: int, optional
-        :param width: Width of the output heatmap in pixels.
-        :type width: int, optional
-        :param height: Height of the output heatmap in pixels.
-        :type height: int, optional
-        :param widget_id: Unique identifier for the widget instance.
-        :type widget_id: str, optional
-        :param file_path: Path to the file where the widget is defined (used for static resource resolution).
-        :type file_path: str, optional
-        """
         self._background_url = None
         self._heatmap_url = None
         self._mask_data = None  # Store numpy array for efficient value lookup
@@ -166,6 +188,41 @@ class Heatmap(Widget):
         return {"opacity": self._opacity, "clickedValue": None, "maskX": None, "maskY": None}
 
     def set_background(self, background_image: Union[str, np.ndarray]):
+        """
+        Sets the background image that will be displayed under the heatmap overlay.
+
+        :param background_image: Background image source. Can be a file path, URL, or NumPy array
+        :type background_image: Union[str, np.ndarray]
+        :raises ValueError: If the background image type is unsupported or file path doesn't exist
+        :raises Exception: If there's an error during image processing or file operations
+
+        This method handles three types of background images:
+            1. **NumPy array**: Converts to PNG and saves to static directory
+            2. **HTTP/HTTPS URL**: Uses the URL directly for remote images
+            3. **Local file path**: Copies file to static directory and serves locally
+
+        All images are served with cache-busting timestamps to ensure updates
+        are immediately visible in the browser.
+
+        :Usage example:
+
+         .. code-block:: python
+
+            from supervisely.app.widgets.heatmap import Heatmap
+            import numpy as np
+            static_dir = "/path/to/static/dir"
+            heatmap = Heatmap(static_dir=static_dir)
+
+            # Using a local file path
+            heatmap.set_background("/path/to/image.jpg")
+
+            # Using a NumPy array (RGB image)
+            bg_array = np.random.randint(0, 255, size=(480, 640, 3), dtype=np.uint8)
+            heatmap.set_background(bg_array)
+
+            # Using a remote URL
+            heatmap.set_background("https://example.com/background.png")
+        """
         try:
             if isinstance(background_image, np.ndarray):
                 self._save_to_static(background_image, "background.png")
@@ -194,6 +251,35 @@ class Heatmap(Widget):
             DataJson().send_changes()
 
     def set_heatmap(self, mask: np.ndarray):
+        """
+        Sets the heatmap mask data and generates a colorized PNG overlay.
+
+        :param mask: NumPy array representing the heatmap values to be displayed
+        :type mask: np.ndarray
+
+        :raises Exception: If there's an error during heatmap generation or file saving
+
+        The heatmap is saved as a PNG file in the static directory and served with
+        cache-busting timestamps to ensure updates are immediately visible in the browser.
+
+        :Usage example:
+
+         .. code-block:: python
+
+            from supervisely.app.widgets.heatmap import Heatmap
+            import numpy as np
+
+            static_dir = "/path/to/static/dir"
+            heatmap = Heatmap(static_dir=static_dir)
+
+            # Create probability heatmap (0.0 to 1.0)
+            probability_mask = np.random.uniform(0.0, 1.0, size=(100, 100))
+            heatmap.set_heatmap(probability_mask)
+
+            # Create temperature heatmap (-50 to 150)
+            temp_mask = np.random.uniform(-50, 150, size=(200, 300))
+            heatmap.set_heatmap(temp_mask)
+        """
         try:
             heatmap = mask_to_heatmap(
                 mask,
@@ -235,6 +321,34 @@ class Heatmap(Widget):
             DataJson().send_changes()
 
     def set_heatmap_from_annotations(self, anns: List[Annotation], object_name: str = None):
+        """
+        Creates and sets a heatmap from Supervisely annotations.
+
+        :param anns: List of Supervisely annotations to convert to heatmap
+        :type anns: List[Annotation]
+        :param object_name: Name of the object class to filter annotations by. If None, all objects are included
+        :type object_name: str, optional
+        :raises ValueError: If the annotations list is empty
+
+        This method creates a heatmap mask by:
+            1. Calculating the average image size from all annotations
+            2. Creating a zero-filled mask of that size
+            3. Drawing each matching label onto the mask
+            4. Setting the resulting mask as the heatmap
+
+        :Usage example:
+
+         .. code-block:: python
+
+            from supervisely.annotation.annotation import Annotation
+
+            ann1 = Annotation.load_json_file("/path/to/ann1.json")
+            ann2 = Annotation.load_json_file("/path/to/ann2.json")
+            ann3 = Annotation.load_json_file("/path/to/ann3.json")
+            annotations = [ann1, ann2, ann3]
+            heatmap.set_heatmap_from_annotations(annotations, object_name="person")
+
+        """
         if len(anns) == 0:
             raise ValueError("Annotations list should have at least one element")
         sizes = [ann.img_size for ann in anns]
@@ -358,11 +472,24 @@ class Heatmap(Widget):
         """
         Registers a callback for heatmap click events.
 
-        The callback receives coordinates in NumPy order (y, x, value),
-        where:
+        :param func: Callback function that receives click coordinates and value
+        :type func: Callable[[int, int, float], None]
+        :returns: The registered callback function
+        :rtype: Callable[[], None]
+
+        The callback receives coordinates in NumPy order (y, x, value), where:
             - y: row index (height axis)
             - x: column index (width axis)
             - value: clicked pixel value (fetched from server-side mask)
+
+        :Usage example:
+
+         .. code-block:: python
+
+            @heatmap.click
+            def handle_click(y: int, x: int, value: float):
+                print(f"Clicked at row {y}, col {x}, value: {value}")
+
         """
         self._click_callback = func
         return func
