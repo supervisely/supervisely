@@ -301,7 +301,7 @@ class Heatmap(Widget):
 
     def set_heatmap_from_annotations(self, anns: List[Annotation], object_name: str = None):
         """
-        Creates and sets a heatmap from Supervisely annotations.
+        Creates and sets a heatmap from Supervisely annotations showing object density/overlaps.
 
         :param anns: List of Supervisely annotations to convert to heatmap
         :type anns: List[Annotation]
@@ -309,11 +309,12 @@ class Heatmap(Widget):
         :type object_name: str, optional
         :raises ValueError: If the annotations list is empty
 
-        This method creates a heatmap mask by:
+        This method creates a density heatmap mask by:
             1. Calculating the average image size from all annotations
             2. Creating a zero-filled mask of that size
-            3. Drawing each matching label onto the mask
-            4. Setting the resulting mask as the heatmap
+            3. Drawing each matching label onto the mask, accumulating values
+            4. Areas with overlapping objects will have higher values (brighter in heatmap)
+            5. Setting the resulting density mask as the heatmap
 
         :Usage example:
 
@@ -330,17 +331,46 @@ class Heatmap(Widget):
         """
         if len(anns) == 0:
             raise ValueError("Annotations list should have at least one element")
+
+        # Calculate average size and round to even numbers
         sizes = [ann.img_size for ann in anns]
         avg_size = (
-            sum(size[0] for size in sizes) / len(sizes),
-            sum(size[1] for size in sizes) / len(sizes),
+            int(round(sum(size[0] for size in sizes) / len(sizes) / 2) * 2),
+            int(round(sum(size[1] for size in sizes) / len(sizes) / 2) * 2),
         )
-        mask = np.zeros(avg_size)
+
+        # Count matching labels to determine max possible value
+        total_labels = 0
         for ann in anns:
             for label in ann.labels:
                 if object_name is None or label.obj_class.name == object_name:
-                    label.resize(ann.img_size, avg_size)
-                    label.draw(mask)
+                    total_labels += 1
+
+        if total_labels == 0:
+            raise ValueError(f"No labels found for object_name='{object_name}'")
+
+        # Create density mask that accumulates overlapping objects
+        mask = np.zeros(avg_size, dtype=np.float32)
+
+        for ann in anns:
+            for label in ann.labels:
+                if object_name is None or label.obj_class.name == object_name:
+                    # Create a resized label for the target mask size
+                    resized_label = label.resize(ann.img_size, avg_size)
+
+                    # Create temporary mask for this label
+                    temp_mask = np.zeros(avg_size, dtype=np.float32)
+                    resized_label.draw(temp_mask, color=1.0)
+
+                    # Add to accumulating density mask (overlaps will sum up)
+                    mask += temp_mask
+
+        logger.info(
+            f"Created density heatmap: {total_labels} labels, "
+            f"max density: {mask.max():.1f}, "
+            f"avg density: {mask.mean():.3f}"
+        )
+
         self.set_heatmap(mask)
 
     @property
