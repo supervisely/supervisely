@@ -12,7 +12,7 @@ from supervisely.annotation.annotation import Annotation
 from supervisely.app.content import DataJson, StateJson
 from supervisely.app.widgets import Widget
 from supervisely.app.widgets_context import JinjaWidgets
-from supervisely.imaging.image import np_image_to_data_url, read, write
+from supervisely.imaging.image import np_image_to_data_url_backup_rgb, read, write
 
 
 def mask_to_heatmap(
@@ -215,7 +215,7 @@ class Heatmap(Widget):
         """
         try:
             if isinstance(background_image, np.ndarray):
-                self._background_url = np_image_to_data_url(background_image)
+                self._background_url = np_image_to_data_url_backup_rgb(background_image)
                 # self._save_to_static(background_image, "background.png")
                 # self._background_url = f"/static/{self.widget_id}/background.png?t={time.time()}"
             elif isinstance(background_image, str):
@@ -227,7 +227,7 @@ class Heatmap(Widget):
                     self._background_url = background_image
                 elif bg_image_path.exists() and bg_image_path.is_file():
                     np_image = read(bg_image_path, remove_alpha_channel=False)
-                    self._background_url = np_image_to_data_url(np_image)
+                    self._background_url = np_image_to_data_url_backup_rgb(np_image)
                 else:
                     raise ValueError(f"Unable to find image at {background_image}")
             else:
@@ -278,7 +278,7 @@ class Heatmap(Widget):
                 vmax=self._vmax,
                 transparent_low=self._transparent_low,
             )
-            self._heatmap_url = np_image_to_data_url(heatmap)
+            self._heatmap_url = np_image_to_data_url_backup_rgb(heatmap)
             self._min_value = to_json_safe(mask.min())
             self._max_value = to_json_safe(mask.max())
 

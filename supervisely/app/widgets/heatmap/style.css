@@ -34,6 +34,7 @@
   height: 100%;
   pointer-events: none;
   object-fit: contain;
+  image-rendering: pixelated;
 }
 
 .heatmap-header {
