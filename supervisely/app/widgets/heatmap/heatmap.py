@@ -1,5 +1,3 @@
-import shutil
-import time
 from pathlib import Path
 from typing import Any, Callable, List, Union
 from urllib.parse import urlparse
@@ -83,8 +81,6 @@ class Heatmap(Widget):
     :type height: int, optional
     :param widget_id: Unique identifier for the widget instance
     :type widget_id: str, optional
-    :param file_path: Path to the file where the widget is defined (used for static resource resolution)
-    :type file_path: str, optional
 
     This widget provides an interactive visualization for numerical data as colored overlays.
     Users can click on the heatmap to get exact values at specific coordinates.
@@ -100,7 +96,6 @@ class Heatmap(Widget):
         # Create temperature heatmap
         temp_data = np.random.uniform(-20, 40, size=(100, 100))
         heatmap = Heatmap(
-            static_dir="/path/to/static",
             background_image="/path/to/background.jpg",
             heatmap_mask=temp_data,
             vmin=-20,
@@ -186,12 +181,11 @@ class Heatmap(Widget):
         :raises Exception: If there's an error during image processing or file operations
 
         This method handles three types of background images:
-            1. **NumPy array**: Converts to PNG and saves to static directory
+            1. **NumPy array**: Converts to PNG and encodes as data URL
             2. **HTTP/HTTPS URL**: Uses the URL directly for remote images
-            3. **Local file path**: Copies file to static directory and serves locally
+            3. **Local file path**: Reads file and encodes as data URL
 
-        All images are served with cache-busting timestamps to ensure updates
-        are immediately visible in the browser.
+        All images are converted to data URLs for efficient in-memory serving.
 
         :Usage example:
 
@@ -199,8 +193,7 @@ class Heatmap(Widget):
 
             from supervisely.app.widgets.heatmap import Heatmap
             import numpy as np
-            static_dir = "/path/to/static/dir"
-            heatmap = Heatmap(static_dir=static_dir)
+            heatmap = Heatmap()
 
             # Using a local file path
             heatmap.set_background("/path/to/image.jpg")
@@ -246,10 +239,9 @@ class Heatmap(Widget):
         :param mask: NumPy array representing the heatmap values to be displayed
         :type mask: np.ndarray
 
-        :raises Exception: If there's an error during heatmap generation or file saving
+        :raises Exception: If there's an error during heatmap generation
 
-        The heatmap is saved as a PNG file in the static directory and served with
-        cache-busting timestamps to ensure updates are immediately visible in the browser.
+        The heatmap is converted to a data URL for efficient in-memory serving.
 
         :Usage example:
 
@@ -258,8 +250,7 @@ class Heatmap(Widget):
             from supervisely.app.widgets.heatmap import Heatmap
             import numpy as np
 
-            static_dir = "/path/to/static/dir"
-            heatmap = Heatmap(static_dir=static_dir)
+            heatmap = Heatmap()
 
             # Create probability heatmap (0.0 to 1.0)
             probability_mask = np.random.uniform(0.0, 1.0, size=(100, 100))
