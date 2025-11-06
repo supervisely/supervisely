@@ -12,7 +12,7 @@ from supervisely.annotation.annotation import Annotation
 from supervisely.app.content import DataJson, StateJson
 from supervisely.app.widgets import Widget
 from supervisely.app.widgets_context import JinjaWidgets
-from supervisely.imaging.image import write
+from supervisely.imaging.image import np_image_to_data_url, read, write
 
 
 def mask_to_heatmap(
@@ -65,8 +65,6 @@ class Heatmap(Widget):
     """
     Supervisely widget that displays an interactive heatmap overlay on top of a background image.
 
-    :param static_dir: Path to the directory where static files (images, CSS, etc.) are stored
-    :type static_dir: str
     :param background_image: Background image to display under the heatmap. Can be a path to an image file or a NumPy array
     :type background_image: Union[str, np.ndarray], optional
     :param heatmap_mask: NumPy array representing the heatmap mask values
@@ -120,7 +118,6 @@ class Heatmap(Widget):
 
     def __init__(
         self,
-        static_dir: str,
         background_image: Union[str, np.ndarray] = None,
         heatmap_mask: np.ndarray = None,
         vmin: Any = None,
@@ -145,8 +142,6 @@ class Heatmap(Widget):
         self._opacity = 70
         self._min_value = 0
         self._max_value = 0
-        self.static_dir = static_dir
-        self.static_path = Path(static_dir)  # Initialize static_path early
         super().__init__(widget_id, file_path=file_path)
 
         if background_image is not None:
@@ -160,11 +155,6 @@ class Heatmap(Widget):
 
         # Register default click handler to update value from server-side mask
         self._register_click_handler()
-
-    def _save_to_static(self, img: np.ndarray, name: str):
-        self.static_path.mkdir(parents=True, exist_ok=True)
-        img_path = self.static_path / self.widget_id / name
-        write(str(img_path), img, remove_alpha_channel=False)
 
     def get_json_data(self):
         # Get mask dimensions if available
@@ -225,19 +215,19 @@ class Heatmap(Widget):
         """
         try:
             if isinstance(background_image, np.ndarray):
-                self._save_to_static(background_image, "background.png")
-                self._background_url = f"/static/{self.widget_id}/background.png?t={time.time()}"
+                self._background_url = np_image_to_data_url(background_image)
+                # self._save_to_static(background_image, "background.png")
+                # self._background_url = f"/static/{self.widget_id}/background.png?t={time.time()}"
             elif isinstance(background_image, str):
                 parsed = urlparse(background_image)
                 bg_image_path = Path(background_image)
                 if parsed.scheme in ("http", "https") and parsed.netloc:
                     self._background_url = background_image
+                elif parsed.scheme == "data":
+                    self._background_url = background_image
                 elif bg_image_path.exists() and bg_image_path.is_file():
-                    img_name = bg_image_path.name
-                    dst_path = self.static_path / self.widget_id / img_name
-                    dst_path.parent.mkdir(parents=True, exist_ok=True)
-                    shutil.copyfile(bg_image_path, dst_path)
-                    self._background_url = f"/static/{self.widget_id}/{img_name}?t={time.time()}"
+                    np_image = read(bg_image_path, remove_alpha_channel=False)
+                    self._background_url = np_image_to_data_url(np_image)
                 else:
                     raise ValueError(f"Unable to find image at {background_image}")
             else:
@@ -288,8 +278,7 @@ class Heatmap(Widget):
                 vmax=self._vmax,
                 transparent_low=self._transparent_low,
             )
-            self._save_to_static(heatmap, name="mask.png")
-            self._heatmap_url = f"/static/{self.widget_id}/mask.png?t={time.time()}"
+            self._heatmap_url = np_image_to_data_url(heatmap)
             self._min_value = to_json_safe(mask.min())
             self._max_value = to_json_safe(mask.max())
 
