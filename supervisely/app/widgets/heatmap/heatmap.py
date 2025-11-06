@@ -310,8 +310,8 @@ class Heatmap(Widget):
         :raises ValueError: If the annotations list is empty
 
         This method creates a density heatmap mask by:
-            1. Calculating the average image size from all annotations
-            2. Creating a zero-filled mask of that size
+            1. Using widget dimensions (width/height) if specified, calculating missing dimension from aspect ratio
+            2. Creating a zero-filled mask of the target size
             3. Drawing each matching label onto the mask, accumulating values
             4. Areas with overlapping objects will have higher values (brighter in heatmap)
             5. Setting the resulting density mask as the heatmap
@@ -332,12 +332,32 @@ class Heatmap(Widget):
         if len(anns) == 0:
             raise ValueError("Annotations list should have at least one element")
 
-        # Calculate average size and round to even numbers
-        sizes = [ann.img_size for ann in anns]
-        avg_size = (
-            int(round(sum(size[0] for size in sizes) / len(sizes) / 2) * 2),
-            int(round(sum(size[1] for size in sizes) / len(sizes) / 2) * 2),
-        )
+        # Use widget dimensions if specified, otherwise calculate average from annotations
+        if self._width is not None and self._height is not None:
+            # Both dimensions specified - use them directly
+            target_size = (self._height, self._width)
+        elif self._width is not None or self._height is not None:
+            # Only one dimension specified - calculate the other from annotations aspect ratio
+            sizes = [ann.img_size for ann in anns]
+            avg_height = sum(size[0] for size in sizes) / len(sizes)
+            avg_width = sum(size[1] for size in sizes) / len(sizes)
+            aspect_ratio = avg_width / avg_height
+
+            if self._width is not None:
+                # Width specified, calculate height
+                target_height = int(round(self._width / aspect_ratio / 2) * 2)
+                target_size = (target_height, self._width)
+            else:
+                # Height specified, calculate width
+                target_width = int(round(self._height * aspect_ratio / 2) * 2)
+                target_size = (self._height, target_width)
+        else:
+            # No dimensions specified - calculate average size from annotations and round to even numbers
+            sizes = [ann.img_size for ann in anns]
+            target_size = (
+                int(round(sum(size[0] for size in sizes) / len(sizes) / 2) * 2),
+                int(round(sum(size[1] for size in sizes) / len(sizes) / 2) * 2),
+            )
 
         # Count matching labels to determine max possible value
         total_labels = 0
@@ -350,16 +370,16 @@ class Heatmap(Widget):
             raise ValueError(f"No labels found for object_name='{object_name}'")
 
         # Create density mask that accumulates overlapping objects
-        mask = np.zeros(avg_size, dtype=np.float32)
+        mask = np.zeros(target_size, dtype=np.float32)
 
         for ann in anns:
             for label in ann.labels:
                 if object_name is None or label.obj_class.name == object_name:
                     # Create a resized label for the target mask size
-                    resized_label = label.resize(ann.img_size, avg_size)
+                    resized_label = label.resize(ann.img_size, target_size)
 
                     # Create temporary mask for this label
-                    temp_mask = np.zeros(avg_size, dtype=np.float32)
+                    temp_mask = np.zeros(target_size, dtype=np.float32)
                     resized_label.draw(temp_mask, color=1.0)
 
                     # Add to accumulating density mask (overlaps will sum up)
@@ -367,6 +387,7 @@ class Heatmap(Widget):
 
         logger.info(
             f"Created density heatmap: {total_labels} labels, "
+            f"target size: {target_size}, "
             f"max density: {mask.max():.1f}, "
             f"avg density: {mask.mean():.3f}"
         )
