@@ -10,7 +10,7 @@ from supervisely.annotation.annotation import Annotation
 from supervisely.app.content import DataJson, StateJson
 from supervisely.app.widgets import Widget
 from supervisely.app.widgets_context import JinjaWidgets
-from supervisely.imaging.image import np_image_to_data_url_backup_rgb, read, write
+from supervisely.imaging.image import np_image_to_data_url_backup_rgb, read
 
 
 def mask_to_heatmap(
@@ -208,8 +208,6 @@ class Heatmap(Widget):
         try:
             if isinstance(background_image, np.ndarray):
                 self._background_url = np_image_to_data_url_backup_rgb(background_image)
-                # self._save_to_static(background_image, "background.png")
-                # self._background_url = f"/static/{self.widget_id}/background.png?t={time.time()}"
             elif isinstance(background_image, str):
                 parsed = urlparse(background_image)
                 bg_image_path = Path(background_image)
