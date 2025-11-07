@@ -18,11 +18,17 @@ def run_sync(coroutine):
     :return: result of coroutine
     """
     try:
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-            result = executor.submit(
-                lambda coroutine_to_exec: asyncio.run(coroutine_to_exec), coroutine
-            ).result()
-        return result
-    except RuntimeError as ex:
-        print(repr(ex))
-        return None
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        try:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                result = executor.submit(
+                    lambda coroutine_to_exec: asyncio.run(coroutine_to_exec), coroutine
+                ).result()
+            return result
+        except RuntimeError as ex:
+            print(repr(ex))
+            return None
+    else:
+        future = asyncio.run_coroutine_threadsafe(coroutine, loop)
+        return future.result()
