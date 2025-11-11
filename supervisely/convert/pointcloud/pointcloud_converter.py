@@ -3,6 +3,8 @@ import os
 from typing import Dict, List, Optional, Set, Tuple
 from uuid import UUID
 
+import numpy as np
+
 from supervisely import (
     Api,
     PointcloudAnnotation,
@@ -20,9 +22,10 @@ from supervisely.pointcloud.pointcloud import validate_ext as validate_pcd_ext
 from supervisely.pointcloud_annotation.constants import OBJECT_KEY
 from supervisely.video_annotation.key_id_map import KeyIdMap
 
+CONVERTABLE_EXTENSIONS = [".bin"]
 
 class PointcloudConverter(BaseConverter):
-    allowed_exts = ALLOWED_POINTCLOUD_EXTENSIONS
+    allowed_exts = ALLOWED_POINTCLOUD_EXTENSIONS + CONVERTABLE_EXTENSIONS
     modality = "pointclouds"
 
     class Item(BaseConverter.BaseItem):
@@ -253,7 +256,10 @@ class PointcloudConverter(BaseConverter):
                 elif ext.lower() in self.allowed_exts:
                     try:
                         validate_pcd_ext(ext)
-                        pcd_list.append(full_path)
+                        path = self._convert_to_pcd_if_needed(full_path, ext)
+                        if not path:
+                            continue
+                        pcd_list.append(path)
                     except:
                         pass
                 else:
@@ -277,3 +283,69 @@ class PointcloudConverter(BaseConverter):
                     item.set_related_images((rimg_path, rimg_ann_path, rimg_fig_path))
             items.append(item)
         return items, only_modality_items, unsupported_exts
+
+    def _convert_to_pcd_if_needed(self, pcd_path: str, ext: str) -> None:
+        """Convert point cloud to .pcd format if it is in another supported format."""
+        if ext == ".pcd":
+            return pcd_path
+        elif ext == ".bin":
+            if not self._validate_bin_pointcloud(pcd_path):
+                logger.warning(
+                    "The .bin pointcloud file is not valid. Skipping conversion to .pcd."
+                )
+                return None
+            pcd_output_path = pcd_path.replace(".bin", ".pcd")
+            self._convert_bin_to_pcd(pcd_path, pcd_output_path)
+            return pcd_output_path
+
+    def _validate_bin_pointcloud(self, bin_file: str) -> bool:
+        try:
+            data = np.fromfile(bin_file, dtype=np.float32)
+
+            # Check if the file size is divisible by 5 (x,y,z,intensity,ring_index)
+            if len(data) % 5 != 0:
+                return False
+
+            points = data.reshape(-1, 5)
+            if len(points) == 0:
+                return False
+
+            if not (
+                np.all(points[:, 3] >= 0)  # intensity
+                and np.all(points[:, 3] <= 1)  # intensity
+                and np.all(points[:, 4] >= 0)  # ring_index
+                and np.all(points[:, 4] == points[:, 4].astype(int))  # ring_index should be integer
+            ):
+                return False
+
+            return True
+
+        except Exception:
+            return False
+
+    def _convert_bin_to_pcd(self, bin_file: str, pcd_file: str) -> None:
+        """Convert .bin point cloud file to .pcd format using open3d library."""
+        try:
+            import open3d as o3d
+        except ImportError:
+            raise ImportError(
+                "open3d is not installed. Cannot convert .bin point cloud to .pcd format. "
+                "Please install open3d package to enable this feature."
+            )
+
+        try:
+            bin = np.fromfile(bin_file, dtype=np.float32).reshape(-1, 4)
+        except ValueError as e:
+            raise Exception(
+                f"Incorrect data in the BIN pointcloud file: {bin_file}. "
+                f"There was an error while trying to reshape the data into a 4-column matrix: {e}. "
+                "Please ensure that the binary file contains a multiple of 4 elements to be "
+                "successfully reshaped into a (N, 4) array.\n"
+            )
+        points = bin[:, 0:3]
+        intensity = bin[:, -1]
+        intensity_fake_rgb = np.zeros((intensity.shape[0], 3))
+        intensity_fake_rgb[:, 0] = intensity
+        pc = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(points))
+        pc.colors = o3d.utility.Vector3dVector(intensity_fake_rgb)
+        o3d.io.write_point_cloud(pcd_file, pc)
