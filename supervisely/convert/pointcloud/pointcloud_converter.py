@@ -22,10 +22,10 @@ from supervisely.pointcloud.pointcloud import validate_ext as validate_pcd_ext
 from supervisely.pointcloud_annotation.constants import OBJECT_KEY
 from supervisely.video_annotation.key_id_map import KeyIdMap
 
-CONVERTABLE_EXTENSIONS = [".bin"]
+CONVERTIBLE_EXTENSIONS = [".bin"]
 
 class PointcloudConverter(BaseConverter):
-    allowed_exts = ALLOWED_POINTCLOUD_EXTENSIONS + CONVERTABLE_EXTENSIONS
+    allowed_exts = ALLOWED_POINTCLOUD_EXTENSIONS + CONVERTIBLE_EXTENSIONS
     modality = "pointclouds"
 
     class Item(BaseConverter.BaseItem):
@@ -284,14 +284,14 @@ class PointcloudConverter(BaseConverter):
             items.append(item)
         return items, only_modality_items, unsupported_exts
 
-    def _convert_to_pcd_if_needed(self, pcd_path: str, ext: str) -> None:
+    def _convert_to_pcd_if_needed(self, pcd_path: str, ext: str) -> Optional[str]:
         """Convert point cloud to .pcd format if it is in another supported format."""
         if ext == ".pcd":
             return pcd_path
         elif ext == ".bin":
             if not self._validate_bin_pointcloud(pcd_path):
                 logger.warning(
-                    "The .bin pointcloud file is not valid. Skipping conversion to .pcd."
+                    f"The .bin pointcloud file '{pcd_path}' is not valid. Skipping conversion to .pcd."
                 )
                 return None
             pcd_output_path = pcd_path.replace(".bin", ".pcd")
@@ -301,30 +301,30 @@ class PointcloudConverter(BaseConverter):
     def _validate_bin_pointcloud(self, bin_file: str) -> bool:
         try:
             data = np.fromfile(bin_file, dtype=np.float32)
-
-            # Check if the file size is divisible by 5 (x,y,z,intensity,ring_index)
-            if len(data) % 5 != 0:
+            if data.size == 0:
                 return False
 
-            points = data.reshape(-1, 5)
-            if len(points) == 0:
-                return False
+            if data.size % 5 == 0:
+                points = data.reshape(-1, 5)
+                if not np.isfinite(points).all():
+                    return False
+                ring = points[:, 4]
+                if not (np.all(ring >= 0) and np.allclose(ring, np.round(ring))):
+                    return False
+                return True
 
-            if not (
-                np.all(points[:, 3] >= 0)  # intensity
-                and np.all(points[:, 3] <= 1)  # intensity
-                and np.all(points[:, 4] >= 0)  # ring_index
-                and np.all(points[:, 4] == points[:, 4].astype(int))  # ring_index should be integer
-            ):
-                return False
+            if data.size % 4 == 0:
+                points = data.reshape(-1, 4)
+                if not np.isfinite(points).all():
+                    return False
+                return True
 
-            return True
-
-        except Exception:
+            return False
+        except Exception as e:
             return False
 
     def _convert_bin_to_pcd(self, bin_file: str, pcd_file: str) -> None:
-        """Convert .bin point cloud file to .pcd format using open3d library."""
+        """Convert .bin point cloud file to .pcd format using open3d library (supports 4 or 5 floats per point)."""
         try:
             import open3d as o3d
         except ImportError:
@@ -334,18 +334,41 @@ class PointcloudConverter(BaseConverter):
             )
 
         try:
-            bin = np.fromfile(bin_file, dtype=np.float32).reshape(-1, 4)
+            raw = np.fromfile(bin_file, dtype=np.float32)
+            if raw.size % 5 == 0:
+                arr = raw.reshape(-1, 5)
+                points = arr[:, 0:3]
+                intensity = arr[:, 3]
+            elif raw.size % 4 == 0:
+                arr = raw.reshape(-1, 4)
+                points = arr[:, 0:3]
+                intensity = arr[:, 3]
+            else:
+                raise ValueError("The number of float32 values is not a multiple of 4 or 5.")
         except ValueError as e:
             raise Exception(
                 f"Incorrect data in the BIN pointcloud file: {bin_file}. "
-                f"There was an error while trying to reshape the data into a 4-column matrix: {e}. "
-                "Please ensure that the binary file contains a multiple of 4 elements to be "
-                "successfully reshaped into a (N, 4) array.\n"
+                f"The number of float32 values must be a multiple of 4 (x,y,z,intensity) "
+                f"or 5 (x,y,z,intensity,ring_index). Details: {e} "
+                "Please ensure that the binary file contains a valid number of elements to be "
+                "successfully reshaped into a (N, 4) or (N, 5) array.\n"
             )
-        points = bin[:, 0:3]
-        intensity = bin[:, -1]
-        intensity_fake_rgb = np.zeros((intensity.shape[0], 3))
-        intensity_fake_rgb[:, 0] = intensity
+        # normalize intensity to [0, 1] for Open3D colors
+        intensity = np.nan_to_num(intensity, nan=0.0, posinf=0.0, neginf=0.0)
+        if intensity.size > 0:
+            i_min = float(np.min(intensity))
+            i_max = float(np.max(intensity))
+            if i_max > i_min:
+                norm_intensity = (intensity - i_min) / (i_max - i_min)
+            else:
+                norm_intensity = np.zeros_like(intensity)
+        else:
+            norm_intensity = intensity
+        intensity_fake_rgb = np.zeros((norm_intensity.shape[0], 3))
+        intensity_fake_rgb[:, 0] = norm_intensity
+        pc = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(points))
+        pc.colors = o3d.utility.Vector3dVector(intensity_fake_rgb)
+        o3d.io.write_point_cloud(pcd_file, pc)
         pc = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(points))
         pc.colors = o3d.utility.Vector3dVector(intensity_fake_rgb)
         o3d.io.write_point_cloud(pcd_file, pc)
