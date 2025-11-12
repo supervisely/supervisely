@@ -94,6 +94,26 @@ class PersistentImageTTLCache(TTLCache):
         self.__del_file(key)
         return super().__delitem__(key)
 
+    def __cache_setitem(self, key, value):
+        maxsize = self._Cache__maxsize
+        size = self.getsizeof(value)
+        if size > maxsize:
+            raise ValueError("value too large")
+        if key not in self._Cache__data or self._Cache__size[key] < size:
+            while self._Cache__currsize + size > maxsize:
+                sly.logger.debug("Cache overflow, popping item")
+                self.popitem()
+        if key in self._Cache__data:
+            diffsize = size - self._Cache__size[key]
+        else:
+            diffsize = size
+        self._Cache__data[key] = value
+        self._Cache__size[key] = size
+        self._Cache__currsize += diffsize
+
+    def __setitem__(self, key, value):
+        return super().__setitem__(key, value, cache_setitem=self.__cache_setitem)
+
     def __del_file(self, key: str):
         cache_getitem = Cache.__getitem__
         filepath = cache_getitem(self, key)
@@ -133,6 +153,7 @@ class PersistentImageTTLCache(TTLCache):
         super().expire(time)
         deleted = set(existing_items.keys()).difference(self.__get_keys())
         if len(deleted) > 0:
+            sly.logger.debug("Deleting expired items")
             for key in deleted:
                 try:
                     silent_remove(existing_items[key])
@@ -239,18 +260,22 @@ class InferenceImageCache:
             self._cache.clear(False)
 
     def download_image(self, api: sly.Api, image_id: int, related: bool = False):
+        api.logger.debug(f"Download image #{image_id} to cache started")
         name = self._image_name(image_id)
         self._wait_if_in_queue(name, api.logger)
 
         if name not in self._cache:
+            api.logger.debug(f"Adding image #{image_id} to cache")
             self._load_queue.set(name, image_id)
-            api.logger.debug(f"Add image #{image_id} to cache")
             if not related:
                 img = api.image.download_np(image_id)
             else:
                 img = api.pointcloud.download_related_image(image_id)
             self._add_to_cache(name, img)
+            api.logger.debug(f"Added image #{image_id} to cache")
             return img
+        else:
+            api.logger.debug(f"Image #{image_id} in cache")
 
         api.logger.debug(f"Get image #{image_id} from cache")
         return self._cache.get_image(name)
