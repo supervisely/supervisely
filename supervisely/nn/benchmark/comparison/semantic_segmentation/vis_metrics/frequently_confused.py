@@ -37,22 +37,35 @@ class FrequentlyConfused(BaseVisMetrics):
 
         fig = go.Figure()
 
-        classes = self.eval_results[0].classes_whitelist
+        first_cmat, _ = self.eval_results[0].mp.confusion_matrix
+        n_classes = int(first_cmat.shape[0])
+
+        classes = list(self.eval_results[0].classes_whitelist)
+        if len(classes) < n_classes:
+            classes = classes + [str(i) for i in range(len(classes), n_classes)]
+        elif len(classes) > n_classes:
+            classes = classes[:n_classes]
 
         model_cnt = len(self.eval_results)
-        all_models_cmat = np.zeros((model_cnt, len(classes), len(classes)))
+        all_models_cmat = np.zeros((model_cnt, n_classes, n_classes))
         for model_idx, eval_result in enumerate(self.eval_results):
             cmat, _ = eval_result.mp.confusion_matrix
+            if cmat.shape != (n_classes, n_classes):
+                tmp = np.zeros((n_classes, n_classes))
+                r = min(n_classes, cmat.shape[0])
+                c = min(n_classes, cmat.shape[1])
+                tmp[:r, :c] = cmat[:r, :c]
+                cmat = tmp
             all_models_cmat[model_idx] = cmat[::-1].copy()
 
         sum_cmat = all_models_cmat.sum(axis=0)
         np.fill_diagonal(sum_cmat, 0)
         sum_cmat_flat = sum_cmat.flatten()
         sorted_indices = np.argsort(sum_cmat_flat)[::-1]
-        n_pairs = min(10, len(classes) * (len(classes) - 1))
+        n_pairs = min(10, n_classes * (n_classes - 1))
         sorted_indices = sorted_indices[:n_pairs]
-        rows = sorted_indices // len(classes)
-        cols = sorted_indices % len(classes)
+        rows = sorted_indices // n_classes
+        cols = sorted_indices % n_classes
         labels = [f"{classes[rows[i]]}-{classes[cols[i]]}" for i in range(n_pairs)]
         for model_idx, eval_result in enumerate(self.eval_results):
             cmat = all_models_cmat[model_idx]

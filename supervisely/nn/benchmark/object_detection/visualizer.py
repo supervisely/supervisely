@@ -75,7 +75,7 @@ class ObjectDetectionVisualizer(BaseVisualizer):
 
     def _create_widgets(self):
         # get cv task
-        # Modal Gellery
+        # Modal Gallery
         self.diff_modal = self._create_diff_modal_table()
         self.explore_modal = self._create_explore_modal_table(
             click_gallery_id=self.diff_modal.id, hover_text="Compare with GT"
@@ -708,11 +708,17 @@ class ObjectDetectionVisualizer(BaseVisualizer):
         """Get sample images with annotations for visualization (preview gallery)"""
         sample_images = []
         limit = 9
-        for ds_info in self.eval_result.pred_dataset_infos:
-            images = self.api.image.get_list(
-                ds_info.id, limit=limit, force_metadata_for_links=False
-            )
-            sample_images.extend(images)
+        try:
+            for ds_info in self.eval_result.pred_dataset_infos:
+                images = self.api.image.get_list(
+                    ds_info.id, limit=limit, force_metadata_for_links=False
+                )
+                sample_images.extend(images)
+        except Exception as e:
+            logger.warning(f"Failed to get images for dataset {ds_info.id}: {e}")
+            self.eval_result.sample_images = []
+            self.eval_result.sample_anns = []
+            return
         if len(sample_images) > limit:
             sample_images = random.sample(sample_images, limit)
         self.eval_result.sample_images = sample_images
