@@ -94,7 +94,7 @@ class PersistentImageTTLCache(TTLCache):
         self.__del_file(key)
         return super().__delitem__(key)
 
-    def __cache_setitem(self, key, value):
+    def __cache_setitem(self, key, value, cache_setitem):
         maxsize = self._Cache__maxsize
         size = self.getsizeof(value)
         if size > maxsize:
@@ -111,8 +111,10 @@ class PersistentImageTTLCache(TTLCache):
         self._Cache__size[key] = size
         self._Cache__currsize += diffsize
 
-    def __setitem__(self, key, value):
-        return super().__setitem__(key, value, cache_setitem=self.__cache_setitem)
+    def __setitem__(self, key, value, cache_setitem=None):
+        return super().__setitem__(
+            key, value, cache_setitem=PersistentImageTTLCache.__cache_setitem
+        )
 
     def __del_file(self, key: str):
         cache_getitem = Cache.__getitem__
