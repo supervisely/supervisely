@@ -1,4 +1,5 @@
 import os
+import uuid
 from typing import Dict, List, Optional
 
 import supervisely.convert.pointcloud_episodes.nuscenes_conv.nuscenes_helper as helpers
@@ -30,19 +31,6 @@ from supervisely.sly_logger import logger
 class NuscenesConverter(NuscenesEpisodesConverter, PointcloudConverter):
     """Converter for NuScenes pointcloud format."""
 
-    def __init__(
-        self,
-        input_data: str,
-        labeling_interface: str,
-        upload_as_links: bool,
-        remote_files_map: Optional[Dict[str, str]] = None,
-    ):
-        super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
-        self._nuscenes = None
-
-    def __str__(self) -> str:
-        return AvailablePointcloudConverters.NUSCENES
-
     def to_supervisely(
         self,
         scene_sample: helpers.Sample,
@@ -73,10 +61,13 @@ class NuscenesConverter(NuscenesEpisodesConverter, PointcloudConverter):
 
         tag_metas = [TagMeta(attr["name"], TagValueType.NONE) for attr in nuscenes.attribute]
         obj_classes = []
+        classes_token_map = {}
         for category in nuscenes.category:
             color = nuscenes.colormap[category["name"]]
             description = helpers.trim_description(category["description"])
             obj_classes.append(ObjClass(category["name"], Cuboid3d, color, description=description))
+            classes_token_map[category["token"]] = category["name"]
+        self._custom_data["classes_token_map"] = classes_token_map
 
         self._meta = ProjectMeta(obj_classes, tag_metas)
         meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)
@@ -108,6 +99,7 @@ class NuscenesConverter(NuscenesEpisodesConverter, PointcloudConverter):
         else:
             progress_cb = None
 
+        self._custom_data["frame_token_map"] = {}
         for scene in nuscenes.scene:
             current_dataset_id = scene_name_to_dataset[scene["name"]].id
 
@@ -116,8 +108,10 @@ class NuscenesConverter(NuscenesEpisodesConverter, PointcloudConverter):
 
             # * Extract scene's samples
             scene_samples: List[helpers.Sample] = []
+            frame_token_map = {}
             for i in range(scene["nbr_samples"]):
                 sample = nuscenes.get("sample", sample_token)
+                frame_token_map[sample["token"]] = i
                 lidar_path, boxes, _ = nuscenes.get_sample_data(sample["data"]["LIDAR_TOP"])
                 if not os.path.exists(lidar_path):
                     logger.warning(f'Scene "{scene["name"]}" has no LIDAR data.')
@@ -137,9 +131,11 @@ class NuscenesConverter(NuscenesEpisodesConverter, PointcloudConverter):
                     ]
                     visibility = nuscenes.get("visibility", ann["visibility_token"])["level"]
 
+                    ann_uuid = uuid.UUID(ann["token"])
                     ann = helpers.AnnotationObject(
                         name=name,
                         bbox=box,
+                        token=ann_uuid,
                         instance_token=current_instance_token,
                         parent_token=parent_token,
                         category=category,
@@ -162,6 +158,7 @@ class NuscenesConverter(NuscenesEpisodesConverter, PointcloudConverter):
                 ]
                 scene_samples.append(helpers.Sample(timestamp, lidar_path, anns, camera_data))
                 sample_token = sample["next"]
+            self._custom_data["frame_token_map"][current_dataset_id] = frame_token_map
 
             # * Convert and upload pointclouds w/ annotations
             for idx, sample in enumerate(scene_samples):
@@ -212,6 +209,11 @@ class NuscenesConverter(NuscenesEpisodesConverter, PointcloudConverter):
                     progress_cb(1)
 
             logger.info(f"Dataset ID:{current_dataset_id} has been successfully uploaded.")
+
+        project_id = dataset_info.project_id
+        current_custom_data = api.project.get_custom_data(project_id)
+        current_custom_data.update(self._custom_data)
+        api.project.update_custom_data(project_id, current_custom_data)
 
         if log_progress:
             if is_development():
