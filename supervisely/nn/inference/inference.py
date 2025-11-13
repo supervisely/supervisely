@@ -5,6 +5,7 @@ import asyncio
 import inspect
 import json
 import os
+import queue
 import re
 import shutil
 import subprocess
@@ -99,16 +100,15 @@ from supervisely.task.progress import Progress
 from supervisely.video.video import ALLOWED_VIDEO_EXTENSIONS, VideoFrameReader
 from supervisely.video_annotation.frame import Frame
 from supervisely.video_annotation.frame_collection import FrameCollection
+from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.video_annotation.video_annotation import VideoAnnotation
 from supervisely.video_annotation.video_figure import VideoFigure
 from supervisely.video_annotation.video_object import VideoObject
-from supervisely.video_annotation.video_object_collection import VideoObjectCollection
-from supervisely.video_annotation.video_tag_collection import VideoTagCollection
-from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.video_annotation.video_object_collection import (
     VideoObject,
     VideoObjectCollection,
 )
+from supervisely.video_annotation.video_tag_collection import VideoTagCollection
 
 try:
     from typing import Literal
@@ -2453,7 +2453,6 @@ class Inference:
         inference_request.final_result = {"video_ann": video_ann_json}
         return video_ann_json
 
-
     def _inference_project_id(self, api: Api, state: dict, inference_request: InferenceRequest):
         """Inference project images.
         If "output_project_id" in state, upload images and annotations to the output project.
@@ -2522,93 +2521,119 @@ class Inference:
             if not cache_project_on_model:
                 inference_request.done(dataset_info.items_count)
 
-        def _download_images(datasets_infos: List[DatasetInfo]):
-            for dataset_info in datasets_infos:
-                image_ids = [image_info.id for image_info in images_infos_dict[dataset_info.id]]
-                with ThreadPoolExecutor(max(8, min(batch_size, 64))) as executor:
-                    for image_id in image_ids:
-                        executor.submit(
-                            self.cache.download_image,
-                            api,
-                            image_id,
-                        )
+        image_id_queue = queue.Queue()
+        cached_queue = queue.Queue(maxsize=100)
+        stop_download_event = threading.Event()
 
-        if not cache_project_on_model:
-            # start downloading in parallel
-            threading.Thread(target=_download_images, args=[datasets_infos], daemon=True).start()
+        def _download_image():
+            while not stop_download_event.is_set():
+                try:
+                    image_id = image_id_queue.get_nowait()
+                    self.cache.download_image(api, image_id)
+                    while not stop_download_event.is_set():
+                        try:
+                            cached_queue.put(image_id, timeout=1)
+                            break
+                        except queue.Full:
+                            continue
+                    image_id_queue.task_done()
+                except queue.Empty:
+                    break
 
-        _upload_predictions = partial(
-            self.upload_predictions,
-            api=api,
-            upload_mode=upload_mode,
-            context=inference_request.context,
-            dst_project_id=output_project_id,
-            progress_cb=inference_request.done,
-            iou_merge_threshold=iou_merge_threshold,
-            inference_request=inference_request,
-            model_prediction_suffix=model_prediction_suffix,
-        )
+        download_executor = None
+        try:
+            if not cache_project_on_model:
+                for _, image_infos in images_infos_dict.items():
+                    for image_info in image_infos:
+                        image_id_queue.put(image_info.id)
+                download_threads = max(8, min(batch_size, 64))
+                download_executor = ThreadPoolExecutor(download_threads)
+                for _ in range(download_threads):
+                    download_executor.submit(_download_image)
 
-        _add_results_to_request = partial(
-            self.add_results_to_request, inference_request=inference_request
-        )
+            _upload_predictions = partial(
+                self.upload_predictions,
+                api=api,
+                upload_mode=upload_mode,
+                context=inference_request.context,
+                dst_project_id=output_project_id,
+                progress_cb=inference_request.done,
+                iou_merge_threshold=iou_merge_threshold,
+                inference_request=inference_request,
+                model_prediction_suffix=model_prediction_suffix,
+            )
 
-        if upload_mode is None:
-            upload_f = _add_results_to_request
-        else:
-            upload_f = _upload_predictions
+            _add_results_to_request = partial(
+                self.add_results_to_request, inference_request=inference_request
+            )
 
-        inference_request.set_stage(InferenceRequest.Stage.INFERENCE, 0, inference_progress_total)
-        with Uploader(upload_f, logger=logger) as uploader:
-            for dataset_info in datasets_infos:
-                for images_infos_batch in batched(
-                    images_infos_dict[dataset_info.id], batch_size=batch_size
-                ):
-                    if inference_request.is_stopped():
-                        logger.debug(
-                            f"Cancelling inference project...",
-                            extra={"inference_request_uuid": inference_request.uuid},
-                        )
-                        return
-                    if uploader.has_exception():
-                        exception = uploader.exception
-                        raise exception
-                    if cache_project_on_model:
-                        images_paths, _ = zip(
-                            *read_from_cached_project(
-                                project_info.id,
-                                dataset_info.name,
-                                [ii.name for ii in images_infos_batch],
+            if upload_mode is None:
+                upload_f = _add_results_to_request
+            else:
+                upload_f = _upload_predictions
+
+            inference_request.set_stage(
+                InferenceRequest.Stage.INFERENCE, 0, inference_progress_total
+            )
+            with Uploader(upload_f, logger=logger) as uploader:
+                for dataset_info in datasets_infos:
+                    for images_infos_batch in batched(
+                        images_infos_dict[dataset_info.id], batch_size=batch_size
+                    ):
+                        if inference_request.is_stopped():
+                            logger.debug(
+                                f"Cancelling inference project...",
+                                extra={"inference_request_uuid": inference_request.uuid},
                             )
+                            return
+                        if uploader.has_exception():
+                            exception = uploader.exception
+                            raise exception
+                        if cache_project_on_model:
+                            images_paths, _ = zip(
+                                *read_from_cached_project(
+                                    project_info.id,
+                                    dataset_info.name,
+                                    [ii.name for ii in images_infos_batch],
+                                )
+                            )
+                            images_nps = [sly_image.read(img_path) for img_path in images_paths]
+                        else:
+                            images_nps = self.cache.download_images(
+                                api,
+                                dataset_info.id,
+                                [info.id for info in images_infos_batch],
+                                return_images=True,
+                            )
+                            for _ in range(batch_size):
+                                try:
+                                    cached_queue.get_nowait()
+                                except queue.Empty:
+                                    pass
+                        anns, slides_data = self._inference_auto(
+                            source=images_nps,
+                            settings=inference_settings,
                         )
-                        images_nps = [sly_image.read(img_path) for img_path in images_paths]
-                    else:
-                        images_nps = self.cache.download_images(
-                            api,
-                            dataset_info.id,
-                            [info.id for info in images_infos_batch],
-                            return_images=True,
-                        )
-                    anns, slides_data = self._inference_auto(
-                        source=images_nps,
-                        settings=inference_settings,
-                    )
-                    predictions = [
-                        Prediction(
-                            ann,
-                            model_meta=self.model_meta,
-                            image_id=image_info.id,
-                            name=image_info.name,
-                            dataset_id=dataset_info.id,
-                            project_id=dataset_info.project_id,
-                            image_name=image_info.name,
-                        )
-                        for ann, image_info in zip(anns, images_infos_batch)
-                    ]
-                    for pred, this_slides_data in zip(predictions, slides_data):
-                        pred.extra_data["slides_data"] = this_slides_data
+                        predictions = [
+                            Prediction(
+                                ann,
+                                model_meta=self.model_meta,
+                                image_id=image_info.id,
+                                name=image_info.name,
+                                dataset_id=dataset_info.id,
+                                project_id=dataset_info.project_id,
+                                image_name=image_info.name,
+                            )
+                            for ann, image_info in zip(anns, images_infos_batch)
+                        ]
+                        for pred, this_slides_data in zip(predictions, slides_data):
+                            pred.extra_data["slides_data"] = this_slides_data
 
-                    uploader.put(predictions)
+                        uploader.put(predictions)
+        finally:
+            stop_download_event.set()
+            if download_executor is not None:
+                download_executor.shutdown(wait=False, cancel_futures=True)
 
     def _run_speedtest(
         self,
