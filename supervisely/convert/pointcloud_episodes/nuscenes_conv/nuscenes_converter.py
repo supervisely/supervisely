@@ -102,6 +102,8 @@ class NuscenesEpisodesConverter(PointcloudEpisodeConverter):
         frames = []
         tags = []
         frame_idx_to_scene_sample_token = {}
+        if "frame_token_map" not in self._custom_data:
+            self._custom_data["frame_token_map"] = {}
         for sample_i, (token, sample) in enumerate(scene_samples.items()):
             figures = []
             for obj in sample.anns:
