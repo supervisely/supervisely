@@ -2480,7 +2480,6 @@ class Inference:
             iou_merge_threshold = self.DEFAULT_IOU_MERGE_THRESHOLD
         cache_project_on_model = state.get("cache_project_on_model", False)
 
-        project_info = api.project.get_info_by_id(project_id)
         inference_request.context.setdefault("project_info", {})[project_id] = project_info
         dataset_ids = state.get("dataset_ids", None)
         if dataset_ids is None:
