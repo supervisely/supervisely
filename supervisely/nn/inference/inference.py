@@ -2550,6 +2550,7 @@ class Inference:
         inference_request.set_stage(InferenceRequest.Stage.INFERENCE, 0, inference_progress_total)
         with Uploader(upload_f, logger=logger) as uploader:
             with Downloader(download_f, max_workers=download_workers, logger=logger) as downloader:
+                processing_index = 0
                 for images in images_infos_dict.values():
                     for image in images:
                         downloader.put(image.id)
@@ -2557,6 +2558,7 @@ class Inference:
                     for images_infos_batch in batched(
                         images_infos_dict[dataset_info.id], batch_size=batch_size
                     ):
+                        logger.debug(f"processing_index: {processing_index}")
                         if inference_request.is_stopped():
                             logger.debug(
                                 f"Cancelling inference project...",
@@ -2603,6 +2605,7 @@ class Inference:
                             pred.extra_data["slides_data"] = this_slides_data
 
                         uploader.put(predictions)
+                        processing_index += batch_size
 
     def _run_speedtest(
         self,
