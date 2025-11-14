@@ -94,28 +94,6 @@ class PersistentImageTTLCache(TTLCache):
         self.__del_file(key)
         return super().__delitem__(key)
 
-    def __cache_setitem(self, key, value):
-        maxsize = self._Cache__maxsize
-        size = self.getsizeof(value)
-        if size > maxsize:
-            raise ValueError("value too large")
-        if key not in self._Cache__data or self._Cache__size[key] < size:
-            while self._Cache__currsize + size > maxsize:
-                sly.logger.debug("Cache overflow, popping item")
-                self.popitem()
-        if key in self._Cache__data:
-            diffsize = size - self._Cache__size[key]
-        else:
-            diffsize = size
-        self._Cache__data[key] = value
-        self._Cache__size[key] = size
-        self._Cache__currsize += diffsize
-
-    def __setitem__(self, key, value, cache_setitem=None):
-        return super().__setitem__(
-            key, value, cache_setitem=PersistentImageTTLCache.__cache_setitem
-        )
-
     def __del_file(self, key: str):
         cache_getitem = Cache.__getitem__
         filepath = cache_getitem(self, key)
