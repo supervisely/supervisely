@@ -208,7 +208,7 @@ class Downloader:
                         downloaded = self._downloaded
                     logger = self._logger or sly_logger
                     logger.debug(f"Downloaded {downloaded} images")
-                    logger.debug(f"Buffer size: {len(self._buffer_q)}")
+                    logger.debug(f"Buffer size: {self._buffer_q.qsize()}")
             except queue.Empty:
                 continue
             except Exception as e:
