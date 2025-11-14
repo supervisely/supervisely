@@ -2653,7 +2653,13 @@ class Inference:
             inference_request.done()
 
         if cache_project_on_model:
-            download_to_cache(api, project_id, datasets_infos, progress_cb=inference_request.done)
+            download_to_cache(
+                api,
+                project_id,
+                datasets_infos,
+                progress_cb=inference_request.done,
+                skip_create_readme=True,
+            )
 
         inference_request.set_stage("warmup", 0, num_warmup)
 
