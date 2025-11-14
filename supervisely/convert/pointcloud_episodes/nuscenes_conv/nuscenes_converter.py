@@ -40,10 +40,12 @@ from supervisely.pointcloud_annotation.pointcloud_figure import PointcloudFigure
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
 from supervisely.tiny_timer import TinyTimer
+from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
 class NuscenesEpisodesConverter(PointcloudEpisodeConverter):
     """Converter for NuScenes pointcloud episodes format."""
+
     _nuscenes: "NuScenes" = None  # type: ignore
     _custom_data: Dict = {}
 
@@ -148,6 +150,7 @@ class NuscenesEpisodesConverter(PointcloudEpisodeConverter):
         from nuscenes import NuScenes  # pylint: disable=import-error
 
         nuscenes: NuScenes = self._nuscenes
+        key_id_map = KeyIdMap()
 
         tag_metas = [TagMeta(attr["name"], TagValueType.NONE) for attr in nuscenes.attribute]
         obj_classes = {}
@@ -298,9 +301,10 @@ class NuscenesEpisodesConverter(PointcloudEpisodeConverter):
 
             # * Convert and upload annotations
             pcd_ann = self.to_supervisely(scene_samples, meta, renamed_classes, renamed_tags)
+
             try:
                 api.pointcloud_episode.annotation.append(
-                    current_dataset_id, pcd_ann, frame_to_pointcloud_ids
+                    current_dataset_id, pcd_ann, frame_to_pointcloud_ids, key_id_map=key_id_map
                 )
                 logger.info(f"Dataset ID:{current_dataset_id} has been successfully uploaded.")
             except Exception as e:
@@ -308,6 +312,10 @@ class NuscenesEpisodesConverter(PointcloudEpisodeConverter):
                 logger.warning(
                     f"Failed to upload annotation for scene: {scene['name']}. Message: {error_msg}"
                 )
+        key_id_map = key_id_map.to_dict()
+        key_id_map.pop("tags")
+        key_id_map.pop("videos")
+        self._custom_data["key_id_map"] = key_id_map
 
         project_id = dataset_info.project_id
         current_custom_data = api.project.get_custom_data(project_id)

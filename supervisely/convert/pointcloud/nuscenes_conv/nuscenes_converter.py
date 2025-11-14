@@ -4,7 +4,7 @@ from typing import Dict, List, Optional
 
 import supervisely.convert.pointcloud_episodes.nuscenes_conv.nuscenes_helper as helpers
 import supervisely.io.fs as fs
-from supervisely import PointcloudAnnotation, PointcloudObject
+from supervisely import KeyIdMap, PointcloudAnnotation, PointcloudObject
 from supervisely._utils import is_development
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.tag_meta import TagMeta, TagValueType
@@ -57,7 +57,11 @@ class NuscenesConverter(NuscenesEpisodesConverter, PointcloudConverter):
         return PointcloudAnnotation(PointcloudObjectCollection(objs), figures)
 
     def upload_dataset(self, api: Api, dataset_id: int, batch_size: int = 1, log_progress=True):
-        nuscenes = self._nuscenes
+        from nuscenes.nuscenes import NuScenes
+
+        nuscenes: NuScenes = self._nuscenes
+
+        key_id_map = KeyIdMap()
 
         tag_metas = [TagMeta(attr["name"], TagValueType.NONE) for attr in nuscenes.attribute]
         obj_classes = []
@@ -179,7 +183,7 @@ class NuscenesConverter(NuscenesEpisodesConverter, PointcloudConverter):
                 pcd_id = info.id
                 # * Upload pointcloud annotation
                 try:
-                    api.pointcloud.annotation.append(pcd_id, pcd_ann)
+                    api.pointcloud.annotation.append(pcd_id, pcd_ann, key_id_map)
                 except Exception as e:
                     error_msg = getattr(getattr(e, "response", e), "text", str(e))
                     logger.warning(
@@ -209,6 +213,11 @@ class NuscenesConverter(NuscenesEpisodesConverter, PointcloudConverter):
                     progress_cb(1)
 
             logger.info(f"Dataset ID:{current_dataset_id} has been successfully uploaded.")
+
+        key_id_map = key_id_map.to_dict()
+        key_id_map.pop("tags")
+        key_id_map.pop("videos")
+        self._custom_data["key_id_map"] = key_id_map
 
         project_id = dataset_info.project_id
         current_custom_data = api.project.get_custom_data(project_id)
