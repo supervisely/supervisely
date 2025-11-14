@@ -79,7 +79,7 @@ from supervisely.nn.inference.inference_request import (
     InferenceRequest,
     InferenceRequestsManager,
 )
-from supervisely.nn.inference.uploader import Uploader
+from supervisely.nn.inference.uploader import Downloader, Uploader
 from supervisely.nn.model.model_api import ModelAPI, Prediction
 from supervisely.nn.prediction_dto import Prediction as PredictionDTO
 from supervisely.nn.utils import (
@@ -2521,61 +2521,38 @@ class Inference:
             if not cache_project_on_model:
                 inference_request.done(dataset_info.items_count)
 
-        image_id_queue = queue.Queue()
-        cached_queue = queue.Queue(maxsize=100)
-        stop_download_event = threading.Event()
+        def download_f(item: int):
+            self.cache.download_image(api, item)
+            return item
 
-        def _download_image():
-            while not stop_download_event.is_set():
-                try:
-                    image_id = image_id_queue.get_nowait()
-                    self.cache.download_image(api, image_id)
-                    while not stop_download_event.is_set():
-                        try:
-                            cached_queue.put(image_id, timeout=1)
-                            break
-                        except queue.Full:
-                            continue
-                    image_id_queue.task_done()
-                except queue.Empty:
-                    break
+        _upload_predictions = partial(
+            self.upload_predictions,
+            api=api,
+            upload_mode=upload_mode,
+            context=inference_request.context,
+            dst_project_id=output_project_id,
+            progress_cb=inference_request.done,
+            iou_merge_threshold=iou_merge_threshold,
+            inference_request=inference_request,
+            model_prediction_suffix=model_prediction_suffix,
+        )
 
-        download_executor = None
-        try:
-            if not cache_project_on_model:
-                for _, image_infos in images_infos_dict.items():
-                    for image_info in image_infos:
-                        image_id_queue.put(image_info.id)
-                download_threads = max(8, min(batch_size, 64))
-                download_executor = ThreadPoolExecutor(download_threads)
-                for _ in range(download_threads):
-                    download_executor.submit(_download_image)
+        _add_results_to_request = partial(
+            self.add_results_to_request, inference_request=inference_request
+        )
 
-            _upload_predictions = partial(
-                self.upload_predictions,
-                api=api,
-                upload_mode=upload_mode,
-                context=inference_request.context,
-                dst_project_id=output_project_id,
-                progress_cb=inference_request.done,
-                iou_merge_threshold=iou_merge_threshold,
-                inference_request=inference_request,
-                model_prediction_suffix=model_prediction_suffix,
-            )
+        if upload_mode is None:
+            upload_f = _add_results_to_request
+        else:
+            upload_f = _upload_predictions
 
-            _add_results_to_request = partial(
-                self.add_results_to_request, inference_request=inference_request
-            )
-
-            if upload_mode is None:
-                upload_f = _add_results_to_request
-            else:
-                upload_f = _upload_predictions
-
-            inference_request.set_stage(
-                InferenceRequest.Stage.INFERENCE, 0, inference_progress_total
-            )
-            with Uploader(upload_f, logger=logger) as uploader:
+        download_workers = max(8, min(batch_size, 64))
+        inference_request.set_stage(InferenceRequest.Stage.INFERENCE, 0, inference_progress_total)
+        with Uploader(upload_f, logger=logger) as uploader:
+            with Downloader(download_f, max_workers=download_workers, logger=logger) as downloader:
+                for images in images_infos_dict.values():
+                    for image in images:
+                        downloader.put(image.id)
                 for dataset_info in datasets_infos:
                     for images_infos_batch in batched(
                         images_infos_dict[dataset_info.id], batch_size=batch_size
@@ -2605,11 +2582,7 @@ class Inference:
                                 [info.id for info in images_infos_batch],
                                 return_images=True,
                             )
-                            for _ in range(batch_size):
-                                try:
-                                    cached_queue.get_nowait()
-                                except queue.Empty:
-                                    pass
+                            downloader.next(batch_size)
                         anns, slides_data = self._inference_auto(
                             source=images_nps,
                             settings=inference_settings,
@@ -2630,10 +2603,6 @@ class Inference:
                             pred.extra_data["slides_data"] = this_slides_data
 
                         uploader.put(predictions)
-        finally:
-            stop_download_event.set()
-            if download_executor is not None:
-                download_executor.shutdown(wait=False, cancel_futures=True)
 
     def _run_speedtest(
         self,
