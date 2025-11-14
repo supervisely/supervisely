@@ -277,7 +277,7 @@ class InferenceImageCache:
             api.logger.debug(f"Added image #{image_id} to cache")
             return img
         else:
-            api.logger.debug(f"Image #{image_id} in cache")
+            api.logger.debug(f"Image #{image_id} found in cache")
 
         api.logger.debug(f"Get image #{image_id} from cache")
         return self._cache.get_image(name)
