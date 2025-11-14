@@ -2610,7 +2610,6 @@ class Inference:
                             pred.extra_data["slides_data"] = this_slides_data
 
                         uploader.put(predictions)
-                        processing_index += batch_size
 
     def _run_speedtest(
         self,
