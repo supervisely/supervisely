@@ -2514,7 +2514,11 @@ class Inference:
 
         if cache_project_on_model:
             download_to_cache(
-                api, project_info.id, datasets_infos, progress_cb=inference_request.done
+                api,
+                project_info.id,
+                datasets_infos,
+                progress_cb=inference_request.done,
+                skip_create_readme=True,
             )
 
         images_infos_dict = {}
