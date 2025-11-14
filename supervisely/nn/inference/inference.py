@@ -2554,6 +2554,7 @@ class Inference:
                 for images in images_infos_dict.values():
                     for image in images:
                         downloader.put(image.id)
+                downloader.next(100)
                 for dataset_info in datasets_infos:
                     for images_infos_batch in batched(
                         images_infos_dict[dataset_info.id], batch_size=batch_size
