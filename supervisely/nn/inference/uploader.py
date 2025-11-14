@@ -191,9 +191,6 @@ class Downloader:
         self._download_futures: List[Future] = None
         self._stop_event = threading.Event()
 
-        self._lock = threading.Lock()
-        self._downloaded = 0
-
     def _download_loop(self):
         while not self._stop_event.is_set():
             try:
@@ -203,12 +200,6 @@ class Downloader:
                     self._output_q.put(output)
                 finally:
                     self._buffer_q.task_done()
-                    with self._lock:
-                        self._downloaded += 1
-                        downloaded = self._downloaded
-                    logger = self._logger or sly_logger
-                    logger.debug(f"Downloaded {downloaded} images")
-                    logger.debug(f"Buffer size: {self._buffer_q.qsize()}")
             except queue.Empty:
                 continue
             except Exception as e:
@@ -254,8 +245,6 @@ class Downloader:
         for _ in range(n):
             try:
                 self._move_input_to_buffer()
-                logger = self._logger or sly_logger
-                logger.debug(f"Put in buffer: {self._buffer_q.qsize()}")
             except Exception:
                 if raise_on_error:
                     raise
