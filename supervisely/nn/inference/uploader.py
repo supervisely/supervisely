@@ -259,7 +259,9 @@ class Downloader:
 
     def stop(self):
         self._stop_event.set()
-        self._executor.shutdown(wait=False, cancel_futures=True)
+        for future in self._download_futures:
+            future.cancel()
+        self._executor.shutdown(wait=False)
 
     def join(self, timeout=None):
         _, not_done = wait(self._download_futures, timeout=timeout)
