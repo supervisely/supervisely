@@ -254,6 +254,8 @@ class Downloader:
         for _ in range(n):
             try:
                 self._move_input_to_buffer()
+                logger = self._logger or sly_logger
+                logger.debug(f"Put in buffer: {self._buffer_q.qsize()}")
             except Exception:
                 if raise_on_error:
                     raise
