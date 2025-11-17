@@ -200,6 +200,8 @@ class Downloader:
                     self._output_q.put(output)
                 finally:
                     self._buffer_q.task_done()
+                    logger = self._logger or sly_logger
+                    logger.debug(f"Downloaded item. Buffer size: {self._buffer_q.qsize()}")
             except queue.Empty:
                 continue
             except Exception as e:
@@ -245,6 +247,10 @@ class Downloader:
         for _ in range(n):
             try:
                 self._move_input_to_buffer()
+                logger = self._logger or sly_logger
+                logger.debug(
+                    "Moved item from input to buffer. Buffer size: %d", self._buffer_q.qsize()
+                )
             except Exception:
                 if raise_on_error:
                     raise

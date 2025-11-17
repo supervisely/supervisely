@@ -80,76 +80,101 @@ class InferenceRequest:
 
     @property
     def final_result(self):
-        with self._lock:
-            return self._final_result
+        try:
+            with self._lock:
+                logger.debug("InferenceRequest.final_result getter lock acquired")
+                return self._final_result
+        finally:
+            logger.debug("InferenceRequest.final_result getter lock released")
 
     @final_result.setter
     def final_result(self, result: Any):
-        with self._lock:
-            self._final_result = result
-            self._updated()
+        try:
+            with self._lock:
+                logger.debug("InferenceRequest.final_result setter lock acquired")
+                self._final_result = result
+                self._updated()
+        finally:
+            logger.debug("InferenceRequest.final_result setter lock released")
 
     def add_results(self, results: List[Dict]):
-        with self._lock:
-            self._pending_results.extend(results)
-            self._updated()
+        try:
+            with self._lock:
+                logger.debug("InferenceRequest.add_results lock acquired")
+                self._pending_results.extend(results)
+                self._updated()
+        finally:
+            logger.debug("InferenceRequest.add_results lock released")
 
     def pop_pending_results(self, n: int = None):
-        with self._lock:
-            if len(self._pending_results) == 0:
-                return []
-            if n is None:
-                n = len(self._pending_results)
-            if n > len(self._pending_results):
-                n = len(self._pending_results)
-            results = self._pending_results[:n]
-            self._pending_results = self._pending_results[n:]
-            self._updated()
-            return results
+        try:
+            with self._lock:
+                logger.debug("InferenceRequest.pop_pending_results lock acquired")
+                if len(self._pending_results) == 0:
+                    return []
+                if n is None:
+                    n = len(self._pending_results)
+                if n > len(self._pending_results):
+                    n = len(self._pending_results)
+                results = self._pending_results[:n]
+                self._pending_results = self._pending_results[n:]
+                self._updated()
+                return results
+        finally:
+            logger.debug("InferenceRequest.pop_pending_results lock released")
 
     def pending_num(self):
         return len(self._pending_results)
 
     def set_stage(self, stage: str, current: int = None, total: int = None, is_size: bool = False):
-        with self._lock:
-            self._stage = stage
-            self.progress.message = self._stage
-            if current is not None:
-                self.progress.current = current
-            if total is not None:
-                logger.debug("setting total = %s", total)
-                self.progress.total = total
-            if is_size:
-                self.progress.is_size = True
-            self.progress._refresh_labels()
-            self.progress.report_progress()
-            if self._stage == InferenceRequest.Stage.INFERENCE:
-                self.global_progress_total = total
-                self.global_progress_current = current
-                self.manager.global_progress.inference_started(
-                    current=self.global_progress_current,
-                    total=self.global_progress_total,
-                )
-            self._updated()
+        try:
+            with self._lock:
+                logger.debug("InferenceRequest.set_stage lock acquired")
+                self._stage = stage
+                self.progress.message = self._stage
+                if current is not None:
+                    self.progress.current = current
+                if total is not None:
+                    logger.debug("setting total = %s", total)
+                    self.progress.total = total
+                if is_size:
+                    self.progress.is_size = True
+                self.progress._refresh_labels()
+                self.progress.report_progress()
+                if self._stage == InferenceRequest.Stage.INFERENCE:
+                    self.global_progress_total = total
+                    self.global_progress_current = current
+                    self.manager.global_progress.inference_started(
+                        current=self.global_progress_current,
+                        total=self.global_progress_total,
+                    )
+                self._updated()
+        finally:
+            logger.debug("InferenceRequest.set_stage lock released")
 
     def set_progress_log_interval(self, interval: float):
         self._progress_log_interval = interval
 
     def done(self, n=1):
-        with self._lock:
-            if (
-                self._progress_log_interval is None
-                or time.monotonic() - self._last_progress_report_time > self._progress_log_interval
-            ) or (self.progress.current + n >= self.progress.total):
-                self.progress.iters_done_report(n)
-                self._last_progress_report_time = time.monotonic()
-            else:
-                self.progress.iters_done(n)
-            if self._stage == InferenceRequest.Stage.INFERENCE:
-                self.global_progress_current += n
-                if self.manager is not None:
-                    self.manager.done(n)
-            self._updated()
+        try:
+            with self._lock:
+                logger.debug("InferenceRequest.done lock acquired")
+                if (
+                    self._progress_log_interval is None
+                    or time.monotonic() - self._last_progress_report_time
+                    > self._progress_log_interval
+                ) or (self.progress.current + n >= self.progress.total):
+                    self.progress.iters_done_report(n)
+                    self._last_progress_report_time = time.monotonic()
+                else:
+                    self.progress.iters_done(n)
+                if self._stage == InferenceRequest.Stage.INFERENCE:
+                    self.global_progress_current += n
+                    if self.manager is not None:
+                        self.manager.done(n)
+                self._updated()
+        finally:
+            logger.debug("InferenceRequest.done lock released")
 
     @property
     def exception(self):
@@ -253,42 +278,61 @@ class GlobalProgress:
         self._lock = threading.Lock()
 
     def set_message(self, message: str):
-        with self._lock:
-            if self.progress.message != message:
-                self.progress.message = message
-                self.progress.report_progress()
+        try:
+            with self._lock:
+                logger.debug("GlobalProgress.set_message lock acquired")
+                if self.progress.message != message:
+                    self.progress.message = message
+                    self.progress.report_progress()
+        finally:
+            logger.debug("GlobalProgress.set_message lock released")
 
     def set_ready(self):
-        with self._lock:
-            self.progress.message = "Ready"
-            self.progress.current = 0
-            self.progress.total = 1
-            self.progress.report_progress()
+        try:
+            with self._lock:
+                logger.debug("GlobalProgress.set_ready lock acquired")
+                self.progress.message = "Ready"
+                self.progress.current = 0
+                self.progress.total = 1
+                self.progress.report_progress()
+        finally:
+            logger.debug("GlobalProgress.set_ready lock released")
 
     def done(self, n=1):
-        with self._lock:
-            self.progress.iters_done_report(n)
+        try:
+            with self._lock:
+                self.progress.iters_done_report(n)
+        finally:
+            logger.debug("GlobalProgress.done lock released")
         if self.progress.current >= self.progress.total:
             self.set_ready()
 
     def inference_started(self, current: int, total: int):
-        with self._lock:
-            if self.progress.message == "Ready":
-                self.progress.total = total
-                self.progress.current = current
-            else:
-                self.progress.total += total
-                self.progress.current += current
+        try:
+            with self._lock:
+                logger.debug("GlobalProgress.inference_started lock acquired")
+                if self.progress.message == "Ready":
+                    self.progress.total = total
+                    self.progress.current = current
+                else:
+                    self.progress.total += total
+                    self.progress.current += current
+        finally:
+            logger.debug("GlobalProgress.inference_started lock released")
         self.set_message("Inferring model...")
 
     def inference_finished(self, current: int, total: int):
-        with self._lock:
-            if self.progress.message == "Ready":
-                return
-            self.progress.current = self.progress.current - current
-            self.progress.total = self.progress.total - total
-        if self.progress.current >= self.progress.total:
-            self.set_ready()
+        try:
+            with self._lock:
+                logger.debug("GlobalProgress.inference_finished lock acquired")
+                if self.progress.message == "Ready":
+                    return
+                self.progress.current = self.progress.current - current
+                self.progress.total = self.progress.total - total
+            if self.progress.current >= self.progress.total:
+                self.set_ready()
+        finally:
+            logger.debug("GlobalProgress.inference_finished lock released")
 
     def to_json(self):
         return {
@@ -320,23 +364,35 @@ class InferenceRequestsManager:
             logger.debug("InferenceRequestsManager was deleted")
 
     def add(self, inference_request: InferenceRequest):
-        with self._lock:
-            self._inference_requests[inference_request.uuid] = inference_request
+        try:
+            with self._lock:
+                logger.debug("InferenceRequestsManager.add lock acquired")
+                self._inference_requests[inference_request.uuid] = inference_request
+        finally:
+            logger.debug("InferenceRequestsManager.add lock released")
 
     def remove(self, inference_request_uuid: str):
-        with self._lock:
-            inference_request = self._inference_requests.get(inference_request_uuid)
-            if inference_request is not None:
-                inference_request.stop()
-                del self._inference_requests[inference_request_uuid]
+        try:
+            with self._lock:
+                logger.debug("InferenceRequestsManager.remove lock acquired")
+                inference_request = self._inference_requests.get(inference_request_uuid)
+                if inference_request is not None:
+                    inference_request.stop()
+                    del self._inference_requests[inference_request_uuid]
+        finally:
+            logger.debug("InferenceRequestsManager.remove lock released")
 
     def remove_after(self, inference_request_uuid, wait_time=0):
-        with self._lock:
-            inference_request = self._inference_requests.get(inference_request_uuid)
-            if inference_request is not None:
-                inference_request.stop()
-                inference_request._ttl = wait_time
-                inference_request._updated()
+        try:
+            with self._lock:
+                logger.debug("InferenceRequestsManager.remove_after lock acquired")
+                inference_request = self._inference_requests.get(inference_request_uuid)
+                if inference_request is not None:
+                    inference_request.stop()
+                    inference_request._ttl = wait_time
+                    inference_request._updated()
+        finally:
+            logger.debug("InferenceRequestsManager.remove_after lock released")
 
     def get(self, inference_request_uuid: str):
         if inference_request_uuid is None:
@@ -366,8 +422,12 @@ class InferenceRequestsManager:
             time.sleep(30)
 
     def done(self, n=1):
-        with self._lock:
-            self.global_progress.done(n)
+        try:
+            with self._lock:
+                logger.debug("InferenceRequestsManager.done lock acquired")
+                self.global_progress.done(n)
+        finally:
+            logger.debug("InferenceRequestsManager.done lock released")
 
     def _on_inference_start(self, inference_request: InferenceRequest):
         if inference_request.uuid not in self._inference_requests:

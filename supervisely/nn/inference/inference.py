@@ -2150,12 +2150,15 @@ class Inference:
 
         inference_request.set_stage(InferenceRequest.Stage.INFERENCE, 0, len(image_ids))
         download_workers = max(8, min(batch_size, 64))
+        processed = 0
+        batch_i = 0
         with Uploader(upload_f, logger=logger) as uploader:
             with Downloader(download_f, max_workers=download_workers, logger=logger) as downloader:
                 for image_id in image_ids:
                     downloader.put(image_id)
                 downloader.next(100)
                 for image_ids_batch in batched(image_ids, batch_size=batch_size):
+                    logger.debug(f"Starting inference for batch {batch_i}")
                     if uploader.has_exception():
                         exception = uploader.exception
                         raise exception
@@ -2166,9 +2169,14 @@ class Inference:
                         )
                         break
 
+                    t = time.monotonic()
                     images_nps = [
                         self.cache.download_image(api, img_id) for img_id in image_ids_batch
                     ]
+                    logger.debug(
+                        f"Downloaded/got from cache {len(image_ids_batch)} images in"
+                        f"{(time.monotonic() - t):.2f} seconds"
+                    )
                     downloader.next(len(image_ids_batch))
                     anns, slides_data = self._inference_auto(
                         source=images_nps,
@@ -2189,6 +2197,10 @@ class Inference:
                         )
                         prediction.extra_data["slides_data"] = this_slides_data
                         batch_predictions.append(prediction)
+
+                    processed += len(image_ids_batch)
+                    logger.debug(f"Batch {batch_i} inference done. Processed {processed} items")
+                    batch_i += 1
 
                     uploader.put(batch_predictions)
 
@@ -2554,6 +2566,8 @@ class Inference:
 
         download_workers = max(8, min(batch_size, 64))
         inference_request.set_stage(InferenceRequest.Stage.INFERENCE, 0, inference_progress_total)
+        processed = 0
+        batch_i = 0
         with Uploader(upload_f, logger=logger) as uploader:
             with Downloader(download_f, max_workers=download_workers, logger=logger) as downloader:
                 for images in images_infos_dict.values():
@@ -2564,6 +2578,7 @@ class Inference:
                     for images_infos_batch in batched(
                         images_infos_dict[dataset_info.id], batch_size=batch_size
                     ):
+                        logger.debug(f"Starting inference for batch {batch_i}")
                         if inference_request.is_stopped():
                             logger.debug(
                                 f"Cancelling inference project...",
@@ -2583,11 +2598,16 @@ class Inference:
                             )
                             images_nps = [sly_image.read(img_path) for img_path in images_paths]
                         else:
+                            t = time.monotonic()
                             images_nps = self.cache.download_images(
                                 api,
                                 dataset_info.id,
                                 [info.id for info in images_infos_batch],
                                 return_images=True,
+                            )
+                            logger.debug(
+                                f"Downloaded/got from cache {len(images_infos_batch)} images in"
+                                f"{(time.monotonic() - t):.2f} seconds"
                             )
                             downloader.next(len(images_infos_batch))
                         anns, slides_data = self._inference_auto(
@@ -2608,6 +2628,9 @@ class Inference:
                         ]
                         for pred, this_slides_data in zip(predictions, slides_data):
                             pred.extra_data["slides_data"] = this_slides_data
+                        processed += len(images_infos_batch)
+                        logger.debug(f"Batch {batch_i} inference done. Processed {processed} items")
+                        batch_i += 1
 
                         uploader.put(predictions)
 
@@ -3685,6 +3708,8 @@ class Inference:
 
         @server.post(f"/pop_inference_results")
         def pop_inference_results(response: Response, request: Request):
+            logger.debug("Received a request to '/pop_inference_results'")
+            t = time.monotonic()
             inference_request_uuid = request.state.state.get("inference_request_uuid")
             if inference_request_uuid is None:
                 response.status_code = status.HTTP_400_BAD_REQUEST
@@ -3704,6 +3729,7 @@ class Inference:
                     inference_request_uuid, inference_request
                 )
                 logger.debug(f"Sending inference delta results with uuid:", extra=log_extra)
+                logger.debug(f"Pop inference results time: {time.monotonic() - t}")
                 return inference_request
 
             inference_request = self.inference_requests_manager.get(inference_request_uuid)
@@ -3717,6 +3743,7 @@ class Inference:
             }
 
             logger.debug(f"Sending inference delta results with uuid:", extra=log_extra)
+            logger.debug(f"Pop inference results time: {time.monotonic() - t}")
             return data
 
         @server.post(f"/get_inference_result")
