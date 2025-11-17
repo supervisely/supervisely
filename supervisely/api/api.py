@@ -683,20 +683,23 @@ class Api:
             response = None
             try:
                 if type(data) is bytes:
-                    response = requests.post(url, data=data, headers=self.headers, stream=stream)
+                    response = requests.post(
+                        url, data=data, headers=self.headers, stream=stream, timeout=60
+                    )
                 elif type(data) is MultipartEncoderMonitor or type(data) is MultipartEncoder:
                     response = requests.post(
                         url,
                         data=data,
                         headers={**self.headers, "Content-Type": data.content_type},
                         stream=stream,
+                        timeout=60,
                     )
                 else:
                     json_body = data
                     if type(data) is dict:
                         json_body = {**data, **self.additional_fields}
                     response = requests.post(
-                        url, json=json_body, headers=self.headers, stream=stream
+                        url, json=json_body, headers=self.headers, stream=stream, timeout=60
                     )
 
                 if response.status_code != requests.codes.ok:  # pylint: disable=no-member
