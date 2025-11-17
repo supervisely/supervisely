@@ -11,6 +11,7 @@ import json
 import os
 import shutil
 import threading
+import time
 from logging import Logger
 from pathlib import Path
 from typing import (
@@ -678,61 +679,64 @@ class Api:
 
         url = self.api_server_address + "/v3/" + method
         logger.trace(f"POST {url}")
+        t = time.monotonic()
+        try:
+            for retry_idx in range(retries):
+                response = None
+                try:
+                    if type(data) is bytes:
+                        response = requests.post(
+                            url, data=data, headers=self.headers, stream=stream, timeout=60
+                        )
+                    elif type(data) is MultipartEncoderMonitor or type(data) is MultipartEncoder:
+                        response = requests.post(
+                            url,
+                            data=data,
+                            headers={**self.headers, "Content-Type": data.content_type},
+                            stream=stream,
+                            timeout=60,
+                        )
+                    else:
+                        json_body = data
+                        if type(data) is dict:
+                            json_body = {**data, **self.additional_fields}
+                        response = requests.post(
+                            url, json=json_body, headers=self.headers, stream=stream, timeout=60
+                        )
 
-        for retry_idx in range(retries):
-            response = None
-            try:
-                if type(data) is bytes:
-                    response = requests.post(
-                        url, data=data, headers=self.headers, stream=stream, timeout=60
-                    )
-                elif type(data) is MultipartEncoderMonitor or type(data) is MultipartEncoder:
-                    response = requests.post(
-                        url,
-                        data=data,
-                        headers={**self.headers, "Content-Type": data.content_type},
-                        stream=stream,
-                        timeout=60,
-                    )
-                else:
-                    json_body = data
-                    if type(data) is dict:
-                        json_body = {**data, **self.additional_fields}
-                    response = requests.post(
-                        url, json=json_body, headers=self.headers, stream=stream, timeout=60
-                    )
-
-                if response.status_code != requests.codes.ok:  # pylint: disable=no-member
-                    if not self._version_check_completed:
-                        self._check_version()
-                    Api._raise_for_status(response)
-                return response
-            except requests.RequestException as exc:
-                if (
-                    isinstance(exc, requests.exceptions.HTTPError)
-                    and response.status_code == 400
-                    and self.token is None
-                ):
-                    self.logger.warning(
-                        "API_TOKEN env variable is undefined. See more: https://developer.supervisely.com/getting-started/basics-of-authentication"
-                    )
-                if raise_error:
-                    raise exc
-                else:
-                    process_requests_exception(
-                        self.logger,
-                        exc,
-                        method,
-                        url,
-                        verbose=True,
-                        swallow_exc=True,
-                        sleep_sec=min(self.retry_sleep_sec * (2**retry_idx), 60),
-                        response=response,
-                        retry_info={"retry_idx": retry_idx + 1, "retry_limit": retries},
-                    )
-            except Exception as exc:
-                process_unhandled_request(self.logger, exc)
-        raise requests.exceptions.RetryError("Retry limit exceeded ({!r})".format(url))
+                    if response.status_code != requests.codes.ok:  # pylint: disable=no-member
+                        if not self._version_check_completed:
+                            self._check_version()
+                        Api._raise_for_status(response)
+                    return response
+                except requests.RequestException as exc:
+                    if (
+                        isinstance(exc, requests.exceptions.HTTPError)
+                        and response.status_code == 400
+                        and self.token is None
+                    ):
+                        self.logger.warning(
+                            "API_TOKEN env variable is undefined. See more: https://developer.supervisely.com/getting-started/basics-of-authentication"
+                        )
+                    if raise_error:
+                        raise exc
+                    else:
+                        process_requests_exception(
+                            self.logger,
+                            exc,
+                            method,
+                            url,
+                            verbose=True,
+                            swallow_exc=True,
+                            sleep_sec=min(self.retry_sleep_sec * (2**retry_idx), 60),
+                            response=response,
+                            retry_info={"retry_idx": retry_idx + 1, "retry_limit": retries},
+                        )
+                except Exception as exc:
+                    process_unhandled_request(self.logger, exc)
+            raise requests.exceptions.RetryError("Retry limit exceeded ({!r})".format(url))
+        finally:
+            logger.trace(f"POST {url} took {time.monotonic() - t:.2f} seconds")
 
     def get(
         self,
