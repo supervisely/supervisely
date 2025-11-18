@@ -1,3 +1,4 @@
+from dataclasses import dataclass, field
 from datetime import datetime
 from os import path as osp
 from pathlib import Path
@@ -52,6 +53,7 @@ def trim_description(description: str, max_length: int = 255) -> str:
     return description
 
 
+@dataclass
 class AnnotationObject:
     """
     A class to represent an annotation object in the NuScenes dataset.
@@ -60,6 +62,8 @@ class AnnotationObject:
     :type name: str
     :param bbox: The bounding box coordinates in NuScenes format
     :type bbox: np.ndarray
+    :param token: The unique token identifying the annotation object
+    :type token: str
     :param instance_token: The instance token associated with the annotation object
     :type instance_token: str
     :param parent_token: The token of instance preceding the current object instance
@@ -71,25 +75,14 @@ class AnnotationObject:
     :param visibility: The visibility level of the annotation object
     :type visibility: str
     """
-
-    def __init__(
-        self,
-        name: str,
-        bbox: np.ndarray,
-        instance_token: str,
-        parent_token: str,
-        category: str,
-        attributes: List[str],
-        visibility: str,
-    ):
-        self.name = name
-        self.bbox = bbox
-        self.instance_token = instance_token
-        self.parent_token = parent_token
-
-        self.category = category
-        self.attributes = attributes
-        self.visibility = visibility
+    name: str
+    bbox: np.ndarray
+    token: str
+    instance_token: str
+    parent_token: str
+    category: str
+    attributes: List[str]
+    visibility: str
 
     def to_supervisely(self) -> Cuboid3d:
         box = self.convert_nuscenes_to_BEVBox3D()
@@ -213,38 +206,19 @@ class CamData:
             return (sly_path_img, img_info)
 
 
+@dataclass
 class Sample:
     """
     A class to represent a sample from the NuScenes dataset.
     """
+    timestamp_us: float
+    lidar_path: str
+    anns: List[AnnotationObject]
+    cam_data: List[CamData]
+    timestamp: str = field(init=False)
 
-    def __init__(
-        self,
-        timestamp: float,
-        lidar_path: str,
-        anns: List[AnnotationObject],
-        cam_data: List[CamData],
-    ):
-        self._timestamp = datetime.utcfromtimestamp(timestamp / 1e6).isoformat()
-        self._lidar_path = lidar_path
-        self._anns = anns
-        self._cam_data = cam_data
-
-    @property
-    def timestamp(self) -> str:
-        return self._timestamp
-
-    @property
-    def lidar_path(self) -> str:
-        return self._lidar_path
-
-    @property
-    def anns(self) -> List[AnnotationObject]:
-        return self._anns
-
-    @property
-    def cam_data(self) -> List[CamData]:
-        return self._cam_data
+    def __post_init__(self):
+        self.timestamp = datetime.utcfromtimestamp(self.timestamp_us / 1e6).isoformat()
 
     @staticmethod
     def generate_boxes(nuscenes, boxes: List) -> Generator:
