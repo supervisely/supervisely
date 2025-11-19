@@ -7,7 +7,7 @@ on:
 
 jobs:
   import-SDK-check:
-    runs-on: ubuntu-latest
+    runs-on: gha-runner-supervisely
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -38,7 +38,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
 
   pylint:
-    runs-on: ubuntu-latest
+    runs-on: gha-runner-supervisely
     needs: import-SDK-check
     env:
       ISSUES_URL: "https://api.github.com/repos/supervisely/issues/issues"

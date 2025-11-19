@@ -11,7 +11,7 @@ env:
 jobs:
   publish-pypi:
     name: Publish PyPI
-    runs-on: ubuntu-latest
+    runs-on: gha-runner-supervisely
     environment:
       name: pypi
       url: https://pypi.org/p/supervisely
@@ -49,7 +49,7 @@ jobs:
   base-py-sdk:
     name: Build base-py-sdk
     needs: publish-pypi
-    runs-on: ubuntu-latest
+    runs-on: gha-runner-supervisely
     env:
       IMAGE_NAME: base-py-sdk
       DOCKERFILE_PATH: base_images/py_sdk/Dockerfile
@@ -93,7 +93,7 @@ jobs:
   collaboration:
     name: Build collaboration
     needs: base-py-sdk
-    runs-on: ubuntu-latest
+    runs-on: gha-runner-supervisely
     env:
       IMAGE_NAME: collaboration
       DOCKERFILE_PATH: docker_images/collaboration/Dockerfile
@@ -137,7 +137,7 @@ jobs:
   data-operations:
     name: Build data-operations
     needs: base-py-sdk
-    runs-on: ubuntu-latest
+    runs-on: gha-runner-supervisely
     env:
       IMAGE_NAME: data-operations
       DOCKERFILE_PATH: docker_images/data_operations/Dockerfile
@@ -181,7 +181,7 @@ jobs:
   development:
     name: Build development
     needs: base-py-sdk
-    runs-on: ubuntu-latest
+    runs-on: gha-runner-supervisely
     env:
       IMAGE_NAME: development
       DOCKERFILE_PATH: docker_images/development/Dockerfile
@@ -225,7 +225,7 @@ jobs:
   import-export:
     name: Build import-export
     needs: base-py-sdk
-    runs-on: ubuntu-latest
+    runs-on: gha-runner-supervisely
     env:
       IMAGE_NAME: import-export
       DOCKERFILE_PATH: docker_images/import_export/Dockerfile
@@ -269,7 +269,7 @@ jobs:
   labeling:
     name: Build labeling
     needs: base-py-sdk
-    runs-on: ubuntu-latest
+    runs-on: gha-runner-supervisely
     env:
       IMAGE_NAME: labeling
       DOCKERFILE_PATH: docker_images/labeling/Dockerfile
@@ -313,7 +313,7 @@ jobs:
   synthetic:
     name: Build synthetic
     needs: base-py-sdk
-    runs-on: ubuntu-latest
+    runs-on: gha-runner-supervisely
     env:
       IMAGE_NAME: synthetic
       DOCKERFILE_PATH: docker_images/synthetic/Dockerfile
@@ -357,7 +357,7 @@ jobs:
   system:
     name: Build system
     needs: base-py-sdk
-    runs-on: ubuntu-latest
+    runs-on: gha-runner-supervisely
     env:
       IMAGE_NAME: system
       DOCKERFILE_PATH: docker_images/system/Dockerfile
@@ -401,7 +401,7 @@ jobs:
   visualization-stats:
     name: Build visualization-stats
     needs: base-py-sdk
-    runs-on: ubuntu-latest
+    runs-on: gha-runner-supervisely
     env:
       IMAGE_NAME: visualization-stats
       DOCKERFILE_PATH: docker_images/visualization_stats/Dockerfile

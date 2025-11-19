@@ -6,7 +6,7 @@ on: workflow_dispatch
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: gha-runner-supervisely
     environment:
       name: pypi
       url: https://pypi.org/p/supervisely

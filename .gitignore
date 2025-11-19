@@ -54,3 +54,4 @@ docs/source/sdk
 panda.deb
 
 /test*.py
+.python-version

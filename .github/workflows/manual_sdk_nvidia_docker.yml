@@ -4,7 +4,7 @@ on: workflow_dispatch
 
 jobs:
   deploy-nvidia-sdk:
-    runs-on: ubuntu-latest
+    runs-on: gha-runner-supervisely
 
     steps:
       - name: Free Disk Space (Ubuntu)

@@ -15,7 +15,7 @@ env:
 jobs:
   publish-pypi:
     name: Publish PyPI
-    runs-on: ubuntu-latest
+    runs-on: gha-runner-supervisely
     environment:
       name: pypi
       url: https://pypi.org/p/supervisely
@@ -51,7 +51,7 @@ jobs:
   base-py-sdk:
     name: Build base-py-sdk
     needs: publish-pypi
-    runs-on: ubuntu-latest
+    runs-on: gha-runner-supervisely
     env:
       RELEASE_VERSION: ${{ inputs.tag_version }}
       IMAGE_NAME: base-py-sdk
@@ -94,7 +94,7 @@ jobs:
   collaboration:
     name: Build collaboration
     needs: base-py-sdk
-    runs-on: ubuntu-latest
+    runs-on: gha-runner-supervisely
     env:
       RELEASE_VERSION: ${{ inputs.tag_version }}
       IMAGE_NAME: collaboration
@@ -137,7 +137,7 @@ jobs:
   data-operations:
     name: Build data-operations
     needs: base-py-sdk
-    runs-on: ubuntu-latest
+    runs-on: gha-runner-supervisely
     env:
       RELEASE_VERSION: ${{ inputs.tag_version }}
       IMAGE_NAME: data-operations
@@ -180,7 +180,7 @@ jobs:
   development:
     name: Build development
     needs: base-py-sdk
-    runs-on: ubuntu-latest
+    runs-on: gha-runner-supervisely
     env:
       RELEASE_VERSION: ${{ inputs.tag_version }}
       IMAGE_NAME: development
@@ -223,7 +223,7 @@ jobs:
   import-export:
     name: Build import-export
     needs: base-py-sdk
-    runs-on: ubuntu-latest
+    runs-on: gha-runner-supervisely
     env:
       RELEASE_VERSION: ${{ inputs.tag_version }}
       IMAGE_NAME: import-export
@@ -266,7 +266,7 @@ jobs:
   labeling:
     name: Build labeling
     needs: base-py-sdk
-    runs-on: ubuntu-latest
+    runs-on: gha-runner-supervisely
     env:
       RELEASE_VERSION: ${{ inputs.tag_version }}
       IMAGE_NAME: labeling
@@ -309,7 +309,7 @@ jobs:
   synthetic:
     name: Build synthetic
     needs: base-py-sdk
-    runs-on: ubuntu-latest
+    runs-on: gha-runner-supervisely
     env:
       RELEASE_VERSION: ${{ inputs.tag_version }}
       IMAGE_NAME: synthetic
@@ -352,7 +352,7 @@ jobs:
   system:
     name: Build system
     needs: base-py-sdk
-    runs-on: ubuntu-latest
+    runs-on: gha-runner-supervisely
     env:
       RELEASE_VERSION: ${{ inputs.tag_version }}
       IMAGE_NAME: system
@@ -395,7 +395,7 @@ jobs:
   visualization-stats:
     name: Build visualization-stats
     needs: base-py-sdk
-    runs-on: ubuntu-latest
+    runs-on: gha-runner-supervisely
     env:
       RELEASE_VERSION: ${{ inputs.tag_version }}
       IMAGE_NAME: visualization-stats
