@@ -136,10 +136,12 @@ class ImageConverter(BaseConverter):
             item_names = []
             item_paths = []
             item_metas = []
+            valid_batch_items = []
             for item in batch:
                 item.path = self.validate_image(item.path)
                 if item.path is None:
                     continue  # image has failed validation
+                valid_batch_items.append(item)
                 name = f"{get_file_name(item.path)}{get_file_ext(item.path).lower()}"
 
                 item.name = generate_free_name(
@@ -180,7 +182,7 @@ class ImageConverter(BaseConverter):
 
                 anns = []
                 if not (self.upload_as_links and not self.supports_links):
-                    for info, item in zip(img_infos, batch):
+                    for info, item in zip(img_infos, valid_batch_items):
                         if self._force_shape_for_links:
                             item.set_shape((info.height, info.width))
                         anns.append(self.to_supervisely(item, meta, renamed_classes, renamed_tags))
