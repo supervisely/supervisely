@@ -2063,13 +2063,6 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         meta = meta.clone(project_settings=new_settings)
         self.update_meta(id=project_id, meta=meta)
-        settings_json = {
-            "groupImages": True,
-            "groupImagesByTagId": None,
-            "groupImagesSync": sync,
-            ProjectSettingsJsonFields.LABELING_INTERFACE: LabelingInterface.MULTIVIEW,
-        }
-        self.update_settings(project_id, settings_json)
 
     def remove_permanently(
         self, ids: Union[int, List], batch_size: int = 50, progress_cb=None
@@ -2651,7 +2644,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             )
             dst_project_id = dst_project_info.id
 
-        datasets = self._api.dataset.get_list(src_project_id, recursive=True, include_custom_data=True)
+        datasets = self._api.dataset.get_list(
+            src_project_id, recursive=True, include_custom_data=True
+        )
         src_to_dst_ids = {}
 
         for src_dataset_info in datasets:
