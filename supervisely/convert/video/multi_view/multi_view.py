@@ -2,19 +2,25 @@ import os
 from typing import List
 
 import supervisely.convert.video.sly.sly_video_helper as sly_video_helper
-from supervisely import ProjectMeta, VideoAnnotation, logger
+from supervisely import OpenMode, ProjectMeta, VideoAnnotation, VideoProject, logger
 from supervisely.convert.base_converter import AvailableVideoConverters
 from supervisely.convert.video.video_converter import VideoConverter
-from supervisely.io.fs import JUNK_FILES, get_file_ext
+from supervisely.io.fs import JUNK_FILES, file_exists, get_file_ext
 from supervisely.io.json import load_json_file
+from supervisely.project.project import find_project_dirs
 from supervisely.project.project_settings import LabelingInterface
 from supervisely.video.video import validate_ext as validate_video_ext
+
+
+DATASET_ITEMS = "items"
+NESTED_DATASETS = "datasets"
 
 
 class MultiViewVideoConverter(VideoConverter):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._supports_links = True
+        self._project_structure = None
 
     def __str__(self) -> str:
         return AvailableVideoConverters.MULTI_VIEW
@@ -51,16 +57,83 @@ class MultiViewVideoConverter(VideoConverter):
         except Exception:
             return False
 
+    def read_multiview_project(self, input_data: str) -> bool:
+        """Read multi-view video project with multiple datasets."""
+        try:
+            self._items = []
+            project = {}
+            ds_cnt = 0
+            self._meta = None
+            
+            logger.debug("Trying to find Supervisely video project format in the input data")
+            project_dirs = [d for d in find_project_dirs(input_data, project_class=VideoProject)]
+            
+            if len(project_dirs) > 1:
+                logger.info("Found multiple possible Supervisely video projects in the input data")
+            elif len(project_dirs) == 1:
+                logger.info("Possible Supervisely video project found in the input data")
+            else:
+                return False
+            
+            meta = None
+            for project_dir in project_dirs:
+                project_fs = VideoProject(project_dir, mode=OpenMode.READ)
+                
+                if meta is None:
+                    meta = project_fs.meta
+                else:
+                    meta = meta.merge(project_fs.meta)
+                
+                for dataset in project_fs.datasets:
+                    ds_items = []
+                    for name in dataset.get_items_names():
+                        video_path, ann_path = dataset.get_item_paths(name)
+                        meta_path = dataset.get_item_meta_path(name)
+                        
+                        item = self.Item(video_path)
+                        
+                        if file_exists(ann_path):
+                            if self.validate_ann_file(ann_path, meta):
+                                item.ann_data = ann_path
+                        
+                        if file_exists(meta_path):
+                            item.metadata = meta_path
+                        
+                        ds_items.append(item)
+                    
+                    if len(ds_items) > 0:
+                        parts = dataset.name.split("/")
+                        curr_ds = project.setdefault(
+                            parts[0], {DATASET_ITEMS: [], NESTED_DATASETS: {}}
+                        )
+                        for part in parts[1:]:
+                            curr_ds = curr_ds[NESTED_DATASETS].setdefault(
+                                part, {DATASET_ITEMS: [], NESTED_DATASETS: {}}
+                            )
+                        curr_ds[DATASET_ITEMS].extend(ds_items)
+                        ds_cnt += 1
+                        self._items.extend(ds_items)
+            
+            if self.items_count > 0:
+                self._meta = meta
+                if ds_cnt > 1:
+                    self._project_structure = project
+                return True
+            else:
+                return False
+        except Exception as e:
+            logger.debug(f"Not a multi-view video project: {repr(e)}")
+            return False
+
     def validate_format(self) -> bool:
         if self.upload_as_links and self._supports_links:
             self._download_remote_ann_files()
+        if self.read_multiview_project(self._input_data):
+            return True
+        
         detected_ann_cnt = 0
-        videos_list, ann_dict = [], {}
+        videos_list, ann_dict, meta_dict = [], {}, {}
         for root, _, files in os.walk(self._input_data):
-            # Skip optional metadata directories entirely
-            normalized_root = os.path.normpath(root)
-            if "metadata" in normalized_root.split(os.sep):
-                continue
             for file in files:
                 full_path = os.path.join(root, file)
                 if file == "key_id_map.json":
@@ -73,6 +146,10 @@ class MultiViewVideoConverter(VideoConverter):
                 ext = get_file_ext(full_path)
                 if file in JUNK_FILES:
                     continue
+
+                # metadata file name pattern: <video_name>.<video_extension>.meta.json
+                elif file.endswith(".meta.json"):
+                    meta_dict[file] = full_path
                 elif ext in self.ann_ext:
                     ann_dict[file] = full_path
                 else:
@@ -88,8 +165,8 @@ class MultiViewVideoConverter(VideoConverter):
             meta = ProjectMeta()
 
         self._items = []
-        for image_path in videos_list:
-            item = self.Item(image_path)
+        for video_path in videos_list:
+            item = self.Item(video_path)
             ann_name = f"{item.name}.json"
             if ann_name in ann_dict:
                 ann_path = ann_dict[ann_name]
@@ -99,9 +176,179 @@ class MultiViewVideoConverter(VideoConverter):
                 if is_valid:
                     item.ann_data = ann_path
                     detected_ann_cnt += 1
+
+            meta_name = f"{item.name}.meta.json"
+            if meta_name in meta_dict:
+                meta_path = meta_dict[meta_name]
+                item.metadata = meta_path
+
             self._items.append(item)
         self._meta = meta
         return len(self._items) > 0
+
+    def upload_dataset(self, api, dataset_id: int, batch_size: int = 10, log_progress=True):
+        """Upload converted data to Supervisely."""
+        if self._project_structure:
+            self._upload_project(api, dataset_id, batch_size, log_progress)
+        else:
+            self._upload_single_dataset(api, dataset_id, self._items, batch_size, log_progress)
+
+    def _upload_project(self, api, dataset_id: int, batch_size: int = 10, log_progress=True):
+        """Upload multi-view video project with multiple datasets."""
+        from supervisely import generate_free_name, is_development
+        
+        dataset_info = api.dataset.get_info_by_id(dataset_id, raise_error=True)
+        project_id = dataset_info.project_id
+        existing_datasets = api.dataset.get_list(project_id, recursive=True)
+        existing_datasets = {ds.name for ds in existing_datasets}
+
+        if log_progress:
+            progress, progress_cb = self.get_progress(self.items_count, "Uploading project")
+        else:
+            progress, progress_cb = None, None
+
+        logger.info("Uploading multi-view video project structure")
+
+        def _upload_datasets_recursive(
+            project_structure: dict,
+            project_id: int,
+            dataset_id: int,
+            parent_id=None,
+            first_dataset=False,
+        ):
+            for ds_name, value in project_structure.items():
+                ds_name = generate_free_name(existing_datasets, ds_name, extend_used_names=True)
+                if first_dataset:
+                    first_dataset = False
+                    api.dataset.update(dataset_id, ds_name)  # rename first dataset
+                else:
+                    dataset_id = api.dataset.create(project_id, ds_name, parent_id=parent_id).id
+
+                items = value.get(DATASET_ITEMS, [])
+                nested_datasets = value.get(NESTED_DATASETS, {})
+                logger.info(
+                    f"Dataset: {ds_name}, items: {len(items)}, nested datasets: {len(nested_datasets)}"
+                )
+                if items:
+                    self._upload_single_dataset(
+                        api, dataset_id, items, batch_size, log_progress=False, progress_cb=progress_cb
+                    )
+
+                if nested_datasets:
+                    _upload_datasets_recursive(nested_datasets, project_id, dataset_id, dataset_id)
+
+        _upload_datasets_recursive(self._project_structure, project_id, dataset_id, first_dataset=True)
+
+        if is_development() and progress is not None:
+            progress.close()
+
+    def _upload_single_dataset(
+        self, api, dataset_id: int, items: list, batch_size: int = 10, log_progress=True, progress_cb=None
+    ):
+        """Upload videos from a single dataset."""
+        from supervisely import batched, generate_free_name, is_development
+        from supervisely.io.fs import get_file_size
+        from supervisely.io.json import load_json_file
+        
+        meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)
+
+        videos_in_dataset = api.video.get_list(dataset_id, force_metadata_for_links=False)
+        existing_names = {video_info.name for video_info in videos_in_dataset}
+
+        items_count = len(items)
+        convert_progress, convert_progress_cb = self.get_progress(
+            items_count, "Preparing videos..."
+        )
+        for item in items:
+            item_name, item_path = self.convert_to_mp4_if_needed(item.path)
+            item.name = item_name
+            item.path = item_path
+            convert_progress_cb(1)
+        if is_development():
+            convert_progress.close()
+
+        has_large_files = False
+        size_progress_cb = None
+        _progress_cb, progress, ann_progress, ann_progress_cb = None, None, None, None
+        if log_progress:
+            if progress_cb is None:
+                progress, _progress_cb = self.get_progress(items_count, "Uploading videos...")
+            else:
+                _progress_cb = progress_cb
+            if not self.upload_as_links:
+                file_sizes = [get_file_size(item.path) for item in items]
+                has_large_files = any(
+                    [self._check_video_file_size(file_size) for file_size in file_sizes]
+                )
+                if has_large_files:
+                    upload_progress = []
+                    size_progress_cb = self._get_video_upload_progress(upload_progress)
+        batch_size = 1 if has_large_files and not self.upload_as_links else batch_size
+
+        for batch in batched(items, batch_size=batch_size):
+            item_names = []
+            item_paths = []
+            item_metas = []
+            anns = []
+            figures_cnt = 0
+            for item in batch:
+                item.name = generate_free_name(
+                    existing_names, item.name, with_ext=True, extend_used_names=True
+                )
+                item_paths.append(item.path)
+                item_names.append(item.name)
+
+                if isinstance(item.metadata, str):  # path to file
+                    item_metas.append(load_json_file(item.metadata))
+                elif isinstance(item.metadata, dict):
+                    item_metas.append(item.metadata)
+                else:
+                    item_metas.append({})
+
+                ann = None
+                if not self.upload_as_links or self.supports_links:
+                    ann = self.to_supervisely(item, meta, renamed_classes, renamed_tags)
+                    if ann is not None:
+                        figures_cnt += len(ann.figures)
+                anns.append(ann)
+
+            if self.upload_as_links:
+                vid_infos = api.video.upload_links(
+                    dataset_id,
+                    item_paths,
+                    item_names,
+                    metas=item_metas,
+                    skip_download=True,
+                    progress_cb=_progress_cb if log_progress else None,
+                    force_metadata_for_links=False,
+                )
+            else:
+                vid_infos = api.video.upload_paths(
+                    dataset_id,
+                    item_names,
+                    item_paths,
+                    progress_cb=_progress_cb if log_progress else None,
+                    item_progress=(size_progress_cb if log_progress and has_large_files else None),
+                    metas=item_metas,
+                )
+            vid_ids = [vid_info.id for vid_info in vid_infos]
+
+            if log_progress and has_large_files and figures_cnt > 0:
+                ann_progress, ann_progress_cb = self.get_progress(
+                    figures_cnt, "Uploading annotations..."
+                )
+
+            for vid, ann, item, info in zip(vid_ids, anns, batch, vid_infos):
+                if ann is None:
+                    ann = VideoAnnotation((info.frame_height, info.frame_width), info.frames_count)
+                api.video.annotation.append(vid, ann, progress_cb=ann_progress_cb)
+
+        if log_progress and is_development():
+            if progress is not None:
+                progress.close()
+            if ann_progress is not None:
+                ann_progress.close()
+        logger.info(f"Dataset ID:{dataset_id} has been successfully uploaded.")
 
     def to_supervisely(
         self,
