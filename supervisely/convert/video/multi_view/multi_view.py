@@ -1,5 +1,6 @@
 import os
-from typing import List
+from collections import defaultdict
+from typing import Dict, Union
 
 import supervisely.convert.video.sly.sly_video_helper as sly_video_helper
 from supervisely import OpenMode, ProjectMeta, VideoAnnotation, VideoProject, logger
@@ -9,8 +10,7 @@ from supervisely.io.fs import JUNK_FILES, file_exists, get_file_ext
 from supervisely.io.json import load_json_file
 from supervisely.project.project import find_project_dirs
 from supervisely.project.project_settings import LabelingInterface
-from supervisely.video.video import validate_ext as validate_video_ext
-
+from supervisely.video.video import validate_ext as validate_video_ext, ALLOWED_VIDEO_EXTENSIONS
 
 DATASET_ITEMS = "items"
 NESTED_DATASETS = "datasets"
@@ -32,6 +32,26 @@ class MultiViewVideoConverter(VideoConverter):
     @property
     def key_file_ext(self) -> str:
         return ".json"
+
+    @staticmethod
+    def _create_project_node() -> Dict[str, dict]:
+        return {DATASET_ITEMS: [], NESTED_DATASETS: {}}
+
+    @classmethod
+    def _append_to_project_structure(
+        cls, project_structure: Dict[str, dict], dataset_name: str, items: list
+    ):
+        normalized_name = (dataset_name or "").replace("\\", "/").strip("/")
+        if not normalized_name:
+            normalized_name = dataset_name or "dataset"
+        parts = [part for part in normalized_name.split("/") if part]
+        if not parts:
+            parts = ["dataset"]
+
+        curr_ds = project_structure.setdefault(parts[0], cls._create_project_node())
+        for part in parts[1:]:
+            curr_ds = curr_ds[NESTED_DATASETS].setdefault(part, cls._create_project_node())
+        curr_ds[DATASET_ITEMS].extend(items)
 
     def validate_labeling_interface(self) -> bool:
         return self._labeling_interface == LabelingInterface.MULTIVIEW
@@ -98,15 +118,7 @@ class MultiViewVideoConverter(VideoConverter):
                         ds_items.append(item)
 
                     if len(ds_items) > 0:
-                        parts = dataset.name.split("/")
-                        curr_ds = project.setdefault(
-                            parts[0], {DATASET_ITEMS: [], NESTED_DATASETS: {}}
-                        )
-                        for part in parts[1:]:
-                            curr_ds = curr_ds[NESTED_DATASETS].setdefault(
-                                part, {DATASET_ITEMS: [], NESTED_DATASETS: {}}
-                            )
-                        curr_ds[DATASET_ITEMS].extend(ds_items)
+                        self._append_to_project_structure(project, dataset.name, ds_items)
                         ds_cnt += 1
                         self._items.extend(ds_items)
 
@@ -161,13 +173,7 @@ class MultiViewVideoConverter(VideoConverter):
                     ds_items.append(item)
 
                 if len(ds_items) > 0:
-                    parts = dataset_fs.name.split("/")
-                    curr_ds = project.setdefault(parts[0], {DATASET_ITEMS: [], NESTED_DATASETS: {}})
-                    for part in parts[1:]:
-                        curr_ds = curr_ds[NESTED_DATASETS].setdefault(
-                            part, {DATASET_ITEMS: [], NESTED_DATASETS: {}}
-                        )
-                    curr_ds[DATASET_ITEMS].extend(ds_items)
+                    self._append_to_project_structure(project, dataset_fs.name, ds_items)
                     ds_cnt += 1
                     self._items.extend(ds_items)
 
@@ -182,13 +188,120 @@ class MultiViewVideoConverter(VideoConverter):
             logger.debug(f"Failed to read Supervisely video datasets: {repr(e)}")
             return False
 
+    def read_multiview_folder_structure(self, input_data: str) -> bool:
+        """Read multi-view folder layout: <dataset>/video (+optional ann, metadata)."""
+        try:
+            logger.debug("Trying to read folder-based multi-view structure")
+            self._items = []
+            project = {}
+            ds_cnt = 0
+            self._meta = None
+            self._project_structure = None
+
+            meta_path = os.path.join(input_data, "meta.json")
+            meta_from_file = False
+            if file_exists(meta_path):
+                if self.validate_key_file(meta_path):
+                    meta = self._meta
+                    meta_from_file = True
+                else:
+                    meta = ProjectMeta()
+            else:
+                meta = ProjectMeta()
+
+            for dirpath, dirnames, _ in os.walk(input_data):
+                has_video_dir = "video" in dirnames
+                dirnames[:] = [d for d in dirnames if d not in {"video", "ann", "metadata"}]
+                if not has_video_dir:
+                    continue
+
+                video_dir = os.path.join(dirpath, "video")
+                try:
+                    video_entries = sorted(os.listdir(video_dir))
+                except Exception:
+                    continue
+
+                ds_items = []
+                for entry in video_entries:
+                    video_path = os.path.join(video_dir, entry)
+                    if not os.path.isfile(video_path):
+                        continue
+                    ext = get_file_ext(video_path)
+                    try:
+                        validate_video_ext(ext)
+                    except Exception:
+                        continue
+
+                    item = self.Item(video_path)
+                    ann_path = os.path.join(dirpath, "ann", f"{entry}.json")
+                    if file_exists(ann_path):
+                        if not meta_from_file:
+                            meta = self.generate_meta_from_annotation(ann_path, meta)
+                        if self.validate_ann_file(ann_path, meta):
+                            item.ann_data = ann_path
+
+                    metadata_path = os.path.join(dirpath, "metadata", f"{entry}.meta.json")
+                    if file_exists(metadata_path):
+                        item.metadata = metadata_path
+                    ds_items.append(item)
+
+                if len(ds_items) == 0:
+                    continue
+
+                self._items.extend(ds_items)
+                ds_cnt += 1
+
+                rel_path = os.path.relpath(dirpath, input_data)
+                if rel_path in (".", os.curdir):
+                    dataset_name = os.path.basename(os.path.normpath(dirpath))
+                else:
+                    dataset_name = rel_path
+                dataset_name = (dataset_name or "").replace(os.sep, "/").strip("/")
+                if not dataset_name:
+                    dataset_name = os.path.basename(os.path.normpath(dirpath)) or "dataset"
+
+                self._append_to_project_structure(project, dataset_name, ds_items)
+
+            if self.items_count > 0:
+                self._meta = meta
+                if ds_cnt > 1:
+                    self._project_structure = project
+                return True
+            else:
+                return False
+        except Exception as e:
+            logger.debug(f"Failed to read folder-based multi-view structure: {repr(e)}")
+            return False
+
+    # def _find_video_groups(self) -> Union[Dict[str, list], None]:
+    #     video_groups = {}
+    #     ann_exts = [".json"]
+    #     for root, _, files in os.walk(self._input_data):
+    #         for file in files:
+    #             if get_file_ext(file) in ann_exts:
+    #                 continue
+    #             if get_file_ext(file) in ALLOWED_VIDEO_EXTENSIONS:
+    #                 video_groups[os.path.join(root, file)] = root
+    #     return video_groups
+
+    # video_groups = self._find_video_groups()
+    # unique_ds_paths = set(video_groups.values())
+    # unique_ds_names = set([os.path.basename(path) for path in unique_ds_paths])
+
+    # if len(unique_ds_names) != len(unique_ds_paths):
+    #     unique_ds_names = set([os.path.basename(os.path.dirname(path)) for path in unique_ds_paths])
+
     def validate_format(self) -> bool:
         if self.upload_as_links and self._supports_links:
             self._download_remote_ann_files()
+
         if self.read_multiview_project(self._input_data):
             return True
 
         if self.read_multiview_dataset(self._input_data):
+            return True
+
+        if self.read_multiview_folder_structure(self._input_data):
             return True
 
         detected_ann_cnt = 0
@@ -207,7 +320,6 @@ class MultiViewVideoConverter(VideoConverter):
                 if file in JUNK_FILES:
                     continue
 
-                # metadata file name pattern: <video_name>.<video_extension>.meta.json
                 elif file.endswith(".meta.json"):
                     meta_dict[file] = full_path
                 elif ext in self.ann_ext:

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import datetime
+from itertools import zip_longest
 import json
 import os
 import re
@@ -1581,12 +1582,17 @@ class VideoApi(RemoveableBulkModuleApi):
             hash_meta_dict[hash_value] = meta
 
         video_metadatas = [hash_meta_dict[hash_value] for hash_value in hashes]
-
         video_metadatas2 = [meta["meta"] for meta in video_metadatas]
-
         names = self.get_free_names(dataset_id, names)
 
-        for name, hash, video_metadata, metadata in zip(names, hashes, video_metadatas2, metas):
+        if metas is None:
+            metas = [None] * len(names)
+        if not isinstance(metas, list):
+            raise ValueError("metas must be a list")
+
+        for name, hash, video_metadata, metadata in zip_longest(
+            names, hashes, video_metadatas2, metas
+        ):
             try:
                 all_streams = video_metadata["streams"]
                 video_streams = get_video_streams(all_streams)
