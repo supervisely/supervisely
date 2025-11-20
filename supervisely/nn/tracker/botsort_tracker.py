@@ -1,7 +1,7 @@
 import supervisely as sly
 from supervisely.nn.tracker.base_tracker import BaseTracker
 from supervisely import Annotation, VideoAnnotation
-
+from supervisely.annotation.label import LabelingStatus
 from dataclasses import dataclass
 from types import SimpleNamespace
 from typing import List, Dict, Tuple, Any, Optional
@@ -54,6 +54,7 @@ class BotSortTracker(BaseTracker):
             self.settings.update(settings)
         
         args = SimpleNamespace(**self.settings)
+        args.name = "BotSORT"
         args.device = self.device
             
         self.tracker = BoTSORT(args=args)
@@ -66,12 +67,8 @@ class BotSortTracker(BaseTracker):
         self.frame_shape = () 
 
     def _load_default_settings(self) -> dict:
-        """Load default settings from YAML file in the same directory."""
-        current_dir = Path(__file__).parent
-        config_path = current_dir / "botsort/botsort_config.yaml"
-        
-        with open(config_path, 'r', encoding='utf-8') as file:
-            return yaml.safe_load(file)
+        """Internal method: calls classmethod"""
+        return self.get_default_params()
 
     def update(self, frame: np.ndarray, annotation: Annotation) -> List[Dict[str, Any]]:
         """Update tracker and return list of matches for current frame."""
@@ -239,7 +236,7 @@ class BotSortTracker(BaseTracker):
                 
                 video_object = video_objects[track_id]
                 rect = sly.Rectangle(top=y1, left=x1, bottom=y2, right=x2)
-                frame_figures.append(sly.VideoFigure(video_object, rect, frame_idx, track_id=str(track_id)))
+                frame_figures.append(sly.VideoFigure(video_object, rect, frame_idx, track_id=str(track_id), status=LabelingStatus.AUTO))
             
             frames.append(sly.Frame(frame_idx, frame_figures))
 
@@ -264,3 +261,13 @@ class BotSortTracker(BaseTracker):
             raise ValueError(error_msg)
                 
         return self._create_video_annotation()
+
+    @classmethod
+    def get_default_params(cls) -> Dict[str, Any]:
+        """Public API: get default params WITHOUT creating instance."""
+        current_dir = Path(__file__).parent
+        config_path = current_dir / "botsort/botsort_config.yaml"
+        
+        with open(config_path, 'r', encoding='utf-8') as file:
+            return yaml.safe_load(file)
+

@@ -156,9 +156,12 @@ class Select(ConditionalWidget):
 
     def get_json_state(self) -> Dict:
         first_item = self._get_first_value()
-        value = None
-        if first_item is not None:
-            value = first_item.value
+        if self._multiple:
+            value = []
+            if first_item is not None:
+                value = [first_item.value]
+        else:
+            value = first_item.value if first_item is not None else None
         return {"value": value, "links": self._links}
 
     def get_value(self):

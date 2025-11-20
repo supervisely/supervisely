@@ -1598,13 +1598,18 @@ class TrainApp:
                 project_id = self.project_id
 
             dataset_infos = [dataset for _, dataset in self._api.dataset.tree(project_id)]
+            id_to_info = {ds.id: ds for ds in dataset_infos}
             ds_infos_dict = {}
             for dataset in dataset_infos:
-                if dataset.parent_id is not None:
-                    parent_ds = self._api.dataset.get_info_by_id(dataset.parent_id)
-                    dataset_name = f"{parent_ds.name}/{dataset.name}"
-                else:
-                    dataset_name = dataset.name
+                name_parts = [dataset.name]
+                parent_id = dataset.parent_id
+                while parent_id is not None:
+                    parent_ds = id_to_info.get(parent_id)
+                    if parent_ds is None:
+                        parent_ds = self._api.dataset.get_info_by_id(parent_id)
+                    name_parts.append(parent_ds.name)
+                    parent_id = parent_ds.parent_id
+                dataset_name = "/".join(reversed(name_parts))
                 ds_infos_dict[dataset_name] = dataset
 
             def get_image_infos_by_split(ds_infos_dict: dict, split: list):
@@ -3177,22 +3182,33 @@ class TrainApp:
         experiment_name = self.gui.training_process.get_experiment_name()
 
         train_collection_idx = 1
-        val_collection_idx = 1        
+        val_collection_idx = 1
+
+        def _extract_index_from_col_name(name: str, expected_prefix: str) -> Optional[int]:
+            parts = name.split("_")
+            if len(parts) == 2 and parts[0] == expected_prefix and parts[1].isdigit():
+                return int(parts[1])
+            return None
 
         # Get train collection with max idx
         if len(all_train_collections) > 0:
-            train_collection_idx = max([int(collection.name.split("_")[1]) for collection in all_train_collections])
-            train_collection_idx += 1
+            train_indices = [_extract_index_from_col_name(collection.name, "train") for collection in all_train_collections]
+            train_indices = [idx for idx in train_indices if idx is not None]
+            if len(train_indices) > 0:
+                train_collection_idx = max(train_indices) + 1
+
         # Get val collection with max idx
         if len(all_val_collections) > 0:
-            val_collection_idx = max([int(collection.name.split("_")[1]) for collection in all_val_collections])
-            val_collection_idx += 1
+            val_indices = [_extract_index_from_col_name(collection.name, "val") for collection in all_val_collections]
+            val_indices = [idx for idx in val_indices if idx is not None]
+            if len(val_indices) > 0:
+                val_collection_idx = max(val_indices) + 1
         # -------------------------------- #
 
         # Create Train Collection
         train_img_ids = list(self._train_split_item_ids)
         train_collection_description = f"Collection with train {item_type} for experiment: {experiment_name}"
-        train_collection = self._api.entities_collection.create(self.project_id, f"train_{train_collection_idx}", train_collection_description)
+        train_collection = self._api.entities_collection.create(self.project_id, f"train_{train_collection_idx:03d}", train_collection_description)
         train_collection_id = getattr(train_collection, "id", None)
         if train_collection_id is None:
             raise AttributeError("Train EntitiesCollectionInfo object does not have 'id' attribute")
@@ -3202,7 +3218,7 @@ class TrainApp:
         # Create Val Collection
         val_img_ids = list(self._val_split_item_ids)
         val_collection_description = f"Collection with val {item_type} for experiment: {experiment_name}"
-        val_collection = self._api.entities_collection.create(self.project_id, f"val_{val_collection_idx}", val_collection_description)
+        val_collection = self._api.entities_collection.create(self.project_id, f"val_{val_collection_idx:03d}", val_collection_description)
         val_collection_id = getattr(val_collection, "id", None)
         if val_collection_id is None:
             raise AttributeError("Val EntitiesCollectionInfo object does not have 'id' attribute")
