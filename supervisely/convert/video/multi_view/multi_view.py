@@ -64,43 +64,39 @@ class MultiViewVideoConverter(VideoConverter):
             project = {}
             ds_cnt = 0
             self._meta = None
-            
+
             logger.debug("Trying to find Supervisely video project format in the input data")
             project_dirs = [d for d in find_project_dirs(input_data, project_class=VideoProject)]
-            
             if len(project_dirs) > 1:
                 logger.info("Found multiple possible Supervisely video projects in the input data")
             elif len(project_dirs) == 1:
                 logger.info("Possible Supervisely video project found in the input data")
             else:
                 return False
-            
+
             meta = None
             for project_dir in project_dirs:
                 project_fs = VideoProject(project_dir, mode=OpenMode.READ)
-                
                 if meta is None:
                     meta = project_fs.meta
                 else:
                     meta = meta.merge(project_fs.meta)
-                
+
                 for dataset in project_fs.datasets:
                     ds_items = []
                     for name in dataset.get_items_names():
                         video_path, ann_path = dataset.get_item_paths(name)
-                        meta_path = dataset.get_item_meta_path(name)
-                        
+                        metadata_path = os.path.join(
+                            dataset.directory, "metadata", f"{name}.meta.json"
+                        )
                         item = self.Item(video_path)
-                        
                         if file_exists(ann_path):
                             if self.validate_ann_file(ann_path, meta):
                                 item.ann_data = ann_path
-                        
-                        if file_exists(meta_path):
-                            item.metadata = meta_path
-                        
+                        if file_exists(metadata_path):
+                            item.metadata = metadata_path
                         ds_items.append(item)
-                    
+
                     if len(ds_items) > 0:
                         parts = dataset.name.split("/")
                         curr_ds = project.setdefault(
@@ -113,7 +109,7 @@ class MultiViewVideoConverter(VideoConverter):
                         curr_ds[DATASET_ITEMS].extend(ds_items)
                         ds_cnt += 1
                         self._items.extend(ds_items)
-            
+
             if self.items_count > 0:
                 self._meta = meta
                 if ds_cnt > 1:
@@ -125,12 +121,76 @@ class MultiViewVideoConverter(VideoConverter):
             logger.debug(f"Not a multi-view video project: {repr(e)}")
             return False
 
+    def read_multiview_dataset(self, input_data: str) -> bool:
+        """Read multi-view video datasets without project meta.json."""
+        try:
+            from supervisely import VideoDataset
+            from supervisely.io.fs import dirs_filter
+
+            self._items = []
+            project = {}
+            ds_cnt = 0
+            self._meta = None
+            logger.debug("Trying to read Supervisely video datasets")
+
+            def _check_function(path):
+                try:
+                    dataset_ds = VideoDataset(path, OpenMode.READ)
+                    return len(dataset_ds.get_items_names()) > 0
+                except:
+                    return False
+
+            meta = ProjectMeta()
+            dataset_dirs = [d for d in dirs_filter(input_data, _check_function)]
+            for dataset_dir in dataset_dirs:
+                dataset_fs = VideoDataset(dataset_dir, OpenMode.READ)
+                ds_items = []
+                for name in dataset_fs.get_items_names():
+                    video_path, ann_path = dataset_fs.get_item_paths(name)
+                    metadata_path = os.path.join(
+                        dataset_fs.directory, "metadata", f"{name}.meta.json"
+                    )
+
+                    item = self.Item(video_path)
+                    if file_exists(ann_path):
+                        meta = self.generate_meta_from_annotation(ann_path, meta)
+                        if self.validate_ann_file(ann_path, meta):
+                            item.ann_data = ann_path
+                    if file_exists(metadata_path):
+                        item.metadata = metadata_path
+                    ds_items.append(item)
+
+                if len(ds_items) > 0:
+                    parts = dataset_fs.name.split("/")
+                    curr_ds = project.setdefault(parts[0], {DATASET_ITEMS: [], NESTED_DATASETS: {}})
+                    for part in parts[1:]:
+                        curr_ds = curr_ds[NESTED_DATASETS].setdefault(
+                            part, {DATASET_ITEMS: [], NESTED_DATASETS: {}}
+                        )
+                    curr_ds[DATASET_ITEMS].extend(ds_items)
+                    ds_cnt += 1
+                    self._items.extend(ds_items)
+
+            if self.items_count > 0:
+                self._meta = meta
+                if ds_cnt > 1:  # multiple datasets
+                    self._project_structure = project
+                return True
+            else:
+                return False
+        except Exception as e:
+            logger.debug(f"Failed to read Supervisely video datasets: {repr(e)}")
+            return False
+
     def validate_format(self) -> bool:
         if self.upload_as_links and self._supports_links:
             self._download_remote_ann_files()
         if self.read_multiview_project(self._input_data):
             return True
-        
+
+        if self.read_multiview_dataset(self._input_data):
+            return True
+
         detected_ann_cnt = 0
         videos_list, ann_dict, meta_dict = [], {}, {}
         for root, _, files in os.walk(self._input_data):
@@ -196,7 +256,7 @@ class MultiViewVideoConverter(VideoConverter):
     def _upload_project(self, api, dataset_id: int, batch_size: int = 10, log_progress=True):
         """Upload multi-view video project with multiple datasets."""
         from supervisely import generate_free_name, is_development
-        
+
         dataset_info = api.dataset.get_info_by_id(dataset_id, raise_error=True)
         project_id = dataset_info.project_id
         existing_datasets = api.dataset.get_list(project_id, recursive=True)
@@ -231,30 +291,41 @@ class MultiViewVideoConverter(VideoConverter):
                 )
                 if items:
                     self._upload_single_dataset(
-                        api, dataset_id, items, batch_size, log_progress=False, progress_cb=progress_cb
+                        api,
+                        dataset_id,
+                        items,
+                        batch_size,
+                        log_progress=False,
+                        progress_cb=progress_cb,
                     )
 
                 if nested_datasets:
                     _upload_datasets_recursive(nested_datasets, project_id, dataset_id, dataset_id)
 
-        _upload_datasets_recursive(self._project_structure, project_id, dataset_id, first_dataset=True)
+        _upload_datasets_recursive(
+            self._project_structure, project_id, dataset_id, first_dataset=True
+        )
 
         if is_development() and progress is not None:
             progress.close()
 
     def _upload_single_dataset(
-        self, api, dataset_id: int, items: list, batch_size: int = 10, log_progress=True, progress_cb=None
+        self,
+        api,
+        dataset_id: int,
+        items: list,
+        batch_size: int = 10,
+        log_progress=True,
+        progress_cb=None,
     ):
         """Upload videos from a single dataset."""
         from supervisely import batched, generate_free_name, is_development
         from supervisely.io.fs import get_file_size
         from supervisely.io.json import load_json_file
-        
-        meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)
 
+        meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)
         videos_in_dataset = api.video.get_list(dataset_id, force_metadata_for_links=False)
         existing_names = {video_info.name for video_info in videos_in_dataset}
-
         items_count = len(items)
         convert_progress, convert_progress_cb = self.get_progress(
             items_count, "Preparing videos..."
@@ -284,7 +355,6 @@ class MultiViewVideoConverter(VideoConverter):
                     upload_progress = []
                     size_progress_cb = self._get_video_upload_progress(upload_progress)
         batch_size = 1 if has_large_files and not self.upload_as_links else batch_size
-
         for batch in batched(items, batch_size=batch_size):
             item_names = []
             item_paths = []
@@ -327,12 +397,12 @@ class MultiViewVideoConverter(VideoConverter):
                     dataset_id,
                     item_names,
                     item_paths,
+                    metas=item_metas,
                     progress_cb=_progress_cb if log_progress else None,
                     item_progress=(size_progress_cb if log_progress and has_large_files else None),
-                    metas=item_metas,
                 )
-            vid_ids = [vid_info.id for vid_info in vid_infos]
 
+            vid_ids = [vid_info.id for vid_info in vid_infos]
             if log_progress and has_large_files and figures_cnt > 0:
                 ann_progress, ann_progress_cb = self.get_progress(
                     figures_cnt, "Uploading annotations..."
