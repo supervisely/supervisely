@@ -1,6 +1,7 @@
 import os
 from collections import defaultdict
-from typing import Dict, Union
+from pathlib import Path
+from typing import Dict, List, Union
 
 import supervisely.convert.video.sly.sly_video_helper as sly_video_helper
 from supervisely import OpenMode, ProjectMeta, VideoAnnotation, VideoProject, logger
@@ -10,7 +11,7 @@ from supervisely.io.fs import JUNK_FILES, file_exists, get_file_ext
 from supervisely.io.json import load_json_file
 from supervisely.project.project import find_project_dirs
 from supervisely.project.project_settings import LabelingInterface
-from supervisely.video.video import validate_ext as validate_video_ext, ALLOWED_VIDEO_EXTENSIONS
+from supervisely.video.video import has_valid_ext, validate_ext
 
 DATASET_ITEMS = "items"
 NESTED_DATASETS = "datasets"
@@ -198,51 +199,38 @@ class MultiViewVideoConverter(VideoConverter):
             self._meta = None
             self._project_structure = None
 
-            meta_path = os.path.join(input_data, "meta.json")
-            meta_from_file = False
-            if file_exists(meta_path):
-                if self.validate_key_file(meta_path):
-                    meta = self._meta
-                    meta_from_file = True
-                else:
-                    meta = ProjectMeta()
-            else:
-                meta = ProjectMeta()
+            has_meta_file = False
+            for file in Path(input_data).rglob("meta.json"):
+                if file.is_file() and self.validate_key_file(str(file)):
+                    has_meta_file = True
+                    break
+            meta = self._meta if has_meta_file else ProjectMeta()
 
-            for dirpath, dirnames, _ in os.walk(input_data):
-                has_video_dir = "video" in dirnames
-                dirnames[:] = [d for d in dirnames if d not in {"video", "ann", "metadata"}]
-                if not has_video_dir:
-                    continue
+            video_groups = self._find_video_groups(input_data)
 
-                video_dir = os.path.join(dirpath, "video")
-                try:
-                    video_entries = sorted(os.listdir(video_dir))
-                except Exception:
-                    continue
-
+            for dataset_name, video_paths in video_groups.items():
                 ds_items = []
-                for entry in video_entries:
-                    video_path = os.path.join(video_dir, entry)
-                    if not os.path.isfile(video_path):
-                        continue
-                    ext = get_file_ext(video_path)
-                    try:
-                        validate_video_ext(ext)
-                    except Exception:
-                        continue
+                for path in video_paths:
+                    item = self.Item(path)
 
-                    item = self.Item(video_path)
-                    ann_path = os.path.join(dirpath, "ann", f"{entry}.json")
-                    if file_exists(ann_path):
-                        if not meta_from_file:
-                            meta = self.generate_meta_from_annotation(ann_path, meta)
-                        if self.validate_ann_file(ann_path, meta):
-                            item.ann_data = ann_path
+                    # check both levels
+                    possible_ann_dirs = [Path(path).parent.parent, Path(path).parent]
 
-                    metadata_path = os.path.join(dirpath, "metadata", f"{entry}.meta.json")
-                    if file_exists(metadata_path):
-                        item.metadata = metadata_path
+                    for possible_dir in possible_ann_dirs:
+                        ann_path = possible_dir / "ann" / f"{item.name}.json"
+                        if not ann_path.exists():
+                            ann_path = possible_dir / f"{item.name}.json"
+                        if ann_path.exists():
+                            if not has_meta_file:
+                                meta = self.generate_meta_from_annotation(str(ann_path), meta)
+                            if self.validate_ann_file(str(ann_path), meta):
+                                item.ann_data = str(ann_path)
+
+                        item_meta = possible_dir / "metadata" / f"{item.name}.meta.json"
+                        if not item_meta.exists():
+                            item_meta = possible_dir / f"{item.name}.meta.json"
+                        if item_meta.exists():
+                            item.metadata = str(item_meta)
                     ds_items.append(item)
 
                 if len(ds_items) == 0:
@@ -250,15 +238,6 @@ class MultiViewVideoConverter(VideoConverter):
 
                 self._items.extend(ds_items)
                 ds_cnt += 1
-
-                rel_path = os.path.relpath(dirpath, input_data)
-                if rel_path in (".", os.curdir):
-                    dataset_name = os.path.basename(os.path.normpath(dirpath))
-                else:
-                    dataset_name = rel_path
-                dataset_name = (dataset_name or "").replace(os.sep, "/").strip("/")
-                if not dataset_name:
-                    dataset_name = os.path.basename(os.path.normpath(dirpath)) or "dataset"
 
                 self._append_to_project_structure(project, dataset_name, ds_items)
 
@@ -273,23 +252,24 @@ class MultiViewVideoConverter(VideoConverter):
             logger.debug(f"Failed to read folder-based multi-view structure: {repr(e)}")
             return False
 
-    # def _find_video_groups(self) -> Union[Dict[str, list], None]:
-    #     video_groups = {}
-    #     ann_exts = [".json"]
-    #     for root, _, files in os.walk(self._input_data):
-    #         for file in files:
-    #             if get_file_ext(file) in ann_exts:
-    #                 continue
-    #             if get_file_ext(file) in ALLOWED_VIDEO_EXTENSIONS:
-    #                 video_groups[os.path.join(root, file)] = root
-    #     return video_groups
+    def _find_video_groups(self, path) -> Dict[str, List[str]]:
+        video_groups = defaultdict(list)
+        for file_path in Path(path).rglob("*"):
+            if file_path.is_file() and has_valid_ext(str(file_path)):
+                video_groups[file_path.parent].append(str(file_path))
 
-    # video_groups = self._find_video_groups()
-    # unique_ds_paths = set(video_groups.values())
-    # unique_ds_names = set([os.path.basename(path) for path in unique_ds_paths])
+        sanitized = self._sanitize_dataset_names(video_groups)
+        return {sanitized[parent]: files for parent, files in video_groups.items()}
 
-    # if len(unique_ds_names) != len(unique_ds_paths):
-    #     unique_ds_names = set([os.path.basename(os.path.dirname(path)) for path in unique_ds_paths])
+    def _sanitize_dataset_names(self, video_groups: Dict[Path, list]) -> Dict[Path, str]:
+        name_counts = defaultdict(int)
+        sanitized = {}
+        for parent in video_groups:
+            base_name = parent.name or "root"
+            name_counts[base_name] += 1
+            count = name_counts[base_name]
+            sanitized[parent] = base_name if count == 1 else f"{base_name}_{count}"
+        return sanitized
 
     def validate_format(self) -> bool:
         if self.upload_as_links and self._supports_links:
@@ -326,7 +306,7 @@ class MultiViewVideoConverter(VideoConverter):
                     ann_dict[file] = full_path
                 else:
                     try:
-                        validate_video_ext(ext)
+                        validate_ext(ext)  # validate video extension
                         videos_list.append(full_path)
                     except Exception:
                         continue
