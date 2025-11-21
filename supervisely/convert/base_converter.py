@@ -49,6 +49,7 @@ class AvailableVideoConverters:
     SLY = "supervisely"
     MOT = "mot"
     DAVIS = "davis"
+    MULTI_VIEW = "multi_view"
 
 
 class AvailablePointcloudConverters:
