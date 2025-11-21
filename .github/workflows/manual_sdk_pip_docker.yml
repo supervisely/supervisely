@@ -26,10 +26,6 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - name: Wait for tag replication
-        uses: jakejarvis/wait-action@master
-        with:
-          time: "150s"
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
@@ -45,9 +41,10 @@ jobs:
         with:
           skip-existing: true
       - name: Wait after PyPI publish
-        uses: jakejarvis/wait-action@master
+        uses: databutton/wait-for-pypi-action@main
         with:
-          time: "300s"
+          package_name: supervisely
+          package_version: ${{ env.RELEASE_VERSION }}
 
   base-py-sdk:
     name: Build base-py-sdk
