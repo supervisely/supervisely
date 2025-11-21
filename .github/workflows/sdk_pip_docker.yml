@@ -25,8 +25,23 @@ jobs:
       - name: Write Tag to ENV variable
         run: echo "RELEASE_VERSION=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
       - name: Wait for tag replication
-        run: sleep 150s
-        shell: bash
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          REPO="${GITHUB_REPOSITORY}"
+          RETRIES=30
+          DELAY=5
+          for i in $(seq 1 $RETRIES); do
+            STATUS=$(curl -s "https://api.github.com/repos/$REPO/git/refs/tags/$TAG" | jq -r '.ref')
+            if [ "$STATUS" != "null" ] && [ "$STATUS" != "" ]; then
+              echo "Tag $TAG is available!"
+              exit 0
+            else
+              echo "Tag $TAG not found. Retrying in $DELAY seconds..."
+              sleep $DELAY
+            fi
+          done
+          echo "Timeout waiting for tag $TAG replication"
+          exit 1
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
@@ -37,15 +52,31 @@ jobs:
           pip install build
       - name: Build sdist / wheel
         run: python -m build
+      - name: Install twine
+        run: pip install twine
       - name: Publish package distributions to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          skip-existing: true
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: twine upload --skip-existing dist/*
       - name: Wait after PyPI publish
-        uses: databutton/wait-for-pypi-action@main
-        with:
-          package_name: supervisely
-          package_version: ${{ env.RELEASE_VERSION }}
+        run: |
+          VERSION="${{ inputs.tag_version }}"
+          PACKAGE="supervisely"
+          RETRIES=60
+          DELAY=5
+          for i in $(seq 1 $RETRIES); do
+            RESPONSE=$(curl -s "https://pypi.org/pypi/$PACKAGE/json" | jq -r ".releases[\"$VERSION\"]")
+            if [ "$RESPONSE" != "null" ]; then
+              echo "Found version $VERSION on PyPI!"
+              exit 0
+            else
+              echo "Version $VERSION not found. Retrying in $DELAY seconds..."
+              sleep $DELAY
+            fi
+          done
+          echo "Timeout waiting for version $VERSION on PyPI"
+          exit 1
 
   base-py-sdk:
     name: Build base-py-sdk
@@ -79,8 +110,7 @@ jobs:
             --local context=${{ github.workspace }} \
             --local dockerfile=${{ github.workspace }}/${{ env.DOCKERFILE_PATH }} \
             --opt build-arg:tag_ref_name=${{ env.RELEASE_VERSION }} \
-            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }},push=true \
-            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest,push=true \
+            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }},name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest,push=true \
             --export-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache,mode=max \
             --import-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache
       - name: Skip Notifification
@@ -117,8 +147,7 @@ jobs:
             --local context=${{ github.workspace }} \
             --local dockerfile=${{ github.workspace }}/${{ env.DOCKERFILE_PATH }} \
             --opt build-arg:tag_ref_name=${{ env.RELEASE_VERSION }} \
-            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }},push=true \
-            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest,push=true \
+            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }},name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest,push=true \
             --export-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache,mode=max \
             --import-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache
       - name: Skip Notifification
@@ -156,8 +185,7 @@ jobs:
             --local context=${{ github.workspace }} \
             --local dockerfile=${{ github.workspace }}/${{ env.DOCKERFILE_PATH }} \
             --opt build-arg:tag_ref_name=${{ env.RELEASE_VERSION }} \
-            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }},push=true \
-            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest,push=true \
+            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }},name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest,push=true \
             --export-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache,mode=max \
             --import-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache
       - name: Skip Notifification
@@ -195,8 +223,7 @@ jobs:
             --local context=${{ github.workspace }} \
             --local dockerfile=${{ github.workspace }}/${{ env.DOCKERFILE_PATH }} \
             --opt build-arg:tag_ref_name=${{ env.RELEASE_VERSION }} \
-            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }},push=true \
-            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest,push=true \
+            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }},name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest,push=true \
             --export-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache,mode=max \
             --import-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache
       - name: Skip Notifification
@@ -234,8 +261,7 @@ jobs:
             --local context=${{ github.workspace }} \
             --local dockerfile=${{ github.workspace }}/${{ env.DOCKERFILE_PATH }} \
             --opt build-arg:tag_ref_name=${{ env.RELEASE_VERSION }} \
-            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }},push=true \
-            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest,push=true \
+            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }},name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest,push=true \
             --export-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache,mode=max \
             --import-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache
       - name: Skip Notifification
@@ -273,8 +299,7 @@ jobs:
             --local context=${{ github.workspace }} \
             --local dockerfile=${{ github.workspace }}/${{ env.DOCKERFILE_PATH }} \
             --opt build-arg:tag_ref_name=${{ env.RELEASE_VERSION }} \
-            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }},push=true \
-            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest,push=true \
+            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }},name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest,push=true \
             --export-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache,mode=max \
             --import-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache
       - name: Skip Notifification
@@ -312,8 +337,7 @@ jobs:
             --local context=${{ github.workspace }} \
             --local dockerfile=${{ github.workspace }}/${{ env.DOCKERFILE_PATH }} \
             --opt build-arg:tag_ref_name=${{ env.RELEASE_VERSION }} \
-            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }},push=true \
-            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest,push=true \
+            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }},name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest,push=true \
             --export-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache,mode=max \
             --import-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache
       - name: Skip Notifification
@@ -351,8 +375,7 @@ jobs:
             --local context=${{ github.workspace }} \
             --local dockerfile=${{ github.workspace }}/${{ env.DOCKERFILE_PATH }} \
             --opt build-arg:tag_ref_name=${{ env.RELEASE_VERSION }} \
-            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }},push=true \
-            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest,push=true \
+            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }},name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest,push=true \
             --export-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache,mode=max \
             --import-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache
       - name: Skip Notifification
@@ -390,8 +413,7 @@ jobs:
             --local context=${{ github.workspace }} \
             --local dockerfile=${{ github.workspace }}/${{ env.DOCKERFILE_PATH }} \
             --opt build-arg:tag_ref_name=${{ env.RELEASE_VERSION }} \
-            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }},push=true \
-            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest,push=true \
+            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }},name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest,push=true \
             --export-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache,mode=max \
             --import-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache
       - name: Skip Notifification
