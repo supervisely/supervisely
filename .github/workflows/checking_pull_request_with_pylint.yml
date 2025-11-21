@@ -148,7 +148,6 @@ jobs:
         id: pylint
       
       - name: Install GitHub CLI
-        if: ${{ env.HAS_PYTHON_FILES == 'true' }}
         run: |
           (type -p wget >/dev/null || (sudo apt update && sudo apt-get install wget -y)) \
           && sudo mkdir -p -m 755 /etc/apt/keyrings \
