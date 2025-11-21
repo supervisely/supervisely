@@ -44,10 +44,23 @@ jobs:
           TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
         run: twine upload --skip-existing dist/*
       - name: Wait after PyPI publish
-        uses: databutton/wait-for-pypi-action@main
-        with:
-          package_name: supervisely
-          package_version: ${{ env.RELEASE_VERSION }}
+        run: |
+          VERSION="${{ inputs.tag_version }}"
+          PACKAGE="supervisely"
+          RETRIES=60
+          DELAY=5
+          for i in $(seq 1 $RETRIES); do
+            RESPONSE=$(curl -s "https://pypi.org/pypi/$PACKAGE/json" | jq -r ".releases[\"$VERSION\"]")
+            if [ "$RESPONSE" != "null" ]; then
+              echo "Found version $VERSION on PyPI!"
+              exit 0
+            else
+              echo "Version $VERSION not found. Retrying in $DELAY seconds..."
+              sleep $DELAY
+            fi
+          done
+          echo "Timeout waiting for version $VERSION on PyPI"
+          exit 1
 
   base-py-sdk:
     name: Build base-py-sdk
