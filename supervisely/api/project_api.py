@@ -52,6 +52,7 @@ from supervisely.io.json import dump_json_file, load_json_file
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_meta import ProjectMetaJsonFields as MetaJsonF
 from supervisely.project.project_settings import (
+    LabelingInterface,
     ProjectSettings,
     ProjectSettingsJsonFields,
 )
@@ -1993,8 +1994,11 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         )
 
     def set_multiview_settings(self, project_id: int) -> None:
-        """Sets the project settings for multiview images.
-        Images will be grouped by tag and have synchronized view and labeling.
+        """Sets the project settings for multiview mode.
+        Automatically detects project type and applies appropriate settings:
+
+        - For IMAGE projects: Images are grouped by tag with synchronized view and labeling.
+        - For VIDEO projects: Videos are grouped by datasets (each dataset = one group).
 
         :param project_id: Project ID to set multiview settings.
         :type project_id: int
@@ -2015,16 +2019,50 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             load_dotenv(os.path.expanduser("~/supervisely.env"))
             api = sly.Api.from_env()
 
-            api.project.set_multiview_settings(project_id=123)
-        """
+            # For images project - will enable grouping by tags
+            api.project.set_multiview_settings(image_project_id)
 
-        self._set_custom_grouping_settings(
-            id=project_id,
-            group_images=True,
-            tag_name=_MULTIVIEW_TAG_NAME,
-            sync=False,
-            label_group_tag_name=_LABEL_GROUP_TAG_NAME,
+            # For videos project - will enable grouping by datasets
+            api.project.set_multiview_settings(video_project_id)
+        """
+        project_info = self.get_info_by_id(project_id)
+        if project_info.type == ProjectType.IMAGES.value:
+            self._set_custom_grouping_settings(
+                id=project_id,
+                group_images=True,
+                tag_name=_MULTIVIEW_TAG_NAME,
+                sync=False,
+                label_group_tag_name=_LABEL_GROUP_TAG_NAME,
+            )
+        elif project_info.type == ProjectType.VIDEOS.value:
+            self._set_custom_grouping_settings_video(project_id, sync=True)
+        else:
+            raise ValueError("Multiview settings can only be set for image or video projects")
+
+    def _set_custom_grouping_settings_video(self, project_id: int, sync: bool = True) -> None:
+        """Sets the project settings for multiview videos (private method).
+        For video projects, videos are grouped by datasets (not by tags).
+        Each dataset represents a group of videos that will be displayed together in multiview mode.
+
+        :param project_id: Project ID to set video multiview settings.
+        :type project_id: int
+        :param sync: If True, enables synchronized playback across video views.
+        :type sync: bool
+        :return: None
+        :rtype: :class:`NoneType`
+        """
+        meta = ProjectMeta.from_json(self.get_meta(project_id, with_settings=True))
+
+        new_settings = ProjectSettings(
+            multiview_enabled=True,
+            multiview_tag_name=None,  # Not used for videos
+            multiview_tag_id=None,  # Not used for videos
+            multiview_is_synced=sync,
+            labeling_interface=LabelingInterface.MULTIVIEW,
         )
+
+        meta = meta.clone(project_settings=new_settings)
+        self.update_meta(id=project_id, meta=meta)
 
     def remove_permanently(
         self, ids: Union[int, List], batch_size: int = 50, progress_cb=None
@@ -2606,7 +2644,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             )
             dst_project_id = dst_project_info.id
 
-        datasets = self._api.dataset.get_list(src_project_id, recursive=True, include_custom_data=True)
+        datasets = self._api.dataset.get_list(
+            src_project_id, recursive=True, include_custom_data=True
+        )
         src_to_dst_ids = {}
 
         for src_dataset_info in datasets:

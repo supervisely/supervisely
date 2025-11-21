@@ -40,10 +40,12 @@ class VideoConverter(BaseConverter):
             shape=None,
             custom_data=None,
             frame_count=None,
+            metadata=None,
         ):
             self._path = item_path
             self._name: str = None
             self._ann_data = ann_data
+            self._metadata = metadata
             self._type = "video"
             if shape is None:
                 vcap = cv2.VideoCapture(item_path)
@@ -83,6 +85,14 @@ class VideoConverter(BaseConverter):
         def name(self, name: str):
             self._name = name
 
+        @property
+        def metadata(self) -> Optional[str]:
+            return self._metadata
+
+        @metadata.setter
+        def metadata(self, metadata: Optional[str]):
+            self._metadata = metadata
+
         def create_empty_annotation(self) -> VideoAnnotation:
             return VideoAnnotation(self._shape, self._frame_count)
 
@@ -120,9 +130,7 @@ class VideoConverter(BaseConverter):
         log_progress=True,
     ):
         """Upload converted data to Supervisely"""
-
         meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)
-
         videos_in_dataset = api.video.get_list(dataset_id, force_metadata_for_links=False)
         existing_names = {video_info.name for video_info in videos_in_dataset}
 
@@ -156,6 +164,7 @@ class VideoConverter(BaseConverter):
         for batch in batched(self._items, batch_size=batch_size):
             item_names = []
             item_paths = []
+            item_metas = []
             anns = []
             figures_cnt = 0
             for item in batch:
@@ -164,6 +173,15 @@ class VideoConverter(BaseConverter):
                 )
                 item_paths.append(item.path)
                 item_names.append(item.name)
+
+                if isinstance(item.metadata, str):  # path to file
+                    from supervisely.io.json import load_json_file
+
+                    item_metas.append(load_json_file(item.metadata))
+                elif isinstance(item.metadata, dict):
+                    item_metas.append(item.metadata)
+                else:
+                    item_metas.append({})
 
                 ann = None
                 if not self.upload_as_links or self.supports_links:
@@ -177,6 +195,7 @@ class VideoConverter(BaseConverter):
                     dataset_id,
                     item_paths,
                     item_names,
+                    metas=item_metas,
                     skip_download=True,
                     progress_cb=progress_cb if log_progress else None,
                     force_metadata_for_links=False,
@@ -188,6 +207,7 @@ class VideoConverter(BaseConverter):
                     item_paths,
                     progress_cb=progress_cb if log_progress else None,
                     item_progress=(size_progress_cb if log_progress and has_large_files else None),
+                    metas=item_metas,
                 )
             vid_ids = [vid_info.id for vid_info in vid_infos]
 
