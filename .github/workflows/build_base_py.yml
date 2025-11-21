@@ -12,8 +12,9 @@ on:
 jobs:
   docker:
     runs-on: gha-runner-supervisely
+
     steps:
-      - name: Checkout code
+      - name: Checkout Repository
         uses: actions/checkout@v6
 
       - name: Build and Push Docker Image

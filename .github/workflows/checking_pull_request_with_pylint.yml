@@ -9,15 +9,15 @@ jobs:
   import-SDK-check:
     runs-on: gha-runner-supervisely
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v6
         with:
           repository: ${{ github.repository }}
       
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
-          python-version: 3.8
+          python-version: "3.12"
       
       - name: Import
         run: |
@@ -55,8 +55,8 @@ jobs:
     steps:
 
       
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v6
         with:
           repository: ${{ github.repository }}
           token: ${{ secrets.PYLINT_TOKEN }}
@@ -83,9 +83,9 @@ jobs:
           done < changed_files.txt
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
-          python-version: 3.8
+          python-version: "3.12"
           
       - name: Install dependencies
         run: |
