@@ -20,7 +20,6 @@ jobs:
             --local context=${{ github.workspace }} \
             --local dockerfile=${{ github.workspace }}/base_images/sdk_nvidia_pyindex \
             --opt build-arg:tag_ref_name=${{ env.RELEASE_VERSION }} \
-            --output type=image,name=docker.io/supervisely/sdk-nvidia-pyindex:${{ env.RELEASE_VERSION }},push=true \
-            --output type=image,name=docker.io/supervisely/sdk-nvidia-pyindex:latest,push=true \
+            --output type=image,name=docker.io/supervisely/sdk-nvidia-pyindex:${{ env.RELEASE_VERSION }},name=docker.io/supervisely/sdk-nvidia-pyindex:latest,push=true \
             --export-cache type=registry,ref=docker.io/supervisely/sdk-nvidia-pyindex:buildcache,mode=max \
             --import-cache type=registry,ref=docker.io/supervisely/sdk-nvidia-pyindex:buildcache
