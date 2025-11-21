@@ -36,10 +36,13 @@ jobs:
           pip install build
       - name: Build sdist / wheel
         run: python -m build
+      - name: Install twine
+        run: pip install twine
       - name: Publish package distributions to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          skip-existing: true
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: twine upload --skip-existing dist/*
       - name: Wait after PyPI publish
         uses: databutton/wait-for-pypi-action@main
         with:
