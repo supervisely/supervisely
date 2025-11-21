@@ -9,11 +9,17 @@ jobs:
   import-SDK-check:
     runs-on: gha-runner-supervisely
     steps:
+            
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgl1 libmagic1
+
       - name: Checkout Repository
         uses: actions/checkout@v6
         with:
           repository: ${{ github.repository }}
-      
+
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
@@ -54,7 +60,11 @@ jobs:
       GH_TOKEN: ${{ github.token }}
     steps:
 
-      
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgl1 libmagic1
+
       - name: Checkout Repository
         uses: actions/checkout@v6
         with:
