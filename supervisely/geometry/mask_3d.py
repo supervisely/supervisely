@@ -585,7 +585,7 @@ class Mask3D(Geometry):
             # 'H4sIAGWoWmQC/zPWMdYxrmFkZAAiIIAz4AAAE56ciyEAAAA='
         """
         shape_str = ",".join(str(dim) for dim in data.shape)
-        data_str = data.tostring().decode("utf-8")
+        data_str = data.tobytes().decode("utf-8", errors="ignore")
         combined_str = f"{shape_str}|{data_str}"
         compressed_string = gzip.compress(combined_str.encode("utf-8"))
         encoded_string = base64.b64encode(compressed_string).decode("utf-8")
