@@ -76,7 +76,7 @@ class BBoxTracking(BaseTracking):
                 min(frame_index for (_, _, frame_index) in items),
                 max(frame_index for (_, _, frame_index) in items),
             ]
-            pos_inc = inference_request.progress.current - video_interface.global_pos
+            pos_inc = len(items)
 
             video_interface._notify(
                 pos_increment=pos_inc,
@@ -159,7 +159,7 @@ class BBoxTracking(BaseTracking):
             api.logger.info(
                 "Finished tracking.", extra={"inference_request_uuid": inference_request.uuid}
             )
-            video_interface._notify(True, task="Finished tracking")
+        video_interface._notify(True, task="Finished tracking")
 
     def _track_api(self, api: Api, context: dict, inference_request: InferenceRequest):
         track_t = time.monotonic()
