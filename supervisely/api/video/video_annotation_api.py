@@ -190,7 +190,8 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> None:
         """
-        Upload VideoAnnotations for multi-view video projects.
+        Upload VideoAnnotations for multi-view video project.
+        All provided video ids must belong to the same project and dataset.
 
         Objects with the same key are created only once and shared between videos.
         In this mode annotation objects are created without binding to a specific entityId.
@@ -208,56 +209,18 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         """
         if len(video_ids) != len(ann_paths):
             raise RuntimeError(
-                'Can not match "video_ids" and "ann_paths" lists, len(video_ids) != len(ann_paths)'
+                f'Can not match "video_ids" and "ann_paths" lists, len(video_ids) != len(ann_paths): {len(video_ids)} != {len(ann_paths)}'
             )
         if len(video_ids) == 0:
             return
 
-        first_info = self._api.video.get_info_by_id(video_ids[0])
-        project_id = first_info.project_id
-        dataset_id = first_info.dataset_id
-        for v_id in video_ids[1:]:
-            info = self._api.video.get_info_by_id(v_id)
-            if info.project_id != project_id or info.dataset_id != dataset_id:
-                raise RuntimeError(
-                    "All videos must belong to the same project and dataset."
-                )
-
-        key_id_map = KeyIdMap()
-        for video_id, ann_path in zip(video_ids, ann_paths):
+        anns = []
+        for ann_path in ann_paths:
             ann_json = load_json_file(ann_path)
             ann = VideoAnnotation.from_json(ann_json, project_meta)
-            tag_api = self._api.video.tag
-            object_api = self._api.video.object
-            figure_api = self._api.video.figure
-            tag_api.append_to_entity(
-                video_id, project_id, ann.tags, key_id_map=key_id_map
-            )
-            new_objects = []
-            for obj in ann.objects:
-                if key_id_map.get_object_id(obj.key()) is None:
-                    new_objects.append(obj)
+            anns.append(ann)
 
-            if len(new_objects) > 0:
-                object_api._append_bulk(
-                    tag_api=tag_api,
-                    entity_id=video_id,
-                    project_id=project_id,
-                    dataset_id=dataset_id,
-                    objects=new_objects,
-                    key_id_map=key_id_map,
-                    is_pointcloud=False,
-                    attach_entity_id=False,
-                )
-
-            figure_api.append_bulk(video_id, ann.figures, key_id_map)
-            if progress_cb is not None:
-                if hasattr(progress_cb, "update") and callable(
-                    getattr(progress_cb, "update")
-                ):
-                    progress_cb.update(1)
-                else:
-                    progress_cb(1)
+        self.upload_anns_multiview(video_ids, anns, progress_cb)
 
     def upload_anns_multiview(
         self,
@@ -266,7 +229,8 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> None:
         """
-        Upload already constructed VideoAnnotation objects for multi-view video projects.
+        Upload already constructed VideoAnnotation objects for multi-view video project.
+        All provided video ids must belong to the same project and dataset.
 
         Objects with the same key are created only once and shared between videos.
         In this mode annotation objects are created without binding to a specific entityId.
@@ -287,16 +251,11 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         if len(video_ids) == 0:
             return
 
-        first_info = self._api.video.get_info_by_id(video_ids[0])
-        project_id = first_info.project_id
-        dataset_id = first_info.dataset_id
-
-        for v_id in video_ids[1:]:
-            info = self._api.video.get_info_by_id(v_id)
-            if info.project_id != project_id or info.dataset_id != dataset_id:
-                raise RuntimeError(
-                    "All videos must belong to the same project and dataset."
-                )
+        video_infos = self._api.video.get_info_by_id_batch(video_ids)
+        project_id = video_infos[0].project_id
+        dataset_id = video_infos[0].dataset_id
+        if len(set(video_info.project_id for video_info in video_infos)) > 1:
+            raise RuntimeError("All videos must belong to the same project and dataset.")
 
         tag_api = self._api.video.tag
         object_api = self._api.video.object
