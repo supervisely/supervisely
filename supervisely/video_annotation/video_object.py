@@ -18,6 +18,7 @@ from supervisely.geometry.constants import (
     UPDATED_AT,
 )
 from supervisely.project.project_meta import ProjectMeta
+from supervisely.project.project_settings import LabelingInterface
 from supervisely.video_annotation.constants import ID, KEY, OBJECTS_MAP
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.video_annotation.video_tag import VideoTag
@@ -362,10 +363,38 @@ class VideoObject(KeyObject):
                 f"was not found in the given project meta."
             )
 
-        key = uuid.UUID(data[KEY]) if KEY in data else uuid.uuid4()
+        is_multiview = False
+        try:
+            settings = project_meta.project_settings
+            if settings is not None:
+                if getattr(settings, "multiview_enabled", False):
+                    is_multiview = True
+                elif getattr(settings, "labeling_interface", None) == LabelingInterface.MULTIVIEW:
+                    is_multiview = True
+        except AttributeError:
+            is_multiview = False
 
-        if key_id_map is not None:
-            key_id_map.add_object(key, data.get(ID, None))
+        raw_id = data.get(ID, None)
+
+        if not is_multiview:
+            key = uuid.UUID(data[KEY]) if KEY in data else uuid.uuid4()
+            if key_id_map is not None:
+                key_id_map.add_object(key, raw_id)
+        else:
+            if KEY in data:
+                key = uuid.UUID(data[KEY])
+            elif key_id_map is not None and isinstance(raw_id, int):
+                existing_key = key_id_map.get_object_key(raw_id)
+                if isinstance(existing_key, uuid.UUID):
+                    key = existing_key
+                else:
+                    key = uuid.uuid4()
+            else:
+                key = uuid.uuid4()
+
+            if key_id_map is not None and isinstance(raw_id, int):
+                if key_id_map.get_object_id(key) is None:
+                    key_id_map.add_object(key, raw_id)
 
         class_id = data.get(CLASS_ID, None)
         labeler_login = data.get(LABELER_LOGIN, None)
