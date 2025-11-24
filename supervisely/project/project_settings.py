@@ -10,6 +10,7 @@ from supervisely._utils import take_with_default
 from supervisely.annotation.tag_meta import TagValueType
 from supervisely.collection.str_enum import StrEnum
 from supervisely.io.json import JsonSerializable
+from supervisely.project.project_type import ProjectType
 from supervisely.sly_logger import logger
 
 
@@ -184,27 +185,40 @@ class ProjectSettings(JsonSerializable):
 
     def validate(self, meta):
         if meta.project_settings.multiview_enabled is True:
-            mtag_name = meta.project_settings.multiview_tag_name
-            if mtag_name is None:
-                if meta.project_settings.multiview_tag_id is None:
-                    return  # (tag_name, tag_id) == (None, None) is OK
-                mtag_name = meta.get_tag_name_by_id(meta.project_settings.multiview_tag_id)
+            # Images multiview
+            if meta.project_type == ProjectType.IMAGES:
+                mtag_name = meta.project_settings.multiview_tag_name
                 if mtag_name is None:
+                    if meta.project_settings.multiview_tag_id is None:
+                        return  # (tag_name, tag_id) == (None, None) is OK
+                    mtag_name = meta.get_tag_name_by_id(meta.project_settings.multiview_tag_id)
+                    if mtag_name is None:
+                        raise RuntimeError(
+                            f"The multi-view tag with ID={meta.project_settings.multiview_tag_id} was not found in the project meta. "
+                            "Please directly add the tag meta that will be used for image grouping for multi-view labeling interface."
+                        )
+
+                multi_tag = meta.get_tag_meta(mtag_name)
+                if multi_tag is None:
                     raise RuntimeError(
-                        f"The multi-view tag with ID={meta.project_settings.multiview_tag_id} was not found in the project meta. "
-                        "Please directly add the tag meta that will be used for image grouping for multi-view labeling interface."
+                        f"The multi-view tag '{mtag_name}' was not found in the project meta. Please directly add the tag meta "
+                        "that will be used for image grouping for multi-view labeling interface."
+                    )
+                elif multi_tag.value_type != TagValueType.ANY_STRING:
+                    raise RuntimeError(
+                        f"The multi-view tag value type should be '{TagValueType.ANY_STRING}'. The provided type: '{multi_tag.value_type}'."
                     )
 
-            multi_tag = meta.get_tag_meta(mtag_name)
-            if multi_tag is None:
-                raise RuntimeError(
-                    f"The multi-view tag '{mtag_name}' was not found in the project meta. Please directly add the tag meta "
-                    "that will be used for image grouping for multi-view labeling interface."
-                )
-            elif multi_tag.value_type != TagValueType.ANY_STRING:
-                raise RuntimeError(
-                    f"The multi-view tag value type should be '{TagValueType.ANY_STRING}'. The provided type: '{multi_tag.value_type}'."
-                )
+            # Video multiview
+            elif meta.project_type == ProjectType.VIDEOS:
+                if (
+                    meta.project_settings.multiview_tag_name is not None
+                    or meta.project_settings.multiview_tag_id is not None
+                ):
+                    raise RuntimeError(
+                        "For video projects, multiview_tag_name and multiview_tag_id should be None. "
+                        "Videos are grouped by datasets, not by tags."
+                    )
 
         if meta.project_settings.labeling_interface is not None:
             if meta.project_settings.labeling_interface not in LabelingInterface.values():

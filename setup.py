@@ -101,7 +101,7 @@ INSTALL_REQUIRES = [
     "fastapi>=0.103.1, <=0.119.1",
     "websockets>=10.3, <=13.1",
     "jinja2>=3.0.3, <4.0.0",
-    "psutil>=5.9.0, <6.0.0",
+    "psutil>=5.9.0, <=7.2.0",
     "jsonpatch>=1.32, <2.0",
     "MarkupSafe>=2.1.1, <3.0.0",
     "arel>=0.2.0, <1.0.0",
