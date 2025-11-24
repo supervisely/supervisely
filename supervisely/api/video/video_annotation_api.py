@@ -251,11 +251,13 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         if len(video_ids) == 0:
             return
 
-        video_infos = self._api.video.get_info_by_id_batch(video_ids)
+        try:
+            video_infos = self._api.video.get_info_by_id_batch(video_ids)
+        except RuntimeError as e:
+            raise RuntimeError("All videos must belong to the same project and dataset.") from e
+
         project_id = video_infos[0].project_id
         dataset_id = video_infos[0].dataset_id
-        if len(set(video_info.project_id for video_info in video_infos)) > 1:
-            raise RuntimeError("All videos must belong to the same project and dataset.")
 
         tag_api = self._api.video.tag
         object_api = self._api.video.object
@@ -263,9 +265,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
 
         key_id_map = KeyIdMap()
         for video_id, ann in zip(video_ids, anns):
-            tag_api.append_to_entity(
-                video_id, project_id, ann.tags, key_id_map=key_id_map
-            )
+            tag_api.append_to_entity(video_id, project_id, ann.tags, key_id_map=key_id_map)
             new_objects = []
             for obj in ann.objects:
                 if key_id_map.get_object_id(obj.key()) is None:
@@ -284,9 +284,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
 
             figure_api.append_bulk(video_id, ann.figures, key_id_map)
             if progress_cb is not None and len(ann.figures) > 0:
-                if hasattr(progress_cb, "update") and callable(
-                    getattr(progress_cb, "update")
-                ):
+                if hasattr(progress_cb, "update") and callable(getattr(progress_cb, "update")):
                     progress_cb.update(len(ann.figures))
                 else:
                     progress_cb(len(ann.figures))
@@ -465,10 +463,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
                     progress_cb(len(batch))
                 return response.json()
 
-        tasks = [
-            fetch_with_semaphore(batch)
-            for batch in batched(video_ids, batch_size=batch_size)
-        ]
+        tasks = [fetch_with_semaphore(batch) for batch in batched(video_ids, batch_size=batch_size)]
         responses = await asyncio.gather(*tasks)
         json_response = [item for response in responses for item in response]
         return json_response
