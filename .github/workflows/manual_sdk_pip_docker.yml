@@ -15,58 +15,66 @@ env:
 jobs:
   publish-pypi:
     name: Publish PyPI
-    runs-on: ubuntu-latest
+    runs-on: gha-runner-supervisely
     environment:
       name: pypi
       url: https://pypi.org/p/supervisely
     permissions:
       id-token: write
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - name: Wait for tag replication
-        uses: jakejarvis/wait-action@master
-        with:
-          time: "150s"
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
-          python-version: "3.8"
+          python-version: "3.12"
       - name: Install build deps
         run: |
           python -m pip install --upgrade pip
           pip install build
       - name: Build sdist / wheel
         run: python -m build
+      - name: Install twine
+        run: pip install twine
       - name: Publish package distributions to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          skip-existing: true
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: twine upload --skip-existing dist/*
       - name: Wait after PyPI publish
-        uses: jakejarvis/wait-action@master
-        with:
-          time: "300s"
+        run: |
+          VERSION="${{ inputs.tag_version }}"
+          PACKAGE="supervisely"
+          RETRIES=60
+          DELAY=5
+          for i in $(seq 1 $RETRIES); do
+            RESPONSE=$(curl -s "https://pypi.org/pypi/$PACKAGE/json" | jq -r ".releases[\"$VERSION\"]")
+            if [ "$RESPONSE" != "null" ]; then
+              echo "Found version $VERSION on PyPI!"
+              exit 0
+            else
+              echo "Version $VERSION not found. Retrying in $DELAY seconds..."
+              sleep $DELAY
+            fi
+          done
+          echo "Timeout waiting for version $VERSION on PyPI"
+          exit 1
 
   base-py-sdk:
     name: Build base-py-sdk
     needs: publish-pypi
-    runs-on: ubuntu-latest
+    runs-on: gha-runner-supervisely
     env:
       RELEASE_VERSION: ${{ inputs.tag_version }}
       IMAGE_NAME: base-py-sdk
-      DOCKERFILE_PATH: base_images/py_sdk/Dockerfile
+      DOCKERFILE_PATH: base_images/py_sdk
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
       - name: Check tag exists
         id: tag_check
         run: |
@@ -75,41 +83,35 @@ jobs:
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
-      - name: Build & push ${{ env.IMAGE_NAME }}
+
+      - name: Build and Push ${{ env.IMAGE_NAME }}
         if: steps.tag_check.outputs.exists == 'false'
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ${{ env.DOCKERFILE_PATH }}
-          push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }}
-            ${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest
-          build-args: |
-            tag_ref_name=${{ env.RELEASE_VERSION }}
-      - name: Skip notice
+        run: |
+          buildctl build \
+            --frontend dockerfile.v0 \
+            --local context=${{ github.workspace }} \
+            --local dockerfile=${{ github.workspace }}/${{ env.DOCKERFILE_PATH }} \
+            --opt build-arg:tag_ref_name=${{ env.RELEASE_VERSION }} \
+            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }},name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest,push=true \
+            --export-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache,mode=max \
+            --import-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache
+      - name: Skip Notifification
         if: steps.tag_check.outputs.exists == 'true'
         run: echo "Image $IMAGE_NAME:$RELEASE_VERSION already exists - skipping build."
 
   collaboration:
     name: Build collaboration
     needs: base-py-sdk
-    runs-on: ubuntu-latest
+    runs-on: gha-runner-supervisely
     env:
       RELEASE_VERSION: ${{ inputs.tag_version }}
       IMAGE_NAME: collaboration
-      DOCKERFILE_PATH: docker_images/collaboration/Dockerfile
+      DOCKERFILE_PATH: docker_images/collaboration
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
       - name: Check tag exists
         id: tag_check
         run: |
@@ -118,41 +120,34 @@ jobs:
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
-      - name: Build & push ${{ env.IMAGE_NAME }}
-        if: steps.tag_check.outputs.exists == 'false'
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ${{ env.DOCKERFILE_PATH }}
-          push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }}
-            ${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest
-          build-args: |
-            tag_ref_name=${{ env.RELEASE_VERSION }}
-      - name: Skip notice
+
+      - name: Build and Push ${{ env.IMAGE_NAME }}
+        run: |
+          buildctl build \
+            --frontend dockerfile.v0 \
+            --local context=${{ github.workspace }} \
+            --local dockerfile=${{ github.workspace }}/${{ env.DOCKERFILE_PATH }} \
+            --opt build-arg:tag_ref_name=${{ env.RELEASE_VERSION }} \
+            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }},name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest,push=true \
+            --export-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache,mode=max \
+            --import-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache
+      - name: Skip Notifification
         if: steps.tag_check.outputs.exists == 'true'
         run: echo "Image $IMAGE_NAME:$RELEASE_VERSION already exists - skipping build."
 
   data-operations:
     name: Build data-operations
     needs: base-py-sdk
-    runs-on: ubuntu-latest
+    runs-on: gha-runner-supervisely
     env:
       RELEASE_VERSION: ${{ inputs.tag_version }}
       IMAGE_NAME: data-operations
-      DOCKERFILE_PATH: docker_images/data_operations/Dockerfile
+      DOCKERFILE_PATH: docker_images/data_operations
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
       - name: Check tag exists
         id: tag_check
         run: |
@@ -161,41 +156,34 @@ jobs:
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
-      - name: Build & push ${{ env.IMAGE_NAME }}
-        if: steps.tag_check.outputs.exists == 'false'
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ${{ env.DOCKERFILE_PATH }}
-          push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }}
-            ${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest
-          build-args: |
-            tag_ref_name=${{ env.RELEASE_VERSION }}
-      - name: Skip notice
+
+      - name: Build and Push ${{ env.IMAGE_NAME }}
+        run: |
+          buildctl build \
+            --frontend dockerfile.v0 \
+            --local context=${{ github.workspace }} \
+            --local dockerfile=${{ github.workspace }}/${{ env.DOCKERFILE_PATH }} \
+            --opt build-arg:tag_ref_name=${{ env.RELEASE_VERSION }} \
+            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }},name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest,push=true \
+            --export-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache,mode=max \
+            --import-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache
+      - name: Skip Notifification
         if: steps.tag_check.outputs.exists == 'true'
         run: echo "Image $IMAGE_NAME:$RELEASE_VERSION already exists - skipping build."
 
   development:
     name: Build development
     needs: base-py-sdk
-    runs-on: ubuntu-latest
+    runs-on: gha-runner-supervisely
     env:
       RELEASE_VERSION: ${{ inputs.tag_version }}
       IMAGE_NAME: development
-      DOCKERFILE_PATH: docker_images/development/Dockerfile
+      DOCKERFILE_PATH: docker_images/development
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
       - name: Check tag exists
         id: tag_check
         run: |
@@ -204,41 +192,34 @@ jobs:
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
-      - name: Build & push ${{ env.IMAGE_NAME }}
-        if: steps.tag_check.outputs.exists == 'false'
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ${{ env.DOCKERFILE_PATH }}
-          push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }}
-            ${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest
-          build-args: |
-            tag_ref_name=${{ env.RELEASE_VERSION }}
-      - name: Skip notice
+
+      - name: Build and Push ${{ env.IMAGE_NAME }}
+        run: |
+          buildctl build \
+            --frontend dockerfile.v0 \
+            --local context=${{ github.workspace }} \
+            --local dockerfile=${{ github.workspace }}/${{ env.DOCKERFILE_PATH }} \
+            --opt build-arg:tag_ref_name=${{ env.RELEASE_VERSION }} \
+            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }},name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest,push=true \
+            --export-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache,mode=max \
+            --import-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache
+      - name: Skip Notifification
         if: steps.tag_check.outputs.exists == 'true'
         run: echo "Image $IMAGE_NAME:$RELEASE_VERSION already exists - skipping build."
 
   import-export:
     name: Build import-export
     needs: base-py-sdk
-    runs-on: ubuntu-latest
+    runs-on: gha-runner-supervisely
     env:
       RELEASE_VERSION: ${{ inputs.tag_version }}
       IMAGE_NAME: import-export
-      DOCKERFILE_PATH: docker_images/import_export/Dockerfile
+      DOCKERFILE_PATH: docker_images/import_export
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
       - name: Check tag exists
         id: tag_check
         run: |
@@ -247,41 +228,34 @@ jobs:
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
-      - name: Build & push ${{ env.IMAGE_NAME }}
-        if: steps.tag_check.outputs.exists == 'false'
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ${{ env.DOCKERFILE_PATH }}
-          push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }}
-            ${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest
-          build-args: |
-            tag_ref_name=${{ env.RELEASE_VERSION }}
-      - name: Skip notice
+
+      - name: Build and Push ${{ env.IMAGE_NAME }}
+        run: |
+          buildctl build \
+            --frontend dockerfile.v0 \
+            --local context=${{ github.workspace }} \
+            --local dockerfile=${{ github.workspace }}/${{ env.DOCKERFILE_PATH }} \
+            --opt build-arg:tag_ref_name=${{ env.RELEASE_VERSION }} \
+            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }},name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest,push=true \
+            --export-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache,mode=max \
+            --import-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache
+      - name: Skip Notifification
         if: steps.tag_check.outputs.exists == 'true'
         run: echo "Image $IMAGE_NAME:$RELEASE_VERSION already exists - skipping build."
 
   labeling:
     name: Build labeling
     needs: base-py-sdk
-    runs-on: ubuntu-latest
+    runs-on: gha-runner-supervisely
     env:
       RELEASE_VERSION: ${{ inputs.tag_version }}
       IMAGE_NAME: labeling
-      DOCKERFILE_PATH: docker_images/labeling/Dockerfile
+      DOCKERFILE_PATH: docker_images/labeling
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
       - name: Check tag exists
         id: tag_check
         run: |
@@ -290,41 +264,34 @@ jobs:
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
-      - name: Build & push ${{ env.IMAGE_NAME }}
-        if: steps.tag_check.outputs.exists == 'false'
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ${{ env.DOCKERFILE_PATH }}
-          push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }}
-            ${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest
-          build-args: |
-            tag_ref_name=${{ env.RELEASE_VERSION }}
-      - name: Skip notice
+
+      - name: Build and Push ${{ env.IMAGE_NAME }}
+        run: |
+          buildctl build \
+            --frontend dockerfile.v0 \
+            --local context=${{ github.workspace }} \
+            --local dockerfile=${{ github.workspace }}/${{ env.DOCKERFILE_PATH }} \
+            --opt build-arg:tag_ref_name=${{ env.RELEASE_VERSION }} \
+            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }},name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest,push=true \
+            --export-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache,mode=max \
+            --import-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache
+      - name: Skip Notifification
         if: steps.tag_check.outputs.exists == 'true'
         run: echo "Image $IMAGE_NAME:$RELEASE_VERSION already exists - skipping build."
 
   synthetic:
     name: Build synthetic
     needs: base-py-sdk
-    runs-on: ubuntu-latest
+    runs-on: gha-runner-supervisely
     env:
       RELEASE_VERSION: ${{ inputs.tag_version }}
       IMAGE_NAME: synthetic
-      DOCKERFILE_PATH: docker_images/synthetic/Dockerfile
+      DOCKERFILE_PATH: docker_images/synthetic
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
       - name: Check tag exists
         id: tag_check
         run: |
@@ -333,41 +300,34 @@ jobs:
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
-      - name: Build & push ${{ env.IMAGE_NAME }}
-        if: steps.tag_check.outputs.exists == 'false'
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ${{ env.DOCKERFILE_PATH }}
-          push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }}
-            ${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest
-          build-args: |
-            tag_ref_name=${{ env.RELEASE_VERSION }}
-      - name: Skip notice
+
+      - name: Build and Push ${{ env.IMAGE_NAME }}
+        run: |
+          buildctl build \
+            --frontend dockerfile.v0 \
+            --local context=${{ github.workspace }} \
+            --local dockerfile=${{ github.workspace }}/${{ env.DOCKERFILE_PATH }} \
+            --opt build-arg:tag_ref_name=${{ env.RELEASE_VERSION }} \
+            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }},name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest,push=true \
+            --export-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache,mode=max \
+            --import-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache
+      - name: Skip Notifification
         if: steps.tag_check.outputs.exists == 'true'
         run: echo "Image $IMAGE_NAME:$RELEASE_VERSION already exists - skipping build."
 
   system:
     name: Build system
     needs: base-py-sdk
-    runs-on: ubuntu-latest
+    runs-on: gha-runner-supervisely
     env:
       RELEASE_VERSION: ${{ inputs.tag_version }}
       IMAGE_NAME: system
-      DOCKERFILE_PATH: docker_images/system/Dockerfile
+      DOCKERFILE_PATH: docker_images/system
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
       - name: Check tag exists
         id: tag_check
         run: |
@@ -376,41 +336,34 @@ jobs:
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
-      - name: Build & push ${{ env.IMAGE_NAME }}
-        if: steps.tag_check.outputs.exists == 'false'
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ${{ env.DOCKERFILE_PATH }}
-          push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }}
-            ${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest
-          build-args: |
-            tag_ref_name=${{ env.RELEASE_VERSION }}
-      - name: Skip notice
+
+      - name: Build and Push ${{ env.IMAGE_NAME }}
+        run: |
+          buildctl build \
+            --frontend dockerfile.v0 \
+            --local context=${{ github.workspace }} \
+            --local dockerfile=${{ github.workspace }}/${{ env.DOCKERFILE_PATH }} \
+            --opt build-arg:tag_ref_name=${{ env.RELEASE_VERSION }} \
+            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }},name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest,push=true \
+            --export-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache,mode=max \
+            --import-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache
+      - name: Skip Notifification
         if: steps.tag_check.outputs.exists == 'true'
         run: echo "Image $IMAGE_NAME:$RELEASE_VERSION already exists - skipping build."
 
   visualization-stats:
     name: Build visualization-stats
     needs: base-py-sdk
-    runs-on: ubuntu-latest
+    runs-on: gha-runner-supervisely
     env:
       RELEASE_VERSION: ${{ inputs.tag_version }}
       IMAGE_NAME: visualization-stats
-      DOCKERFILE_PATH: docker_images/visualization_stats/Dockerfile
+      DOCKERFILE_PATH: docker_images/visualization_stats
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
       - name: Check tag exists
         id: tag_check
         run: |
@@ -419,18 +372,17 @@ jobs:
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
-      - name: Build & push ${{ env.IMAGE_NAME }}
-        if: steps.tag_check.outputs.exists == 'false'
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ${{ env.DOCKERFILE_PATH }}
-          push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }}
-            ${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest
-          build-args: |
-            tag_ref_name=${{ env.RELEASE_VERSION }}
-      - name: Skip notice
+
+      - name: Build and Push ${{ env.IMAGE_NAME }}
+        run: |
+          buildctl build \
+            --frontend dockerfile.v0 \
+            --local context=${{ github.workspace }} \
+            --local dockerfile=${{ github.workspace }}/${{ env.DOCKERFILE_PATH }} \
+            --opt build-arg:tag_ref_name=${{ env.RELEASE_VERSION }} \
+            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }},name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest,push=true \
+            --export-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache,mode=max \
+            --import-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache
+      - name: Skip Notifification
         if: steps.tag_check.outputs.exists == 'true'
         run: echo "Image $IMAGE_NAME:$RELEASE_VERSION already exists - skipping build."
