@@ -28,12 +28,34 @@ class KITTI3DConverter(PointcloudConverter):
     def key_file_ext(self) -> str:
         return ".bin"
 
+    @property
+    def ann_ext(self) -> str:
+        return ".txt"
+
     def validate_format(self) -> bool:
+        def _calib_file_filter_fn(file_path):
+            return get_file_ext(file_path).lower() == self.ann_ext
+
         def _file_filter_fn(file_path):
             return get_file_ext(file_path).lower() == self.key_file_ext
 
         def _dir_filter_fn(path):
-            return all([(Path(path) / name).exists() for name in kitti_3d_helper.FOLDER_NAMES])
+            return all(
+                [
+                    _resolve_dir(path, name, name.split("_")[0]) is not None
+                    for name in kitti_3d_helper.FOLDER_NAMES
+                ]
+            )
+
+        def _resolve_dir(base_dir: str, expected_name: str, prefix: str) -> str:
+            exact_path = os.path.join(base_dir, expected_name)
+            if os.path.isdir(exact_path):
+                return exact_path
+            for entry in sorted(os.listdir(base_dir)):
+                candidate = os.path.join(base_dir, entry)
+                if entry.lower().startswith(prefix) and os.path.isdir(candidate):
+                    return candidate
+            return None
 
         input_paths = [d for d in dirs_filter(self._input_data, _dir_filter_fn)]
         if len(input_paths) == 0:
@@ -41,14 +63,21 @@ class KITTI3DConverter(PointcloudConverter):
 
         input_path = input_paths[0]
         velodyne_dir = os.path.join(input_path, "velodyne")
-        image_2_dir = os.path.join(input_path, "image_2")
-        label_2_dir = os.path.join(input_path, "label_2")
+        image_2_dir = _resolve_dir(input_path, "image_2", "image")
+        label_2_dir = _resolve_dir(input_path, "label_2", "label")
         calib_dir = os.path.join(input_path, "calib")
 
         self._items = []
+
         velodyne_files = list_files(velodyne_dir, filter_fn=_file_filter_fn)
         if len(velodyne_files) == 0:
             return False
+
+        calib_files = list_files(calib_dir, filter_fn=_calib_file_filter_fn)
+        if len(calib_files) == 0:
+            raise RuntimeError(
+                f"Calibration directory '{calib_dir}' does not contain any .txt files, which are required for KITTI 3D format."
+            )
 
         kitti_labels = []
         for velodyne_path in velodyne_files:
@@ -67,6 +96,8 @@ class KITTI3DConverter(PointcloudConverter):
                 continue
 
             label = kitti_3d_helper.read_kitti_label(label_path, calib_path)
+            if not label:
+                continue
             kitti_labels.append(label)
             self._items.append(self.Item(velodyne_path, label, (image_path, calib_path)))
 

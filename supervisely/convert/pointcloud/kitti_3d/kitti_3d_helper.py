@@ -1,6 +1,6 @@
 import numpy as np
 
-from supervisely import ObjClass, ObjClassCollection, ProjectMeta
+from supervisely import ObjClass, ObjClassCollection, ProjectMeta, logger
 from supervisely.geometry.cuboid_3d import Cuboid3d
 from supervisely.geometry.point_3d import Vector3d
 from supervisely.pointcloud_annotation.pointcloud_figure import PointcloudFigure
@@ -10,11 +10,18 @@ FOLDER_NAMES = ["velodyne", "image_2", "label_2", "calib"]
 
 
 def read_kitti_label(label_path, calib_path):
-    import open3d as o3d  # pylint: disable=import-error
+    """
+    Read KITTI label file with calibration.
+    """
 
-    calib = o3d.ml.datasets.KITTI.read_calib(calib_path)
-    label = o3d.ml.datasets.KITTI.read_label(label_path, calib)
-    return label
+    import open3d as o3d  # pylint: disable=import-error
+    try:
+        calib = o3d.ml.datasets.KITTI.read_calib(calib_path)
+        label = o3d.ml.datasets.KITTI.read_label(label_path, calib)
+        return label
+    except Exception as e:
+        logger.warning(f"Failed to read KITTI label or calibration: {e}")
+        return None
 
 
 def convert_labels_to_meta(labels):
