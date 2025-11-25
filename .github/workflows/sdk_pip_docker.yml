@@ -102,7 +102,7 @@ jobs:
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Build and Push ${{ env.IMAGE_NAME }}
+      - name: Build and Push ${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }}
         if: steps.tag_check.outputs.exists == 'false'
         run: |
           buildctl build \
@@ -110,9 +110,21 @@ jobs:
             --local context=${{ github.workspace }} \
             --local dockerfile=${{ github.workspace }}/${{ env.DOCKERFILE_PATH }} \
             --opt build-arg:tag_ref_name=${{ env.RELEASE_VERSION }} \
-            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }},name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest,push=true \
+            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }},push=true \
             --export-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache,mode=max \
             --import-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache
+
+      - name: Build and Push ${{ env.IMAGE_NAME }}:latest
+        if: steps.tag_check.outputs.exists == 'false'
+        run: |
+          buildctl build \
+            --frontend dockerfile.v0 \
+            --local context=${{ github.workspace }} \
+            --local dockerfile=${{ github.workspace }}/${{ env.DOCKERFILE_PATH }} \
+            --opt build-arg:tag_ref_name=${{ env.RELEASE_VERSION }} \
+            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest,push=true \
+            --import-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache
+
       - name: Skip Notifification
         if: steps.tag_check.outputs.exists == 'true'
         run: echo "Image $IMAGE_NAME:$RELEASE_VERSION already exists - skipping build."
@@ -140,16 +152,29 @@ jobs:
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Build and Push ${{ env.IMAGE_NAME }}
+      - name: Build and Push ${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }}
+        if: steps.tag_check.outputs.exists == 'false'
         run: |
           buildctl build \
             --frontend dockerfile.v0 \
             --local context=${{ github.workspace }} \
             --local dockerfile=${{ github.workspace }}/${{ env.DOCKERFILE_PATH }} \
             --opt build-arg:tag_ref_name=${{ env.RELEASE_VERSION }} \
-            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }},name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest,push=true \
+            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }},push=true \
             --export-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache,mode=max \
             --import-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache
+
+      - name: Build and Push ${{ env.IMAGE_NAME }}:latest
+        if: steps.tag_check.outputs.exists == 'false'
+        run: |
+          buildctl build \
+            --frontend dockerfile.v0 \
+            --local context=${{ github.workspace }} \
+            --local dockerfile=${{ github.workspace }}/${{ env.DOCKERFILE_PATH }} \
+            --opt build-arg:tag_ref_name=${{ env.RELEASE_VERSION }} \
+            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest,push=true \
+            --import-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache
+
       - name: Skip Notifification
         if: steps.tag_check.outputs.exists == 'true'
         run: echo "Image $IMAGE_NAME:$RELEASE_VERSION already exists - skipping build."
@@ -178,16 +203,29 @@ jobs:
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Build and Push ${{ env.IMAGE_NAME }}
+      - name: Build and Push ${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }}
+        if: steps.tag_check.outputs.exists == 'false'
         run: |
           buildctl build \
             --frontend dockerfile.v0 \
             --local context=${{ github.workspace }} \
             --local dockerfile=${{ github.workspace }}/${{ env.DOCKERFILE_PATH }} \
             --opt build-arg:tag_ref_name=${{ env.RELEASE_VERSION }} \
-            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }},name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest,push=true \
+            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }},push=true \
             --export-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache,mode=max \
             --import-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache
+
+      - name: Build and Push ${{ env.IMAGE_NAME }}:latest
+        if: steps.tag_check.outputs.exists == 'false'
+        run: |
+          buildctl build \
+            --frontend dockerfile.v0 \
+            --local context=${{ github.workspace }} \
+            --local dockerfile=${{ github.workspace }}/${{ env.DOCKERFILE_PATH }} \
+            --opt build-arg:tag_ref_name=${{ env.RELEASE_VERSION }} \
+            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest,push=true \
+            --import-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache
+
       - name: Skip Notifification
         if: steps.tag_check.outputs.exists == 'true'
         run: echo "Image $IMAGE_NAME:$RELEASE_VERSION already exists - skipping build."
@@ -215,17 +253,30 @@ jobs:
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
-
-      - name: Build and Push ${{ env.IMAGE_NAME }}
+          
+      - name: Build and Push ${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }}
+        if: steps.tag_check.outputs.exists == 'false'
         run: |
           buildctl build \
             --frontend dockerfile.v0 \
             --local context=${{ github.workspace }} \
             --local dockerfile=${{ github.workspace }}/${{ env.DOCKERFILE_PATH }} \
             --opt build-arg:tag_ref_name=${{ env.RELEASE_VERSION }} \
-            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }},name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest,push=true \
+            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }},push=true \
             --export-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache,mode=max \
             --import-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache
+
+      - name: Build and Push ${{ env.IMAGE_NAME }}:latest
+        if: steps.tag_check.outputs.exists == 'false'
+        run: |
+          buildctl build \
+            --frontend dockerfile.v0 \
+            --local context=${{ github.workspace }} \
+            --local dockerfile=${{ github.workspace }}/${{ env.DOCKERFILE_PATH }} \
+            --opt build-arg:tag_ref_name=${{ env.RELEASE_VERSION }} \
+            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest,push=true \
+            --import-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache
+
       - name: Skip Notifification
         if: steps.tag_check.outputs.exists == 'true'
         run: echo "Image $IMAGE_NAME:$RELEASE_VERSION already exists - skipping build."
@@ -254,16 +305,29 @@ jobs:
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Build and Push ${{ env.IMAGE_NAME }}
+      - name: Build and Push ${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }}
+        if: steps.tag_check.outputs.exists == 'false'
         run: |
           buildctl build \
             --frontend dockerfile.v0 \
             --local context=${{ github.workspace }} \
             --local dockerfile=${{ github.workspace }}/${{ env.DOCKERFILE_PATH }} \
             --opt build-arg:tag_ref_name=${{ env.RELEASE_VERSION }} \
-            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }},name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest,push=true \
+            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }},push=true \
             --export-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache,mode=max \
             --import-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache
+
+      - name: Build and Push ${{ env.IMAGE_NAME }}:latest
+        if: steps.tag_check.outputs.exists == 'false'
+        run: |
+          buildctl build \
+            --frontend dockerfile.v0 \
+            --local context=${{ github.workspace }} \
+            --local dockerfile=${{ github.workspace }}/${{ env.DOCKERFILE_PATH }} \
+            --opt build-arg:tag_ref_name=${{ env.RELEASE_VERSION }} \
+            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest,push=true \
+            --import-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache
+
       - name: Skip Notifification
         if: steps.tag_check.outputs.exists == 'true'
         run: echo "Image $IMAGE_NAME:$RELEASE_VERSION already exists - skipping build."
@@ -292,16 +356,29 @@ jobs:
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Build and Push ${{ env.IMAGE_NAME }}
+      - name: Build and Push ${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }}
+        if: steps.tag_check.outputs.exists == 'false'
         run: |
           buildctl build \
             --frontend dockerfile.v0 \
             --local context=${{ github.workspace }} \
             --local dockerfile=${{ github.workspace }}/${{ env.DOCKERFILE_PATH }} \
             --opt build-arg:tag_ref_name=${{ env.RELEASE_VERSION }} \
-            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }},name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest,push=true \
+            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }},push=true \
             --export-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache,mode=max \
             --import-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache
+
+      - name: Build and Push ${{ env.IMAGE_NAME }}:latest
+        if: steps.tag_check.outputs.exists == 'false'
+        run: |
+          buildctl build \
+            --frontend dockerfile.v0 \
+            --local context=${{ github.workspace }} \
+            --local dockerfile=${{ github.workspace }}/${{ env.DOCKERFILE_PATH }} \
+            --opt build-arg:tag_ref_name=${{ env.RELEASE_VERSION }} \
+            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest,push=true \
+            --import-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache
+
       - name: Skip Notifification
         if: steps.tag_check.outputs.exists == 'true'
         run: echo "Image $IMAGE_NAME:$RELEASE_VERSION already exists - skipping build."
@@ -330,16 +407,29 @@ jobs:
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Build and Push ${{ env.IMAGE_NAME }}
+      - name: Build and Push ${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }}
+        if: steps.tag_check.outputs.exists == 'false'
         run: |
           buildctl build \
             --frontend dockerfile.v0 \
             --local context=${{ github.workspace }} \
             --local dockerfile=${{ github.workspace }}/${{ env.DOCKERFILE_PATH }} \
             --opt build-arg:tag_ref_name=${{ env.RELEASE_VERSION }} \
-            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }},name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest,push=true \
+            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }},push=true \
             --export-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache,mode=max \
             --import-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache
+
+      - name: Build and Push ${{ env.IMAGE_NAME }}:latest
+        if: steps.tag_check.outputs.exists == 'false'
+        run: |
+          buildctl build \
+            --frontend dockerfile.v0 \
+            --local context=${{ github.workspace }} \
+            --local dockerfile=${{ github.workspace }}/${{ env.DOCKERFILE_PATH }} \
+            --opt build-arg:tag_ref_name=${{ env.RELEASE_VERSION }} \
+            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest,push=true \
+            --import-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache
+
       - name: Skip Notifification
         if: steps.tag_check.outputs.exists == 'true'
         run: echo "Image $IMAGE_NAME:$RELEASE_VERSION already exists - skipping build."
@@ -368,16 +458,29 @@ jobs:
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Build and Push ${{ env.IMAGE_NAME }}
+      - name: Build and Push ${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }}
+        if: steps.tag_check.outputs.exists == 'false'
         run: |
           buildctl build \
             --frontend dockerfile.v0 \
             --local context=${{ github.workspace }} \
             --local dockerfile=${{ github.workspace }}/${{ env.DOCKERFILE_PATH }} \
             --opt build-arg:tag_ref_name=${{ env.RELEASE_VERSION }} \
-            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }},name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest,push=true \
+            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }},push=true \
             --export-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache,mode=max \
             --import-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache
+
+      - name: Build and Push ${{ env.IMAGE_NAME }}:latest
+        if: steps.tag_check.outputs.exists == 'false'
+        run: |
+          buildctl build \
+            --frontend dockerfile.v0 \
+            --local context=${{ github.workspace }} \
+            --local dockerfile=${{ github.workspace }}/${{ env.DOCKERFILE_PATH }} \
+            --opt build-arg:tag_ref_name=${{ env.RELEASE_VERSION }} \
+            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest,push=true \
+            --import-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache
+
       - name: Skip Notifification
         if: steps.tag_check.outputs.exists == 'true'
         run: echo "Image $IMAGE_NAME:$RELEASE_VERSION already exists - skipping build."
@@ -406,16 +509,29 @@ jobs:
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Build and Push ${{ env.IMAGE_NAME }}
+      - name: Build and Push ${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }}
+        if: steps.tag_check.outputs.exists == 'false'
         run: |
           buildctl build \
             --frontend dockerfile.v0 \
             --local context=${{ github.workspace }} \
             --local dockerfile=${{ github.workspace }}/${{ env.DOCKERFILE_PATH }} \
             --opt build-arg:tag_ref_name=${{ env.RELEASE_VERSION }} \
-            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }},name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest,push=true \
+            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }},push=true \
             --export-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache,mode=max \
             --import-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache
+
+      - name: Build and Push ${{ env.IMAGE_NAME }}:latest
+        if: steps.tag_check.outputs.exists == 'false'
+        run: |
+          buildctl build \
+            --frontend dockerfile.v0 \
+            --local context=${{ github.workspace }} \
+            --local dockerfile=${{ github.workspace }}/${{ env.DOCKERFILE_PATH }} \
+            --opt build-arg:tag_ref_name=${{ env.RELEASE_VERSION }} \
+            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest,push=true \
+            --import-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache
+
       - name: Skip Notifification
         if: steps.tag_check.outputs.exists == 'true'
         run: echo "Image $IMAGE_NAME:$RELEASE_VERSION already exists - skipping build."
