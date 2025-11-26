@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 import numpy as np
 import yaml
@@ -118,7 +118,7 @@ class BotSortTracker(BaseTracker):
             self.update(frame, annotation)
 
         # Convert accumulated tracks to VideoAnnotation
-        return self._create_video_annotation()
+        return self.create_video_annotation()
 
     def _convert_annotation(self, annotation: Annotation) -> np.ndarray:
         """Convert Supervisely annotation to BoTSORT detection format."""
@@ -212,13 +212,22 @@ class BotSortTracker(BaseTracker):
             if class_name not in self.class_ids:
                 self.class_ids[class_name] = len(self.class_ids)
 
-    def _create_video_annotation(self) -> VideoAnnotation:
+    def create_video_annotation(
+        self,
+        video_frames_count: Optional[int] = None,
+        frame_index: Optional[int] = 0,
+        step: Optional[int] = 1,
+        progress_cb: Optional[Callable[[int], None]] = None,
+    ) -> VideoAnnotation:
         """Convert accumulated tracking results to Supervisely VideoAnnotation."""
         img_h, img_w = self.frame_shape
         video_objects = {}  # track_id -> VideoObject
         frames = []
+        if video_frames_count is None:
+            video_frames_count = len(self.frame_tracks)
 
-        for frame_idx, tracks in enumerate(self.frame_tracks):
+        for i, tracks in enumerate(self.frame_tracks, frame_index):
+            frame_idx = frame_index + i * step
             frame_figures = []
 
             for track in tracks:
@@ -250,14 +259,16 @@ class BotSortTracker(BaseTracker):
                 )
 
             frames.append(sly.Frame(frame_idx, frame_figures))
+            if progress_cb is not None:
+                progress_cb()
 
         objects = list(video_objects.values())
 
         return VideoAnnotation(
             img_size=self.frame_shape,
-            frames_count=len(self.frame_tracks),
+            frames_count=video_frames_count,
             objects=sly.VideoObjectCollection(objects),
-            frames=sly.FrameCollection(frames)
+            frames=sly.FrameCollection(frames),
         )
 
     @property    
@@ -270,7 +281,7 @@ class BotSortTracker(BaseTracker):
             )
             raise ValueError(error_msg)
 
-        return self._create_video_annotation()
+        return self.create_video_annotation()
 
     @classmethod
     def get_default_params(cls) -> Dict[str, Any]:

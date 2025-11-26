@@ -2309,9 +2309,14 @@ class Inference:
             logger.debug(f"Frames {batch[0]}-{batch[-1]} done.")
         video_ann_json = None
         if inference_request.tracker is not None:
-            inference_request.set_stage("Postprocess...", 0, 1)
-            video_ann_json = inference_request.tracker.video_annotation.to_json()
-            inference_request.done()
+            inference_request.set_stage("Postprocess...", 0, progress_total)
+
+            video_ann_json = inference_request.tracker.create_video_annotation(
+                video_info.frames_count,
+                start_frame_index,
+                step=step,
+                progress_cb=inference_request.done,
+            ).to_json()
         inference_request.final_result = {"video_ann": video_ann_json}
         return video_ann_json
 
