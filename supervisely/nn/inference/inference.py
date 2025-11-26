@@ -3322,7 +3322,7 @@ class Inference:
 
         if not self._use_gui:
             Progress("Model deployed", 1).iter_done_report()
-        else:
+        elif self.api is not None:
             autostart_func()
 
         @server.exception_handler(HTTPException)
