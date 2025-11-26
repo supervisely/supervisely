@@ -2140,7 +2140,9 @@ class Inference:
         )
 
         _add_results_to_request = partial(
-            self.add_results_to_request, inference_request=inference_request
+            self.add_results_to_request,
+            inference_request=inference_request,
+            progress_cb=inference_request.done,
         )
 
         if upload_mode is None:
@@ -2161,10 +2163,22 @@ class Inference:
                         raise exception
                     if inference_request.is_stopped():
                         logger.debug(
-                            f"Cancelling inference project...",
+                            f"Cancelling inference...",
                             extra={"inference_request_uuid": inference_request.uuid},
                         )
                         break
+                    if inference_request.is_paused():
+                        logger.info("Inference request is paused. Waiting...")
+                        while inference_request.is_paused():
+                            if (
+                                inference_request.paused_for()
+                                > inference_request.PAUSE_SLEEP_MAX_WAIT
+                            ):
+                                logger.info(
+                                    "Inference request has been paused for too long. Cancelling..."
+                                )
+                                raise RuntimeError("Inference request cancelled due to long pause.")
+                            time.sleep(inference_request.PAUSE_SLEEP_INTERVAL)
 
                     images_nps = [
                         self.cache.download_image(api, img_id) for img_id in image_ids_batch
@@ -2295,9 +2309,14 @@ class Inference:
             logger.debug(f"Frames {batch[0]}-{batch[-1]} done.")
         video_ann_json = None
         if inference_request.tracker is not None:
-            inference_request.set_stage("Postprocess...", 0, 1)
-            video_ann_json = inference_request.tracker.video_annotation.to_json()
-            inference_request.done()
+            inference_request.set_stage("Postprocess...", 0, progress_total)
+
+            video_ann_json = inference_request.tracker.create_video_annotation(
+                video_info.frames_count,
+                start_frame_index,
+                step=step,
+                progress_cb=inference_request.done,
+            ).to_json()
         inference_request.final_result = {"video_ann": video_ann_json}
         return video_ann_json
 
@@ -2544,7 +2563,9 @@ class Inference:
         )
 
         _add_results_to_request = partial(
-            self.add_results_to_request, inference_request=inference_request
+            self.add_results_to_request,
+            inference_request=inference_request,
+            progress_cb=inference_request.done,
         )
 
         if upload_mode is None:
@@ -2564,15 +2585,29 @@ class Inference:
                     for images_infos_batch in batched(
                         images_infos_dict[dataset_info.id], batch_size=batch_size
                     ):
+                        if uploader.has_exception():
+                            exception = uploader.exception
+                            raise exception
                         if inference_request.is_stopped():
                             logger.debug(
                                 f"Cancelling inference project...",
                                 extra={"inference_request_uuid": inference_request.uuid},
                             )
                             return
-                        if uploader.has_exception():
-                            exception = uploader.exception
-                            raise exception
+                        if inference_request.is_paused():
+                            logger.info("Inference request is paused. Waiting...")
+                            while inference_request.is_paused():
+                                if (
+                                    inference_request.paused_for()
+                                    > inference_request.PAUSE_SLEEP_MAX_WAIT
+                                ):
+                                    logger.info(
+                                        "Inference request has been paused for too long. Cancelling..."
+                                    )
+                                    raise RuntimeError(
+                                        "Inference request cancelled due to long pause."
+                                    )
+                                time.sleep(inference_request.PAUSE_SLEEP_INTERVAL)
                         if cache_project_on_model:
                             images_paths, _ = zip(
                                 *read_from_cached_project(
@@ -3121,11 +3156,12 @@ class Inference:
             inference_request.add_results(results)
 
     def add_results_to_request(
-        self, predictions: List[Prediction], inference_request: InferenceRequest
+        self, predictions: List[Prediction], inference_request: InferenceRequest, progress_cb=None
     ):
         results = self._format_output(predictions)
         inference_request.add_results(results)
-        inference_request.done(len(results))
+        if progress_cb:
+            progress_cb(len(results))
 
     def upload_predictions_to_video(
         self,
@@ -3286,7 +3322,7 @@ class Inference:
 
         if not self._use_gui:
             Progress("Model deployed", 1).iter_done_report()
-        else:
+        elif self.api is not None:
             autostart_func()
 
         @server.exception_handler(HTTPException)
