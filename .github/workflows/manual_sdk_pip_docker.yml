@@ -26,23 +26,26 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+
       - name: Install build deps
         run: |
           python -m pip install --upgrade pip
           pip install build
+
       - name: Build sdist / wheel
         run: python -m build
+
       - name: Install twine
         run: pip install twine
+
       - name: Publish package distributions to PyPI
-        env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
         run: twine upload --skip-existing dist/*
+
       - name: Wait after PyPI publish
         run: |
           VERSION="${{ inputs.tag_version }}"
