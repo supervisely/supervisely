@@ -214,6 +214,7 @@ class ObjectApi(RemoveableBulkModuleApi):
         objects,
         key_id_map: KeyIdMap = None,
         is_pointcloud=False,
+        attach_entity_id: bool = True,
     ):
         """"""
         if len(objects) == 0:
@@ -225,8 +226,7 @@ class ObjectApi(RemoveableBulkModuleApi):
         for obj in objects:
             new_obj = {ApiField.CLASS_ID: objcls_name_id_map[obj.obj_class.name]}
 
-            if not is_pointcloud:
-                # if entity_id is not None:
+            if attach_entity_id and not is_pointcloud:
                 new_obj[ApiField.ENTITY_ID] = entity_id
             items.append(new_obj)
 
