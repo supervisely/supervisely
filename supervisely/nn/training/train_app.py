@@ -3163,7 +3163,9 @@ class TrainApp:
 
         # Case 1: Use existing collections for training. No need to create new collections
         split_method = self.gui.train_val_splits_selector.get_split_method()
-        self.gui.train_val_splits_selector._parse_collections()  # <-- ensure collections are up-to-date
+        self.gui.train_val_splits_selector._detect_splits(
+            collections_split=True, datasets_split=False
+        )  # <-- ensure collections are up-to-date
         all_train_collections = self.gui.train_val_splits_selector.all_train_collections
         all_val_collections = self.gui.train_val_splits_selector.all_val_collections
         latest_train_collection = self.gui.train_val_splits_selector.latest_train_collection
@@ -3182,9 +3184,6 @@ class TrainApp:
         # ------------------------------------------------------------ #
 
         # Case 2: Create new collections for selected train val splits. Need to create new collections
-        item_type = self.project_info.type
-        experiment_name = self.gui.training_process.get_experiment_name()
-
         train_collection_idx = 1
         val_collection_idx = 1
 
@@ -3205,43 +3204,31 @@ class TrainApp:
             val_collection_idx = _extract_index_from_col_name(latest_val_collection, "val") + 1
         # -------------------------------- #
 
-        def _create_collection_safely(prefix, col_idx):
-            for attempt in range(5):
-                try:
-                    collection_name = f"{prefix}_{col_idx:03d}"
-                    collection_description = (
-                        f"Collection with {prefix} {item_type} for experiment: {experiment_name}"
-                    )
-                    collection = self._api.entities_collection.create(
-                        self.project_id, collection_name, collection_description
-                    )
-                    collection_id = getattr(collection, "id", None)
-                    if collection_id is None:
-                        raise AttributeError(
-                            f"{prefix.capitalize()} EntitiesCollectionInfo object does not have 'id' attribute"
-                        )
-                    return collection_id
-                except HTTPError as e:
-                    if e.code == 400 and "already exists" in str(e):
-                        logger.warning(
-                            f"Name collision detected for collection '{collection_name}'. Retrying with a new index."
-                        )
-                        col_idx += 1
-                    else:
-                        raise e
-
         # Create Train Collection
         train_img_ids = list(self._train_split_item_ids)
-        self._train_collection_id = _create_collection_safely("train", train_collection_idx)
+        self._train_collection_id = self._create_split_collection("train", train_collection_idx)
         self._api.entities_collection.add_items(self._train_collection_id, train_img_ids)
 
         # Create Val Collection
         val_img_ids = list(self._val_split_item_ids)
-        self._val_collection_id = _create_collection_safely("val", val_collection_idx)
+        self._val_collection_id = self._create_split_collection("val", val_collection_idx)
         self._api.entities_collection.add_items(self._val_collection_id, val_img_ids)
 
         # Update Project Custom Data
         self._update_project_custom_data(self._train_collection_id, self._val_collection_id)
+
+    def _create_split_collection(self, split_type: str, suffix: int) -> int:
+        experiment_name = self.gui.training_process.get_experiment_name()
+        description = f"Collection with {split_type} {self.project_info.type} for experiment: {experiment_name}"
+        collection = self._api.entities_collection.create(
+            project_id=self.project_id,
+            name=f"{split_type}_{suffix:03d}",
+            description=description,
+            change_name_if_conflict=True,
+        )
+        if collection is None or collection.id is None:
+            raise RuntimeError(f"Failed to create {split_type} collection")
+        return collection.id
 
     def _update_project_custom_data(self, train_collection_id: int, val_collection_id: int):
         train_info = {
