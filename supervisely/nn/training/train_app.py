@@ -18,7 +18,6 @@ import httpx
 import yaml
 from fastapi import Request, Response
 from fastapi.responses import StreamingResponse
-from requests import HTTPError
 from starlette.background import BackgroundTask
 
 import supervisely.io.env as sly_env
@@ -3165,7 +3164,7 @@ class TrainApp:
         split_method = self.gui.train_val_splits_selector.get_split_method()
         self.gui.train_val_splits_selector._detect_splits(
             collections_split=True, datasets_split=False
-        )  # <-- ensure collections are up-to-date
+        )
         all_train_collections = self.gui.train_val_splits_selector.all_train_collections
         all_val_collections = self.gui.train_val_splits_selector.all_val_collections
         latest_train_collection = self.gui.train_val_splits_selector.latest_train_collection
