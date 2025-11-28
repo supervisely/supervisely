@@ -1,7 +1,8 @@
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import numpy as np
 import yaml
@@ -107,9 +108,6 @@ class BotSortTracker(BaseTracker):
 
     def track(self, frames: List[np.ndarray], annotations: List[Annotation]) -> VideoAnnotation:
         """Track objects through sequence of frames and return VideoAnnotation."""
-        if len(frames) != len(annotations):
-            raise ValueError("Number of frames and annotations must match")
-
         self.reset()
 
         # Process each frame
@@ -170,6 +168,10 @@ class BotSortTracker(BaseTracker):
             track_id_to_det_id[track_id] = det_id 
 
         for strack in output_stracks:
+            det_id = track_id_to_det_id.get(strack.track_id)
+            if det_id is None:
+                continue  # Skip tracks without associated detection
+
             # BoTSORT may store class info in different attributes
             # Try to get class_id from various possible sources
             class_id = 0  # default
