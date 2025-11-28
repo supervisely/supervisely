@@ -3205,18 +3205,18 @@ class TrainApp:
 
         # Create Train Collection
         train_img_ids = list(self._train_split_item_ids)
-        self._train_collection_id = self._create_split_collection("train", train_collection_idx)
+        self._train_collection_id = self._create_collection("train", train_collection_idx)
         self._api.entities_collection.add_items(self._train_collection_id, train_img_ids)
 
         # Create Val Collection
         val_img_ids = list(self._val_split_item_ids)
-        self._val_collection_id = self._create_split_collection("val", val_collection_idx)
+        self._val_collection_id = self._create_collection("val", val_collection_idx)
         self._api.entities_collection.add_items(self._val_collection_id, val_img_ids)
 
         # Update Project Custom Data
         self._update_project_custom_data(self._train_collection_id, self._val_collection_id)
 
-    def _create_split_collection(self, split_type: str, suffix: int) -> int:
+    def _create_collection(self, split_type: str, suffix: int) -> int:
         experiment_name = self.gui.training_process.get_experiment_name()
         description = f"Collection with {split_type} {self.project_info.type} for experiment: {experiment_name}"
         collection = self._api.entities_collection.create(
@@ -3225,9 +3225,9 @@ class TrainApp:
             description=description,
             change_name_if_conflict=True,
         )
-        if collection is None or collection.id is None:
+        if collection is None or collection.id is None:  # pylint: disable=no-member
             raise RuntimeError(f"Failed to create {split_type} collection")
-        return collection.id
+        return collection.id  # pylint: disable=no-member
 
     def _update_project_custom_data(self, train_collection_id: int, val_collection_id: int):
         train_info = {
