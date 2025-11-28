@@ -43,6 +43,7 @@ from supervisely import (
     logger,
 )
 from supervisely._utils import abs_url, get_filename_from_headers
+from supervisely.api.entities_collection_api import EntitiesCollectionInfo
 from supervisely.api.file_api import FileInfo
 from supervisely.app import get_synced_data_dir, show_dialog
 from supervisely.app.widgets import Progress
@@ -72,7 +73,6 @@ from supervisely.project.download import (
     is_cached,
 )
 from supervisely.template.experiment.experiment_generator import ExperimentGenerator
-from supervisely.api.entities_collection_api import EntitiesCollectionInfo
 
 
 class TrainApp:
@@ -3162,8 +3162,13 @@ class TrainApp:
 
         # Case 1: Use existing collections for training. No need to create new collections
         split_method = self.gui.train_val_splits_selector.get_split_method()
+        self.gui.train_val_splits_selector._detect_splits(
+            collections_split=True, datasets_split=False
+        )
         all_train_collections = self.gui.train_val_splits_selector.all_train_collections
         all_val_collections = self.gui.train_val_splits_selector.all_val_collections
+        latest_train_collection = self.gui.train_val_splits_selector.latest_train_collection
+        latest_val_collection = self.gui.train_val_splits_selector.latest_val_collection
         if split_method == "Based on collections":
             current_selected_train_collection_ids = self.gui.train_val_splits_selector.train_val_splits.get_train_collections_ids()
             train_match = _check_match(current_selected_train_collection_ids, all_train_collections)
@@ -3178,9 +3183,6 @@ class TrainApp:
         # ------------------------------------------------------------ #
 
         # Case 2: Create new collections for selected train val splits. Need to create new collections
-        item_type = self.project_info.type
-        experiment_name = self.gui.training_process.get_experiment_name()
-
         train_collection_idx = 1
         val_collection_idx = 1
 
@@ -3191,42 +3193,41 @@ class TrainApp:
             return None
 
         # Get train collection with max idx
-        if len(all_train_collections) > 0:
-            train_indices = [_extract_index_from_col_name(collection.name, "train") for collection in all_train_collections]
-            train_indices = [idx for idx in train_indices if idx is not None]
-            if len(train_indices) > 0:
-                train_collection_idx = max(train_indices) + 1
+        if latest_train_collection:
+            train_collection_idx = (
+                _extract_index_from_col_name(latest_train_collection, "train") + 1
+            )
 
         # Get val collection with max idx
-        if len(all_val_collections) > 0:
-            val_indices = [_extract_index_from_col_name(collection.name, "val") for collection in all_val_collections]
-            val_indices = [idx for idx in val_indices if idx is not None]
-            if len(val_indices) > 0:
-                val_collection_idx = max(val_indices) + 1
+        if latest_val_collection:
+            val_collection_idx = _extract_index_from_col_name(latest_val_collection, "val") + 1
         # -------------------------------- #
 
         # Create Train Collection
         train_img_ids = list(self._train_split_item_ids)
-        train_collection_description = f"Collection with train {item_type} for experiment: {experiment_name}"
-        train_collection = self._api.entities_collection.create(self.project_id, f"train_{train_collection_idx:03d}", train_collection_description)
-        train_collection_id = getattr(train_collection, "id", None)
-        if train_collection_id is None:
-            raise AttributeError("Train EntitiesCollectionInfo object does not have 'id' attribute")
-        self._api.entities_collection.add_items(train_collection_id, train_img_ids)
-        self._train_collection_id = train_collection_id
+        self._train_collection_id = self._create_collection("train", train_collection_idx)
+        self._api.entities_collection.add_items(self._train_collection_id, train_img_ids)
 
         # Create Val Collection
         val_img_ids = list(self._val_split_item_ids)
-        val_collection_description = f"Collection with val {item_type} for experiment: {experiment_name}"
-        val_collection = self._api.entities_collection.create(self.project_id, f"val_{val_collection_idx:03d}", val_collection_description)
-        val_collection_id = getattr(val_collection, "id", None)
-        if val_collection_id is None:
-            raise AttributeError("Val EntitiesCollectionInfo object does not have 'id' attribute")
-        self._api.entities_collection.add_items(val_collection_id, val_img_ids)
-        self._val_collection_id = val_collection_id
+        self._val_collection_id = self._create_collection("val", val_collection_idx)
+        self._api.entities_collection.add_items(self._val_collection_id, val_img_ids)
 
         # Update Project Custom Data
-        self._update_project_custom_data(train_collection_id, val_collection_id)
+        self._update_project_custom_data(self._train_collection_id, self._val_collection_id)
+
+    def _create_collection(self, split_type: str, suffix: int) -> int:
+        experiment_name = self.gui.training_process.get_experiment_name()
+        description = f"Collection with {split_type} {self.project_info.type} for experiment: {experiment_name}"
+        collection = self._api.entities_collection.create(
+            project_id=self.project_id,
+            name=f"{split_type}_{suffix:03d}",
+            description=description,
+            change_name_if_conflict=True,
+        )
+        if collection is None or collection.id is None:  # pylint: disable=no-member
+            raise RuntimeError(f"Failed to create {split_type} collection")
+        return collection.id  # pylint: disable=no-member
 
     def _update_project_custom_data(self, train_collection_id: int, val_collection_id: int):
         train_info = {
