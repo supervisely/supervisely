@@ -133,6 +133,7 @@ class PersistentImageTTLCache(TTLCache):
         super().expire(time)
         deleted = set(existing_items.keys()).difference(self.__get_keys())
         if len(deleted) > 0:
+            sly.logger.debug("Deleting expired items")
             for key in deleted:
                 try:
                     silent_remove(existing_items[key])
@@ -239,18 +240,22 @@ class InferenceImageCache:
             self._cache.clear(False)
 
     def download_image(self, api: sly.Api, image_id: int, related: bool = False):
+        api.logger.debug(f"Download image #{image_id} to cache started")
         name = self._image_name(image_id)
         self._wait_if_in_queue(name, api.logger)
 
         if name not in self._cache:
+            api.logger.debug(f"Adding image #{image_id} to cache")
             self._load_queue.set(name, image_id)
-            api.logger.debug(f"Add image #{image_id} to cache")
             if not related:
                 img = api.image.download_np(image_id)
             else:
                 img = api.pointcloud.download_related_image(image_id)
             self._add_to_cache(name, img)
+            api.logger.debug(f"Added image #{image_id} to cache")
             return img
+        else:
+            api.logger.debug(f"Image #{image_id} found in cache")
 
         api.logger.debug(f"Get image #{image_id} from cache")
         return self._cache.get_image(name)

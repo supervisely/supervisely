@@ -1,16 +1,15 @@
 import shutil
 import tempfile
 from collections import defaultdict
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Iterator, List, Optional, Tuple, Union
+from typing import Iterator, List, Optional, Tuple, Union
 
 import cv2
 import ffmpeg
 import numpy as np
 
-import supervisely as sly
 from supervisely import VideoAnnotation, logger
+from supervisely.geometry.geometry import Geometry
 from supervisely.nn.model.prediction import Prediction
 from supervisely.nn.tracker.utils import predictions_to_video_annotation
 
@@ -236,18 +235,11 @@ class TrackingVisualizer:
         for frame in self.annotation.frames:
             frame_idx = frame.index
             for figure in frame.figures:
-                if figure.geometry.geometry_name() != 'rectangle':
-                    continue
-
                 object_key = figure.parent_object.key
                 if object_key not in objects:
                     continue
 
                 track_id, class_name = objects[object_key]
-
-                # Extract bbox coordinates
-                rect = figure.geometry
-                bbox = (rect.left, rect.top, rect.right, rect.bottom)
 
                 if track_id not in self.track_colors:
                     if self.colorize_tracks:
@@ -265,16 +257,20 @@ class TrackingVisualizer:
 
                     self.track_colors[track_id] = color
 
-                self.tracks_by_frame[frame_idx].append((track_id, bbox, class_name))
+                self.tracks_by_frame[frame_idx].append((track_id, figure.geometry, class_name))
 
         logger.info(f"Extracted tracks from {len(self.tracks_by_frame)} frames")
 
-    def _draw_detection(self, img: np.ndarray, track_id: int, bbox: Tuple[int, int, int, int], 
-                    class_name: str) -> Optional[Tuple[int, int]]:
+    def _draw_detection(
+        self, img: np.ndarray, track_id: int, geometry: Geometry, class_name: str
+    ) -> Optional[Tuple[int, int]]:
         """
         Draw single detection with track ID and class label.
         Returns the center point of the bbox for trajectory drawing.
         """
+        rect = geometry.to_bbox()
+        bbox = (rect.left, rect.top, rect.right, rect.bottom)
+
         x1, y1, x2, y2 = map(int, bbox)
 
         if x2 <= x1 or y2 <= y1:
@@ -283,7 +279,8 @@ class TrackingVisualizer:
         color = self.track_colors[track_id]
 
         # Draw bounding box
-        cv2.rectangle(img, (x1, y1), (x2, y2), color, self.box_thickness)
+        geometry.draw_contour(img, color=color, thickness=self.box_thickness)
+        # cv2.rectangle(img, (x1, y1), (x2, y2), color, self.box_thickness)
 
         # Draw label if enabled
         if self.show_labels:
@@ -312,14 +309,15 @@ class TrackingVisualizer:
 
         max_jump = 200  
 
-        for track_id, centers in self.track_centers.items():
-            if len(centers) < 2:
+        for centers_with_colors in self.track_centers.values():
+
+            if len(centers_with_colors) < 2:
                 continue
 
-            color = self.track_colors[track_id]
-            points = centers[-self.trajectory_length:]
+            points, colors = zip(*centers_with_colors[-self.trajectory_length :])
 
             for i in range(1, len(points)):
+                color = colors[i]
                 p1, p2 = points[i - 1], points[i]
                 if p1 is None or p2 is None:
                     continue
@@ -344,16 +342,17 @@ class TrackingVisualizer:
         active_ids = set()
         # Draw detections for current frame
         if frame_idx in self.tracks_by_frame:
-            for track_id, bbox, class_name in self.tracks_by_frame[frame_idx]:
-                center = self._draw_detection(img, track_id, bbox, class_name)
-                self.track_centers[track_id].append(center)
+            for track_id, geometry, class_name in self.tracks_by_frame[frame_idx]:
+                center = self._draw_detection(img, track_id, geometry, class_name)
+                color = self.track_colors[track_id]
+                self.track_centers[track_id].append((center, color))
                 if len(self.track_centers[track_id]) > self.trajectory_length:
                     self.track_centers[track_id].pop(0)
                 active_ids.add(track_id)
 
         for tid in self.track_centers.keys():
             if tid not in active_ids:
-                self.track_centers[tid].append(None)
+                self.track_centers[tid].append((None, None))
                 if len(self.track_centers[tid]) > self.trajectory_length:
                     self.track_centers[tid].pop(0)
 

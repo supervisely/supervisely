@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import datetime
+from itertools import zip_longest
 import json
 import os
 import re
@@ -705,7 +706,7 @@ class VideoApi(RemoveableBulkModuleApi):
         return project_id, dataset_id
 
     def upload_hash(
-        self, dataset_id: int, name: str, hash: str, stream_index: Optional[int] = None
+        self, dataset_id: int, name: str, hash: str, stream_index: Optional[int] = None, metadata: Optional[Dict] = None
     ) -> VideoInfo:
         """
         Upload Video from given hash to Dataset.
@@ -718,6 +719,8 @@ class VideoApi(RemoveableBulkModuleApi):
         :type hash: str
         :param stream_index: Index of video stream.
         :type stream_index: int, optional
+        :param metadata: Video metadata.
+        :type metadata: dict, optional
         :return: Information about Video. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`VideoInfo`
         :Usage example:
@@ -786,6 +789,8 @@ class VideoApi(RemoveableBulkModuleApi):
         meta = {}
         if stream_index is not None and type(stream_index) is int:
             meta = {"videoStreamIndex": stream_index}
+        if metadata is not None:
+            meta.update(metadata)
         return self.upload_hashes(dataset_id, [name], [hash], [meta])[0]
 
     def upload_hashes(
@@ -1111,10 +1116,10 @@ class VideoApi(RemoveableBulkModuleApi):
             validate_ext(os.path.splitext(name)[1])
 
         for batch in batched(list(zip(names, items, metas))):
-            images = []
+            videos = []
             for name, item, meta in batch:
                 item_tuple = func_item_to_kv(item)
-                images.append(
+                videos.append(
                     {
                         "title": name,
                         item_tuple[0]: item_tuple[1],
@@ -1125,12 +1130,12 @@ class VideoApi(RemoveableBulkModuleApi):
                 "videos.bulk.add",
                 {
                     ApiField.DATASET_ID: dataset_id,
-                    ApiField.VIDEOS: images,
+                    ApiField.VIDEOS: videos,
                     ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
                 },
             )
             if progress_cb is not None:
-                progress_cb(len(images))
+                progress_cb(len(videos))
 
             results = [self._convert_json_info(item) for item in response.json()]
             name_to_res = {img_info.name: img_info for img_info in results}
@@ -1576,15 +1581,20 @@ class VideoApi(RemoveableBulkModuleApi):
         for hash_value, meta in zip(unique_hashes, unique_metas):
             hash_meta_dict[hash_value] = meta
 
-        metas = [hash_meta_dict[hash_value] for hash_value in hashes]
-
-        metas2 = [meta["meta"] for meta in metas]
-
+        video_metadatas = [hash_meta_dict[hash_value] for hash_value in hashes]
+        video_metadatas2 = [meta["meta"] for meta in video_metadatas]
         names = self.get_free_names(dataset_id, names)
 
-        for name, hash, meta in zip(names, hashes, metas2):
+        if metas is None:
+            metas = [None] * len(names)
+        if not isinstance(metas, list):
+            raise ValueError("metas must be a list")
+
+        for name, hash, video_metadata, metadata in zip_longest(
+            names, hashes, video_metadatas2, metas
+        ):
             try:
-                all_streams = meta["streams"]
+                all_streams = video_metadata["streams"]
                 video_streams = get_video_streams(all_streams)
                 for stream_info in video_streams:
                     stream_index = stream_info["index"]
@@ -1599,7 +1609,7 @@ class VideoApi(RemoveableBulkModuleApi):
                     # info = self._api.video.get_info_by_name(dataset_id, item_name)
                     # if info is not None:
                     #     item_name = gen_video_stream_name(name, stream_index)
-                    res = self.upload_hash(dataset_id, name, hash, stream_index)
+                    res = self.upload_hash(dataset_id, name, hash, stream_index, metadata)
                     video_info_results.append(res)
             except Exception as e:
                 from supervisely.io.exception_handlers import (
