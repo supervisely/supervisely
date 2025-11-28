@@ -147,6 +147,33 @@ class ClassesListSelector(Widget):
     def get_all_classes(self):
         return self._classes
 
+    def _show_error(self, message: str):
+        """Show error message in the create class dialog."""
+        self._error_message.text = message
+        StateJson()[self.widget_id]["createClassDialog"]["showError"] = True
+        StateJson().send_changes()
+
+    def _hide_dialog(self):
+        """Hide the create class dialog and reset its state."""
+        state_obj = StateJson()[self.widget_id]["createClassDialog"]
+        state_obj["visible"] = False
+        state_obj["className"] = ""
+        state_obj["showError"] = False
+        StateJson().send_changes()
+
+    def _add_new_class(self, new_class: ObjClass):
+        """Add a new class to the widget and update the UI."""
+        # Add to classes list
+        self._classes.append(new_class)
+        
+        # Add selection state for the new class (selected by default)
+        StateJson()[self.widget_id]["selected"].append(True)
+        
+        # Update data to reflect the new class in the UI
+        self.update_data()
+        DataJson().send_changes()
+        StateJson().send_changes()
+
     def selection_changed(self, func):
         route_path = self.get_route_path(ClassesListSelector.Routes.CHECKBOX_CHANGED)
         server = self._sly_app.get_server()
@@ -178,24 +205,16 @@ class ClassesListSelector(Widget):
             geometry_type_str = state["geometryType"]
             
             if not class_name:
-                self._error_message.text = "Class name cannot be empty"
-                StateJson()[self.widget_id]["createClassDialog"]["showError"] = True
-                StateJson().send_changes()
+                self._show_error("Class name cannot be empty")
                 return
             
-            # Check if class with this name already exists
             if any(cls.name == class_name for cls in self._classes):
-                self._error_message.text = f"Class '{class_name}' already exists"
-                StateJson()[self.widget_id]["createClassDialog"]["showError"] = True
-                StateJson().send_changes()
+                self._show_error(f"Class '{class_name}' already exists")
                 return
             
-            # Get geometry type from string
             geometry_type = shape_text_to_type.get(geometry_type_str)
             if geometry_type is None:
-                self._error_message.text = "Invalid geometry type"
-                StateJson()[self.widget_id]["createClassDialog"]["showError"] = True
-                StateJson().send_changes()
+                self._show_error("Invalid geometry type")
                 return
             
             # Generate color for the new class
@@ -205,22 +224,9 @@ class ClassesListSelector(Widget):
             # Create new class
             new_class = ObjClass(name=class_name, geometry_type=geometry_type, color=new_color)
             
-            # Add to classes list (self._classes is always a list now)
-            self._classes.append(new_class)
-            
-            # Update state (add new selection state for the new class)
-            state_obj = StateJson()[self.widget_id]
-            state_obj["selected"].append(True)
-            state_obj["createClassDialog"]["visible"] = False
-            state_obj["createClassDialog"]["className"] = ""
-            state_obj["createClassDialog"]["showError"] = False
-            
-            # Update data to reflect the new class in the UI
-            self.update_data()
-            DataJson().send_changes()
-            StateJson().send_changes()
-            
-            # Call user's callback
+            self._add_new_class(new_class)
+            self._hide_dialog()
+
             func(new_class)
 
         return _class_created
