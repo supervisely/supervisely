@@ -142,6 +142,10 @@ class SelectClass(Widget):
 
         # Initialize parent Widget
         super().__init__(widget_id=widget_id, file_path=__file__)
+        
+        # Register class_created route if show_add_new_class is enabled
+        if self._show_add_new_class:
+            self._register_class_created_route()
 
     def get_json_data(self):
         """Build JSON data for the widget."""
@@ -302,17 +306,10 @@ class SelectClass(Widget):
 
         return _value_changed
 
-    def class_created(self, func: Callable[[ObjClass], None]):
-        """
-        Decorator to handle new class creation event.
-        The decorated function receives the newly created ObjClass.
-
-        :param func: Function to be called when a new class is created
-        :type func: Callable[[ObjClass], None]
-        """
+    def _register_class_created_route(self):
+        """Register the class_created route."""
         route_path = self.get_route_path(SelectClass.Routes.CLASS_CREATED)
         server = self._sly_app.get_server()
-        self._class_created_callback = func
 
         @server.post(route_path)
         def _class_created():
@@ -351,7 +348,17 @@ class SelectClass(Widget):
             # Hide dialog
             self._hide_dialog()
 
-            # Call user's callback
-            func(new_class)
+            # Call user's callback if set
+            if self._class_created_callback:
+                self._class_created_callback(new_class)
 
-        return _class_created
+    def class_created(self, func: Callable[[ObjClass], None]):
+        """
+        Decorator to handle new class creation event.
+        The decorated function receives the newly created ObjClass.
+
+        :param func: Function to be called when a new class is created
+        :type func: Callable[[ObjClass], None]
+        """
+        self._class_created_callback = func
+        return func

@@ -1,6 +1,8 @@
 <el-select
 	v-model="state.{{{widget.widget_id}}}.value"
+	{% if widget._value_changed_callback is not none %}
 	@change="post('/{{{widget.widget_id}}}/value_changed')"
+	{% endif %}
 	:placeholder="data.{{{widget.widget_id}}}.placeholder"
 	:filterable="data.{{{widget.widget_id}}}.filterable"
 	:multiple="data.{{{widget.widget_id}}}.multiple"
