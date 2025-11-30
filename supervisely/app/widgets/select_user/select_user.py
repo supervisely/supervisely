@@ -91,6 +91,9 @@ class SelectUser(Widget):
 
         # Initialize parent Widget
         super().__init__(widget_id=widget_id, file_path=__file__)
+        
+        # Register value_changed route
+        self._register_value_changed_route()
 
     def _filter_users_by_role(self, users: List[UserInfo]) -> List[UserInfo]:
         """Filter users by allowed roles."""
@@ -219,6 +222,18 @@ class SelectUser(Widget):
             )
         StateJson().send_changes()
 
+    def _register_value_changed_route(self):
+        """Register the value_changed route."""
+        route_path = self.get_route_path(SelectUser.Routes.VALUE_CHANGED)
+        server = self._sly_app.get_server()
+
+        @server.post(route_path)
+        def _value_changed():
+            selected = self.get_selected_user()
+            # Only call callback if it's set and selection is not None
+            if self._value_changed_callback and selected is not None:
+                self._value_changed_callback(selected)
+
     def value_changed(self, func: Callable[[Union[UserInfo, List[UserInfo]]], None]):
         """
         Decorator to handle value change event.
@@ -227,14 +242,5 @@ class SelectUser(Widget):
         :param func: Function to be called when selection changes
         :type func: Callable[[Union[UserInfo, List[UserInfo]]], None]
         """
-        route_path = self.get_route_path(SelectUser.Routes.VALUE_CHANGED)
-        server = self._sly_app.get_server()
         self._value_changed_callback = func
-
-        @server.post(route_path)
-        def _value_changed():
-            selected = self.get_selected_user()
-            if selected is not None:
-                func(selected)
-
-        return _value_changed
+        return func
