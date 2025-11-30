@@ -3,6 +3,7 @@ from typing import Callable, List, Optional, Union
 from supervisely.api.user_api import UserInfo
 from supervisely.app import StateJson
 from supervisely.app.widgets import Select
+from supervisely.user.user import UserRoleName
 
 try:
     from typing import Literal
@@ -19,6 +20,8 @@ class SelectUser(Select):
     :type users: Optional[List[UserInfo]]
     :param team_id: Team ID to fetch users from
     :type team_id: Optional[int]
+    :param roles: List of allowed user roles to filter by (e.g., ['admin', 'developer'])
+    :type roles: Optional[List[str]]
     :param filterable: Enable search/filter functionality in dropdown
     :type filterable: Optional[bool]
     :param placeholder: Placeholder text when no user is selected
@@ -37,11 +40,15 @@ class SelectUser(Select):
         import supervisely as sly
         from supervisely.app.widgets import SelectUser
 
-        # Initialize with team_id
-        select_user = SelectUser(team_id=123, multiple=True)
+        # Initialize with team_id and filter by roles
+        select_user = SelectUser(
+            team_id=123, 
+            roles=['admin', 'developer'],
+            multiple=True
+        )
 
         # Or initialize empty and set users later
-        select_user = SelectUser()
+        select_user = SelectUser(roles=['annotator', 'reviewer'])
         select_user.set_users(user_list)
 
         # Handle selection changes
@@ -60,6 +67,7 @@ class SelectUser(Select):
         self,
         users: Optional[List[UserInfo]] = None,
         team_id: Optional[int] = None,
+        roles: Optional[List[str]] = None,
         filterable: Optional[bool] = True,
         placeholder: Optional[str] = "Select user",
         size: Optional[Literal["large", "small", "mini"]] = None,
@@ -68,13 +76,14 @@ class SelectUser(Select):
     ):
         self._users = []
         self._team_id = team_id
+        self._allowed_roles = roles
         self._value_changed_callback = None
 
         # Load users from team_id if provided
         if team_id is not None:
             self._load_users_from_team(team_id)
         elif users is not None:
-            self._users = list(users)
+            self._users = self._filter_users_by_role(list(users))
 
         # Build Select.Item list from users
         items = self._build_items()
@@ -89,12 +98,20 @@ class SelectUser(Select):
             widget_id=widget_id,
         )
 
+    def _filter_users_by_role(self, users: List[UserInfo]) -> List[UserInfo]:
+        """Filter users by allowed roles."""
+        if self._allowed_roles is None:
+            return users
+        
+        return [user for user in users if user.role in self._allowed_roles]
+
     def _load_users_from_team(self, team_id: int):
         """Load users from a team using the API."""
         from supervisely import Api
 
         api = Api.from_env()
-        self._users = api.user.get_team_members(team_id)
+        all_users = api.user.get_team_members(team_id)
+        self._users = self._filter_users_by_role(all_users)
 
     def _build_items(self) -> List[Select.Item]:
         """Build Select.Item list from UserInfo list."""
@@ -146,7 +163,7 @@ class SelectUser(Select):
 
     def set_users(self, users: List[UserInfo]):
         """Update the list of available users."""
-        self._users = list(users)
+        self._users = self._filter_users_by_role(list(users))
 
         # Rebuild items
         items = self._build_items()
