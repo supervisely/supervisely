@@ -3,7 +3,6 @@ from typing import Callable, List, Optional, Union
 from supervisely import ObjClass, ObjClassCollection
 from supervisely.app import DataJson, StateJson
 from supervisely.app.widgets import Widget, Text
-from supervisely.app.widgets_context import JinjaWidgets
 from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.geometry.alpha_mask import AlphaMask
@@ -56,9 +55,11 @@ available_geometry_types = [
     {"value": "any shape", "label": "Any shape"},
 ]
 
+
 class SelectClass(Widget):
     """
-    SelectClass is a compact dropdown widget for selecting object classes with an option to create new classes on the fly.
+    SelectClass is a compact dropdown widget for selecting object classes with an option to create
+    new classes on the fly.
 
     :param classes: Initial list of ObjClass instances
     :type classes: Optional[Union[List[ObjClass], ObjClassCollection]]
@@ -132,7 +133,7 @@ class SelectClass(Widget):
         self._show_add_new_class = show_add_new_class
         self._size = size
         self._multiple = multiple
-        
+
         self._value_changed_callback = None
         self._class_created_callback = None
 
@@ -142,21 +143,21 @@ class SelectClass(Widget):
         # Initialize parent Widget
         super().__init__(widget_id=widget_id, file_path=__file__)
 
-
-
     def get_json_data(self):
         """Build JSON data for the widget."""
         # Build items list with class info
         items = []
         for cls in self._classes:
             shape_text = type_to_shape_text.get(cls.geometry_type, "")
-            items.append({
-                "value": cls.name,
-                "label": cls.name,
-                "color": cls.color,
-                "geometryType": shape_text.upper() if shape_text else "",
-            })
-        
+            items.append(
+                {
+                    "value": cls.name,
+                    "label": cls.name,
+                    "color": cls.color,
+                    "geometryType": shape_text.upper() if shape_text else "",
+                }
+            )
+
         return {
             "items": items,
             "placeholder": self._placeholder,
@@ -179,19 +180,31 @@ class SelectClass(Widget):
             },
         }
 
-    def get_value(self):
+    def get_value(self) -> Union[str, List[str], None]:
         """Get the currently selected class name(s)."""
         return StateJson()[self.widget_id]["value"]
 
-    def get_selected_class(self) -> Optional[ObjClass]:
-        """Get the currently selected ObjClass object."""
-        class_name = self.get_value()
-        if class_name is None:
+    def get_selected_class(self) -> Union[ObjClass, List[ObjClass], None]:
+        """Get the currently selected ObjClass object(s)."""
+        value = self.get_value()
+        if value is None:
             return None
-        for cls in self._classes:
-            if cls.name == class_name:
-                return cls
-        return None
+
+        if self._multiple:
+            if not isinstance(value, list):
+                return []
+            result = []
+            for class_name in value:
+                for cls in self._classes:
+                    if cls.name == class_name:
+                        result.append(cls)
+                        break
+            return result
+        else:
+            for cls in self._classes:
+                if cls.name == value:
+                    return cls
+            return None
 
     def set_value(self, class_name: Union[str, List[str]]):
         """Set the selected class by name."""
@@ -200,7 +213,7 @@ class SelectClass(Widget):
 
     def get_all_classes(self) -> List[ObjClass]:
         """Get all available classes."""
-        return self._classes
+        return self._classes.copy()
 
     def set(self, classes: Union[List[ObjClass], ObjClassCollection]):
         """Update the list of available classes."""
@@ -220,7 +233,11 @@ class SelectClass(Widget):
             if self._multiple:
                 if isinstance(current_value, list):
                     # Keep only valid selections
-                    valid = [v for v in current_value if any(cls.name == v for cls in self._classes)]
+                    valid = [
+                        v
+                        for v in current_value
+                        if any(cls.name == v for cls in self._classes)
+                    ]
                     if valid != current_value:
                         StateJson()[self.widget_id]["value"] = valid
                         StateJson().send_changes()
@@ -253,7 +270,7 @@ class SelectClass(Widget):
         # Update data
         DataJson()[self.widget_id] = self.get_json_data()
         DataJson().send_changes()
-        
+
         # Set the new class as selected
         if self._multiple:
             current = StateJson()[self.widget_id]["value"]
@@ -265,13 +282,13 @@ class SelectClass(Widget):
             StateJson()[self.widget_id]["value"] = new_class.name
         StateJson().send_changes()
 
-    def value_changed(self, func: Callable[[Union[str, List[str]]], None]):
+    def value_changed(self, func: Callable[[Union[ObjClass, List[ObjClass]]], None]):
         """
         Decorator to handle value change event.
-        The decorated function receives the selected class name (or list of names if multiple=True).
+        The decorated function receives the selected ObjClass (or list of ObjClass if multiple=True).
 
         :param func: Function to be called when selection changes
-        :type func: Callable[[Union[str, List[str]]], None]
+        :type func: Callable[[Union[ObjClass, List[ObjClass]]], None]
         """
         route_path = self.get_route_path(SelectClass.Routes.VALUE_CHANGED)
         server = self._sly_app.get_server()
@@ -279,8 +296,9 @@ class SelectClass(Widget):
 
         @server.post(route_path)
         def _value_changed():
-            value = StateJson()[self.widget_id]["value"]
-            func(value)
+            selected = self.get_selected_class()
+            if selected is not None:
+                func(selected)
 
         return _value_changed
 
