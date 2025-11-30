@@ -1,8 +1,8 @@
 from typing import Callable, List, Optional, Union
 
 from supervisely.api.user_api import UserInfo
-from supervisely.app import StateJson
-from supervisely.app.widgets import Select
+from supervisely.app import DataJson, StateJson
+from supervisely.app.widgets import Widget
 from supervisely.user.user import UserRoleName
 
 try:
@@ -11,7 +11,7 @@ except ImportError:
     from typing_extensions import Literal
 
 
-class SelectUser(Select):
+class SelectUser(Widget):
     """
     SelectUser is a dropdown widget for selecting users from a team.
     Extends the Select widget with user-specific functionality.
@@ -77,6 +77,10 @@ class SelectUser(Select):
         self._users = []
         self._team_id = team_id
         self._allowed_roles = roles
+        self._filterable = filterable
+        self._placeholder = placeholder
+        self._size = size
+        self._multiple = multiple
         self._value_changed_callback = None
 
         # Load users from team_id if provided
@@ -85,18 +89,8 @@ class SelectUser(Select):
         elif users is not None:
             self._users = self._filter_users_by_role(list(users))
 
-        # Build Select.Item list from users
-        items = self._build_items()
-
-        # Initialize parent Select widget
-        super().__init__(
-            items=items,
-            filterable=filterable,
-            placeholder=placeholder,
-            size=size,
-            multiple=multiple,
-            widget_id=widget_id,
-        )
+        # Initialize parent Widget
+        super().__init__(widget_id=widget_id, file_path=__file__)
 
     def _filter_users_by_role(self, users: List[UserInfo]) -> List[UserInfo]:
         """Filter users by allowed roles."""
@@ -113,18 +107,39 @@ class SelectUser(Select):
         all_users = api.user.get_team_members(team_id)
         self._users = self._filter_users_by_role(all_users)
 
-    def _build_items(self) -> List[Select.Item]:
-        """Build Select.Item list from UserInfo list."""
+    def get_json_data(self):
+        """Build JSON data for the widget."""
         items = []
         for user in self._users:
-            items.append(
-                Select.Item(
-                    value=user.login,
-                    label=user.login,
-                    right_text=user.name if user.name != user.login else "",
-                )
-            )
-        return items
+            # Show name if different from login, otherwise show role
+            right_text = ""
+            if user.name and user.name != user.login:
+                right_text = f"{user.name} • {user.role.upper()}"
+            else:
+                right_text = user.role.upper()
+            
+            items.append({
+                "value": user.login,
+                "label": user.login,
+                "rightText": right_text,
+            })
+        
+        return {
+            "items": items,
+            "placeholder": self._placeholder,
+            "filterable": self._filterable,
+            "multiple": self._multiple,
+            "size": self._size,
+        }
+
+    def get_json_state(self):
+        """Build JSON state for the widget."""
+        if self._multiple:
+            value = []
+        else:
+            value = self._users[0].login if self._users else None
+        
+        return {"value": value}
 
     def get_value(self) -> Union[str, List[str], None]:
         """Get the currently selected user login(s)."""
@@ -165,11 +180,9 @@ class SelectUser(Select):
         """Update the list of available users."""
         self._users = self._filter_users_by_role(list(users))
 
-        # Rebuild items
-        items = self._build_items()
-
-        # Use parent's set method
-        super().set(items=items)
+        # Update data
+        DataJson()[self.widget_id] = self.get_json_data()
+        DataJson().send_changes()
 
         # Reset value if current selection is not in new users
         current_value = StateJson()[self.widget_id]["value"]
@@ -193,14 +206,17 @@ class SelectUser(Select):
         self._team_id = team_id
         self._load_users_from_team(team_id)
 
-        # Rebuild items and update
-        items = self._build_items()
-        super().set(items=items)
+        # Update data
+        DataJson()[self.widget_id] = self.get_json_data()
+        DataJson().send_changes()
 
         # Reset selection
-        StateJson()[self.widget_id]["value"] = (
-            self._users[0].login if self._users else None
-        )
+        if self._multiple:
+            StateJson()[self.widget_id]["value"] = []
+        else:
+            StateJson()[self.widget_id]["value"] = (
+                self._users[0].login if self._users else None
+            )
         StateJson().send_changes()
 
     def value_changed(self, func: Callable[[Union[UserInfo, List[UserInfo]]], None]):
