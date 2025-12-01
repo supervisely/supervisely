@@ -9,6 +9,9 @@
     :team-id.sync="data.{{{widget.widget_id}}}.teamId"
     {% endif %}
     :workspace-id.sync="state.{{{widget.widget_id}}}.workspaceId"
+    {% if widget._changes_handled == true %}
+    @update:workspace-id="state.{{{widget.widget_id}}}.workspaceId = $event; post('/{{{widget.widget_id}}}/value_changed')"
+    {% endif %}
     :options="data.{{{widget.widget_id}}}.options"
     :disabled="data.{{{widget.widget_id}}}.disabled"
   ></sly-select-team-workspace>

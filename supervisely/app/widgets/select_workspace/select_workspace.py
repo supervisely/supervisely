@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Callable, Dict, Optional
 
 try:
     from typing import Literal
@@ -13,6 +13,8 @@ from supervisely.app.widgets.select_sly_utils import _get_int_or_env
 
 
 class SelectWorkspace(Widget):
+    class Routes:
+        VALUE_CHANGED = "value_changed"
     def __init__(
         self,
         default_id: int = None,
@@ -30,6 +32,7 @@ class SelectWorkspace(Widget):
         self._size = size
         self._team_selector = None
         self._disabled = False
+        self._changes_handled = False
 
         self._default_id = _get_int_or_env(self._default_id, "context.workspaceId")
         if self._default_id is not None:
@@ -74,6 +77,12 @@ class SelectWorkspace(Widget):
             res["options"]["size"] = self._size
         return res
 
+    def get_team_id(self):
+        if self._compact is True:
+            return self._team_id
+        else:
+            return self._team_selector.get_selected_id()
+
     def get_json_state(self) -> Dict:
         return {
             "workspaceId": self._default_id,
@@ -95,3 +104,23 @@ class SelectWorkspace(Widget):
         self._disabled = False
         DataJson()[self.widget_id]["disabled"] = self._disabled
         DataJson().send_changes()
+
+    def value_changed(self, func: Callable[[int], None]):
+        """
+        Decorator to handle workspace selection change event.
+        The decorated function receives the selected workspace ID.
+
+        :param func: Function to be called when workspace selection changes
+        :type func: Callable[[int], None]
+        """
+        route_path = self.get_route_path(SelectWorkspace.Routes.VALUE_CHANGED)
+        server = self._sly_app.get_server()
+        self._changes_handled = True
+
+        @server.post(route_path)
+        def _value_changed():
+            workspace_id = self.get_selected_id()
+            if workspace_id is not None:
+                func(workspace_id)
+
+        return _value_changed

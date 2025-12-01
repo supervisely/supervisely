@@ -81,7 +81,7 @@ class SelectUser(Widget):
         self._placeholder = placeholder
         self._size = size
         self._multiple = multiple
-        self._value_changed_callback = None
+        self._changes_handled = False
 
         # Load users from team_id if provided
         if team_id is not None:
@@ -229,7 +229,7 @@ class SelectUser(Widget):
         """
         route_path = self.get_route_path(SelectUser.Routes.VALUE_CHANGED)
         server = self._sly_app.get_server()
-        self._value_changed_callback = func
+        self._changes_handled = True
 
         @server.post(route_path)
         def _value_changed():
