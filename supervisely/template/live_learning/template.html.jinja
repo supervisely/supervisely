@@ -1,0 +1,180 @@
+<template>
+  <div class="live-learning-report">
+    <sly-card title="Live Learning Session" subtitle="{{ session.name }}">
+      <div class="session-info">
+        <div class="info-row">
+          <span class="label">Session ID:</span>
+          <span class="value">{{ session.id }}</span>
+        </div>
+        <div class="info-row">
+          <span class="label">Started:</span>
+          <span class="value">{{ session.start_time }}</span>
+        </div>
+        <div class="info-row">
+          <span class="label">Current Iteration:</span>
+          <span class="value">{{ session.current_iteration }}</span>
+        </div>
+        <div class="info-row">
+          <span class="label">Status:</span>
+          <span class="value status-{{ session.status }}">{{ session.status }}</span>
+        </div>
+        {% if session.project %}
+        <div class="info-row">
+          <span class="label">Project:</span>
+          <a href="{{ session.project.url }}" target="_blank">{{ session.project.name }}</a>
+        </div>
+        {% endif %}
+      </div>
+    </sly-card>
+
+    <sly-card title="Model Configuration" class="mt-3">
+      <div class="model-info">
+        <div class="info-row">
+          <span class="label">Model:</span>
+          <span class="value">{{ model.name }}</span>
+        </div>
+        <div class="info-row">
+          <span class="label">Backbone:</span>
+          <span class="value">{{ model.backbone }}</span>
+        </div>
+        <div class="info-row">
+          <span class="label">Number of Classes:</span>
+          <span class="value">{{ model.num_classes }}</span>
+        </div>
+        <div class="info-row">
+          <span class="label">Classes:</span>
+          <span class="value">{{ model.classes|join(', ') }}</span>
+        </div>
+        <div class="info-row">
+          <span class="label">Config File:</span>
+          <span class="value">{{ model.config_file }}</span>
+        </div>
+      </div>
+    </sly-card>
+
+    <sly-card title="Training Status" class="mt-3">
+      <div class="training-status">
+        <div class="info-row">
+          <span class="label">Current Iteration:</span>
+          <span class="value">{{ training.current_iteration }}</span>
+        </div>
+        {% if training.current_loss %}
+        <div class="info-row">
+          <span class="label">Current Loss:</span>
+          <span class="value">{{ "%.6f"|format(training.current_loss) }}</span>
+        </div>
+        {% endif %}
+        <div class="info-row">
+          <span class="label">Training Paused:</span>
+          <span class="value">{{ "Yes" if training.is_paused else "No" }}</span>
+        </div>
+        {% if training.logs.url %}
+        <div class="info-row">
+          <span class="label">Logs:</span>
+          <a href="{{ training.logs.url }}" target="_blank">View Logs</a>
+        </div>
+        {% endif %}
+      </div>
+
+      {% if training.training_plots %}
+      <div class="training-plots mt-3">
+        <h3>Training Loss</h3>
+        {{ training.training_plots|safe }}
+      </div>
+      {% else %}
+      <div class="mt-3">
+        <i>Training plots will appear here once enough iterations are logged</i>
+      </div>
+      {% endif %}
+    </sly-card>
+
+    <sly-card title="Dataset Info" class="mt-3">
+      <div class="dataset-info">
+        <div class="info-row">
+          <span class="label">Current Size:</span>
+          <span class="value">{{ dataset.current_size }} samples</span>
+        </div>
+        <div class="info-row">
+          <span class="label">Initial Samples:</span>
+          <span class="value">{{ dataset.initial_samples }}</span>
+        </div>
+        <div class="info-row">
+          <span class="label">Samples Added:</span>
+          <span class="value">{{ dataset.samples_added }}</span>
+        </div>
+      </div>
+    </sly-card>
+
+    {% if training.checkpoints %}
+    <sly-card title="Checkpoints" class="mt-3">
+      <table class="checkpoints-table">
+        <thead>
+          <tr>
+            <th>Checkpoint Name</th>
+            <th>Iteration</th>
+            <th>Loss</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for checkpoint in training.checkpoints %}
+          <tr>
+            <td>{{ checkpoint.name }}</td>
+            <td>{{ checkpoint.iteration }}</td>
+            <td>{{ "%.6f"|format(checkpoint.loss) if checkpoint.loss else "N/A" }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </sly-card>
+    {% endif %}
+
+  </div>
+
+  <style scoped>
+    .live-learning-report {
+      padding: 20px;
+    }
+    .info-row {
+      display: flex;
+      padding: 8px 0;
+      border-bottom: 1px solid #eee;
+    }
+    .info-row .label {
+      font-weight: 600;
+      min-width: 180px;
+      color: #555;
+    }
+    .info-row .value {
+      color: #333;
+    }
+    .status-running {
+      color: #28a745;
+      font-weight: bold;
+    }
+    .status-paused {
+      color: #ffc107;
+      font-weight: bold;
+    }
+    .status-stopped {
+      color: #dc3545;
+      font-weight: bold;
+    }
+    .mt-3 {
+      margin-top: 1.5rem;
+    }
+    .checkpoints-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .checkpoints-table th,
+    .checkpoints-table td {
+      padding: 10px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+    .checkpoints-table th {
+      background-color: #f5f5f5;
+      font-weight: 600;
+    }
+  </style>
+</template>
