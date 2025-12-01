@@ -1,0 +1,50 @@
+<div class="experiment-info-header">
+    <div class="experiment-info-subheader">
+        <div class="experiment-info-header-title">
+            <h1>{{ session.name }}</h1>
+        </div>
+        <div class="experiment-info-buttons">
+            {% if session.artifacts_url %}
+            <a href="{{ session.artifacts_url }}" target="_blank">
+                <i class="zmdi zmdi-folder"></i> Artifacts
+            </a>
+            {% endif %}
+            {% if session.project.url %}
+            <a href="{{ session.project.url }}" target="_blank">
+                <i class="zmdi zmdi-image"></i> Project
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="experiment-info-subheader-body">
+        <div class="experiment-info-subheader-block">
+            <h2>Session Info</h2>
+            <ul>
+                <li><strong>Session ID:</strong> {{ session.id }}</li>
+                <li><strong>Started:</strong> {{ session.start_time }}</li>
+                <li><strong>Duration:</strong> {{ session.duration or "N/A" }}</li>
+                <li><strong>Total Iterations:</strong> {{ training.total_iterations }}</li>
+            </ul>
+        </div>
+        
+        <div class="experiment-info-subheader-block">
+            <h2>Model</h2>
+            <ul>
+                <li><strong>Architecture:</strong> {{ model.name }}</li>
+                <li><strong>Backbone:</strong> {{ model.backbone }}</li>
+                <li><strong>Classes:</strong> ({{ model.num_classes }}) {% for class_name in model.classes %}<span class="class-tag">{{ class_name }}</span> {% endfor %}</li>
+            </ul>
+        </div>
+        
+        <div class="experiment-info-subheader-block">
+            <h2>Dataset</h2>
+            <ul>
+                <li><strong>Project:</strong> {{ session.project.name }}</li>
+                <li><strong>Final Size:</strong> {{ dataset.current_size }} samples</li>
+                <li><strong>Initial Samples:</strong> {{ dataset.initial_samples }}</li>
+                <li><strong>Samples Added:</strong> {{ dataset.samples_added }}</li>
+            </ul>
+        </div>
+    </div>
+</div>

@@ -58,27 +58,19 @@ class LiveLearningGenerator(BaseGenerator):
 
     def _report_url(self, server_address: str, template_id: int) -> str:
         """Generate URL to open the Live Learning report"""
-        return f"{server_address}/nn/live-learning/{template_id}"
+        return f"{server_address}/nn/experiments/{template_id}"
 
     def context(self) -> dict:
-        """
-        Generate context for Jinja2 template.
-        
-        Structure:
-        - env: server_address
-        - session: session metadata
-        - model: model configuration
-        - training: training logs and checkpoints
-        - dataset: dataset info
-        """
         return {
             "env": self._get_env_context(),
             "session": self._get_session_context(),
             "model": self._get_model_context(),
             "training": self._get_training_context(),
             "dataset": self._get_dataset_context(),
+            "widgets": self._get_widgets_context(),
+            "hyperparameters": self.session_info.get("hyperparameters", {}),  # <-- ДОБАВЬ
         }
-
+    
     def _get_env_context(self) -> dict:
         """Environment info"""
         return {
@@ -86,18 +78,21 @@ class LiveLearningGenerator(BaseGenerator):
         }
 
     def _get_session_context(self) -> dict:
-        """Live Learning session info"""
         session_id = self.session_info["session_id"]
         project_id = self.session_info["project_id"]
+        artifacts_dir = self.session_info.get("artifacts_dir", "")
         
         project_info = self.api.project.get_info_by_id(project_id)
         project_url = f"{self.api.server_address}/projects/{project_id}/datasets"
+        artifacts_url = f"{self.api.server_address}/files/?path={artifacts_dir}" if artifacts_dir else None
         
         return {
             "id": session_id,
             "name": self.session_info.get("session_name", f"Session {session_id}"),
             "start_time": self.session_info["start_time"],
+            "duration": self.session_info.get("duration"),
             "current_iteration": self.session_info.get("current_iteration", 0),
+            "artifacts_url": artifacts_url,  
             "project": {
                 "id": project_id,
                 "name": project_info.name if project_info else "Unknown",
@@ -105,6 +100,55 @@ class LiveLearningGenerator(BaseGenerator):
             },
             "status": self.session_info.get("status", "running"),
         }
+
+    def parse_hyperparameters(config_path: str) -> dict:
+        """
+        Parse hyperparameters from MMEngine config file.
+        
+        :param config_path: Path to config.py
+        :return: Dict with extracted hyperparameters
+        """
+        import re
+        
+        hyperparams = {}
+        
+        if not os.path.exists(config_path):
+            return hyperparams
+        
+        with open(config_path, 'r') as f:
+            content = f.read()
+        
+        # Extract crop_size
+        match = re.search(r'crop_size\s*=\s*\((\d+),\s*(\d+)\)', content)
+        if match:
+            hyperparams['crop_size'] = f"({match.group(1)}, {match.group(2)})"
+        
+        # Extract learning rate
+        match = re.search(r'lr=([0-9.e-]+)', content)
+        if match:
+            hyperparams['learning_rate'] = float(match.group(1))
+        
+        # Extract batch_size
+        match = re.search(r'batch_size=(\d+)', content)
+        if match:
+            hyperparams['batch_size'] = int(match.group(1))
+        
+        # Extract max_epochs
+        match = re.search(r'max_epochs\s*=\s*(\d+)', content)
+        if match:
+            hyperparams['max_epochs'] = int(match.group(1))
+        
+        # Extract weight_decay
+        match = re.search(r'weight_decay=([0-9.e-]+)', content)
+        if match:
+            hyperparams['weight_decay'] = float(match.group(1))
+        
+        # Extract optimizer
+        match = re.search(r"optimizer=dict\(type='(\w+)'", content)
+        if match:
+            hyperparams['optimizer'] = match.group(1)
+        
+        return hyperparams
 
     def _get_model_context(self) -> dict:
         """Model configuration info"""
@@ -123,19 +167,32 @@ class LiveLearningGenerator(BaseGenerator):
         if logs_path:
             logs_url = f"{self.api.server_address}/files/?path={logs_path}"
         
-        checkpoints = self.session_info.get("checkpoints", [])
+        checkpoints = []
+        artifacts_dir = self.session_info.get("artifacts_dir", "")
+        for ckpt in self.session_info.get("checkpoints", []):
+            checkpoint = {
+                "name": ckpt["name"],
+                "iteration": ckpt["iteration"],
+                "loss": ckpt.get("loss"),
+                "url": f"{self.api.server_address}/files/?path={artifacts_dir}/checkpoints/{ckpt['name']}",
+            }
+            checkpoints.append(checkpoint)
+        
+        # Get total iterations from loss_history or checkpoints
+        loss_history = self.session_info.get("loss_history", [])
+        total_iterations = loss_history[-1]["iteration"] if loss_history else (
+            max([c["iteration"] for c in self.session_info.get("checkpoints", [])]) if self.session_info.get("checkpoints") else 0
+        )
         
         return {
-            "current_iteration": self.session_info.get("current_iteration", 0),
-            "current_loss": self.session_info.get("current_loss", None),
-            "is_paused": self.session_info.get("training_paused", False),
+            "total_iterations": total_iterations,
             "checkpoints": checkpoints,
             "logs": {
                 "path": logs_path,
                 "url": logs_url,
             },
-            "training_plots": self._get_training_plots_html(),
         }
+     
 
     def _get_dataset_context(self) -> dict:
         """Dataset info"""
@@ -157,27 +214,102 @@ class LiveLearningGenerator(BaseGenerator):
     def upload_to_artifacts(self, remote_dir: str):
         """
         Upload report to team files.
-        
+
         Default path: /live-learning/{project_id}_{project_name}/{session_id}/
         """
-        self.upload(remote_dir, team_id=self.team_id)
+        # Normalize path - remove trailing slash
+        remote_dir = remote_dir.rstrip("/")
+        file_info = self.upload(remote_dir, team_id=self.team_id)
+        self._report_file_info = file_info 
+        return file_info 
 
-    def get_report(self):
-        """Get FileInfo of the uploaded report"""
-        artifacts_dir = self.session_info.get("artifacts_dir")
-        if not artifacts_dir:
-            raise ValueError("artifacts_dir not set in session_info")
+    def _get_widgets_context(self) -> dict:
+        """Generate widgets (tables, plots) for the report"""
+        checkpoints_table = self._generate_checkpoints_table()
+        training_plot = self._generate_training_plot()
         
-        remote_report_path = os.path.join(artifacts_dir, "template.vue")
-        report_info = self.api.file.get_info_by_path(self.team_id, remote_report_path)
-        if report_info is None:
-            raise ValueError("Generate and upload report first")
-        return report_info
+        return {
+            "tables": {
+                "checkpoints": checkpoints_table,
+            },
+            "training_plot": training_plot,
+        }
+
+    def _generate_checkpoints_table(self) -> Optional[str]:
+        """Generate HTML table with checkpoints"""
+        # Get training context to access checkpoints with URLs
+        training_ctx = self._get_training_context()
+        checkpoints = training_ctx.get("checkpoints", [])
+        
+        if not checkpoints:
+            return None
+        
+        html = ['<table class="table">']
+        html.append("<thead><tr><th>Checkpoint Name</th><th>Iteration</th><th>Loss</th><th>Actions</th></tr></thead>")
+        html.append("<tbody>")
+        
+        for checkpoint in checkpoints:
+            name = checkpoint.get("name", "N/A")
+            iteration = checkpoint.get("iteration", "N/A")
+            loss = checkpoint.get("loss")
+            url = checkpoint.get("url", "")
+            loss_str = f"{loss:.6f}" if loss is not None else "N/A"
+            
+            download_link = f'<a href="{url}" target="_blank" class="download-link">Download</a>' if url else ""
+            
+            html.append(f"<tr><td>{name}</td><td>{iteration}</td><td>{loss_str}</td><td>{download_link}</td></tr>")
+        
+        html.append("</tbody>")
+        html.append("</table>")
+        return "\n".join(html)
+
+    def _generate_training_plot(self) -> str:
+        """Generate Plotly training loss plot"""
+        import plotly.graph_objects as go
+        
+        # Get loss history from session_info
+        loss_history = self.session_info.get("loss_history", [])
+        
+        if not loss_history:
+            return "<p>No training data available.</p>"
+        
+        # Prepare data
+        iterations = [item["iteration"] for item in loss_history]
+        losses = [item["loss"] for item in loss_history]
+        
+        # Create plot
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=iterations,
+            y=losses,
+            mode='lines',
+            name='Train Loss',
+            line=dict(color='#1890ff', width=2)
+        ))
+        
+        fig.update_layout(
+            title="Training Loss",
+            xaxis_title="Iteration",
+            yaxis_title="Loss",
+            template="plotly_white",
+            height=400,
+            margin=dict(l=50, r=50, t=50, b=50)
+        )
+        
+        # Return HTML
+        return fig.to_html(include_plotlyjs='cdn', div_id='training-plot')
+
+    def get_report(self) -> str:
+        """Get report URL after upload"""
+        if self._report_file_info is None:
+            raise RuntimeError("Report not uploaded yet. Call upload_to_artifacts() first.")
+        
+        # self._report_file_info is file_id (int), not FileInfo object
+        file_id = self._report_file_info if isinstance(self._report_file_info, int) else self._report_file_info.id
+        return self._report_url(self.api.server_address, file_id)
 
     def get_report_id(self) -> int:
         """Get report file ID"""
-        return self.get_report().id
-
-    def get_report_link(self) -> str:
-        """Get report URL"""
-        return self._report_url(self.api.server_address, self.get_report_id())
+        if self._report_file_info is None:
+            raise RuntimeError("Report not uploaded yet. Call upload_to_artifacts() first.")
+        return self._report_file_info.id

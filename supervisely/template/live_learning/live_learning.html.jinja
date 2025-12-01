@@ -1,0 +1,27 @@
+## Training Results
+
+{{ widgets.training_plot | safe }}
+
+## Checkpoints
+
+{% if widgets.tables.checkpoints %}
+{{ widgets.tables.checkpoints | safe }}
+{% else %}
+No checkpoints available.
+{% endif %}
+
+## Hyperparameters
+
+{% if hyperparameters %}
+| Parameter | Value |
+|-----------|-------|
+{% for key, value in hyperparameters.items() %}
+| {{ key }} | {{ value }} |
+{% endfor %}
+{% else %}
+No hyperparameters available.
+{% endif %}
+
+## Configuration
+
+**Config file:** `{{ model.config_file }}`
