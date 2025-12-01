@@ -264,40 +264,49 @@ class LiveLearningGenerator(BaseGenerator):
         return "\n".join(html)
 
     def _generate_training_plot(self) -> str:
-        """Generate Plotly training loss plot"""
-        import plotly.graph_objects as go
-        
-        # Get loss history from session_info
+        """Generate training loss plot as static image"""
         loss_history = self.session_info.get("loss_history", [])
         
         if not loss_history:
-            return "<p>No training data available.</p>"
+            return "<p>No training data available yet.</p>"
         
-        # Prepare data
         iterations = [item["iteration"] for item in loss_history]
         losses = [item["loss"] for item in loss_history]
         
-        # Create plot
+        import plotly.graph_objects as go
+        
         fig = go.Figure()
         fig.add_trace(go.Scatter(
             x=iterations,
             y=losses,
-            mode='lines',
-            name='Train Loss',
-            line=dict(color='#1890ff', width=2)
+            mode='lines+markers',
+            name='Training Loss',
+            line=dict(color='#1890ff', width=2),
+            marker=dict(size=6)
         ))
         
         fig.update_layout(
-            title="Training Loss",
+            title="Training Loss History",
             xaxis_title="Iteration",
             yaxis_title="Loss",
             template="plotly_white",
             height=400,
-            margin=dict(l=50, r=50, t=50, b=50)
+            width=800,
         )
         
-        # Return HTML
-        return fig.to_html(include_plotlyjs='cdn', div_id='training-plot')
+        # Save as static PNG image
+        data_dir = os.path.join(self.output_dir, "data")
+        os.makedirs(data_dir, exist_ok=True)
+        img_path = os.path.join(data_dir, "training_loss.png")
+        
+        try:
+            fig.write_image(img_path, engine="kaleido")
+        except Exception as e:
+            logger.warning(f"Failed to save training plot: {e}")
+            return "<p>Failed to generate training plot</p>"
+        
+        # Return Vue image component
+        return f'<sly-iw-image src="/data/training_loss.png" :template-base-path="templateBasePath" :options="{{ style: {{ width: \'70%\', height: \'auto\' }} }}" />'
 
     def get_report(self) -> str:
         """Get report URL after upload"""
@@ -312,4 +321,5 @@ class LiveLearningGenerator(BaseGenerator):
         """Get report file ID"""
         if self._report_file_info is None:
             raise RuntimeError("Report not uploaded yet. Call upload_to_artifacts() first.")
-        return self._report_file_info.id
+        return self._report_file_info.idr
+    

@@ -8,8 +8,8 @@ from supervisely.geometry.bitmap import Bitmap
 
 def create_test_session_info():
     """Create test session info with all required fields"""
-    project_id = 4709
-    session_id = 1234568911
+    project_id = 4842
+    session_id = 1234568916
     
     artifacts_dir = f"/live-learning/{project_id}_test_project/{session_id}"
     
@@ -58,9 +58,8 @@ def create_test_model_config():
 def create_test_model_meta():
     """Create test ProjectMeta with sample classes"""
     classes = [
-        ObjClass("car", Bitmap),
-        ObjClass("person", Bitmap),
-        ObjClass("tree", Bitmap),
+        ObjClass("kiwi", Bitmap),
+        ObjClass("lemon", Bitmap),
     ]
     return ProjectMeta(obj_classes=classes)
 
