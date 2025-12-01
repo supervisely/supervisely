@@ -9,7 +9,7 @@ from supervisely.geometry.bitmap import Bitmap
 def create_test_session_info():
     """Create test session info with all required fields"""
     project_id = 4709
-    session_id = 1234568910
+    session_id = 1234568911
     
     artifacts_dir = f"/live-learning/{project_id}_test_project/{session_id}"
     
@@ -125,7 +125,10 @@ def main():
     
     print("\n⚙️  Generating report...")
     generator.generate()
-    
+    widgets = generator._get_widgets_context()
+    print(f"DEBUG: training_plot length = {len(widgets['training_plot'])}")
+    print(f"DEBUG: training_plot preview = {widgets['training_plot'][:200]}")
+
     print(f"\n✅ Report generated successfully!")
     print(f"📂 Local files: {output_dir}")
     print(f"   - template.vue")

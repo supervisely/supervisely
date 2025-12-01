@@ -154,7 +154,7 @@ class LiveLearningGenerator(BaseGenerator):
         """Model configuration info"""
         return {
             "name": self.model_config.get("model_name", "Unknown"),
-            "backbone": self.model_config.get("backbone_type", "N/A"),
+            "backbone": self.model_config.get("backbone", "N/A"),
             "num_classes": self.model_config.get("num_classes", len(self.model_meta.obj_classes)),
             "classes": [cls.name for cls in self.model_meta.obj_classes],
             "config_file": self.model_config.get("config_file", "N/A"),
