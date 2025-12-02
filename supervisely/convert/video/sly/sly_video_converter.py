@@ -201,7 +201,7 @@ class SLYVideoConverter(VideoConverter):
             if self.items_count > 0:
                 self._meta = meta
                 meta: ProjectMeta
-                if meta.project_settings.labeling_interface == LabelingInterface.MULTIVIEW:
+                if meta.labeling_interface == LabelingInterface.MULTIVIEW:
                     self._multi_view_setting_enabled = True
                 if ds_cnt > 1:
                     self._project_structure = project
@@ -284,7 +284,7 @@ class SLYVideoConverter(VideoConverter):
             src_meta_json = api.project.get_meta(project_id, with_settings=True)
             src_meta = ProjectMeta.from_json(src_meta_json)
 
-            if src_meta.project_settings.labeling_interface == LabelingInterface.DEFAULT:
+            if src_meta.labeling_interface == LabelingInterface.DEFAULT:
                 project_id, dataset_id = self._handle_multi_view_labeling_interface(
                     api, project_id, dataset_info
                 )
@@ -438,7 +438,7 @@ class SLYVideoConverter(VideoConverter):
                         figures_cnt, "Uploading annotations..."
                     )
 
-                if meta.project_settings.labeling_interface == LabelingInterface.MULTIVIEW:
+                if meta.labeling_interface == LabelingInterface.MULTIVIEW:
                     for idx, (ann, info) in enumerate(zip(anns, vid_infos)):
                         if ann is None:
                             anns[idx] = VideoAnnotation(

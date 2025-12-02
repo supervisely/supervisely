@@ -286,9 +286,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
             tags_to_obj = defaultdict(VideoTagCollection)
             for obj in ann.objects:
                 obj_id = key_id_map.get_object_id(obj.key())
-                for tag in obj.tags:
-                    if key_id_map.get_tag_id(tag.key()) is None:
-                        tags_to_obj[obj_id] = tags_to_obj[obj_id].add(tag)
+                tags_to_obj[obj_id] = obj.tags
             if len(tags_to_obj) > 0:
                 tag_api.add_tags_collection_to_objects(project_id, tags_to_obj, is_video_multi_view=True, entity_id=video_id)
 

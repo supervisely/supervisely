@@ -283,7 +283,7 @@ class TagApi(ModuleApi):
         project_meta = self._api.optimization_context.get("project_meta")
 
         if isinstance(project_meta, ProjectMeta):
-            if project_meta.project_settings.labeling_interface == LabelingInterface.MULTIVIEW:
+            if project_meta.labeling_interface == LabelingInterface.MULTIVIEW:
                 is_video_multi_view = True
 
         if len(tags_json) == 0:
@@ -392,6 +392,12 @@ class TagApi(ModuleApi):
 
         if progress is not None:
             log_progress = False
+
+        project_meta = self._api.optimization_context.get("project_meta")
+
+        if isinstance(project_meta, ProjectMeta):
+            if project_meta.labeling_interface == LabelingInterface.MULTIVIEW:
+                is_video_multi_view = True
 
         result = []
 

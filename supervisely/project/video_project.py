@@ -1495,8 +1495,7 @@ def upload_video_project(
 
     is_multiview = False
     try:
-        settings = project_fs.meta.project_settings
-        if settings is not None and settings.labeling_interface == LabelingInterface.MULTIVIEW:
+        if project_fs.meta.labeling_interface == LabelingInterface.MULTIVIEW:
             is_multiview = True
     except AttributeError:
         is_multiview = False

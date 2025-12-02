@@ -14,7 +14,7 @@ from supervisely.geometry.bitmap import Bitmap
 from supervisely.geometry.polygon import Polygon
 from supervisely.geometry.rectangle import Rectangle
 from supervisely.io.json import JsonSerializable
-from supervisely.project.project_settings import ProjectSettings
+from supervisely.project.project_settings import LabelingInterface, ProjectSettings
 from supervisely.project.project_type import ProjectType
 
 
@@ -288,6 +288,32 @@ class ProjectMeta(JsonSerializable):
             # Output: <class 'supervisely.project.project_settings.ProjectSettings'>
         """
         return self._project_settings
+    
+    @property
+    def labeling_interface(self) -> Optional[LabelingInterface]:
+        """
+        Get labeling interface settings of the project.
+
+        :return: Labeling interface settings
+        :rtype: :class: `LabelingInterface` or None
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            s = sly.ProjectSettings(
+                multiview_enabled=True,
+                multiview_tag_name='multi_tag',
+                multiview_is_synced=False,
+            )
+            meta = sly.ProjectMeta(project_settings=s)
+
+            labeling_interface = meta.labeling_interface()
+            print(labeling_interface)
+            # Output: None
+        """
+        return self._project_settings.labeling_interface if self._project_settings else None
 
     def to_json(self) -> Dict:
         """

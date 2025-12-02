@@ -365,12 +365,8 @@ class VideoObject(KeyObject):
 
         is_multiview = False
         try:
-            settings = project_meta.project_settings
-            if settings is not None:
-                if getattr(settings, "multiview_enabled", False):
-                    is_multiview = True
-                elif getattr(settings, "labeling_interface", None) == LabelingInterface.MULTIVIEW:
-                    is_multiview = True
+            if project_meta.labeling_interface == LabelingInterface.MULTIVIEW:
+                is_multiview = True
         except AttributeError:
             is_multiview = False
 
