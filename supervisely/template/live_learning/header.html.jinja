@@ -1,50 +1,69 @@
 <div class="experiment-info-header">
     <div class="experiment-info-subheader">
-        <div class="experiment-info-header-title">
-            <h1>{{ session.name }}</h1>
-        </div>
+        <h1>{{ session.name }}</h1>
+
         <div class="experiment-info-buttons">
-            {% if session.artifacts_url %}
-            <a href="{{ session.artifacts_url }}" target="_blank">
-                <i class="zmdi zmdi-folder"></i> Artifacts
-            </a>
-            {% endif %}
-            {% if session.project.url %}
-            <a href="{{ session.project.url }}" target="_blank">
-                <i class="zmdi zmdi-image"></i> Project
-            </a>
-            {% endif %}
+            <!-- Download -->
+            <sly-iw-download-button
+                style="padding: 7px 8px;"
+                :disabled="false"
+                teamFilesPath="{{ session.artifacts_dir + '/' }}"   
+                :command="command">
+                <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAACXBIWXMAAAsTAAALEwEAmpwYAAABn0lEQVR4nO2YT04CMRSHPzdzDEAT4lZIvICDHsiFia7Y4BEQTsF50CiCW42iCzeTjKkpyXNScDodp4P0S17Sgfb1/fr6ZzoQCAQC/5VDYAE8Am22kCsg1XbJFtIXAlR56+gHAZ4JGfBNyIBvQgbKogWMgScgEXu7tE9gYJGBa90mNVii+xoBTdfgz4D3NR1l7SOngD1dN4/PJdBzGfm8wdtmYLAhA6lBRKOIgLFw8gCcAFEFizgCYmAm2t8UiP97Hq4cqOCr3oVi0X5eoP2PBWsz8mUJiDIL2xo5D32dA6lLDDsj4AC4A+6Bbg4BXV1Xzet2HQSci3ovQoRJQFfXWf1+UQcBrUxQqtwxCOgY6u3XQYBpZFV5Ip4nhv/ldPMuQHEEPOc4WV+B4z+KwbnxbyJsgve2ja4TYRu813MgK6JI8N4PMrVIb4FpzgVbOwFlkO60gMTxbdSVyPVtdOF4H3ClJ/pXn+itGQkHM+2wikxEwGnmRjYs4qip76OpZ3sreidGj/rSc/AxjjR0CucbvguVaYnua+gy8oFAIEAlfAG3TJLaWbXlEAAAAABJRU5ErkJggg==" alt="download--v1">
+            </sly-iw-download-button>
         </div>
     </div>
-    
     <div class="experiment-info-subheader-body">
         <div class="experiment-info-subheader-block">
-            <h2>Session Info</h2>
+            <div class="experiment-info-subheader-mini-title">
+                <h2>Training Info</h2>
+                {% if training.session_url %}
+                <a href="{{ training.session_url }}" target="_blank">Session <i class="zmdi zmdi-arrow-right-top" /></a>
+                {% endif %}
+                {% if training.logs.url %}
+                <a href="{{ training.logs.url }}" target="_blank">Logs <i class="zmdi zmdi-arrow-right-top" /></a>
+                {% endif %}
+            </div>
             <ul>
-                <li><strong>Session ID:</strong> {{ session.id }}</li>
-                <li><strong>Started:</strong> {{ session.start_time }}</li>
-                <li><strong>Duration:</strong> {{ session.duration or "N/A" }}</li>
-                <li><strong>Total Iterations:</strong> {{ training.total_iterations }}</li>
+            <li><strong>Session ID:</strong> {{ session.id }}</li>
+            <li><strong>Date:</strong> {{ session.start_time }}</li>
+            <li><strong>Duration:</strong> {{ session.duration or "N/A" }}</li>
+            <li><strong>Device:</strong> {{ training.device or "N/A" }}</li>
+            <li><strong>Total Iterations:</strong> {{ training.total_iterations }}</li>
             </ul>
         </div>
-        
         <div class="experiment-info-subheader-block">
-            <h2>Model</h2>
+            <div class="experiment-info-subheader-mini-title">
+                <h2>Model</h2>
+            </div>
             <ul>
-                <li><strong>Architecture:</strong> {{ model.name }}</li>
-                <li><strong>Backbone:</strong> {{ model.backbone }}</li>
-                <li><strong>Classes:</strong> ({{ model.num_classes }}) {% for class_name in model.classes %}<span class="class-tag">{{ class_name }}</span> {% endfor %}</li>
+            <li><strong>Architecture:</strong> {{ model.name }}</li>
+            <li><strong>Backbone:</strong> {{ model.backbone }}</li>
+            <li><strong>Task:</strong> {{ model.task_type or "Live Learning" }}</li>
+            <li><strong>Classes:</strong> ({{ model.num_classes }}) {% for class_name in model.classes %}<span class="class-tag">{{ class_name }}</span>  {% endfor %}</li>
             </ul>
         </div>
-        
         <div class="experiment-info-subheader-block">
-            <h2>Dataset</h2>
+            <div class="experiment-info-subheader-mini-title">
+                <h2>Training Data</h2>
+                <a href="{{ session.project.url }}" target="_blank">Project <i class="zmdi zmdi-arrow-right-top" /></a>
+                <a href="{{ session.artifacts_url }}" target="_blank">Artifacts <i class="zmdi zmdi-arrow-right-top" /></a>
+            </div>
             <ul>
-                <li><strong>Project:</strong> {{ session.project.name }}</li>
-                <li><strong>Final Size:</strong> {{ dataset.current_size }} samples</li>
-                <li><strong>Initial Samples:</strong> {{ dataset.initial_samples }}</li>
-                <li><strong>Samples Added:</strong> {{ dataset.samples_added }}</li>
+            <li><strong>Project:</strong> {{ session.project.name }}</li>
+            <li><strong>Final Size:</strong> {{ dataset.current_size }} samples</li>
+            <li><strong>Initial Samples:</strong> {{ dataset.initial_samples }}</li>
+            <li><strong>Samples Added:</strong> {{ dataset.samples_added }}</li>
             </ul>
         </div>
+    </div>
+    <div class="experiment-info-subheader-footer-menu">
+        <a :href="`${location.pathname}#training-results`" class="active">Training Results</a>
+        {% if widgets.training_plot %}
+        <a :href="`${location.pathname}#training-plots`">Training Plots</a>
+        {% endif %}
+        <a :href="`${location.pathname}#checkpoints`">Checkpoints</a>
+        <a :href="`${location.pathname}#hyperparameters`">Hyperparameters</a>
+        <a :href="`${location.pathname}#configuration`">Configuration</a>
     </div>
 </div>

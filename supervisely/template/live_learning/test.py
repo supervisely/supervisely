@@ -7,18 +7,29 @@ from supervisely.geometry.bitmap import Bitmap
 
 
 def create_test_session_info():
-    """Create test session info with all required fields"""
+    """Create test session info with multiple metrics"""
     project_id = 4842
-    session_id = 1234568916
+    session_id = 1234568923
     
     artifacts_dir = f"/live-learning/{project_id}_test_project/{session_id}"
+    session_url = "https://dev.internal.supervisely.com/apps/sessions/12345"
     
-    # Generate sample loss history
-    loss_history = []
+    # Generate multiple metrics (like MMDetection/MMSegmentation)
+    loss_history = {
+        "loss_cls": [],
+        "loss_mask": [],
+        "loss_dice": [],
+        "loss_total": [],
+        "lr": [],
+    }
+    
     for i in range(1, 151):
-        loss = 0.8 * (0.99 ** i) + 0.2  # Exponential decay
         if i % 10 == 0:  # Save every 10 iterations
-            loss_history.append({"iteration": i, "loss": loss})
+            loss_history["loss_cls"].append({"step": i, "value": 0.5 * (0.99 ** i) + 0.1})
+            loss_history["loss_mask"].append({"step": i, "value": 0.3 * (0.99 ** i) + 0.05})
+            loss_history["loss_dice"].append({"step": i, "value": 0.4 * (0.99 ** i) + 0.08})
+            loss_history["loss_total"].append({"step": i, "value": 0.8 * (0.99 ** i) + 0.2})
+            loss_history["lr"].append({"step": i, "value": 0.0002 * (0.98 ** (i/10))})
     
     return {
         "session_id": session_id,
@@ -28,12 +39,14 @@ def create_test_session_info():
         "duration": "2h 15m",  
         "artifacts_dir": artifacts_dir,
         "logs_dir": f"{artifacts_dir}/logs",
+        "device": "NVIDIA GeForce RTX 4090",
+        "session_url": session_url,
         "checkpoints": [
             {"name": "checkpoint_50.pth", "iteration": 50, "loss": 0.456},
             {"name": "checkpoint_100.pth", "iteration": 100, "loss": 0.312},
             {"name": "checkpoint_150.pth", "iteration": 150, "loss": 0.234},
         ],
-        "loss_history": loss_history,  
+        "loss_history": loss_history,  # Now dict with multiple metrics
         "hyperparameters": {
             "learning_rate": 0.0002,
             "batch_size": 2,

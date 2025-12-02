@@ -92,7 +92,8 @@ class LiveLearningGenerator(BaseGenerator):
             "start_time": self.session_info["start_time"],
             "duration": self.session_info.get("duration"),
             "current_iteration": self.session_info.get("current_iteration", 0),
-            "artifacts_url": artifacts_url,  
+            "artifacts_url": artifacts_url,
+            "artifacts_dir": artifacts_dir,  # PATH for download button
             "project": {
                 "id": project_id,
                 "name": project_info.name if project_info else "Unknown",
@@ -158,6 +159,7 @@ class LiveLearningGenerator(BaseGenerator):
             "num_classes": self.model_config.get("num_classes", len(self.model_meta.obj_classes)),
             "classes": [cls.name for cls in self.model_meta.obj_classes],
             "config_file": self.model_config.get("config_file", "N/A"),
+            "task_type": self.model_config.get("task_type", "Live Learning"),
         }
 
     def _get_training_context(self) -> dict:
@@ -179,13 +181,25 @@ class LiveLearningGenerator(BaseGenerator):
             checkpoints.append(checkpoint)
         
         # Get total iterations from loss_history or checkpoints
+        # Get total iterations from loss_history or checkpoints
         loss_history = self.session_info.get("loss_history", [])
-        total_iterations = loss_history[-1]["iteration"] if loss_history else (
-            max([c["iteration"] for c in self.session_info.get("checkpoints", [])]) if self.session_info.get("checkpoints") else 0
-        )
+        # Handle both old (list) and new (dict) formats
+        if isinstance(loss_history, list) and loss_history:
+            total_iterations = loss_history[-1]["iteration"]
+        elif isinstance(loss_history, dict):
+            # Get max step from any metric
+            total_iterations = max(
+                (item["step"] for metric_data in loss_history.values() for item in metric_data),
+                default=0
+            ) if loss_history else 0
+        else:
+            total_iterations = max([c["iteration"] for c in self.session_info.get("checkpoints", [])]) if self.session_info.get("checkpoints") else 0
+            
         
         return {
             "total_iterations": total_iterations,
+            "device": self.session_info.get("device", "N/A"),
+            "session_url": self.session_info.get("session_url"),
             "checkpoints": checkpoints,
             "logs": {
                 "path": logs_path,
@@ -264,40 +278,68 @@ class LiveLearningGenerator(BaseGenerator):
         return "\n".join(html)
 
     def _generate_training_plot(self) -> str:
-        """Generate training loss plot as static image"""
-        loss_history = self.session_info.get("loss_history", [])
+        """Generate training plots grid (like Experiments)"""
+        loss_history = self.session_info.get("loss_history", {})
         
-        if not loss_history:
+        if not loss_history or not isinstance(loss_history, dict):
             return "<p>No training data available yet.</p>"
         
-        iterations = [item["iteration"] for item in loss_history]
-        losses = [item["loss"] for item in loss_history]
-        
         import plotly.graph_objects as go
+        from plotly.subplots import make_subplots
+        import math
         
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(
-            x=iterations,
-            y=losses,
-            mode='lines+markers',
-            name='Training Loss',
-            line=dict(color='#1890ff', width=2),
-            marker=dict(size=6)
-        ))
+        # Get all metrics
+        metrics = list(loss_history.keys())
+        n_metrics = len(metrics)
+        
+        if n_metrics == 0:
+            return "<p>No training data available yet.</p>"
+        
+        # Calculate grid size (like in Experiments)
+        side = min(4, max(2, math.ceil(math.sqrt(n_metrics))))
+        cols = side
+        rows = math.ceil(n_metrics / cols)
+        
+        # Create subplots
+        fig = make_subplots(rows=rows, cols=cols, subplot_titles=metrics)
+        
+        for idx, metric in enumerate(metrics, start=1):
+            data = loss_history[metric]
+            if not data:
+                continue
+                
+            steps = [item["step"] for item in data]
+            values = [item["value"] for item in data]
+            
+            row = (idx - 1) // cols + 1
+            col = (idx - 1) % cols + 1
+            
+            fig.add_trace(
+                go.Scatter(
+                    x=steps,
+                    y=values,
+                    mode="lines",
+                    name=metric,
+                    showlegend=False,
+                ),
+                row=row,
+                col=col,
+            )
+            
+            # Special formatting for learning rate
+            if metric.startswith("lr"):
+                fig.update_yaxes(tickformat=".0e", row=row, col=col)
         
         fig.update_layout(
-            title="Training Loss History",
-            xaxis_title="Iteration",
-            yaxis_title="Loss",
-            template="plotly_white",
-            height=400,
-            width=800,
+            height=300 * rows,
+            width=400 * cols,
+            showlegend=False,
         )
         
-        # Save as static PNG image
+        # Save as PNG
         data_dir = os.path.join(self.output_dir, "data")
         os.makedirs(data_dir, exist_ok=True)
-        img_path = os.path.join(data_dir, "training_loss.png")
+        img_path = os.path.join(data_dir, "training_plots_grid.png")
         
         try:
             fig.write_image(img_path, engine="kaleido")
@@ -306,7 +348,7 @@ class LiveLearningGenerator(BaseGenerator):
             return "<p>Failed to generate training plot</p>"
         
         # Return Vue image component
-        return f'<sly-iw-image src="/data/training_loss.png" :template-base-path="templateBasePath" :options="{{ style: {{ width: \'70%\', height: \'auto\' }} }}" />'
+        return f'<sly-iw-image src="/data/training_plots_grid.png" :template-base-path="templateBasePath" :options="{{ style: {{ width: \'70%\', height: \'auto\' }} }}" />'
 
     def get_report(self) -> str:
         """Get report URL after upload"""
