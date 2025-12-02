@@ -215,6 +215,7 @@ class ObjectApi(RemoveableBulkModuleApi):
         key_id_map: KeyIdMap = None,
         is_pointcloud=False,
         attach_entity_id: bool = True,
+        is_video_multi_view: bool = False,
     ):
         """"""
         if len(objects) == 0:
@@ -238,7 +239,7 @@ class ObjectApi(RemoveableBulkModuleApi):
         KeyIdMap.add_objects_to(key_id_map, [obj.key() for obj in objects], ids)
 
         # add tags to objects
-        tag_api.append_to_objects(entity_id, project_id, objects, key_id_map)
+        tag_api.append_to_objects(entity_id, project_id, objects, key_id_map, is_video_multi_view)
 
         return ids
 

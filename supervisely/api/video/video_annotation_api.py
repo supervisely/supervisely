@@ -280,6 +280,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
                     key_id_map=key_id_map,
                     is_pointcloud=False,
                     attach_entity_id=False,
+                    is_video_multi_view=True,
                 )
 
             figure_api.append_bulk(video_id, ann.figures, key_id_map)

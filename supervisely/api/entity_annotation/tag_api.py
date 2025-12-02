@@ -157,7 +157,12 @@ class TagApi(ModuleApi):
         return ids
 
     def append_to_objects(
-        self, entity_id: int, project_id: int, objects: KeyIndexedCollection, key_id_map: KeyIdMap
+        self,
+        entity_id: int,
+        project_id: int,
+        objects: KeyIndexedCollection,
+        key_id_map: KeyIdMap,
+        is_video_multi_view: bool = False,
     ):
         """
         Add Tags to Annotation Objects for a specific entity (image etc.).
@@ -170,6 +175,8 @@ class TagApi(ModuleApi):
         :type objects: KeyIndexedCollection
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap
+        :param is_video_multi_view: If True, indicates that the entity is a multi-view video.
+        :type is_video_multi_view: bool
         :return: List of tags IDs
         :rtype: list
         :Usage example:
@@ -210,12 +217,16 @@ class TagApi(ModuleApi):
             raise RuntimeError("SDK error: len(tags_keys) != len(tags_to_add)")
         if len(tags_keys) == 0:
             return
-        ids = self.append_to_objects_json(entity_id, tags_to_add, project_id)
+        ids = self.append_to_objects_json(entity_id, tags_to_add, project_id, is_video_multi_view)
         KeyIdMap.add_tags_to(key_id_map, tags_keys, ids)
         return ids
 
     def append_to_objects_json(
-        self, entity_id: int, tags_json: List[Dict], project_id: Optional[int] = None
+        self,
+        entity_id: int,
+        tags_json: List[Dict],
+        project_id: Optional[int] = None,
+        is_video_multi_view: bool = False,
     ) -> List[int]:
         """
         Add Tags to Annotation Objects for specific entity (image etc.).
@@ -224,6 +235,11 @@ class TagApi(ModuleApi):
         :type entity_id: int
         :param tags_json: Collection of tags in JSON format
         :type tags_json: dict
+        :param project_id: Project ID in Supervisely. Uses to get tag name to tag ID mapping.
+                           Not required if `multi_view` is True.
+        :type project_id: int, optional
+        :param is_video_multi_view: If True, indicates that the entity is a multi-view video.
+        :type is_video_multi_view: bool
         :return: List of tags IDs
         :rtype: list
 
@@ -265,9 +281,10 @@ class TagApi(ModuleApi):
 
         if len(tags_json) == 0:
             return []
-        json_data = {ApiField.ENTITY_ID: entity_id, ApiField.TAGS: tags_json}
-        if project_id is not None:
-            json_data[ApiField.PROJECT_ID] = project_id
+        if project_id is not None and not is_video_multi_view:
+            json_data = {ApiField.PROJECT_ID: project_id, ApiField.TAGS: tags_json}
+        else:
+            json_data = {ApiField.ENTITY_ID: entity_id, ApiField.TAGS: tags_json}
         response = self._api.post("annotation-objects.tags.bulk.add", json_data)
         ids = [obj[ApiField.ID] for obj in response.json()]
         return ids
