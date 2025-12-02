@@ -265,10 +265,9 @@ class TagApi(ModuleApi):
 
         if len(tags_json) == 0:
             return []
+        json_data = {ApiField.ENTITY_ID: entity_id, ApiField.TAGS: tags_json}
         if project_id is not None:
-            json_data = {ApiField.PROJECT_ID: project_id, ApiField.TAGS: tags_json}
-        else:
-            json_data = {ApiField.ENTITY_ID: entity_id, ApiField.TAGS: tags_json}
+            json_data[ApiField.PROJECT_ID] = project_id
         response = self._api.post("annotation-objects.tags.bulk.add", json_data)
         ids = [obj[ApiField.ID] for obj in response.json()]
         return ids
