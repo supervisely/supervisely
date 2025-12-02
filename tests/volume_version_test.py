@@ -5,13 +5,18 @@ from supervisely.volume import VolumeDataVersion
 api = Api.from_env()
 ver = VolumeDataVersion(api)
 
-PROJECT_ID = 2452
+PROJECT_ID = 2451
+# check if api method works
+# ver_id, ver_token = ver.reserve(PROJECT_ID)
 
-res = VolumeProject.download_bin(api, PROJECT_ID, "local_volume_project")
+# res = VolumeProject.download_bin(api, PROJECT_ID, "local_volume_project")
+new_projinfo = VolumeProject.upload_bin(
+    api, "local_volume_project/2451_nifti fresh import.arrow", 66, "uploaded_volume_project_7"
+)
 
 ver.project_info = api.project.get_info_by_id(PROJECT_ID)
-anns = ver._collect_annotation_blobs()
 print("")
+
 
 version_list = ver.get_list(PROJECT_ID)
 print("Existing versions:", version_list)
