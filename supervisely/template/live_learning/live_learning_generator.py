@@ -68,7 +68,7 @@ class LiveLearningGenerator(BaseGenerator):
             "training": self._get_training_context(),
             "dataset": self._get_dataset_context(),
             "widgets": self._get_widgets_context(),
-            "hyperparameters": self.session_info.get("hyperparameters", {}),  # <-- ДОБАВЬ
+            "hyperparameters": self.session_info.get("hyperparameters", {}), 
         }
     
     def _get_env_context(self) -> dict:
@@ -93,7 +93,7 @@ class LiveLearningGenerator(BaseGenerator):
             "duration": self.session_info.get("duration"),
             "current_iteration": self.session_info.get("current_iteration", 0),
             "artifacts_url": artifacts_url,
-            "artifacts_dir": artifacts_dir,  # PATH for download button
+            "artifacts_dir": artifacts_dir,  
             "project": {
                 "id": project_id,
                 "name": project_info.name if project_info else "Unknown",
@@ -101,7 +101,8 @@ class LiveLearningGenerator(BaseGenerator):
             },
             "status": self.session_info.get("status", "running"),
         }
-
+    
+    @staticmethod
     def parse_hyperparameters(config_path: str) -> dict:
         """
         Parse hyperparameters from MMEngine config file.
@@ -180,7 +181,6 @@ class LiveLearningGenerator(BaseGenerator):
             }
             checkpoints.append(checkpoint)
         
-        # Get total iterations from loss_history or checkpoints
         # Get total iterations from loss_history or checkpoints
         loss_history = self.session_info.get("loss_history", [])
         # Handle both old (list) and new (dict) formats
@@ -363,5 +363,4 @@ class LiveLearningGenerator(BaseGenerator):
         """Get report file ID"""
         if self._report_file_info is None:
             raise RuntimeError("Report not uploaded yet. Call upload_to_artifacts() first.")
-        return self._report_file_info.idr
-    
+        return self._report_file_info.id
