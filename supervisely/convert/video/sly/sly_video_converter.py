@@ -3,7 +3,7 @@ from typing import Dict, List, Optional
 
 import supervisely.convert.video.sly.sly_video_helper as sly_video_helper
 from supervisely import ProjectMeta, VideoAnnotation, logger
-from supervisely.api.api import Api
+from supervisely.api.api import Api, ApiContext
 from supervisely.convert.base_converter import AvailableVideoConverters
 from supervisely.convert.video.video_converter import VideoConverter
 from supervisely.io.fs import JUNK_FILES, file_exists, get_file_ext
@@ -348,7 +348,7 @@ class SLYVideoConverter(VideoConverter):
 
     def _upload_single_dataset(
         self,
-        api,
+        api: Api,
         dataset_id: int,
         items: list,
         batch_size: int = 10,
@@ -358,7 +358,6 @@ class SLYVideoConverter(VideoConverter):
         """Upload videos from a single dataset."""
         from supervisely import batched, generate_free_name, is_development
         from supervisely.io.fs import get_file_size
-        from supervisely.io.json import load_json_file
 
         meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)
         videos_in_dataset = api.video.get_list(dataset_id, force_metadata_for_links=False)
@@ -392,54 +391,59 @@ class SLYVideoConverter(VideoConverter):
                     upload_progress = []
                     size_progress_cb = self._get_video_upload_progress(upload_progress)
 
-        batch_size = 1 if has_large_files and not self.upload_as_links else batch_size
-        for batch in batched(items, batch_size=batch_size):
-            item_names = []
-            item_paths = []
-            anns = []
-            figures_cnt = 0
-            for item in batch:
-                item.name = generate_free_name(
-                    existing_names, item.name, with_ext=True, extend_used_names=True
-                )
-                item_paths.append(item.path)
-                item_names.append(item.name)
+        with ApiContext(api=api, project_meta=meta):
+            batch_size = 1 if has_large_files and not self.upload_as_links else batch_size
+            for batch in batched(items, batch_size=batch_size):
+                item_names = []
+                item_paths = []
+                anns = []
+                figures_cnt = 0
+                for item in batch:
+                    item.name = generate_free_name(
+                        existing_names, item.name, with_ext=True, extend_used_names=True
+                    )
+                    item_paths.append(item.path)
+                    item_names.append(item.name)
 
-                ann = None
-                if not self.upload_as_links or self.supports_links:
-                    ann = self.to_supervisely(item, meta, renamed_classes, renamed_tags)
-                    if ann is not None:
-                        figures_cnt += len(ann.figures)
-                anns.append(ann)
+                    ann = None
+                    if not self.upload_as_links or self.supports_links:
+                        ann = self.to_supervisely(item, meta, renamed_classes, renamed_tags)
+                        if ann is not None:
+                            figures_cnt += len(ann.figures)
+                    anns.append(ann)
 
-            if self.upload_as_links:
-                vid_infos = api.video.upload_links(
-                    dataset_id,
-                    item_paths,
-                    item_names,
-                    skip_download=True,
-                    progress_cb=_progress_cb if log_progress else None,
-                    force_metadata_for_links=False,
-                )
-            else:
-                vid_infos = api.video.upload_paths(
-                    dataset_id,
-                    item_names,
-                    item_paths,
-                    progress_cb=_progress_cb if log_progress else None,
-                    item_progress=(size_progress_cb if log_progress and has_large_files else None),
-                )
+                if self.upload_as_links:
+                    vid_infos = api.video.upload_links(
+                        dataset_id,
+                        item_paths,
+                        item_names,
+                        skip_download=True,
+                        progress_cb=_progress_cb if log_progress else None,
+                        force_metadata_for_links=False,
+                    )
+                else:
+                    vid_infos = api.video.upload_paths(
+                        dataset_id,
+                        item_names,
+                        item_paths,
+                        progress_cb=_progress_cb if log_progress else None,
+                        item_progress=(
+                            size_progress_cb if log_progress and has_large_files else None
+                        ),
+                    )
 
-            vid_ids = [vid_info.id for vid_info in vid_infos]
-            if log_progress and has_large_files and figures_cnt > 0:
-                ann_progress, ann_progress_cb = self.get_progress(
-                    figures_cnt, "Uploading annotations..."
-                )
+                vid_ids = [vid_info.id for vid_info in vid_infos]
+                if log_progress and has_large_files and figures_cnt > 0:
+                    ann_progress, ann_progress_cb = self.get_progress(
+                        figures_cnt, "Uploading annotations..."
+                    )
 
-            for vid, ann, info in zip(vid_ids, anns, vid_infos):
-                if ann is None:
-                    ann = VideoAnnotation((info.frame_height, info.frame_width), info.frames_count)
-                api.video.annotation.append(vid, ann, progress_cb=ann_progress_cb)
+                for vid, ann, info in zip(vid_ids, anns, vid_infos):
+                    if ann is None:
+                        ann = VideoAnnotation(
+                            (info.frame_height, info.frame_width), info.frames_count
+                        )
+                    api.video.annotation.append(vid, ann, progress_cb=ann_progress_cb)
 
         if log_progress and is_development():
             if progress is not None:

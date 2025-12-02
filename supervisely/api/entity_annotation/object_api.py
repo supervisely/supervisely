@@ -214,7 +214,6 @@ class ObjectApi(RemoveableBulkModuleApi):
         objects,
         key_id_map: KeyIdMap = None,
         is_pointcloud=False,
-        attach_entity_id: bool = True,
         is_video_multi_view: bool = False,
     ):
         """"""
@@ -227,7 +226,7 @@ class ObjectApi(RemoveableBulkModuleApi):
         for obj in objects:
             new_obj = {ApiField.CLASS_ID: objcls_name_id_map[obj.obj_class.name]}
 
-            if attach_entity_id and not is_pointcloud:
+            if not is_video_multi_view and not is_pointcloud:
                 new_obj[ApiField.ENTITY_ID] = entity_id
             items.append(new_obj)
 

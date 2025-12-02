@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections import defaultdict
 from typing import Callable, Dict, List, Optional, Union
 
 from tqdm import tqdm
@@ -13,6 +14,7 @@ from supervisely.io.json import load_json_file
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.video_annotation.video_annotation import VideoAnnotation
+from supervisely.video_annotation.video_tag_collection import VideoTagCollection
 
 
 class VideoAnnotationAPI(EntityAnnotationAPI):
@@ -279,9 +281,16 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
                     objects=new_objects,
                     key_id_map=key_id_map,
                     is_pointcloud=False,
-                    attach_entity_id=False,
                     is_video_multi_view=True,
                 )
+            tags_to_obj = defaultdict(VideoTagCollection)
+            for obj in ann.objects:
+                obj_id = key_id_map.get_object_id(obj.key())
+                for tag in obj.tags:
+                    if key_id_map.get_tag_id(tag.key()) is None:
+                        tags_to_obj[obj_id] = tags_to_obj[obj_id].add(tag)
+            if len(tags_to_obj) > 0:
+                tag_api.add_tags_collection_to_objects(project_id, tags_to_obj, is_video_multi_view=True, entity_id=video_id)
 
             figure_api.append_bulk(video_id, ann.figures, key_id_map)
             if progress_cb is not None and len(ann.figures) > 0:
