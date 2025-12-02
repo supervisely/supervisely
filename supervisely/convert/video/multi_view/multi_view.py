@@ -3,6 +3,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Dict, List, Union
 
+from supervisely.api.api import Api
 import supervisely.convert.video.sly.sly_video_helper as sly_video_helper
 from supervisely import OpenMode, ProjectMeta, VideoAnnotation, VideoProject, logger
 from supervisely.convert.base_converter import AvailableVideoConverters
@@ -403,7 +404,7 @@ class MultiViewVideoConverter(VideoConverter):
 
     def _upload_single_dataset(
         self,
-        api,
+        api: Api,
         dataset_id: int,
         items: list,
         batch_size: int = 10,
