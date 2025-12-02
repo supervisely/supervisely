@@ -438,12 +438,20 @@ class SLYVideoConverter(VideoConverter):
                         figures_cnt, "Uploading annotations..."
                     )
 
-                for vid, ann, info in zip(vid_ids, anns, vid_infos):
-                    if ann is None:
-                        ann = VideoAnnotation(
-                            (info.frame_height, info.frame_width), info.frames_count
-                        )
-                    api.video.annotation.append(vid, ann, progress_cb=ann_progress_cb)
+                if meta.project_settings.labeling_interface == LabelingInterface.MULTIVIEW:
+                    for idx, (ann, info) in enumerate(zip(anns, vid_infos)):
+                        if ann is None:
+                            anns[idx] = VideoAnnotation(
+                                (info.frame_height, info.frame_width), info.frames_count
+                            )
+                    api.video.annotation.upload_anns_multiview(vid_ids, anns, ann_progress_cb)
+                else:
+                    for vid, ann, info in zip(vid_ids, anns, vid_infos):
+                        if ann is None:
+                            ann = VideoAnnotation(
+                                (info.frame_height, info.frame_width), info.frames_count
+                            )
+                        api.video.annotation.append(vid, ann, progress_cb=ann_progress_cb)
 
         if log_progress and is_development():
             if progress is not None:
