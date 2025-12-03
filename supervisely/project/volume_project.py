@@ -1,16 +1,22 @@
 # coding: utf-8
+import io
+import json
 import os
 import re
+import struct
 import sys
-from collections import namedtuple
-from typing import Callable, Dict, List, Optional, Tuple, Union
+import tempfile
+from collections import defaultdict, namedtuple
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import numpy
 from tqdm import tqdm
 
+import supervisely as sly
 from supervisely._utils import batched
 from supervisely.api.api import Api
 from supervisely.api.module_api import ApiField
+from supervisely.api.project_api import ProjectInfo
 from supervisely.collection.key_indexed_collection import KeyIndexedCollection
 from supervisely.geometry.closed_surface_mesh import ClosedSurfaceMesh
 from supervisely.geometry.mask_3d import Mask3D
@@ -111,6 +117,17 @@ class VolumeProject(VideoProject):
     class DatasetDict(KeyIndexedCollection):
         item_type = VolumeDataset
 
+    _SERIALIZATION_MAGIC = b"SLYVOLPAR"
+    _SERIALIZATION_VERSION = 1
+    _SECTION_PROJECT_INFO = 1
+    _SECTION_PROJECT_META = 2
+    _SECTION_DATASETS = 3
+    _SECTION_VOLUMES = 4
+    _SECTION_ANNOTATIONS = 5
+
+    class _LegacyPayloadFormatError(Exception):
+        pass
+
     def get_classes_stats(
         self,
         dataset_names: Optional[List[str]] = None,
@@ -203,6 +220,100 @@ class VolumeProject(VideoProject):
         )
 
     @staticmethod
+    def download_bin(
+        api: Api,
+        project_id: int,
+        dest_dir: Optional[str] = None,
+        dataset_ids: Optional[List[int]] = None,
+        download_volumes: bool = True,
+        log_progress: bool = False,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        return_bytesio: bool = False,
+        *args,
+        **kwargs,
+    ) -> Union[str, io.BytesIO]:
+        """
+        Download project contents into a Parquet-backed binary blob.
+
+        The payload stores project info, meta, dataset tree, volume infos, and annotations so it can
+        be restored later with :func:`upload_bin`.
+        """
+
+        pa = VolumeProject._require_pyarrow()
+
+        if dest_dir is None and not return_bytesio:
+            raise ValueError(
+                "Local save directory dest_dir must be specified if return_bytesio is False"
+            )
+
+        ds_filters = (
+            [{"field": "id", "operator": "in", "value": dataset_ids}]
+            if dataset_ids is not None
+            else None
+        )
+
+        project_info = api.project.get_info_by_id(project_id)
+        project_meta = api.project.get_meta(project_id, with_settings=True)
+        project_meta_obj = ProjectMeta.from_json(project_meta)
+        dataset_infos = api.dataset.get_list(project_id, filters=ds_filters, recursive=True)
+
+        dataset_records = [dataset_info._asdict() for dataset_info in dataset_infos]
+        volume_records: List[Dict] = []
+        annotations: Dict[str, Dict] = {}
+        key_id_map = KeyIdMap()
+
+        for dataset_info in dataset_infos:
+            if dataset_ids is not None and dataset_info.id not in dataset_ids:
+                continue
+
+            volumes = api.volume.get_list(dataset_info.id)
+            if len(volumes) == 0:
+                continue
+
+            if not download_volumes:
+                continue
+
+            ds_progress = progress_cb
+            if log_progress and progress_cb is None:
+                ds_progress = tqdm_sly(
+                    desc="Collecting volumes from: {!r}".format(dataset_info.name),
+                    total=len(volumes),
+                )
+
+            volume_ids = [volume_info.id for volume_info in volumes]
+            ann_jsons = api.volume.annotation.download_bulk(dataset_info.id, volume_ids)
+
+            for volume_info, ann_json in zip(volumes, ann_jsons):
+                ann = VolumeAnnotation.from_json(ann_json, project_meta_obj, key_id_map)
+                VolumeProject._load_mask_geometries(api, ann, key_id_map)
+                volume_records.append(volume_info._asdict())
+                annotations[str(volume_info.id)] = ann.to_json()
+                if progress_cb is not None:
+                    progress_cb(1)
+                if ds_progress is not None:
+                    ds_progress(1)
+
+        payload = {
+            "project_info": project_info._asdict(),
+            "project_meta": project_meta,
+            "dataset_infos": dataset_records,
+            "volume_infos": volume_records,
+            "annotations": annotations,
+        }
+        blob = VolumeProject._serialize_payload_to_parquet_blob(pa, payload)
+
+        if return_bytesio:
+            stream = io.BytesIO(blob)
+            stream.seek(0)
+            return stream
+
+        os.makedirs(dest_dir, exist_ok=True)
+        file_path = os.path.join(dest_dir, f"{project_info.id}_{project_info.name}.arrow")
+        with open(file_path, "wb") as out:
+            out.write(blob)
+        return file_path
+
+    @staticmethod
     def upload(
         directory: str,
         api: Api,
@@ -264,13 +375,379 @@ class VolumeProject(VideoProject):
         )
 
     @staticmethod
+    def upload_bin(
+        api: Api,
+        file: Union[str, io.BytesIO],
+        workspace_id: int,
+        project_name: Optional[str] = None,
+        log_progress: bool = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        skip_missed_entities: bool = False,
+        *args,
+        **kwargs,
+    ) -> ProjectInfo:
+        """Restore a volume project from a Parquet blob produced by :func:`download_bin`."""
+
+        pa = VolumeProject._require_pyarrow()
+
+        if isinstance(file, io.BytesIO):
+            raw_data = file.getbuffer()
+        else:
+            with open(file, "rb") as src:
+                raw_data = src.read()
+
+        try:
+            payload = VolumeProject._deserialize_payload_from_parquet(pa, raw_data)
+        except VolumeProject._LegacyPayloadFormatError:
+            payload = VolumeProject._deserialize_legacy_payload(pa, raw_data)
+
+        project_meta = ProjectMeta.from_json(payload["project_meta"])
+        dataset_records: List[Dict] = payload.get("dataset_infos", [])
+        volume_records: List[Dict] = payload.get("volume_infos", [])
+        annotations: Dict[str, Dict] = payload.get("annotations", {})
+        key_id_map = KeyIdMap()
+
+        project_title = project_name or payload["project_info"].get("name")
+        new_project_info = api.project.create(workspace_id, project_title, ProjectType.VOLUMES)
+        api.project.update_meta(new_project_info.id, project_meta)
+
+        custom_data = new_project_info.custom_data
+        source_project_id = payload["project_info"].get("id")
+        version_info = payload["project_info"].get("version") or {}
+        custom_data["restored_from"] = {
+            "project_id": source_project_id,
+            "version_num": version_info.get("version"),
+        }
+        original_custom_data = payload["project_info"].get("custom_data") or {}
+        custom_data.update(original_custom_data)
+        api.project.update_custom_data(new_project_info.id, custom_data, silent=True)
+
+        dataset_mapping: Dict[int, sly.DatasetInfo] = {}
+        sorted_datasets = sorted(
+            dataset_records,
+            key=lambda data: (data.get("parent_id") is not None, data.get("parent_id") or 0),
+        )
+        for dataset_data in sorted_datasets:
+            parent_ds_info = dataset_mapping.get(dataset_data.get("parent_id"))
+            new_parent_id = parent_ds_info.id if parent_ds_info else None
+            new_dataset_info = api.dataset.create(
+                new_project_info.id, dataset_data.get("name"), parent_id=new_parent_id
+            )
+            dataset_mapping[dataset_data.get("id")] = new_dataset_info
+
+        volume_mapping: Dict[int, sly.VolumeInfo] = {}
+        volumes_by_dataset: Dict[int, List[Dict]] = defaultdict(list)
+        for volume_data in volume_records:
+            volumes_by_dataset[volume_data.get("dataset_id")].append(volume_data)
+
+        for old_dataset_id, dataset_volumes in volumes_by_dataset.items():
+            new_dataset_info = dataset_mapping.get(old_dataset_id)
+            if new_dataset_info is None:
+                continue
+
+            missing_hash_volumes = [vol for vol in dataset_volumes if not vol.get("hash")]
+            if missing_hash_volumes:
+                missing_names = [
+                    vol.get("name") or str(vol.get("id")) for vol in missing_hash_volumes
+                ]
+                if skip_missed_entities:
+                    for vol_name in missing_names:
+                        logger.warning(
+                            "Volume %r skipped during restoration because its source hash is unavailable.",
+                            vol_name,
+                        )
+                    dataset_volumes_to_upload = [vol for vol in dataset_volumes if vol.get("hash")]
+                    if len(dataset_volumes_to_upload) == 0:
+                        continue
+                else:
+                    raise RuntimeError(
+                        "Cannot restore volumes without available hash. Offending volumes: {}".format(
+                            ", ".join(missing_names)
+                        )
+                    )
+            else:
+                dataset_volumes_to_upload = list(dataset_volumes)
+
+            hashes = [volume.get("hash") for volume in dataset_volumes_to_upload]
+            names = [volume.get("name") for volume in dataset_volumes_to_upload]
+            metas = [volume.get("meta") for volume in dataset_volumes_to_upload]
+
+            ds_progress = progress_cb
+            if log_progress and progress_cb is None:
+                ds_progress = tqdm_sly(
+                    desc="Uploading volumes to {!r}".format(new_dataset_info.name),
+                    total=len(dataset_volumes_to_upload),
+                )
+
+            new_volume_infos = api.volume.upload_hashes(
+                new_dataset_info.id,
+                names=names,
+                hashes=hashes,
+                metas=metas,
+                progress_cb=ds_progress,
+            )
+
+            for old_volume, new_volume in zip(dataset_volumes_to_upload, new_volume_infos):
+                volume_mapping[old_volume.get("id")] = new_volume
+
+        for volume_id_str, ann_json in annotations.items():
+            new_volume_info = volume_mapping.get(int(volume_id_str))
+            if new_volume_info is None:
+                if skip_missed_entities:
+                    logger.warning(
+                        "Annotation for volume %s skipped because the source volume was not restored.",
+                        volume_id_str,
+                    )
+                continue
+            ann_json["volumeId"] = new_volume_info.id
+            ann = VolumeAnnotation.from_json(ann_json, project_meta, None)
+            api.volume.annotation.append(new_volume_info.id, ann, None)
+
+        return api.project.get_info_by_id(new_project_info.id)
+
+    @staticmethod
+    def _require_pyarrow():
+        try:
+            import pyarrow as pa
+        except ModuleNotFoundError as exc:
+            raise ModuleNotFoundError(
+                "VolumeProject binary versioning requires the optional dependency 'pyarrow'. "
+                "Install it with `pip install pyarrow` to use download_bin/upload_bin."
+            ) from exc
+        return pa
+
+    @staticmethod
+    def _serialize_payload_to_parquet_blob(pa_module, payload: Dict[str, Dict]) -> bytes:
+        dataset_records: List[Dict] = payload.get("dataset_infos", []) or []
+        volume_records: List[Dict] = payload.get("volume_infos", []) or []
+        annotations_dict: Dict[str, Dict] = payload.get("annotations", {}) or {}
+
+        dataset_table = VolumeProject._build_table(
+            pa_module,
+            {
+                "dataset_id": ([record.get("id") for record in dataset_records], pa_module.int64()),
+                "json": (
+                    [VolumeProject._json_dumps(record) for record in dataset_records],
+                    pa_module.large_string(),
+                ),
+            },
+        )
+
+        volume_table = VolumeProject._build_table(
+            pa_module,
+            {
+                "volume_id": ([record.get("id") for record in volume_records], pa_module.int64()),
+                "dataset_id": (
+                    [record.get("dataset_id") for record in volume_records],
+                    pa_module.int64(),
+                ),
+                "json": (
+                    [VolumeProject._json_dumps(record) for record in volume_records],
+                    pa_module.large_string(),
+                ),
+            },
+        )
+
+        ann_volume_ids: List[Optional[int]] = []
+        ann_payloads: List[str] = []
+        for volume_id_str, ann in annotations_dict.items():
+            try:
+                volume_id = int(volume_id_str)
+            except (TypeError, ValueError):
+                volume_id = None
+            ann_volume_ids.append(volume_id)
+            ann_payloads.append(VolumeProject._json_dumps(ann))
+
+        annotations_table = VolumeProject._build_table(
+            pa_module,
+            {
+                "volume_id": (ann_volume_ids, pa_module.int64()),
+                "annotation": (ann_payloads, pa_module.large_string()),
+            },
+        )
+
+        sections = [
+            (
+                VolumeProject._SECTION_PROJECT_INFO,
+                VolumeProject._json_bytes(payload.get("project_info", {})),
+            ),
+            (
+                VolumeProject._SECTION_PROJECT_META,
+                VolumeProject._json_bytes(payload.get("project_meta", {})),
+            ),
+            (
+                VolumeProject._SECTION_DATASETS,
+                VolumeProject._table_to_parquet_bytes(pa_module, dataset_table),
+            ),
+            (
+                VolumeProject._SECTION_VOLUMES,
+                VolumeProject._table_to_parquet_bytes(pa_module, volume_table),
+            ),
+            (
+                VolumeProject._SECTION_ANNOTATIONS,
+                VolumeProject._table_to_parquet_bytes(pa_module, annotations_table),
+            ),
+        ]
+
+        return VolumeProject._assemble_sections(sections)
+
+    @staticmethod
+    def _build_table(pa_module, columns: Dict[str, Tuple[List, Any]]):
+        arrays = {}
+        for name, (values, dtype) in columns.items():
+            arrays[name] = pa_module.array(values, type=dtype)
+        return pa_module.table(arrays)
+
+    @staticmethod
+    def _table_to_parquet_bytes(pa_module, table) -> bytes:
+        from pyarrow import parquet as pq
+
+        sink = pa_module.BufferOutputStream()
+        pq.write_table(table, sink)
+        return sink.getvalue().to_pybytes()
+
+    @staticmethod
+    def _parquet_bytes_to_table(pa_module, data: bytes):
+        if not data:
+            return pa_module.table({})
+        from pyarrow import parquet as pq
+
+        buffer = pa_module.BufferReader(data)
+        return pq.read_table(buffer)
+
+    @staticmethod
+    def _json_dumps(data) -> str:
+        if isinstance(data, str):
+            return data
+        return json.dumps(data, ensure_ascii=False)
+
+    @staticmethod
+    def _json_bytes(data) -> bytes:
+        return VolumeProject._json_dumps(data).encode("utf-8")
+
+    @staticmethod
+    def _assemble_sections(sections: List[Tuple[int, bytes]]) -> bytes:
+        if len(sections) > 255:
+            raise RuntimeError("Too many sections for VolumeProject binary payload")
+        buffer = io.BytesIO()
+        buffer.write(VolumeProject._SERIALIZATION_MAGIC)
+        buffer.write(struct.pack(">B", VolumeProject._SERIALIZATION_VERSION))
+        buffer.write(struct.pack(">B", len(sections)))
+        for section_type, payload in sections:
+            if payload is None:
+                payload = b""
+            buffer.write(struct.pack(">B", section_type))
+            buffer.write(struct.pack(">Q", len(payload)))
+            buffer.write(payload)
+        return buffer.getvalue()
+
+    @staticmethod
+    def _parse_parquet_sections(raw_data) -> Dict[int, bytes]:
+        magic = VolumeProject._SERIALIZATION_MAGIC
+        view = raw_data if isinstance(raw_data, memoryview) else memoryview(raw_data)
+        header_len = len(magic) + 2
+        if len(view) < header_len:
+            raise VolumeProject._LegacyPayloadFormatError()
+        if view[: len(magic)].tobytes() != magic:
+            raise VolumeProject._LegacyPayloadFormatError()
+
+        offset = len(magic)
+        version = view[offset]
+        offset += 1
+        if version != VolumeProject._SERIALIZATION_VERSION:
+            raise RuntimeError(
+                "Unsupported VolumeProject binary payload version: {}".format(version)
+            )
+        section_count = view[offset]
+        offset += 1
+        sections: Dict[int, bytes] = {}
+        for _ in range(section_count):
+            if offset + 9 > len(view):
+                raise RuntimeError("Corrupted VolumeProject binary payload")
+            section_type = view[offset]
+            offset += 1
+            length = int.from_bytes(view[offset : offset + 8], "big")
+            offset += 8
+            if offset + length > len(view):
+                raise RuntimeError("Corrupted VolumeProject binary payload")
+            sections[section_type] = view[offset : offset + length].tobytes()
+            offset += length
+        return sections
+
+    @staticmethod
+    def _deserialize_payload_from_parquet(pa_module, raw_data) -> Dict:
+        try:
+            sections = VolumeProject._parse_parquet_sections(raw_data)
+        except VolumeProject._LegacyPayloadFormatError as exc:
+            raise VolumeProject._LegacyPayloadFormatError() from exc
+
+        try:
+            project_info = json.loads(sections[VolumeProject._SECTION_PROJECT_INFO].decode("utf-8"))
+            project_meta = json.loads(sections[VolumeProject._SECTION_PROJECT_META].decode("utf-8"))
+        except KeyError as exc:
+            raise RuntimeError("VolumeProject payload missing metadata section") from exc
+
+        dataset_table = VolumeProject._parquet_bytes_to_table(
+            pa_module, sections.get(VolumeProject._SECTION_DATASETS, b"")
+        )
+        volume_table = VolumeProject._parquet_bytes_to_table(
+            pa_module, sections.get(VolumeProject._SECTION_VOLUMES, b"")
+        )
+        annotations_table = VolumeProject._parquet_bytes_to_table(
+            pa_module, sections.get(VolumeProject._SECTION_ANNOTATIONS, b"")
+        )
+
+        dataset_jsons = dataset_table.column("json").to_pylist() if dataset_table.num_rows else []
+        dataset_records = [json.loads(item) for item in dataset_jsons]
+
+        volume_rows = volume_table.to_pydict() if volume_table.num_rows else {}
+        volume_jsons = volume_rows.get("json", []) if volume_rows else []
+        volume_records = [json.loads(item) for item in volume_jsons]
+
+        annotations_rows = annotations_table.to_pydict() if annotations_table.num_rows else {}
+        annotation_ids = annotations_rows.get("volume_id", []) if annotations_rows else []
+        annotation_payloads = annotations_rows.get("annotation", []) if annotations_rows else []
+        annotations: Dict[str, Dict] = {}
+        for volume_id, annotation_json in zip(annotation_ids, annotation_payloads):
+            if volume_id is None:
+                continue
+            annotations[str(volume_id)] = json.loads(annotation_json)
+
+        return {
+            "project_info": project_info,
+            "project_meta": project_meta,
+            "dataset_infos": dataset_records,
+            "volume_infos": volume_records,
+            "annotations": annotations,
+        }
+
+    @staticmethod
+    def _deserialize_legacy_payload(pa_module, raw_data):
+        deserializer = getattr(pa_module, "deserialize", None)
+        if deserializer is None:
+            raise RuntimeError(
+                "This archive was created with the legacy pyarrow serialization format. "
+                "Install pyarrow<15 and re-export the project to convert it to the new Parquet format."
+            )
+
+        buffer = raw_data if isinstance(raw_data, memoryview) else memoryview(raw_data)
+        return deserializer(buffer)
+
+    @staticmethod
+    def _load_mask_geometries(api: Api, ann: VolumeAnnotation, key_id_map: KeyIdMap) -> None:
+        for sf in ann.spatial_figures:
+            if sf.geometry.name() != Mask3D.name():
+                continue
+            api.volume.figure.load_sf_geometry(sf, key_id_map)
+
+    @staticmethod
     def get_train_val_splits_by_count(project_dir: str, train_count: int, val_count: int) -> None:
         """
         Not available for VolumeProject class.
         :raises: :class:`NotImplementedError` in all cases.
         """
         raise NotImplementedError(
-            f"Static method 'get_train_val_splits_by_count()' is not supported for VolumeProject class now."
+            "Static method 'get_train_val_splits_by_count()' is not supported for VolumeProject class now."
         )
 
     @staticmethod
@@ -285,7 +762,7 @@ class VolumeProject(VideoProject):
         :raises: :class:`NotImplementedError` in all cases.
         """
         raise NotImplementedError(
-            f"Static method 'get_train_val_splits_by_tag()' is not supported for VolumeProject class now."
+            "Static method 'get_train_val_splits_by_tag()' is not supported for VolumeProject class now."
         )
 
     @staticmethod

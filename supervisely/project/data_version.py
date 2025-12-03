@@ -84,6 +84,12 @@ class DataVersion(ModuleApiBase):
         """
         return "VersionInfo"
 
+    @property
+    def project_cls(self):
+        from supervisely.project.project import Project
+
+        return Project
+
     def initialize(self, project_info: Union[ProjectInfo, int]):
         """
         Initialize project versions.
@@ -329,21 +335,28 @@ class DataVersion(ModuleApiBase):
                 return reserve_info.get(ApiField.ID), reserve_info.get(ApiField.COMMIT_TOKEN)
 
             except requests.exceptions.HTTPError as e:
-                if e.response.json().get("details", {}).get("useExistingVersion"):
-                    version_id = e.response.json().get("details", {}).get("version").get("id")
-                    version = e.response.json().get("details", {}).get("version").get("version")
+                details = e.response.json().get("details", {}) if e.response is not None else {}
+
+                if details.get("useExistingVersion"):
+                    version_id = details.get("version", {}).get("id")
+                    version = details.get("version", {}).get("version")
                     logger.info(
                         f"No changes to the project since the last version '{version}' with ID '{version_id}'"
                     )
                     return (None, None)
-                elif "is already committing" in e.response.json().get("details", {}).get("message"):
+
+                message = (details.get("message") or "").lower()
+                if "is already committing" in message:
                     if retry_delay >= max_delay:
                         raise RuntimeError(
                             "Failed to reserve version. Another process is already committing a version. Maximum number of attempts reached."
                         )
-                    version = e.response.json().get("details", {}).get("version").get("version")
+                    version = details.get("version", {}).get("version")
                     time.sleep(retry_delay)
                     retry_delay *= 2
+                    continue
+
+                raise
 
     def cancel_reservation(self, version_id: int, commit_token: str):
         """
@@ -384,8 +397,6 @@ class DataVersion(ModuleApiBase):
         :return: ProjectInfo object of the restored project
         :rtype: ProjectInfo or None
         """
-        from supervisely.project.project import Project
-
         if version_id is None and version_num is None:
             raise ValueError("Either version_id or version_num must be provided")
 
@@ -421,7 +432,7 @@ class DataVersion(ModuleApiBase):
             return
 
         bin_io = self._download_and_extract(backup_files)
-        new_project_info = Project.upload_bin(
+        new_project_info = self.project_cls.upload_bin(
             self._api,
             bin_io,
             self.project_info.workspace_id,
@@ -501,11 +512,9 @@ class DataVersion(ModuleApiBase):
         :return: File info
         :rtype: dict
         """
-        from supervisely.project.project import Project
-
         temp_dir = tempfile.mkdtemp()
 
-        data = Project.download_bin(
+        data = self.project_cls.download_bin(
             self._api, self.project_info.id, batch_size=200, return_bytesio=True
         )
         data.seek(0)
