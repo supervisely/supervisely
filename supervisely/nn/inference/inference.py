@@ -749,15 +749,15 @@ class Inference:
         for model in self.pretrained_models:
             model_meta = model.get("meta")
             if model_meta is not None:
-                model_name = model_meta.get("model_name")
-                if model_name is not None:
-                    if model_name.lower() == model_name.lower():
+                this_model_name = model_meta.get("model_name")
+                if this_model_name is not None:
+                    if this_model_name.lower() == model_name.lower():
                         selected_model = model
                         break
                 else:
-                    model_name = model.get("model_name")
-                    if model_name is not None:
-                        if model_name.lower() == model_name.lower():
+                    this_model_name = model.get("model_name")
+                    if this_model_name is not None:
+                        if this_model_name.lower() == model_name.lower():
                             selected_model = model
                             break
 
