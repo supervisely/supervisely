@@ -229,6 +229,8 @@ class VolumeProject(VideoProject):
         log_progress: bool = False,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         return_bytesio: bool = False,
+        *args,
+        **kwargs,
     ) -> Union[str, io.BytesIO]:
         """
         Download project contents into a Parquet-backed binary blob.
@@ -380,6 +382,9 @@ class VolumeProject(VideoProject):
         project_name: Optional[str] = None,
         log_progress: bool = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
+        skip_missed_entities: bool = False,
+        *args,
+        **kwargs,
     ) -> ProjectInfo:
         """Restore a volume project from a Parquet blob produced by :func:`download_bin`."""
 
@@ -440,25 +445,38 @@ class VolumeProject(VideoProject):
             if new_dataset_info is None:
                 continue
 
-            hashes = [volume.get("hash") for volume in dataset_volumes]
-            if any(h is None for h in hashes):
-                missing = [
-                    volume.get("name") for volume in dataset_volumes if volume.get("hash") is None
+            missing_hash_volumes = [vol for vol in dataset_volumes if not vol.get("hash")]
+            if missing_hash_volumes:
+                missing_names = [
+                    vol.get("name") or str(vol.get("id")) for vol in missing_hash_volumes
                 ]
-                raise RuntimeError(
-                    "Cannot restore volumes without available hash. Offending volumes: {}".format(
-                        ", ".join(missing)
+                if skip_missed_entities:
+                    for vol_name in missing_names:
+                        logger.warning(
+                            "Volume %r skipped during restoration because its source hash is unavailable.",
+                            vol_name,
+                        )
+                    dataset_volumes_to_upload = [vol for vol in dataset_volumes if vol.get("hash")]
+                    if len(dataset_volumes_to_upload) == 0:
+                        continue
+                else:
+                    raise RuntimeError(
+                        "Cannot restore volumes without available hash. Offending volumes: {}".format(
+                            ", ".join(missing_names)
+                        )
                     )
-                )
+            else:
+                dataset_volumes_to_upload = list(dataset_volumes)
 
-            names = [volume.get("name") for volume in dataset_volumes]
-            metas = [volume.get("meta") for volume in dataset_volumes]
+            hashes = [volume.get("hash") for volume in dataset_volumes_to_upload]
+            names = [volume.get("name") for volume in dataset_volumes_to_upload]
+            metas = [volume.get("meta") for volume in dataset_volumes_to_upload]
 
             ds_progress = progress_cb
             if log_progress and progress_cb is None:
                 ds_progress = tqdm_sly(
                     desc="Uploading volumes to {!r}".format(new_dataset_info.name),
-                    total=len(dataset_volumes),
+                    total=len(dataset_volumes_to_upload),
                 )
 
             new_volume_infos = api.volume.upload_hashes(
@@ -469,12 +487,17 @@ class VolumeProject(VideoProject):
                 progress_cb=ds_progress,
             )
 
-            for old_volume, new_volume in zip(dataset_volumes, new_volume_infos):
+            for old_volume, new_volume in zip(dataset_volumes_to_upload, new_volume_infos):
                 volume_mapping[old_volume.get("id")] = new_volume
 
         for volume_id_str, ann_json in annotations.items():
             new_volume_info = volume_mapping.get(int(volume_id_str))
             if new_volume_info is None:
+                if skip_missed_entities:
+                    logger.warning(
+                        "Annotation for volume %s skipped because the source volume was not restored.",
+                        volume_id_str,
+                    )
                 continue
             ann_json["volumeId"] = new_volume_info.id
             ann = VolumeAnnotation.from_json(ann_json, project_meta, None)
