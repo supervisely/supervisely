@@ -31,10 +31,6 @@ class VideoVersionInfo(NamedTuple):
 class VideoDataVersion(ModuleApiBase):
     """
     Class for managing **video project** versions.
-
-    The semantics are analogous to `DataVersion` for image projects, but:
-    - snapshot format is Apache Arrow + Apache Parquet (see `VideoVersioning.md`);
-    - implementation does NOT touch or reuse the image `DataVersion` binary format.
     """
 
     def __init__(self, api):
