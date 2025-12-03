@@ -49,3 +49,12 @@ class SelectTeam(Widget):
 
     def get_selected_id(self):
         return StateJson()[self.widget_id]["teamId"]
+
+    def set_team_id(self, team_id: int):
+        """Set the selected team ID.
+
+        :param team_id: Team ID to select
+        :type team_id: int
+        """
+        StateJson()[self.widget_id]["teamId"] = team_id
+        StateJson().send_changes()

@@ -82,6 +82,25 @@ class SelectWorkspace(Widget):
             return self._team_id
         else:
             return self._team_selector.get_selected_id()
+        
+    def set_team_id(self, team_id: int):
+        """Set the team ID and update the UI."""
+        self._team_id = team_id
+        if self._compact is False and self._team_selector is not None:
+            self._team_selector.set_team_id(team_id)
+        else:
+            DataJson()[self.widget_id]["teamId"] = team_id
+            DataJson().send_changes()
+    
+    def set_workspace_id(self, workspace_id: int):
+        """Set the workspace ID and update the UI."""
+        StateJson()[self.widget_id]["workspaceId"] = workspace_id
+        StateJson().send_changes()
+    
+    def set_ids(self, team_id: int, workspace_id: int):
+        """Set both team ID and workspace ID and update the UI."""
+        self.set_team_id(team_id)
+        self.set_workspace_id(workspace_id)
 
     def get_json_state(self) -> Dict:
         return {
