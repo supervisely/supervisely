@@ -1,4 +1,4 @@
-from typing import Callable, List, Optional, Union
+from typing import Callable, List, Optional, Union, Tuple
 
 from supervisely import ObjClass, ObjClassCollection
 from supervisely.app import DataJson, StateJson
@@ -218,6 +218,80 @@ class SelectClass(Widget):
     def get_all_classes(self) -> List[ObjClass]:
         """Get all available classes."""
         return self._classes.copy()
+
+    def get_selected_names_and_geometries(self) -> Union[List[Tuple], Tuple, None]:
+        """Get the currently selected class name(s) and geometry type(s) as tuple(s).
+        
+        :return: If multiple=True, returns List[Tuple[str, str]] (list of (name, geometry) tuples).
+                 If multiple=False, returns Tuple[str, str] (single (name, geometry) tuple) or None.
+        :rtype: Union[List[tuple], tuple, None]
+        """
+        value = self.get_value()
+        if value is None:
+            return None
+
+        if self._multiple:
+            if not isinstance(value, list):
+                return []
+            result = []
+            for class_name in value:
+                for cls in self._classes:
+                    if cls.name == class_name:
+                        shape_text = type_to_shape_text.get(cls.geometry_type, "")
+                        result.append((cls.name, shape_text))
+                        break
+            return result
+        else:
+            for cls in self._classes:
+                if cls.name == value:
+                    shape_text = type_to_shape_text.get(cls.geometry_type, "")
+                    return (cls.name, shape_text)
+            return None
+
+    def add_class_by_name_and_geometry(self, name: str, geometry: str, color: Optional[List[int]] = None):
+        """Add a new class by name and geometry type string.
+        
+        :param name: Class name
+        :type name: str
+        :param geometry: Geometry type as string (e.g., "rectangle", "polygon", "bitmap (mask)")
+        :type geometry: str
+        :param color: RGB color as [r, g, b] list. If None, generates a distinct color automatically.
+        :type color: Optional[List[int]]
+        """
+        # Get geometry type from string
+        geometry_type = shape_text_to_type.get(geometry)
+        if geometry_type is None:
+            raise ValueError(f"Invalid geometry type: {geometry}. Valid types: {list(shape_text_to_type.keys())}")
+        
+        # Check if class already exists
+        if any(cls.name == name for cls in self._classes):
+            raise ValueError(f"Class '{name}' already exists")
+        
+        # Generate or use provided color
+        if color is None:
+            existing_colors = [cls.color for cls in self._classes]
+            color = generate_rgb(existing_colors)
+        
+        # Create and add new class
+        new_class = ObjClass(name=name, geometry_type=geometry_type, color=color)
+        self._add_new_class(new_class)
+
+    def add_classes_by_names_and_geometries(self, classes: List[Tuple]):
+        """Add multiple classes from a list of (name, geometry) or (name, geometry, color) tuples.
+        
+        :param classes: List of tuples, each containing (name, geometry) or (name, geometry, [r, g, b])
+        :type classes: List[tuple]
+        """
+        for item in classes:
+            if len(item) == 2:
+                name, geometry = item
+                color = None
+            elif len(item) == 3:
+                name, geometry, color = item
+            else:
+                raise ValueError(f"Invalid tuple length: {len(item)}. Expected 2 or 3 elements: (name, geometry) or (name, geometry, color)")
+            
+            self.add_class_by_name_and_geometry(name, geometry, color)
 
     def set(self, classes: Union[List[ObjClass], ObjClassCollection]):
         """Update the list of available classes."""
