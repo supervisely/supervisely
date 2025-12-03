@@ -554,7 +554,8 @@ class TestOrientedBBoxDrawing(unittest.TestCase):
         bitmap = np.zeros((300, 300, 3), dtype=np.uint8)
         color = (255, 0, 0)  # Red color
 
-        obb.draw_contour(bitmap, color, thickness=2)
+        obb.draw(bitmap, color, thickness=2)
+        # obb.draw_contour(bitmap, color, thickness=2)
 
         # Check that some pixels along the expected corners are colored
         corners = obb.calculate_rotated_corners()

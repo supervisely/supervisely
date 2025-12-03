@@ -560,3 +560,10 @@ class OrientedBBox(Rectangle):
         pts = np.array([[int(corner.col), int(corner.row)] for corner in corners], np.int32)
         pts = pts.reshape((-1, 1, 2))
         cv2.polylines(bitmap, [pts], isClosed=True, color=color, thickness=thickness)
+
+    def _draw_impl(self, bitmap: np.ndarray, color, thickness=1, config=None):
+        """ """
+        corners = self.calculate_rotated_corners()
+        pts = np.array([[int(corner.col), int(corner.row)] for corner in corners], np.int32)
+        pts = pts.reshape((-1, 1, 2))
+        cv2.fillPoly(bitmap, [pts], color)
