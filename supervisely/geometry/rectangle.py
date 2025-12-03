@@ -737,8 +737,9 @@ class Rectangle(Geometry):
         from supervisely.geometry.any_geometry import AnyGeometry
         from supervisely.geometry.bitmap import Bitmap
         from supervisely.geometry.polygon import Polygon
+        from supervisely.geometry.oriented_bbox import OrientedBBox
 
-        return [AlphaMask, AnyGeometry, Bitmap, Polygon]
+        return [AlphaMask, AnyGeometry, Bitmap, Polygon, Rectangle, OrientedBBox]
 
     @classmethod
     def _round_subpixel_coordinates(

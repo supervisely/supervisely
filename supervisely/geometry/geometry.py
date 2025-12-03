@@ -272,6 +272,7 @@ class Geometry(JsonSerializable):
         )
         from supervisely.geometry.polygon import Polygon
         from supervisely.geometry.rectangle import Rectangle
+        from supervisely.geometry.oriented_bbox import OrientedBBox
 
         res = []
         if new_geometry == Bitmap:
@@ -282,6 +283,9 @@ class Geometry(JsonSerializable):
             res = [self.to_bbox()]
         elif new_geometry == Polygon:
             res = geometry_to_polygon(self, approx_epsilon=approx_epsilon)
+        elif new_geometry == OrientedBBox:
+            bbox = self.to_bbox()
+            res = [OrientedBBox.from_bbox(bbox)]
 
         if len(res) == 0:
             logger.warn(

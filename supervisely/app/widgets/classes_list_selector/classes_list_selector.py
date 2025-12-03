@@ -3,15 +3,16 @@ from typing import List, Optional, Union
 from supervisely import ObjClass, ObjClassCollection
 from supervisely.app import StateJson
 from supervisely.app.widgets import Button, NotificationBox, Widget, generate_id
+from supervisely.geometry.alpha_mask import AlphaMask
 from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely.geometry.bitmap import Bitmap
-from supervisely.geometry.alpha_mask import AlphaMask
 from supervisely.geometry.closed_surface_mesh import ClosedSurfaceMesh
 from supervisely.geometry.cuboid_2d import Cuboid2d
 from supervisely.geometry.cuboid_3d import Cuboid3d
 from supervisely.geometry.graph import GraphNodes
 from supervisely.geometry.mask_3d import Mask3D
 from supervisely.geometry.multichannel_bitmap import MultichannelBitmap
+from supervisely.geometry.oriented_bbox import OrientedBBox
 from supervisely.geometry.point import Point
 from supervisely.geometry.point_3d import Point3d
 from supervisely.geometry.pointcloud import Pointcloud
@@ -35,6 +36,7 @@ type_to_shape_text = {
     GraphNodes: "keypoints",
     ClosedSurfaceMesh: "volume (3d mask)",
     Mask3D: "3d mask",
+    OrientedBBox: "oriented bbox",
 }
 
 
