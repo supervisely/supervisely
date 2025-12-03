@@ -25,10 +25,6 @@ from supervisely.video_annotation.video_annotation import VideoAnnotation
 
 
 class VideoDataVersion(DataVersion):
-    """
-    Class for managing video project versions.
-    """
-
     def __init__(self, api):
         """
         Class for managing versions of video projects.
