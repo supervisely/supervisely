@@ -219,6 +219,31 @@ class SelectUser(Widget):
             )
         StateJson().send_changes()
 
+    def set_selected_users_by_ids(self, user_ids: Union[int, List[int]]):
+        """Set the selected user(s) by user ID(s).
+        
+        :param user_ids: Single user ID or list of user IDs to select
+        :type user_ids: Union[int, List[int]]
+        """
+        if isinstance(user_ids, int):
+            user_ids = [user_ids]
+        
+        # Find logins for the given user IDs
+        selected_logins = []
+        for user_id in user_ids:
+            for user in self._users:
+                if user.id == user_id:
+                    selected_logins.append(user.login)
+                    break
+        
+        # Set value based on multiple mode
+        if self._multiple:
+            StateJson()[self.widget_id]["value"] = selected_logins
+        else:
+            StateJson()[self.widget_id]["value"] = selected_logins[0] if selected_logins else None
+        
+        StateJson().send_changes()
+
     def value_changed(self, func: Callable[[Union[UserInfo, List[UserInfo]]], None]):
         """
         Decorator to handle value change event.
