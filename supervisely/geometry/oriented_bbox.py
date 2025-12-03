@@ -7,6 +7,7 @@ from copy import deepcopy
 from math import ceil, floor
 from typing import Dict, List, Optional, Tuple, Union
 
+import cv2
 import numpy as np
 
 from supervisely.geometry import validation
@@ -216,15 +217,15 @@ class OrientedBBox(Rectangle):
             """
         if self._angle % 360 == 0:
             return Rectangle(
-                top=self._top,
-                left=self._left,
-                bottom=self._bottom,
-                right=self._right,
-                sly_id=self._id,
-                class_id=self._class_id,
-                labeler_login=self._labeler_login,
-                updated_at=self._updated_at,
-                created_at=self._created_at,
+                top=self.top,
+                left=self.left,
+                bottom=self.bottom,
+                right=self.right,
+                sly_id=self.sly_id,
+                class_id=self.class_id,
+                labeler_login=self.labeler_login,
+                updated_at=self.updated_at,
+                created_at=self.created_at,
             )
 
         angle_rad = np.deg2rad(self._angle)
@@ -245,11 +246,11 @@ class OrientedBBox(Rectangle):
             left=new_left,
             bottom=new_bottom,
             right=new_right,
-            sly_id=self._id,
-            class_id=self._class_id,
-            labeler_login=self._labeler_login,
-            updated_at=self._updated_at,
-            created_at=self._created_at,
+            sly_id=self.sly_id,
+            class_id=self.class_id,
+            labeler_login=self.labeler_login,
+            updated_at=self.updated_at,
+            created_at=self.created_at,
         )
 
     def contains_point_location(self, point: PointLocation) -> bool:
@@ -285,9 +286,7 @@ class OrientedBBox(Rectangle):
         final_y = rotated_y + self.center.row
 
         # Check if the rotated point is within the axis-aligned bbox
-        return (
-            self._left <= final_x <= self._right and self._top <= final_y <= self._bottom
-        )
+        return self.left <= final_x <= self.right and self.top <= final_y <= self.bottom
 
     def contains_point(self, geometry: Geometry) -> bool:
         """
@@ -359,9 +358,15 @@ class OrientedBBox(Rectangle):
 
         rotated_corners = []
         for corner in obb.corners:  # [Top-left, Top-right, Bottom-right, Bottom-left]
-            rotated_x = corner.col * cos_angle - corner.row * sin_angle
-            rotated_y = corner.col * sin_angle + corner.row * cos_angle
+            # First translate to origin (subtract center)
+            translated_x = corner.col - obb.center.col
+            translated_y = corner.row - obb.center.row
 
+            # Then rotate
+            rotated_x = translated_x * cos_angle - translated_y * sin_angle
+            rotated_y = translated_x * sin_angle + translated_y * cos_angle
+
+            # Then translate back (add center)
             final_x = rotated_x + obb.center.col
             final_y = rotated_y + obb.center.row
 
@@ -548,3 +553,10 @@ class OrientedBBox(Rectangle):
         if return_type == Rectangle:
             return [polygon.to_bbox()]
         return [polygon]
+
+    def _draw_contour_impl(self, bitmap, color, thickness=1, config=None):
+        """ """
+        corners = self.calculate_rotated_corners()
+        pts = np.array([[int(corner.col), int(corner.row)] for corner in corners], np.int32)
+        pts = pts.reshape((-1, 1, 2))
+        cv2.polylines(bitmap, [pts], isClosed=True, color=color, thickness=thickness)
