@@ -502,7 +502,7 @@ class Preview:
             if pred_video_annotation is None:
                 raise RuntimeError("Model did not return video annotation")
             pred_video_annotation = VideoAnnotation.from_json(
-                pred_video_annotation, project_meta=project_meta
+                pred_video_annotation, project_meta=model_api.get_model_meta()
             )
             _, pred_video_annotation, _ = update_meta_and_ann_for_video_annotation(
                 self._project_meta,
