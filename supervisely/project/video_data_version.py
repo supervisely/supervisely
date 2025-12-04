@@ -78,87 +78,6 @@ class VideoDataVersion(DataVersion):
             skip_missed=skip_missed,
         )
 
-    # def create(
-    #     self,
-    #     project_info: Union[ProjectInfo, int],
-    #     version_title: Optional[str] = None,
-    #     version_description: Optional[str] = None,
-    # ) -> Optional[int]:
-    #     """
-    #     Create a new project version.
-    #     Returns the ID of the new version.
-    #     If the project is already on the latest version, returns the latest version ID.
-    #     If the project version cannot be created, returns None.
-
-    #     :param project_info: ProjectInfo object or project ID
-    #     :type project_info: Union[ProjectInfo, int]
-    #     :param version_title: Version title
-    #     :type version_title: Optional[str]
-    #     :param version_description: Version description
-    #     :type version_description: Optional[str]
-    #     :return: Version ID
-    #     :rtype: int
-    #     """
-    #     if isinstance(project_info, int):
-    #         project_info = self._api.project.get_info_by_id(project_info)
-
-    #     if project_info.type != ProjectType.VIDEOS.value:
-    #         raise ValueError(f"Project with id {project_info.id} is not a video project")
-
-    #     if (
-    #         "app.supervise.ly" in self._api.server_address
-    #         or "app.supervisely.com" in self._api.server_address
-    #     ):
-    #         if self._api.team.get_info_by_id(project_info.team_id).usage.plan == "free":
-    #             logger.warning(
-    #                 "Project versioning is not available for teams with Free plan. "
-    #                 "Please upgrade to Pro to enable versioning."
-    #             )
-    #             return None
-
-    #     self.initialize(project_info)
-    #     path = self._generate_save_path()
-    #     latest = self._get_latest_id()
-    #     try:
-    #         version_id, commit_token = self.reserve(project_info.id)
-    #     except Exception as e:
-    #         logger.error(f"Failed to reserve video version. Exception: {e}")
-    #         return None
-    #     if version_id is None and commit_token is None:
-    #         return latest
-    #     try:
-    #         file_info = self._compress_and_upload(path)
-    #         self.versions[version_id] = {
-    #             "path": path,
-    #             "updated_at": project_info.updated_at,
-    #             "previous": latest,
-    #             "number": int(self.versions[str(latest)]["number"]) + 1 if latest else 1,
-    #             "schema": self.__version_format,
-    #         }
-    #         self.versions["latest"] = version_id
-    #         self.set_map(project_info, initialize=False)
-    #         self.commit(
-    #             version_id,
-    #             commit_token,
-    #             project_info.updated_at,
-    #             file_info.id,
-    #             title=version_title,
-    #             description=version_description,
-    #         )
-    #         return version_id
-    #     except Exception as e:
-    #         if self.cancel_reservation(version_id, commit_token):
-    #             logger.error(
-    #                 f"Video version creation failed. Reservation was cancelled. Exception: {e}"
-    #             )
-    #         else:
-    #             logger.error(
-    #                 "Failed to cancel video version reservation when handling exception. "
-    #                 "You can cancel your reservation on the web under the Versions tab of the project. "
-    #                 f"Exception: {e}"
-    #             )
-    #         return None
-
     def restore(
         self,
         project_info: Union[ProjectInfo, int],
@@ -281,11 +200,6 @@ class VideoDataVersion(DataVersion):
         """
         Download stored snapshot (.tar.zst) for a video project version into memory.
         """
-        import io
-        import os
-        import tempfile
-        from supervisely.io.fs import remove_dir
-
         temp_dir = tempfile.mkdtemp()
         local_path = os.path.join(temp_dir, "download.tar.zst")
         try:
