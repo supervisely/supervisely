@@ -211,9 +211,6 @@ class DataVersion(ModuleApiBase):
         if isinstance(project_info, int):
             project_info = self._api.project.get_info_by_id(project_info)
 
-        # project_type = project_info.type
-        # if project_type == ProjectType.VIDEOS.value:
-
         if (
             "app.supervise.ly" in self._api.server_address
             or "app.supervisely.com" in self._api.server_address
