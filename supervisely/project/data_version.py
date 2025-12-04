@@ -11,7 +11,7 @@ import zstd
 
 from supervisely._utils import logger
 from supervisely.api.module_api import ApiField, ModuleApiBase
-from supervisely.api.project_api import ProjectInfo
+from supervisely.api.project_api import ProjectInfo, ProjectType
 from supervisely.io import json
 from supervisely.io.fs import remove_dir, silent_remove
 
@@ -216,6 +216,9 @@ class DataVersion(ModuleApiBase):
         """
         if isinstance(project_info, int):
             project_info = self._api.project.get_info_by_id(project_info)
+
+        # project_type = project_info.type
+        # if project_type == ProjectType.VIDEOS.value:
 
         if (
             "app.supervise.ly" in self._api.server_address
