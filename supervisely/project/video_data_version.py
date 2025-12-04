@@ -200,11 +200,6 @@ class VideoDataVersion(DataVersion):
         """
         Download stored snapshot (.tar.zst) for a video project version into memory.
         """
-        import io
-        import os
-        import tempfile
-        from supervisely.io.fs import remove_dir
-
         temp_dir = tempfile.mkdtemp()
         local_path = os.path.join(temp_dir, "download.tar.zst")
         try:
