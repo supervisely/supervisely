@@ -114,10 +114,8 @@ class VideoDataVersion(DataVersion):
         except Exception as e:
             logger.error(f"Failed to reserve video version. Exception: {e}")
             return None
-
         if version_id is None and commit_token is None:
             return latest
-
         try:
             snapshot_io = self.build_snapshot(
                 self._api,
