@@ -43,10 +43,9 @@ class SelectWorkspace(Widget):
         self._team_id = _get_int_or_env(self._team_id, "context.teamId")
 
         if compact is True:
+            # If team_id is not provided in compact mode, start disabled
             if self._team_id is None:
-                raise ValueError(
-                    '"team_id" have to be passed as argument or "compact" has to be False'
-                )
+                self._disabled = True
         else:
             # if self._show_label is False:
             #     logger.warn(
@@ -84,13 +83,17 @@ class SelectWorkspace(Widget):
             return self._team_selector.get_selected_id()
         
     def set_team_id(self, team_id: int):
-        """Set the team ID and update the UI."""
+        """Set the team ID and update the UI. Automatically enables the widget if it was disabled."""
         self._team_id = team_id
         if self._compact is False and self._team_selector is not None:
             self._team_selector.set_team_id(team_id)
         else:
             DataJson()[self.widget_id]["teamId"] = team_id
             DataJson().send_changes()
+        
+        # Auto-enable the widget when team_id is set
+        if self._disabled and team_id is not None:
+            self.enable()
     
     def set_workspace_id(self, workspace_id: int):
         """Set the workspace ID and update the UI."""
