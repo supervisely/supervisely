@@ -14,7 +14,7 @@ from supervisely.api.module_api import ApiField
 from supervisely.api.project_api import ProjectInfo, ProjectType
 from supervisely.api.dataset_api import DatasetInfo
 from supervisely.api.video.video_api import VideoInfo
-from supervisely.io.fs import mkdir, clean_dir
+from supervisely.io.fs import mkdir, clean_dir, remove_dir
 from supervisely.io.json import dump_json_file, load_json_file
 from supervisely.project.project import Dataset
 from supervisely.project.project_meta import ProjectMeta
@@ -85,7 +85,19 @@ class VideoDataVersion(DataVersion):
         version_description: Optional[str] = None,
     ) -> Optional[int]:
         """
-        Create a new version for a video project.
+        Create a new project version.
+        Returns the ID of the new version.
+        If the project is already on the latest version, returns the latest version ID.
+        If the project version cannot be created, returns None.
+
+        :param project_info: ProjectInfo object or project ID
+        :type project_info: Union[ProjectInfo, int]
+        :param version_title: Version title
+        :type version_title: Optional[str]
+        :param version_description: Version description
+        :type version_description: Optional[str]
+        :return: Version ID
+        :rtype: int
         """
         if isinstance(project_info, int):
             project_info = self._api.project.get_info_by_id(project_info)
@@ -117,33 +129,7 @@ class VideoDataVersion(DataVersion):
         if version_id is None and commit_token is None:
             return latest
         try:
-            snapshot_io = self.build_snapshot(
-                self._api,
-                project_info.id,
-                dataset_ids=None,
-                batch_size=50,
-                log_progress=False,
-                progress_cb=None,
-            )
-
-            import os
-            import tempfile
-            from supervisely.io.fs import remove_dir
-
-            temp_dir = tempfile.mkdtemp()
-            local_archive = os.path.join(temp_dir, "snapshot.tar.zst")
-            with open(local_archive, "wb") as f:
-                f.write(snapshot_io.read())
-
-            file_info = self._api.file.upload(
-                self.project_info.team_id,
-                local_archive,
-                path,
-            )
-            if file_info is None:
-                raise RuntimeError("Failed to upload video version snapshot to Team Files")
-            remove_dir(temp_dir)
-
+            file_info = self._compress_and_upload(path)
             latest_number = (
                 int(self.versions[str(latest)]["number"])
                 if (latest and str(latest) in self.versions)
@@ -189,8 +175,19 @@ class VideoDataVersion(DataVersion):
         skip_missed_entities: bool = False,
     ) -> Optional[ProjectInfo]:
         """
-        Restore a video project to a specific version.
+        Restore project to a specific version.
         Version can be specified by ID or number.
+
+        :param project_info: ProjectInfo object or project ID
+        :type project_info: Union[ProjectInfo, int]
+        :param version_id: Version ID
+        :type version_id: Optional[int]
+        :param version_num: Version number
+        :type version_num: Optional[int]
+        :param skip_missed_entities: Skip missed Images
+        :type skip_missed_entities: bool, default False
+        :return: ProjectInfo object of the restored project
+        :rtype: ProjectInfo or None
         """
 
         if version_id is None and version_num is None:
@@ -249,6 +246,44 @@ class VideoDataVersion(DataVersion):
             skip_missed=skip_missed_entities,
         )
         return new_project_info
+
+    def _compress_and_upload(self, path: str) -> dict:
+        """
+        Save video project snapshot in archive to the Team Files.
+
+        :param path: Destination path in Team Files
+        :return: File info
+        :rtype: dict
+        """
+        temp_dir = tempfile.mkdtemp()
+        try:
+            snapshot_io = self.build_snapshot(
+                self._api,
+                self.project_info.id,
+                dataset_ids=None,
+                batch_size=50,
+                log_progress=False,
+                progress_cb=None,
+            )
+
+            local_archive = os.path.join(temp_dir, "snapshot.tar.zst")
+            with open(local_archive, "wb") as f:
+                f.write(snapshot_io.read())
+
+            file_info = self._api.file.upload(
+                self.project_info.team_id,
+                local_archive,
+                path,
+            )
+            if file_info is None:
+                raise RuntimeError("Failed to upload video version snapshot to Team Files")
+
+            return file_info
+        finally:
+            try:
+                remove_dir(temp_dir)
+            except Exception:
+                pass
 
     def _download_snapshot(self, path: str) -> io.BytesIO:
         """
