@@ -692,6 +692,29 @@ def _restore_snapshot(
 
         v_table = parquet.read_table(videos_path)
         v_rows = v_table.to_pylist()
+        objects_tags_by_video: dict[int, dict[str, list]] = {}
+        objects_path = os.path.join(payload_dir, "objects.parquet")
+        if os.path.exists(objects_path):
+            try:
+                o_table = parquet.read_table(objects_path)
+                o_rows = o_table.to_pylist()
+                for row in o_rows:
+                    tags_json = row.get("tags_json")
+                    if not tags_json:
+                        continue
+                    try:
+                        tags_list = json.loads(tags_json)
+                    except Exception:
+                        logger.warning(
+                            "Failed to parse tags_json for object in objects.parquet; "
+                            "skipping its tags."
+                        )
+                        continue
+                    src_vid = row["src_video_id"]
+                    obj_key = row["key"]
+                    objects_tags_by_video.setdefault(src_vid, {})[obj_key] = tags_list
+            except Exception as e:
+                logger.warning(f"Failed to read objects.parquet when restoring tags: {e}")
 
         videos_by_dataset: dict[int, List[dict]] = {}
         for row in v_rows:
@@ -802,14 +825,16 @@ def _restore_snapshot(
         ann_temp_dir = os.path.join(tmp_root, "anns")
         mkdir(ann_temp_dir)
 
-        anns_by_dataset: dict[int, List[Tuple[int, str]]] = {}
+        anns_by_dataset: dict[int, List[Tuple[int, int, str]]] = {}
         for row in v_rows:
             src_vid = row["src_video_id"]
             new_info = src_to_new_video.get(src_vid)
             if new_info is None:
                 continue
             src_ds_id = row["src_dataset_id"]
-            anns_by_dataset.setdefault(src_ds_id, []).append((new_info.id, row["ann_json"]))
+            anns_by_dataset.setdefault(src_ds_id, []).append(
+                (new_info.id, src_vid, row["ann_json"])
+            )
 
         for src_ds_id, items in anns_by_dataset.items():
             ds_info = dataset_mapping.get(src_ds_id)
@@ -819,17 +844,26 @@ def _restore_snapshot(
             video_ids: List[int] = []
             ann_paths: List[str] = []
 
-            for vid_id, ann_json_str in items:
-                video_ids.append(vid_id)
-                ann_path = os.path.join(ann_temp_dir, f"{vid_id}.json")
+            for new_vid_id, src_vid_id, ann_json_str in items:
+                video_ids.append(new_vid_id)
+                ann_path = os.path.join(ann_temp_dir, f"{new_vid_id}.json")
                 try:
                     parsed = json.loads(ann_json_str)
                 except Exception:
                     logger.warning(
-                        f"Failed to parse ann_json for restored video id={vid_id}, "
+                        f"Failed to parse ann_json for restored video id={new_vid_id}, "
                         f"skipping its annotation."
                     )
                     continue
+
+                obj_tags_for_video = objects_tags_by_video.get(src_vid_id)
+                if obj_tags_for_video:
+                    objects_list = parsed.get("objects") or []
+                    for obj in objects_list:
+                        obj_key = obj.get("key")
+                        if obj_key and obj_key in obj_tags_for_video:
+                            obj["tags"] = obj_tags_for_video[obj_key]
+
                 dump_json_file(parsed, ann_path)
                 ann_paths.append(ann_path)
 
