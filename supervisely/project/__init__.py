@@ -3,7 +3,6 @@ from typing import Optional, Union
 from supervisely.io.fs import get_file_name_with_ext, list_files
 from supervisely.io.json import load_json_file
 from supervisely.project.data_version import DataVersion
-from supervisely.project.video_data_version import VideoDataVersion
 from supervisely.project.pointcloud_episode_project import PointcloudEpisodeProject
 from supervisely.project.pointcloud_project import PointcloudProject
 from supervisely.project.project import Project, read_single_project
