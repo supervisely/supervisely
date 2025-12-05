@@ -66,6 +66,9 @@ class ObjectDetectionEvalResult(BaseEvalResult):
         elif isinstance(value, str) and value.endswith(".parquet"):
             with zf.open(value) as df_f:
                 return pd.read_parquet(df_f)
+        elif isinstance(value, str) and value.endswith(".csv"):
+            with zf.open(value) as df_f:
+                return pd.read_csv(df_f, sep="\t", index_col=0)
         elif isinstance(value, dict):
             res = {}
             for k, v in value.items():
@@ -221,9 +224,9 @@ class ObjectDetectionEvaluator(BaseEvaluator):
             os.remove(filepath)
             return filename
         elif isinstance(value, pd.DataFrame):
-            filename = f"{key_prefix}.parquet" if key_prefix else "dataframe.parquet"
+            filename = f"{key_prefix}.csv" if key_prefix else "dataframe.csv"
             filepath = os.path.join(self.result_dir, filename)
-            value.to_parquet(filepath)
+            value.to_csv(filepath, sep="\t")
             zf.write(filepath, arcname=filename)
             os.remove(filepath)
             return filename

@@ -61,13 +61,14 @@ class SemanticSegmentationEvalResult(BaseEvalResult):
         if isinstance(value, str) and value.endswith(".npy"):
             with zf.open(value) as arr_f:
                 return np.load(arr_f)
-        elif isinstance(value, str) and value.endswith(".parquet"):
+        elif isinstance(value, str) and value.endswith(".csv"):
             with zf.open(value) as df_f:
-                return pd.read_parquet(df_f)
+                return pd.read_csv(df_f, sep="\t", index_col=0)
         elif isinstance(value, dict):
             res = {}
             for k, v in value.items():
                 k = int(k) if isinstance(k, str) and k.isdigit() else k
+                k = float(k) if isinstance(k, str) and self._is_float(k) else k
                 res[k] = self._process_value_from_archive(v, zf)
             return res
         elif isinstance(value, list):
@@ -76,6 +77,15 @@ class SemanticSegmentationEvalResult(BaseEvalResult):
             return int(value)
         else:
             return value
+        
+    def _is_float(self, s: str) -> bool:
+        if not s or not isinstance(s, str):
+            return False
+        try:
+            float(s)
+            return '.' in s or 'e' in s.lower()
+        except (ValueError, AttributeError):
+            return False
 
     def _prepare_data(self) -> None:
         """Prepare data to allow easy access to the most important parts"""
@@ -159,9 +169,9 @@ class SemanticSegmentationEvaluator(BaseEvaluator):
             os.remove(filepath)
             return filename
         elif isinstance(value, pd.DataFrame):
-            filename = f"{key_prefix}.parquet" if key_prefix else "dataframe.parquet"
+            filename = f"{key_prefix}.csv" if key_prefix else "dataframe.csv"
             filepath = os.path.join(self.result_dir, filename)
-            value.to_parquet(filepath)
+            value.to_csv(filepath, sep="\t")
             zf.write(filepath, arcname=filename)
             os.remove(filepath)
             return filename
