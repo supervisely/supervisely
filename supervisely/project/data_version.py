@@ -85,10 +85,27 @@ class DataVersion(ModuleApiBase):
         return "VersionInfo"
 
     @property
-    def project_cls(self):
-        from supervisely.project.project import Project
+    def impl(self):
+        from supervisely.project import (
+            Project,
+            ProjectType,
+            VideoProject,
+            VolumeProject,
+        )
 
-        return Project
+        if self.project_info is None:
+            raise ValueError("Project info is not initialized. Call 'initialize' method first.")
+
+        project_type = self.project_info.type
+
+        if project_type == ProjectType.IMAGES:
+            return Project
+        elif project_type == ProjectType.VIDEOS:
+            return VideoProject
+        elif project_type == ProjectType.VOLUMES:
+            return VolumeProject
+        else:
+            raise ValueError(f"Unsupported project type: {project_type}")
 
     def initialize(self, project_info: Union[ProjectInfo, int]):
         """
@@ -432,7 +449,7 @@ class DataVersion(ModuleApiBase):
             return
 
         bin_io = self._download_and_extract(backup_files)
-        new_project_info = self.project_cls.upload_bin(
+        new_project_info = self.impl.upload_bin(
             self._api,
             bin_io,
             self.project_info.workspace_id,
@@ -514,7 +531,7 @@ class DataVersion(ModuleApiBase):
         """
         temp_dir = tempfile.mkdtemp()
 
-        data = self.project_cls.download_bin(
+        data = self.impl.download_bin(
             self._api, self.project_info.id, batch_size=200, return_bytesio=True
         )
         data.seek(0)
