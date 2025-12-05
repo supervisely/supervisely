@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import os
 import pickle
+import zipfile
 from pathlib import Path
+from typing import Dict
 
+import numpy as np
 import pandas as pd
 
 from supervisely.io.json import dump_json_file, load_json_file
@@ -30,11 +33,14 @@ class ObjectDetectionEvalResult(BaseEvalResult):
         if self.coco_gt.exists() and self.coco_dt.exists():
             self.coco_gt, self.coco_dt = read_coco_datasets(self.coco_gt, self.coco_dt)
 
-        eval_data_path = Path(path) / "eval_data.pkl"
-        if eval_data_path.exists():
+        eval_data_pickle_path = Path(path) / "eval_data.pkl"
+        eval_data_archive_path = Path(path) / "eval_data.zip"
+        if eval_data_pickle_path.exists():
             with open(Path(path, "eval_data.pkl"), "rb") as f:
                 self.eval_data = pickle.load(f)
-
+        elif eval_data_archive_path.exists():
+            self.eval_data = self._load_eval_data_archive(eval_data_archive_path)
+            
         inference_info_path = Path(path) / "inference_info.json"
         if inference_info_path.exists():
             self.inference_info = load_json_file(str(inference_info_path))
@@ -42,6 +48,23 @@ class ObjectDetectionEvalResult(BaseEvalResult):
         speedtest_info_path = Path(path).parent / "speedtest" / "speedtest.json"
         if speedtest_info_path.exists():
             self.speedtest_info = load_json_file(str(speedtest_info_path))
+
+    def _load_eval_data_archive(self, path: str) -> Dict:
+        """Load eval_data from archive"""
+        with zipfile.ZipFile(path, mode="r") as zf:
+            with zf.open("eval_data.json") as f:
+                data = load_json_file(f)
+            eval_data = {}
+            for key, value in data.items():
+                if isinstance(value, str) and value.endswith(".npy"):
+                    with zf.open(value) as arr_f:
+                        eval_data[key] = np.load(arr_f)
+                elif isinstance(value, str) and value.endswith(".parquet"):
+                    with zf.open(value) as df_f:
+                        eval_data[key] = pd.read_parquet(df_f)
+                else:
+                    eval_data[key] = value
+            return eval_data
 
     def _prepare_data(self) -> None:
         """Prepare data to allow easy access to the most important parts"""
@@ -168,11 +191,35 @@ class ObjectDetectionEvaluator(BaseEvaluator):
         ], "Images in GT and DT projects are different"
         return cocoGt_json, cocoDt_json
 
+    def _dump_eval_results_archive(self):
+        data = {}
+        with zipfile.ZipFile(
+            os.path.join(self.result_dir, "eval_data.zip"), mode="w"
+        ) as zf:
+            for key, value in self.eval_data.items():
+                if isinstance(value, np.ndarray):
+                    filename = key + ".npy"
+                    filepath = os.path.join(self.result_dir, filename)
+                    np.save(filepath, value)
+                    zf.write(filepath, arcname=filename)
+                    data[key] = filename
+                elif isinstance(value, pd.DataFrame):
+                    filename = key + ".parquet"
+                    filepath = os.path.join(self.result_dir, filename)
+                    value.to_parquet(filepath)
+                    zf.write(filepath, arcname=filename)
+                    data[key] = filename
+                else:
+                    data[key] = value
+            filepath = os.path.join(self.result_dir, "eval_data.json")
+            dump_json_file(data, filepath, indent=4)
+            zf.write(filepath, arcname="eval_data.json")
+
     def _dump_eval_results(self):
-        cocoGt_path, cocoDt_path, eval_data_path = self._get_eval_paths()
+        cocoGt_path, cocoDt_path, _ = self._get_eval_paths()
         dump_json_file(self.cocoGt_json, cocoGt_path, indent=None)
         dump_json_file(self.cocoDt_json, cocoDt_path, indent=None)
-        self._dump_pickle(self.eval_data, eval_data_path)
+        self._dump_eval_results_archive()
 
     def _get_eval_paths(self):
         base_dir = self.result_dir

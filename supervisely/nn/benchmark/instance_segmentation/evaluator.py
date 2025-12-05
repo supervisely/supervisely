@@ -1,7 +1,11 @@
 from __future__ import annotations
 
 import os
+import zipfile
 from pathlib import Path
+
+import numpy as np
+import pandas as pd
 
 from supervisely.io.json import dump_json_file
 from supervisely.nn.benchmark.object_detection.evaluator import (
@@ -56,9 +60,32 @@ class InstanceSegmentationEvaluator(ObjectDetectionEvaluator):
             )
         self._dump_eval_results()
 
+    def _dump_eval_results_archive(self):
+        data = {}
+        with zipfile.ZipFile(
+            os.path.join(self.result_dir, "eval_data.zip"), mode="w"
+        ) as zf:
+            for key, value in self.eval_data.items():
+                if isinstance(value, np.ndarray):
+                    filename = key + ".npy"
+                    filepath = os.path.join(self.result_dir, filename)
+                    np.save(filepath, value)
+                    zf.write(filepath, arcname=filename)
+                    data[key] = filename
+                elif isinstance(value, pd.DataFrame):
+                    filename = key + ".parquet"
+                    filepath = os.path.join(self.result_dir, filename)
+                    value.to_parquet(filepath)
+                    zf.write(filepath, arcname=filename)
+                    data[key] = filename
+                else:
+                    data[key] = value
+            filepath = os.path.join(self.result_dir, "eval_data.json")
+            dump_json_file(data, filepath, indent=4)
+            zf.write(filepath, arcname="eval_data.json")
+
     def _dump_eval_results(self):
-        _, _, eval_data_path = self._get_eval_paths()
-        self._dump_pickle(self.eval_data, eval_data_path)
+        self._dump_eval_results_archive()
 
     def _get_eval_paths(self):
         base_dir = self.result_dir

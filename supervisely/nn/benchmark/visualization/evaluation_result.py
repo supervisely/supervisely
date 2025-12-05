@@ -1,13 +1,15 @@
 import pickle
+import zipfile
 from pathlib import Path
 from typing import Dict, List, Optional
 
+import numpy as np
 import pandas as pd
 
 from supervisely.annotation.annotation import ProjectMeta
 from supervisely.api.api import Api
-from supervisely.api.module_api import ApiField
 from supervisely.api.dataset_api import DatasetInfo
+from supervisely.api.module_api import ApiField
 from supervisely.api.project_api import ProjectInfo
 from supervisely.app.widgets import SlyTqdm
 from supervisely.io.env import team_id
@@ -197,6 +199,23 @@ class EvalResult:
     #             progress_cb=pbar.update,
     #         )
 
+    def _load_eval_data_archive(self, path: str) -> Dict:
+        """Load eval_data from archive"""
+        with zipfile.ZipFile(path, mode="r") as zf:
+            with zf.open("eval_data.json") as f:
+                data = load_json_file(f)
+            eval_data = {}
+            for key, value in data.items():
+                if isinstance(value, str) and value.endswith(".npy"):
+                    with zf.open(value) as arr_f:
+                        eval_data[key] = np.load(arr_f)
+                elif isinstance(value, str) and value.endswith(".parquet"):
+                    with zf.open(value) as df_f:
+                        eval_data[key] = pd.read_parquet(df_f)
+                else:
+                    eval_data[key] = value
+            return eval_data
+
     def _read_eval_data(self):
         from pycocotools.coco import COCO  # pylint: disable=import-error
 
@@ -205,9 +224,16 @@ class EvalResult:
         coco_gt, coco_dt = COCO(gt_path), COCO(dt_path)
         self.coco_gt = coco_gt
         self.coco_dt = coco_dt
-        self.eval_data = pickle.load(
-            open(Path(self.local_dir, "evaluation", "eval_data.pkl"), "rb")
-        )
+        eval_data_pickle_path = Path(self.local_dir, "evaluation", "eval_data.pkl")
+        eval_data_archive_path = Path(self.local_dir, "evaluation", "eval_data.zip")
+        if eval_data_pickle_path.exists():
+            self.eval_data = pickle.load(
+                open(eval_data_pickle_path, "rb")
+            )
+        elif eval_data_archive_path.exists():
+            self.eval_data = self._load_eval_data_archive(eval_data_archive_path)
+        else:
+            raise ValueError("No eval_data.pkl or eval_data.zip found in evaluation directory.")
         self.inference_info = load_json_file(
             Path(self.local_dir, "evaluation", "inference_info.json")
         )
