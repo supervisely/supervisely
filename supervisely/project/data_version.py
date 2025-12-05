@@ -97,13 +97,13 @@ class DataVersion(ModuleApiBase):
             raise ValueError("Project info is not initialized. Call 'initialize' method first.")
 
         project_type = self.project_info.type
-        if project_type == ProjectType.IMAGES:
+        if project_type == ProjectType.IMAGES.value:
             # self.__version_format: str = "v1.0.0"
             return Project
-        elif project_type == ProjectType.VIDEOS:
+        elif project_type == ProjectType.VIDEOS.value:
             self.__version_format = "v2.0.0"
             return VideoProject
-        elif project_type == ProjectType.VOLUMES:
+        elif project_type == ProjectType.VOLUMES.value:
             self.__version_format = "v2.0.0"
             return VolumeProject
         else:
