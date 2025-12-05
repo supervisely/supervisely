@@ -2,7 +2,6 @@
 # import supervisely.volume.loaders
 # import supervisely.volume.nrrd_encoder
 
-from .version import VolumeDataVersion
 from .volume import (
     convert_nifti_to_nrrd,
     encode,
