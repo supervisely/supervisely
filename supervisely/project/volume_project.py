@@ -17,6 +17,7 @@ from supervisely._utils import batched
 from supervisely.api.api import Api
 from supervisely.api.module_api import ApiField
 from supervisely.api.project_api import ProjectInfo
+from supervisely.api.volume.volume_api import VolumeInfo
 from supervisely.collection.key_indexed_collection import KeyIndexedCollection
 from supervisely.geometry.closed_surface_mesh import ClosedSurfaceMesh
 from supervisely.geometry.mask_3d import Mask3D
@@ -405,9 +406,10 @@ class VolumeProject(VideoProject):
         dataset_records: List[Dict] = payload.get("dataset_infos", [])
         volume_records: List[Dict] = payload.get("volume_infos", [])
         annotations: Dict[str, Dict] = payload.get("annotations", {})
-        key_id_map = KeyIdMap()
 
         project_title = project_name or payload["project_info"].get("name")
+        if api.project.exists(workspace_id, project_title):
+            project_title = api.project.get_free_name(workspace_id, project_title)
         new_project_info = api.project.create(workspace_id, project_title, ProjectType.VOLUMES)
         api.project.update_meta(new_project_info.id, project_meta)
 
@@ -435,7 +437,7 @@ class VolumeProject(VideoProject):
             )
             dataset_mapping[dataset_data.get("id")] = new_dataset_info
 
-        volume_mapping: Dict[int, sly.VolumeInfo] = {}
+        volume_mapping: Dict[int, VolumeInfo] = {}
         volumes_by_dataset: Dict[int, List[Dict]] = defaultdict(list)
         for volume_data in volume_records:
             volumes_by_dataset[volume_data.get("dataset_id")].append(volume_data)
