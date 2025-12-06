@@ -183,10 +183,10 @@ class DataVersion(ModuleApiBase):
             versions = self._api.file.get_json_file_content(
                 self.project_info.team_id, self.versions_path
             )
-            versions = versions if versions else {}
+            return versions or {}
         except FileNotFoundError:
-            versions = {"format": self.__version_format}
-        return versions
+            # versions = {"format": self.__version_format}
+            return {}
 
     def set_map(self, project_info: Union[ProjectInfo, int], initialize: bool = True):
         """
@@ -201,6 +201,8 @@ class DataVersion(ModuleApiBase):
 
         if initialize:
             self.initialize(project_info)
+        if "format" not in self.versions:
+            self.versions["format"] = self.__version_format
         temp_dir = tempfile.mkdtemp()
         local_versions = os.path.join(temp_dir, "versions.json")
         json.dump_json_file(self.versions, local_versions)
