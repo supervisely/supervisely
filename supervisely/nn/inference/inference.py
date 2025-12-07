@@ -3301,8 +3301,11 @@ class Inference:
         server = self._app.get_server()
         self._app.set_ready_check_function(self.is_model_deployed)
 
-        if self.api is not None:
-
+        if (
+            self._is_cli_deploy
+            and os.getenv("SERVER_ADDRESS") is None
+            and os.getenv("API_TOKEN") is None
+        ):
             @call_on_autostart()
             def autostart_func():
                 gpu_count = get_gpu_count()
@@ -3319,11 +3322,12 @@ class Inference:
                 else:
                     # run autostart immediately
                     self.gui.deploy_with_current_params()
+            
+            if self._use_gui:
+                autostart_func()
 
         if not self._use_gui:
             Progress("Model deployed", 1).iter_done_report()
-        elif self.api is not None:
-            autostart_func()
 
         @server.exception_handler(HTTPException)
         def http_exception_handler(request: Request, exc: HTTPException):
