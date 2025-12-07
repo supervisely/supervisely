@@ -50,6 +50,7 @@ class Modal(Widget):
 
     class Routes:
         ON_CLOSE = "close_cb"
+        VALUE_CHANGED = "value_changed"
 
     def __init__(
         self,
@@ -61,6 +62,7 @@ class Modal(Widget):
         self._title = title
         self._widgets = widgets if widgets is not None else []
         self._size = size
+        self._value_changed_handled = False
         super().__init__(widget_id=widget_id, file_path=__file__)
 
         server = self._sly_app.get_server()
@@ -119,6 +121,42 @@ class Modal(Widget):
     def close_modal(self) -> None:
         """Closes the modal window. Alias for hide() method."""
         self.hide()
+
+    def is_opened(self) -> bool:
+        """Returns whether the modal is currently open.
+
+        :return: True if modal is visible, False otherwise
+        :rtype: bool
+        """
+        return StateJson()[self.widget_id]["visible"]
+
+    def value_changed(self, func):
+        """Decorator to handle modal visibility changes.
+        The callback function will receive a boolean parameter: True when opened, False when closed.
+
+        :param func: Callback function that takes a boolean parameter
+        :type func: Callable[[bool], None]
+
+        :Usage example:
+        .. code-block:: python
+
+            @modal.value_changed
+            def on_modal_state_changed(is_opened):
+                if is_opened:
+                    print("Modal opened")
+                else:
+                    print("Modal closed")
+        """
+        route_path = self.get_route_path(Modal.Routes.VALUE_CHANGED)
+        server = self._sly_app.get_server()
+        self._value_changed_handled = True
+
+        @server.post(route_path)
+        def _value_changed():
+            is_opened = StateJson()[self.widget_id]["visible"]
+            func(is_opened)
+
+        return _value_changed
 
     @property
     def title(self) -> str:

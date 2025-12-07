@@ -2,7 +2,10 @@
   :title="data.{{{widget.widget_id}}}.title"
   :size="data.{{{widget.widget_id}}}.size"
   :visible.sync="state.{{{widget.widget_id}}}.visible"
-  @close="post('/{{{widget.widget_id}}}/close_cb');"
+  @close="post('/{{{widget.widget_id}}}/close_cb'); {% if widget._value_changed_handled %}post('/{{{widget.widget_id}}}/value_changed');{% endif %}"
+  {% if widget._value_changed_handled %}
+  @open="post('/{{{widget.widget_id}}}/value_changed');"
+  {% endif %}
 >
   <div>
     {% for item in widget._widgets %}
