@@ -3,10 +3,10 @@
 	:placeholder="data.{{{widget.widget_id}}}.placeholder" :filterable="data.{{{widget.widget_id}}}.filterable"
 	:multiple="data.{{{widget.widget_id}}}.multiple" :size="data.{{{widget.widget_id}}}.size">
 	<el-option v-for="item in data.{{{widget.widget_id}}}.items" :key="item.value" :label="item.label"
-		:value="item.value">
+		:value="item.value" style="font-size: 12px;">
 		<i class="zmdi zmdi-account" style="margin-right: 8px;"></i>
 		{{ item.label }}
-		<span v-if="item.rightText" style="float: right; color: #8492a6; font-size: 12px; margin-right: 20px;">
+		<span v-if="item.rightText" style="float: right; color: #8492a6; font-size: 12px; margin-right: 20px; margin-left: 10px;">
 			{{ item.rightText }}
 		</span>
 	</el-option>

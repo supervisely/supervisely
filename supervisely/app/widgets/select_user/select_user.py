@@ -110,12 +110,20 @@ class SelectUser(Widget):
         """Build JSON data for the widget."""
         items = []
         for user in self._users:
-            # Show name if different from login, otherwise show role
+            user_name = None
+            if user.name:
+                name = user.name.strip()
+                if name:
+                    user_name = name[:15] + "…" if len(name) > 15 else name
+
             right_text = ""
-            if user.name and user.name != user.login:
-                right_text = f"{user.name} • {user.role.upper()}"
+            user_role = user.role.upper() if user.role else "NONE"
+            if len(user_role) > 10:
+                user_role = user_role[:10] + "…"
+            if user_name and user_name != user.login:
+                right_text = f"{user_name} • {user_role}"
             else:
-                right_text = user.role.upper()
+                right_text = user_role
 
             items.append(
                 {
@@ -135,11 +143,9 @@ class SelectUser(Widget):
 
     def get_json_state(self):
         """Build JSON state for the widget."""
+        value = None
         if self._multiple:
             value = []
-        else:
-            value = self._users[0].login if self._users else None
-
         return {"value": value}
 
     def get_value(self) -> Union[str, List[str], None]:
