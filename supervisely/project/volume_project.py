@@ -13,6 +13,7 @@ import numpy
 from tqdm import tqdm
 
 import supervisely as sly
+import supervisely.volume_annotation.constants as volume_constants
 from supervisely._utils import batched
 from supervisely.api.api import Api
 from supervisely.api.module_api import ApiField
@@ -284,6 +285,18 @@ class VolumeProject(VideoProject):
             volume_ids = [volume_info.id for volume_info in volumes]
             ann_jsons = api.volume.annotation.download_bulk(dataset_info.id, volume_ids)
 
+            # insert custom_data into ann_jsons (api does not return it in download_bulk atm)
+            figures_dict = api.volume.figure.download(dataset_info.id, volume_ids)
+            for volume_id, figure_infos in figures_dict.items():
+                for ann_json in ann_jsons:
+                    if not ann_json.get(ApiField.VOLUME_ID) == volume_id:
+                        continue
+                    for figure_info in figure_infos:
+                        for spatial_figure in ann_json.get(volume_constants.SPATIAL_FIGURES, []):
+                            if spatial_figure["id"] == figure_info.id:
+                                spatial_figure[ApiField.CUSTOM_DATA] = figure_info.custom_data
+                                break
+
             for volume_info, ann_json in zip(volumes, ann_jsons):
                 ann = VolumeAnnotation.from_json(ann_json, project_meta_obj, key_id_map)
                 VolumeProject._load_mask_geometries(api, ann, key_id_map)
@@ -463,7 +476,7 @@ class VolumeProject(VideoProject):
                         continue
                 else:
                     raise RuntimeError(
-                        "Cannot restore volumes without available hash. Offending volumes: {}".format(
+                        "Cannot restore volumes without available hash. Missing volume names: {}".format(
                             ", ".join(missing_names)
                         )
                     )
