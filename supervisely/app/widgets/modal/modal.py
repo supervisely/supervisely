@@ -29,20 +29,20 @@ class Modal(Widget):
         # Create widgets to show in modal
         input_widget = Input("Enter value")
         text_widget = Text("This is modal content")
-        
+
         # Create modal with multiple widgets
         modal = Modal(
             title="My Modal Window",
             widgets=[text_widget, input_widget],
             size="small"
         )
-        
+
         # Show modal programmatically
         modal.show()
-        
+
         # Hide modal programmatically
         modal.hide()
-        
+
         # Alternative methods
         modal.show_modal()
         modal.close_modal()

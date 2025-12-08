@@ -2,10 +2,10 @@ from typing import Callable, List, Optional, Union
 
 from supervisely import ObjClass, ObjClassCollection
 from supervisely.app import DataJson, StateJson
-from supervisely.app.widgets import Button, NotificationBox, Text, Widget, generate_id
+from supervisely.app.widgets import NotificationBox, Text, Widget
+from supervisely.geometry.alpha_mask import AlphaMask
 from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely.geometry.bitmap import Bitmap
-from supervisely.geometry.alpha_mask import AlphaMask
 from supervisely.geometry.closed_surface_mesh import ClosedSurfaceMesh
 from supervisely.geometry.cuboid_2d import Cuboid2d
 from supervisely.geometry.cuboid_3d import Cuboid3d
@@ -30,7 +30,7 @@ type_to_shape_text = {
     Point: "point",
     Cuboid2d: "cuboid 2d",  #
     Cuboid3d: "cuboid 3d",
-    Pointcloud: "pointcloud",  #  # "zmdi zmdi-border-clear"
+    Pointcloud: "pointcloud",  # "zmdi zmdi-border-clear"
     MultichannelBitmap: "n-channel mask",  # "zmdi zmdi-collection-item"
     Point3d: "point 3d",  # "zmdi zmdi-select-all"
     GraphNodes: "keypoints",
@@ -165,10 +165,10 @@ class ClassesListSelector(Widget):
         """Add a new class to the widget and update the UI."""
         # Add to classes list
         self._classes.append(new_class)
-        
+
         # Add selection state for the new class (selected by default)
         StateJson()[self.widget_id]["selected"].append(True)
-        
+
         # Update data to reflect the new class in the UI
         self.update_data()
         DataJson().send_changes()
@@ -190,7 +190,7 @@ class ClassesListSelector(Widget):
         """
         Decorator to handle new class creation event.
         The decorated function receives the newly created ObjClass.
-        
+
         :param func: Function to be called when a new class is created
         :type func: Callable[[ObjClass], None]
         """
@@ -203,27 +203,27 @@ class ClassesListSelector(Widget):
             state = StateJson()[self.widget_id]["createClassDialog"]
             class_name = state["className"].strip()
             geometry_type_str = state["geometryType"]
-            
+
             if not class_name:
                 self._show_error("Class name cannot be empty")
                 return
-            
+
             if any(cls.name == class_name for cls in self._classes):
                 self._show_error(f"Class '{class_name}' already exists")
                 return
-            
+
             geometry_type = shape_text_to_type.get(geometry_type_str)
             if geometry_type is None:
                 self._show_error("Invalid geometry type")
                 return
-            
+
             # Generate color for the new class
             existing_colors = [cls.color for cls in self._classes]
             new_color = generate_rgb(existing_colors)
-            
+
             # Create new class
             new_class = ObjClass(name=class_name, geometry_type=geometry_type, color=new_color)
-            
+
             self._add_new_class(new_class)
             self._hide_dialog()
 

@@ -3,7 +3,6 @@ from typing import Callable, List, Optional, Union
 from supervisely.api.user_api import UserInfo
 from supervisely.app import DataJson, StateJson
 from supervisely.app.widgets import Widget
-from supervisely.user.user import UserRoleName
 
 try:
     from typing import Literal
@@ -42,7 +41,7 @@ class SelectUser(Widget):
 
         # Initialize with team_id and filter by roles
         select_user = SelectUser(
-            team_id=123, 
+            team_id=123,
             roles=['admin', 'developer'],
             multiple=True
         )
@@ -96,7 +95,7 @@ class SelectUser(Widget):
         """Filter users by allowed roles."""
         if self._allowed_roles is None:
             return users
-        
+
         return [user for user in users if user.role in self._allowed_roles]
 
     def _load_users_from_team(self, team_id: int):
@@ -117,13 +116,15 @@ class SelectUser(Widget):
                 right_text = f"{user.name} • {user.role.upper()}"
             else:
                 right_text = user.role.upper()
-            
-            items.append({
-                "value": user.login,
-                "label": user.login,
-                "rightText": right_text,
-            })
-        
+
+            items.append(
+                {
+                    "value": user.login,
+                    "label": user.login,
+                    "rightText": right_text,
+                }
+            )
+
         return {
             "items": items,
             "placeholder": self._placeholder,
@@ -138,7 +139,7 @@ class SelectUser(Widget):
             value = []
         else:
             value = self._users[0].login if self._users else None
-        
+
         return {"value": value}
 
     def get_value(self) -> Union[str, List[str], None]:
@@ -214,20 +215,18 @@ class SelectUser(Widget):
         if self._multiple:
             StateJson()[self.widget_id]["value"] = []
         else:
-            StateJson()[self.widget_id]["value"] = (
-                self._users[0].login if self._users else None
-            )
+            StateJson()[self.widget_id]["value"] = self._users[0].login if self._users else None
         StateJson().send_changes()
 
     def set_selected_users_by_ids(self, user_ids: Union[int, List[int]]):
         """Set the selected user(s) by user ID(s).
-        
+
         :param user_ids: Single user ID or list of user IDs to select
         :type user_ids: Union[int, List[int]]
         """
         if isinstance(user_ids, int):
             user_ids = [user_ids]
-        
+
         # Find logins for the given user IDs
         selected_logins = []
         for user_id in user_ids:
@@ -235,13 +234,13 @@ class SelectUser(Widget):
                 if user.id == user_id:
                     selected_logins.append(user.login)
                     break
-        
+
         # Set value based on multiple mode
         if self._multiple:
             StateJson()[self.widget_id]["value"] = selected_logins
         else:
             StateJson()[self.widget_id]["value"] = selected_logins[0] if selected_logins else None
-        
+
         StateJson().send_changes()
 
     def value_changed(self, func: Callable[[Union[UserInfo, List[UserInfo]]], None]):

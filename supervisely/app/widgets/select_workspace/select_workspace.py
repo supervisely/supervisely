@@ -1,20 +1,20 @@
-from typing import Callable, Dict, Optional
+from typing import Callable, Dict
 
 try:
     from typing import Literal
 except ImportError:
     from typing_extensions import Literal
 
-from supervisely.app import DataJson, StateJson
-from supervisely.app.widgets import Widget, SelectTeam, generate_id
 from supervisely.api.api import Api
-from supervisely.sly_logger import logger
+from supervisely.app import DataJson, StateJson
+from supervisely.app.widgets import SelectTeam, Widget, generate_id
 from supervisely.app.widgets.select_sly_utils import _get_int_or_env
 
 
 class SelectWorkspace(Widget):
     class Routes:
         VALUE_CHANGED = "value_changed"
+
     def __init__(
         self,
         default_id: int = None,
@@ -36,9 +36,7 @@ class SelectWorkspace(Widget):
 
         self._default_id = _get_int_or_env(self._default_id, "context.workspaceId")
         if self._default_id is not None:
-            info = self._api.workspace.get_info_by_id(
-                self._default_id, raise_error=True
-            )
+            info = self._api.workspace.get_info_by_id(self._default_id, raise_error=True)
             self._team_id = info.team_id
         self._team_id = _get_int_or_env(self._team_id, "context.teamId")
 
@@ -81,7 +79,7 @@ class SelectWorkspace(Widget):
             return self._team_id
         else:
             return self._team_selector.get_selected_id()
-        
+
     def set_team_id(self, team_id: int):
         """Set the team ID and update the UI. Automatically enables the widget if it was disabled."""
         self._team_id = team_id
@@ -90,16 +88,16 @@ class SelectWorkspace(Widget):
         else:
             DataJson()[self.widget_id]["teamId"] = team_id
             DataJson().send_changes()
-        
+
         # Auto-enable the widget when team_id is set
         if self._disabled and team_id is not None:
             self.enable()
-    
+
     def set_workspace_id(self, workspace_id: int):
         """Set the workspace ID and update the UI."""
         StateJson()[self.widget_id]["workspaceId"] = workspace_id
         StateJson().send_changes()
-    
+
     def set_ids(self, team_id: int, workspace_id: int):
         """Set both team ID and workspace ID and update the UI."""
         self.set_team_id(team_id)

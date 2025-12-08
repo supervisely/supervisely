@@ -3,7 +3,7 @@ from typing import Callable, List, Optional, Union
 from supervisely.annotation.tag_meta import TagMeta, TagValueType
 from supervisely.annotation.tag_meta_collection import TagMetaCollection
 from supervisely.app import DataJson, StateJson
-from supervisely.app.widgets import Widget, Text
+from supervisely.app.widgets import Text, Widget
 from supervisely.imaging.color import generate_rgb
 
 try:
@@ -51,7 +51,7 @@ class SelectTag(Widget):
         # Create some initial tags
         tag_weather = sly.TagMeta('weather', sly.TagValueType.ANY_STRING)
         tag_count = sly.TagMeta('count', sly.TagValueType.ANY_NUMBER)
-        
+
         colors = ["red", "green", "blue"]
         tag_color = sly.TagMeta('color', sly.TagValueType.ONEOF_STRING, possible_values=colors)
 
@@ -109,7 +109,7 @@ class SelectTag(Widget):
 
         # Initialize parent Widget
         super().__init__(widget_id=widget_id, file_path=__file__)
-        
+
         # Register tag_created route if show_add_new_tag is enabled
         if self._show_add_new_tag:
             self._register_tag_created_route()
@@ -120,7 +120,7 @@ class SelectTag(Widget):
         items = []
         for tag in self._tags:
             value_type_text = tag.value_type.replace("_", " ").upper()
-            
+
             items.append(
                 {
                     "value": tag.name,
@@ -147,7 +147,7 @@ class SelectTag(Widget):
             initial_value = []
         else:
             initial_value = self._tags[0].name if self._tags else None
-        
+
         return {
             "value": initial_value,
             "createTagDialog": {
@@ -213,11 +213,7 @@ class SelectTag(Widget):
             if self._multiple:
                 if isinstance(current_value, list):
                     # Keep only valid selections
-                    valid = [
-                        v
-                        for v in current_value
-                        if any(tag.name == v for tag in self._tags)
-                    ]
+                    valid = [v for v in current_value if any(tag.name == v for tag in self._tags)]
                     if valid != current_value:
                         StateJson()[self.widget_id]["value"] = valid
                         StateJson().send_changes()
@@ -325,10 +321,10 @@ class SelectTag(Widget):
             # Create new tag
             try:
                 new_tag = TagMeta(
-                    name=tag_name, 
-                    value_type=value_type, 
+                    name=tag_name,
+                    value_type=value_type,
                     possible_values=possible_values,
-                    color=new_color
+                    color=new_color,
                 )
             except Exception as e:
                 self._show_error(f"Error creating tag: {str(e)}")

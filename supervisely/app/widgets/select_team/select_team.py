@@ -5,16 +5,16 @@ try:
 except ImportError:
     from typing_extensions import Literal
 
+from supervisely.api.api import Api
 from supervisely.app import StateJson
 from supervisely.app.widgets import Widget
-from supervisely.api.api import Api
 from supervisely.app.widgets.select_sly_utils import _get_int_or_env
 
 
 class SelectTeam(Widget):
     class Routes:
         VALUE_CHANGED = "value_changed"
-        
+
     def __init__(
         self,
         default_id: int = None,
@@ -30,7 +30,7 @@ class SelectTeam(Widget):
 
         self._default_id = _get_int_or_env(self._default_id, "context.teamId")
         if self._default_id is not None:
-            info = self._api.team.get_info_by_id(self._default_id, raise_error=True)
+            self._api.team.get_info_by_id(self._default_id, raise_error=True)
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def get_json_data(self) -> Dict:

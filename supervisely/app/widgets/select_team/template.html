@@ -1,8 +1,4 @@
-<sly-select-team-workspace
-  :team-id.sync="state.{{{widget.widget_id}}}.teamId"
-  {% if widget._changes_handled == true %}
-  @update:team-id="state.{{{widget.widget_id}}}.teamId = $event; post('/{{{widget.widget_id}}}/value_changed')"
-  {% endif %}
-  :options="data.{{{widget.widget_id}}}.options"
-  :disabled="data.{{{widget.widget_id}}}.disabled"
-></sly-select-team-workspace>
+<sly-select-team-workspace :team-id.sync="state.{{{widget.widget_id}}}.teamId" {% if widget._changes_handled==true %}
+  @update:team-id="state.{{{widget.widget_id}}}.teamId = $event; post('/{{{widget.widget_id}}}/value_changed')" {% endif
+  %} :options="data.{{{widget.widget_id}}}.options"
+  :disabled="data.{{{widget.widget_id}}}.disabled"></sly-select-team-workspace>

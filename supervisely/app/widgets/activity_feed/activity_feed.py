@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Dict, List, Optional
 
-from supervisely.app import DataJson, StateJson
+from supervisely.app import DataJson
 from supervisely.app.widgets import Widget
 
 try:

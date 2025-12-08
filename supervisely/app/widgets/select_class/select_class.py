@@ -1,11 +1,11 @@
-from typing import Callable, List, Optional, Union, Tuple
+from typing import Callable, List, Optional, Union
 
 from supervisely import ObjClass, ObjClassCollection
 from supervisely.app import DataJson, StateJson
-from supervisely.app.widgets import Widget, Text
+from supervisely.app.widgets import Text, Widget
+from supervisely.geometry.alpha_mask import AlphaMask
 from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely.geometry.bitmap import Bitmap
-from supervisely.geometry.alpha_mask import AlphaMask
 from supervisely.geometry.closed_surface_mesh import ClosedSurfaceMesh
 from supervisely.geometry.cuboid_2d import Cuboid2d
 from supervisely.geometry.cuboid_3d import Cuboid3d
@@ -142,7 +142,7 @@ class SelectClass(Widget):
 
         # Initialize parent Widget
         super().__init__(widget_id=widget_id, file_path=__file__)
-        
+
         # Register class_created route if show_add_new_class is enabled
         if self._show_add_new_class:
             self._register_class_created_route()
@@ -238,9 +238,7 @@ class SelectClass(Widget):
                 if isinstance(current_value, list):
                     # Keep only valid selections
                     valid = [
-                        v
-                        for v in current_value
-                        if any(cls.name == v for cls in self._classes)
+                        v for v in current_value if any(cls.name == v for cls in self._classes)
                     ]
                     if valid != current_value:
                         StateJson()[self.widget_id]["value"] = valid
@@ -338,9 +336,7 @@ class SelectClass(Widget):
             new_color = generate_rgb(existing_colors)
 
             # Create new class
-            new_class = ObjClass(
-                name=class_name, geometry_type=geometry_type, color=new_color
-            )
+            new_class = ObjClass(name=class_name, geometry_type=geometry_type, color=new_color)
 
             # Add to widget
             self._add_new_class(new_class)

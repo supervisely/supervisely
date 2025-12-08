@@ -1,30 +1,22 @@
 <link rel="stylesheet" href="./sly/css/app/widgets/activity_feed/style.css" />
 
 <div class="sly-activity-feed">
-  <div 
-    v-for="(item, index) in data.{{{widget.widget_id}}}.items"
-    :key="item.number"
-    class="sly-activity-feed-item"
-  >
+  {% for item in widget._items %}
+  <div class="sly-activity-feed-item" v-if="data.{{{widget.widget_id}}}.items[{{{loop.index0}}}]">
     <div class="sly-activity-feed-marker">
-      <div 
-        class="sly-activity-feed-circle"
-        :class="item.status"
-      >
-        <i v-if="item.status === 'completed'" class="el-icon-check"></i>
-        <i v-else-if="item.status === 'failed'" class="el-icon-close"></i>
-        <i v-else-if="item.status === 'in_progress'" class="el-icon-loading"></i>
+      <div class="sly-activity-feed-circle" :class="data.{{{widget.widget_id}}}.items[{{{loop.index0}}}].status">
+        <i v-if="data.{{{widget.widget_id}}}.items[{{{loop.index0}}}].status === 'completed'" class="el-icon-check"></i>
+        <i v-else-if="data.{{{widget.widget_id}}}.items[{{{loop.index0}}}].status === 'failed'"
+          class="el-icon-close"></i>
+        <i v-else-if="data.{{{widget.widget_id}}}.items[{{{loop.index0}}}].status === 'in_progress'"
+          class="el-icon-loading"></i>
         <i v-else class="el-icon-time"></i>
       </div>
       <div class="sly-activity-feed-line"></div>
-      <!-- <div class="sly-activity-feed-number">#{{item.number}}</div> -->
     </div>
     <div class="sly-activity-feed-content">
-      {% for content_item in widget._items %}
-        <div v-if="{{{content_item.number}}} === item.number">
-          {{{content_item.content}}}
-        </div>
-      {% endfor %}
+      {{{item.content}}}
     </div>
   </div>
+  {% endfor %}
 </div>
