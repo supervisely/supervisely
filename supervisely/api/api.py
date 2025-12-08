@@ -1664,7 +1664,7 @@ class Api:
 
         During initialization, the semaphore size will be set from the environment variable SUPERVISELY_ASYNC_SEMAPHORE.
         If the environment variable is not set, the default value will be set based on the server address.
-        Depending on the server address, the semaphore size will be set to 5 for HTTPS and 5 for HTTP.
+        Depending on the server address, the semaphore size will be set to 10 for HTTPS and 5 for HTTP.
 
         :return: Semaphore object.
         :rtype: :class:`asyncio.Semaphore`
@@ -1681,7 +1681,7 @@ class Api:
 
         Otherwise, create a semaphore with a default value:
 
-            - If server supports HTTPS, create a semaphore with value 5.
+            - If server supports HTTPS, create a semaphore with value 10.
             - If server supports HTTP, create a semaphore with value 5.
         """
         semaphore_size = sly_env.semaphore_size()
@@ -1694,9 +1694,9 @@ class Api:
             if not self._skip_https_redirect_check:
                 self._check_https_redirect()
             if self.server_address.startswith("https://"):
-                size = 5
+                size = 10
                 if "app.supervise" in self.server_address:
-                    size = 5
+                    size = 7
                 logger.debug(f"Setting global API semaphore size to {size} for HTTPS")
             else:
                 size = 5
