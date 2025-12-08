@@ -216,7 +216,7 @@ def download_async_or_sync(
     dataset_ids: Optional[List[int]] = None,
     log_progress: bool = True,
     progress_cb: Optional[Union[tqdm, Callable]] = None,
-    semaphore: Optional[asyncio.Semaphore] = None,
+    semaphore: Optional[Union[asyncio.Semaphore, int]] = None,
     **kwargs,
 ):
     """
