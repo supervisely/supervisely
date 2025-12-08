@@ -283,7 +283,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
                     is_pointcloud=False,
                     is_video_multi_view=True,
                 )
-            tags_to_obj = defaultdict(VideoTagCollection)
+            tags_to_obj = {}
             for obj in ann.objects:
                 obj_id = key_id_map.get_object_id(obj.key())
                 tags_to_obj[obj_id] = obj.tags
