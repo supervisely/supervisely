@@ -309,7 +309,7 @@ class ProjectMeta(JsonSerializable):
             )
             meta = sly.ProjectMeta(project_settings=s)
 
-            labeling_interface = meta.labeling_interface()
+            labeling_interface = meta.labeling_interface
             print(labeling_interface)
             # Output: None
         """

@@ -532,7 +532,7 @@ class TagApi(ModuleApi):
                           Required if `is_video_multi_view` is True.
         :type entity_id: Optional[int]
         :return: List of tags infos as dictionaries.
-        :rtype: List[Dit[str, Union[str, int, None]]]
+        :rtype: List[Dict[str, Union[str, int, None]]]
 
         Usage example:
         .. code-block:: python

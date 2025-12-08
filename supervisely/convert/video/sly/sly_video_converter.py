@@ -228,7 +228,7 @@ class SLYVideoConverter(VideoConverter):
                 try:
                     dataset_ds = VideoDataset(path, OpenMode.READ)
                     return len(dataset_ds.get_items_names()) > 0
-                except:
+                except Exception:
                     return False
 
             meta = ProjectMeta()
