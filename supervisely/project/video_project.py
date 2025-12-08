@@ -64,6 +64,9 @@ class VideoDataset(Dataset):
     #: :class:`str`: Items info directory name
     item_info_dir_name = "video_info"
 
+    #: :class:`str`: Items info directory name
+    metadata_dir_name = "metadata"
+
     #: :class:`str`: Segmentation masks directory name
     seg_dir_name = None
 
