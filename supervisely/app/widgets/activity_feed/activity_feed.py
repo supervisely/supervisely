@@ -172,7 +172,7 @@ class ActivityFeed(Widget):
     def remove_item(self, number: int) -> None:
         """Remove an item from the activity feed by its number.
 
-        :param number: Number of the item to remove
+        :param number: Number of the item to remove. Starts from 1.
         :type number: int
         """
         self._items = [item for item in self._items if item.number != number]
@@ -186,7 +186,7 @@ class ActivityFeed(Widget):
     ) -> None:
         """Update the status of an item by its number.
 
-        :param number: Number of the item to update
+        :param number: Number of the item to update. Starts from 1.
         :type number: int
         :param status: New status for the item
         :type status: Literal["pending", "in_progress", "completed", "failed"]
@@ -203,7 +203,7 @@ class ActivityFeed(Widget):
     def get_status(self, number: int) -> str:
         """Get the status of an item by its number.
 
-        :param number: Number of the item
+        :param number: Number of the item. Starts from 1.
         :type number: int
         :return: Status of the item
         :rtype: str
