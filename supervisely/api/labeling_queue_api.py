@@ -200,6 +200,7 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
         skip_complete_job_on_empty: Optional[bool] = False,
         enable_quality_check: Optional[bool] = None,
         quality_check_user_ids: Optional[List[int]] = None,
+        guide_id: Optional[int] = None,
     ) -> int:
         """
         Creates Labeling Queue and assigns given Users to it.
@@ -256,6 +257,8 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type enable_quality_check: bool, optional
         :param quality_check_user_ids: List of User IDs in Supervisely to assign Users as Quality Checkers to Labeling Queue.
         :type quality_check_user_ids: List[int], optional
+        :param guide_id: Guide ID in Supervisely to assign a guide to the Labeling Queue.
+        :type guide_id: int, optional
         :return: Labeling Queue ID in Supervisely.
         :rtype: int
         :Usage example:
@@ -339,6 +342,15 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
         }
         if images_ids is not None:
             meta["entityIds"] = images_ids
+
+        if guide_id is not None:
+            try:
+                guide_id = int(guide_id)
+            except Exception as e:
+                raise ValueError(
+                    f"guide_id must be an integer, got {type(guide_id)} with value '{guide_id}'"
+                ) from None
+            meta["guide"] = guide_id
 
         if toolbox_settings is not None:
             if dataset_id is not None:
