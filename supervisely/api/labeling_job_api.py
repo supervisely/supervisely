@@ -89,6 +89,7 @@ class LabelingJobInfo(NamedTuple):
     exclude_images_with_tags: list
     entities: list
     priority: int
+    guide_id: Optional[int] = None
 
 
 class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
@@ -223,6 +224,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             ApiField.EXCLUDE_IMAGES_WITH_TAGS,
             ApiField.ENTITIES,
             ApiField.PRIORITY,
+            ApiField.M_GUIDE_ID,
         ]
 
     @staticmethod
@@ -261,7 +263,10 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
                             else:
                                 value = info[sub_name]
                         else:
-                            value = value[sub_name]
+                            if skip_missing is True:
+                                value = value.get(sub_name, None)
+                            else:
+                                value = value[sub_name]
                 else:
                     raise RuntimeError("Can not parse field {!r}".format(field_name))
 
@@ -341,6 +346,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         disable_submit: Optional[bool] = None,
         toolbox_settings: Optional[Dict] = None,
         enable_quality_check: Optional[bool] = None,
+        guide_id: Optional[int] = None,
     ) -> List[LabelingJobInfo]:
         """
         Creates Labeling Job and assigns given Users to it.
@@ -385,6 +391,8 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type toolbox_settings: Dict, optional
         :param enable_quality_check: If True, adds an intermediate step between "review" and completing the Labeling Job.
         :type enable_quality_check: bool, optional
+        :param guide_id: Guide ID in Supervisely to assign a guide to the Labeling Job.
+        :type guide_id: int, optional
         :return: List of information about new Labeling Job. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[LabelingJobInfo]`
         :Usage example:
@@ -464,6 +472,15 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             "dynamicClasses": dynamic_classes,
             "dynamicTags": dynamic_tags,
         }
+
+        if guide_id is not None:
+            try:
+                guide_id = int(guide_id)
+            except Exception as e:
+                raise ValueError(
+                    f"guide_id must be an integer, got {type(guide_id)} with value '{guide_id}'"
+                ) from None
+            meta["guide"] = guide_id
 
         if toolbox_settings is not None:
             dataset_info = self._api.dataset.get_info_by_id(dataset_id)

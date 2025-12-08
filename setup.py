@@ -82,7 +82,7 @@ INSTALL_REQUIRES = [
     "opencv-python>=4.6.0.66, <5.0.0.0",
     "PTable>=0.9.2, <1.0.0",
     "pillow>=5.4.1, <=10.4.0",
-    "python-json-logger>=0.1.11, <3.0.0",
+    "python-json-logger>=0.1.11, <=3.0.1",
     "requests>=2.27.1, <3.0.0",
     "requests-toolbelt>=0.9.1",  # , <1.0.0
     "Shapely>=1.7.1, <=2.1.2",
@@ -101,7 +101,7 @@ INSTALL_REQUIRES = [
     "fastapi>=0.103.1, <=0.119.1",
     "websockets>=10.3, <=13.1",
     "jinja2>=3.0.3, <4.0.0",
-    "psutil>=5.9.0, <6.0.0",
+    "psutil>=5.9.0, <=7.2.0",
     "jsonpatch>=1.32, <2.0",
     "MarkupSafe>=2.1.1, <3.0.0",
     "arel>=0.2.0, <1.0.0",

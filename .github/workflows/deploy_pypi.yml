@@ -29,5 +29,8 @@ jobs:
       - name: Build package
         run: python -m build
         
-      - name: Publish package
-        uses: pypa/gh-action-pypi-publish@release/v1
+      - name: Install twine
+        run: pip install twine
+
+      - name: Publish package distributions to PyPI
+        run: twine upload --skip-existing dist/*
