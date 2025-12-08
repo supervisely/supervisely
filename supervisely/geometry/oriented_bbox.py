@@ -38,7 +38,7 @@ class OrientedBBox(Rectangle):
     :type bottom: int or float
     :param right: Maximal vertical value of OrientedBBox object.
     :type right: int or float
-    :param angle: Angle of rotation in degrees. Positive values mean clockwise rotation.
+    :param angle: Angle of rotation in radians. Positive values mean clockwise rotation.
     :type angle: int or float, optional
     :param sly_id: OrientedBBox ID in Supervisely server.
     :type sly_id: int, optional
@@ -58,11 +58,13 @@ class OrientedBBox(Rectangle):
 
         import supervisely as sly
 
+        import math
+
         top = 100
         left = 100
         bottom = 700
         right = 900
-        angle = 15
+        angle = math.pi / 12  # 15 degrees in radians
         figure = sly.OrientedBBox(top, left, bottom, right, angle=angle)
     """
 
@@ -101,9 +103,9 @@ class OrientedBBox(Rectangle):
     @property
     def angle(self) -> Union[int, float]:
         """
-        Angle of rotation in degrees. Positive values mean clockwise rotation.
+        Angle of rotation in radians. Positive values mean clockwise rotation.
 
-        :return: Angle of rotation
+        :return: Angle of rotation in radians
         :rtype: int or float
         :Usage example:
 
@@ -133,7 +135,7 @@ class OrientedBBox(Rectangle):
             #        ],
             #        "interior": []
             #    },
-            #    "angle": 15
+            #    "angle": 0.2618  # radians (15 degrees)
             # }
         """
         packed_obj = {
@@ -158,6 +160,8 @@ class OrientedBBox(Rectangle):
 
             import supervisely as sly
 
+            import math
+
             figure_json = {
                 "points": {
                     "exterior": [
@@ -166,7 +170,7 @@ class OrientedBBox(Rectangle):
                     ],
                     "interior": []
                 },
-                "angle": 15
+                "angle": math.pi / 12  # 15 degrees in radians
             }
             figure = sly.OrientedBBox.from_json(figure_json)
         """
@@ -213,7 +217,8 @@ class OrientedBBox(Rectangle):
     
                 axis_aligned_bbox = oriented_bbox.to_bbox()
             """
-        if self._angle % 360 == 0:
+        two_pi = 2 * np.pi
+        if self._angle % two_pi == 0:
             return Rectangle(
                 top=self.top,
                 left=self.left,
@@ -226,10 +231,8 @@ class OrientedBBox(Rectangle):
                 created_at=self.created_at,
             )
 
-        angle_rad = np.deg2rad(self._angle)
-
-        cos_angle = abs(np.cos(angle_rad))
-        sin_angle = abs(np.sin(angle_rad))
+        cos_angle = abs(np.cos(self._angle))
+        sin_angle = abs(np.sin(self._angle))
 
         new_w = self.width * cos_angle + self.height * sin_angle
         new_h = self.width * sin_angle + self.height * cos_angle
@@ -250,7 +253,7 @@ class OrientedBBox(Rectangle):
             updated_at=self.updated_at,
             created_at=self.created_at,
         )
-    
+
     def _transform(self, transform_fn):
         """ """
         transformed_corners = [transform_fn(p) for p in self.corners]
@@ -279,9 +282,8 @@ class OrientedBBox(Rectangle):
             is_inside = oriented_bbox.contains_point_location(point)
         """
         # Rotate point in the opposite direction around the center of the oriented bbox
-        angle_rad = np.deg2rad(-self._angle)
-        cos_angle = np.cos(angle_rad)
-        sin_angle = np.sin(angle_rad)
+        cos_angle = np.cos(-self._angle)
+        sin_angle = np.sin(-self._angle)
 
         # Translate point to origin
         translated_x = point.col - self.center.col
@@ -362,9 +364,8 @@ class OrientedBBox(Rectangle):
 
             corners = oriented_bbox.calculate_rotated_corners()
         """
-        angle_rad = np.deg2rad(obb._angle)
-        cos_angle = np.cos(angle_rad)
-        sin_angle = np.sin(angle_rad)
+        cos_angle = np.cos(obb._angle)
+        sin_angle = np.sin(obb._angle)
 
         rotated_corners = []
         for corner in obb.corners:  # [Top-left, Top-right, Bottom-right, Bottom-left]
