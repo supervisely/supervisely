@@ -15,9 +15,7 @@ from supervisely.geometry.constants import (
     ANGLE,
     CLASS_ID,
     CREATED_AT,
-    EXTERIOR,
     ID,
-    INTERIOR,
     LABELER_LOGIN,
     POINTS,
     UPDATED_AT,
@@ -139,10 +137,7 @@ class OrientedBBox(Rectangle):
             # }
         """
         packed_obj = {
-            POINTS: {
-                EXTERIOR: points_to_row_col_list(self._points, flip_row_col_order=True),
-                INTERIOR: [],
-            },
+            POINTS: points_to_row_col_list(self._points, flip_row_col_order=True),
             ANGLE: self._angle,
         }
         self._add_creation_info(packed_obj)
@@ -175,7 +170,10 @@ class OrientedBBox(Rectangle):
             }
             figure = sly.OrientedBBox.from_json(figure_json)
         """
-        validation.validate_geometry_points_fields(data)
+        if POINTS not in data:
+            raise ValueError("Input data must contain {} field.".format(POINTS))
+        if ANGLE not in data:
+            raise ValueError("Input data must contain {} field.".format(ANGLE))
         labeler_login = data.get(LABELER_LOGIN, None)
         updated_at = data.get(UPDATED_AT, None)
         created_at = data.get(CREATED_AT, None)
@@ -183,7 +181,7 @@ class OrientedBBox(Rectangle):
         class_id = data.get(CLASS_ID, None)
         angle = data.get(ANGLE, 0)
 
-        exterior = data[POINTS][EXTERIOR]
+        exterior = data[POINTS]
         if len(exterior) != 2:
             raise ValueError(
                 '"exterior" field must contain exactly two points to create OrientedBBox object.'
@@ -251,6 +249,18 @@ class OrientedBBox(Rectangle):
             labeler_login=self.labeler_login,
             updated_at=self.updated_at,
             created_at=self.created_at,
+        )
+    
+    def _transform(self, transform_fn):
+        """ """
+        transformed_corners = [transform_fn(p) for p in self.corners]
+        rows, cols = zip(*points_to_row_col_list(transformed_corners))
+        return OrientedBBox(
+            top=round(min(rows)),
+            left=round(min(cols)),
+            bottom=round(max(rows)),
+            right=round(max(cols)),
+            angle=self._angle,
         )
 
     def contains_point_location(self, point: PointLocation) -> bool:
@@ -492,7 +502,7 @@ class OrientedBBox(Rectangle):
 
         return [AlphaMask, AnyGeometry, Bitmap, Polygon, OrientedBBox]
 
-    def crop(self, clip: OrientedBBox | Rectangle, return_type: Polygon | Rectangle = Polygon) -> List[Polygon | Rectangle]:
+    def crop(self, clip: OrientedBBox | Rectangle, return_type: Polygon | Rectangle = Rectangle) -> List[Rectangle | Polygon]:
         """Crop the OrientedBBox by another OrientedBBox using the Sutherland-Hodgman algorithm."""
         subject_corners = self._calculate_rotated_corners(self)
         if isinstance(clip, Rectangle):
@@ -567,3 +577,101 @@ class OrientedBBox(Rectangle):
         pts = np.array([[int(corner.col), int(corner.row)] for corner in corners], np.int32)
         pts = pts.reshape((-1, 1, 2))
         cv2.fillPoly(bitmap, [pts], color)
+
+    @classmethod
+    def _to_pixel_coordinate_system_json(cls, data: Dict, image_size: List[int]) -> Dict:
+        """
+        Convert OrientedBBox from subpixel precision to pixel precision by subtracting a subpixel offset from the coordinates.
+
+        Points order in json format: [[left, top], [right, bottom]]
+
+        In the labeling tool, labels are created with subpixel precision,
+        which means that the coordinates of the oriented bounding box corners (top, left and bottom, right) can have decimal values representing fractions of a pixel.
+        However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
+
+        Example:
+        Step 1. Input coordinates:
+        - top = 1.55, left = 1.74, bottom = 4.63, right = 3.76
+
+        Step 2. Round the coordinates (still remain in subpixel precision):
+        - top = 1, left = 2, bottom = 5, right = 4
+        - top will be rounded down to 2, left will be rounded down to 2, bottom will be rounded up to 6, right will be rounded down to 6
+
+        Draw coordinates in pixel coordinate system:
+            0   1   2   3   4   5
+        0   +---+---+---+---+---+
+            |   |   |   |   |   |
+        1   +---+---+---+---+---+
+            |   |   | x | x |   |
+        2   +---+---+---+---+---+
+            |   |   | x | x |   |
+        3   +---+---+---+---+---+
+            |   |   | x | x |   |
+        4   +---+---+---+---+---+
+            |   |   | x | x |   |
+        5   +---+---+---+---+---+
+                      x   x
+
+        Step 3. Convert to pixel coordinates by subtracting a subpixel offset:
+        - top = 1, left = 2, bottom = 4, right = 3
+
+        Draw coordinates in pixel coordinate system:
+            0   1   2   3   4   5
+        0   +---+---+---+---+---+
+            |   |   |   |   |   |
+        1   +---+---+---+---+---+
+            |   |   | x | x |   |
+        2   +---+---+---+---+---+
+            |   |   | x | x |   |
+        3   +---+---+---+---+---+
+            |   |   | x | x |   |
+        4   +---+---+---+---+---+
+            |   |   | x | x |   |
+        5   +---+---+---+---+---+
+
+        :param data: Json data with geometry config.
+        :type data: :class:`dict`
+        :param image_size: Image size in pixels (height, width).
+        :type image_size: List[int]
+        :return: Json data with coordinates converted to pixel coordinate system.
+        :rtype: :class:`dict`
+        """
+        data = deepcopy(data)  # Avoid modifying the original data
+        height, width = image_size[:2]
+
+        points = data[POINTS]
+        [top, bottom] = sorted([points[0][1], points[1][1]])
+        [left, right] = sorted([points[0][0], points[1][0]])
+
+        top, left, bottom, right = cls._round_subpixel_coordinates(top, left, bottom, right)
+        right = max(left, right - 1)
+        bottom = max(top, bottom - 1)
+        data[POINTS] = [[left, top], [right, bottom]]
+        return data
+
+    @classmethod
+    def _to_subpixel_coordinate_system_json(cls, data: Dict) -> Dict:
+        """
+        Convert OrientedBBox from pixel precision to subpixel precision by adding a subpixel offset to the coordinates.
+
+        Points order in json format: [[left, top], [right, bottom]]
+
+        In the labeling tool, labels are created with subpixel precision,
+        which means that the coordinates of the oriented bounding box corners (top, left and bottom, right) can have decimal values representing fractions of a pixel.
+        However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
+
+        :param data: Json data with geometry config.
+        :type data: :class:`dict`
+        :return: Json data with coordinates converted to subpixel coordinate system.
+        :rtype: :class:`dict`
+        """
+        data = deepcopy(data)  # Avoid modifying the original data
+
+        points = data[POINTS]
+        [top, bottom] = sorted([points[0][1], points[1][1]])
+        [left, right] = sorted([points[0][0], points[1][0]])
+
+        right = max(left, right + 1)
+        bottom = max(top, bottom + 1)
+        data[POINTS] = [[left, top], [right, bottom]]
+        return data
