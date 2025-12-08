@@ -63,7 +63,7 @@ class SLYVideoConverter(VideoConverter):
 
     @classmethod
     def _append_to_project_structure(
-        cls, project_structure: Dict[str, dict], dataset_name: str, items: list
+        cls, project_structure: Dict[str, dict], dataset_name: str, items: List
     ):
         normalized_name = (dataset_name or "").replace("\\", "/").strip("/")
         if not normalized_name:
@@ -350,7 +350,7 @@ class SLYVideoConverter(VideoConverter):
         self,
         api: Api,
         dataset_id: int,
-        items: list,
+        items: List,
         batch_size: int = 10,
         log_progress=True,
         progress_cb=None,
