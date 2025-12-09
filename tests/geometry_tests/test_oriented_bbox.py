@@ -31,22 +31,22 @@ class TestOrientedBBoxCreation(unittest.TestCase):
 
     def test_create_oriented_bbox_with_angle(self):
         """Test creating an OrientedBBox with a positive angle."""
-        obb = OrientedBBox(top=100, left=100, bottom=700, right=900, angle=15)
+        obb = OrientedBBox(top=100, left=100, bottom=700, right=900, angle=math.pi / 12)  # 15 degrees
         self.assertEqual(obb.top, 100)
         self.assertEqual(obb.left, 100)
         self.assertEqual(obb.bottom, 700)
         self.assertEqual(obb.right, 900)
-        self.assertEqual(obb.angle, 15)
+        self.assertEqual(obb.angle, math.pi / 12)
 
     def test_create_oriented_bbox_with_negative_angle(self):
         """Test creating an OrientedBBox with a negative angle."""
-        obb = OrientedBBox(top=100, left=100, bottom=200, right=300, angle=-45)
-        self.assertEqual(obb.angle, -45)
+        obb = OrientedBBox(top=100, left=100, bottom=200, right=300, angle=-math.pi / 4)  # -45 degrees
+        self.assertEqual(obb.angle, -math.pi / 4)
 
     def test_create_oriented_bbox_with_float_angle(self):
         """Test creating an OrientedBBox with a float angle."""
-        obb = OrientedBBox(top=100, left=100, bottom=200, right=300, angle=22.5)
-        self.assertEqual(obb.angle, 22.5)
+        obb = OrientedBBox(top=100, left=100, bottom=200, right=300, angle=math.pi / 8)  # 22.5 degrees
+        self.assertEqual(obb.angle, math.pi / 8)
 
     def test_create_oriented_bbox_with_metadata(self):
         """Test creating an OrientedBBox with metadata."""
@@ -55,7 +55,7 @@ class TestOrientedBBoxCreation(unittest.TestCase):
             left=100,
             bottom=700,
             right=900,
-            angle=15,
+            angle=math.pi / 12,  # 15 degrees
             sly_id=123,
             class_id=456,
             labeler_login="test_user",
@@ -86,53 +86,40 @@ class TestOrientedBBoxSerialization(unittest.TestCase):
 
     def test_to_json(self):
         """Test converting OrientedBBox to JSON."""
-        obb = OrientedBBox(top=100, left=100, bottom=700, right=900, angle=15)
+        obb = OrientedBBox(top=100, left=100, bottom=700, right=900, angle=math.pi / 12)  # 15 degrees
         json_data = obb.to_json()
-        
-        self.assertIn("points", json_data)
-        self.assertIn("exterior", json_data["points"])
-        self.assertIn("interior", json_data["points"])
-        self.assertIn("angle", json_data)
-        self.assertEqual(json_data["angle"], 15)
-        self.assertEqual(len(json_data["points"]["exterior"]), 2)
-        self.assertEqual(json_data["points"]["interior"], [])
 
+        self.assertIn("points", json_data)
+        self.assertIn("angle", json_data)
+        self.assertEqual(json_data["angle"], math.pi / 12)
+        self.assertEqual(len(json_data["points"]), 2)
     def test_from_json(self):
         """Test creating OrientedBBox from JSON."""
         json_data = {
-            "points": {
-                "exterior": [[100, 100], [900, 700]],
-                "interior": [],
-            },
-            "angle": 15,
+            "points": [[100, 100], [900, 700]],
+            "angle": math.pi / 12,  # 15 degrees
         }
         obb = OrientedBBox.from_json(json_data)
-        
+
         self.assertEqual(obb.top, 100)
         self.assertEqual(obb.left, 100)
         self.assertEqual(obb.bottom, 700)
         self.assertEqual(obb.right, 900)
-        self.assertEqual(obb.angle, 15)
+        self.assertEqual(obb.angle, math.pi / 12)
 
     def test_from_json_without_angle(self):
         """Test creating OrientedBBox from JSON without angle (defaults to 0)."""
         json_data = {
-            "points": {
-                "exterior": [[100, 100], [900, 700]],
-                "interior": [],
-            },
+            "points": [[100, 100], [900, 700]],
         }
-        obb = OrientedBBox.from_json(json_data)
-        self.assertEqual(obb.angle, 0)
+        with self.assertRaises(ValueError):
+            OrientedBBox.from_json(json_data)
 
     def test_from_json_with_metadata(self):
         """Test creating OrientedBBox from JSON with metadata."""
         json_data = {
-            "points": {
-                "exterior": [[100, 100], [900, 700]],
-                "interior": [],
-            },
-            "angle": 30,
+            "points": [[100, 100], [900, 700]],
+            "angle": math.pi / 6,  # 30 degrees
             "id": 123,
             "classId": 456,
             "labelerLogin": "test_user",
@@ -148,18 +135,15 @@ class TestOrientedBBoxSerialization(unittest.TestCase):
     def test_from_json_invalid_exterior_points(self):
         """Test that from_json raises ValueError with invalid exterior points."""
         json_data = {
-            "points": {
-                "exterior": [[100, 100]],  # Only one point
-                "interior": [],
-            },
-            "angle": 15,
+            "points": [[100, 100]],
+            "angle": math.pi / 12,  # 15 degrees
         }
         with self.assertRaises(ValueError):
             OrientedBBox.from_json(json_data)
 
     def test_roundtrip_serialization(self):
         """Test that to_json -> from_json preserves the OrientedBBox."""
-        original = OrientedBBox(top=100, left=150, bottom=500, right=800, angle=45)
+        original = OrientedBBox(top=100, left=150, bottom=500, right=800, angle=math.pi / 4)  # 45 degrees
         json_data = original.to_json()
         restored = OrientedBBox.from_json(json_data)
 
@@ -187,7 +171,7 @@ class TestOrientedBBoxToBbox(unittest.TestCase):
     def test_to_bbox_with_90_degree_rotation(self):
         """Test to_bbox with 90 degree rotation swaps width and height."""
         # Create a 200x400 rectangle centered at (300, 350)
-        obb = OrientedBBox(top=200, left=100, bottom=400, right=500, angle=90)
+        obb = OrientedBBox(top=200, left=100, bottom=400, right=500, angle=math.pi / 2)  # 90 degrees
         bbox = obb.to_bbox()
 
         self.assertEqual(type(bbox), Rectangle)
@@ -197,7 +181,7 @@ class TestOrientedBBoxToBbox(unittest.TestCase):
 
     def test_to_bbox_with_45_degree_rotation(self):
         """Test to_bbox with 45 degree rotation expands the bounding box."""
-        obb = OrientedBBox(top=0, left=0, bottom=100, right=100, angle=45)
+        obb = OrientedBBox(top=0, left=0, bottom=100, right=100, angle=math.pi / 4)  # 45 degrees
         bbox = obb.to_bbox()
 
         self.assertEqual(type(bbox), Rectangle)
@@ -207,7 +191,7 @@ class TestOrientedBBoxToBbox(unittest.TestCase):
 
     def test_to_bbox_with_360_degree_rotation(self):
         """Test to_bbox with 360 degree rotation returns same bounds."""
-        obb = OrientedBBox(top=100, left=100, bottom=700, right=900, angle=360)
+        obb = OrientedBBox(top=100, left=100, bottom=700, right=900, angle=2 * math.pi)  # 360 degrees
         bbox = obb.to_bbox()
 
         self.assertEqual(bbox.top, 100)
@@ -240,7 +224,7 @@ class TestOrientedBBoxContainsPointLocation(unittest.TestCase):
     def test_contains_point_with_rotation(self):
         """Test contains_point_location with a rotated OrientedBBox."""
         # Create a 100x100 square rotated 45 degrees, centered at (50, 50)
-        obb = OrientedBBox(top=0, left=0, bottom=100, right=100, angle=45)
+        obb = OrientedBBox(top=0, left=0, bottom=100, right=100, angle=math.pi / 4)  # 45 degrees
         
         # The center should always be inside
         center = PointLocation(row=50, col=50)
@@ -248,7 +232,7 @@ class TestOrientedBBoxContainsPointLocation(unittest.TestCase):
 
     def test_contains_point_corner_with_rotation(self):
         """Test that the original corner point is not necessarily inside after rotation."""
-        obb = OrientedBBox(top=0, left=0, bottom=100, right=100, angle=45)
+        obb = OrientedBBox(top=0, left=0, bottom=100, right=100, angle=math.pi / 4)  # 45 degrees
         
         # Original corner (0, 0) should not be inside the rotated box
         corner = PointLocation(row=0, col=0)
@@ -307,7 +291,7 @@ class TestOrientedBBoxContainsObb(unittest.TestCase):
     def test_contains_rotated_obb(self):
         """Test contains_obb with rotated OrientedBBox."""
         obb1 = OrientedBBox(top=0, left=0, bottom=200, right=200, angle=0)
-        obb2 = OrientedBBox(top=70, left=70, bottom=100, right=100, angle=45)
+        obb2 = OrientedBBox(top=70, left=70, bottom=100, right=100, angle=math.pi / 4)  # 45 degrees
         # The rotated small box should still fit inside
         self.assertTrue(obb1.contains_obb(obb2))
 
@@ -348,7 +332,7 @@ class TestOrientedBBoxCalculateRotatedCorners(unittest.TestCase):
 
     def test_rotated_corners_with_rotation(self):
         """Test that corners are properly rotated."""
-        obb = OrientedBBox(top=0, left=0, bottom=100, right=100, angle=90)
+        obb = OrientedBBox(top=0, left=0, bottom=100, right=100, angle=math.pi / 2)  # 90 degrees
         corners = obb.calculate_rotated_corners()
         
         self.assertEqual(len(corners), 4)
@@ -374,13 +358,13 @@ class TestOrientedBBoxFromArray(unittest.TestCase):
     def test_from_array_with_angle(self):
         """Test creating OrientedBBox from numpy array with angle."""
         arr = np.zeros((200, 500))
-        obb = OrientedBBox.from_array(arr, angle=45)
+        obb = OrientedBBox.from_array(arr, angle=math.pi / 4)  # 45 degrees
         
         self.assertEqual(obb.top, 0)
         self.assertEqual(obb.left, 0)
         self.assertEqual(obb.bottom, 199)
         self.assertEqual(obb.right, 499)
-        self.assertEqual(obb.angle, 45)
+        self.assertEqual(obb.angle, math.pi / 4)
 
 
 class TestOrientedBBoxGetCroppedNumpySlice(unittest.TestCase):
@@ -397,7 +381,7 @@ class TestOrientedBBoxGetCroppedNumpySlice(unittest.TestCase):
 
     def test_get_cropped_numpy_slice_with_rotation(self):
         """Test getting cropped numpy slice with rotation."""
-        obb = OrientedBBox(top=10, left=10, bottom=50, right=50, angle=45)
+        obb = OrientedBBox(top=10, left=10, bottom=50, right=50, angle=math.pi / 4)  # 45 degrees
         data = np.ones((100, 100))
         slice_result = obb.get_cropped_numpy_slice(data)
         
@@ -427,7 +411,7 @@ class TestOrientedBBoxCrop(unittest.TestCase):
         result = obb1.crop(obb2)
         
         self.assertEqual(len(result), 1)
-        self.assertEqual(type(result[0]), Polygon)
+        self.assertEqual(type(result[0]), OrientedBBox)
 
     def test_crop_with_rectangle(self):
         """Test cropping OrientedBBox with Rectangle."""
@@ -437,17 +421,17 @@ class TestOrientedBBoxCrop(unittest.TestCase):
         result = obb.crop(rect)
         
         self.assertEqual(len(result), 1)
-        self.assertEqual(type(result[0]), Polygon)
+        self.assertEqual(type(result[0]), OrientedBBox)
 
     def test_crop_return_rectangle(self):
         """Test cropping with return_type=Rectangle."""
         obb1 = OrientedBBox(top=0, left=0, bottom=100, right=100, angle=0)
         obb2 = OrientedBBox(top=25, left=25, bottom=75, right=75, angle=0)
         
-        result = obb1.crop(obb2, return_type=Rectangle)
+        result = obb1.crop(obb2)
         
         self.assertEqual(len(result), 1)
-        self.assertEqual(type(result[0]), Rectangle)
+        self.assertEqual(type(result[0]), OrientedBBox)
 
     def test_crop_non_overlapping(self):
         """Test cropping non-overlapping OrientedBBoxes returns empty list."""
@@ -520,9 +504,9 @@ class TestOrientedBBoxEdgeCases(unittest.TestCase):
         self.assertEqual(obb.area, 1)
 
     def test_large_angle(self):
-        """Test OrientedBBox with angle > 360."""
-        obb = OrientedBBox(top=0, left=0, bottom=100, right=100, angle=450)
-        self.assertEqual(obb.angle, 450)
+        """Test OrientedBBox with angle > 2*pi."""
+        obb = OrientedBBox(top=0, left=0, bottom=100, right=100, angle=5 * math.pi / 2)  # 450 degrees
+        self.assertEqual(obb.angle, 5 * math.pi / 2)
         # to_bbox should handle this correctly
         bbox = obb.to_bbox()
         self.assertEqual(type(bbox), Rectangle)
@@ -537,12 +521,12 @@ class TestOrientedBBoxEdgeCases(unittest.TestCase):
 
     def test_float_coordinates(self):
         """Test OrientedBBox with float coordinates."""
-        obb = OrientedBBox(top=10.5, left=20.5, bottom=50.5, right=80.5, angle=15.5)
+        obb = OrientedBBox(top=10.5, left=20.5, bottom=50.5, right=80.5, angle=0.27)  # ~15.5 degrees
         self.assertEqual(obb.top, 10)
         self.assertEqual(obb.left, 20)
         self.assertEqual(obb.bottom, 50)
         self.assertEqual(obb.right, 80)
-        self.assertEqual(obb.angle, 15.5)
+        self.assertEqual(obb.angle, 0.27)
 
 
 class TestOrientedBBoxDrawing(unittest.TestCase):
@@ -550,7 +534,7 @@ class TestOrientedBBoxDrawing(unittest.TestCase):
 
     def test_draw_contour(self):
         """Test that _draw_contour_impl draws the rotated rectangle."""
-        obb = OrientedBBox(top=50, left=50, bottom=250, right=150, angle=20)
+        obb = OrientedBBox(top=50, left=50, bottom=250, right=150, angle=math.pi / 9)  # 20 degrees
         bitmap = np.zeros((300, 300, 3), dtype=np.uint8)
         color = (255, 0, 0)  # Red color
 
