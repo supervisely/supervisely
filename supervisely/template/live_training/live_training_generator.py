@@ -10,9 +10,9 @@ from supervisely import Api, ProjectMeta, logger
 from supervisely.template.base_generator import BaseGenerator
 
 
-class LiveLearningGenerator(BaseGenerator):
+class LivetrainingGenerator(BaseGenerator):
     """
-    Generator for Live Learning session reports.
+    Generator for Live training session reports.
     
     Logs:
     - Model hyperparameters
@@ -27,11 +27,11 @@ class LiveLearningGenerator(BaseGenerator):
         session_info: dict,
         model_config: dict,
         model_meta: ProjectMeta,
-        output_dir: str = "./live_learning_report",
+        output_dir: str = "./live_training_report",
         team_id: Optional[int] = None,
     ):
         """
-        Initialize Live Learning generator.
+        Initialize Live training generator.
         
         :param api: Supervisely API instance
         :param session_info: Session metadata (session_id, start_time, project_id, etc.)
@@ -57,7 +57,7 @@ class LiveLearningGenerator(BaseGenerator):
             raise ValueError(f"Missing required fields in session_info: {missing}")
 
     def _report_url(self, server_address: str, template_id: int) -> str:
-        """Generate URL to open the Live Learning report"""
+        """Generate URL to open the Live training report"""
         return f"{server_address}/nn/experiments/{template_id}"
 
     def context(self) -> dict:
@@ -160,7 +160,7 @@ class LiveLearningGenerator(BaseGenerator):
             "num_classes": self.model_config.get("num_classes", len(self.model_meta.obj_classes)),
             "classes": [cls.name for cls in self.model_meta.obj_classes],
             "config_file": self.model_config.get("config_file", "N/A"),
-            "task_type": self.model_config.get("task_type", "Live Learning"),
+            "task_type": self.model_config.get("task_type", "Live Training"),
         }
 
     def _get_training_context(self) -> dict:
@@ -229,7 +229,7 @@ class LiveLearningGenerator(BaseGenerator):
         """
         Upload report to team files.
 
-        Default path: /live-learning/{project_id}_{project_name}/{session_id}/
+        Default path: /live-training/{project_id}_{project_name}/{session_id}/
         """
         # Normalize path - remove trailing slash
         remote_dir = remote_dir.rstrip("/")
@@ -326,7 +326,7 @@ class LiveLearningGenerator(BaseGenerator):
                 col=col,
             )
             
-            # Special formatting for learning rate
+            # Special formatting for training rate
             if metric.startswith("lr"):
                 fig.update_yaxes(tickformat=".0e", row=row, col=col)
         
