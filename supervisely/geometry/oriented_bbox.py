@@ -503,7 +503,7 @@ class OrientedBBox(Rectangle):
 
         return [AlphaMask, AnyGeometry, Bitmap, Polygon, OrientedBBox]
 
-    def crop(self, clip: OrientedBBox | Rectangle, return_type: Polygon | Rectangle = Rectangle) -> List[Rectangle | Polygon]:
+    def crop(self, clip: OrientedBBox | Rectangle) -> List[OrientedBBox]:
         """Crop the OrientedBBox by another OrientedBBox using the Sutherland-Hodgman algorithm."""
         subject_corners = self._calculate_rotated_corners(self)
         if isinstance(clip, Rectangle):
@@ -561,9 +561,8 @@ class OrientedBBox(Rectangle):
             if len(output) < 3: return []
 
         polygon = Polygon(output, [])
-        if return_type == Rectangle:
-            return [polygon.to_bbox()]
-        return [polygon]
+        bbox = polygon.to_bbox()
+        return [OrientedBBox.from_bbox(bbox)]
 
     def _draw_contour_impl(self, bitmap, color, thickness=1, config=None):
         """ """
