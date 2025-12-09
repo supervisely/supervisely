@@ -10,7 +10,7 @@ from supervisely import Api, ProjectMeta, logger
 from supervisely.template.base_generator import BaseGenerator
 
 
-class LivetrainingGenerator(BaseGenerator):
+class LiveTrainingGenerator(BaseGenerator):
     """
     Generator for Live training session reports.
     
