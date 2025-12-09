@@ -50,7 +50,7 @@ available_geometry_types = [
     {"value": "polyline", "label": "Polyline"},
     {"value": "point", "label": "Point"},
     {"value": "any shape", "label": "Any shape"},
-    {"value": "oriented bbox", "label": "Oriented BBox"},
+    {"value": "oriented bbox", "label": "Oriented Bounding Box"},
 ]
 
 
