@@ -81,7 +81,7 @@ class OrientedBBox(Rectangle):
         angle: Union[int, float] = 0,
         sly_id: Optional[int] = None,
         class_id: Optional[int] = None,
-        labeler_login: Optional[int] = None,
+        labeler_login: Optional[str] = None,
         updated_at: Optional[str] = None,
         created_at: Optional[str] = None,
     ):
