@@ -63,6 +63,7 @@ type_to_shape_text = {
     Point3d: "point 3d",  # "zmdi zmdi-select-all"
     GraphNodes: "keypoints",
     ClosedSurfaceMesh: "volume (3d mask)",
+    OrientedBBox: "oriented bbox",
 }
 
 

@@ -26,6 +26,7 @@ from supervisely.geometry.pointcloud import Pointcloud
 from supervisely.geometry.polygon import Polygon
 from supervisely.geometry.polyline import Polyline
 from supervisely.geometry.rectangle import Rectangle
+from supervisely.geometry.oriented_bbox import OrientedBBox
 from supervisely.imaging.color import rgb2hex
 from supervisely.nn.benchmark.object_detection.metric_provider import (
     METRIC_NAMES as OBJECT_DETECTION_METRIC_NAMES,
@@ -251,6 +252,7 @@ class ExperimentGenerator(BaseGenerator):
             Pointcloud: "zmdi zmdi-cloud-outline",
             MultichannelBitmap: "zmdi zmdi-layers",
             Point3d: "zmdi zmdi-filter-center-focus",
+            OrientedBBox: "zmdi zmdi-rotate-cw",
         }
 
         if not hasattr(self.model_meta, "obj_classes"):
