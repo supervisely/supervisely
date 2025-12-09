@@ -10,7 +10,6 @@ from typing import Dict, List, Optional, Tuple, Union
 import cv2
 import numpy as np
 
-from supervisely.geometry import validation
 from supervisely.geometry.constants import (
     ANGLE,
     CLASS_ID,
@@ -128,13 +127,10 @@ class OrientedBBox(Rectangle):
             figure_json = figure.to_json()
             print(figure_json)
             # Output: {
-            #    "points": {
-            #        "exterior": [
-            #            [100, 100],
-            #            [900, 700]
-            #        ],
-            #        "interior": []
-            #    },
+            #    "points": [
+            #        [100, 100],
+            #        [900, 700]
+            #    ],
             #    "angle": 0.2618  # radians (15 degrees)
             # }
         """
@@ -163,13 +159,10 @@ class OrientedBBox(Rectangle):
             import math
 
             figure_json = {
-                "points": {
-                    "exterior": [
-                        [100, 100],
-                        [900, 700]
-                    ],
-                    "interior": []
-                },
+                "points": [
+                    [100, 100],
+                    [900, 700]
+                ],
                 "angle": math.pi / 12  # 15 degrees in radians
             }
             figure = sly.OrientedBBox.from_json(figure_json)
@@ -638,7 +631,6 @@ class OrientedBBox(Rectangle):
         :rtype: :class:`dict`
         """
         data = deepcopy(data)  # Avoid modifying the original data
-        height, width = image_size[:2]
 
         points = data[POINTS]
         [top, bottom] = sorted([points[0][1], points[1][1]])
