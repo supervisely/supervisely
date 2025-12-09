@@ -423,6 +423,7 @@ class OrientedBBox(Rectangle):
                 return False
         return True
 
+    @classmethod
     def from_bbox(cls, bbox: Rectangle) -> OrientedBBox:
         """
         Create OrientedBBox from given Rectangle.
