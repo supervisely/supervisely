@@ -13,6 +13,7 @@ from supervisely.geometry.point_location import PointLocation
 from supervisely.geometry.polygon import Polygon
 from supervisely.geometry.polyline import Polyline
 from supervisely.geometry.rectangle import Rectangle
+from supervisely.geometry.oriented_bbox import OrientedBBox
 
 
 def _geometry_to_mask_base(
@@ -122,7 +123,7 @@ def deserialize_geometry(geometry_type_str: str, geometry_json: Dict) -> Geometr
 
 
 def geometry_to_polygon(geometry: Geometry, approx_epsilon: Optional[int] = None) -> List[Geometry]:
-    if type(geometry) not in (Rectangle, Polyline, Polygon, Bitmap, AlphaMask):
+    if type(geometry) not in (Rectangle, Polyline, Polygon, Bitmap, AlphaMask, OrientedBBox):
         raise KeyError(
             "Can not convert {} to {}".format(geometry.geometry_name(), Polygon.__name__)
         )
@@ -135,6 +136,9 @@ def geometry_to_polygon(geometry: Geometry, approx_epsilon: Optional[int] = None
 
     if type(geometry) == Polygon:
         return [geometry]
+    
+    if type(geometry) == OrientedBBox:
+        return [Polygon(geometry.calculate_rotated_corners(), [])]
 
     if type(geometry) in [AlphaMask, Bitmap]:
         new_geometries = geometry.to_contours()
