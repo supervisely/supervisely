@@ -552,7 +552,7 @@ class Annotation:
         :return: list of the Label class objects
         """
         for label in labels:
-            if self.img_size.count(None) == 0:
+            if self.img_size.count(None) == 0 and not isinstance(label.geometry, OrientedBBox):
                 # image has resolution in DB
                 canvas_rect = Rectangle.from_size(self.img_size)
                 try:
@@ -567,6 +567,7 @@ class Annotation:
             else:
                 # image was uploaded by link and does not have resolution in DB
                 # add label without normalization and validation
+                # OrientedBBox geometries can be outside of image bounds
                 dest.append(label)
 
     def add_label(self, label: Label) -> Annotation:
