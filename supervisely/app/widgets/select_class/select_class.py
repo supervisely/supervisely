@@ -12,6 +12,7 @@ from supervisely.geometry.cuboid_3d import Cuboid3d
 from supervisely.geometry.graph import GraphNodes
 from supervisely.geometry.mask_3d import Mask3D
 from supervisely.geometry.multichannel_bitmap import MultichannelBitmap
+from supervisely.geometry.oriented_bbox import OrientedBBox
 from supervisely.geometry.point import Point
 from supervisely.geometry.point_3d import Point3d
 from supervisely.geometry.pointcloud import Pointcloud
@@ -41,6 +42,7 @@ type_to_shape_text = {
     GraphNodes: "keypoints",
     ClosedSurfaceMesh: "volume (3d mask)",
     Mask3D: "3d mask",
+    OrientedBBox: "oriented bbox",
 }
 
 shape_text_to_type = {v: k for k, v in type_to_shape_text.items()}
@@ -53,6 +55,7 @@ available_geometry_types = [
     {"value": "polyline", "label": "Polyline"},
     {"value": "point", "label": "Point"},
     {"value": "any shape", "label": "Any shape"},
+    {"value": "oriented bbox", "label": "Oriented Bounding Box"},
 ]
 
 
