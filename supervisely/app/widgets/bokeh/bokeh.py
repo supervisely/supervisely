@@ -4,7 +4,7 @@ import asyncio
 import re
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Literal, Optional, Union
+from typing import Any, Callable, List, Literal, Optional
 from uuid import uuid4
 
 from fastapi.responses import HTMLResponse
@@ -13,8 +13,7 @@ from pydantic import BaseModel
 from supervisely._utils import is_production
 from supervisely.api.api import Api
 from supervisely.app.widgets import Widget
-from supervisely.io.env import task_id
-from supervisely.sly_logger import logger
+from supervisely.io.env import task_id as env_task_id
 
 
 class DebouncedEventHandler:
@@ -37,7 +36,6 @@ class DebouncedEventHandler:
 
 class SelectedIds(BaseModel):
     selected_ids: List[int]
-    plot_id: Optional[Union[str, int]] = None
 
 
 class Bokeh(Widget):
@@ -77,14 +75,25 @@ class Bokeh(Widget):
 
         from supervisely.app.widgets import Bokeh, IFrame
 
-        plot = Bokeh.Circle(
-            x_coordinates=[1, 2, 3, 4, 5],
-            y_coordinates=[1, 2, 3, 4, 5],
-            radii=10,
-            colors="red",
-            legend_label="Circle plot",
+        data = {
+            "x": [1, 2, 3, 4, 5],
+            "y": [1, 2, 3, 4, 5],
+            "radius": [10, 20, 30, 40, 50],
+            "colors": ["red", "green", "blue", "yellow", "purple"],
+            "ids": [1, 2, 3, 4, 5],
+            "names": ["kiwi", "kiwi", "lemon", "lemon", "lemon"],
+        }
+
+        plot_lemon = Bokeh.Circle(name="lemon")
+        plot_kiwi = Bokeh.Circle(name="kiwi")
+        bokeh = Bokeh(
+            x_axis_visible=True,
+            y_axis_visible=True,
+            grid_visible=True,
+            show_legend=True,
         )
-        bokeh = Bokeh(plots=[plot], width=1000, height=600)
+        bokeh.add_data(**data)
+        bokeh.add_plots([plot_lemon, plot_kiwi])
 
         # To allow the widget to be interacted with, you need to add it to the IFrame widget.
         iframe = IFrame()
@@ -96,126 +105,72 @@ class Bokeh(Widget):
         HTML_ROUTE = "bokeh.html"
 
     class Plot(ABC):
-        @abstractmethod
-        def add(self, plot) -> None:
-            pass
+        def __init__(self, name: Optional[str] = None, **kwargs):
+
+            self._name = name or str(uuid4())
+            self.kwargs = kwargs
 
         @abstractmethod
-        def register(self, route_path: str) -> None:
+        def add(self, plot, source) -> None:
             pass
+
+        @property
+        def name(self) -> str:
+            return self._name
 
     class Circle(Plot):
-        def __init__(
-            self,
-            x_coordinates: List[Union[int, float]],
-            y_coordinates: List[Union[int, float]],
-            radii: Optional[Union[Union[int, float], List[Union[int, float]]]] = None,
-            colors: Optional[Union[str, List[str]]] = None,
-            data: Optional[List[Any]] = None,
-            dynamic_selection: bool = False,
-            fill_alpha: float = 0.5,
-            line_color: Optional[str] = None,
-            legend_label: Optional[str] = None,
-            plot_id: Optional[Union[str, int]] = None,
-        ):
-            if not colors:
-                colors = Bokeh._generate_colors(x_coordinates, y_coordinates)
-            elif isinstance(colors, str):
-                colors = [colors] * len(x_coordinates)
-
-            if not radii:
-                radii = Bokeh._generate_radii(x_coordinates, y_coordinates)
-            elif isinstance(radii, (int, float)):
-                radii = [radii] * len(x_coordinates)
-
-            if not len(x_coordinates) == len(y_coordinates) == len(radii) == len(colors):
-                raise ValueError(
-                    "x_coordinates, y_coordinates, radii, and colors must have the same length"
-                )
-
-            if data is not None and len(data) != len(x_coordinates):
-                raise ValueError("data must have the same length as x_coordinates")
-
-            if data is None:
-                data = list(range(len(x_coordinates)))
-
-            self._x_coordinates = x_coordinates
-            self._y_coordinates = y_coordinates
-            self._radii = radii
-            self._colors = colors
-            self._data = data
-            self._source = None
-            self._dynamic_selection = dynamic_selection
-            self._fill_alpha = fill_alpha
-            self._line_color = line_color
-            self._plot_id = plot_id or uuid4().hex
-            self._legend_label = legend_label or str(self._plot_id)
-
-        def add(self, plot) -> None:
+        def add(self, plot, source) -> None:
             from bokeh.models import (  # pylint: disable=import-error
-                ColumnDataSource,
-                LassoSelectTool,
+                CDSView,
+                GroupFilter,
             )
 
-            data = dict(
-                x=self._x_coordinates,
-                y=self._y_coordinates,
-                radius=self._radii,
-                colors=self._colors,
-                ids=self._data,
-            )
-            self._source = ColumnDataSource(data=data)
-
-            renderer = plot.circle(
+            filters = [GroupFilter(column_name="names", group=self.name, name=self.name)]
+            view = CDSView(source=source, filters=filters)
+            return plot.circle(
                 "x",
                 "y",
                 radius="radius",
                 fill_color="colors",
-                fill_alpha=self._fill_alpha,
-                line_color=self._line_color,
-                source=self._source,
-                legend_label=self._legend_label,
+                fill_alpha=0.5,
+                source=source,
+                line_color=None,
+                view=view,
             )
-            if not self._dynamic_selection:
-                for tool in plot.tools:
-                    if isinstance(tool, (LassoSelectTool)):
-                        tool.continuous = False
 
-            return renderer
-
-        def register(self, route_path: str) -> None:
-            from bokeh.models import CustomJS  # pylint: disable=import-error
-
-            if not hasattr(self, "_source"):
-                raise ValueError("Plot must be added to a Bokeh plot before registering")
-
-            if is_production():
-                api = Api()
-                task_info = api.task.get_info_by_id(task_id())
-                if task_info is not None:
-                    route_path = f"/net/{task_info['meta']['sessionToken']}{route_path}"
-            callback = CustomJS(
-                args=dict(source=self._source),
-                code="""
-                    var indices = source.selected.indices;
-                    var selected_ids = [];
-                    for (var i = 0; i < indices.length; i++) {{
-                        selected_ids.push(source.data['ids'][indices[i]]);
-                    }}
-                    var xhr = new XMLHttpRequest();
-                    xhr.open("POST", "{route_path}", true);
-                    xhr.setRequestHeader("Content-Type", "application/json");
-                    xhr.send(JSON.stringify({{selected_ids: selected_ids, plot_id: '{plot_id}'}}));
-                """.format(
-                    route_path=route_path,
-                    plot_id=self._plot_id,
-                ),
+    class Scatter(Plot):
+        def add(self, plot, source) -> None:
+            from bokeh.models import (  # pylint: disable=import-error
+                CDSView,
+                GroupFilter,
             )
-            self._source.selected.js_on_change("indices", callback)
+
+            filters = [GroupFilter(column_name="names", group=self.name, name=self.name)]
+            view = CDSView(source=source, filters=filters)
+            return plot.scatter(
+                "x",
+                "y",
+                size="radius",
+                color="colors",
+                fill_alpha=0.5,
+                source=source,
+                view=view,
+            )
+
+    class Line(Plot):
+        def add(self, plot, source) -> None:
+            from bokeh.models import (  # pylint: disable=import-error
+                CDSView,
+                GroupFilter,
+            )
+
+            filters = [GroupFilter(column_name="names", group=self.name, name=self.name)]
+            view = CDSView(source=source, filters=filters)
+            return plot.line("x", "y", source=source, view=view, line_width=2)
 
     def __init__(
         self,
-        plots: List[Plot],
+        plots: List[Plot] = None,
         width: int = 1000,
         height: int = 600,
         tools: List[str] = [
@@ -223,7 +178,7 @@ class Bokeh(Widget):
             "wheel_zoom",
             "box_zoom",
             "reset",
-            "save",
+            # "save",
             "poly_select",
             "tap",
             "lasso_select",
@@ -244,8 +199,11 @@ class Bokeh(Widget):
         if bokeh.__version__ != "3.1.1":
             raise RuntimeError(f"Bokeh version {bokeh.__version__} is not supported. Use 3.1.1")
 
+        self._source_data = {"x": [], "y": [], "radius": [], "colors": [], "ids": [], "names": []}
+        self._source = None
         self.widget_id = widget_id
-        self._plots = plots
+        self._plots = plots or []
+        self._view = None
 
         self._width = width
         self._height = height
@@ -259,56 +217,14 @@ class Bokeh(Widget):
         self._legend_click_policy = legend_click_policy
 
         super().__init__(widget_id=widget_id, file_path=__file__)
-        self._load_chart()
+
+        self._update()
 
         server = self._sly_app.get_server()
 
         @server.get(self.html_route)
         def _html_response() -> None:
-            return HTMLResponse(content=self.get_html())
-
-        # TODO: support for offline mode
-        # JinjaWidgets().context.pop(self.widget_id, None)  # remove the widget from index.html
-
-    def _load_chart(self, **kwargs):
-        from bokeh.models import Legend  # pylint: disable=import-error
-        from bokeh.plotting import figure  # pylint: disable=import-error
-
-        self._width = kwargs.get("width", self._width)
-        self._height = kwargs.get("height", self._height)
-        self._tools = kwargs.get("tools", self._tools)
-        self._toolbar_location = kwargs.get("toolbar_location", self._toolbar_location)
-        self._show_legend = kwargs.get("show_legend", self._show_legend)
-        self._legend_location = kwargs.get("legend_location", self._legend_location)
-        self._legend_click_policy = kwargs.get("legend_click_policy", self._legend_click_policy)
-        self._x_axis_visible = kwargs.get("x_axis_visible", self._x_axis_visible)
-        self._y_axis_visible = kwargs.get("y_axis_visible", self._y_axis_visible)
-        self._grid_visible = kwargs.get("grid_visible", self._grid_visible)
-
-        self._plot = figure(
-            width=self._width,
-            height=self._height,
-            tools=self._tools,
-            toolbar_location=self._toolbar_location,
-        )
-
-        if self._show_legend:
-            self._plot.add_layout(
-                Legend(click_policy=self._legend_click_policy),
-                self._legend_location,
-            )
-
-        self._plot.xaxis.visible = self._x_axis_visible
-        self._plot.yaxis.visible = self._y_axis_visible
-        self._plot.grid.visible = self._grid_visible
-
-        self._renderers = []
-        self._process_plots(self._plots)
-        self._update_html()
-
-    @property
-    def route_path(self) -> str:
-        return self.get_route_path(Bokeh.Routes.VALUE_CHANGED)
+            return HTMLResponse(content=self._get_html())
 
     @property
     def html_route(self) -> str:
@@ -318,48 +234,81 @@ class Bokeh(Widget):
     def html_route_with_timestamp(self) -> str:
         return f".{self.html_route}?t={datetime.now().timestamp()}"
 
-    def add_plots(self, plots: List[Plot]) -> None:
-        self._plots.extend(plots)
-        self._process_plots(plots)
-        self._update_html()
+    def get_json_data(self):
+        return {}
 
-    def clear(self) -> None:
-        self._plots = []
-        self._renderers = []
-        self._plot.renderers = []
-        self._update_html()
+    def get_json_state(self):
+        return {}
 
-    def remove_plot(self, idx: int) -> None:
-        renderer = self._renderers.pop(idx)
-        self._plot.renderers.remove(renderer)
-        self._update_html()
+    def _add_callbacks(self):
+        from bokeh.models import CustomJS  # pylint: disable=import-error
 
-    def _process_plots(self, plots: List[Plot]) -> None:
-        for plot in plots:
-            renderer = plot.add(self._plot)
-            plot.register(self.route_path)
-            self._renderers.append(renderer)
+        route_path = self.get_route_path(Bokeh.Routes.VALUE_CHANGED)
 
-    def _update_html(self) -> None:
+        if is_production():
+            api = Api()
+            task_info = api.task.get_info_by_id(env_task_id())
+            if task_info is not None:
+                route_path = f"/net/{task_info['meta']['sessionToken']}{route_path}"
+        callback = CustomJS(
+            args=dict(source=self._source),
+            code=f"""
+                var indices = source.selected.indices;
+                var selected_ids = [];
+                for (var i = 0; i < indices.length; i++) {{
+                    selected_ids.push(source.data['ids'][indices[i]]);
+                }}
+                var xhr = new XMLHttpRequest();
+                xhr.open("POST", "{route_path}", true);
+                xhr.setRequestHeader("Content-Type", "application/json");
+                xhr.send(JSON.stringify({{selected_ids: selected_ids}}));
+            """,
+        )
+        self._source.selected.js_on_change("indices", callback)
+
+    def _get_html(self) -> str:
+        return f"""<div>
+            <script type="text/javascript" src="https://cdn.bokeh.org/bokeh/release/bokeh-3.1.1.min.js"></script>
+            {self._script}
+            {self._div}
+        </div>"""
+
+    def _create_figure(self):
+        from bokeh.models import (  # pylint: disable=import-error
+            ColumnDataSource,
+            Legend,
+        )
+        from bokeh.plotting import figure  # pylint: disable=import-error
+
+        self._plot = figure(width=self._width, height=self._height, tools=self._tools)
+
+        self._plot.xaxis.visible = self._x_axis_visible
+        self._plot.yaxis.visible = self._y_axis_visible
+        self._plot.grid.visible = self._grid_visible
+
+        self._source = ColumnDataSource(data=self._source_data)
+        self._add_callbacks()
+        legend_items = []
+        for plot in self._plots:
+            r = plot.add(self._plot, self._source)
+            legend_items.append((plot.name, [r]))
+
+        if self._show_legend:
+            self._plot.add_layout(
+                Legend(items=legend_items, click_policy=self._legend_click_policy),
+                self._legend_location,
+            )
+
+    def _update_html(self):
         from bokeh.embed import components  # pylint: disable=import-error
 
-        script, self._div = components(self._plot, wrap_script=False)
+        script, self._div = components(self._plot)
         self._div_id = self._get_div_id(self._div)
         self._script = self._update_script(script)
 
-    @staticmethod
-    def _generate_colors(x_coordinates: List[int], y_coordinates: List[int]) -> List[str]:
-        colors = [
-            "#%02x%02x%02x" % (int(r), int(g), 150)
-            for r, g in zip(
-                [50 + 2 * xi for xi in x_coordinates], [30 + 2 * yi for yi in y_coordinates]
-            )
-        ]
-        return colors
-
-    @staticmethod
-    def _generate_radii(x_coordinates: List[int], y_coordinates: List[int]) -> List[int]:
-        return [1] * len(x_coordinates)
+    def _update(self):
+        self._create_figure()
+        self._update_html()
 
     def _get_div_id(self, div: str) -> str:
         match = re.search(r'id="([^"]+)"', div)
@@ -368,69 +317,98 @@ class Bokeh(Widget):
         raise ValueError(f"No div id found in {div}")
 
     def _update_script(self, script: str) -> str:
-        # TODO: Reimplement using regex.
         insert_after = "const fn = function() {"
         updated_script = ""
         for line in script.split("\n"):
             if line.strip().startswith(insert_after):
-                line = line + f"\n    const el = document.querySelector('#{self._div_id}');"
-                line += "\n    if (el === null) {"
-                line += "\n      setTimeout(fn, 500);"
-                line += "\n      return;"
-                line += "\n    }"
+                line += f"""
+                    const el = document.querySelector('#{self._div_id}');
+                    if (el === null) {{
+                        setTimeout(fn, 200);
+                        return;
+                    }}
+                """
             updated_script += line + "\n"
         return updated_script
 
-    def get_json_data(self):
-        return {}
-
-    def get_json_state(self):
-        return {}
-
     def value_changed(self, func: Callable) -> Callable:
-        server = self._sly_app.get_server()
-        self._changes_handled = True
-        debounced_handler = DebouncedEventHandler(debounce_time=0.2)  # TODO: check if it's enough
+        """Registers a callback function that will be called when the chart is clicked."""
 
-        @server.post(self.route_path)
+        server = self._sly_app.get_server()
+        route_path = self.get_route_path(Bokeh.Routes.VALUE_CHANGED)
+        self._changes_handled = True
+        debounced_handler = DebouncedEventHandler(debounce_time=0.2)
+
+        @server.post(route_path)
         async def _click(data: SelectedIds) -> None:
-            debounced_handler.handle_event(data, func)
+            debounced_handler.handle_event(data.selected_ids, func)
 
         return _click
 
-    def get_html(self) -> str:
-        return f"""<div>
-            <script type="text/javascript" src="https://cdn.bokeh.org/bokeh/release/bokeh-3.1.1.min.js"></script>
-            <script type="text/javascript"> {self._script} </script>
-            {self._div}
-        </div>"""
+    def clear(self) -> None:
+        """Clears all data in the ColumnDataSource and removes plots."""
 
-    def update_radii(self, new_radii: Union[List[Union[list, int, float]], int, float]) -> None:
-        if isinstance(new_radii, (int, float)):
-            new_radii = [new_radii] * len(self._plots)
-        elif len(new_radii) != len(self._plots):
-            logger.warning(
-                f"{len(new_radii)} != {len(self._plots)}: new_radii will be broadcasted to all plots"
-            )
-            new_radii = [new_radii[0]] * len(self._plots)
-        for idx, radii in enumerate(new_radii):
-            self.update_radii_by_plot_idx(idx, radii)
+        self._source_data = {key: [] for key in self._source_data.keys()}
+        self._plots = []
+        self._update()
 
-    def update_radii_by_plot_idx(self, plot_idx: int, new_radii: List[Union[int, float]]) -> None:
-        coords_length = len(self._plots[plot_idx]._x_coordinates)
-        if isinstance(new_radii, (int, float)):
-            new_radii = [new_radii] * coords_length
-        elif len(new_radii) != coords_length:
-            logger.warning(
-                f"{len(new_radii)} != {coords_length}: new_radii will be broadcasted to all plots"
-            )
-            new_radii = [new_radii[0]] * coords_length
+    def refresh(self) -> None:
+        """Refreshes the chart by reloading the existing data and updating the HTML."""
 
-        self._plots[plot_idx]._radii = new_radii
-        self._plots[plot_idx]._source.data["radius"] = new_radii
-        self._load_chart()
+        self._update()
 
-    def update_chart_size(self, width: Optional[int] = None, height: Optional[int] = None) -> None:
-        self._width = width or self._width
-        self._height = height or self._height
-        self._load_chart()
+    def update_chart_size(self, width: Optional[int] = None, height: Optional[int] = None):
+        """Updates the size of the chart."""
+
+        if width:
+            self._width = width
+        if height:
+            self._height = height
+        self._update()
+
+    def add_data(
+        self,
+        x: List[float],
+        y: List[float],
+        radius: List[float],
+        colors: List[str],
+        ids: List[Any],
+        names: List[str],
+        append: bool = True,
+    ):
+        """Adds data to the chart."""
+
+        if append:
+            self._source.data["x"] += x
+            self._source.data["y"] += y
+            self._source.data["radius"] += radius
+            self._source.data["colors"] += colors
+            self._source.data["ids"] += ids
+            self._source.data["names"] += names
+        else:
+            self._source.data = {
+                "x": x,
+                "y": y,
+                "radius": radius,
+                "colors": colors,
+                "ids": ids,
+                "names": names,
+            }
+
+    def add_plot(self, plot: Plot):
+        """Adds a plot to the chart."""
+
+        self._plots.append(plot)
+        self._update()
+
+    def add_plots(self, plots: List[Plot]):
+        """Adds multiple plots to the chart."""
+
+        self._plots.extend(plots)
+        self._update()
+
+    def update_point_size(self, size: float):
+        """Updates the size of the points in the chart."""
+
+        self._source_data["radius"] = [size] * len(self._source_data["x"])
+        self._update()

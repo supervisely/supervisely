@@ -2,15 +2,17 @@
 
 # docs
 from __future__ import annotations
-from typing import List, Tuple, Dict, Optional, Union
-from supervisely.annotation.tag_meta_collection import TagMetaCollection
-from supervisely.annotation.tag_meta import TagMeta
-
 
 import uuid
-from supervisely.annotation.tag import Tag, TagJsonFields
+from typing import Dict, List, Optional, Tuple, Union
+
 from supervisely._utils import take_with_default
-from supervisely.video_annotation.constants import KEY, ID, FRAME_RANGE
+from supervisely.annotation.tag import Tag, TagJsonFields
+from supervisely.annotation.tag_meta import TagMeta, TagTargetType
+from supervisely.annotation.tag_meta_collection import TagMetaCollection
+from supervisely.api.module_api import ApiField
+from supervisely.sly_logger import logger
+from supervisely.video_annotation.constants import FRAME_RANGE, ID, KEY
 from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
@@ -34,6 +36,10 @@ class VideoTag(Tag):
     :type updated_at: str, optional
     :param created_at: Date and Time when VideoTag was created. Date Format is the same as in "updated_at" parameter.
     :type created_at: str, optional
+    :param is_finished: Video Tag is finished or not (applicable for range tags).
+    :type is_finished: bool, optional
+    :param non_final_value: Video Tag value is final or not. Can be useful to create tag without value.
+    :type non_final_value: bool, optional
     :Usage example:
 
      .. code-block:: python
@@ -64,21 +70,51 @@ class VideoTag(Tag):
         tag_coat_color = VideoTag(meta_coat_color, value="yellow")
         # Output: ValueError: Tag coat color can not have value yellow
     """
-    def __init__(self, meta: TagMeta, value: Optional[Union[str, int, float]]=None, frame_range: Optional[Tuple[int, int]]=None,
-                 key: Optional[uuid.UUID]=None, sly_id: Optional[int]=None, labeler_login: Optional[str]=None,
-                 updated_at: Optional[str]=None, created_at: Optional[str]=None):
-        super(VideoTag, self).__init__(meta, value=value, sly_id=sly_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
-        
+
+    _SUPPORT_UNFINISHED_TAGS = True
+
+    def __init__(
+        self,
+        meta: TagMeta,
+        value: Optional[Union[str, int, float]] = None,
+        frame_range: Optional[Tuple[int, int]] = None,
+        key: Optional[uuid.UUID] = None,
+        sly_id: Optional[int] = None,
+        labeler_login: Optional[str] = None,
+        updated_at: Optional[str] = None,
+        created_at: Optional[str] = None,
+        is_finished: Optional[bool] = None,
+        non_final_value: Optional[bool] = None,
+    ):
+        super(VideoTag, self).__init__(
+            meta,
+            value=value,
+            sly_id=sly_id,
+            labeler_login=labeler_login,
+            updated_at=updated_at,
+            created_at=created_at,
+        )
+
         self._frame_range = None
         if frame_range is not None:
-            if not isinstance(frame_range, (tuple, list)):
-                raise TypeError('frame_range has to be a tuple or a list. Given type "{}".'.format(type(frame_range)))
-
-            if len(frame_range) != 2 or not isinstance(frame_range[0], int) or not isinstance(frame_range[1], int):
-                raise ValueError("frame_range has to be a tuple or a list with 2 int values.") 
-            self._frame_range = list(frame_range)
+            self._frame_range = self._validate_frame_range(frame_range)
 
         self._key = take_with_default(key, uuid.uuid4())
+
+        self._is_finished = None
+        self._non_final_value = None
+
+        if self._SUPPORT_UNFINISHED_TAGS is True:
+            self._is_finished = take_with_default(is_finished, True)
+            if self._is_finished is False:
+                if self._frame_range is None:
+                    raise ValueError("Cannot set is_finished=False for a tag without frame range")
+                self._frame_range = [self._frame_range[0], self._frame_range[0]]
+            if not self.meta.is_valid_value(self.value) and self.value is None:
+                non_final_value = True
+            self._non_final_value = take_with_default(non_final_value, False)
+            if self._non_final_value is True:
+                self._is_finished = False
 
     @property
     def frame_range(self) -> Tuple[int, int]:
@@ -95,12 +131,56 @@ class VideoTag(Tag):
         """
         return self._frame_range
 
+    @property
+    def is_finished(self) -> bool:
+        """
+        VideoTag is finished or not (applicable for range tags).
+
+        :return: True if VideoTag is finished, otherwise False
+        :rtype: :class:`bool`
+        :Usage example:
+
+         .. code-block:: python
+
+            is_finished = tag_cat.is_finished
+        """
+        return self._is_finished
+
+    @property
+    def non_final_value(self) -> bool:
+        """
+        VideoTag value is final or not.
+
+        :return: True if VideoTag value is final, otherwise False
+        :rtype: :class:`bool`
+        :Usage example:
+
+         .. code-block:: python
+
+            non_final_value = tag_cat.non_final_value
+        """
+        return self._non_final_value
+
     def key(self) -> uuid.UUID:
         return self._key
 
+    def _validate_frame_range(self, frame_range: Tuple[int, int]) -> Tuple[int, int]:
+        if not isinstance(frame_range, (tuple, list)):
+            raise TypeError(
+                f'frame_range has to be a tuple or a list. Given type "{type(frame_range)}".'
+            )
+
+        if (
+            len(frame_range) != 2
+            or not isinstance(frame_range[0], int)
+            or not isinstance(frame_range[1], int)
+        ):
+            raise ValueError("frame_range has to be a tuple or a list with 2 int values.")
+        return list(frame_range)
+
     def to_json(self, key_id_map: Optional[KeyIdMap] = None) -> Dict:
         """
-        Convert the VideoTag to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert the VideoTag to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param key_id_map: Key ID Map object.
         :type key_id_map: KeyIdMap, optional
@@ -127,6 +207,11 @@ class VideoTag(Tag):
             data_json = {TagJsonFields.TAG_NAME: data_json}
         if self.frame_range is not None:
             data_json[FRAME_RANGE] = self.frame_range
+
+        if self.is_finished is not None:
+            data_json[ApiField.IS_FINISHED] = self.is_finished
+        if self.non_final_value is not None:
+            data_json[ApiField.NON_FINAL_VALUE] = self.non_final_value
         data_json[KEY] = self.key().hex
 
         if key_id_map is not None:
@@ -137,9 +222,14 @@ class VideoTag(Tag):
         return data_json
 
     @classmethod
-    def from_json(cls, data: Dict, tag_meta_collection: TagMetaCollection, key_id_map: Optional[KeyIdMap] = None) -> VideoTag:
+    def from_json(
+        cls,
+        data: Dict,
+        tag_meta_collection: TagMetaCollection,
+        key_id_map: Optional[KeyIdMap] = None,
+    ) -> VideoTag:
         """
-        Convert a json dict to VideoTag. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert a json dict to VideoTag. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: VideoTag in json format as a dict.
         :type data: dict
@@ -171,13 +261,25 @@ class VideoTag(Tag):
         """
         temp = super(VideoTag, cls).from_json(data, tag_meta_collection)
         frame_range = data.get(FRAME_RANGE, None)
+        is_finished = data.get(ApiField.IS_FINISHED, True)
+        non_final_value = data.get(ApiField.NON_FINAL_VALUE, False)
         key = uuid.UUID(data[KEY]) if KEY in data else uuid.uuid4()
 
         if key_id_map is not None:
             key_id_map.add_tag(key, data.get(ID, None))
 
-        return cls(meta=temp.meta, value=temp.value, frame_range=frame_range, key=key,
-                   sly_id=temp.sly_id, labeler_login=temp.labeler_login, updated_at=temp.updated_at, created_at=temp.created_at)
+        return cls(
+            meta=temp.meta,
+            value=temp.value,
+            frame_range=frame_range,
+            key=key,
+            sly_id=temp.sly_id,
+            labeler_login=temp.labeler_login,
+            updated_at=temp.updated_at,
+            created_at=temp.created_at,
+            is_finished=is_finished,
+            non_final_value=non_final_value,
+        )
 
     def get_compact_str(self) -> str:
         """
@@ -199,6 +301,10 @@ class VideoTag(Tag):
         res = super(VideoTag, self).get_compact_str()
         if self.frame_range is not None:
             res = "{}[{} - {}]".format(res, self.frame_range[0], self.frame_range[1])
+        if self.is_finished is False:
+            res += " (unfinished)"
+        if self.non_final_value is True:
+            res += " (non-final value)"
         return res
 
     def __eq__(self, other: VideoTag) -> bool:
@@ -233,14 +339,33 @@ class VideoTag(Tag):
             # Compare unidentical Tags
             print(tag_lemon_1 == tag_cucumber)     # False
         """
-        return isinstance(other, VideoTag) and \
-               self.meta == other.meta and \
-               self.value == other.value and \
-               self.frame_range == other.frame_range
+        unfinished_tag_comparison = True
+        if self._SUPPORT_UNFINISHED_TAGS:
+            unfinished_tag_comparison = (
+                self.is_finished == other.is_finished
+                and self.non_final_value == other.non_final_value
+            )
+        return (
+            isinstance(other, VideoTag)
+            and self.meta == other.meta
+            and self.value == other.value
+            and self.frame_range == other.frame_range
+            and unfinished_tag_comparison
+        )
 
-    def clone(self, meta: Optional[TagMeta] = None, value: Optional[Union[str, int, float]] = None, frame_range: Optional[Tuple[int, int]] = None,
-              key: Optional[uuid.UUID] = None, sly_id: Optional[int] = None, labeler_login: Optional[str] = None,
-              updated_at: Optional[str] = None, created_at: Optional[str] = None) -> VideoTag:
+    def clone(
+        self,
+        meta: Optional[TagMeta] = None,
+        value: Optional[Union[str, int, float]] = None,
+        frame_range: Optional[Tuple[int, int]] = None,
+        key: Optional[uuid.UUID] = None,
+        sly_id: Optional[int] = None,
+        labeler_login: Optional[str] = None,
+        updated_at: Optional[str] = None,
+        created_at: Optional[str] = None,
+        is_finished: Optional[bool] = None,
+        non_final_value: Optional[bool] = None,
+    ) -> VideoTag:
         """
         Makes a copy of VideoTag with new fields, if fields are given, otherwise it will use fields of the original VideoTag.
 
@@ -260,6 +385,10 @@ class VideoTag(Tag):
         :type updated_at: str, optional
         :param created_at: Date and Time when VideoTag was created. Date Format is the same as in "updated_at" parameter.
         :type created_at: str, optional
+        :param is_finished: Video Tag is finished or not (applicable for range tags).
+        :type is_finished: bool, optional
+        :param non_final_value: Video Tag value is final or not (applicable for range tags).
+        :type non_final_value: bool, optional
         :Usage example:
 
          .. code-block:: python
@@ -292,19 +421,48 @@ class VideoTag(Tag):
             sly_id=take_with_default(sly_id, self.sly_id),
             labeler_login=take_with_default(labeler_login, self.labeler_login),
             updated_at=take_with_default(updated_at, self.updated_at),
-            created_at=take_with_default(created_at, self.created_at)
+            created_at=take_with_default(created_at, self.created_at),
+            is_finished=take_with_default(is_finished, self.is_finished),
+            non_final_value=take_with_default(non_final_value, self.non_final_value),
         )
 
     def __str__(self):
         # pylint: disable=too-many-format-args
-        return '{:<7s}{:<10}{:<7s} {:<13}{:<7s} {:<10} {:<12}'.format('Name:', self._meta.name,
-                                                               'Value type:', self._meta.value_type,
-                                                               'Value:', str(self.value),
-                                                               'FrameRange', str(self.frame_range))
+        s = "{:<7s}{:<10}{:<7s} {:<13}{:<7s} {:<10} {:<12}".format(
+            "Name:",
+            self._meta.name,
+            "Value type:",
+            self._meta.value_type,
+            "Value:",
+            str(self.value),
+            "FrameRange",
+            str(self.frame_range),
+        )
+        if self._SUPPORT_UNFINISHED_TAGS:
+            s += "{:<7s} {:<10} {:<12}".format(
+                "Is finished:",
+                str(self.is_finished),
+                "Non final value:",
+                str(self.non_final_value),
+            )
+
+        return s
 
     @classmethod
     def get_header_ptable(cls) -> List[str]:
-        return ['Name', 'Value type', 'Value', 'Frame range']
+        header = ["Name", "Value type", "Value", "Frame range"]
+        if cls._SUPPORT_UNFINISHED_TAGS:
+            header += ["Is finished", "Non final value"]
+        return header
 
     def get_row_ptable(self) -> List[str]:
-        return [self._meta.name, self._meta.value_type, self.value, self.frame_range]
+        row = [
+            self._meta.name,
+            self._meta.value_type,
+            self.value,
+            self.frame_range,
+        ]
+        if self._SUPPORT_UNFINISHED_TAGS:
+            row += [self.is_finished, self.non_final_value]
+
+        return row

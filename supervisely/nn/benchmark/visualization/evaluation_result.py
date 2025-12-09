@@ -13,7 +13,7 @@ from supervisely.app.widgets import SlyTqdm
 from supervisely.io.env import team_id
 from supervisely.io.fs import dir_empty, mkdir
 from supervisely.io.json import load_json_file
-from supervisely.nn.benchmark.utils.detection.metric_provider import MetricProvider
+from supervisely.nn.benchmark.object_detection.metric_provider import MetricProvider
 from supervisely.nn.benchmark.visualization.vis_click_data import ClickData, IdMapper
 from supervisely.sly_logger import logger
 from supervisely.task.progress import tqdm_sly
@@ -218,9 +218,7 @@ class EvalResult:
             )
 
         self.mp = MetricProvider(
-            self.eval_data["matches"],
-            self.eval_data["coco_metrics"],
-            self.eval_data["params"],
+            self.eval_data,
             self.coco_gt,
             self.coco_dt,
         )

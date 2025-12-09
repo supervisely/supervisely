@@ -14,12 +14,17 @@ class ExplorePredictions(DetectionVisMetric):
 
     @property
     def md(self) -> MarkdownWidget:
-        text = self.vis_texts.markdown_explorer
+        conf_threshold_info = "Differences are calculated only for the optimal confidence threshold, allowing you to focus on the most accurate predictions made by the model."
+        if self.eval_result.mp.custom_conf_threshold is not None:
+            conf_threshold_info = (
+                "Differences are calculated for the custom confidence threshold (set manually)."
+            )
+        text = self.vis_texts.markdown_explorer.format(conf_threshold_info)
+
         return MarkdownWidget(self.MARKDOWN, "Explore Predictions", text)
 
     def gallery(self, opacity) -> GalleryWidget:
-        optimal_conf = self.eval_result.mp.f1_optimal_conf
-        default_filters = [{"confidence": [optimal_conf, 1]}]
+        default_filters = [{"confidence": [self.eval_result.mp.conf_threshold, 1]}]
         gallery = GalleryWidget(
             self.GALLERY, columns_number=3, filters=default_filters, opacity=opacity
         )
@@ -62,7 +67,7 @@ class ExplorePredictions(DetectionVisMetric):
             {
                 "type": "tag",
                 "tagId": "confidence",
-                "value": [self.eval_result.mp.f1_optimal_conf, 1],
+                "value": [self.eval_result.mp.conf_threshold, 1],
             }
         ]
         explore["title"] = "Explore all predictions"
@@ -89,7 +94,7 @@ class ExplorePredictions(DetectionVisMetric):
             {
                 "type": "tag",
                 "tagId": "confidence",
-                "value": [self.eval_result.mp.f1_optimal_conf, 1],
+                "value": [self.eval_result.mp.conf_threshold, 1],
             },
         ]
         for pairs_data in self.eval_result.matched_pair_data.values():

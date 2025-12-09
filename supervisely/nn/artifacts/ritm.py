@@ -10,6 +10,9 @@ class RITM(BaseTrainArtifacts):
         super().__init__(team_id)
 
         self._app_name = "Train RITM"
+        self._slug = "supervisely-ecosystem/ritm-training/supervisely/train"
+        self._serve_app_name = None
+        self._serve_slug = None
         self._framework_name = "RITM"
         self._framework_folder = "/RITM_training"
         self._weights_folder = "checkpoints"
@@ -18,6 +21,8 @@ class RITM(BaseTrainArtifacts):
         self._weights_ext = ".pth"
         self._pattern = re_compile(r"^/RITM_training/\d+_[^/]+/?$")
         self._available_task_types: List[str] = ["interactive segmentation"]
+        self._require_runtime = False
+        self._has_benchmark_evaluation = False
 
     def get_task_id(self, artifacts_folder: str) -> str:
         parts = artifacts_folder.split("/")

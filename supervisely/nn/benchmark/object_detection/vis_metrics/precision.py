@@ -26,11 +26,21 @@ class Precision(DetectionVisMetric):
     @property
     def notification(self) -> NotificationWidget:
         title, desc = self.vis_texts.notification_precision.values()
-        tp_plus_fp = self.eval_result.mp.TP_count + self.eval_result.mp.FP_count
+        mp = self.eval_result.mp
+        tp_plus_fp = mp.TP_count + mp.FP_count
+        precision = mp.base_metrics()["precision"].round(2)
+        if mp.average_across_iou_thresholds:
+            iou_text = "[0.5,0.55,...,0.95]"
+        else:
+            if mp.iou_threshold_per_class is not None:
+                iou_text = "custom"
+            else:
+                iou_text = mp.iou_threshold
+        title = f"Precision (IoU={iou_text}) = {precision}"
         return NotificationWidget(
             self.NOTIFICATION,
-            title.format(self.eval_result.mp.base_metrics()["precision"].round(2)),
-            desc.format(self.eval_result.mp.TP_count, tp_plus_fp),
+            title,
+            desc.format(mp.TP_count, tp_plus_fp),
         )
 
     @property
@@ -51,9 +61,9 @@ class Precision(DetectionVisMetric):
     def _get_figure(self):  #  -> go.Figure
         import plotly.express as px  # pylint: disable=import-error
 
-        sorted_by_precision = self.eval_result.mp.per_class_metrics().sort_values(by="precision")
+        sorted_by_f1 = self.eval_result.mp.per_class_metrics().sort_values(by="f1")
         fig = px.bar(
-            sorted_by_precision,
+            sorted_by_f1,
             x="category",
             y="precision",
             # title="Per-class Precision (Sorted by F1)",
@@ -62,14 +72,14 @@ class Precision(DetectionVisMetric):
             color_continuous_scale="Plasma",
         )
         fig.update_traces(hovertemplate="Class: %{x}<br>Precision: %{y:.2f}<extra></extra>")
-        if len(sorted_by_precision) <= 20:
+        if len(sorted_by_f1) <= 20:
             fig.update_traces(
-                text=sorted_by_precision.round(2),
+                text=sorted_by_f1["precision"].round(2),
                 textposition="outside",
             )
         fig.update_xaxes(title_text="Class")
         fig.update_yaxes(title_text="Precision", range=[0, 1])
         fig.update_layout(
-            width=700 if len(sorted_by_precision) < 10 else None,
+            width=700 if len(sorted_by_f1) < 10 else None,
         )
         return fig

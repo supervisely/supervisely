@@ -28,6 +28,8 @@ class Card(Widget):
     :type remove_padding: Optional[bool]
     :param overflow: Overflow property of the card. Can be "auto", "unset" or "scroll".
     :type overflow: Optional[Literal["auto", "unset", "scroll"]]
+    :param style: CSS styles string of the card.
+    :type style: Optional[str]
     :param widget_id: Unique widget identifier.
     :type widget_id: str
 
@@ -51,6 +53,7 @@ class Card(Widget):
         widget_id: Optional[str] = None,
         remove_padding: Optional[bool] = False,
         overflow: Optional[Literal["auto", "unset", "scroll"]] = "auto",
+        style: Optional[str] = "",
     ):
         self._title = title
         self._description = description
@@ -63,6 +66,7 @@ class Card(Widget):
         if self._slot_content is not None:
             self._show_slot = True
         self._overflow = overflow
+        self._style = style
         self._options = {
             "collapsable": self._collapsable,
             "marginBottom": "0px",
@@ -153,3 +157,23 @@ class Card(Widget):
         :rtype: bool
         """
         return self._disabled["disabled"]
+
+    @property
+    def description(self) -> Optional[str]:
+        """Description of the card.
+
+        :return: Description of the card.
+        :rtype: Optional[str]
+        """
+        return self._description
+
+    @description.setter
+    def description(self, value: str) -> None:
+        """Sets the description of the card.
+
+        :param value: Description of the card.
+        :type value: str
+        """
+        self._description = value
+        StateJson()[self.widget_id]["description"] = self._description
+        StateJson().send_changes()

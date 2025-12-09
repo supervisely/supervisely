@@ -1,8 +1,12 @@
 from __future__ import annotations
+
 import uuid
-from typing import Optional, Dict, Union, Tuple
+from typing import Dict, Optional, Tuple, Union
+
+from supervisely._utils import take_with_default
 from supervisely.annotation.tag_meta import TagMeta
 from supervisely.annotation.tag_meta_collection import TagMetaCollection
+from supervisely.api.module_api import ApiField
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.video_annotation.video_tag import VideoTag
 
@@ -27,6 +31,10 @@ class PointcloudEpisodeTag(VideoTag):
     :type updated_at: str, optional
     :param created_at: Date and Time when PointcloudEpisodeTag was created. Date Format is the same as in "updated_at" parameter.
     :type created_at: str, optional
+    :param is_finished: Pointcloud Episode Tag is finished or not (applicable for range tags).
+    :type is_finished: bool, optional
+    :param non_final_value: Pointcloud Episode Tag value is final or not. Can be useful to create tag without value.
+    :type non_final_value: bool, optional
     :Usage example:
 
      .. code-block:: python
@@ -34,7 +42,7 @@ class PointcloudEpisodeTag(VideoTag):
         import supervisely as sly
 
         meta_car = sly.TagMeta('car', sly.TagValueType.NONE)
-        # Now we can create a VideoTag using our TagMeta
+        # Now we can create a PointcloudEpisodeTag using our TagMeta
         tag_car = sly.PointcloudEpisodeTag(meta_car)
         # When you are creating a new Tag
         # Tag.value is automatically cross-checked against your TagMeta value type to make sure the value is valid.
@@ -57,6 +65,34 @@ class PointcloudEpisodeTag(VideoTag):
         # Output: ValueError: Tag car color can not have value yellow
     """
 
+    _SUPPORT_UNFINISHED_TAGS = True
+
+    def __init__(
+        self,
+        meta,
+        value=None,
+        frame_range=None,
+        key=None,
+        sly_id=None,
+        labeler_login=None,
+        updated_at=None,
+        created_at=None,
+        is_finished=None,
+        non_final_value=None,
+    ):
+        super().__init__(
+            meta,
+            value,
+            frame_range,
+            key,
+            sly_id,
+            labeler_login,
+            updated_at,
+            created_at,
+            is_finished=is_finished,
+            non_final_value=non_final_value,
+        )
+
     @classmethod
     def from_json(
         cls,
@@ -65,7 +101,7 @@ class PointcloudEpisodeTag(VideoTag):
         key_id_map: Optional[KeyIdMap] = None,
     ) -> PointcloudEpisodeTag:
         """
-        Convert a json dict to PointcloudEpisodeTag. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert a json dict to PointcloudEpisodeTag. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: PointcloudEpisodeTag in json format as a dict.
         :type data: dict
@@ -94,8 +130,22 @@ class PointcloudEpisodeTag(VideoTag):
 
             tag_car_color = sly.PointcloudEpisodeTag.from_json(tag_car_color_json, meta_car_collection)
         """
+        is_finished = data.get(ApiField.IS_FINISHED, True)
+        non_final_value = data.get(ApiField.NON_FINAL_VALUE, False)
+        temp = super(PointcloudEpisodeTag, cls).from_json(data, tag_meta_collection, key_id_map)
 
-        return super().from_json(data, tag_meta_collection, key_id_map=key_id_map)
+        return cls(
+            meta=temp.meta,
+            value=temp.value,
+            frame_range=temp.frame_range,
+            key=temp.key(),
+            sly_id=temp.sly_id,
+            labeler_login=temp.labeler_login,
+            updated_at=temp.updated_at,
+            created_at=temp.created_at,
+            is_finished=is_finished,
+            non_final_value=non_final_value,
+        )
 
     def __eq__(self, other: PointcloudEpisodeTag) -> bool:
         return super().__eq__(other)
@@ -110,6 +160,8 @@ class PointcloudEpisodeTag(VideoTag):
         labeler_login: Optional[str] = None,
         updated_at: Optional[str] = None,
         created_at: Optional[str] = None,
+        is_finished: Optional[bool] = None,
+        non_final_value: Optional[bool] = None,
     ) -> PointcloudEpisodeTag:
         """
         Makes a copy of PointcloudEpisodeTag with new fields, if fields are given, otherwise it will use fields of the original PointcloudEpisodeTag.
@@ -130,6 +182,10 @@ class PointcloudEpisodeTag(VideoTag):
         :type updated_at: str, optional
         :param created_at: Date and Time when PointcloudEpisodeTag was created. Date Format is the same as in "updated_at" parameter.
         :type created_at: str, optional
+        :param is_finished: Pointcloud Episode Tag is finished or not (applicable for range tags).
+        :type is_finished: bool, optional
+        :param non_final_value: Pointcloud Episode Tag value is final or not. Can be useful to create tag without value.
+        :type non_final_value: bool, optional
         :Usage example:
 
          .. code-block:: python
@@ -154,13 +210,15 @@ class PointcloudEpisodeTag(VideoTag):
             # }
         """
 
-        return super().clone(
-            meta=meta,
-            value=value,
-            frame_range=frame_range,
-            key=key,
-            sly_id=sly_id,
-            labeler_login=labeler_login,
-            updated_at=updated_at,
-            created_at=created_at,
+        return self.__class__(
+            meta=take_with_default(meta, self.meta),
+            value=take_with_default(value, self.value),
+            frame_range=take_with_default(frame_range, self.frame_range),
+            key=take_with_default(key, self.key()),
+            sly_id=take_with_default(sly_id, self.sly_id),
+            labeler_login=take_with_default(labeler_login, self.labeler_login),
+            updated_at=take_with_default(updated_at, self.updated_at),
+            created_at=take_with_default(created_at, self.created_at),
+            is_finished=take_with_default(is_finished, self.is_finished),
+            non_final_value=take_with_default(non_final_value, self.non_final_value),
         )

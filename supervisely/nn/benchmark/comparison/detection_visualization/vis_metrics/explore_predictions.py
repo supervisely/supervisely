@@ -76,7 +76,7 @@ class ExplorePredictions(BaseVisMetrics):
             anns = eval_res.api.annotation.download_batch(dataset_info.id, images_ids, force_metadata_for_links=False)
             annotations.append(anns)
             skip_tags_filtering.append(False)
-            min_conf = min(min_conf, eval_res.mp.f1_optimal_conf)
+            min_conf = min(min_conf, eval_res.mp.conf_threshold)
 
         images = list(i for x in zip(*images) for i in x)
         annotations = list(i for x in zip(*annotations) for i in x)
@@ -127,7 +127,7 @@ class ExplorePredictions(BaseVisMetrics):
             current_images_infos = sorted(current_images_infos, key=lambda x: names.index(x.name))
             images_ids.append([image_info.id for image_info in current_images_infos])
 
-            min_conf = min(min_conf, eval_res.mp.f1_optimal_conf)
+            min_conf = min(min_conf, eval_res.mp.conf_threshold)
 
         explore["imagesIds"] = list(i for x in zip(*images_ids) for i in x)
         explore["filters"] = [{"type": "tag", "tagId": "confidence", "value": [min_conf, 1]}]

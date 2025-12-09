@@ -4,6 +4,7 @@ from copy import deepcopy
 import numpy as np
 import pandas as pd
 
+from supervisely._utils import logger
 from supervisely.nn.benchmark.utils.detection import metrics
 
 METRIC_NAMES = {
@@ -56,7 +57,7 @@ def filter_by_conf(matches: list, conf: float):
 
 
 class MetricProvider:
-    def __init__(self, matches: list, coco_metrics: dict, params: dict, cocoGt, cocoDt):
+    def __init__(self, eval_data: dict, cocoGt, cocoDt):
         """
         Main class for calculating prediction metrics.
 
@@ -71,11 +72,16 @@ class MetricProvider:
         :param cocoDt: COCO object with predicted annotations
         :type cocoDt: COCO
         """
-        self.matches = matches
-        self.coco_metrics = coco_metrics
-        self.params = params
+        self.eval_data = eval_data
+        self.matches = eval_data["matches"]
+        self.coco_metrics = eval_data["coco_metrics"]
+        self.params = eval_data["params"]
         self.cocoGt = cocoGt
         self.cocoDt = cocoDt
+        self.coco_mAP = self.coco_metrics["mAP"]
+        self.coco_precision = self.coco_metrics["precision"]
+        self.iouThrs = self.params["iouThrs"]
+        self.recThrs = self.params["recThrs"]
 
         self.metric_names = METRIC_NAMES
 
@@ -83,34 +89,33 @@ class MetricProvider:
         self.cat_ids = cocoGt.getCatIds()
         self.cat_names = [cocoGt.cats[cat_id]["name"] for cat_id in self.cat_ids]
 
-        # eval_data
-        self.matches = matches
-        self.coco_mAP = coco_metrics["mAP"]
-        self.coco_precision = coco_metrics["precision"]
-        self.iouThrs = params["iouThrs"]
-        self.recThrs = params["recThrs"]
-
-        eval_params = params.get("evaluation_params", {})
+        # Evaluation params
+        eval_params = self.params.get("evaluation_params", {})
         self.iou_threshold = eval_params.get("iou_threshold", 0.5)
-        self.iou_threshold_idx = np.searchsorted(self.iouThrs, self.iou_threshold)
+        self.iou_threshold_idx = np.where(np.isclose(self.iouThrs, self.iou_threshold))[0][0]
+        self.iou_threshold_per_class = eval_params.get("iou_threshold_per_class")
+        self.iou_idx_per_class = self.params.get("iou_idx_per_class")  # {cat id: iou_idx}
+        self.average_across_iou_thresholds = eval_params.get("average_across_iou_thresholds", True)
 
     def calculate(self):
-        self.m_full = _MetricProvider(
-            self.matches, self.coco_metrics, self.params, self.cocoGt, self.cocoDt
-        )
+        self.m_full = _MetricProvider(self.matches, self.eval_data, self.cocoGt, self.cocoDt)
         self.m_full._calculate_score_profile()
 
         # Find optimal confidence threshold
         self.f1_optimal_conf, self.best_f1 = self.m_full.get_f1_optimal_conf()
+        self.custom_conf_threshold, self.custom_f1 = self.m_full.get_custom_conf_threshold()
+
+        # Confidence threshold that will be used in visualizations
+        self.conf_threshold = self.custom_conf_threshold or self.f1_optimal_conf
+        if self.conf_threshold is None:
+            raise RuntimeError("Model predicted no TP matches. Cannot calculate metrics.")
 
         # Filter by optimal confidence threshold
-        if self.f1_optimal_conf is not None:
-            matches_filtered = filter_by_conf(self.matches, self.f1_optimal_conf)
+        if self.conf_threshold is not None:
+            matches_filtered = filter_by_conf(self.matches, self.conf_threshold)
         else:
             matches_filtered = self.matches
-        self.m = _MetricProvider(
-            matches_filtered, self.coco_metrics, self.params, self.cocoGt, self.cocoDt
-        )
+        self.m = _MetricProvider(matches_filtered, self.eval_data, self.cocoGt, self.cocoDt)
         self.matches_filtered = matches_filtered
         self.m._init_counts()
 
@@ -142,11 +147,13 @@ class MetricProvider:
     def json_metrics(self):
         base = self.base_metrics()
         iou_name = int(self.iou_threshold * 100)
+        if self.iou_threshold_per_class is not None:
+            iou_name = "_custom"
         ap_by_class = self.AP_per_class().tolist()
         ap_by_class = dict(zip(self.cat_names, ap_by_class))
         ap_custom_by_class = self.AP_custom_per_class().tolist()
         ap_custom_by_class = dict(zip(self.cat_names, ap_custom_by_class))
-        return {
+        data = {
             "mAP": base["mAP"],
             "AP50": self.coco_metrics.get("AP50"),
             "AP75": self.coco_metrics.get("AP75"),
@@ -163,9 +170,14 @@ class MetricProvider:
             "AP_by_class": ap_by_class,
             f"AP{iou_name}_by_class": ap_custom_by_class,
         }
+        if self.custom_conf_threshold is not None:
+            data["custom_confidence_threshold"] = self.custom_conf_threshold
+        return data
 
     def key_metrics(self):
         iou_name = int(self.iou_threshold * 100)
+        if self.iou_threshold_per_class is not None:
+            iou_name = "_custom"
         json_metrics = self.json_metrics()
         json_metrics.pop("AP_by_class")
         json_metrics.pop(f"AP{iou_name}_by_class")
@@ -174,7 +186,9 @@ class MetricProvider:
     def metric_table(self):
         table = self.json_metrics()
         iou_name = int(self.iou_threshold * 100)
-        return {
+        if self.iou_threshold_per_class is not None:
+            iou_name = "_custom"
+        data = {
             "mAP": table["mAP"],
             "AP50": table["AP50"],
             "AP75": table["AP75"],
@@ -185,19 +199,28 @@ class MetricProvider:
             "Avg. IoU": table["iou"],
             "Classification Acc.": table["classification_accuracy"],
             "Calibration Score": table["calibration_score"],
-            "optimal confidence threshold": table["f1_optimal_conf"],
+            "Optimal confidence threshold": table["f1_optimal_conf"],
         }
+        if self.custom_conf_threshold is not None:
+            data["Custom confidence threshold"] = table["custom_confidence_threshold"]
+        return data
 
     def AP_per_class(self):
-        s = self.coco_precision[:, :, :, 0, 2]
+        s = self.coco_precision[:, :, :, 0, 2].copy()
         s[s == -1] = np.nan
         ap = np.nanmean(s, axis=(0, 1))
+        ap = np.nan_to_num(ap, nan=0)
         return ap
 
     def AP_custom_per_class(self):
         s = self.coco_precision[self.iou_threshold_idx, :, :, 0, 2]
+        s = s.copy()
+        if self.iou_threshold_per_class is not None:
+            for cat_id, iou_idx in self.iou_idx_per_class.items():
+                s[:, cat_id - 1] = self.coco_precision[iou_idx, :, cat_id - 1, 0, 2]
         s[s == -1] = np.nan
         ap = np.nanmean(s, axis=0)
+        ap = np.nan_to_num(ap, nan=0)
         return ap
 
     def AP_custom(self):
@@ -243,24 +266,26 @@ class MetricProvider:
 
 
 class _MetricProvider:
-    def __init__(self, matches: list, coco_metrics: dict, params: dict, cocoGt, cocoDt):
+    def __init__(self, matches: list, eval_data: dict, cocoGt, cocoDt):
         """
         type cocoGt: COCO
         type cocoDt: COCO
         """
 
+        self.matches = matches
+        self.eval_data = eval_data
+        self.coco_metrics = eval_data["coco_metrics"]
+        self.params = eval_data["params"]
         self.cocoGt = cocoGt
+        self.cocoDt = cocoDt
+        self.coco_mAP = self.coco_metrics["mAP"]
+        self.coco_precision = self.coco_metrics["precision"]
+        self.iouThrs = self.params["iouThrs"]
+        self.recThrs = self.params["recThrs"]
 
         # metainfo
         self.cat_ids = cocoGt.getCatIds()
         self.cat_names = [cocoGt.cats[cat_id]["name"] for cat_id in self.cat_ids]
-
-        # eval_data
-        self.matches = matches
-        self.coco_mAP = coco_metrics["mAP"]
-        self.coco_precision = coco_metrics["precision"]
-        self.iouThrs = params["iouThrs"]
-        self.recThrs = params["recThrs"]
 
         # Matches
         self.tp_matches = [m for m in self.matches if m["type"] == "TP"]
@@ -269,6 +294,13 @@ class _MetricProvider:
         self.confused_matches = [m for m in self.fp_matches if m["miss_cls"]]
         self.fp_not_confused_matches = [m for m in self.fp_matches if not m["miss_cls"]]
         self.ious = np.array([m["iou"] for m in self.tp_matches])
+
+        # Evaluation params
+        self.iou_idx_per_class = np.array(
+            [self.params["iou_idx_per_class"][cat_id] for cat_id in self.cat_ids]
+        )[:, None]
+        eval_params = self.params.get("evaluation_params", {})
+        self.average_across_iou_thresholds = eval_params.get("average_across_iou_thresholds", True)
 
     def _init_counts(self):
         cat_ids = self.cat_ids
@@ -311,14 +343,29 @@ class _MetricProvider:
         self.true_positives = true_positives
         self.false_negatives = false_negatives
         self.false_positives = false_positives
-        self.TP_count = int(self.true_positives[:, 0].sum(0))
-        self.FP_count = int(self.false_positives[:, 0].sum(0))
-        self.FN_count = int(self.false_negatives[:, 0].sum(0))
+        self.TP_count = int(self._take_iou_thresholds(true_positives).sum())
+        self.FP_count = int(self._take_iou_thresholds(false_positives).sum())
+        self.FN_count = int(self._take_iou_thresholds(false_negatives).sum())
+
+        # self.true_positives = self.eval_data["true_positives"]
+        # self.false_negatives = self.eval_data["false_negatives"]
+        # self.false_positives = self.eval_data["false_positives"]
+        # self.TP_count = int(self._take_iou_thresholds(self.true_positives).sum())
+        # self.FP_count = int(self._take_iou_thresholds(self.false_positives).sum())
+        # self.FN_count = int(self._take_iou_thresholds(self.false_negatives).sum())
+
+    def _take_iou_thresholds(self, x):
+        return np.take_along_axis(x, self.iou_idx_per_class, axis=1)
 
     def base_metrics(self):
-        tp = self.true_positives
-        fp = self.false_positives
-        fn = self.false_negatives
+        if self.average_across_iou_thresholds:
+            tp = self.true_positives
+            fp = self.false_positives
+            fn = self.false_negatives
+        else:
+            tp = self._take_iou_thresholds(self.true_positives)
+            fp = self._take_iou_thresholds(self.false_positives)
+            fn = self._take_iou_thresholds(self.false_negatives)
         confuse_count = len(self.confused_matches)
 
         mAP = self.coco_mAP
@@ -341,9 +388,14 @@ class _MetricProvider:
         }
 
     def per_class_metrics(self):
-        tp = self.true_positives.mean(1)
-        fp = self.false_positives.mean(1)
-        fn = self.false_negatives.mean(1)
+        if self.average_across_iou_thresholds:
+            tp = self.true_positives.mean(1)
+            fp = self.false_positives.mean(1)
+            fn = self.false_negatives.mean(1)
+        else:
+            tp = self._take_iou_thresholds(self.true_positives).flatten()
+            fp = self._take_iou_thresholds(self.false_positives).flatten()
+            fn = self._take_iou_thresholds(self.false_negatives).flatten()
         pr = tp / (tp + fp)
         rc = tp / (tp + fn)
         f1 = 2 * pr * rc / (pr + rc)
@@ -518,6 +570,16 @@ class _MetricProvider:
         f1_optimal_conf = self.score_profile["scores"][argmax]
         best_f1 = self.score_profile["f1"][argmax]
         return f1_optimal_conf, best_f1
+
+    def get_custom_conf_threshold(self):
+        if (~np.isnan(self.score_profile["f1"])).sum() == 0:
+            return None, None
+        conf_threshold = self.params.get("evaluation_params", {}).get("confidence_threshold")
+        if conf_threshold is not None and conf_threshold != "auto":
+            idx = np.argmin(np.abs(self.score_profile["scores"] - conf_threshold))
+            custom_f1 = self.score_profile["f1"][idx]
+            return conf_threshold, custom_f1
+        return None, None
 
     def calibration_curve(self):
         from sklearn.calibration import (  # pylint: disable=import-error

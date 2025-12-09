@@ -120,69 +120,14 @@ class OutcomeCounts(DetectionVisMetric):
                 "title"
             ] = f"{outcome}: {len(matches_data)} object{'s' if len(matches_data) > 1 else ''}"
             res["clickData"][outcome]["imagesIds"] = list(img_ids)
+
             res["clickData"][outcome]["filters"] = [
                 {
                     "type": "tag",
                     "tagId": "confidence",
-                    "value": [self.eval_result.mp.f1_optimal_conf, 1],
+                    "value": [self.eval_result.mp.conf_threshold, 1],
                 },
                 {"type": "tag", "tagId": "outcome", "value": outcome},
             ]
 
         return res
-
-    # def get_diff_data(self) -> Dict:
-    #     res = {}
-
-    #     res["layoutTemplate"] = [
-    #         {"skipObjectTagsFiltering": True, "columnTitle": "Ground Truth"},
-    #         {"skipObjectTagsFiltering": ["outcome"], "columnTitle": "Prediction"},
-    #         {"skipObjectTagsFiltering": ["confidence"], "columnTitle": "Difference"},
-    #     ]
-
-    #     click_data = res.setdefault("clickData", {})
-    #     for outcome, matches_data in self.eval_result.click_data.outcome_counts.items():
-    #         filters = [
-    #             {
-    #                 "type": "tag",
-    #                 "tagId": "confidence",
-    #                 "value": [self.eval_result.mp.f1_optimal_conf, 1],
-    #             },
-    #             {"type": "tag", "tagId": "outcome", "value": outcome},
-    #         ]
-    #         for match_data in matches_data:
-    #             pairs_data = self.eval_result.matched_pair_data[match_data["gt_img_id"]]
-    #             gt = pairs_data.gt_image_info
-    #             pred = pairs_data.pred_image_info
-    #             diff = pairs_data.diff_image_info
-    #             assert gt.name == pred.name == diff.name
-    #             for img_id in [pred.id, diff.id]:
-    #                 key = click_data.setdefault(str(img_id), {})
-    #                 key["imagesIds"] = [gt.id, pred.id, diff.id]
-    #                 key["filters"] = filters
-    #                 key["title"] = f"Image: {gt.name}"
-
-    #                 object_bindings = []
-    #                 for img in [pred, diff]:
-    #                     if img == pred:
-    #                         ann_json = pairs_data.pred_annotation.to_json()
-    #                     else:
-    #                         ann_json = pairs_data.diff_annotation.to_json()
-    #                     for obj in ann_json["objects"]:
-    #                         for tag in obj["tags"]:
-    #                             if tag["name"] == "matched_gt_id":
-    #                                 object_bindings.append(
-    #                                     [
-    #                                         {
-    #                                             "id": obj["id"],
-    #                                             "annotationKey": img.id,
-    #                                         },
-    #                                         {
-    #                                             "id": int(tag["value"]),
-    #                                             "annotationKey": gt.id if img == pred else pred.id,
-    #                                         },
-    #                                     ]
-    #                                 )
-    #                 key["objectsBindings"] = object_bindings
-
-    #     return res

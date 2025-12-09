@@ -14,6 +14,7 @@ from supervisely.nn.benchmark.utils import calculate_metrics, read_coco_datasets
 
 class InstanceSegmentationEvalResult(ObjectDetectionEvalResult):
     mp_cls = MetricProvider
+    PRIMARY_METRIC = "mAP"
 
     @classmethod
     def from_evaluator(

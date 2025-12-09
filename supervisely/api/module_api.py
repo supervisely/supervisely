@@ -3,7 +3,16 @@ import asyncio
 from collections import namedtuple
 from copy import deepcopy
 from math import ceil
-from typing import TYPE_CHECKING, Any, AsyncGenerator, List, NamedTuple, Optional, Tuple
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    AsyncGenerator,
+    Dict,
+    List,
+    NamedTuple,
+    Optional,
+    Tuple,
+)
 
 import requests
 
@@ -602,6 +611,111 @@ class ApiField:
     """"""
     WITH_SHARED = "withShared"
     """"""
+    USE_DIRECT_PROGRESS_MESSAGES = "useDirectProgressMessages"
+    """"""
+    EXTRA_FIELDS = "extraFields"
+    """"""
+    CUSTOM_SORT = "customSort"
+    """"""
+    GROUP_ID = "groupId"
+    """"""
+    EXPERIMENT = "experiment"
+    """"""
+    IS_FINISHED = "isFinished"
+    """"""
+    NON_FINAL_VALUE = "nonFinalValue"
+    """"""
+    HOTKEY = "hotkey"
+    """"""
+    RELATED_DATA_ID = "relatedDataId"
+    """"""
+    DOWNLOAD_ID = "downloadId"
+    """"""
+    OFFSET_START = "offsetStart"
+    """"""
+    OFFSET_END = "offsetEnd"
+    """"""
+    SOURCE_BLOB = "sourceBlob"
+    """"""
+    JOBS = "jobs"
+    """"""
+    LABELERS = "labelers"
+    """"""
+    REVIEWERS = "reviewers"
+    """"""
+    REVIEWER_IDS = "reviewerIds"
+    """"""
+    ENTITIES_COUNT = "entitiesCount"
+    """"""
+    ACCEPTED_COUNT = "acceptedCount"
+    """"""
+    ANNOTATED_COUNT = "annotatedCount"
+    """"""
+    IN_PROGRESS_COUNT = "inProgressCount"
+    """"""
+    PENDING_COUNT = "pendingCount"
+    """"""
+    QUEUE_META = "queueMeta"
+    """"""
+    ENTITY_IDS = "entityIds"
+    """"""
+    COLLECTION_ID = "collectionId"
+    """"""
+    QUALITY_CHECK_USER_IDS = "qualityCheckUserIds"
+    """"""
+    EMBEDDINGS = "embeddings"
+    """"""
+    EMBEDDINGS_ENABLED = "embeddingsEnabled"
+    """"""
+    EMBEDDINGS_UPDATED_AT = "embeddingsUpdatedAt"
+    """"""
+    EMBEDDINGS_IN_PROGRESS = "embeddingsInProgress"
+    """"""
+    AI_SEARCH_KEY = "aiSearchKey"
+    """"""
+    AI_SEARCH_META = "aiSearchMeta"
+    """"""
+    ENTITY_ITEMS = "entityItems"
+    """"""
+    SCORE = "score"
+    """"""
+    HARD_DELETE = "hardDelete"
+    """"""
+    THRESHOLD = "threshold"
+    """"""
+    THRESHOLD_DIRECTION = "thresholdDirection"
+    """"""
+    METHOD = "method"
+    """"""
+    PROMPT = "prompt"
+    """"""
+    UPDATE_STRATEGY = "updateStrategy"
+    """"""
+    FILE_PATH = "filePath"
+    """"""
+    FILE_KEY = "fileKey"
+    """"""
+    LOCAL_ENTITIES_COUNT = "localEntitiesCount"
+    """"""
+    REMOTE_ENTITIES_COUNT = "remoteEntitiesCount"
+    """"""
+    RESTRICTED_IMAGE_IDS = "restrictedImageIds"
+    """"""
+    NUMBER_OF_CLUSTERS = "numberOfClusters"
+    """"""
+    CLUSTERING_METHOD = "clusteringMethod"
+    """"""
+    ERROR_MESSAGE = "errorMessage"
+    """"""
+    UNIQUE_ITEMS = "uniqueItems"
+    """"""
+    NN_CREATED = "nnCreated"
+    """"""
+    NN_UPDATED = "nnUpdated"
+    """"""
+    M_GUIDE_ID = (["meta", "guide"], "guide_id")
+    """"""
+    GUIDE_ID = "guideId"
 
 
 def _get_single_item(items):
@@ -857,6 +971,29 @@ class ModuleApiBase(_JsonConvertibleModule):
                     raise RuntimeError("Can not parse field {!r}".format(field_name))
             return self.InfoType(*field_values)
 
+    @classmethod
+    def convert_info_to_json(cls, info: NamedTuple) -> Dict:
+        """_convert_info_to_json"""
+
+        def _create_nested_dict(keys, value):
+            if len(keys) == 1:
+                return {keys[0]: value}
+            else:
+                return {keys[0]: _create_nested_dict(keys[1:], value)}
+
+        json_info = {}
+        for field_name, value in zip(cls.info_sequence(), info):
+            if type(field_name) is str:
+                json_info[field_name] = value
+            elif isinstance(field_name, tuple):
+                if len(field_name[0]) == 0:
+                    json_info[field_name[1]] = value
+                else:
+                    json_info.update(_create_nested_dict(field_name[0], value))
+            else:
+                raise RuntimeError("Can not parse field {!r}".format(field_name))
+        return json_info
+
     def _get_response_by_id(self, id, method, id_field, fields=None):
         """_get_response_by_id"""
         try:
@@ -999,7 +1136,7 @@ class ModuleApi(ModuleApiBase):
             import supervisely as sly
 
             # You can connect to API directly
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -1049,7 +1186,7 @@ class ModuleApi(ModuleApiBase):
             import supervisely as sly
 
             # You can connect to API directly
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -1088,7 +1225,7 @@ class ModuleApi(ModuleApiBase):
             import supervisely as sly
 
             # You can connect to API directly
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -1124,7 +1261,7 @@ class ModuleApi(ModuleApiBase):
             import supervisely as sly
 
             # You can connect to API directly
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -1409,7 +1546,7 @@ class RemoveableBulkModuleApi(ModuleApi):
             import supervisely as sly
 
             # You can connect to API directly
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -1443,7 +1580,7 @@ class RemoveableBulkModuleApi(ModuleApi):
             import supervisely as sly
 
             # You can connect to API directly
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 

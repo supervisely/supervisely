@@ -99,7 +99,7 @@ class ModelPredictions(DetectionVisMetric):
             {
                 "type": "tag",
                 "tagId": "confidence",
-                "value": [self.eval_result.mp.f1_optimal_conf, 1],
+                "value": [self.eval_result.mp.conf_threshold, 1],
             },
             # {"type": "tag", "tagId": "outcome", "value": "FP"},
         ]

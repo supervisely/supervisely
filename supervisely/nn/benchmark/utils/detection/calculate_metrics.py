@@ -3,9 +3,15 @@ from typing import Callable, List, Literal, Optional
 
 import numpy as np
 
+from supervisely.nn.benchmark.utils.detection.coco_eval import (
+    COCO,
+    SlyCOCOeval,
+    pycocotools_installed,
+)
+
 
 def set_cocoeval_params(
-    cocoeval,
+    cocoeval: SlyCOCOeval,
     parameters: dict,
 ):
     """
@@ -28,8 +34,8 @@ def set_cocoeval_params(
 
 
 def calculate_metrics(
-    cocoGt,
-    cocoDt,
+    cocoGt: COCO,
+    cocoDt: COCO,
     iouType: Literal["bbox", "segm"],
     progress_cb: Optional[Callable] = None,
     evaluation_params: Optional[dict] = None,
@@ -48,9 +54,14 @@ def calculate_metrics(
     :return: Results of the evaluation
     :rtype: dict
     """
-    from pycocotools.cocoeval import COCOeval  # pylint: disable=import-error
+    if not pycocotools_installed:
+        raise ImportError("pycocotools is not installed")
 
-    cocoEval = COCOeval(cocoGt, cocoDt, iouType=iouType)
+    evaluation_params = evaluation_params or {}
+    max_dets = evaluation_params.get("max_detections", 100)
+
+    cocoEval = SlyCOCOeval(cocoGt, cocoDt, iouType=iouType)
+    cocoEval.params.maxDets[-1] = max_dets
     cocoEval.evaluate()
     progress_cb(1) if progress_cb is not None else None
     cocoEval.accumulate()
@@ -58,31 +69,47 @@ def calculate_metrics(
     cocoEval.summarize()
 
     # For classification metrics
-    cocoEval_cls = COCOeval(cocoGt, cocoDt, iouType=iouType)
+    cocoEval_cls = SlyCOCOeval(cocoGt, cocoDt, iouType=iouType)
     cocoEval_cls.params.useCats = 0
+    cocoEval_cls.params.maxDets[-1] = max_dets
     cocoEval_cls.evaluate()
     progress_cb(1) if progress_cb is not None else None
     cocoEval_cls.accumulate()
     progress_cb(1) if progress_cb is not None else None
     cocoEval_cls.summarize()
 
-    iou_t = 0
-    is_custom_iou_threshold = (
-        evaluation_params is not None
-        and evaluation_params.get("iou_threshold")
-        and evaluation_params["iou_threshold"] != 0.5
-    )
-    if is_custom_iou_threshold:
-        iou_t = np.where(cocoEval.params.iouThrs == evaluation_params["iou_threshold"])[0][0]
+    iouThrs = cocoEval.params.iouThrs
+    iou_threshold = evaluation_params.get("iou_threshold", 0.5)
+    iou_threshold_per_class = evaluation_params.get("iou_threshold_per_class")
+    if iou_threshold_per_class is not None:
+        iou_idx_per_class = {
+            cocoGt.getCatIds(catNms=[class_name])[0]: np.where(np.isclose(iouThrs, iou_thres))[0][0]
+            for class_name, iou_thres in iou_threshold_per_class.items()
+        }
+    else:
+        iou_idx = np.where(np.isclose(iouThrs, iou_threshold))[0][0]
+        iou_idx_per_class = {cat_id: iou_idx for cat_id in cocoGt.getCatIds()}
+
+    # TODO: Add support for average_across_iou_thresholds
+    if iou_threshold_per_class is not None or iou_threshold != 0.5:
+        average_across_iou_thresholds = False
+        evaluation_params["average_across_iou_thresholds"] = average_across_iou_thresholds
 
     eval_img_dict = get_eval_img_dict(cocoEval)
     eval_img_dict_cls = get_eval_img_dict(cocoEval_cls)
-    matches = get_matches(eval_img_dict, eval_img_dict_cls, cocoEval_cls, iou_t=iou_t)
+    matches = get_matches(
+        eval_img_dict,
+        eval_img_dict_cls,
+        cocoEval_cls,
+        iou_idx_per_class=iou_idx_per_class,
+    )
+    # true_positives, false_positives, false_negatives = get_counts(eval_img_dict, cocoEval_cls)
 
     params = {
         "iouThrs": cocoEval.params.iouThrs,
         "recThrs": cocoEval.params.recThrs,
-        "evaluation_params": evaluation_params or {},
+        "evaluation_params": evaluation_params,
+        "iou_idx_per_class": iou_idx_per_class,
     }
     coco_metrics = {"mAP": cocoEval.stats[0], "precision": cocoEval.eval["precision"]}
     coco_metrics["AP50"] = cocoEval.stats[1]
@@ -97,51 +124,42 @@ def calculate_metrics(
     return eval_data
 
 
-def get_counts(cocoEval):
-    """
-    true_positives, false_positives, false_negatives
+def get_counts(eval_img_dict: dict, cocoEval_cls: SlyCOCOeval):
+    if not pycocotools_installed:
+        raise ImportError("pycocotools is not installed")
 
-    type cocoEval: COCOeval
-    """
-    aRng = cocoEval.params.areaRng[0]
-    cat_ids = cocoEval.params.catIds
-    eval_imgs = [ev for ev in cocoEval.evalImgs if ev is not None and ev["aRng"] == aRng]
-
-    N = len(eval_imgs)
-    T = len(cocoEval.params.iouThrs)
-    K = max(cat_ids) + 1
-
-    true_positives = np.zeros((K, N, T))
-    false_positives = np.zeros((K, N, T))
-    false_negatives = np.zeros((K, N, T))
-
-    for i, eval_img in enumerate(eval_imgs):
-        catId = eval_img["category_id"]
-        dt_matches = eval_img["dtMatches"]
-        gt_matches = eval_img["gtMatches"]
-
-        # Ignore
-        if np.any(eval_img["gtIgnore"]):
-            dt_matches = eval_img["dtMatches"].copy()
-            dt_matches[eval_img["dtIgnore"]] = -1
-
-            gt_matches = eval_img["gtMatches"].copy()
-            gt_ignore_mask = eval_img["gtIgnore"][None,].repeat(T, axis=0).astype(bool)
-            gt_matches[gt_ignore_mask] = -1
-
-        true_positives[catId, i] = np.sum(dt_matches > 0, axis=1)
-        false_positives[catId, i] = np.sum(dt_matches == 0, axis=1)
-        false_negatives[catId, i] = np.sum(gt_matches == 0, axis=1)
-
-    return true_positives[cat_ids], false_positives[cat_ids], false_negatives[cat_ids]
+    cat_ids = cocoEval_cls.cocoGt.getCatIds()
+    iouThrs = cocoEval_cls.params.iouThrs
+    catId2idx = {cat_id: i for i, cat_id in enumerate(cat_ids)}
+    true_positives = np.zeros((len(cat_ids), len(iouThrs)))
+    false_positives = np.zeros((len(cat_ids), len(iouThrs)))
+    false_negatives = np.zeros((len(cat_ids), len(iouThrs)))
+    for img_id, eval_imgs in eval_img_dict.items():
+        for eval_img in eval_imgs:
+            cat_id = eval_img["category_id"]
+            cat_idx = catId2idx[cat_id]
+            gtIgnore = eval_img["gtIgnore"]
+            # if conf_thresh is not None:
+            #     scores = np.array(eval_img["dtScores"])
+            #     dt_conf_mask = scores < conf_thresh
+            #     dt_not_ignore[:, dt_conf_mask] = False
+            #     for idx, dt_id in enumerate(eval_img['dtIds']):
+            #         if dt_conf_mask[idx]:
+            #             eval_img["gtMatches"][eval_img["gtMatches"] == dt_id] = 0.
+            gt_not_ignore_idxs = np.where(np.logical_not(gtIgnore))[0]
+            dt_not_ignore = np.logical_not(eval_img["dtIgnore"])
+            true_positives[cat_idx] += ((eval_img["dtMatches"] > 0) & dt_not_ignore).sum(1)
+            false_positives[cat_idx] += ((eval_img["dtMatches"] == 0) & dt_not_ignore).sum(1)
+            false_negatives[cat_idx] += (eval_img["gtMatches"][:, gt_not_ignore_idxs] == 0).sum(1)
+    return true_positives.astype(int), false_positives.astype(int), false_negatives.astype(int)
 
 
-def get_counts_and_scores(cocoEval, cat_id: int, t: int):
-    """
-    tps, fps, scores, n_positives
+def get_counts_and_scores(cocoEval: SlyCOCOeval, cat_id: int, t: int):
+    """Returns tps, fps, scores, n_positives"""
 
-    type cocoEval: COCOeval
-    """
+    if not pycocotools_installed:
+        raise ImportError("pycocotools is not installed")
+
     aRng = cocoEval.params.areaRng[0]
     eval_imgs = [ev for ev in cocoEval.evalImgs if ev is not None and ev["aRng"] == aRng]
 
@@ -185,10 +203,10 @@ def get_counts_and_scores(cocoEval, cat_id: int, t: int):
     return tps, fps, scores, n_positives
 
 
-def get_eval_img_dict(cocoEval):
-    """
-    type cocoEval: COCOeval
-    """
+def get_eval_img_dict(cocoEval: SlyCOCOeval):
+    if not pycocotools_installed:
+        raise ImportError("pycocotools is not installed")
+
     aRng = cocoEval.params.areaRng[0]
     eval_img_dict = defaultdict(list)  # img_id : dt/gt
     for i, eval_img in enumerate(cocoEval.evalImgs):
@@ -204,28 +222,10 @@ def get_eval_img_dict(cocoEval):
     return eval_img_dict
 
 
-def get_eval_img_dict_cls(cocoEval_cls):
-    """
-    type cocoEval_cls: COCOeval
-    """
-    # For miss-classification
-    aRng = cocoEval_cls.params.areaRng[0]
-    eval_img_dict_cls = defaultdict(list)  # img_id : dt/gt
-    for i, eval_img in enumerate(cocoEval_cls.evalImgs):
-        if eval_img is None or eval_img["aRng"] != aRng:
-            continue
-        img_id = eval_img["image_id"]
-        cat_id = eval_img["category_id"]
-        ious = cocoEval_cls.ious[(img_id, cat_id)]
-        # ! inplace operation
-        eval_img["ious"] = ious
-        eval_img_dict_cls[img_id].append(eval_img)
-    eval_img_dict_cls = dict(eval_img_dict_cls)
-    assert np.all([len(x) == 1 for x in eval_img_dict_cls.values()])
-    return eval_img_dict_cls
+def _get_missclassified_match(eval_img_cls: SlyCOCOeval, dt_id, gtIds_orig, dtIds_orig, iou_t):
+    if not pycocotools_installed:
+        raise ImportError("pycocotools is not installed")
 
-
-def _get_missclassified_match(eval_img_cls, dt_id, gtIds_orig, dtIds_orig, iou_t):
     # Correction on miss-classification
     gt_idx = np.nonzero(eval_img_cls["gtMatches"][iou_t] == dt_id)[0]
     if len(gt_idx) == 1:
@@ -242,10 +242,15 @@ def _get_missclassified_match(eval_img_cls, dt_id, gtIds_orig, dtIds_orig, iou_t
     return None, None
 
 
-def get_matches(eval_img_dict: dict, eval_img_dict_cls: dict, cocoEval_cls, iou_t: int = 0):
-    """
-    type cocoEval_cls: COCOeval
-    """
+def get_matches(
+    eval_img_dict: dict,
+    eval_img_dict_cls: dict,
+    cocoEval_cls: SlyCOCOeval,
+    iou_idx_per_class: dict = None,
+):
+    if not pycocotools_installed:
+        raise ImportError("pycocotools is not installed")
+
     cat_ids = cocoEval_cls.cocoGt.getCatIds()
     matches = []
     for img_id, eval_imgs in eval_img_dict.items():
@@ -255,7 +260,8 @@ def get_matches(eval_img_dict: dict, eval_img_dict_cls: dict, cocoEval_cls, iou_
         gt_ids_orig_cls = [_["id"] for i in cat_ids for _ in cocoEval_cls._gts[img_id, i]]
 
         for eval_img in eval_imgs:
-
+            cat_id = eval_img["category_id"]
+            iou_t = iou_idx_per_class[cat_id]
             dtIds = np.array(eval_img["dtIds"])
             gtIds = np.array(eval_img["gtIds"])
             dtm = eval_img["dtMatches"][iou_t]
@@ -334,11 +340,10 @@ def get_matches(eval_img_dict: dict, eval_img_dict_cls: dict, cocoEval_cls, iou_
     return matches
 
 
-def get_rare_classes(cocoGt, topk_ann_fraction=0.1, topk_classes_fraction=0.2):
-    """
-    :param cocoGt: Ground truth dataset in COCO format
-    :type cocoGt: COCO
-    """
+def get_rare_classes(cocoGt: COCO, topk_ann_fraction=0.1, topk_classes_fraction=0.2):
+    if not pycocotools_installed:
+        raise ImportError("pycocotools is not installed")
+
     anns_cat_ids = [ann["category_id"] for ann in cocoGt.anns.values()]
     cat_ids, cat_counts = np.unique(anns_cat_ids, return_counts=True)
     inds_sorted = np.argsort(cat_counts)

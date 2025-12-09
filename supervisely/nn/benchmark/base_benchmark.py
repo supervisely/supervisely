@@ -1,5 +1,6 @@
 import os
-from typing import Callable, List, Optional, Tuple, Union
+from pathlib import Path
+from typing import Callable, List, Optional, Tuple, Type, Union
 
 import numpy as np
 
@@ -80,7 +81,7 @@ class BaseBenchmark:
         self.report_id = None
         self._validate_evaluation_params()
 
-    def _get_evaluator_class(self) -> type:
+    def _get_evaluator_class(self) -> Type[BaseEvaluator]:
         raise NotImplementedError()
 
     @property
@@ -95,6 +96,10 @@ class BaseBenchmark:
     def key_metrics(self):
         eval_results = self.get_eval_result()
         return eval_results.key_metrics
+
+    @property
+    def primary_metric_name(self) -> str:
+        return self._get_evaluator_class().eval_result_cls.PRIMARY_METRIC
 
     def run_evaluation(
         self,
@@ -410,7 +415,6 @@ class BaseBenchmark:
                 "id": app_info["id"],
             }
         else:
-            logger.warning("session.task_id is not set. App info will not be fetched.")
             app_info = None
         model_info = {
             **deploy_info,
@@ -492,6 +496,8 @@ class BaseBenchmark:
                 "It should be defined in the subclass of BaseBenchmark (e.g. ObjectDetectionBenchmark)."
             )
         eval_result = self.get_eval_result()
+        self._dump_key_metrics(eval_result)
+
         layout_dir = self.get_layout_results_dir()
         self.visualizer = self.visualizer_cls(  # pylint: disable=not-callable
             self.api, [eval_result], layout_dir, self.pbar
@@ -554,15 +560,20 @@ class BaseBenchmark:
     def lnk(self):
         return self.visualizer.renderer.lnk
 
-    def upload_report_link(self, remote_dir: str):
-        template_path = os.path.join(remote_dir, "template.vue")
-        vue_template_info = self.api.file.get_info_by_path(self.team_id, template_path)
-        self.report_id = vue_template_info.id
+    def upload_report_link(self, remote_dir: str, report_id: int = None, local_dir: str = None):
+        if report_id is None:
+            template_path = os.path.join(remote_dir, "template.vue")
+            vue_template_info = self.api.file.get_info_by_path(self.team_id, template_path)
+            self.report_id = vue_template_info.id
+            report_id = vue_template_info.id
 
-        report_link = "/model-benchmark?id=" + str(vue_template_info.id)
-
+        report_link = "/model-benchmark?id=" + str(report_id)
         lnk_name = "Model Evaluation Report.lnk"
-        local_path = os.path.join(self.get_layout_results_dir(), lnk_name)
+
+        if local_dir is None:
+            local_dir = self.get_layout_results_dir()
+        local_path = os.path.join(local_dir, lnk_name)
+
         with open(local_path, "w") as file:
             file.write(report_link)
 
@@ -613,6 +624,9 @@ class BaseBenchmark:
     def get_eval_result(self):
         if self._eval_results is None:
             self._eval_results = self.evaluator.get_eval_result()
+            if not self._eval_results.inference_info:
+                self._eval_results.inference_info["gt_project_id"] = self.gt_project_info.id
+                self._eval_results.inference_info["dt_project_id"] = self.dt_project_info.id
         return self._eval_results
 
     def get_diff_project_info(self):
@@ -621,3 +635,7 @@ class BaseBenchmark:
             self.diff_project_info = eval_result.diff_project_info
             return self.diff_project_info
         return None
+
+    def _dump_key_metrics(self, eval_result: BaseEvaluator):
+        path = str(Path(self.get_eval_results_dir(), "key_metrics.json"))
+        json.dump_json_file(eval_result.key_metrics, path)

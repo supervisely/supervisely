@@ -28,6 +28,9 @@ class SelectAppSession(Widget):
         self._size = size
         self._operation = operation
 
+        if not isinstance(tags, list):
+            raise ValueError("Parameter tags must be a list of strings")
+        
         if len(tags) < 1:
             raise ValueError("Parameter tags must be a list of strings, but got empty list")
 

@@ -90,11 +90,16 @@ class ObjectDetectionVisualizer(BaseVisualizer):
         self.header = overview.get_header(me.login)
         self.overview_md = overview.md
 
+        # IOU Per Class (optional)
+        self.iou_per_class_md = overview.iou_per_class_md
+        self.iou_per_class_table = overview.iou_per_class_table
+
         # Key Metrics
         key_metrics = KeyMetrics(self.vis_texts, self.eval_result)
         self.key_metrics_md = key_metrics.md
         self.key_metrics_table = key_metrics.table
         self.overview_chart = key_metrics.chart
+        self.custom_ap_description = key_metrics.custom_ap_description_md
 
         # Explore Predictions
         explore_predictions = ExplorePredictions(
@@ -238,9 +243,24 @@ class ObjectDetectionVisualizer(BaseVisualizer):
             # Overview
             (0, self.header),
             (1, self.overview_md),
+        ]
+
+        if self.iou_per_class_table is not None:
+            is_anchors_widgets += [
+                (0, self.iou_per_class_md),
+                (0, self.iou_per_class_table),
+            ]
+
+        is_anchors_widgets += [
             # KeyMetrics
             (1, self.key_metrics_md),
             (0, self.key_metrics_table),
+        ]
+
+        if self.custom_ap_description is not None:
+            is_anchors_widgets.append((0, self.custom_ap_description))
+
+        is_anchors_widgets += [
             (0, self.overview_chart),
             # ExplorePredictions
             (1, self.explore_predictions_md),
@@ -432,7 +452,7 @@ class ObjectDetectionVisualizer(BaseVisualizer):
                                     conf = tag.value
                                     break
 
-                            if conf < self.eval_result.mp.f1_optimal_conf:
+                            if conf < self.eval_result.mp.conf_threshold:
                                 continue  # do not add labels with low confidence to diff project
                             if match_tag_id:
                                 continue  # do not add TP labels to diff project
@@ -685,8 +705,16 @@ class ObjectDetectionVisualizer(BaseVisualizer):
         return False
 
     def _get_sample_data_for_gallery(self):
-        # get sample images with annotations for visualization (Prediction project)
-        pred_ds = random.choice(self.eval_result.pred_dataset_infos)
-        self.eval_result.sample_images = self.api.image.get_list(pred_ds.id, limit=9)
-        image_ids = [x.id for x in self.eval_result.sample_images]
-        self.eval_result.sample_anns = self.api.annotation.download_batch(pred_ds.id, image_ids)
+        """Get sample images with annotations for visualization (preview gallery)"""
+        sample_images = []
+        limit = 9
+        for ds_info in self.eval_result.pred_dataset_infos:
+            images = self.api.image.get_list(
+                ds_info.id, limit=limit, force_metadata_for_links=False
+            )
+            sample_images.extend(images)
+        if len(sample_images) > limit:
+            sample_images = random.sample(sample_images, limit)
+        self.eval_result.sample_images = sample_images
+        ids = [img.id for img in sample_images]
+        self.eval_result.sample_anns = self.api.annotation.download_batch(ds_info.id, ids)

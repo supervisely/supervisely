@@ -1,0 +1,30 @@
+# botsort_default_config.yaml
+
+device: "auto" # "cuda" or "cpu", "auto" will use cuda if available
+fp16: false
+
+# BoTSORT tracking parameters
+track_high_thresh: 0.6
+track_low_thresh: 0.1
+new_track_thresh: 0.7
+track_buffer: 30
+match_thresh: 0.8
+min_box_area: 10.0
+
+# Appearance model (ReID)
+with_reid: true
+reid_weights: null
+proximity_thresh: 0.5
+appearance_thresh: 0.25
+
+# Algorithm flags
+fuse_score: false
+ablation: false
+mot20: false
+
+# Camera motion compensation
+cmc_method: "sparseOptFlow"
+
+# Performance
+fps: 30
+

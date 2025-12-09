@@ -37,7 +37,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         api = sly.Api.from_env()
 
         # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
         video_id = 186648102
         ann_info = api.video.annotation.download(video_id)
@@ -236,11 +236,13 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         dst_project_meta = ProjectMeta.from_json(
             self._api.project.get_meta(dst_dataset_info.project_id)
         )
-        for src_ids_batch, dst_ids_batch in batched(list(zip(src_video_ids, dst_video_ids))):
+        for src_ids_batch, dst_ids_batch in zip(batched(src_video_ids), batched(dst_video_ids)):
             ann_jsons = self.download_bulk(src_dataset_id, src_ids_batch)
             for dst_id, ann_json in zip(dst_ids_batch, ann_jsons):
                 try:
-                    ann = VideoAnnotation.from_json(ann_json, dst_project_meta)
+                    ann = VideoAnnotation.from_json(
+                        ann_json, dst_project_meta, key_id_map=KeyIdMap()
+                    )
                 except Exception as e:
                     raise RuntimeError("Failed to validate Annotation") from e
                 self.append(dst_id, ann)

@@ -10,6 +10,7 @@ import glob
 import json
 import os
 import shutil
+import threading
 from logging import Logger
 from pathlib import Path
 from typing import (
@@ -39,6 +40,7 @@ import supervisely.api.annotation_api as annotation_api
 import supervisely.api.app_api as app_api
 import supervisely.api.cloud as cloud_api
 import supervisely.api.dataset_api as dataset_api
+import supervisely.api.entities_collection_api as entities_collection_api
 import supervisely.api.file_api as file_api
 import supervisely.api.github_api as github_api
 import supervisely.api.image_annotation_tool_api as image_annotation_tool_api
@@ -46,7 +48,8 @@ import supervisely.api.image_api as image_api
 import supervisely.api.import_storage_api as import_stoarge_api
 import supervisely.api.issues_api as issues_api
 import supervisely.api.labeling_job_api as labeling_job_api
-import supervisely.api.neural_network_api as neural_network_api
+import supervisely.api.labeling_queue_api as labeling_queue_api
+import supervisely.api.nn.neural_network_api as neural_network_api
 import supervisely.api.object_class_api as object_class_api
 import supervisely.api.plugin_api as plugin_api
 import supervisely.api.pointcloud.pointcloud_api as pointcloud_api
@@ -67,10 +70,10 @@ import supervisely.io.env as sly_env
 from supervisely._utils import camel_to_snake, is_community, is_development
 from supervisely.api.module_api import ApiField
 from supervisely.io.network_exceptions import (
+    RetryableRequestException,
     process_requests_exception,
     process_requests_exception_async,
     process_unhandled_request,
-    RetryableRequestException,
 )
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
@@ -292,21 +295,24 @@ class Api:
         # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
     """
 
+    _checked_servers = set()
+
     def __init__(
         self,
-        server_address: str = None,
-        token: str = None,
+        server_address: Optional[str] = None,
+        token: Optional[str] = None,
         retry_count: Optional[int] = 10,
         retry_sleep_sec: Optional[int] = None,
         external_logger: Optional[Logger] = None,
-        ignore_task_id: Optional[bool] = False,
-        api_server_address: str = None,
+        ignore_task_id: bool = False,
+        api_server_address: Optional[str] = None,
         check_instance_version: Union[bool, str] = False,
     ):
         self.logger = external_logger or logger
 
-        if server_address is None and token is None:
+        if server_address is None:
             server_address = os.environ.get(SERVER_ADDRESS, None)
+        if token is None:
             token = os.environ.get(API_TOKEN, None)
 
         if server_address is None:
@@ -342,7 +348,7 @@ class Api:
         self.team = team_api.TeamApi(self)
         self.workspace = workspace_api.WorkspaceApi(self)
         self.project = project_api.ProjectApi(self)
-        self.model = neural_network_api.NeuralNetworkApi(self)
+        self.nn = neural_network_api.NeuralNetworkApi(self)
         self.task = task_api.TaskApi(self)
         self.dataset = dataset_api.DatasetApi(self)
         self.image = image_api.ImageApi(self)
@@ -352,6 +358,7 @@ class Api:
         self.role = role_api.RoleApi(self)
         self.user = user_api.UserApi(self)
         self.labeling_job = labeling_job_api.LabelingJobApi(self)
+        self.labeling_queue = labeling_queue_api.LabelingQueueApi(self)
         self.video = video_api.VideoApi(self)
         # self.project_class = project_class_api.ProjectClassApi(self)
         self.object_class = object_class_api.ObjectClassApi(self)
@@ -370,18 +377,33 @@ class Api:
         self.volume = volume_api.VolumeApi(self)
         self.cloud = cloud_api.CloudApi(self)
         self.issues = issues_api.IssuesApi(self)
+        self.entities_collection = entities_collection_api.EntitiesCollectionApi(self)
 
         self.retry_count = retry_count
         self.retry_sleep_sec = retry_sleep_sec
 
-        self._require_https_redirect_check = not self.server_address.startswith("https://")
-
-        if check_instance_version:
-            self._check_version(None if check_instance_version is True else check_instance_version)
+        skip_from_env = sly_env.supervisely_skip_https_user_helper_check()
+        self._skip_https_redirect_check = (
+            skip_from_env or self.server_address in Api._checked_servers
+        )
+        self.logger.trace(
+            f"Skip HTTPS redirect check on API init: {self._skip_https_redirect_check}. ENV: {skip_from_env}. Checked servers: {Api._checked_servers}"
+        )
+        self._require_https_redirect_check = (
+            False
+            if self._skip_https_redirect_check
+            else not self.server_address.startswith("https://")
+        )
 
         self.async_httpx_client: httpx.AsyncClient = None
         self.httpx_client: httpx.Client = None
         self._semaphore = None
+        self._instance_version = None
+        self._version_check_completed = False
+        self._version_check_lock = threading.Lock()
+
+        if check_instance_version:
+            self._check_version(None if check_instance_version is True else check_instance_version)
 
     @classmethod
     def normalize_server_address(cls, server_address: str) -> str:
@@ -517,11 +539,14 @@ class Api:
                 # '6.9.13'
         """
         try:
-            version = self.post("instance.version", {}).json().get(ApiField.VERSION)
+            if self._instance_version is None:
+                self._instance_version = (
+                    self.post("instance.version", {}).json().get(ApiField.VERSION)
+                )
         except Exception as e:
             logger.warning(f"Failed to get instance version from server: {e}")
-            version = "unknown"
-        return version
+            self._instance_version = "unknown"
+        return self._instance_version
 
     def is_version_supported(self, version: Optional[str] = None) -> Union[bool, None]:
         """Check if the given version is lower or equal to the current Supervisely instance version.
@@ -580,38 +605,49 @@ class Api:
         :type version: Optional[str], e.g. "6.9.13"
         """
 
-        # Since it's a informational message, we don't raise an exception if the check fails
-        # in any case, we don't want to interrupt the user's workflow.
-        try:
-            check_result = self.is_version_supported(version)
-            if check_result is None:
-                logger.debug(
-                    "Failed to check if the instance version meets the minimum requirements "
-                    "of current SDK version. "
-                    "Ensure that the MINIMUM_INSTANCE_VERSION_FOR_SDK environment variable is set. "
-                    "Usually you can ignore this message, but if you're adding new features, "
-                    "which will require upgrade of the Supervisely instance, you should update "
-                    "it supervisely.__init__.py file."
-                )
-            if check_result is False:
-                message = (
-                    "The current version of the Supervisely instance is not supported by the SDK. "
-                    "Some features may not work correctly."
-                )
-                if not is_community():
-                    message += (
-                        " Please upgrade the Supervisely instance to the latest version (recommended) "
-                        "or downgrade the SDK to the version that supports the current instance (not recommended). "
-                        "Refer to this docs for more information: "
-                        "https://docs.supervisely.com/enterprise-edition/get-supervisely/upgrade "
-                        "Check out changelog for the latest version of Supervisely: "
-                        "https://app.supervisely.com/changelog"
+        # Thread-safe one-time check with double-checked locking pattern
+        if self._version_check_completed:
+            return
+
+        with self._version_check_lock:
+            # Double-check inside the lock
+            if self._version_check_completed:
+                return
+
+            self._version_check_completed = True
+
+            # Since it's a informational message, we don't raise an exception if the check fails
+            # in any case, we don't want to interrupt the user's workflow.
+            try:
+                check_result = self.is_version_supported(version)
+                if check_result is None:
+                    logger.debug(
+                        "Failed to check if the instance version meets the minimum requirements "
+                        "of current SDK version. "
+                        "Ensure that the MINIMUM_INSTANCE_VERSION_FOR_SDK environment variable is set. "
+                        "Usually you can ignore this message, but if you're adding new features, "
+                        "which will require upgrade of the Supervisely instance, you should update "
+                        "it supervisely.__init__.py file."
                     )
-                    logger.warning(message)
-        except Exception as e:
-            logger.debug(
-                f"Tried to check version compatibility between SDK and instance, but failed: {e}"
-            )
+                if check_result is False:
+                    message = (
+                        "The current version of the Supervisely instance is not supported by the SDK. "
+                        "Some features may not work correctly."
+                    )
+                    if not is_community():
+                        message += (
+                            " Please upgrade the Supervisely instance to the latest version (recommended) "
+                            "or downgrade the SDK to the version that supports the current instance (not recommended). "
+                            "Refer to this docs for more information: "
+                            "https://docs.supervisely.com/enterprise-edition/get-supervisely/upgrade "
+                            "Check out changelog for the latest version of Supervisely: "
+                            "https://app.supervisely.com/changelog"
+                        )
+                        logger.warning(message)
+            except Exception as e:
+                logger.debug(
+                    f"Tried to check version compatibility between SDK and instance, but failed: {e}"
+                )
 
     def post(
         self,
@@ -637,7 +673,8 @@ class Api:
         :return: Response object
         :rtype: :class:`Response<Response>`
         """
-        self._check_https_redirect()
+        if not self._skip_https_redirect_check:
+            self._check_https_redirect()
         if retries is None:
             retries = self.retry_count
 
@@ -665,7 +702,8 @@ class Api:
                     )
 
                 if response.status_code != requests.codes.ok:  # pylint: disable=no-member
-                    self._check_version()
+                    if not self._version_check_completed:
+                        self._check_version()
                     Api._raise_for_status(response)
                 return response
             except requests.RequestException as exc:
@@ -702,6 +740,7 @@ class Api:
         retries: Optional[int] = None,
         stream: Optional[bool] = False,
         use_public_api: Optional[bool] = True,
+        data: Optional[Dict] = None,
     ) -> requests.Response:
         """
         Performs GET request to server with given parameters.
@@ -709,17 +748,20 @@ class Api:
         :param method:
         :type method: str
         :param params: Dictionary to send in the body of the :class:`Request`.
-        :type method: dict
+        :type params: dict
         :param retries: The number of attempts to connect to the server.
-        :type method: int, optional
+        :type retries: int, optional
         :param stream: Define, if you'd like to get the raw socket response from the server.
-        :type method: bool, optional
+        :type stream: bool, optional
         :param use_public_api:
-        :type method: bool, optional
+        :type use_public_api: bool, optional
+        :param data: Dictionary to send in the body of the :class:`Request`.
+        :type data: dict, optional
         :return: Response object
         :rtype: :class:`Response<Response>`
         """
-        self._check_https_redirect()
+        if not self._skip_https_redirect_check:
+            self._check_https_redirect()
         if retries is None:
             retries = self.retry_count
 
@@ -734,7 +776,9 @@ class Api:
                 json_body = params
                 if type(params) is dict:
                     json_body = {**params, **self.additional_fields}
-                response = requests.get(url, params=json_body, headers=self.headers, stream=stream)
+                response = requests.get(
+                    url, params=json_body, data=data, headers=self.headers, stream=stream
+                )
 
                 if response.status_code != requests.codes.ok:  # pylint: disable=no-member
                     Api._raise_for_status(response)
@@ -882,7 +926,16 @@ class Api:
         return self.headers.pop(key)
 
     def _check_https_redirect(self):
+        """
+        Check if HTTP server should be redirected to HTTPS.
+        If the server has already been checked before (for any instance of this class),
+        skip the check to avoid redundant network requests.
+        """
         if self._require_https_redirect_check is True:
+            if self.server_address in Api._checked_servers:
+                self._require_https_redirect_check = False
+                return
+
             try:
                 response = requests.get(
                     self.server_address.replace("http://", "https://"),
@@ -900,6 +953,7 @@ class Api:
             except:
                 pass
             finally:
+                Api._checked_servers.add(self.server_address)
                 self._require_https_redirect_check = False
 
     @classmethod
@@ -1066,7 +1120,8 @@ class Api:
                     timeout=timeout,
                 )
                 if response.status_code != httpx.codes.OK:
-                    self._check_version()
+                    if not self._version_check_completed:
+                        self._check_version()
                     Api._raise_for_status_httpx(response)
                 return response
             except (httpx.RequestError, httpx.HTTPStatusError) as exc:
@@ -1282,7 +1337,8 @@ class Api:
                         httpx.codes.OK,
                         httpx.codes.PARTIAL_CONTENT,
                     ]:
-                        self._check_version()
+                        if not self._version_check_completed:
+                            self._check_version()
                         Api._raise_for_status_httpx(resp)
 
                     hhash = resp.headers.get("x-content-checksum-sha256", None)
@@ -1396,7 +1452,8 @@ class Api:
                     timeout=timeout,
                 )
                 if response.status_code != httpx.codes.OK:
-                    self._check_version()
+                    if not self._version_check_completed:
+                        self._check_version()
                     Api._raise_for_status_httpx(response)
                 return response
             except (httpx.RequestError, httpx.HTTPStatusError) as exc:
@@ -1441,6 +1498,7 @@ class Api:
         chunk_size: int = 8192,
         use_public_api: Optional[bool] = True,
         timeout: httpx._types.TimeoutTypes = 60,
+        **kwargs,
     ) -> AsyncGenerator:
         """
         Performs asynchronous streaming GET or POST request to server with given parameters.
@@ -1484,18 +1542,19 @@ class Api:
         else:
             headers = {**self.headers, **headers}
 
-        if isinstance(data, (bytes, Generator)):
-            content = data
-            json_body = None
-            params = None
-        elif isinstance(data, Dict):
-            json_body = {**data, **self.additional_fields}
-            content = None
-            params = None
+        params = kwargs.get("params", None)
+        if "content" in kwargs or "json_body" in kwargs:
+            content = kwargs.get("content", None)
+            json_body = kwargs.get("json_body", None)
         else:
-            params = data
-            content = None
-            json_body = None
+            if isinstance(data, (bytes, Generator)):
+                content = data
+                json_body = None
+            elif isinstance(data, Dict):
+                json_body = {**data, **self.additional_fields}
+                content = None
+            else:
+                raise ValueError("Data should be either bytes or dict")
 
         if range_start is not None or range_end is not None:
             headers["Range"] = f"bytes={range_start or ''}-{range_end or ''}"
@@ -1510,17 +1569,19 @@ class Api:
                         url,
                         content=content,
                         json=json_body,
-                        params=params,
                         headers=headers,
                         timeout=timeout,
+                        params=params,
                     )
                 elif method_type == "GET":
                     response = self.async_httpx_client.stream(
                         method_type,
                         url,
-                        json=json_body or params,
+                        content=content,
+                        json=json_body,
                         headers=headers,
                         timeout=timeout,
+                        params=params,
                     )
                 else:
                     raise NotImplementedError(
@@ -1533,7 +1594,8 @@ class Api:
                         httpx.codes.OK,
                         httpx.codes.PARTIAL_CONTENT,
                     ]:
-                        self._check_version()
+                        if not self._version_check_completed:
+                            self._check_version()
                         Api._raise_for_status_httpx(resp)
 
                     # received hash of the content to check integrity of the data stream
@@ -1631,7 +1693,8 @@ class Api:
                 f"Setting global API semaphore size to {semaphore_size} from environment variable"
             )
         else:
-            self._check_https_redirect()
+            if not self._skip_https_redirect_check:
+                self._check_https_redirect()
             if self.server_address.startswith("https://"):
                 size = 10
                 if "app.supervise" in self.server_address:

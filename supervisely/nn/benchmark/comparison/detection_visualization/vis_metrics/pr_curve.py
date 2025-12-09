@@ -19,7 +19,7 @@ class PrCurve(BaseVisMetrics):
     @property
     def markdown_widget(self) -> MarkdownWidget:
         text: str = getattr(self.vis_texts, self.MARKDOWN_PR_CURVE).format(
-            self.vis_texts.definitions.f1_score
+            self.vis_texts.definitions.about_pr_tradeoffs
         )
         return MarkdownWidget(
             name=self.MARKDOWN_PR_CURVE, title="mAP & Precision-Recall Curve", text=text

@@ -4,6 +4,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from typing import Callable, Dict, List, Union
 
+import supervisely.io.env as sly_env
 from supervisely import env, logger
 from supervisely._utils import abs_url, is_development
 from supervisely.api.api import Api
@@ -69,18 +70,34 @@ class CustomModelsSelector(Widget):
             # col 1 task
             self._task_id = task_id
             self._task_path = train_info.artifacts_folder
-            task_info = self._api.task.get_info_by_id(task_id)
-            self._task_date_iso = task_info["startedAt"]
-            self._task_date = self._normalize_date()
-            self._task_link = self._create_task_link()
+            try:
+                self._task_info = self._api.task.get_info_by_id(task_id)
+            except:
+                self._task_info = None
+
+            if self._task_info is not None:
+                self._task_date_iso = self._task_info["startedAt"]
+                self._task_date = self._normalize_date()
+                self._task_link = self._create_task_link()
+            else:
+                self._task_date_iso = None
+                self._task_date = None
+                self._task_link = None
             self._config_path = train_info.config_path
 
             # col 2 project
             self._training_project_name = train_info.project_name
-            project_info = self._api.project.get_info_by_name(
-                task_info["workspaceId"], self._training_project_name
+
+            workspace_id = (
+                self._task_info["workspaceId"]
+                if self._task_info
+                else sly_env.workspace_id(raise_not_found=False)
             )
-            self._training_project_info = project_info
+            self._training_project_info = (
+                self._api.project.get_info_by_name(workspace_id, self._training_project_name)
+                if workspace_id
+                else None
+            )
 
             # col 3 checkpoints
             self._checkpoints = train_info.checkpoints
@@ -175,30 +192,36 @@ class CustomModelsSelector(Widget):
                 return ""
 
         def _create_task_widget(self) -> Flexbox:
-            task_widget = Container(
-                [
-                    Text(
-                        f"<i class='zmdi zmdi-folder' style='color: #7f858e'></i> <a href='{self._task_link}'>{self._task_id}</a>",
-                        "text",
-                    ),
-                    Text(
-                        f"<span class='field-description text-muted' style='color: #7f858e'>{self._task_date}</span>",
-                        "text",
-                        font_size=13,
-                    ),
-                ],
-                gap=0,
-            )
+            if self._task_info is not None:
+                task_widget = Container(
+                    [
+                        Text(
+                            f"<i class='zmdi zmdi-folder' style='color: #7f858e'></i> <a href='{self._task_link}'>{self._task_id}</a>",
+                            "text",
+                        ),
+                        Text(
+                            f"<span class='field-description text-muted' style='color: #7f858e'>{self._task_date}</span>",
+                            "text",
+                            font_size=13,
+                        ),
+                    ],
+                    gap=0,
+                )
+            else:
+                task_widget = Text(
+                    f"<span class='field-description text-muted' style='color: #7f858e'>Task was archived (ID: '{self._task_id}')</span>",
+                    "text",
+                )
             return task_widget
 
         def _create_training_project_widget(self) -> Union[ProjectThumbnail, Text]:
-            if self.training_project_info is not None:
+            if self._training_project_info is not None:
                 training_project_widget = ProjectThumbnail(
                     self._training_project_info, remove_margins=True
                 )
             else:
                 training_project_widget = Text(
-                    f"<span class='field-description text-muted' style='color: #7f858e'>Project was deleted</span>",
+                    f"<span class='field-description text-muted' style='color: #7f858e'>Project was archived</span>",
                     "text",
                     font_size=13,
                 )
@@ -209,15 +232,11 @@ class CustomModelsSelector(Widget):
             for checkpoint_info in self._checkpoints:
                 if isinstance(checkpoint_info, dict):
                     checkpoint_selector_items.append(
-                        Select.Item(
-                            value=checkpoint_info["path"], label=checkpoint_info["name"]
-                        )
+                        Select.Item(value=checkpoint_info["path"], label=checkpoint_info["name"])
                     )
                 elif isinstance(checkpoint_info, FileInfo):
                     checkpoint_selector_items.append(
-                        Select.Item(
-                            value=checkpoint_info.path, label=checkpoint_info.name
-                        )
+                        Select.Item(value=checkpoint_info.path, label=checkpoint_info.name)
                     )
 
             checkpoint_selector = Select(items=checkpoint_selector_items)
@@ -282,9 +301,7 @@ class CustomModelsSelector(Widget):
             )
 
             file_api = FileApi(self._api)
-            self._model_path_input = Input(
-                placeholder="Path to model file in Team Files"
-            )
+            self._model_path_input = Input(placeholder="Path to model file in Team Files")
 
             @self._model_path_input.value_changed
             def change_folder(value):
@@ -322,9 +339,7 @@ class CustomModelsSelector(Widget):
 
             self.custom_tab_widgets.hide()
 
-            self.show_custom_checkpoint_path_checkbox = Checkbox(
-                "Use custom checkpoint", False
-            )
+            self.show_custom_checkpoint_path_checkbox = Checkbox("Use custom checkpoint", False)
 
             @self.show_custom_checkpoint_path_checkbox.value_changed
             def show_custom_checkpoint_path_checkbox_changed(is_checked):
@@ -399,9 +414,7 @@ class CustomModelsSelector(Widget):
         self.disable_table()
         super().disable()
 
-    def _generate_table_rows(
-        self, train_infos: List[TrainInfo]
-    ) -> Dict[str, List[ModelRow]]:
+    def _generate_table_rows(self, train_infos: List[TrainInfo]) -> Dict[str, List[ModelRow]]:
         """Method to generate table rows from remote path to training app save directory"""
 
         def process_train_info(train_info):
@@ -414,7 +427,7 @@ class CustomModelsSelector(Widget):
                 )
                 return train_info.task_type, model_row
             except Exception as e:
-                logger.warn(f"Failed to process train info: {train_info}")
+                logger.debug(f"Failed to process train info: {train_info}. Error: {repr(e)}")
                 return None, None
 
         table_rows = defaultdict(list)
@@ -448,8 +461,7 @@ class CustomModelsSelector(Widget):
         if "pose estimation" in task_types:
             sorted_tt.append("pose estimation")
         other_tasks = sorted(
-            set(task_types)
-            - set(["object detection", "instance segmentation", "pose estimation"])
+            set(task_types) - set(["object detection", "instance segmentation", "pose estimation"])
         )
         sorted_tt.extend(other_tasks)
         return sorted_tt
@@ -536,9 +548,7 @@ class CustomModelsSelector(Widget):
 
     def set_custom_checkpoint_task_type(self, task_type: str) -> None:
         if self.use_custom_checkpoint_path():
-            available_task_types = (
-                self.custom_checkpoint_task_type_selector.get_labels()
-            )
+            available_task_types = self.custom_checkpoint_task_type_selector.get_labels()
             if task_type not in available_task_types:
                 raise ValueError(f'"{task_type}" is not available task type')
             self.custom_checkpoint_task_type_selector.set_value(task_type)

@@ -29,6 +29,8 @@ class KeyMetrics(DetectionVisMetric):
         columns = ["metrics", "values"]
         content = []
         for metric, value in self.eval_result.mp.metric_table().items():
+            if metric == "AP_custom":
+                metric += "*"
             row = [metric, round(value, 2)]
             dct = {
                 "row": row,
@@ -54,6 +56,7 @@ class KeyMetrics(DetectionVisMetric):
             width="60%",
             show_header_controls=False,
             main_column=columns[0],
+            page_size=15,
         )
         return table
 
@@ -134,3 +137,13 @@ class KeyMetrics(DetectionVisMetric):
             ]
 
         return res
+
+    @property
+    def custom_ap_description_md(self) -> MarkdownWidget:
+        if not self.eval_result.different_iou_thresholds_per_class:
+            return None
+        return MarkdownWidget(
+            "custom_ap_description",
+            "Custom AP per Class",
+            self.vis_texts.markdown_AP_custom_description,
+        )

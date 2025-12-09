@@ -19,6 +19,7 @@ from supervisely.nn.benchmark.visualization.vis_click_data import ClickData, IdM
 
 class ObjectDetectionEvalResult(BaseEvalResult):
     mp_cls = MetricProvider
+    PRIMARY_METRIC = "mAP"
 
     def _read_files(self, path: str) -> None:
         """Read all necessary files from the directory"""
@@ -54,9 +55,7 @@ class ObjectDetectionEvalResult(BaseEvalResult):
             self.coco_gt, self.coco_dt = read_coco_datasets(self.coco_gt, self.coco_dt)
 
         self.mp = MetricProvider(
-            self.eval_data["matches"],
-            self.eval_data["coco_metrics"],
-            self.eval_data["params"],
+            self.eval_data,
             self.coco_gt,
             self.coco_dt,
         )
@@ -92,6 +91,10 @@ class ObjectDetectionEvalResult(BaseEvalResult):
     def key_metrics(self):
         return self.mp.key_metrics()
 
+    @property
+    def different_iou_thresholds_per_class(self) -> bool:
+        return self.mp.iou_threshold_per_class is not None
+
 
 class ObjectDetectionEvaluator(BaseEvaluator):
     EVALUATION_PARAMS_YAML_PATH = f"{Path(__file__).parent}/evaluation_params.yaml"
@@ -120,12 +123,19 @@ class ObjectDetectionEvaluator(BaseEvaluator):
 
     @classmethod
     def validate_evaluation_params(cls, evaluation_params: dict) -> None:
+        available_thres = [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
         iou_threshold = evaluation_params.get("iou_threshold")
         if iou_threshold is not None:
-            assert iou_threshold in [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95], (
-                f"iou_threshold must be one of [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95], "
-                f"but got {iou_threshold}"
+            assert iou_threshold in available_thres, (
+                f"iou_threshold must be one of {available_thres}, " f"but got {iou_threshold}"
             )
+        iou_threshold_per_class = evaluation_params.get("iou_threshold_per_class")
+        if iou_threshold_per_class is not None:
+            for class_name, iou_thres in iou_threshold_per_class.items():
+                assert iou_thres in available_thres, (
+                    f"class {class_name}: iou_threshold_per_class must be one of {available_thres}, "
+                    f"but got {iou_thres}"
+                )
 
     def _convert_to_coco(self):
         cocoGt_json = sly2coco(

@@ -9,6 +9,7 @@ from typing import Dict, List, Optional, Tuple, Union
 import cv2
 import numpy as np
 
+from supervisely import logger
 from supervisely.geometry.constants import (
     CLASS_ID,
     CREATED_AT,
@@ -95,7 +96,7 @@ class Node(JsonSerializable):
     @classmethod
     def from_json(cls, data: Dict) -> Node:
         """
-        Convert a json dict to Node. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert a json dict to Node. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: Node in json format as a dict.
         :type data: dict
@@ -119,7 +120,7 @@ class Node(JsonSerializable):
 
     def to_json(self) -> Dict:
         """
-        Convert the Node to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert the Node to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :return: Json format as a dict
         :rtype: :class:`dict`
@@ -215,6 +216,8 @@ class GraphNodes(Geometry):
             updated_at=updated_at,
             created_at=created_at,
         )
+        if len(nodes) == 0:
+            raise ValueError("Empty list of nodes is not allowed for GraphNodes")
         self._nodes = nodes
         if isinstance(nodes, (list, tuple)):
             self._nodes = {}
@@ -237,7 +240,7 @@ class GraphNodes(Geometry):
     @classmethod
     def from_json(cls, data: Dict[str, Dict]) -> GraphNodes:
         """
-        Convert a json dict to GraphNodes. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert a json dict to GraphNodes. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: GraphNodes in json format as a dict.
         :type data: dict
@@ -283,7 +286,7 @@ class GraphNodes(Geometry):
 
     def to_json(self) -> Dict[str, Dict]:
         """
-        Convert the GraphNodes to list. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert the GraphNodes to list. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :return: Json format as a dict
         :rtype: :class:`dict`
@@ -593,6 +596,10 @@ class GraphNodes(Geometry):
 
             rectangle = figure.to_bbox()
         """
+        if self._nodes is None or len(self._nodes) == 0:
+            logger.warning(
+                f"Cannot create a bounding box from {self.name()} with empty nodes. Geometry ID: {self.sly_id} "
+            )
         return Rectangle.from_geometries_list(
             [Point.from_point_location(node.location) for node in self._nodes.values()]
         )

@@ -4,7 +4,7 @@ from supervisely.api.api import Api
 from supervisely.app.content import DataJson, StateJson
 from supervisely.app.widgets import Widget
 from supervisely.io.fs import get_file_ext
-from supervisely.nn.utils import ModelSource
+from supervisely.nn.utils import ModelSource, _get_model_name
 
 
 class PretrainedModelsSelector(Widget):
@@ -147,9 +147,11 @@ class PretrainedModelsSelector(Widget):
         if train_version == "v1":
             model_name = selected_model.get(model_name_column)
             if model_name is None:
-                raise ValueError(
-                    "Could not find model name. Make sure you have column 'Model' in your models list."
-                )
+                model_name = _get_model_name(selected_model)
+                if model_name is None:
+                    raise ValueError(
+                        "Could not find model name. Make sure you have column 'Model' in your models list."
+                    )
 
             model_meta = selected_model.get("meta")
             if model_meta is None:
@@ -230,24 +232,25 @@ class PretrainedModelsSelector(Widget):
         for task_type in self._table_data:
             for arch_type in self._table_data[task_type]:
                 for idx, model in enumerate(self._table_data[task_type][arch_type]):
-                    model_meta = model.get("meta", {})
-                    if model_meta.get("model_name") == model_name:
-                        self.set_active_task_type(task_type)
-                        self.set_active_arch_type(arch_type)
-                        self.set_active_row(idx)
-                        return
+                    name_from_info = _get_model_name(model)
+                    if name_from_info is not None:
+                        if name_from_info.lower() == model_name.lower():
+                            self.set_active_task_type(task_type)
+                            self.set_active_arch_type(arch_type)
+                            self.set_active_row(idx)
+                            return
 
     def get_by_model_name(self, model_name: str) -> Union[Dict, None]:
         for task_type in self._table_data:
             for arch_type in self._table_data[task_type]:
                 for idx, model in enumerate(self._table_data[task_type][arch_type]):
-                    model_meta = model.get("meta", {})
-                    if model_meta.get("model_name") == model_name:
-                        return model
+                    name_from_info = _get_model_name(model)
+                    if name_from_info is not None:
+                        if name_from_info.lower() == model_name.lower():
+                            return model
 
     def _filter_and_sort_models(self, models: List[Dict], sort_models: bool = True) -> Dict:
         filtered_models = {}
-
         for model in models:
             for key in model:
                 if isinstance(model[key], (int, float)):

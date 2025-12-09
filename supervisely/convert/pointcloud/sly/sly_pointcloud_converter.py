@@ -6,7 +6,7 @@ import supervisely.convert.pointcloud.sly.sly_pointcloud_helper as helpers
 from supervisely import PointcloudAnnotation, ProjectMeta, logger
 from supervisely.convert.base_converter import AvailablePointcloudConverters
 from supervisely.convert.pointcloud.pointcloud_converter import PointcloudConverter
-from supervisely.io.fs import JUNK_FILES, get_file_ext, get_file_name
+from supervisely.io.fs import get_file_ext, get_file_name, get_file_name_with_ext
 from supervisely.io.json import load_json_file
 from supervisely.pointcloud.pointcloud import validate_ext as validate_pcd_ext
 
@@ -46,10 +46,9 @@ class SLYPointcloudConverter(PointcloudConverter):
             return False
 
     def validate_format(self) -> bool:
-        detected_ann_cnt = 0
         pcd_list, ann_dict, rimg_dict, rimg_ann_dict = [], {}, {}, {}
-        used_img_ext = []
         for root, _, files in os.walk(self._input_data):
+            dir_name = os.path.basename(root)
             for file in files:
                 full_path = os.path.join(root, file)
                 if file == "key_id_map.json":
@@ -60,22 +59,19 @@ class SLYPointcloudConverter(PointcloudConverter):
                         continue
 
                 ext = get_file_ext(full_path)
-                if file in JUNK_FILES:  # add better check
-                    continue
-                elif ext in self.ann_ext:
-                    dir_name = os.path.basename(root)
+                if ext in self.ann_ext:
                     parent_dir_name = os.path.basename(os.path.dirname(root))
+                    possible_dirs = ["images", "related images", "photo context"]
                     if any(
-                        p.replace("_", " ") in ["images", "related images", "photo context"]
-                        for p in [dir_name, parent_dir_name]
-                    ) or dir_name.endswith("_pcd"):
+                        p.replace("_", " ") in possible_dirs for p in [dir_name, parent_dir_name]
+                    ):
                         rimg_ann_dict[file] = full_path
                     else:
                         ann_dict[file] = full_path
                 elif imghdr.what(full_path):
-                    rimg_dict[file] = full_path
-                    if ext not in used_img_ext:
-                        used_img_ext.append(ext)
+                    if dir_name not in rimg_dict:
+                        rimg_dict[dir_name] = []
+                    rimg_dict[dir_name].append(full_path)
                 else:
                     try:
                         validate_pcd_ext(ext)
@@ -83,16 +79,11 @@ class SLYPointcloudConverter(PointcloudConverter):
                     except:
                         continue
 
-        if self._meta is not None:
-            meta = self._meta
-        else:
-            meta = ProjectMeta()
-
         # create Items
         self._items = []
+        sly_ann_detected = False
         for pcd_path in pcd_list:
             name_noext = get_file_name(pcd_path)
-            ann_or_rimg_detected = False
             item = self.Item(pcd_path)
             ann_name = f"{item.name}.json"
             if ann_name not in ann_dict:
@@ -100,23 +91,25 @@ class SLYPointcloudConverter(PointcloudConverter):
             if ann_name in ann_dict:
                 ann_path = ann_dict[ann_name]
                 if self._meta is None:
-                    meta = self.generate_meta_from_annotation(ann_path, meta)
-                is_valid = self.validate_ann_file(ann_path, meta)
+                    self._meta = self.generate_meta_from_annotation(ann_path, self._meta)
+                is_valid = self.validate_ann_file(ann_path, self._meta)
                 if is_valid:
                     item.ann_data = ann_path
-                    ann_or_rimg_detected = True
-            rimg, rimg_ann = helpers.find_related_items(
-                item.name, used_img_ext, rimg_dict, rimg_ann_dict
-            )
-            if rimg is not None and rimg_ann is not None:
-                item.set_related_images((rimg, rimg_ann))
-                ann_or_rimg_detected = True
+                    sly_ann_detected = True
 
-            if ann_or_rimg_detected:
-                detected_ann_cnt += 1
+            rimg_dir_name = item.name.replace(".pcd", "_pcd")
+            rimgs = rimg_dict.get(rimg_dir_name, [])
+            for rimg_path in rimgs:
+                rimg_ann_name = f"{get_file_name_with_ext(rimg_path)}.json"
+                if rimg_ann_name in rimg_ann_dict:
+                    rimg_ann_path = rimg_ann_dict[rimg_ann_name]
+                    rimg_fig_name = f"{get_file_name_with_ext(rimg_path)}.figures.json"
+                    rimg_fig_path = rimg_ann_dict.get(rimg_fig_name, None)
+                    if rimg_fig_path is not None and not os.path.exists(rimg_fig_path):
+                        rimg_fig_path = None
+                    item.set_related_images((rimg_path, rimg_ann_path, rimg_fig_path))
             self._items.append(item)
-        self._meta = meta
-        return detected_ann_cnt > 0
+        return sly_ann_detected
 
     def to_supervisely(
         self,
@@ -140,5 +133,5 @@ class SLYPointcloudConverter(PointcloudConverter):
                 ann_json = helpers.rename_in_json(ann_json, renamed_classes, renamed_tags)
             return PointcloudAnnotation.from_json(ann_json, meta)
         except Exception as e:
-            logger.warn(f"Failed to convert annotation: {repr(e)}")
+            logger.warning(f"Failed to convert annotation: {repr(e)}")
             return item.create_empty_annotation()

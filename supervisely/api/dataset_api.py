@@ -4,7 +4,10 @@
 # docs
 from __future__ import annotations
 
+import os
+from pathlib import Path
 from typing import (
+    TYPE_CHECKING,
     Any,
     Dict,
     Generator,
@@ -16,7 +19,15 @@ from typing import (
     Union,
 )
 
-from supervisely._utils import abs_url, compress_image_url, is_development
+from tqdm import tqdm
+
+from supervisely._utils import (
+    abs_url,
+    compress_image_url,
+    is_development,
+    run_coroutine,
+)
+from supervisely.annotation.annotation import Annotation
 from supervisely.api.module_api import (
     ApiField,
     ModuleApi,
@@ -24,7 +35,13 @@ from supervisely.api.module_api import (
     UpdateableModule,
     _get_single_item,
 )
+from supervisely.io.json import load_json_file
 from supervisely.project.project_type import ProjectType
+
+if TYPE_CHECKING:
+    from supervisely.project.project import ProjectMeta
+
+from supervisely import logger
 
 
 class DatasetInfo(NamedTuple):
@@ -105,7 +122,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         api = sly.Api.from_env()
 
         # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
         project_id = 1951
         ds = api.dataset.get_list(project_id)
@@ -129,7 +146,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
                         items_count=11,
                         created_at='2021-03-03T15:54:08.802Z',
                         updated_at='2021-03-16T09:31:37.063Z',
-                        reference_image_url='https://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/K/q/jf/...png'),
+                        reference_image_url='https://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/K/q/jf/...png'),
                         team_id=1,
                         workspace_id=2
         """
@@ -168,6 +185,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         filters: Optional[List[Dict[str, str]]] = None,
         recursive: Optional[bool] = False,
         parent_id: Optional[int] = None,
+        include_custom_data: Optional[bool] = False,
     ) -> List[DatasetInfo]:
         """
         Returns list of dataset in the given project, or list of nested datasets
@@ -183,6 +201,9 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :type recursive: bool, optional
         :param parent_id: Parent Dataset ID. If set to None, the search will be performed at the top level of the Project,
             otherwise the search will be performed in the specified Dataset.
+        :type parent_id: Union[int, None], optional
+        :param include_custom_data: If True, the response will include the `custom_data` field for each Dataset.
+        :type include_custom_data: bool, optional
         :return: List of all Datasets with information for the given Project. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[DatasetInfo]`
         :Usage example:
@@ -209,7 +230,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             #                 items_count=6,
             #                 created_at="2021-03-02T10:04:33.973Z",
             #                 updated_at="2021-03-10T09:31:50.341Z",
-            #                 reference_image_url="http://app.supervise.ly/z6ut6j8bnaz1vj8aebbgs4-public/images/original/...jpg"),
+            #                 reference_image_url="http://app.supervisely.com/z6ut6j8bnaz1vj8aebbgs4-public/images/original/...jpg"),
             #                 DatasetInfo(id=2557,
             #                 name="kiwi",
             #                 description="",
@@ -219,7 +240,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             #                 items_count=6,
             #                 created_at="2021-03-10T09:31:33.701Z",
             #                 updated_at="2021-03-10T09:31:44.196Z",
-            #                 reference_image_url="http://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg")
+            #                 reference_image_url="http://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg")
             # ]
         """
         if filters is None:
@@ -229,14 +250,16 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             filters.append({"field": ApiField.PARENT_ID, "operator": "=", "value": parent_id})
             recursive = True
 
-        return self.get_list_all_pages(
-            "datasets.list",
-            {
-                ApiField.PROJECT_ID: project_id,
-                ApiField.FILTER: filters,
-                ApiField.RECURSIVE: recursive,
-            },
-        )
+        method = "datasets.list"
+        data = {
+            ApiField.PROJECT_ID: project_id,
+            ApiField.FILTER: filters,
+            ApiField.RECURSIVE: recursive,
+        }
+        if include_custom_data:
+            data[ApiField.EXTRA_FIELDS] = [ApiField.CUSTOM_DATA]
+
+        return self.get_list_all_pages(method, data)
 
     def get_info_by_id(self, id: int, raise_error: Optional[bool] = False) -> DatasetInfo:
         """
@@ -287,6 +310,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         description: Optional[str] = "",
         change_name_if_conflict: Optional[bool] = False,
         parent_id: Optional[int] = None,
+        custom_data: Optional[Dict[Any, Any]] = None,
     ) -> DatasetInfo:
         """
         Create Dataset with given name in the given Project.
@@ -301,6 +325,9 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :type change_name_if_conflict: bool, optional
         :param parent_id: Parent Dataset ID. If set to None, then the Dataset will be created at
             the top level of the Project, otherwise the Dataset will be created in a specified Dataset.
+        :type parent_id: Union[int, None]
+        :param custom_data: Custom data to store in the Dataset.
+        :type custom_data: Dict[Any, Any], optional
         :return: Information about Dataset. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`DatasetInfo`
         :Usage example:
@@ -328,15 +355,16 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             change_name_if_conflict=change_name_if_conflict,
             parent_id=parent_id,
         )
-        response = self._api.post(
-            "datasets.add",
-            {
-                ApiField.PROJECT_ID: project_id,
-                ApiField.NAME: effective_name,
-                ApiField.DESCRIPTION: description,
-                ApiField.PARENT_ID: parent_id,
-            },
-        )
+        method = "datasets.add"
+        payload = {
+            ApiField.PROJECT_ID: project_id,
+            ApiField.NAME: effective_name,
+            ApiField.DESCRIPTION: description,
+            ApiField.PARENT_ID: parent_id,
+        }
+        if custom_data is not None:
+            payload[ApiField.CUSTOM_DATA] = custom_data
+        response = self._api.post(method, payload)
         return self._convert_json_info(response.json())
 
     def get_or_create(
@@ -547,6 +575,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
                 new_dataset_name,
                 dataset.description,
                 change_name_if_conflict=change_name_if_conflict,
+                custom_data=dataset.custom_data,
             )
             items_api.copy_batch(
                 new_dataset.id, src_item_ids, change_name_if_conflict, with_annotations
@@ -780,6 +809,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         sort_order: Optional[str] = None,
         per_page: Optional[int] = None,
         page: Union[int, Literal["all"]] = "all",
+        include_custom_data: Optional[bool] = False,
     ) -> dict:
         """
         List all available datasets from all available teams for the user that match the specified filtering criteria.
@@ -790,22 +820,20 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
                         - 'operator': Takes values '=', 'eq', '!=', 'not', 'in', '!in', '>', 'gt', '>=', 'gte', '<', 'lt', '<=', 'lte'
                         - 'value': Takes on values according to the meaning of 'field' or null
         :type filters: List[Dict[str, str]], optional
-
         :param sort: Specifies by which parameter to sort the project list.
                         Takes values 'id', 'name', 'size', 'createdAt', 'updatedAt'
         :type sort: str, optional
-
         :param sort_order: Determines which value to list from.
         :type sort_order: str, optional
-
         :param per_page: Number of first items found to be returned.
                         'None' will return the first page with a default size of 20000 datasets.
         :type per_page: int, optional
-
         :param page: Page number, used to retrieve the following items if the number of them found is more than per_page.
                      The default value is 'all', which retrieves all available datasets.
                      'None' will return the first page with datasets, the amount of which is set in param 'per_page'.
         :type page: Union[int, Literal["all"]], optional
+        :param include_custom_data: If True, the response will include the `custom_data` field for each Dataset.
+        :type include_custom_data: bool, optional
 
         :return: Search response information and 'DatasetInfo' of all datasets that are searched by a given criterion.
         :rtype: dict
@@ -882,6 +910,8 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             request_body[ApiField.PER_PAGE] = per_page
         if page is not None and page != "all":
             request_body[ApiField.PAGE] = page
+        if include_custom_data:
+            request_body[ApiField.EXTRA_FIELDS] = [ApiField.CUSTOM_DATA]
 
         first_response = self._api.post(method, request_body).json()
 
@@ -991,13 +1021,66 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
 
         return dataset_tree
 
-    def tree(self, project_id: int) -> Generator[Tuple[List[str], DatasetInfo], None, None]:
+    def _yield_tree(
+        self, tree: Dict[DatasetInfo, Dict], path: List[str]
+    ) -> Generator[Tuple[List[str], DatasetInfo], None, None]:
+        """
+        Helper method for recursive tree traversal.
+        Yields tuples of (path, dataset) for all datasets in the tree. For each node (dataset) at the current level,
+        yields its (path, dataset) before recursively traversing and yielding from its children.
+        
+        :param tree: Tree structure to yield from.
+        :type tree: Dict[DatasetInfo, Dict]
+        :param path: Current path (used for recursion).
+        :type path: List[str]
+        :return: Generator of tuples of (path, dataset).
+        :rtype: Generator[Tuple[List[str], DatasetInfo], None, None]
+        """
+        for dataset, children in tree.items():
+            yield path, dataset
+            new_path = path + [dataset.name]
+            if children:
+                yield from self._yield_tree(children, new_path)
+
+    def _find_dataset_in_tree(
+        self, tree: Dict[DatasetInfo, Dict], target_id: int, path: List[str] = None
+    ) -> Tuple[Optional[DatasetInfo], Optional[Dict], List[str]]:
+        """Find a specific dataset in the tree and return its subtree and path.
+        
+        :param tree: Tree structure to search in.
+        :type tree: Dict[DatasetInfo, Dict]
+        :param target_id: ID of the dataset to find.
+        :type target_id: int
+        :param path: Current path (used for recursion).
+        :type path: List[str], optional
+        :return: Tuple of (found_dataset, its_subtree, path_to_dataset).
+        :rtype: Tuple[Optional[DatasetInfo], Optional[Dict], List[str]]
+        """
+        if path is None:
+            path = []
+            
+        for dataset, children in tree.items():
+            if dataset.id == target_id:
+                return dataset, children, path
+            # Search in children
+            if children:
+                found_dataset, found_children, found_path = self._find_dataset_in_tree(
+                    children, target_id, path + [dataset.name]
+                )
+                if found_dataset is not None:
+                    return found_dataset, found_children, found_path
+        return None, None, []
+
+    def tree(self, project_id: int, dataset_id: Optional[int] = None) -> Generator[Tuple[List[str], DatasetInfo], None, None]:
         """Yields tuples of (path, dataset) for all datasets in the project.
         Path of the dataset is a list of parents, e.g. ["ds1", "ds2", "ds3"].
         For root datasets, the path is an empty list.
 
         :param project_id: Project ID in which the Dataset is located.
         :type project_id: int
+        :param dataset_id: Optional Dataset ID to start the tree from. If provided, only yields
+            the subtree starting from this dataset (including the dataset itself and all its children).
+        :type dataset_id: Optional[int]
         :return: Generator of tuples of (path, dataset).
         :rtype: Generator[Tuple[List[str], DatasetInfo], None, None]
         :Usage example:
@@ -1010,11 +1093,17 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
 
             project_id = 123
 
+            # Get all datasets in the project
             for parents, dataset in api.dataset.tree(project_id):
                 parents: List[str]
                 dataset: sly.DatasetInfo
                 print(parents, dataset.name)
 
+            # Get only a specific branch starting from dataset_id = 456
+            for parents, dataset in api.dataset.tree(project_id, dataset_id=456):
+                parents: List[str]
+                dataset: sly.DatasetInfo
+                print(parents, dataset.name)
 
             # Output:
             # [] ds1
@@ -1022,17 +1111,20 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             # ["ds1", "ds2"] ds3
         """
 
-        def yield_tree(
-            tree: Dict[DatasetInfo, Dict], path: List[str]
-        ) -> Generator[Tuple[List[str], DatasetInfo], None, None]:
-            """Yields tuples of (path, dataset) for all datasets in the tree."""
-            for dataset, children in tree.items():
-                yield path, dataset
-                new_path = path + [dataset.name]
-                if children:
-                    yield from yield_tree(children, new_path)
-
-        yield from yield_tree(self.get_tree(project_id), [])
+        full_tree = self.get_tree(project_id)
+        
+        if dataset_id is None:
+            # Return the full tree
+            yield from self._yield_tree(full_tree, [])
+        else:
+            # Find the specific dataset and return only its subtree
+            target_dataset, subtree, dataset_path = self._find_dataset_in_tree(full_tree, dataset_id)
+            if target_dataset is not None:
+                # Yield the target dataset first, then its children
+                yield dataset_path, target_dataset
+                if subtree:
+                    new_path = dataset_path + [target_dataset.name]
+                    yield from self._yield_tree(subtree, new_path)
 
     def get_nested(self, project_id: int, dataset_id: int) -> List[DatasetInfo]:
         """Returns a list of all nested datasets in the specified dataset.
@@ -1090,3 +1182,162 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :rtype: bool
         """
         return self.get_info_by_name(project_id, name, parent_id=parent_id) is not None
+
+    def quick_import(
+        self,
+        dataset: Union[int, DatasetInfo],
+        blob_path: str,
+        offsets_path: str,
+        anns: List[str],
+        project_meta: Optional[ProjectMeta] = None,
+        project_type: Optional[ProjectType] = None,
+        log_progress: bool = True,
+    ):
+        """
+        Quick import of images and annotations to the dataset.
+        Used only for extended Supervisely format with blobs.
+        Project will be automatically marked as blob project.
+
+        IMPORTANT: Number of annotations must be equal to the number of images in offset file.
+                   Image names in the offset file and annotation files must match.
+
+        :param dataset: Dataset ID or DatasetInfo object.
+        :type dataset: Union[int, DatasetInfo]
+        :param blob_path: Local path to the blob file.
+        :type blob_path: str
+        :param offsets_path: Local path to the offsets file.
+        :type offsets_path: str
+        :param anns: List of annotation paths.
+        :type anns: List[str]
+        :param project_meta: ProjectMeta object.
+        :type project_meta: Optional[ProjectMeta], optional
+        :param project_type: Project type.
+        :type project_type: Optional[ProjectType], optional
+        :param log_progress: If True, show progress bar.
+        :type log_progress: bool, optional
+
+
+        :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+            from supervisely.project.project_meta import ProjectMeta
+            from supervisely.project.project_type import ProjectType
+
+            api = sly.Api.from_env()
+
+            dataset_id = 123
+            workspace_id = 456
+            blob_path = "/path/to/blob"
+            offsets_path = "/path/to/offsets"
+            project_meta_path = "/path/to/project_meta.json"
+            anns = ["/path/to/ann1.json", "/path/to/ann2.json", ...]
+
+            # Create a new project, dataset and update its meta
+            project = api.project.create(
+                workspace_id,
+                "Quick Import",
+                type=sly.ProjectType.IMAGES,
+                change_name_if_conflict=True,
+            )
+            dataset = api.dataset.create(project.id, "ds1")
+            project_meta_json = sly.json.load_json_file(project_meta_path)
+            meta = api.project.update_meta(project.id, meta=project_meta_json)
+
+            dataset_info = api.dataset.quick_import(
+                dataset=dataset.id,
+                blob_path=blob_path,
+                offsets_path=offsets_path,
+                anns=anns,
+                project_meta=ProjectMeta(),
+                project_type=ProjectType.IMAGES,
+                log_progress=True
+            )
+
+        """
+        from supervisely.api.api import Api, ApiContext
+        from supervisely.api.image_api import _BLOB_TAG_NAME
+        from supervisely.project.project import TF_BLOB_DIR, ProjectMeta
+
+        def _ann_objects_generator(ann_paths, project_meta):
+            for ann in ann_paths:
+                ann_json = load_json_file(ann)
+                yield Annotation.from_json(ann_json, project_meta)
+
+        self._api: Api
+
+        if isinstance(dataset, int):
+            dataset = self.get_info_by_id(dataset)
+
+        project_info = self._api.project.get_info_by_id(dataset.project_id)
+
+        if project_meta is None:
+            meta_dict = self._api.project.get_meta(dataset.project_id)
+            project_meta = ProjectMeta.from_json(meta_dict)
+
+        if project_type is None:
+            project_type = project_info.type
+
+        if project_type != ProjectType.IMAGES:
+            raise NotImplementedError(
+                f"Quick import is not implemented for project type {project_type}"
+            )
+
+        # Set optimization context
+        with ApiContext(
+            api=self._api,
+            project_id=dataset.project_id,
+            dataset_id=dataset.id,
+            project_meta=project_meta,
+        ):
+            dst_blob_path = os.path.join(f"/{TF_BLOB_DIR}", os.path.basename(blob_path))
+            dst_offset_path = os.path.join(f"/{TF_BLOB_DIR}", os.path.basename(offsets_path))
+            if log_progress:
+                sizeb = os.path.getsize(blob_path) + os.path.getsize(offsets_path)
+                b_progress_cb = tqdm(
+                    total=sizeb,
+                    unit="B",
+                    unit_scale=True,
+                    desc=f"Uploading blob to file storage",
+                )
+            else:
+                b_progress_cb = None
+
+            self._api.file.upload_bulk_fast(
+                team_id=project_info.team_id,
+                src_paths=[blob_path, offsets_path],
+                dst_paths=[dst_blob_path, dst_offset_path],
+                progress_cb=b_progress_cb.update,
+            )
+
+            blob_file_id = self._api.file.get_info_by_path(project_info.team_id, dst_blob_path).id
+
+            if log_progress:
+                of_progress_cb = tqdm(desc=f"Uploading images by offsets", total=len(anns)).update
+            else:
+                of_progress_cb = None
+
+            image_info_generator = self._api.image.upload_by_offsets_generator(
+                dataset=dataset,
+                team_file_id=blob_file_id,
+                progress_cb=of_progress_cb,
+            )
+
+            ann_map = {Path(ann).stem: ann for ann in anns}
+
+            for image_info_batch in image_info_generator:
+                img_ids = [img_info.id for img_info in image_info_batch]
+                img_names = [img_info.name for img_info in image_info_batch]
+                img_anns = [ann_map[img_name] for img_name in img_names]
+                ann_objects = _ann_objects_generator(img_anns, project_meta)
+                coroutine = self._api.annotation.upload_anns_async(
+                    image_ids=img_ids, anns=ann_objects, log_progress=log_progress
+                )
+                run_coroutine(coroutine)
+        try:
+            custom_data = self._api.project.get_custom_data(dataset.project_id)
+            custom_data[_BLOB_TAG_NAME] = True
+            self._api.project.update_custom_data(dataset.project_id, custom_data)
+        except:
+            logger.warning("Failed to set blob tag for project")

@@ -1,6 +1,9 @@
+from typing import List, Optional
+
 import numpy as np
-from typing import Optional, List, Dict, Union
+
 from supervisely.geometry.cuboid_3d import Cuboid3d
+from supervisely.geometry.polyline_3d import Polyline3D
 
 
 class Prediction:
@@ -10,6 +13,12 @@ class Prediction:
 
 class PredictionMask(Prediction):
     def __init__(self, class_name: str, mask: np.ndarray, score: Optional[float] = None):
+        """
+        class_name: Name of the class.
+        mask:       Numpy array with bool or binary ([0, 1] or [0, 255]) values.
+                    Will be converted to sly.Bitmap geometry.
+        score:      Confidence score.
+        """
         super(PredictionMask, self).__init__(class_name=class_name)
         self.mask = mask
         self.score = score
@@ -24,6 +33,28 @@ class PredictionBBox(Prediction):
 
 class PredictionSegmentation(Prediction):
     def __init__(self, mask: np.ndarray):
+        self.mask = mask
+
+
+class PredictionAlphaMask(Prediction):
+    def __init__(self, class_name: str, mask: np.ndarray):
+        """
+        class_name: Name of the class.
+        mask:       Numpy array with values in range [0, 255].
+                    Will be converted to sly.AlphaMask geometry.
+        """
+        super(PredictionAlphaMask, self).__init__(class_name=class_name)
+        self.mask = mask
+
+
+class ProbabilityMask(Prediction):
+    def __init__(self, class_name: str, mask: np.ndarray):
+        """
+        class_name: Name of the class.
+        mask:       Numpy array with values in range [0, 255].
+                    Will be converted to sly.AlphaMask geometry.
+        """
+        super(ProbabilityMask, self).__init__(class_name=class_name)
         self.mask = mask
 
 
@@ -51,3 +82,9 @@ class PredictionCuboid3d(Prediction):
         super(PredictionCuboid3d, self).__init__(class_name=class_name)
         self.cuboid_3d = cuboid_3d
         self.score = score
+
+
+class PredictionPolyline3D(Prediction):
+    def __init__(self, class_name: str, polyline_3d: Polyline3D):
+        super(PredictionPolyline3D, self).__init__(class_name=class_name)
+        self.polyline_3d = polyline_3d

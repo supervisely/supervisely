@@ -32,8 +32,7 @@ class PerClassAvgPrecision(DetectionVisMetric):
         import plotly.express as px  # pylint: disable=import-error
 
         # AP per-class
-        ap_per_class = self.eval_result.mp.coco_precision[:, :, :, 0, 2].mean(axis=(0, 1))
-        ap_per_class[ap_per_class == -1] = 0  # -1 is a placeholder for no GT
+        ap_per_class = self.eval_result.mp.AP_per_class()
         labels = dict(r="Average Precision", theta="Class")
         fig = px.scatter_polar(
             r=ap_per_class,

@@ -276,7 +276,7 @@ class OutcomeCounts(BaseVisMetrics):
                 title = f"{model_name}. {outcome}: {len(obj_ids)} object{'s' if len(obj_ids) > 1 else ''}"
                 outcome_dict["title"] = title
                 outcome_dict["imagesIds"] = list(img_ids)
-                thr = eval_result.mp.f1_optimal_conf
+                thr = eval_result.mp.conf_threshold
                 if outcome == "FN":
                     outcome_dict["filters"] = [
                         {"type": "specific_objects", "tagId": None, "value": list(obj_ids)},

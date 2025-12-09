@@ -19,7 +19,7 @@ class PRCurve(DetectionVisMetric):
 
     @property
     def md(self) -> MarkdownWidget:
-        text = self.vis_texts.markdown_pr_curve.format(self.vis_texts.definitions.f1_score)
+        text = self.vis_texts.markdown_pr_curve.format(self.vis_texts.definitions.about_pr_tradeoffs)
         return MarkdownWidget(self.MARKDOWN, "Precision-Recall Curve", text)
 
     @property

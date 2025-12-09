@@ -1,22 +1,23 @@
+from __future__ import annotations
 import random
 import string
 from abc import abstractmethod
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import fields
 from datetime import datetime
 from json import JSONDecodeError
 from os.path import dirname, join
 from time import time
-from typing import Any, Dict, List, Literal, NamedTuple
-
+from typing import Any, Dict, List, Literal, NamedTuple, Union
 import requests
 
 from supervisely import logger
 from supervisely._utils import abs_url, is_development
-from supervisely.api.api import Api, ApiField
 from supervisely.api.file_api import FileInfo
 from supervisely.io.fs import get_file_name_with_ext, silent_remove
 from supervisely.io.json import dump_json_file
+from supervisely.api.api import Api, ApiField
 from supervisely.nn.experiments import ExperimentInfo
 
 
@@ -55,6 +56,9 @@ class BaseTrainArtifacts:
         self._metadata_file_name: str = "train_info.json"
 
         self._app_name: str = None
+        self._slug = None
+        self._serve_app_name = None
+        self._serve_slug = None
         self._framework_name: str = None
         self._framework_folder: str = None
         self._weights_folder: str = None
@@ -63,6 +67,8 @@ class BaseTrainArtifacts:
         self._config_file: str = None
         self._pattern: str = None
         self._available_task_types: List[str] = []
+        self._require_runtime = False
+        self._has_benchmark_evaluation = False
 
     @property
     def team_id(self) -> int:
@@ -93,6 +99,36 @@ class BaseTrainArtifacts:
         :rtype: str
         """
         return self._app_name
+
+    @property
+    def slug(self):
+        """
+        Train app slug.
+
+        :return: Train app slug.
+        :rtype: str
+        """
+        return self._slug
+
+    @property
+    def serve_app_name(self):
+        """
+        Serve application name.
+
+        :return: The serve application name.
+        :rtype: str
+        """
+        return self._serve_app_name
+
+    @property
+    def serve_slug(self):
+        """
+        Serve app slug.
+
+        :return: Serve app slug.
+        :rtype: str
+        """
+        return self._serve_slug
 
     @property
     def framework_name(self):
@@ -163,6 +199,23 @@ class BaseTrainArtifacts:
         :rtype: re.Pattern
         """
         return self._pattern
+
+    @property
+    def require_runtime(self):
+        """
+        Whether providing runtime is required for the framework.
+
+        :return: True if runtime is required, False otherwise.
+        :rtype: bool
+        """
+        return self._require_runtime
+
+    @property
+    def has_benchmark_evaluation(self):
+        """
+        Whether the framework has integrated benchmark evaluation.
+        """
+        return self._has_benchmark_evaluation
 
     def is_valid_artifacts_path(self, path):
         """
@@ -372,7 +425,7 @@ class BaseTrainArtifacts:
             _upload_metadata(train_json)
             logger.info(f"Metadata for '{artifacts_folder}' was generated")
         else:
-            logger.warn(f"Invalid metadata for '{artifacts_folder}'")
+            logger.debug(f"Invalid metadata for '{artifacts_folder}'")
             train_json = None
         return train_json
 
@@ -436,7 +489,7 @@ class BaseTrainArtifacts:
             )
             is_valid = self._validate_train_json(json_data)
             if not is_valid:
-                logger.warn(f"Invalid metadata for '{artifacts_folder}'")
+                logger.debug(f"Invalid metadata for '{artifacts_folder}'")
                 json_data = None
         return json_data
 
@@ -531,68 +584,68 @@ class BaseTrainArtifacts:
         logger.debug(f"Listing time: '{format(end_time - start_time, '.6f')}' sec")
         return train_infos
 
-    def get_list_experiment_info(self, sort: Literal["desc", "asc"] = "desc") -> List[TrainInfo]:
-        def build_experiment_info_from_train_info(
-            api: Api, train_info: TrainInfo
-        ) -> ExperimentInfo:
+    def convert_train_to_experiment_info(
+        self, train_info: TrainInfo
+    ) -> Union['ExperimentInfo', None]:
+        try:
+            checkpoints = []
+            for chk in train_info.checkpoints:
+                if self.weights_folder:
+                    checkpoints.append(join(self.weights_folder, chk.name))
+                else:
+                    checkpoints.append(chk.name)
 
-            try:
-                checkpoints = []
-                for chk in train_info.checkpoints:
-                    if self.weights_folder:
-                        checkpoints.append(join(self.weights_folder, chk.name))
-                    else:
-                        checkpoints.append(chk.name)
+            best_checkpoint = next(
+                (chk.name for chk in train_info.checkpoints if "best" in chk.name), None
+            )
+            if not best_checkpoint and checkpoints:
+                best_checkpoint = get_file_name_with_ext(checkpoints[-1])
 
-                best_checkpoint = next(
-                    (chk.name for chk in train_info.checkpoints if "best" in chk.name), None
+            task_info = self._api.task.get_info_by_id(train_info.task_id)
+            workspace_id = task_info["workspaceId"]
+
+            project = self._api.project.get_info_by_name(workspace_id, train_info.project_name)
+            project_id = project.id if project else None
+
+            model_files = {}
+            if train_info.config_path:
+                model_files["config"] = self.get_config_path(train_info.artifacts_folder).replace(
+                    train_info.artifacts_folder, ""
                 )
-                if not best_checkpoint and checkpoints:
-                    best_checkpoint = get_file_name_with_ext(checkpoints[-1])
 
-                task_info = api.task.get_info_by_id(train_info.task_id)
-                workspace_id = task_info["workspaceId"]
+            input_datetime = task_info["startedAt"]
+            parsed_datetime = datetime.strptime(input_datetime, "%Y-%m-%dT%H:%M:%S.%fZ")
+            date_time = parsed_datetime.strftime("%Y-%m-%d %H:%M:%S")
 
-                project = api.project.get_info_by_name(workspace_id, train_info.project_name)
-                project_id = project.id if project else None
+            experiment_info_data = {
+                "experiment_name": f"{self.framework_name} experiment",
+                "framework_name": self.framework_name,
+                "model_name": f"{self.framework_name} model",
+                "task_type": train_info.task_type,
+                "project_id": project_id,
+                "task_id": train_info.task_id,
+                "model_files": model_files,
+                "checkpoints": checkpoints,
+                "best_checkpoint": best_checkpoint,
+                "artifacts_dir": train_info.artifacts_folder,
+                "datetime": date_time,
+            }
 
-                model_files = {}
-                if train_info.config_path:
-                    model_files["config"] = self.get_config_path(
-                        train_info.artifacts_folder
-                    ).replace(train_info.artifacts_folder, "")
+            experiment_info_fields = {
+                field.name
+                for field in ExperimentInfo.__dataclass_fields__.values()  # pylint: disable=no-member
+            }
+            for field in experiment_info_fields:
+                if field not in experiment_info_data:
+                    experiment_info_data[field] = None
+            return ExperimentInfo(**experiment_info_data)
+        except Exception as e:
+            logger.debug(f"Failed to build experiment info: {e}")
+            return None
 
-                input_datetime = task_info["startedAt"]
-                parsed_datetime = datetime.strptime(input_datetime, "%Y-%m-%dT%H:%M:%S.%fZ")
-                date_time = parsed_datetime.strftime("%Y-%m-%d %H:%M:%S")
-
-                experiment_info_data = {
-                    "experiment_name": f"Unknown {self.framework_name} experiment",
-                    "framework_name": self.framework_name,
-                    "model_name": f"Unknown {self.framework_name} model",
-                    "task_type": train_info.task_type,
-                    "project_id": project_id,
-                    "task_id": train_info.task_id,
-                    "model_files": model_files,
-                    "checkpoints": checkpoints,
-                    "best_checkpoint": best_checkpoint,
-                    "artifacts_dir": train_info.artifacts_folder,
-                    "datetime": date_time,
-                }
-
-                experiment_info_fields = {
-                    field.name
-                    for field in ExperimentInfo.__dataclass_fields__.values()  # pylint: disable=no-member
-                }
-                for field in experiment_info_fields:
-                    if field not in experiment_info_data:
-                        experiment_info_data[field] = None
-
-                return ExperimentInfo(**experiment_info_data)
-            except Exception as e:
-                logger.warning(f"Failed to build experiment info: {e}")
-                return None
-
+    def get_list_experiment_info(
+        self, sort: Literal["desc", "asc"] = "desc"
+    ) -> List['ExperimentInfo']:
         train_infos = self.get_list(sort)
 
         # Sync version
@@ -607,7 +660,7 @@ class BaseTrainArtifacts:
         with ThreadPoolExecutor() as executor:
             experiment_infos = list(
                 executor.map(
-                    lambda t: build_experiment_info_from_train_info(self._api, t),
+                    lambda t: self.convert_train_to_experiment_info(t),
                     train_infos,
                 )
             )
@@ -621,3 +674,29 @@ class BaseTrainArtifacts:
         :rtype: List[str]
         """
         return self._available_task_types
+
+    def get_info_by_artifacts_dir(
+        self,
+        artifacts_dir: str,
+        return_type: Literal["train_info", "experiment_info"] = "train_info",
+    ) -> Union[TrainInfo, 'ExperimentInfo', None]:
+        """
+        Get training info by artifacts directory.
+
+        :param artifacts_dir: The artifacts directory.
+        :type artifacts_dir: str
+        :param return_type: The return type, either "train_info" or "experiment_info". Default is "experiment_info".
+        :type return_type: Literal["train_info", "experiment_info"]
+        :return: The training info.
+        :rtype: TrainInfo
+        """
+        for train_info in self.get_list():
+            if train_info.artifacts_folder == artifacts_dir:
+                if return_type == "train_info":
+                    return train_info
+                else:
+                    return self.convert_train_to_experiment_info(train_info)
+
+    # load_custom_checkpoint
+    # inference
+    # fix docstrings :param: x -> :param x:

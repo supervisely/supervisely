@@ -8,6 +8,7 @@ from supervisely.api.api import Api
 from supervisely.io.fs import dir_empty, get_directory_size
 from supervisely.nn.benchmark.visualization.widgets import BaseWidget
 from supervisely.task.progress import tqdm_sly
+from supervisely import logger
 
 
 class Renderer:
@@ -95,6 +96,7 @@ class Renderer:
         pth = Path(self.base_dir).joinpath(self.report_name)
         with open(pth, "w") as f:
             f.write(report_link)
+        logger.debug(f"Report link: {self._get_report_link(api, team_id, remote_dir)}")
         return str(pth)
 
     def _get_report_link(self, api: Api, team_id: int, remote_dir: str):

@@ -1,32 +1,40 @@
-from pathlib import Path
-import sys
-import os
 import json
-import traceback
-import click
+import os
 import re
 import subprocess
+import sys
+import traceback
+from pathlib import Path
+
+import click
 import git
 from dotenv import load_dotenv
 from rich.console import Console
 
-
 MIN_SUPPORTED_INSTANCE_VERSION = "6.8.3"
 
+from supervisely._utils import setup_certificates
 from supervisely.cli.release.release import (
+    delete_tag,
     find_tag_in_repo,
-    push_tag,
     get_app_from_instance,
-    get_module_root,
-    get_module_path,
     get_appKey,
+    get_created_at,
+    get_instance_version,
+    get_module_path,
+    get_module_root,
+    get_user,
+    push_tag,
     release,
     slug_is_valid,
-    delete_tag,
-    get_instance_version,
-    get_user,
-    get_created_at,
 )
+
+load_dotenv(os.path.expanduser("~/supervisely.env"))
+try:
+    setup_certificates()
+except Exception as e:
+    print(f"Error setting up certificates: {e}")
+    traceback.print_exc()
 
 
 def _check_git(repo: git.Repo):
@@ -39,11 +47,7 @@ def _check_git(repo: git.Repo):
         )
         console.print("  Untracked files:")
         console.print(
-            "\n".join(
-                [f"  {i+1}) " + file for i, file in enumerate(repo.untracked_files)][
-                    :20
-                ]
-            )
+            "\n".join([f"  {i+1}) " + file for i, file in enumerate(repo.untracked_files)][:20])
         )
         if len(repo.untracked_files) > 20:
             console.print(f"  ... and {len(repo.untracked_files) - 20} more.")
@@ -98,17 +102,13 @@ def _ask_release_version(repo: git.Repo):
     console = Console()
 
     def extract_version(tag_name):
-        return tag_name[len("sly-release-"):] if tag_name.startswith("sly-release-") else tag_name
+        return tag_name[len("sly-release-") :] if tag_name.startswith("sly-release-") else tag_name
 
     try:
         sly_release_tags = [
-            tag.name
-            for tag in repo.tags
-            if _check_release_version(extract_version(tag.name))
+            tag.name for tag in repo.tags if _check_release_version(extract_version(tag.name))
         ]
-        sly_release_tags.sort(
-            key=lambda tag: [int(n) for n in extract_version(tag)[1:].split(".")]
-        )
+        sly_release_tags.sort(key=lambda tag: [int(n) for n in extract_version(tag)[1:].split(".")])
         current_release_version = extract_version(sly_release_tags[-1])[1:]
         suggested_release_version = ".".join(
             [
@@ -232,9 +232,7 @@ def run(
     # get module path and check if it is a git repo
     module_root = get_module_root(app_directory)
     if sub_app_directory is not None:
-        sub_app_directory = (
-            Path(sub_app_directory).absolute().relative_to(module_root).as_posix()
-        )
+        sub_app_directory = Path(sub_app_directory).absolute().relative_to(module_root).as_posix()
     module_path = get_module_path(module_root, sub_app_directory)
     try:
         repo = git.Repo(module_root)
@@ -244,8 +242,7 @@ def run(
         )
         return False
 
-    # get server address
-    load_dotenv(os.path.expanduser("~/supervisely.env"))
+    # load server address
     server_address = os.getenv("SERVER_ADDRESS", None)
     if server_address is None:
         console.print(
@@ -314,9 +311,7 @@ def run(
         with open(module_path.joinpath("config.json"), "r") as f:
             config = json.load(f)
     except FileNotFoundError:
-        console.print(
-            f'[red][Error][/] Cannot find "config.json" file at "{module_path}"'
-        )
+        console.print(f'[red][Error][/] Cannot find "config.json" file at "{module_path}"')
         return False
     except json.JSONDecodeError as e:
         console.print(
@@ -352,6 +347,14 @@ def run(
             with open(modal_template_path, "r") as f:
                 modal_template = f.read()
 
+    # get files
+    files = config.get("files", None)
+    if files is not None:
+        files = files.copy()
+        for file_name, file_path in files.items():
+            file_path = str(module_root.joinpath(file_path).absolute())
+            files[file_name] = file_path
+
     # check that everything is commited and pushed
     success = _check_git(repo)
     if not success:
@@ -379,9 +382,7 @@ def run(
             f'[red][Error][/] Could not access "{server_address}". Check that instance is running and accessible'
         )
         return False
-    module_exists_label = (
-        "[yellow bold]updated[/]" if app_exist else "[green bold]created[/]"
-    )
+    module_exists_label = "[yellow bold]updated[/]" if app_exist else "[green bold]created[/]"
 
     # print details
     console.print(f"Application directory:\t[green]{module_path}[/]")
@@ -390,9 +391,7 @@ def run(
     console.print(f"User:\t\t\t[green]{user_login} (id: {user_id})[/]")
     if release_token:
         console.print(f"Release token:\t\t[green]{hided(release_token)}[/]")
-        console.print(
-            f"Release User: \t\t[green]{release_user_login} (id: {release_user_id})[/]"
-        )
+        console.print(f"Release User: \t\t[green]{release_user_login} (id: {release_user_id})[/]")
     console.print(f"Git branch:\t\t[green]{repo.active_branch}[/]")
     console.print(f"App Name:\t\t[green]{app_name}[/]")
     console.print(f"App Key:\t\t[green]{hided(appKey)}[/]\n")
@@ -411,14 +410,10 @@ def run(
         if release_version is None:
             release_version = _ask_release_version(repo)
         if not _check_release_version(release_version):
-            console.print(
-                '[red][Error][/] Incorrect release version. Should be of format "vX.X.X"'
-            )
+            console.print('[red][Error][/] Incorrect release version. Should be of format "vX.X.X"')
             return False
     else:
-        console.print(
-            f'Release version will be "{repo.active_branch.name}" as the branch name'
-        )
+        console.print(f'Release version will be "{repo.active_branch.name}" as the branch name')
         release_version = repo.active_branch.name
 
     # get release name
@@ -489,6 +484,7 @@ def run(
             sub_app_directory if sub_app_directory != None else "",
             created_at,
             share_app,
+            files,
         )
         if response.status_code != 200:
             error = f"[red][Error][/] Error releasing the application. Please contact Supervisely team. Status Code: {response.status_code}"
@@ -534,9 +530,7 @@ def run(
     return True
 
 
-@click.command(
-    help="This app allows you to release your aplication to Supervisely platform"
-)
+@click.command(help="This app allows you to release your aplication to Supervisely platform")
 @click.option(
     "-p",
     "--path",
@@ -554,9 +548,7 @@ def run(
     required=False,
     help='[Optional] Release version in format "vX.X.X"',
 )
-@click.option(
-    "--release-description", required=False, help="[Optional] Release description"
-)
+@click.option("--release-description", required=False, help="[Optional] Release description")
 @click.option(
     "--share",
     is_flag=True,

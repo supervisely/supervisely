@@ -23,8 +23,9 @@ from typing_extensions import Literal
 
 import supervisely.io.env as env
 import supervisely.io.fs as sly_fs
-from supervisely._utils import batched, rand_str
+from supervisely._utils import batched, rand_str, run_coroutine
 from supervisely.api.module_api import ApiField, ModuleApiBase
+from supervisely.api.remote_storage_api import RemoteStorageApi
 from supervisely.io.fs import (
     ensure_base_path,
     get_file_ext,
@@ -33,7 +34,9 @@ from supervisely.io.fs import (
     get_file_name,
     get_file_name_with_ext,
     get_file_size,
+    get_or_create_event_loop,
     list_files_recursively,
+    list_files_recursively_async,
     silent_remove,
 )
 from supervisely.io.fs_cache import FileCache
@@ -83,7 +86,7 @@ class FileApi(ModuleApiBase):
         api = sly.Api.from_env()
 
         # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
         team_id = 8
         file_path = "/999_App_Test/"
@@ -111,7 +114,7 @@ class FileApi(ModuleApiBase):
                      sizeb=261,
                      created_at='2021-01-11T09:04:17.959Z',
                      updated_at='2021-01-11T09:04:17.959Z',
-                     full_storage_url='http://supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/teams_storage/8/y/P/rn/...json')
+                     full_storage_url='http://supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/teams_storage/8/y/P/rn/...json')
         """
         return [
             ApiField.TEAM_ID,
@@ -211,7 +214,7 @@ class FileApi(ModuleApiBase):
             api = sly.Api.from_env()
 
             # Pass values into the API constructor (optional, not recommended)
-            # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
             team_id = 8
             file_path = "/999_App_Test/"
@@ -237,7 +240,7 @@ class FileApi(ModuleApiBase):
             #         "createdAt":"2021-01-11T09:04:17.959Z",
             #         "updatedAt":"2021-01-11T09:04:17.959Z",
             #         "hash":"z7Wv1a7WIC5HIJrfX/69XXrqtDaLxucSprWHoCxyq0M=",
-            #         "fullStorageUrl":"http://supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/teams_storage/8/y/P/rn/...json",
+            #         "fullStorageUrl":"http://supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/teams_storage/8/y/P/rn/...json",
             #         "teamId":8,
             #         "name":"00135.json"
             #     },
@@ -254,7 +257,7 @@ class FileApi(ModuleApiBase):
             #         "createdAt":"2021-01-11T09:04:18.099Z",
             #         "updatedAt":"2021-01-11T09:04:18.099Z",
             #         "hash":"La9+XtF2+cTlAqUE/I72e/xS12LqyH1+z<3T+SgD4CTU=",
-            #         "fullStorageUrl":"http://supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/teams_storage/8/9/k/Hs/...json",
+            #         "fullStorageUrl":"http://supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/teams_storage/8/9/k/Hs/...json",
             #         "teamId":8,
             #         "name":"01587.json"
             #     }
@@ -322,7 +325,7 @@ class FileApi(ModuleApiBase):
             api = sly.Api.from_env()
 
             # Pass values into the API constructor (optional, not recommended)
-            # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
             team_id = 9
             file_path = "/My_App_Test/"
@@ -810,7 +813,7 @@ class FileApi(ModuleApiBase):
         :type src: List[str]
         :param dst: Destination paths for Files to Team Files.
         :type dst: List[str]
-        :param progress_cb: Function for tracking download progress.
+        :param progress_cb: Function for tracking upload progress.
         :type progress_cb: tqdm or callable, optional
         :return: Information about Files. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[FileInfo]`
@@ -1238,7 +1241,7 @@ class FileApi(ModuleApiBase):
            file_id = 7660
            file_url = sly.api.file.get_url(file_id)
            print(file_url)
-           # Output: http://supervise.ly/files/7660
+           # Output: http://supervisely.com/files/7660
         """
         return f"/files/{file_id}"
 
@@ -1277,7 +1280,7 @@ class FileApi(ModuleApiBase):
             #                  sizeb=261,
             #                  created_at='2021-01-11T09:04:17.959Z',
             #                  updated_at='2021-01-11T09:04:17.959Z',
-            #                  full_storage_url='http://supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/teams_storage/8/y/P/rn/...json')
+            #                  full_storage_url='http://supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/teams_storage/8/y/P/rn/...json')
         """
         if self.is_on_agent(remote_path) is True:
             path_infos = self.list_on_agent(team_id, os.path.dirname(remote_path), recursive=False)
@@ -1331,7 +1334,7 @@ class FileApi(ModuleApiBase):
             #                  sizeb=261,
             #                  created_at='2021-01-11T09:04:17.959Z',
             #                  updated_at='2021-01-11T09:04:17.959Z',
-            #                  full_storage_url='http://supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/teams_storage/8/y/P/rn/...json')
+            #                  full_storage_url='http://supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/teams_storage/8/y/P/rn/...json')
         """
         resp = self._api.post("file-storage.info", {ApiField.ID: id})
         return self._convert_json_info(resp.json())
@@ -1418,7 +1421,8 @@ class FileApi(ModuleApiBase):
             api.file.upload_directory(9, local_path, path_to_dir)
         """
         if not remote_dir.startswith("/"):
-            remote_dir = "/" + remote_dir
+            if not RemoteStorageApi.is_bucket_url(remote_dir):
+                remote_dir = "/" + remote_dir
 
         if self.dir_exists(team_id, remote_dir):
             if change_name_if_conflict is True:
@@ -1542,7 +1546,7 @@ class FileApi(ModuleApiBase):
                 sly_fs.remove_dir(temp_path)
             return content
         else:
-            raise FileNotFoundError(f"File not found: {remote_path}")
+            raise FileNotFoundError(f"File not found in Team Files at path: {remote_path}")
 
     async def _download_async(
         self,
@@ -2041,7 +2045,7 @@ class FileApi(ModuleApiBase):
         # check_hash: bool = True, #TODO add with resumaple api
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         progress_cb_type: Literal["number", "size"] = "size",
-    ) -> httpx.Response:
+    ) -> None:
         """
         Upload file from local path to Team Files asynchronously.
 
@@ -2057,8 +2061,8 @@ class FileApi(ModuleApiBase):
         :type progress_cb: tqdm or callable, optional
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "size".
         :type progress_cb_type: Literal["number", "size"], optional
-        :return: Response from API.
-        :rtype: :class:`httpx.Response`
+        :return: None
+        :rtype: :class:`NoneType`
         :Usage example:
 
             .. code-block:: python
@@ -2087,17 +2091,30 @@ class FileApi(ModuleApiBase):
         }
         if semaphore is None:
             semaphore = self._api.get_default_semaphore()
+        logger.debug(f"Uploading with async to: {dst}. Semaphore: {semaphore}")
         async with semaphore:
             async with aiofiles.open(src, "rb") as fd:
-                item = await fd.read()
-                response = await self._api.post_async(
-                    api_method, content=item, params=json_body, headers=headers
-                )
-                if progress_cb is not None and progress_cb_type == "size":
-                    progress_cb(len(item))
+
+                async def file_chunk_generator():
+                    while True:
+                        chunk = await fd.read(8 * 1024 * 1024)
+                        if not chunk:
+                            break
+                        if progress_cb is not None and progress_cb_type == "size":
+                            progress_cb(len(chunk))
+                        yield chunk
+
+                async for chunk, _ in self._api.stream_async(
+                    method=api_method,
+                    method_type="POST",
+                    data=file_chunk_generator(),  # added as required, but not used inside
+                    headers=headers,
+                    content=file_chunk_generator(),  # used instead of data inside stream_async
+                    params=json_body,
+                ):
+                    pass
                 if progress_cb is not None and progress_cb_type == "number":
                     progress_cb(1)
-                return response
 
     async def upload_bulk_async(
         self,
@@ -2109,6 +2126,7 @@ class FileApi(ModuleApiBase):
         # check_hash: bool = True, #TODO add with resumaple api
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         progress_cb_type: Literal["number", "size"] = "size",
+        enable_fallback: Optional[bool] = True,
     ) -> None:
         """
         Upload multiple files from local paths to Team Files asynchronously.
@@ -2125,6 +2143,8 @@ class FileApi(ModuleApiBase):
         :type progress_cb: tqdm or callable, optional
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "size".
         :type progress_cb_type: Literal["number", "size"], optional
+        :param enable_fallback: If True, the method will fallback to synchronous upload if an error occurs.
+        :type enable_fallback: bool, optional
         :return: None
         :rtype: :class:`NoneType`
         :Usage example:
@@ -2153,19 +2173,220 @@ class FileApi(ModuleApiBase):
                     api.file.upload_bulk_async(8, paths_to_files, paths_to_save)
                 )
         """
-        if semaphore is None:
-            semaphore = self._api.get_default_semaphore()
-        tasks = []
-        for s, d in zip(src_paths, dst_paths):
-            task = self.upload_async(
-                team_id,
-                s,
-                d,
-                semaphore=semaphore,
-                # chunk_size=chunk_size, #TODO add with resumaple api
-                # check_hash=check_hash, #TODO add with resumaple api
-                progress_cb=progress_cb,
-                progress_cb_type=progress_cb_type,
+        try:
+            if semaphore is None:
+                semaphore = self._api.get_default_semaphore()
+            tasks = []
+            for src, dst in zip(src_paths, dst_paths):
+                task = asyncio.create_task(
+                    self.upload_async(
+                        team_id=team_id,
+                        src=src,
+                        dst=dst,
+                        semaphore=semaphore,
+                        # chunk_size=chunk_size, #TODO add with resumaple api
+                        # check_hash=check_hash, #TODO add with resumaple api
+                        progress_cb=progress_cb,
+                        progress_cb_type=progress_cb_type,
+                    )
+                )
+                tasks.append(task)
+            for task in tasks:
+                await task
+        except Exception as e:
+            if enable_fallback:
+                logger.warning(
+                    f"Upload files bulk asynchronously failed. Fallback to synchronous upload.",
+                    exc_info=True,
+                )
+                if progress_cb is not None and progress_cb_type == "number":
+                    logger.warning(
+                        "Progress callback type 'number' is not supported for synchronous upload. "
+                        "Progress callback will be disabled."
+                    )
+                    progress_cb = None
+                self.upload_bulk(
+                    team_id=team_id,
+                    src_paths=src_paths,
+                    dst_paths=dst_paths,
+                    progress_cb=progress_cb,
+                )
+            else:
+                raise e
+
+    async def upload_directory_async(
+        self,
+        team_id: int,
+        local_dir: str,
+        remote_dir: str,
+        change_name_if_conflict: Optional[bool] = True,
+        progress_size_cb: Optional[Union[tqdm, Callable]] = None,
+        replace_if_conflict: Optional[bool] = False,
+        enable_fallback: Optional[bool] = True,
+    ) -> str:
+        """
+        Upload Directory to Team Files from local path.
+        Files are uploaded asynchronously.
+
+        :param team_id: Team ID in Supervisely.
+        :type team_id: int
+        :param local_dir: Path to local Directory.
+        :type local_dir: str
+        :param remote_dir: Path to Directory in Team Files.
+        :type remote_dir: str
+        :param change_name_if_conflict: Checks if given name already exists and adds suffix to the end of the name.
+        :type change_name_if_conflict: bool, optional
+        :param progress_size_cb: Function for tracking download progress.
+        :type progress_size_cb: Progress, optional
+        :param replace_if_conflict: If True, replace existing dir.
+        :type replace_if_conflict: bool, optional
+        :param enable_fallback: If True, the method will fallback to synchronous upload if an error occurs.
+        :type enable_fallback: bool, optional
+        :return: Path to Directory in Team Files
+        :rtype: :class:`str`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            path_to_dir = "/My_App_Test/ds1"
+            local_path = "/home/admin/Downloads/My_local_test"
+
+            api.file.upload_directory(9, local_path, path_to_dir)
+        """
+        try:
+            if not remote_dir.startswith("/"):
+                remote_dir = "/" + remote_dir
+
+            if self.dir_exists(team_id, remote_dir):
+                if change_name_if_conflict is True:
+                    res_remote_dir = self.get_free_dir_name(team_id, remote_dir)
+                elif replace_if_conflict is True:
+                    res_remote_dir = remote_dir
+                else:
+                    raise FileExistsError(
+                        f"Directory {remote_dir} already exists in your team (id={team_id})"
+                    )
+            else:
+                res_remote_dir = remote_dir
+
+            local_files = await list_files_recursively_async(local_dir)
+            dir_prefix = local_dir.rstrip("/") + "/"
+            remote_files = [
+                res_remote_dir.rstrip("/") + "/" + file[len(dir_prefix) :] for file in local_files
+            ]
+
+            await self.upload_bulk_async(
+                team_id=team_id,
+                src_paths=local_files,
+                dst_paths=remote_files,
+                progress_cb=progress_size_cb,
             )
-            tasks.append(task)
-        await asyncio.gather(*tasks)
+        except Exception as e:
+            if enable_fallback:
+                logger.warning(
+                    f"Upload directory asynchronously failed. Fallback to synchronous upload.",
+                    exc_info=True,
+                )
+                res_remote_dir = self.upload_directory(
+                    team_id=team_id,
+                    local_dir=local_dir,
+                    remote_dir=res_remote_dir,
+                    change_name_if_conflict=change_name_if_conflict,
+                    progress_size_cb=progress_size_cb,
+                    replace_if_conflict=replace_if_conflict,
+                )
+            else:
+                raise e
+        return res_remote_dir
+
+    def upload_directory_fast(
+        self,
+        team_id: int,
+        local_dir: str,
+        remote_dir: str,
+        change_name_if_conflict: Optional[bool] = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        replace_if_conflict: Optional[bool] = False,
+        enable_fallback: Optional[bool] = True,
+    ) -> str:
+        """
+        Upload Directory to Team Files from local path in fast mode.
+        Files are uploaded asynchronously. If an error occurs, the method will fallback to synchronous upload.
+
+        :param team_id: Team ID in Supervisely.
+        :type team_id: int
+        :param local_dir: Path to local Directory.
+        :type local_dir: str
+        :param remote_dir: Path to Directory in Team Files.
+        :type remote_dir: str
+        :param change_name_if_conflict: Checks if given name already exists and adds suffix to the end of the name.
+        :type change_name_if_conflict: bool, optional
+        :param progress_cb: Function for tracking download progress in bytes.
+        :type progress_cb: Progress, optional
+        :param replace_if_conflict: If True, replace existing dir.
+        :type replace_if_conflict: bool, optional
+        :param enable_fallback: If True, the method will fallback to synchronous upload if an error occurs.
+        :type enable_fallback: bool, optional
+        :return: Path to Directory in Team Files
+        :rtype: :class:`str`
+        """
+        coroutine = self.upload_directory_async(
+            team_id=team_id,
+            local_dir=local_dir,
+            remote_dir=remote_dir,
+            change_name_if_conflict=change_name_if_conflict,
+            progress_size_cb=progress_cb,
+            replace_if_conflict=replace_if_conflict,
+            enable_fallback=enable_fallback,
+        )
+        return run_coroutine(coroutine)
+
+    def upload_bulk_fast(
+        self,
+        team_id: int,
+        src_paths: List[str],
+        dst_paths: List[str],
+        semaphore: Optional[asyncio.Semaphore] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        progress_cb_type: Literal["number", "size"] = "size",
+        enable_fallback: Optional[bool] = True,
+    ) -> None:
+        """
+        Upload multiple files from local paths to Team Files in fast mode.
+        Files are uploaded asynchronously. If an error occurs, the method will fallback to synchronous upload.
+
+        :param team_id: Team ID in Supervisely.
+        :type team_id: int
+        :param src_paths: List of local paths to files.
+        :type src_paths: List[str]
+        :param dst_paths: List of paths to save files in Team Files.
+        :type dst_paths: List[str]
+        :param semaphore: Semaphore for limiting the number of simultaneous uploads.
+        :type semaphore: asyncio.Semaphore, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: tqdm or callable, optional
+        :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "size".
+                                "size" is used to track the number of transferred bytes.
+                                "number" is used to track the number of transferred files.
+        :type progress_cb_type: Literal["number", "size"], optional
+        :param enable_fallback: If True, the method will fallback to synchronous upload if an error occurs.
+        :type enable_fallback: bool, optional
+        :return: None
+        :rtype: :class:`NoneType`
+        """
+        coroutine = self.upload_bulk_async(
+            team_id=team_id,
+            src_paths=src_paths,
+            dst_paths=dst_paths,
+            semaphore=semaphore,
+            progress_cb=progress_cb,
+            progress_cb_type=progress_cb_type,
+            enable_fallback=enable_fallback,
+        )
+        return run_coroutine(coroutine)

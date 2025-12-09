@@ -10,6 +10,9 @@ class UNet(BaseTrainArtifacts):
         super().__init__(team_id)
 
         self._app_name = "Train UNet"
+        self._slug = "supervisely-ecosystem/unet/supervisely/train"
+        self._serve_app_name = "Serve UNet"
+        self._serve_slug = "supervisely-ecosystem/unet/supervisely/serve"
         self._framework_name = "UNet"
         self._framework_folder = "/unet"
         self._weights_folder = "checkpoints"
@@ -18,6 +21,8 @@ class UNet(BaseTrainArtifacts):
         self._config_file = "train_args.json"
         self._pattern = re_compile(r"^/unet/\d+_[^/]+/?$")
         self._available_task_types: List[str] = ["semantic segmentation"]
+        self._require_runtime = False
+        self._has_benchmark_evaluation = True
 
     def get_task_id(self, artifacts_folder: str) -> str:
         parts = artifacts_folder.split("/")

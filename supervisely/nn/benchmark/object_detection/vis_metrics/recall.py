@@ -26,11 +26,21 @@ class Recall(DetectionVisMetric):
     @property
     def notification(self) -> NotificationWidget:
         title, desc = self.vis_texts.notification_recall.values()
-        tp_plus_fn = self.eval_result.mp.TP_count + self.eval_result.mp.FN_count
+        mp = self.eval_result.mp
+        tp_plus_fn = mp.TP_count + mp.FN_count
+        recall = mp.base_metrics()["recall"].round(2)
+        if mp.average_across_iou_thresholds:
+            iou_text = "[0.5,0.55,...,0.95]"
+        else:
+            if mp.iou_threshold_per_class is not None:
+                iou_text = "custom"
+            else:
+                iou_text = mp.iou_threshold
+        title = f"Recall (IoU={iou_text}) = {recall}"
         return NotificationWidget(
             self.NOTIFICATION,
-            title.format(self.eval_result.mp.base_metrics()["recall"].round(2)),
-            desc.format(self.eval_result.mp.TP_count, tp_plus_fn),
+            title,
+            desc.format(mp.TP_count, tp_plus_fn),
         )
 
     @property

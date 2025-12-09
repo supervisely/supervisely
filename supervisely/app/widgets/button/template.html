@@ -6,7 +6,11 @@ if widget._link is not none
 {%
 endif  
 %}
+
 <el-button
+  {% if widget._visible_by_vue_field %}
+    v-show="{{{widget._visible_by_vue_field}}}"
+  {% endif %}
   :type="data.{{{widget.widget_id}}}.button_type"
   :plain="data.{{{widget.widget_id}}}.plain"
   :loading="data.{{{widget.widget_id}}}.loading"
@@ -16,7 +20,7 @@ endif
   @click="{{{widget._get_on_click()}}}"
   {% endif %}
   {% if widget._style %}
-  style="{{{widget._style}}}"
+  :style="data.{{{widget.widget_id}}}.style"
   {% endif %}
 >
   <span v-html="data.{{{widget.widget_id}}}.icon"></span>

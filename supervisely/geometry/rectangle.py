@@ -106,7 +106,7 @@ class Rectangle(Geometry):
 
     def to_json(self) -> Dict:
         """
-        Convert the Rectangle to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert the Rectangle to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :return: Json format as a dict
         :rtype: :class:`dict`
@@ -138,7 +138,7 @@ class Rectangle(Geometry):
     @classmethod
     def from_json(cls, data: Dict) -> Rectangle:
         """
-        Convert a json dict to Rectangle. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert a json dict to Rectangle. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: Rectangle in json format as a dict.
         :type data: dict
@@ -476,7 +476,7 @@ class Rectangle(Geometry):
         return cls(0, 0, size[0] - 1, size[1] - 1)
 
     @classmethod
-    def from_geometries_list(cls, geometries: List[sly.geometry.geometry]) -> Rectangle:
+    def from_geometries_list(cls, geometries: List[Geometry]) -> Rectangle:
         """
         Create Rectangle from given geometry objects.
 
@@ -494,6 +494,8 @@ class Rectangle(Geometry):
             geom_objs = [sly.Point(100, 200), sly.Polyline([sly.PointLocation(730, 2104), sly.PointLocation(2479, 402)])]
             figure_from_geom_objs = sly.Rectangle.from_geometries_list(geom_objs)
         """
+        if geometries is None or len(geometries) == 0:
+            raise ValueError("No geometries provided to create a Rectangle.")
         bboxes = [g.to_bbox() for g in geometries]
         top = min(bbox.top for bbox in bboxes)
         left = min(bbox.left for bbox in bboxes)

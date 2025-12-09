@@ -176,7 +176,7 @@ class TagMeta(KeyObject, JsonSerializable):
                     self._applicable_to, SUPPORTED_APPLICABLE_TO
                 )
             )
-        
+
         if self._target_type not in SUPPORTED_TARGET_TYPES:
             raise ValueError(
                 "target_type = {!r} is unknown, should be one of {}".format(
@@ -362,7 +362,7 @@ class TagMeta(KeyObject, JsonSerializable):
             # Output: ['car', 'bicycle']
         """
         return self._applicable_classes
-    
+
     @property
     def target_type(self) -> str:
         """
@@ -383,7 +383,7 @@ class TagMeta(KeyObject, JsonSerializable):
 
     def to_json(self) -> Dict:
         """
-        Convert the TagMeta to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert the TagMeta to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :return: Json format as a dict
         :rtype: :class:`dict`
@@ -430,6 +430,12 @@ class TagMeta(KeyObject, JsonSerializable):
             TagMetaJsonFields.VALUE_TYPE: self.value_type,
             TagMetaJsonFields.COLOR: rgb2hex(self.color),
         }
+
+        #! fix for the issue with the default value of the target_type
+        #! while restoring Data Version with old class definitions
+        if not hasattr(self, "_target_type"):
+            self._target_type = TagTargetType.ALL
+
         if self.value_type == TagValueType.ONEOF_STRING:
             jdict[TagMetaJsonFields.VALUES] = self.possible_values
 
@@ -449,7 +455,7 @@ class TagMeta(KeyObject, JsonSerializable):
     @classmethod
     def from_json(cls, data: Dict) -> TagMeta:
         """
-        Convert a json dict to TagMeta. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert a json dict to TagMeta. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: TagMeta in json format as a dict.
         :type data: dict
@@ -543,7 +549,7 @@ class TagMeta(KeyObject, JsonSerializable):
             print(meta_coat_color.possible_values)
             # Output: ['brown', 'white', 'black', 'red', 'chocolate', 'gold', 'grey', 'bald (no coat)']
         """
-        if self.value_type is TagValueType.ONEOF_STRING:
+        if self.value_type == TagValueType.ONEOF_STRING:
             if value in self._possible_values:
                 raise ValueError("Value {} already exists for tag {}".format(value, self.name))
             else:

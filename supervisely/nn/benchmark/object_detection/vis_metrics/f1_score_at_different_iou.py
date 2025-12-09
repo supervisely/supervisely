@@ -39,7 +39,7 @@ class F1ScoreAtDifferentIOU(DetectionVisMetric):
             np.concatenate([self.eval_result.dfsp_down["scores"].values[:, None], f1s_down.T], 1),
             columns=["scores"] + iou_names,
         )
-        labels = {"value": "Value", "variable": "IoU threshold", "scores": "Confidence Score"}
+        labels = {"value": "F1-score", "variable": "IoU threshold", "scores": "Confidence Score"}
 
         fig = px.line(
             df,
@@ -51,19 +51,22 @@ class F1ScoreAtDifferentIOU(DetectionVisMetric):
             height=500,
         )
         fig.update_traces(
-            hovertemplate="Confidence Score: %{x:.2f}<br>Value: %{y:.2f}<extra></extra>"
+            hovertemplate="Confidence Score: %{x:.2f}<br>F1-score: %{y:.2f}<extra></extra>"
         )
         fig.update_layout(yaxis=dict(range=[0, 1]), xaxis=dict(range=[0, 1], tick0=0, dtick=0.1))
 
         # add annotations for maximum F1-Score for each IoU threshold
         for i, iou in enumerate(iou_names):
-            argmax_f1 = f1s[i].argmax()
+            # Skip if all F1 scores are NaN for this IoU threshold
+            if np.isnan(f1s[i]).all():
+                continue
+            argmax_f1 = np.nanargmax(f1s[i])
             max_f1 = f1s[i][argmax_f1]
             score = self.eval_result.mp.m_full.score_profile["scores"][argmax_f1]
             fig.add_annotation(
                 x=score,
                 y=max_f1,
-                text=f"Best score: {score:.2f}",
+                text=f"Best conf: {score:.2f}",
                 showarrow=True,
                 arrowhead=1,
                 arrowcolor="black",

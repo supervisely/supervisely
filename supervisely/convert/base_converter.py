@@ -19,6 +19,8 @@ from supervisely.io.fs import (
     silent_remove,
     unpack_archive,
 )
+from supervisely.annotation.obj_class import ObjClass
+from supervisely.geometry.graph import GraphNodes
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_settings import LabelingInterface
 from supervisely.sly_logger import logger
@@ -47,6 +49,7 @@ class AvailableVideoConverters:
     SLY = "supervisely"
     MOT = "mot"
     DAVIS = "davis"
+    MULTI_VIEW = "multi_view"
 
 
 class AvailablePointcloudConverters:
@@ -55,17 +58,21 @@ class AvailablePointcloudConverters:
     PLY = "ply"
     BAG = "rosbag"
     LYFT = "lyft"
+    NUSCENES = "nuscenes"
+    KITTI3D = "kitti3d"
 
 
 class AvailablePointcloudEpisodesConverters:
     SLY = "supervisely"
     BAG = "rosbag"
     LYFT = "lyft"
+    KITTI360 = "kitti360"
 
 
 class AvailableVolumeConverters:
     SLY = "supervisely"
     DICOM = "dicom"
+    NII = "nii"
 
 
 class BaseConverter:
@@ -77,13 +84,13 @@ class BaseConverter:
             item_path: str,
             ann_data: Union[str, dict] = None,
             shape: Union[Tuple, List] = None,
-            custom_data: dict = {},
+            custom_data: Optional[dict] = None,
         ):
             self._path: str = item_path
             self._name: str = None
             self._ann_data: Union[str, dict, list] = ann_data
             self._shape: Union[Tuple, List] = shape
-            self._custom_data: dict = custom_data
+            self._custom_data: dict = custom_data or {}
 
         @property
         def name(self) -> str:
@@ -164,6 +171,7 @@ class BaseConverter:
         self._upload_as_links: bool = upload_as_links
         self._remote_files_map: Optional[Dict[str, str]] = remote_files_map
         self._supports_links = False  # if converter supports uploading by links
+        self._force_shape_for_links = False
         self._api = Api.from_env() if self._upload_as_links else None
         self._team_id = team_id() if self._upload_as_links else None
         self._converter = None
@@ -301,23 +309,15 @@ class BaseConverter:
             return found_formats[0]
 
     def _collect_items_if_format_not_detected(self):
-        from supervisely.convert.pointcloud_episodes.pointcloud_episodes_converter import (
-            PointcloudEpisodeConverter,
-        )
-
         only_modality_items = True
         unsupported_exts = set()
         items = []
-        is_episode = isinstance(self, PointcloudEpisodeConverter)
         for root, _, files in os.walk(self._input_data):
             for file in files:
                 full_path = os.path.join(root, file)
                 ext = get_file_ext(full_path)
                 if ext.lower() in self.allowed_exts:  # pylint: disable=no-member
-                    if is_episode:
-                        items.append(self.Item(full_path, len(items)))  # pylint: disable=no-member
-                    else:
-                        items.append(self.Item(full_path))  # pylint: disable=no-member
+                    items.append(self.Item(full_path))  # pylint: disable=no-member
                     continue
                 only_modality_items = False
                 if ext.lower() in self.unsupported_exts:
@@ -350,8 +350,17 @@ class BaseConverter:
             i = 1
             new_name = new_cls.name
             matched = False
+            def _is_matched(old_cls: ObjClass, new_cls: ObjClass) -> bool:
+                if old_cls.geometry_type == new_cls.geometry_type:
+                    if old_cls.geometry_type == GraphNodes:
+                        old_nodes = old_cls.geometry_config["nodes"]
+                        new_nodes = new_cls.geometry_config["nodes"]
+                        return old_nodes.keys() == new_nodes.keys()
+                    return True
+                return False
+
             while meta1.obj_classes.get(new_name) is not None:
-                if meta1.obj_classes.get(new_name).geometry_type == new_cls.geometry_type:
+                if _is_matched(meta1.get_obj_class(new_name), new_cls):
                     matched = True
                     break
                 new_name = f"{new_cls.name}_{i}"
@@ -420,20 +429,17 @@ class BaseConverter:
         """
         existing = meta1.project_settings.labeling_interface
         new = meta2.project_settings.labeling_interface
-        if existing == new:
+        if existing == new or new == LabelingInterface.DEFAULT:
             return meta1
 
-        if new is None or new == LabelingInterface.DEFAULT:
-            return meta1
-
-        if existing == LabelingInterface.DEFAULT:
-            group_tag_name = meta2.project_settings.multiview_tag_name
-            if group_tag_name and renamed_tags:
-                group_tag_name = renamed_tags.get(group_tag_name, group_tag_name)
+        group_tag_name = meta2.project_settings.multiview_tag_name
+        if group_tag_name:
+            group_tag_name = renamed_tags.get(group_tag_name, group_tag_name)
             new_settings = meta2.project_settings.clone(multiview_tag_name=group_tag_name)
+        else:
+            new_settings = meta2.project_settings
 
-            return meta1.clone(project_settings=new_settings)
-        return meta1
+        return meta1.clone(project_settings=new_settings)
 
     def _download_remote_ann_files(self) -> None:
         """

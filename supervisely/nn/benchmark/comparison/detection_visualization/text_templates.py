@@ -87,6 +87,11 @@ In this section you can visually assess the model performance through examples. 
 > Filtering options allow you to adjust the confidence threshold (only for predictions) and the model's false outcomes (only for differences). Differences are calculated only for the optimal confidence threshold, allowing you to focus on the most accurate predictions made by the model.
 """
 
+markdown_different_iou_thresholds_warning = """### IoU Thresholds Mismatch
+
+<i class="zmdi zmdi-alert-polygon" style="color: #f5a623; margin-right: 5px"></i> The models were evaluated using different IoU thresholds. Since these thresholds varied between models and classes, it may have led to unfair comparison. For fair model comparison, we suggest using the same IoU threshold across models.
+"""
+
 markdown_explore_difference = """## Explore Predictions
 
 In this section, you can explore predictions made by different models side-by-side. This helps you to understand the differences in predictions made by each model, and to identify which model performs better in different scenarios.

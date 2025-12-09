@@ -84,7 +84,8 @@ class BaseVisualizer:
 
         with self.pbar(message="Fetching project and dataset infos", total=len(eval_results)) as p:
             for eval_result in self.eval_results:
-                self._get_eval_project_infos(eval_result)
+                if eval_result.gt_project_id is not None:
+                    self._get_eval_project_infos(eval_result)
                 p.update(1)
 
     def _get_eval_project_infos(self, eval_result):

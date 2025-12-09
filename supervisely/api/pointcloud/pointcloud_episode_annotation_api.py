@@ -31,7 +31,7 @@ class PointcloudEpisodeAnnotationAPI(EntityAnnotationAPI):
         api = sly.Api.from_env()
 
         # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
         dataset_id = 62664
         ann_info = api.pointcloud_episode.annotation.download(dataset_id)
@@ -107,6 +107,9 @@ class PointcloudEpisodeAnnotationAPI(EntityAnnotationAPI):
         """
 
         response = self._api.post(self._method_download, {ApiField.DATASET_ID: dataset_id})
+        result = response.json()
+        if len(result) == 0:
+            return PointcloudEpisodeAnnotation().to_json()
         return response.json()[0]
 
     def download_bulk(self, dataset_id, entity_ids):

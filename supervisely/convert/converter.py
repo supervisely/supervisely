@@ -1,9 +1,10 @@
 import os
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional, Union
 
 from tqdm import tqdm
 
+from supervisely import fs
 from supervisely._utils import is_production
 from supervisely.api.api import Api
 from supervisely.app import get_data_dir
@@ -29,6 +30,7 @@ from supervisely.io.fs import (
     touch,
     unpack_archive,
 )
+from supervisely.project.project import Project
 from supervisely.project.project_settings import LabelingInterface
 from supervisely.project.project_type import ProjectType
 from supervisely.sly_logger import logger
@@ -39,7 +41,7 @@ class ImportManager:
 
     def __init__(
         self,
-        input_data: str,
+        input_data: Union[str, List[str]],
         project_type: ProjectType,
         team_id: Optional[int] = None,
         labeling_interface: LabelingInterface = LabelingInterface.DEFAULT,
@@ -57,12 +59,17 @@ class ImportManager:
         self._labeling_interface = labeling_interface
         self._upload_as_links = upload_as_links
         self._remote_files_map = {}
+        self._modality = project_type
 
-        self._input_data = self._prepare_input_data(input_data)
+        if isinstance(input_data, str):
+            input_data = [input_data]
+
+        self._input_data = get_data_dir()
+        for data in input_data:
+            self._prepare_input_data(data)
         self._unpack_archives(self._input_data)
         remove_junk_from_dir(self._input_data)
 
-        self._modality = project_type
         self._converter = self.get_converter()
         if isinstance(self._converter, (HighColorDepthImageConverter, CSVConverter)):
             self._converter.team_id = self._team_id
@@ -89,6 +96,7 @@ class ImportManager:
         }
         if str(self._modality) not in modality_converter_map:
             raise ValueError(f"Unsupported project type selected: {self._modality}")
+
         modality_converter = modality_converter_map[str(self._modality)](
             self._input_data,
             self._labeling_interface,
@@ -105,24 +113,39 @@ class ImportManager:
     #     raise NotImplementedError
 
     def _prepare_input_data(self, input_data):
+        logger.debug(f"Preparing input data: {input_data}")
         if dir_exists(input_data):
             logger.info(f"Input data is a local directory: {input_data}")
-            return input_data
+            # return input_data
+            dst_dir = os.path.join(get_data_dir(), os.path.basename(os.path.normpath(input_data)))
+            fs.copy_dir_recursively(input_data, dst_dir)
         elif file_exists(input_data):
             logger.info(f"Input data is a local file: {input_data}. Will use its directory")
-            return os.path.dirname(input_data)
+            # return os.path.dirname(input_data)
+            dst_file = os.path.join(get_data_dir(), os.path.basename(input_data))
+            fs.copy_file(input_data, dst_file)
         elif self._api.storage.exists(self._team_id, input_data):
-            if self._upload_as_links:
+            if self._upload_as_links and str(self._modality) in [
+                ProjectType.IMAGES.value,
+                ProjectType.VIDEOS.value,
+            ]:
                 logger.info(f"Input data is a remote file: {input_data}. Scanning...")
-                return self._scan_remote_files(input_data)
+                return self._reproduce_remote_files(input_data)
             else:
+                if self._upload_as_links and str(self._modality) == ProjectType.VOLUMES.value:
+                    self._scan_remote_files(input_data)
                 logger.info(f"Input data is a remote file: {input_data}. Downloading...")
                 return self._download_input_data(input_data)
         elif self._api.storage.dir_exists(self._team_id, input_data):
-            if self._upload_as_links:
+            if self._upload_as_links and str(self._modality) in [
+                ProjectType.IMAGES.value,
+                ProjectType.VIDEOS.value,
+            ]:
                 logger.info(f"Input data is a remote directory: {input_data}. Scanning...")
-                return self._scan_remote_files(input_data, is_dir=True)
+                return self._reproduce_remote_files(input_data, is_dir=True)
             else:
+                if self._upload_as_links and str(self._modality) == ProjectType.VOLUMES.value:
+                    self._scan_remote_files(input_data, is_dir=True)
                 logger.info(f"Input data is a remote directory: {input_data}. Downloading...")
                 return self._download_input_data(input_data, is_dir=True)
         else:
@@ -134,7 +157,7 @@ class ImportManager:
         if not is_dir:
             dir_name = "Import data"
             local_path = os.path.join(get_data_dir(), dir_name)
-            mkdir(local_path, remove_content_if_exists=True)
+            mkdir(local_path, remove_content_if_exists=False)
             save_path = os.path.join(local_path, os.path.basename(remote_path))
         else:
             dir_name = os.path.basename(os.path.normpath(remote_path))
@@ -160,7 +183,35 @@ class ImportManager:
         return local_path
 
     def _scan_remote_files(self, remote_path, is_dir=False):
-        """Scan remote directory and create dummy structure locally"""
+        """
+        Scan remote directory. Collect local-remote paths mapping
+        Will be used to save relations between uploaded files and remote files (for volumes).
+        """
+
+        dir_path = remote_path.rstrip("/") if is_dir else os.path.dirname(remote_path)
+        dir_name = os.path.basename(dir_path)
+
+        local_path = os.path.join(get_data_dir(), dir_name)
+
+        if is_dir:
+            files = self._api.storage.list(self._team_id, remote_path, include_folders=False)
+        else:
+            files = [self._api.storage.get_info_by_path(self._team_id, remote_path)]
+
+        unique_directories = set()
+        for file in files:
+            new_path = file.path.replace(dir_path, local_path)
+            self._remote_files_map[new_path] = file.path
+            unique_directories.add(str(Path(file.path).parent))
+
+        logger.info(f"Scanned remote directories:\n   - " + "\n   - ".join(unique_directories))
+        return local_path
+
+    def _reproduce_remote_files(self, remote_path, is_dir=False):
+        """
+        Scan remote directory and create dummy structure locally.
+        Will be used to detect annotation format (by dataset structure) remotely.
+        """
 
         dir_path = remote_path.rstrip("/") if is_dir else os.path.dirname(remote_path)
         dir_name = os.path.basename(dir_path)
@@ -194,6 +245,9 @@ class ImportManager:
             archives = []
             path = new_paths_to_scan.pop()
             for root, _, files in os.walk(path):
+                if Path(root).name == Project.blob_dir_name:
+                    logger.info(f"Skip unpacking archive in blob dir: {root}")
+                    continue
                 for file in files:
                     file_path = os.path.join(root, file)
                     if is_archive(file_path=file_path):

@@ -1,3 +1,4 @@
+import os
 from os.path import join
 from typing import Any, Dict, List, Optional, Union
 
@@ -13,6 +14,7 @@ from supervisely.app.widgets import (
     Field,
     RadioTabs,
     SelectString,
+    Text,
     Widget,
 )
 from supervisely.app.widgets.experiment_selector.experiment_selector import (
@@ -23,7 +25,8 @@ from supervisely.app.widgets.pretrained_models_selector.pretrained_models_select
 )
 from supervisely.nn.experiments import get_experiment_infos
 from supervisely.nn.inference.gui.serving_gui import ServingGUI
-from supervisely.nn.utils import ModelSource, RuntimeType
+from supervisely.nn.utils import ModelSource, RuntimeType, _get_model_name
+from supervisely.nn.experiments import ExperimentInfo
 
 
 class ServingGUITemplate(ServingGUI):
@@ -76,7 +79,7 @@ class ServingGUITemplate(ServingGUI):
         # Custom models
         if use_custom_models:
             experiments = get_experiment_infos(self.api, self.team_id, self.framework_name)
-            self.experiment_selector = ExperimentSelector(self.team_id, experiments)
+            self.experiment_selector = ExperimentSelector(self.api, self.team_id, experiments)
         else:
             self.experiment_selector = None
 
@@ -133,6 +136,29 @@ class ServingGUITemplate(ServingGUI):
         card_widgets = [self.model_source_tabs]
         if runtime_field is not None:
             card_widgets.append(runtime_field)
+
+        # Runtime exported checkpoint message
+        self._export_msg = Text("")
+        self._export_msg.hide()
+        card_widgets.append(self._export_msg)
+
+        if self.runtime_select is not None:
+            self.runtime_select.value_changed(lambda _: self._update_export_message())
+
+        if self.experiment_selector is not None:
+            self.experiment_selector.selection_changed(lambda _: self._update_export_message())
+            self.experiment_selector.checkpoint_changed(
+                lambda row, _: self._update_export_message()
+            )
+
+        if self.pretrained_models_table is not None:
+            self.pretrained_models_table.model_changed(lambda _: self._update_export_message())
+
+        if self.model_source_tabs is not None:
+            self.model_source_tabs.value_changed(lambda _: self._update_export_message())
+
+        self._update_export_message()
+
         return card_widgets
 
     def _initialize_extra_widgets(self) -> List[Widget]:
@@ -144,13 +170,17 @@ class ServingGUITemplate(ServingGUI):
 
     @property
     def model_info(self) -> Dict[str, Any]:
-        return self._get_selected_row()
+        model_info = self._get_selected_row()
+        if isinstance(model_info, ExperimentInfo):
+            # model info requires json format
+            # to match types of pretrained and custom model info
+            model_info = model_info.to_json()
+        return model_info
 
     @property
     def model_name(self) -> Optional[str]:
         if self.model_source == ModelSource.PRETRAINED:
-            model_meta = self.model_info.get("meta", {})
-            return model_meta.get("model_name")
+            return _get_model_name(self.model_info)
         else:
             return self.model_info.get("model_name")
 
@@ -160,7 +190,14 @@ class ServingGUITemplate(ServingGUI):
             model_meta = self.model_info.get("meta", {})
             return model_meta.get("model_files", {})
         else:
-            return self.experiment_selector.get_model_files()
+            experiment_info = self.experiment_selector.get_selected_experiment_info()
+            artifacts_dir = experiment_info.artifacts_dir
+            model_files = experiment_info.model_files
+            full_model_files = {
+                name: os.path.join(artifacts_dir, file) for name, file in model_files.items()
+            }
+            full_model_files["checkpoint"] = self.experiment_selector.get_selected_checkpoint_path()
+            return full_model_files
 
     @property
     def runtime(self) -> str:
@@ -205,3 +242,51 @@ class ServingGUITemplate(ServingGUI):
         elif self.model_source == ModelSource.CUSTOM and self.experiment_selector:
             return self.experiment_selector.get_selected_experiment_info()
         return {}
+
+    def _update_export_message(self):
+        self._export_msg.hide()
+
+        runtime = self.runtime
+        non_conversion_runtimes = [RuntimeType.ONNXRUNTIME, RuntimeType.TENSORRT]
+        if runtime not in non_conversion_runtimes:
+            return
+
+        if self.model_source == ModelSource.PRETRAINED:
+            self._export_msg.set(
+                "Checkpoint will be converted before deployment.",
+                "info",
+            )
+            self._export_msg.show()
+            return
+
+        checkpoint_name = None
+        if self.model_source == ModelSource.CUSTOM and self.experiment_selector is not None:
+            selected_experiment_info = self.experiment_selector.get_selected_experiment_info()
+            if selected_experiment_info is None:
+                return
+            checkpoint_name = self.experiment_selector.get_selected_checkpoint_name()
+            if checkpoint_name is None:
+                return
+
+        model_info = self.model_info or {}
+        export_info = model_info.get("export", {})
+        available = False
+        if isinstance(export_info, dict):
+            for key in export_info.keys():
+                if key.lower().startswith(runtime.lower()):
+                    available = True
+                    break
+            if checkpoint_name != selected_experiment_info.best_checkpoint:
+                available = False
+
+        if available:
+            self._export_msg.set(
+                "Runtime checkpoint exists – no conversion needed.",
+                "info",
+            )
+        else:
+            self._export_msg.set(
+                "Checkpoint will be converted before deployment.",
+                "info",
+            )
+        self._export_msg.show()
