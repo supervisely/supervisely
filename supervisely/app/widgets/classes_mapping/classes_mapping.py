@@ -1,23 +1,23 @@
-from typing import Optional, Union, List
-from supervisely.app.widgets import Widget, NotificationBox, Button, generate_id
+from typing import List, Optional, Union
+
 from supervisely import ObjClass, ObjClassCollection
 from supervisely.app import DataJson, StateJson
-
-from supervisely.geometry.bitmap import Bitmap
+from supervisely.app.widgets import Button, NotificationBox, Widget, generate_id
 from supervisely.geometry.alpha_mask import AlphaMask
+from supervisely.geometry.any_geometry import AnyGeometry
+from supervisely.geometry.bitmap import Bitmap
+from supervisely.geometry.closed_surface_mesh import ClosedSurfaceMesh
 from supervisely.geometry.cuboid import Cuboid
+from supervisely.geometry.cuboid_3d import Cuboid3d
+from supervisely.geometry.graph import GraphNodes
+from supervisely.geometry.multichannel_bitmap import MultichannelBitmap
+from supervisely.geometry.oriented_bbox import OrientedBBox
 from supervisely.geometry.point import Point
+from supervisely.geometry.point_3d import Point3d
+from supervisely.geometry.pointcloud import Pointcloud
 from supervisely.geometry.polygon import Polygon
 from supervisely.geometry.polyline import Polyline
 from supervisely.geometry.rectangle import Rectangle
-from supervisely.geometry.graph import GraphNodes
-from supervisely.geometry.any_geometry import AnyGeometry
-from supervisely.geometry.cuboid_3d import Cuboid3d
-from supervisely.geometry.pointcloud import Pointcloud
-from supervisely.geometry.point_3d import Point3d
-from supervisely.geometry.multichannel_bitmap import MultichannelBitmap
-from supervisely.geometry.closed_surface_mesh import ClosedSurfaceMesh
-
 
 type_to_shape_text = {
     AnyGeometry: "any shape",
@@ -34,6 +34,7 @@ type_to_shape_text = {
     Point3d: "point 3d",  # "zmdi zmdi-select-all"
     GraphNodes: "keypoints",
     ClosedSurfaceMesh: "volume (3d mask)",
+    OrientedBBox: "oriented bbox",
 }
 
 
