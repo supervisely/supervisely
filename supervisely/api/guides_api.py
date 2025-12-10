@@ -208,12 +208,3 @@ class GuidesApi(ModuleApiBase):
             # )
         """
         return self._get_info_by_id(id, "guides.info")
-
-    def _convert_json_info(self, info: dict, skip_missing: Optional[bool] = True):
-        """
-        Convert JSON data to GuideInfo object.
-        """
-        if info is None:
-            return None
-        res = super()._convert_json_info(info, skip_missing=skip_missing)
-        return GuideInfo(**res._asdict())
