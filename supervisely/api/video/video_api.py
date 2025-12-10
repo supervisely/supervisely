@@ -3,12 +3,12 @@ from __future__ import annotations
 
 import asyncio
 import datetime
-from itertools import zip_longest
 import json
 import os
 import re
 import urllib.parse
 from functools import partial
+from itertools import zip_longest
 from typing import (
     AsyncGenerator,
     Callable,
@@ -52,6 +52,7 @@ from supervisely.io.fs import (
     get_file_hash,
     get_file_hash_async,
     get_file_hash_chunked,
+    get_file_hash_chunked_async,
     get_file_name_with_ext,
     get_file_size,
     list_files,
@@ -2581,7 +2582,7 @@ class VideoApi(RemoveableBulkModuleApi):
                         progress_cb(len(chunk))
             if check_hash:
                 if hash_to_check is not None:
-                    downloaded_file_hash = await get_file_hash_async(path)
+                    downloaded_file_hash = await get_file_hash_chunked_async(path)
                     if hash_to_check != downloaded_file_hash:
                         raise RuntimeError(
                             f"Downloaded hash of video with ID:{id} does not match the expected hash: {downloaded_file_hash} != {hash_to_check}"
