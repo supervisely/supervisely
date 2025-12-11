@@ -8,6 +8,7 @@ from typing import Dict, Optional
 import supervisely as sly
 from supervisely import Api, ProjectMeta, logger
 from supervisely.template.base_generator import BaseGenerator
+from supervisely.imaging.color import rgb2hex
 
 
 class LiveTrainingGenerator(BaseGenerator):
@@ -27,8 +28,10 @@ class LiveTrainingGenerator(BaseGenerator):
         session_info: dict,
         model_config: dict,
         model_meta: ProjectMeta,
+        task_type: str,
         output_dir: str = "./live_training_report",
         team_id: Optional[int] = None,
+
     ):
         """
         Initialize Live training generator.
@@ -45,6 +48,12 @@ class LiveTrainingGenerator(BaseGenerator):
         self.session_info = session_info
         self.model_config = model_config
         self.model_meta = model_meta
+        self.task_type = task_type
+        self._slug_map = {
+            "semantic segmentation": "supervisely-ecosystem/live-training-segmentation",
+            "object detection": "supervisely-ecosystem/live-training-detection",
+        }
+        self.slug = self._slug_map[task_type] 
         
         # Validate required fields
         self._validate_session_info()
@@ -236,6 +245,58 @@ class LiveTrainingGenerator(BaseGenerator):
         # For now return placeholder
         return None
 
+    def _generate_classes_table(self) -> str:
+        """Generate HTML table with class names, shapes and colors.
+
+        :returns: HTML string with classes table
+        :rtype: str
+        """
+        type_to_icon = {
+            sly.AnyGeometry: "zmdi zmdi-shape",
+            sly.Rectangle: "zmdi zmdi-crop-din",
+            sly.Polygon: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABmJLR0QA/wD/AP+gvaeTAAAB6klEQVRYhe2Wuy8EURTGf+u5VESNXq2yhYZCoeBv8RcI1i6NVUpsoVCKkHjUGlFTiYb1mFmh2MiKjVXMudmb3cPOzB0VXzKZm5k53/nmvO6Ff4RHD5AD7gFP1l3Kd11AHvCBEpAVW2esAvWmK6t8l1O+W0lCQEnIJoAZxUnzNQNkZF36jrQjgoA+uaciCgc9VaExBOyh/6WWAi1VhbjOJ4FbIXkBtgkK0BNHnYqNKUIPeBPbKyDdzpld5T6wD9SE4AwYjfEDaXFeFzE/doUWuhqwiFsOCwqv2hV2lU/L+sHBscGTxdvSFVoXpAjCZdauMHVic6ndl6U1VBsJCFhTeNUU9IiIEo3qvQYGHAV0AyfC5wNLhKipXuBCjA5wT8WxcM1FMRoBymK44CjAE57hqIazwCfwQdARcXa3UXHuRXVucIjb7jYvNkdxBZg0TBFid7PQTRAtX2xOiXkuMAMqYwkIE848rZFbjyNAmw9bIeweaZ2A5TgC7PnwKkTPtN+cTOrsyN3FEWAjRTAX6sA5ek77gSL6+WHZVQDAIHAjhJtN78aAS3lXAXYIivBOnCdyOAUYB6o0xqsvziry7FLE/Cp20cNcJEjDr8MUmVOVRzkVN+Nd7vZGVXXgiwxtPiRS5WFhz4fEq/zv4AvToMn7vCn3eAAAAABJRU5ErkJggg==",
+            sly.Bitmap: "zmdi zmdi-brush",
+            sly.Polyline: "zmdi zmdi-gesture",
+            sly.Point: "zmdi zmdi-dot-circle-alt",
+            sly.Cuboid: "zmdi zmdi-ungroup",  #
+            sly.GraphNodes: "zmdi zmdi-grain",
+            sly.MultichannelBitmap: "zmdi zmdi-layers",
+        }
+
+        if not hasattr(self.model_meta, "obj_classes"):
+            return None
+
+        if len(self.model_meta.obj_classes) == 0:
+            return None
+
+        html = ['<table class="table">']
+        html.append("<thead><tr><th>Class name</th><th>Shape</th></tr></thead>")
+        html.append("<tbody>")
+
+        for obj_class in self.model_meta.obj_classes:
+            class_name = obj_class.name
+            color_hex = rgb2hex(obj_class.color)
+            icon = type_to_icon.get(obj_class.geometry_type, "zmdi zmdi-shape")
+
+            class_cell = (
+                f"<i class='zmdi zmdi-circle' style='color: {color_hex}; margin-right: 5px;'></i>"
+                f"<span>{class_name}</span>"
+            )
+
+            if isinstance(icon, str) and icon.startswith("data:image"):
+                shape_cell = f"<img src='{icon}' style='height: 15px; margin-right: 2px;'/>"
+            else:
+                shape_cell = f"<i class='{icon}' style='margin-right: 5px;'></i>"
+
+            shape_name = obj_class.geometry_type.geometry_name()
+            shape_cell += f"<span>{shape_name}</span>"
+
+            html.append(f"<tr><td>{class_cell}</td><td>{shape_cell}</td></tr>")
+
+        html.append("</tbody>")
+        html.append("</table>")
+        return "\n".join(html)
+
     def upload_to_artifacts(self, remote_dir: str):
         """
         Upload report to team files.
@@ -252,10 +313,12 @@ class LiveTrainingGenerator(BaseGenerator):
         """Generate widgets (tables, plots) for the report"""
         checkpoints_table = self._generate_checkpoints_table()
         training_plot = self._generate_training_plot()
+        classes = self._generate_classes_table()
         
         return {
             "tables": {
                 "checkpoints": checkpoints_table,
+                "classes": classes,
             },
             "training_plot": training_plot,
         }
@@ -363,20 +426,15 @@ class LiveTrainingGenerator(BaseGenerator):
   
     def _get_online_training_app_info(self):
         """Get online training app info from ecosystem"""
-        slug = "supervisely-ecosystem/online-learning-segmentation"  # TODO: Replace with actual slug
-        
-        try:
-            module_id = self.api.app.get_ecosystem_module_id(slug)
-            return {
-                "slug": slug.replace("supervisely-ecosystem/", ""),
-                "module_id": module_id,
-            }
-        except Exception as e:
-            logger.warning(f"Failed to find online training app '{slug}': {e}")
-            return {
-                "slug": None,
-                "module_id": 621, # TODO: Delete hardcoded ID later
-            }
+        if self.api.server_address.endswith("dev.internal.supervisely.com"):
+            logger.warning("Using hardcoded module ID for dev server")
+            module_id = 621  # TODO: Delete hardcoded ID later
+        else:
+            module_id = self.api.app.get_ecosystem_module_id(self.slug)
+        return {
+            "slug": self.slug,
+            "module_id": module_id,
+        }  
 
     def _get_resources_context(self):
         """Return apps module IDs for buttons"""
