@@ -5,9 +5,8 @@
 
     <div class="experiment-main-wrapper">
         <div class="experiment-main-content">
-            <div class="main-content markdown-body">
-                {% include "header.html.jinja" %}
-                
+        {% include "header.html.jinja" %}
+            <div class="main-content markdown-body"> 
                 {% markdown %}
                 {% include "live_training.html.jinja" %}
                 {% endmarkdown %}
