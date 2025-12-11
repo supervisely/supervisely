@@ -364,7 +364,7 @@ class LiveTrainingGenerator(BaseGenerator):
   
     def _get_online_training_app_info(self):
         """Get online training app info from ecosystem"""
-        slug = "supervisely-ecosystem/segmentation-online-training"  # TODO: Replace with actual slug
+        slug = "supervisely-ecosystem/online-learning-segmentation"  # TODO: Replace with actual slug
         
         try:
             module_id = self.api.app.get_ecosystem_module_id(slug)
@@ -376,7 +376,7 @@ class LiveTrainingGenerator(BaseGenerator):
             logger.warning(f"Failed to find online training app '{slug}': {e}")
             return {
                 "slug": None,
-                "module_id": None,
+                "module_id": 621, # TODO: Delete hardcoded ID later
             }
 
     def _get_resources_context(self):
