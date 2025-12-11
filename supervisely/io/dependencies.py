@@ -88,7 +88,6 @@ def install_dependency(dependency: str, version: str = ""):
             stderr=subprocess.STDOUT,
             text=True,
         )
-        importlib.reload(importlib.import_module(dependency))
 
     except Exception as e:
         logger.error(f"Failed to install dependency {dependency}: {e}")
