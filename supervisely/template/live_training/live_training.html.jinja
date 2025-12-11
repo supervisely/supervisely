@@ -23,23 +23,29 @@ No checkpoints available.
 </details>
 
 ## Classes
-
+<h2 id="classes">Classes</h2>
 <details>
     <summary>📝 Classes</summary>
-
-The model can predict {{ model.num_classes }} classes.
-
-{% if model.classes %}
-| Class Name |
-|------------|
-{% for class_name in model.classes %}
-| {{ class_name }} |
-{% endfor %}
-{% else %}
-No classes available.
-{% endif %}
-
+    
+    <p>The model can predict {{ model.num_classes }} classes.</p>
+    
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Class Name</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for class_name in model.classes %}
+            <tr>
+                <td>{{ class_name }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 </details>
+
+
 
 {# ## Hyperparameters
 
