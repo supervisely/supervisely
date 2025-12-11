@@ -96,6 +96,7 @@ class LiveTrainingGenerator(BaseGenerator):
         
         return {
             "id": session_id,
+            "task_id": task_id,
             "name": self.session_info.get("session_name", f"Session {session_id}"),
             "start_time": self.session_info["start_time"],
             "duration": self.session_info.get("duration"),
