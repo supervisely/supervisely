@@ -12,7 +12,7 @@ from supervisely.api.module_api import ApiField, ModuleApiBase
 class GuideInfo(NamedTuple):
     """
     Information about a Guide.
-    
+
     :param id: Guide ID in Supervisely.
     :type id: int
     :param name: Guide name.
@@ -25,8 +25,8 @@ class GuideInfo(NamedTuple):
     :type created_at: str
     :param updated_at: Guide last update date.
     :type updated_at: str
-    :param created_by: ID of the User who created the Guide.
-    :type created_by: int
+    :param created_by_id: ID of the User who created the Guide.
+    :type created_by_id: int
     :param team_id: Team ID where the Guide is located.
     :type team_id: int
     :param video_id: ID of the video associated with the guide (if any).
@@ -43,7 +43,7 @@ class GuideInfo(NamedTuple):
     file_path: str
     created_at: str
     updated_at: str
-    created_by: int
+    created_by_id: int
     team_id: int
     video_id: Optional[int] = None
     disabled_by: Optional[int] = None
@@ -90,7 +90,7 @@ class GuidesApi(ModuleApiBase):
                 file_path='/path/to/guide.pdf',
                 created_at='2023-01-01T00:00:00.000Z',
                 updated_at='2025-11-17T18:21:10.217Z',
-                created_by=1,
+                created_by_id=1,
                 team_id=1,
                 video_id=None,
                 disabled_by=None,
@@ -155,7 +155,7 @@ class GuidesApi(ModuleApiBase):
             #         file_path='/path/to/guide.pdf',
             #         created_at='2023-01-01T00:00:00.000Z',
             #         updated_at='2025-11-17T18:21:10.217Z',
-            #         created_by=1,
+            #         created_by_id=1,
             #         team_id=1,
             #         video_id=None,
             #         disabled_by=None,
@@ -200,7 +200,7 @@ class GuidesApi(ModuleApiBase):
             #     file_path='/path/to/guide.pdf',
             #     created_at='2023-01-01T00:00:00.000Z',
             #     updated_at='2025-11-17T18:21:10.217Z',
-            #     created_by=1,
+            #     created_by_id=1,
             #     team_id=1,
             #     video_id=None,
             #     disabled_by=None,
