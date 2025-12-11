@@ -397,7 +397,18 @@ class AppService:
         except Exception as e:
             from supervisely.app.v1.constants import PROTOBUF_REQUIRED_ERROR
 
-            raise ImportError(PROTOBUF_REQUIRED_ERROR) from e
+            self.logger.warning("protobuf import failed in publish_sync")
+            self.logger.info("Trying to install protobuf package...")
+            try:
+                from supervisely.io.dependencies import check_version, install_dependency
+
+                install_dependency("protobuf", version="3.19.5")
+                check_version("protobuf", hard=True, required=">=3.19.5")
+                from supervisely.worker_proto import worker_api_pb2 as api_proto
+
+                self.logger.info("protobuf package installed successfully.")
+            except Exception as install_e:
+                raise ImportError(PROTOBUF_REQUIRED_ERROR) from install_e
 
         if initial_events is not None:
             for event_obj in initial_events:
@@ -521,7 +532,18 @@ class AppService:
         except Exception as e:
             from supervisely.app.v1.constants import PROTOBUF_REQUIRED_ERROR
 
-            raise ImportError(PROTOBUF_REQUIRED_ERROR) from e
+            self.logger.warning("protobuf import failed in publish_sync")
+            self.logger.info("Trying to install protobuf package...")
+            try:
+                from supervisely.io.dependencies import check_version, install_dependency
+
+                install_dependency("protobuf", version="3.19.5")
+                check_version("protobuf", hard=True, required=">=3.19.5")
+                from supervisely.worker_proto import worker_api_pb2 as api_proto
+
+                self.logger.info("protobuf package installed successfully.")
+            except Exception as install_e:
+                raise ImportError(PROTOBUF_REQUIRED_ERROR) from install_e
 
         out_bytes = json.dumps(data).encode("utf-8")
         self.api.put_stream_with_data(
