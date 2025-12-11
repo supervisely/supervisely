@@ -4,8 +4,9 @@
     </sly-style>
 
     <div class="experiment-main-wrapper">
-    {% include "header.html.jinja" %}
+        <!-- Main content -->
         <div class="experiment-main-content">
+        {% include "header.html.jinja" %}
             <div class="main-content markdown-body"> 
                 {% markdown %}
                 {% include "live_training.html.jinja" %}
