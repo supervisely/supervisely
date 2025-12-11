@@ -60,6 +60,13 @@ class LiveTrainingGenerator(BaseGenerator):
         """Generate URL to open the Live training report"""
         return f"{server_address}/nn/experiments/{template_id}"
 
+    def _get_live_training_description(self) -> str:
+        """Return live training description text"""
+        # Default description - you can customize this text
+        return """
+        Live Training description
+        """
+
     def context(self) -> dict:
         return {
             "env": self._get_env_context(),
@@ -67,8 +74,7 @@ class LiveTrainingGenerator(BaseGenerator):
             "model": self._get_model_context(),
             "training": self._get_training_context(),
             "dataset": self._get_dataset_context(),
-            "widgets": self._get_widgets_context(),
-            "hyperparameters": self.session_info.get("hyperparameters", {}), 
+            "resources": self._get_resources_context(),
         }
     
     def _get_env_context(self) -> dict:
@@ -154,11 +160,14 @@ class LiveTrainingGenerator(BaseGenerator):
 
     def _get_model_context(self) -> dict:
         """Model configuration info"""
+        classes = [cls.name for cls in self.model_meta.obj_classes]    
+        if len(classes) > 3:
+            classes = classes[:3] + ["..."]
         return {
             "name": self.model_config.get("model_name", "Unknown"),
             "backbone": self.model_config.get("backbone", "N/A"),
             "num_classes": self.model_config.get("num_classes", len(self.model_meta.obj_classes)),
-            "classes": [cls.name for cls in self.model_meta.obj_classes],
+            "classes": classes,
             "config_file": self.model_config.get("config_file", "N/A"),
             "task_type": self.model_config.get("task_type", "Live Training"),
         }
@@ -349,6 +358,33 @@ class LiveTrainingGenerator(BaseGenerator):
         
         # Return Vue image component
         return f'<sly-iw-image src="/data/training_plots_grid.png" :template-base-path="templateBasePath" :options="{{ style: {{ width: \'70%\', height: \'auto\' }} }}" />'
+  
+    def _get_online_training_app_info(self):
+        """Get online training app info from ecosystem"""
+        slug = "supervisely-ecosystem/segmentation-online-training"  # TODO: Replace with actual slug
+        
+        try:
+            module_id = self.api.app.get_ecosystem_module_id(slug)
+            return {
+                "slug": slug.replace("supervisely-ecosystem/", ""),
+                "module_id": module_id,
+            }
+        except Exception as e:
+            logger.warning(f"Failed to find online training app '{slug}': {e}")
+            return {
+                "slug": None,
+                "module_id": None,
+            }
+
+    def _get_resources_context(self):
+        """Return apps module IDs for buttons"""
+        online_training_app = self._get_online_training_app_info()
+        
+        return {
+            "apps": {
+                "online_training": online_training_app,
+            }
+        }
 
     def get_report(self) -> str:
         """Get report URL after upload"""
