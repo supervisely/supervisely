@@ -188,6 +188,7 @@ def main():
         model_meta=model_meta,
         output_dir=output_dir,
         team_id=team_id,
+        task_type="semantic segmentation",
     )
     
     # Generate report
