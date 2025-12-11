@@ -404,7 +404,7 @@ class AppService:
                 from supervisely.io.dependencies import check_version, install_dependency
 
                 install_dependency("protobuf", version="3.19.5")
-                importlib.reload(importlib.import_module("supervisely.worker_proto"))
+                importlib.reload(importlib.import_module("supervisely.worker_proto.worker_api_pb2"))
                 check_version("protobuf", hard=True, required=">=3.19.5")
                 from supervisely.worker_proto import worker_api_pb2 as api_proto
 
@@ -540,7 +540,7 @@ class AppService:
                 from supervisely.io.dependencies import check_version, install_dependency
 
                 install_dependency("protobuf", version="3.19.5")
-                importlib.reload(importlib.import_module("supervisely.worker_proto"))
+                importlib.reload(importlib.import_module("supervisely.worker_proto.worker_api_pb2"))
                 check_version("protobuf", hard=True, required=">=3.19.5")
                 from supervisely.worker_proto import worker_api_pb2 as api_proto
 

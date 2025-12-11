@@ -2,6 +2,7 @@ import importlib
 import platform
 import re
 import importlib
+import sys
 
 from supervisely.sly_logger import logger
 
@@ -82,9 +83,14 @@ def install_dependency(dependency: str, version: str = ""):
         package = f"{dependency}"
         if version:
             package += f"=={version}"
-        subprocess.check_output(
-            f"pip install --no-cache-dir {package}",
-            shell=True,
+        # subprocess.check_output(
+        #     f"pip install --no-cache-dir {package}",
+        #     shell=True,
+        #     stderr=subprocess.STDOUT,
+        #     text=True,
+        # )
+        subprocess.check_call(
+            [sys.executable, "-m", "pip", "install", "--no-cache-dir", package],
             stderr=subprocess.STDOUT,
             text=True,
         )
