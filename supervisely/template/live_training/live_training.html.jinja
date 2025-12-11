@@ -1,8 +1,18 @@
+## About Live Training
+
+{{ live_training_description | safe }}
+
+---
 ## Training Results
 
 {{ widgets.training_plot | safe }}
 
 ## Checkpoints
+
+[📂 Open in Team Files]({{ session.artifacts_url }}){:target="_blank"}
+
+<details>
+    <summary>📋 Checkpoints</summary>
 
 {% if widgets.tables.checkpoints %}
 {{ widgets.tables.checkpoints | safe }}
@@ -10,7 +20,28 @@
 No checkpoints available.
 {% endif %}
 
-## Hyperparameters
+</details>
+
+## Classes
+
+<details>
+    <summary>📝 Classes</summary>
+
+The model can predict {{ model.num_classes }} classes.
+
+{% if model.classes %}
+| Class Name |
+|------------|
+{% for class_name in model.classes %}
+| {{ class_name }} |
+{% endfor %}
+{% else %}
+No classes available.
+{% endif %}
+
+</details>
+
+{# ## Hyperparameters
 
 {% if hyperparameters %}
 | Parameter | Value |
@@ -24,4 +55,4 @@ No hyperparameters available.
 
 ## Configuration
 
-**Config file:** `{{ model.config_file }}`
+**Config file:** `{{ model.config_file }}` #}
