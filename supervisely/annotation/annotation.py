@@ -26,6 +26,7 @@ from supervisely.geometry.bitmap import Bitmap
 from supervisely.geometry.geometry import Geometry
 from supervisely.geometry.image_rotator import ImageRotator
 from supervisely.geometry.multichannel_bitmap import MultichannelBitmap
+from supervisely.geometry.oriented_bbox import OrientedBBox
 from supervisely.geometry.polygon import Polygon
 from supervisely.geometry.rectangle import Rectangle
 from supervisely.imaging import font as sly_font
@@ -551,7 +552,7 @@ class Annotation:
         :return: list of the Label class objects
         """
         for label in labels:
-            if self.img_size.count(None) == 0:
+            if self.img_size.count(None) == 0 and not isinstance(label.geometry, OrientedBBox):
                 # image has resolution in DB
                 canvas_rect = Rectangle.from_size(self.img_size)
                 try:
@@ -566,6 +567,7 @@ class Annotation:
             else:
                 # image was uploaded by link and does not have resolution in DB
                 # add label without normalization and validation
+                # OrientedBBox geometries can be outside of image bounds
                 dest.append(label)
 
     def add_label(self, label: Label) -> Annotation:
@@ -1417,7 +1419,7 @@ class Annotation:
         if draw_tags is True:
             tags_font = self._get_font()
         for label in self._labels:
-            if not fill_rectangles and isinstance(label.geometry, Rectangle):
+            if not fill_rectangles and isinstance(label.geometry, (Rectangle, OrientedBBox)):
                 label.draw_contour(
                     bitmap,
                     color=color,
@@ -2962,6 +2964,8 @@ class Annotation:
         for label in data[AnnotationJsonFields.LABELS]:
             if label[LabelJsonFields.GEOMETRY_TYPE] == Rectangle.geometry_name():
                 label = Rectangle._to_pixel_coordinate_system_json(label, image_size)
+            elif label[LabelJsonFields.GEOMETRY_TYPE] == OrientedBBox.geometry_name():
+                label = OrientedBBox._to_pixel_coordinate_system_json(label, image_size)
             else:
                 label = Geometry._to_pixel_coordinate_system_json(label, image_size)
             new_labels.append(label)
@@ -2988,6 +2992,8 @@ class Annotation:
         for label in data[AnnotationJsonFields.LABELS]:
             if label[LabelJsonFields.GEOMETRY_TYPE] == Rectangle.geometry_name():
                 label = Rectangle._to_subpixel_coordinate_system_json(label)
+            elif label[LabelJsonFields.GEOMETRY_TYPE] == OrientedBBox.geometry_name():
+                label = OrientedBBox._to_subpixel_coordinate_system_json(label)
             else:
                 label = Geometry._to_subpixel_coordinate_system_json(label)
             new_labels.append(label)

@@ -21,6 +21,7 @@ from supervisely.io.json import dump_json_file, dump_json_file_async, load_json_
 from supervisely.project.project import Dataset, OpenMode, Project
 from supervisely.project.project import read_single_project as read_project_wrapper
 from supervisely.project.project_meta import ProjectMeta
+from supervisely.project.project_settings import LabelingInterface
 from supervisely.project.project_type import ProjectType
 from supervisely.sly_logger import logger
 from supervisely.task.progress import tqdm_sly
@@ -62,6 +63,9 @@ class VideoDataset(Dataset):
 
     #: :class:`str`: Items info directory name
     item_info_dir_name = "video_info"
+
+    #: :class:`str`: Metadata directory name
+    metadata_dir_name = "metadata"
 
     #: :class:`str`: Segmentation masks directory name
     seg_dir_name = None
@@ -1036,7 +1040,7 @@ class VideoProject(Project):
         raise NotImplementedError(
             f"Static method 'get_train_val_splits_by_tag()' is not supported for VideoProject class now."
         )
-    
+
     @staticmethod
     def get_train_val_splits_by_collections(
         project_dir: str,
@@ -1492,11 +1496,18 @@ def upload_video_project(
     if project_name is None:
         project_name = project_fs.name
 
+    is_multiview = False
+    try:
+        if project_fs.meta.labeling_interface == LabelingInterface.MULTIVIEW:
+            is_multiview = True
+    except AttributeError:
+        is_multiview = False
+
     if api.project.exists(workspace_id, project_name):
         project_name = api.project.get_free_name(workspace_id, project_name)
 
     project = api.project.create(workspace_id, project_name, ProjectType.VIDEOS)
-    api.project.update_meta(project.id, project_fs.meta.to_json())
+    project_meta = api.project.update_meta(project.id, project_fs.meta.to_json())
 
     if progress_cb is not None:
         log_progress = False
@@ -1564,7 +1575,14 @@ def upload_video_project(
                 leave=False,
             )
         try:
-            api.video.annotation.upload_paths(video_ids, ann_paths, project_fs.meta, anns_progress)
+            if is_multiview:
+                api.video.annotation.upload_paths_multiview(
+                    video_ids, ann_paths, project_meta, anns_progress
+                )
+            else:
+                api.video.annotation.upload_paths(
+                    video_ids, ann_paths, project_fs.meta, anns_progress
+                )
         except Exception as e:
             logger.info(
                 "INFO FOR DEBUGGING",
