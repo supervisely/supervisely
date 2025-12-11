@@ -1,5 +1,6 @@
 # isort: skip_file
 
+import importlib
 import json
 import os
 import time
@@ -403,6 +404,7 @@ class AppService:
                 from supervisely.io.dependencies import check_version, install_dependency
 
                 install_dependency("protobuf", version="3.19.5")
+                importlib.reload(importlib.import_module("supervisely.worker_proto"))
                 check_version("protobuf", hard=True, required=">=3.19.5")
                 from supervisely.worker_proto import worker_api_pb2 as api_proto
 
@@ -538,6 +540,7 @@ class AppService:
                 from supervisely.io.dependencies import check_version, install_dependency
 
                 install_dependency("protobuf", version="3.19.5")
+                importlib.reload(importlib.import_module("supervisely.worker_proto"))
                 check_version("protobuf", hard=True, required=">=3.19.5")
                 from supervisely.worker_proto import worker_api_pb2 as api_proto
 

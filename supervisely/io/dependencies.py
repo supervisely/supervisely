@@ -1,7 +1,7 @@
 import importlib
 import platform
 import re
-from importlib import metadata
+import importlib
 
 from supervisely.sly_logger import logger
 
@@ -18,8 +18,8 @@ def check_version(
     msg: str = "",
 ) -> bool:
     try:
-        current = metadata.version(package)  # get version string from package name
-    except metadata.PackageNotFoundError as e:
+        current = importlib.metadata.version(package)  # get version string from package name
+    except importlib.metadata.PackageNotFoundError as e:
         if hard:
             raise ModuleNotFoundError(f"{current} package is required but not installed") from e
         else:
@@ -88,6 +88,7 @@ def install_dependency(dependency: str, version: str = ""):
             stderr=subprocess.STDOUT,
             text=True,
         )
+        importlib.reload(importlib.import_module(dependency))
 
     except Exception as e:
         logger.error(f"Failed to install dependency {dependency}: {e}")
