@@ -1507,7 +1507,7 @@ def upload_video_project(
         project_name = api.project.get_free_name(workspace_id, project_name)
 
     project = api.project.create(workspace_id, project_name, ProjectType.VIDEOS)
-    api.project.update_meta(project.id, project_fs.meta.to_json())
+    project_meta = api.project.update_meta(project.id, project_fs.meta.to_json())
 
     if progress_cb is not None:
         log_progress = False
@@ -1577,7 +1577,7 @@ def upload_video_project(
         try:
             if is_multiview:
                 api.video.annotation.upload_paths_multiview(
-                    video_ids, ann_paths, project_fs.meta, anns_progress
+                    video_ids, ann_paths, project_meta, anns_progress
                 )
             else:
                 api.video.annotation.upload_paths(
