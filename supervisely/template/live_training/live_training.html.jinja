@@ -22,28 +22,15 @@ No checkpoints available.
 
 </details>
 
-<h2 id="classes">Classes</h2>
-<details>
-    <summary>📝 Classes</summary>
-    
-    <p>The model can predict {{ model.num_classes }} classes.</p>
-    
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Class Name</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for class_name in model.classes %}
-            <tr>
-                <td>{{ class_name }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</details>
+## Classes
 
+The model can predict {{ experiment.project.classes.count }} classes. Here is the full list of classes:
+
+<details>
+    <summary>Classes</summary>
+    {{ widgets.tables.classes }}
+
+</details>
 
 
 {# ## Hyperparameters
