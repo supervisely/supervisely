@@ -164,13 +164,12 @@ class LiveTrainingGenerator(BaseGenerator):
     def _get_model_context(self) -> dict:
         """Model configuration info"""
         classes = [cls.name for cls in self.model_meta.obj_classes]    
-        if len(classes) > 3:
-            classes = classes[:3] + ["..."]
         return {
             "name": self.model_config.get("model_name", "Unknown"),
             "backbone": self.model_config.get("backbone", "N/A"),
             "num_classes": self.model_config.get("num_classes", len(self.model_meta.obj_classes)),
             "classes": classes,
+            "classes_short": classes[:3] + (["..."] if len(classes) > 3 else []),
             "config_file": self.model_config.get("config_file", "N/A"),
             "task_type": self.model_config.get("task_type", "Live Training"),
         }
