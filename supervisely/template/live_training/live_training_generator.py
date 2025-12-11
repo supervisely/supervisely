@@ -74,6 +74,7 @@ class LiveTrainingGenerator(BaseGenerator):
             "model": self._get_model_context(),
             "training": self._get_training_context(),
             "dataset": self._get_dataset_context(),
+            "widgets": self._get_widgets_context(), 
             "resources": self._get_resources_context(),
         }
     
