@@ -8,6 +8,7 @@ from supervisely.template.live_training.live_training_generator import LiveTrain
 from datetime import datetime, timedelta
 import random
 
+task_id = 100001
 
 def generate_mock_loss_history(num_iterations: int = 690):
     """Generate realistic loss curves"""
@@ -65,19 +66,18 @@ def generate_mock_session_info(api: sly.Api, project_id: int):
     
     # Artifacts directory (mock path)
     team_id = 51
-    artifacts_dir = f"/experiments/{project_id}/54169_online_training_Mask2Former"
+    artifacts_dir = f"/experiments/{project_id}/{task_id}_online_training_Mask2Former"
     
     session_info = {
         # Session metadata
         "session_id": 1765363422,
+        "task_id": task_id,
         "session_name": "Online Training - Task 54169",
         "project_id": project_id,
         "start_time": start_time.strftime("%Y-%m-%d %H:%M:%S"),
         "end_time": end_time.strftime("%Y-%m-%d %H:%M:%S"),
         "duration": duration,
         "status": "completed",
-        "task_id": 54169,
-        
         # Training progress
         "current_iteration": total_iterations,
         "total_iterations": total_iterations,
@@ -158,7 +158,7 @@ def main():
     api = sly.Api()
     
     # Use your test project ID
-    project_id = 40691  # Replace with your test project ID
+    project_id = 4596  # Replace with your test project ID
     team_id = 51
     
     
@@ -192,28 +192,44 @@ def main():
     
     # Generate report
     print("\n🎨 Generating report...")
+    print("\n🔍 DEBUG Context:")
+    context = generator.context()
+    print(f"session.task_id = {context['session'].get('task_id')}")
+    print(f"model.classes = {context['model'].get('classes')}")
+    print(f"resources = {context.get('resources')}")
     generator.generate()
     
-    print(f"\n✅ Report generated successfully!")
-    print(f"📂 Output directory: {output_dir}")
-    print(f"📄 Open: {output_dir}/template.vue")
-    
-    # Print context for debugging
-    print("\n🔍 Context preview:")
-    context = generator.context()
-    print(f"  - Session: {context['session']['name']}")
-    print(f"  - Model: {context['model']['name']}")
-    print(f"  - Device: {context['training']['device']}")
-    print(f"  - Total iterations: {context['training']['total_iterations']}")
-    print(f"  - Dataset size: {context['dataset']['current_size']}")
-    
-    # Optional: Upload to Team Files (comment out if not needed)
-    # print("\n☁️  Uploading to Team Files...")
-    # remote_dir = f"/test_reports/live_training_report_{session_info['session_id']}"
-    # file_info = generator.upload_to_artifacts(remote_dir)
-    # print(f"✓ Uploaded to: {file_info.path}")
-    # print(f"🔗 URL: {generator.api.server_address}/files/?path={file_info.path}")
 
+    # Upload to Team Files
+    print("\n☁️  Uploading to Team Files...")
+    try:
+        # ADD TIMESTAMP to make unique path
+        import time
+        timestamp = int(time.time())
+        remote_dir = f"/test_reports/live_training_{timestamp}"
+        
+        # Upload report
+        file_info = generator.upload_to_artifacts(remote_dir)
+        
+        # Get report URL
+        report_url = generator.get_report()
+        
+        print(f"✅ Uploaded successfully!")
+        print(f"🎯 Report URL: {report_url}")
+        print(f"📂 Team Files path: {remote_dir}")
+        
+        # Fix: file_info can be int or FileInfo
+        if isinstance(file_info, int):
+            print(f"📄 File ID: {file_info}")
+        else:
+            print(f"📄 File path: {file_info.path}")
+        
+    except Exception as e:
+        import traceback
+        print(f"⚠️  Failed to upload: {e}")
+        traceback.print_exc()
+
+ 
 
 if __name__ == "__main__":
     main()

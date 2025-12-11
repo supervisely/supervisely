@@ -81,8 +81,7 @@
             <li><strong>Architecture:</strong> {{ model.name }}</li>
             <li><strong>Backbone:</strong> {{ model.backbone }}</li>
             <li><strong>Task:</strong> {{ model.task_type or "Live Learning" }}</li>
-            <li><strong>Classes:</strong> ({{ model.num_classes }}) {% for class_name in model.classes_short %}<span class="class-tag">{{ class_name }}</span>  {% endfor %}</li>
-            </ul>
+            <li><strong>Classes:</strong> ({{ model.num_classes }}) {% for class_name in model.classes %}<span class="class-tag">{{ class_name }}</span>  {% endfor %}</li>            </ul>
         </div>
         <div class="experiment-info-subheader-block">
             <div class="experiment-info-subheader-mini-title">

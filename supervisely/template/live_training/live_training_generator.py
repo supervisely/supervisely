@@ -88,6 +88,7 @@ class LiveTrainingGenerator(BaseGenerator):
         session_id = self.session_info["session_id"]
         project_id = self.session_info["project_id"]
         artifacts_dir = self.session_info.get("artifacts_dir", "")
+        task_id = self.session_info.get("task_id", session_id)
         
         project_info = self.api.project.get_info_by_id(project_id)
         project_url = f"{self.api.server_address}/projects/{project_id}/datasets"
