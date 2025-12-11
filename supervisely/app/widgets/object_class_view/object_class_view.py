@@ -17,6 +17,7 @@ from supervisely.geometry.pointcloud import Pointcloud
 from supervisely.geometry.point_3d import Point3d
 from supervisely.geometry.multichannel_bitmap import MultichannelBitmap
 from supervisely.geometry.closed_surface_mesh import ClosedSurfaceMesh
+from supervisely.geometry.oriented_bbox import OrientedBBox
 
 
 type_to_zmdi_icon = {
@@ -32,6 +33,7 @@ type_to_zmdi_icon = {
     Pointcloud: "zmdi zmdi-cloud-outline",  #  # "zmdi zmdi-border-clear"
     MultichannelBitmap: "zmdi zmdi-layers",  # "zmdi zmdi-collection-item"
     Point3d: "zmdi zmdi-filter-center-focus",  # "zmdi zmdi-select-all"
+    OrientedBBox: "zmdi zmdi-rotate-cw",
 }
 
 type_to_icons8_icon = {
@@ -61,6 +63,7 @@ type_to_shape_text = {
     Point3d: "point 3d",  # "zmdi zmdi-select-all"
     GraphNodes: "keypoints",
     ClosedSurfaceMesh: "volume (3d mask)",
+    OrientedBBox: "oriented bbox",
 }
 
 

@@ -1083,3 +1083,31 @@ class FigureApi(RemoveableBulkModuleApi):
                 image_ids=image_ids,
                 skip_geometry=skip_geometry,
             )
+
+    def restore_batch(self, ids: List[int], progress_cb: Optional[Callable] = None, batch_size: int = 50):
+        """
+        Restore archived figures in batches from the Supervisely server.
+
+        :param ids: IDs of figures in Supervisely.
+        :type ids: List[int]
+        :param progress_cb: Optional callback to track restore progress. Receives number of restored figures in the current batch.
+        :type progress_cb: Optional[Callable]
+        :param batch_size: Number of figure IDs to send in a single request.
+        :type batch_size: int
+        """
+        for ids_batch in batched(ids, batch_size=batch_size):
+            self._api.post(
+                "figures.bulk.restore",
+                {ApiField.FIGURE_IDS: ids_batch},
+            )
+            if progress_cb is not None:
+                progress_cb(len(ids_batch))
+
+    def restore(self, id: int):
+        """
+        Restore a single archived figure with the specified ID from the Supervisely server.
+
+        :param id: Figure ID in Supervisely.
+        :type id: int
+        """
+        self.restore_batch([id])
