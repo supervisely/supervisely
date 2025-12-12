@@ -505,3 +505,47 @@ jobs:
       - name: Skip Notifification
         if: steps.tag_check.outputs.exists == 'true'
         run: echo "Image $IMAGE_NAME:$RELEASE_VERSION already exists - skipping build."
+
+  base-py-sdk-light:
+    name: Build base-py-sdk-light
+    needs: publish-pypi
+    runs-on: gha-runner-supervisely
+    env:
+      RELEASE_VERSION: ${{ inputs.tag_version }}
+      IMAGE_NAME: base-py-sdk-light
+      DOCKERFILE_PATH: base_images/py_sdk_light
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Check tag exists
+        id: tag_check
+        run: |
+          if docker manifest inspect "${REGISTRY}/${ORG}/${IMAGE_NAME}:${RELEASE_VERSION}" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build and Push ${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }}
+        if: steps.tag_check.outputs.exists == 'false'
+        run: |
+          buildctl build \
+            --frontend dockerfile.v0 \
+            --local context=${{ github.workspace }} \
+            --local dockerfile=${{ github.workspace }}/${{ env.DOCKERFILE_PATH }} \
+            --opt build-arg:tag_ref_name=${{ env.RELEASE_VERSION }} \
+            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }},push=true \
+            --export-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache,mode=max \
+            --import-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache
+
+      - name: Build and Push ${{ env.IMAGE_NAME }}:latest
+        if: steps.tag_check.outputs.exists == 'false'
+        run: |
+          buildctl build \
+            --frontend dockerfile.v0 \
+            --local context=${{ github.workspace }} \
+            --local dockerfile=${{ github.workspace }}/${{ env.DOCKERFILE_PATH }} \
+            --opt build-arg:tag_ref_name=${{ env.RELEASE_VERSION }} \
+            --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest,push=true \
