@@ -565,5 +565,6 @@ class TeamApi(ModuleNoParent, UpdateableModule):
         res = super()._convert_json_info(info, skip_missing=skip_missing)
         res_dict = res._asdict()
         if isinstance(res_dict.get("usage"), dict):
-            res_dict["usage"] = UsageInfo(**res_dict["usage"])
+            usage_fields = {k: v for k, v in res_dict["usage"].items() if k in UsageInfo._fields}
+            res_dict["usage"] = UsageInfo(**usage_fields)
         return TeamInfo(**res_dict)
