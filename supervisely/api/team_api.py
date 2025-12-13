@@ -132,7 +132,7 @@ class ActivityAction:
 class UsageInfo(NamedTuple):
     """ """
 
-    plan: str
+    plan: Optional[str]
 
 
 class TeamInfo(NamedTuple):
@@ -144,7 +144,7 @@ class TeamInfo(NamedTuple):
     role: str
     created_at: str
     updated_at: str
-    usage: UsageInfo
+    usage: Optional[UsageInfo]
 
 
 class TeamApi(ModuleNoParent, UpdateableModule):
@@ -565,6 +565,8 @@ class TeamApi(ModuleNoParent, UpdateableModule):
         res = super()._convert_json_info(info, skip_missing=skip_missing)
         res_dict = res._asdict()
         if isinstance(res_dict.get("usage"), dict):
-            usage_fields = {k: v for k, v in res_dict["usage"].items() if k in UsageInfo._fields}
+            usage_fields = {}
+            for field in UsageInfo._fields:
+                usage_fields[field] = res_dict["usage"].get(field)
             res_dict["usage"] = UsageInfo(**usage_fields)
         return TeamInfo(**res_dict)
