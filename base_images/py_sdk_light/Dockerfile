@@ -32,7 +32,7 @@ RUN pip install \
     openpyxl \
     psutil>=5.9.0 \
     cython \
-    Werkzeug==3.0.6 \
+    "Werkzeug<=3.0.6" \
     scikit-video==1.1.11 \
     attrs \
     requests>=2.27.1
