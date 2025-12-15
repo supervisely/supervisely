@@ -37,7 +37,7 @@ RUN pip install \
     attrs \
     requests>=2.27.1
 
-RUN pip install --upgrade setuptools==70.3.0
+RUN pip install "setuptools>=70.0,<81"
 
 ARG tag_ref_name
 
