@@ -86,6 +86,7 @@ class LiveTrainingGenerator(BaseGenerator):
             "dataset": self._get_dataset_context(),
             "widgets": self._get_widgets_context(), 
             "resources": self._get_resources_context(),
+            "description": self._get_live_training_description(),
         }
     
     def _get_env_context(self) -> dict:
@@ -174,8 +175,10 @@ class LiveTrainingGenerator(BaseGenerator):
     def _get_model_context(self) -> dict:
         """Model configuration info"""
         classes = [cls.name for cls in self.model_meta.obj_classes]    
+        display_name = self.model_config.get("display_name", self.model_config.get("model_name", "Unknown"))
+
         return {
-            "name": self.model_config.get("model_name", "Unknown"),
+            "name": display_name,
             "backbone": self.model_config.get("backbone", "N/A"),
             "num_classes": self.model_config.get("num_classes", len(self.model_meta.obj_classes)),
             "classes": classes,
