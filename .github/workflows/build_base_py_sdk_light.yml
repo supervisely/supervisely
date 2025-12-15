@@ -27,3 +27,23 @@ jobs:
             --output type=image,name=docker.io/supervisely/base-py-sdk-light:${{ github.event.inputs.tag_version }},push=true \
             --export-cache type=registry,ref=docker.io/supervisely/base-py-sdk-light:buildcache,mode=max \
             --import-cache type=registry,ref=docker.io/supervisely/base-py-sdk-light:buildcache
+
+      - name: Build Docker Image and push to Internal registry
+        run: |
+          buildctl build \
+            --frontend dockerfile.v0 \
+            --local context=./ \
+            --local dockerfile=./ \
+            --output type=image,name=cr.internal.supervisely.com/supervisely-internal/supervisely/base-py-sdk-light:${{ github.event.inputs.tag_version }},push=true  \
+            --export-cache type=registry,ref=docker.io/supervisely/base-py-sdk-light:buildcache,mode=max \
+            --import-cache type=registry,ref=docker.io/supervisely/base-py-sdk-light:buildcache
+
+      - name: Build Docker Image and push to Enterprise registry
+        run: |
+          buildctl build \
+            --frontend dockerfile.v0 \
+            --local context=./ \
+            --local dockerfile=./ \
+            --output type=image,name=cr.internal.supervisely.com/supervisely-enterprise/supervisely/base-py-sdk-light:${{ github.event.inputs.tag_version }},push=true  \
+            --export-cache type=registry,ref=docker.io/supervisely/base-py-sdk-light:buildcache,mode=max \
+            --import-cache type=registry,ref=docker.io/supervisely/base-py-sdk-light:buildcache
