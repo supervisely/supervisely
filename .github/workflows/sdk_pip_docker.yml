@@ -584,5 +584,5 @@ jobs:
             --local dockerfile=${{ github.workspace }}/${{ env.DOCKERFILE_PATH }} \
             --opt build-arg:tag_ref_name=${{ env.RELEASE_VERSION }} \
             --output type=image,name=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest,push=true \
-            --export-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache,mode=max \  
+            --export-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache,mode=max \
             --import-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:buildcache
