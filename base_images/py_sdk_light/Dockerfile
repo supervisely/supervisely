@@ -30,12 +30,12 @@ RUN pip install --upgrade pip
 RUN pip install \
     xlrd \
     openpyxl \
-    psutil>=5.9.0 \
+    "psutil>=5.9.0" \
     cython \
-    Werkzeug<=3.0.6 \
+    "Werkzeug<=3.0.6" \
     scikit-video==1.1.11 \
     attrs \
-    requests>=2.27.1
+    "requests>=2.27.1"
 
 RUN pip install "setuptools>=70.0,<81"
 
