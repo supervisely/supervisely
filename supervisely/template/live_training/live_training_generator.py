@@ -69,14 +69,6 @@ class LiveTrainingGenerator(BaseGenerator):
         """Generate URL to open the Live training report"""
         return f"{server_address}/nn/experiments/{template_id}"
 
-    def _get_live_training_description(self) -> str:
-        """Return live training description text"""
-        # Default description - you can customize this text
-        return """
-        Live Training is a novel data annotation paradigm where the model trains in parallel with the annotation process, rather than after it. Each newly labeled sample is immediately added to the training set, and the model adapts in real-time, providing progressively more accurate predictions for subsequent images.
-        This creates a synergistic human-AI collaboration: the growing dataset improves the model → the improved model accelerates annotation → faster annotation expands the dataset. Unlike traditional workflows where annotators wait for training to complete and GPUs sit idle during labeling, Live Training utilizes resources continuously and efficiently. 
-        """
-
     def context(self) -> dict:
         return {
             "env": self._get_env_context(),
@@ -86,7 +78,6 @@ class LiveTrainingGenerator(BaseGenerator):
             "dataset": self._get_dataset_context(),
             "widgets": self._get_widgets_context(), 
             "resources": self._get_resources_context(),
-            "description": self._get_live_training_description(),
         }
     
     def _get_env_context(self) -> dict:
