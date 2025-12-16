@@ -156,7 +156,10 @@ def supervisely_vpn_network(
 
 
 def create_debug_task(
-    team_id: int = None, port: int = 8000, update_status: bool = True
+    team_id: int = None,
+    port: int = 8000,
+    update_status: bool = True,
+    project_id: Optional[int] = None,
 ) -> Dict[str, Any]:
     """Gets or creates a debug task for the current user.
 
@@ -189,6 +192,10 @@ def create_debug_task(
         if (session.details["meta"].get("redirectRequests") == redirect_requests) and (
             session.details["status"] in [str(api.app.Status.QUEUED), str(api.app.Status.STARTED)]
         ):
+            if project_id is not None:
+                state = session.details["meta"].get("params", {}).get("state", {})
+                if state.get("slyProjectId") != project_id:
+                    continue  # project_id not set in state, skip this session
             task = session.details
             if "id" not in task:
                 task["id"] = task["taskId"]
@@ -196,6 +203,7 @@ def create_debug_task(
             break
     workspaces = api.workspace.get_list(team_id)
     if task is None:
+        params = {"state": {"slyProjectId": project_id}} if project_id is not None else None
         task = api.task.start(
             agent_id=None,
             module_id=module_id,
@@ -203,6 +211,7 @@ def create_debug_task(
             task_name=session_name,
             redirect_requests=redirect_requests,
             proxy_keep_url=False,  # to ignore /net/<token>/endpoint
+            params=params,
         )
         if type(task) is list:
             task = task[0]
@@ -222,6 +231,7 @@ def enable_advanced_debug(
     vpn_action: Literal["up", "down"] = "up",
     vpn_raise_on_error: bool = True,
     only_for_development: bool = True,
+    project_id: Optional[int] = None,
 ) -> Optional[int]:
     """Enables advanced debugging for the app.
     At first, it establishes a WireGuard VPN connection to the Supervisely network.
@@ -285,7 +295,9 @@ def enable_advanced_debug(
     )
 
     supervisely_vpn_network(action=vpn_action, raise_on_error=vpn_raise_on_error)
-    task = create_debug_task(team_id=team_id, port=port, update_status=update_status)
+    task = create_debug_task(
+        team_id=team_id, port=port, update_status=update_status, project_id=project_id
+    )
     task_id = task.get("id", None)
 
     logger.debug(
