@@ -1529,7 +1529,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
-            api.labeling_job.update_custom_data(9, {"key": "value"})
+            api.labeling_job.set_custom_data(9, {"key": "value"})
         """
         method = "jobs.editInfo"
 
