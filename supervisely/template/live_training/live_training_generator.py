@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 import os
+import re
+import math
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Optional
+import plotly.graph_objects as go  # pylint: disable=import-error
+from plotly.subplots import make_subplots  # pylint: disable=import-error
 
 import supervisely as sly
 from supervisely import Api, ProjectMeta, logger
@@ -50,8 +54,8 @@ class LiveTrainingGenerator(BaseGenerator):
         self.model_meta = model_meta
         self.task_type = task_type
         self._slug_map = {
-            "semantic segmentation": "supervisely-ecosystem/live-training-segmentation",
-            "object detection": "supervisely-ecosystem/live-training-detection",
+            "semantic segmentation": "supervisely-ecosystem/live-training---semantic-segmentation",
+            "object detection": "supervisely-ecosystem/live-training---object-detection",
         }
         self.slug = self._slug_map[task_type] 
         
@@ -120,9 +124,7 @@ class LiveTrainingGenerator(BaseGenerator):
         
         :param config_path: Path to config.py
         :return: Dict with extracted hyperparameters
-        """
-        import re
-        
+        """        
         hyperparams = {}
         
         if not os.path.exists(config_path):
@@ -353,10 +355,6 @@ class LiveTrainingGenerator(BaseGenerator):
         if not loss_history or not isinstance(loss_history, dict):
             return "<p>No training data available yet.</p>"
         
-        import plotly.graph_objects as go
-        from plotly.subplots import make_subplots
-        import math
-        
         # Get all metrics
         metrics = list(loss_history.keys())
         n_metrics = len(metrics)
@@ -421,11 +419,21 @@ class LiveTrainingGenerator(BaseGenerator):
   
     def _get_online_training_app_info(self):
         """Get online training app info from ecosystem"""
-        if self.api.server_address.endswith("dev.internal.supervisely.com"):
-            logger.warning("Using hardcoded module ID for dev server")
-            module_id = 621  # TODO: Delete hardcoded ID later
-        else:
+        try:
+            # TODO: only works for public apps.
+            # Exception handles only private apps on dev server. Need implement for private apps on any server.
             module_id = self.api.app.get_ecosystem_module_id(self.slug)
+        except Exception as e:
+            logger.warning(f"Failed to get module ID for slug {self.slug}: {e}.")
+            if self.api.server_address.endswith("dev.internal.supervisely.com"):
+                logger.warning("Using hardcoded module ID for dev server")
+                task2module_map = {
+                    "object detection": 620,
+                    "semantic segmentation": 621,
+                }
+                module_id = task2module_map.get(self.task_type)
+            else:
+                raise e
         return {
             "slug": self.slug,
             "module_id": module_id,
