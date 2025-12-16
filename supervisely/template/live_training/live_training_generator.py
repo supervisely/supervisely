@@ -124,7 +124,8 @@ class LiveTrainingGenerator(BaseGenerator):
         
         :param config_path: Path to config.py
         :return: Dict with extracted hyperparameters
-        """        
+        """
+        # TODO: only basic parsing for segmentation
         hyperparams = {}
         
         if not os.path.exists(config_path):
@@ -224,7 +225,6 @@ class LiveTrainingGenerator(BaseGenerator):
             },
         }
      
-
     def _get_dataset_context(self) -> dict:
         """Dataset info"""
         return {
