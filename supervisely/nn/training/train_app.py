@@ -3195,12 +3195,12 @@ class TrainApp:
         # Get train collection with max idx
         if latest_train_collection:
             train_collection_idx = (
-                _extract_index_from_col_name(latest_train_collection, "train") + 1
+                _extract_index_from_col_name(latest_train_collection.name, "train") + 1
             )
 
         # Get val collection with max idx
         if latest_val_collection:
-            val_collection_idx = _extract_index_from_col_name(latest_val_collection, "val") + 1
+            val_collection_idx = _extract_index_from_col_name(latest_val_collection.name, "val") + 1
         # -------------------------------- #
 
         # Create Train Collection
