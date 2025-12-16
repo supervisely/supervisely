@@ -749,15 +749,15 @@ class Inference:
         for model in self.pretrained_models:
             model_meta = model.get("meta")
             if model_meta is not None:
-                model_name = model_meta.get("model_name")
-                if model_name is not None:
-                    if model_name.lower() == model_name.lower():
+                this_model_name = model_meta.get("model_name")
+                if this_model_name is not None:
+                    if this_model_name.lower() == model_name.lower():
                         selected_model = model
                         break
                 else:
-                    model_name = model.get("model_name")
-                    if model_name is not None:
-                        if model_name.lower() == model_name.lower():
+                    this_model_name = model.get("model_name")
+                    if this_model_name is not None:
+                        if this_model_name.lower() == model_name.lower():
                             selected_model = model
                             break
 
@@ -2814,6 +2814,11 @@ class Inference:
     def _freeze_model(self):
         if self._model_frozen or not self._model_served:
             return
+
+        if not self._deploy_params:
+            logger.warning("Deploy params are not set, cannot freeze the model.")
+            return
+
         logger.debug("Freezing model...")
         runtime = self._deploy_params.get("runtime")
         if runtime and runtime.lower() != RuntimeType.PYTORCH.lower():

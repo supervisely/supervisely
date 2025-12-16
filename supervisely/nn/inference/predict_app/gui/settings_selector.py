@@ -834,7 +834,7 @@ class SettingsSelector:
             "inference_settings": self.get_inference_settings(),
         }
         if self.input_selector.radio.get_value() == ProjectType.VIDEOS.value:
-            settings["tracking_settings"] = self.get_tracking_settings()
+            settings["tracking_config"] = self.get_tracking_settings()
             if self.input_selector.get_settings().get("video_ids", None) is not None:
                 settings["tracking"] = self.tracking_checkbox.is_checked()
         return settings
