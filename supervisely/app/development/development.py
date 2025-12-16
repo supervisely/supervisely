@@ -170,6 +170,8 @@ def create_debug_task(
     :type port: int
     :param update_status: If True, the task status will be updated to STARTED.
     :type update_status: bool
+    :param project_id: Project ID to filter existing debug tasks. Creates a new task if no match is found. Default is None.
+    :type project_id: Optional[int]
     :return: The task details.
     :rtype: Dict[str, Any]
     """
@@ -254,6 +256,8 @@ def enable_advanced_debug(
     :param only_for_development: If True, the debugging will be started only if the app is running in development mode.
         It's not recommended to set this parameter to False in production environments.
     :type only_for_development: bool
+    :param project_id: Project ID to filter existing debug tasks. Creates a new task if no match is found. Default is None.
+    :type project_id: Optional[int]
     :return: The task ID of the debug task or None if the debugging was not started.
     :rtype: Optional[int]
 
