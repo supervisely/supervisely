@@ -2677,7 +2677,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type dst_project_name: str, optional
 
         :return: List of tuples of source and destination DatasetInfo objects
-        :rtype: List[Tuple[DatasetInfo], Tuple[DatasetInfo]]
+        :rtype: List[Tuple[DatasetInfo, DatasetInfo]]
 
         :Usage example:
 
