@@ -446,7 +446,11 @@ class VolumeProject(VideoProject):
             parent_ds_info = dataset_mapping.get(dataset_data.get("parent_id"))
             new_parent_id = parent_ds_info.id if parent_ds_info else None
             new_dataset_info = api.dataset.create(
-                new_project_info.id, dataset_data.get("name"), parent_id=new_parent_id
+                project_id=new_project_info.id,
+                name=dataset_data.get("name"),
+                description=dataset_data.get("description"),
+                parent_id=new_parent_id,
+                custom_data=dataset_data.get("custom_data"),
             )
             dataset_mapping[dataset_data.get("id")] = new_dataset_info
 

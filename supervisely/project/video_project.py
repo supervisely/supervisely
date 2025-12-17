@@ -1697,13 +1697,16 @@ class VideoProject(Project):
                 )
 
             src_project_name = project_info_json.get("name")
+            src_project_desc = project_info_json.get("description")
             if project_name is None:
                 project_name = src_project_name
 
             if api.project.exists(workspace_id, project_name):
                 project_name = api.project.get_free_name(workspace_id, project_name)
 
-            project = api.project.create(workspace_id, project_name, ProjectType.VIDEOS)
+            project = api.project.create(
+                workspace_id, project_name, ProjectType.VIDEOS, src_project_desc
+            )
             new_meta = api.project.update_meta(project.id, meta.to_json())
 
             if with_custom_data:
@@ -1738,7 +1741,13 @@ class VideoProject(Project):
                 else:
                     parent_id = None
 
-                ds = api.dataset.create(project.id, row["name"], parent_id=parent_id)
+                ds = api.dataset.create(
+                    project.id,
+                    name=row["name"],
+                    description=row["description"],
+                    parent_id=parent_id,
+                    custom_data=row.get("custom_data"),
+                )
                 dataset_mapping[src_ds_id] = ds
 
             # Videos
