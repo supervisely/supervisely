@@ -1720,16 +1720,15 @@ class VideoProject(Project):
                 log_progress = False
 
             # Datasets
+            ds_rows = []
             datasets_path = os.path.join(payload_dir, "datasets.parquet")
-            if not os.path.exists(datasets_path):
-                raise RuntimeError("datasets.parquet is missing in video snapshot")
+            if os.path.exists(datasets_path):
+                ds_table = parquet.read_table(datasets_path)
+                ds_rows = ds_table.to_pylist()
 
-            ds_table = parquet.read_table(datasets_path)
-            ds_rows = ds_table.to_pylist()
-
-            ds_rows.sort(
-                key=lambda r: (r["parent_src_dataset_id"] is not None, r["parent_src_dataset_id"])
-            )
+                ds_rows.sort(
+                    key=lambda r: (r["parent_src_dataset_id"] is not None, r["parent_src_dataset_id"])
+                )
 
             dataset_mapping: dict[int, DatasetInfo] = {}
             for row in ds_rows:
@@ -1751,12 +1750,11 @@ class VideoProject(Project):
                 dataset_mapping[src_ds_id] = ds
 
             # Videos
+            v_rows = []
             videos_path = os.path.join(payload_dir, "videos.parquet")
-            if not os.path.exists(videos_path):
-                raise RuntimeError("videos.parquet is missing in video snapshot")
-
-            v_table = parquet.read_table(videos_path)
-            v_rows = v_table.to_pylist()
+            if os.path.exists(videos_path):
+                v_table = parquet.read_table(videos_path)
+                v_rows = v_table.to_pylist()
 
             videos_by_dataset: dict[int, List[dict]] = {}
             for row in v_rows:
