@@ -216,7 +216,7 @@ class InputSelector:
             self.select_dataset_for_video.set_project_id(project_id)
             self.select_dataset_for_video.select_all()
             self._refresh_video_table()
-            self.select_video.select_rows(list(range(len(self.select_video._rows_total))))
+            self.select_video.select_rows(list(range(self.select_video._rows_total)))
             self.radio.set_value(ProjectType.VIDEOS.value)
         else:
             raise ValueError(f"Project of type {project_info.type} is not supported.")

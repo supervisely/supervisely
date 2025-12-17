@@ -281,6 +281,7 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
         description: Optional[str] = None,
         type: str = CollectionType.DEFAULT,
         ai_search_key: Optional[str] = None,
+        change_name_if_conflict=False,
     ) -> EntitiesCollectionInfo:
         """
         Creates Entities Collections.
@@ -295,6 +296,8 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
         :type type: str
         :param ai_search_key: AI search key for the collection. Defaults to None.
         :type ai_search_key: Optional[str]
+        :param change_name_if_conflict: Checks if given name already exists and adds suffix to the end of the name. Defaults to False.
+        :type change_name_if_conflict: bool
         :return: Information about new Entities Collection
         :rtype: :class:`EntitiesCollectionInfo`
         :Usage example:
@@ -316,6 +319,13 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
             new_collection = api.entities_collection.create(project_id, name, description, type, ai_search_key)
             print(new_collection)
         """
+
+        name = self._get_effective_new_name(
+            parent_id=project_id,
+            name=name,
+            change_name_if_conflict=change_name_if_conflict,
+        )
+
         method = "entities-collections.add"
         data = {
             ApiField.PROJECT_ID: project_id,

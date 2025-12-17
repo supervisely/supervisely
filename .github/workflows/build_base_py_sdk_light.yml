@@ -1,0 +1,49 @@
+# https://hub.docker.com/r/supervisely/base-py-sdk-light
+name: Manual Build base-py-sdk-light Docker
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag_version:
+        description: "Docker Image Tag (without 'v')"
+        required: true
+        default: ""
+
+jobs:
+  deploy:
+    runs-on: gha-runner-supervisely
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      - name: Build and Push Docker Image
+        run: |
+          buildctl build \
+            --frontend dockerfile.v0 \
+            --local context=${{ github.workspace }} \
+            --local dockerfile=${{ github.workspace }}/base_images/py_sdk_light \
+            --opt build-arg:tag_ref_name=${{ github.event.inputs.tag_version }} \
+            --output type=image,name=docker.io/supervisely/base-py-sdk-light:${{ github.event.inputs.tag_version }},push=true \
+            --export-cache type=registry,ref=docker.io/supervisely/base-py-sdk-light:buildcache,mode=max \
+            --import-cache type=registry,ref=docker.io/supervisely/base-py-sdk-light:buildcache
+
+      - name: Build Docker Image and push to Internal registry
+        run: |
+          buildctl build \
+            --frontend dockerfile.v0 \
+            --local context=./ \
+            --local dockerfile=./ \
+            --output type=image,name=cr.internal.supervisely.com/supervisely-internal/supervisely/base-py-sdk-light:${{ github.event.inputs.tag_version }},push=true  \
+            --export-cache type=registry,ref=docker.io/supervisely/base-py-sdk-light:buildcache,mode=max \
+            --import-cache type=registry,ref=docker.io/supervisely/base-py-sdk-light:buildcache
+
+      - name: Build Docker Image and push to Enterprise registry
+        run: |
+          buildctl build \
+            --frontend dockerfile.v0 \
+            --local context=./ \
+            --local dockerfile=./ \
+            --output type=image,name=cr.internal.supervisely.com/supervisely-enterprise/supervisely/base-py-sdk-light:${{ github.event.inputs.tag_version }},push=true  \
+            --export-cache type=registry,ref=docker.io/supervisely/base-py-sdk-light:buildcache,mode=max \
+            --import-cache type=registry,ref=docker.io/supervisely/base-py-sdk-light:buildcache

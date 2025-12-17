@@ -42,6 +42,7 @@ import supervisely.api.dataset_api as dataset_api
 import supervisely.api.entities_collection_api as entities_collection_api
 import supervisely.api.file_api as file_api
 import supervisely.api.github_api as github_api
+import supervisely.api.guides_api as guides_api
 import supervisely.api.image_annotation_tool_api as image_annotation_tool_api
 import supervisely.api.image_api as image_api
 import supervisely.api.import_storage_api as import_stoarge_api
@@ -358,6 +359,7 @@ class Api:
         self.user = user_api.UserApi(self)
         self.labeling_job = labeling_job_api.LabelingJobApi(self)
         self.labeling_queue = labeling_queue_api.LabelingQueueApi(self)
+        self.guides = guides_api.GuidesApi(self)
         self.video = video_api.VideoApi(self)
         # self.project_class = project_class_api.ProjectClassApi(self)
         self.object_class = object_class_api.ObjectClassApi(self)

@@ -1,12 +1,15 @@
-import numpy as np
 from collections import deque
 
-from . import matching
-from .gmc import GMC
-from .basetrack import BaseTrack, TrackState
-from .kalman_filter import KalmanFilter
+import numpy as np
 
-from supervisely.nn.tracker.botsort.osnet_reid.osnet_reid_interface import OsnetReIDInterface
+from supervisely.nn.tracker.botsort.osnet_reid.osnet_reid_interface import (
+    OsnetReIDInterface,
+)
+
+from . import matching
+from .basetrack import BaseTrack, TrackState
+from .gmc import GMC
+from .kalman_filter import KalmanFilter
 
 
 class STrack(BaseTrack):

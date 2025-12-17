@@ -1,0 +1,402 @@
+.experiment-body .sly-markdown-widget .markdown-body {
+    padding: 0;
+    font-family: inherit;
+}
+
+.experiment-body .sly-markdown-widget .markdown-body h2 {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 0px;
+    border: 0;
+}
+
+.experiment-body .sly-markdown-widget .markdown-body h3 {
+    color: #949bab;
+    font-size: 18px;
+    margin-bottom: 7px;
+}
+
+.experiment-body .sly-markdown-widget .markdown-body p {
+    margin-bottom: 12px;
+}
+
+.experiment-body .section {
+    margin-bottom: 30px;
+    scroll-margin-top: 20px;
+    padding-top: 10px;
+}
+
+.experiment-body .overview-info-block {
+    background: #f4f7fb;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.experiment-body .width-fit-content {
+    width: fit-content;
+}
+
+.experiment-body .main-content {
+    flex-grow: 1;
+    margin-right: 20px;
+}
+
+.experiment-body .buttons-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.experiment-body hr {
+    display: none
+}
+
+.experiment-body blockquote {
+    margin: 15px 0 0;
+}
+
+.experiment-body table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+.experiment-body table th,
+.experiment-body table td {
+    border: 1px solid #e0e0e0;
+    padding: 8px 12px;
+    text-align: left;
+}
+
+.experiment-body table th {
+    background-color: #f4f7fb;
+}
+
+.experiment-body .table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+    /* box-shadow: 0 2px 6px rgba(0,0,0,0.05); */
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.experiment-body .table th {
+    background-color: #f4f7fb;
+    font-weight: 600;
+    color: #333;
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.experiment-body .table td {
+    padding: 10px 15px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.experiment-body .table tr:hover {
+    background-color: #f8f9fa;
+}
+
+.experiment-body .links-list,
+.experiment-body .overview-list,
+.experiment-body .buttons-list {
+    list-style-type: none;
+    padding: 0;
+    margin: 0 0 20px 0;
+}
+
+.experiment-body .links-list li,
+.experiment-body .overview-list li,
+.experiment-body .buttons-list li {
+    margin-bottom: 8px;
+    position: relative;
+    padding-left: 8px;
+    display: flex;
+    align-items: flex-start;
+}
+
+.experiment-body .links-list li:before,
+.experiment-body .buttons-list li:before {
+    content: "•";
+    color: #1890ff;
+    display: inline-block;
+    width: 15px;
+    margin-right: 10px;
+}
+
+.experiment-body .overview-list li:before {
+    content: "";
+    display: none;
+}
+
+.experiment-body .link-icon,
+.experiment-body .button-icon {
+    margin-right: 8px;
+}
+
+.experiment-body .overview-list .label {
+    font-weight: 600;
+    margin-right: 8px;
+    min-width: 120px;
+    display: inline-block;
+}
+
+/* Code */
+.experiment-body .code-block {
+    background-color: #f5f5f5;
+    border-radius: 6px;
+    padding: 15px;
+    margin-bottom: 20px;
+    overflow-x: auto;
+}
+
+.experiment-body details {
+    border-radius: 6px;
+    overflow: hidden;
+    margin-bottom: 20px;
+}
+
+.experiment-body details summary {
+    padding: 12px 15px;
+    background-color: #f4f7fb;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background-color 0.2s;
+    width: fit-content;
+}
+
+.experiment-body details summary:hover {
+    background-color: #e6edf7;
+}
+
+.experiment-body details[open] summary {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    margin-bottom: 10px;
+}
+
+/* Classes overview styles */
+.classes-overview {
+    margin-bottom: 30px;
+}
+
+.class-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.class-tag {
+    background: #e3e8ef;
+    color: #434a53;
+    padding: 3px 7px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 400;
+}
+
+
+.experiment-main-wrapper {
+    display: flex;
+}
+
+.experiment-main-content .main-content.markdown-body {
+    font-size: 14px;
+    font-family: inherit;
+}
+
+.experiment-main-content .main-content.markdown-body h2 {
+    font-size: 18px;
+    font-weight: 700;
+    /* border: 0;
+    padding: 0; */
+}
+
+.experiment-main-content .main-content.markdown-body h3 {
+    font-size: 16px;
+    font-weight: 700;
+    border: 0;
+}
+
+.experiment-main-content .main-content.markdown-body .img-grid-gallery-v2-header {
+    font-size: 13px;
+}
+
+/*********************** Header ***********************/
+
+.experiment-body .experiment-info-header {
+    background: #f8fafc;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.experiment-body .experiment-info-header h1 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    padding: 0;
+    border: 0;
+}
+
+.experiment-body .experiment-info-header ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.experiment-body .experiment-info-header .experiment-info-subheader {
+    display: flex;
+    background: #f1f5f9;
+    padding: 15px 20px;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: 6px 6px 0 0;
+}
+
+.experiment-body .experiment-info-header .experiment-info-subheader-body {
+    padding: 15px 20px;
+    display: flex;
+    gap: 30px;
+}
+
+.experiment-body .experiment-info-header .experiment-info-subheader-body h2 {
+    border: 0;
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    margin-right: 5px;
+}
+
+.experiment-body .experiment-info-header .experiment-info-subheader-body ul strong {
+    width: 100px;
+}
+
+.experiment-body .experiment-info-header .experiment-info-subheader-block {
+    padding-right: 30px;
+    border-right: 1px solid #dde4ef;
+}
+
+/*.experiment-body .experiment-info-header .experiment-info-subheader-block:nth-last-child(2) { border: none; flex: 1; }*/
+
+.experiment-body .experiment-info-header .experiment-info-subheader-block:last-child {
+    border: none;
+}
+
+.experiment-body .experiment-info-header .experiment-info-subheader-block .experiment-info-subheader-mini-title {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    margin: 0 0 6px;
+}
+
+.experiment-body .experiment-info-header .experiment-info-subheader-block .experiment-info-subheader-mini-title a {
+    padding: 2px 6px;
+    border: 1px solid #ccd3d9;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    background: white;
+    /*color: #1a6cdb;*/
+    color: black;
+    margin-left: 3px;
+    margin-top: -2px;
+}
+
+.experiment-body .experiment-info-header .experiment-info-buttons {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+}
+
+.experiment-body .experiment-info-header .experiment-info-buttons a, .training-plots-button {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+    background: white;
+    padding: 7px 13px;
+    border: 1px solid #ccd3d9;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+
+.experiment-body .experiment-info-header .experiment-info-buttons a.primary, .training-plots-button {
+    background: black;
+    color: white;
+}
+
+.experiment-body .experiment-info-header .experiment-info-buttons img {
+    height: 16px;
+    width: auto;
+    background: transparent;
+}
+
+.experiment-body .training-plots-button {
+    display: inline-block;
+}
+
+/*********************** Metrics ***********************/
+
+.experiment-body .experiment-metric {
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.experiment-body .experiment-metric .experiment-label {
+    width: 100px;
+    font-weight: 600;
+}
+
+.experiment-body .experiment-metric .experiment-value {
+    margin-right: 5px;
+    text-align: right;
+}
+
+.experiment-body .experiment-progress-bar {
+    background: #eee;
+    height: 6px;
+    border-radius: 6px;
+    overflow: hidden;
+    width: 90px;
+}
+
+.experiment-body .experiment-progress {
+    height: 100%;
+    background: #28a745;
+}
+
+.experiment-body .experiment-info-header .experiment-info-subheader-footer-menu {
+    display: flex;
+    gap: 5px;
+    margin: 0px 20px;
+    padding-top: 5px;
+    border-top: 1px solid #dde4ef;
+    font-size: 14px;
+}
+
+.experiment-body .experiment-info-header .experiment-info-subheader-footer-menu a {
+    line-height: 36px;
+    padding: 0 7px;
+    color: black;
+    border-bottom: 2px solid transparent;
+}
+
+.experiment-body .experiment-info-header .experiment-info-subheader-footer-menu a:hover {
+    text-decoration: none;
+}
+
+.experiment-body .experiment-info-header .experiment-info-subheader-footer-menu a.active {
+    border-color: #20a0ff;
+    font-weight: 500;
+    color: #20a0ff;
+}
