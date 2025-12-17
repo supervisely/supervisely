@@ -49,6 +49,7 @@ class AvailableVideoConverters:
     SLY = "supervisely"
     MOT = "mot"
     DAVIS = "davis"
+    MULTI_VIEW = "multi_view"
 
 
 class AvailablePointcloudConverters:
@@ -83,13 +84,13 @@ class BaseConverter:
             item_path: str,
             ann_data: Union[str, dict] = None,
             shape: Union[Tuple, List] = None,
-            custom_data: dict = {},
+            custom_data: Optional[dict] = None,
         ):
             self._path: str = item_path
             self._name: str = None
             self._ann_data: Union[str, dict, list] = ann_data
             self._shape: Union[Tuple, List] = shape
-            self._custom_data: dict = custom_data
+            self._custom_data: dict = custom_data or {}
 
         @property
         def name(self) -> str:

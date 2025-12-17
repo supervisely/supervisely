@@ -7,18 +7,22 @@ on:
 
 jobs:
   import-SDK-check:
-    runs-on: ubuntu-latest
+    runs-on: gha-runner-supervisely
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+            
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgl1 libmagic1
+
+      - name: Checkout Repository
+        uses: actions/checkout@v6
         with:
           repository: ${{ github.repository }}
-      
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: 3.8
-      
+
+      - name: Add local bin to PATH
+        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
+
       - name: Import
         run: |
           python -m pip install --upgrade pip
@@ -38,7 +42,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
 
   pylint:
-    runs-on: ubuntu-latest
+    runs-on: gha-runner-supervisely
     needs: import-SDK-check
     env:
       ISSUES_URL: "https://api.github.com/repos/supervisely/issues/issues"
@@ -54,9 +58,13 @@ jobs:
       GH_TOKEN: ${{ github.token }}
     steps:
 
-      
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgl1 libmagic1
+
+      - name: Checkout Repository
+        uses: actions/checkout@v6
         with:
           repository: ${{ github.repository }}
           token: ${{ secrets.PYLINT_TOKEN }}
@@ -76,41 +84,55 @@ jobs:
           git diff --name-only ${{ env.BASE }} HEAD > changed_files.txt
           cat changed_files.txt
         
-      - name: Echo changed files
+      - name: Filter Python files
+        id: filter-files
         run: |
+          python_files=()
           while IFS= read -r changed_file; do
-            echo "File modified in PR: ${changed_file}"
+            # Skip files in tests/ folder
+            if [[ $changed_file == tests/* ]]; then
+              echo "Skipping test file: $changed_file"
+              continue
+            fi
+            if [[ $changed_file == *.py ]] && [ -f "$changed_file" ]; then
+              python_files+=("$changed_file")
+              echo "File to check: $changed_file"
+            fi
           done < changed_files.txt
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: 3.8
           
+          # Save python files to file
+          printf "%s\n" "${python_files[@]}" > python_files_to_check.txt
+          
+          # Set output variable
+          if [ "${#python_files[@]}" -gt 0 ]; then
+            echo "HAS_PYTHON_FILES=true" >> $GITHUB_ENV
+            echo "Found ${#python_files[@]} Python file(s) to check"
+          else
+            echo "HAS_PYTHON_FILES=false" >> $GITHUB_ENV
+            echo "No Python files to check"
+          fi
+
+      - name: Add local bin to PATH
+        if: ${{ env.HAS_PYTHON_FILES == 'true' }}
+        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
+        
       - name: Install dependencies
+        if: ${{ env.HAS_PYTHON_FILES == 'true' }}
         run: |
           pip install --upgrade pip
           pip install pylint
           pip install .[extras,sdk-nn-plugins,aug]
 
-      # - name: Get changed files
-      #   id: changed-files
-      #   uses: tj-actions/changed-files@v45
-      # - run: |
-      #     for changed_file in ${{ steps.changed-files.outputs.all_changed_files }}; do
-      #       echo "File modified in PR: ${changed_file}"
-      #     done
-
       - name: Run check with pylint
+        if: ${{ env.HAS_PYTHON_FILES == 'true' }}
         run: |
           python_files=()
-          while IFS= read -r changed_file; do
-            if [[ $changed_file == *.py ]] && [ -f "$changed_file" ]; then
-              python_files+=("$changed_file")
-            fi
-          done < changed_files.txt
+          while IFS= read -r file; do
+            python_files+=("$file")
+          done < python_files_to_check.txt
+          
           if [ "${#python_files[@]}" -gt 0 ]; then
-            pylint_output=$(pylint --ignore=tests "${python_files[@]}" --generated-members=cv2.*,signal.*,zstd.*) || true
+            pylint_output=$(pylint "${python_files[@]}" --generated-members=cv2.*,signal.*,zstd.*) || true
             if [[ $pylint_output == *"E"* ]] || [[ $pylint_output == *"F"* ]]; then
               # Save pylint output to a file
               echo "$pylint_output" > pylint_errors.txt
@@ -119,9 +141,6 @@ jobs:
               echo "ERRORS_DETECTED=false" >> $GITHUB_ENV
             fi
           fi
-          for file in "${python_files[@]}"; do
-            echo "File checked: $file"
-          done
         id: pylint
       
       - name: Install GitHub CLI
@@ -135,7 +154,7 @@ jobs:
           && sudo apt install gh -y
 
       - name: Fail if pylint errors detected
-        if: ${{ env.ERRORS_DETECTED == 'true' }}
+        if: ${{ env.HAS_PYTHON_FILES == 'true' && env.ERRORS_DETECTED == 'true' }}
         run: |
           issue_body=$(cat pylint_errors.txt)
           echo "Pylint Errors: $issue_body"

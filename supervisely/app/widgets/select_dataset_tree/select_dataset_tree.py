@@ -5,6 +5,7 @@ from supervisely.api.api import Api
 from supervisely.app.widgets import Widget
 from supervisely.app.widgets.checkbox.checkbox import Checkbox
 from supervisely.app.widgets.container.container import Container
+from supervisely.app.widgets.field.field import Field
 from supervisely.app.widgets.select.select import Select
 from supervisely.app.widgets.tree_select.tree_select import TreeSelect
 from supervisely.project.project_type import ProjectType
@@ -96,8 +97,10 @@ class SelectDatasetTree(Widget):
         append_to_body: bool = True,
         widget_id: Union[str, None] = None,
         show_select_all_datasets_checkbox: bool = True,
+        width: int = 193,
+        show_selectors_labels: bool = False,
     ):
-        self._api = Api()
+        self._api = Api.from_env()
 
         if default_id is not None and project_id is None:
             raise ValueError("Project ID must be provided when default dataset ID is set.")
@@ -113,29 +116,54 @@ class SelectDatasetTree(Widget):
         # Using environment variables to set the default values if they are not provided.
         self._project_id = project_id or env.project_id(raise_not_found=False)
         self._dataset_id = default_id or env.dataset_id(raise_not_found=False)
+        if self._project_id:
+            project_info = self._api.project.get_info_by_id(self._project_id)
+            if allowed_project_types is not None:
+                allowed_values = []
+                if not isinstance(allowed_project_types, list):
+                    allowed_project_types = [allowed_project_types]
+
+                for pt in allowed_project_types:
+                    if isinstance(pt, (ProjectType, str)):
+                        allowed_values.append(str(pt))
+
+                if project_info.type not in allowed_values:
+                    self._project_id = None
 
         self._multiselect = multiselect
         self._compact = compact
         self._append_to_body = append_to_body
 
-        # Extract values from Enum to match the .type property of the ProjectInfo object.
+        # User-defined callbacks
+        self._team_changed_callbacks = []
+        self._workspace_changed_callbacks = []
+        self._project_changed_callbacks = []
 
+        # Extract values from Enum to match the .type property of the ProjectInfo object.
         self._project_types = None
         if allowed_project_types is not None:
-            if all(allowed_project_types) is isinstance(allowed_project_types, ProjectType):
-                self._project_types = (
-                    [project_type.value for project_type in allowed_project_types]
-                    if allowed_project_types is not None
-                    else None
-                )
-            elif all(allowed_project_types) is isinstance(allowed_project_types, str):
-                self._project_types = allowed_project_types
+            self._project_types = []
+            for project_type in allowed_project_types:
+                if isinstance(project_type, ProjectType):
+                    project_type = project_type.value
+                elif not isinstance(project_type, str):
+                    continue
+
+                self._project_types.append(project_type)
+
+            if self._project_types == []:
+                self._project_types = None
 
         # Widget components.
         self._select_team = None
         self._select_workspace = None
         self._select_project = None
         self._select_dataset = None
+        self._width = width
+
+        # Flags
+        self._team_is_selectable = team_is_selectable
+        self._workspace_is_selectable = workspace_is_selectable
 
         # List of widgets will be used to create a Container.
         self._widgets = []
@@ -152,6 +180,7 @@ class SelectDatasetTree(Widget):
         if show_select_all_datasets_checkbox:
             self._create_select_all_datasets_checkbox(select_all_datasets)
 
+        self._show_selectors_labels = show_selectors_labels
         # Group the selectors and the dataset selector into a container.
         self._content = Container(self._widgets)
         super().__init__(widget_id=widget_id, file_path=__file__)
@@ -161,10 +190,24 @@ class SelectDatasetTree(Widget):
         for widget in self._widgets:
             widget.disable()
 
+        if self._select_team is not None:
+            if not self._team_is_selectable:
+                self._select_team.disable()
+        if self._select_workspace is not None:
+            if not self._workspace_is_selectable:
+                self._select_workspace.disable()
+
     def enable(self) -> None:
         """Enable the widget in the UI."""
         for widget in self._widgets:
             widget.enable()
+
+        if self._select_team is not None:
+            if not self._team_is_selectable:
+                self._select_team.disable()
+        if self._select_workspace is not None:
+            if not self._workspace_is_selectable:
+                self._select_workspace.disable()
 
     @property
     def team_id(self) -> int:
@@ -286,7 +329,29 @@ class SelectDatasetTree(Widget):
         """
         if not self._multiselect:
             raise ValueError("This method can only be called when multiselect is enabled.")
+        self._select_all_datasets_checkbox.uncheck()
         self._select_dataset.set_selected_by_id(dataset_ids)
+
+    def team_changed(self, func: Callable) -> Callable:
+        """Decorator to set the callback function for the team changed event."""
+        if self._compact:
+            raise ValueError("callback 'team_changed' is not available in compact mode.")
+        self._team_changed_callbacks.append(func)
+        return func
+
+    def workspace_changed(self, func: Callable) -> Callable:
+        """Decorator to set the callback function for the workspace changed event."""
+        if self._compact:
+            raise ValueError("callback 'workspace_changed' is not available in compact mode.")
+        self._workspace_changed_callbacks.append(func)
+        return func
+
+    def project_changed(self, func: Callable) -> Callable:
+        """Decorator to set the callback function for the project changed event."""
+        if self._compact:
+            raise ValueError("callback 'project_changed' is not available in compact mode.")
+        self._project_changed_callbacks.append(func)
+        return func
 
     def value_changed(self, func: Callable) -> Callable:
         """Decorator to set the callback function for the value changed event.
@@ -331,13 +396,13 @@ class SelectDatasetTree(Widget):
 
             if checked:
                 self._select_dataset.select_all()
-                self._select_dataset.hide()
+                self._select_dataset_field.hide()
             else:
                 self._select_dataset.clear_selected()
-                self._select_dataset.show()
+                self._select_dataset_field.show()
 
         if select_all_datasets:
-            self._select_dataset.hide()
+            self._select_dataset_field.hide()
             select_all_datasets_checkbox.check()
 
         self._widgets.append(select_all_datasets_checkbox)
@@ -361,16 +426,17 @@ class SelectDatasetTree(Widget):
             flat=flat,
             always_open=always_open,
             append_to_body=self._append_to_body,
-            width=193,
+            width=self._width,
             placeholder="Select dataset",
         )
         if self._dataset_id is not None:
             self._select_dataset.set_selected_by_id(self._dataset_id)
         if select_all_datasets:
             self._select_dataset.select_all()
+        self._select_dataset_field = Field(self._select_dataset, title="Dataset")
 
         # Adding the dataset selector to the list of widgets to be added to the container.
-        self._widgets.append(self._select_dataset)
+        self._widgets.append(self._select_dataset_field)
 
     def _create_selectors(self, team_is_selectable: bool, workspace_is_selectable: bool):
         """Create the team, workspace, and project selectors.
@@ -390,6 +456,9 @@ class SelectDatasetTree(Widget):
             self._select_workspace.set(items=self._get_select_items(team_id=team_id))
             self._team_id = team_id
 
+            for callback in self._team_changed_callbacks:
+                callback(team_id)
+
         def workspace_selector_handler(workspace_id: int):
             """Handler function for the event when the workspace selector value changes.
 
@@ -398,6 +467,9 @@ class SelectDatasetTree(Widget):
             """
             self._select_project.set(items=self._get_select_items(workspace_id=workspace_id))
             self._workspace_id = workspace_id
+
+            for callback in self._workspace_changed_callbacks:
+                callback(workspace_id)
 
         def project_selector_handler(project_id: int):
             """Handler function for the event when the project selector value changes.
@@ -413,38 +485,51 @@ class SelectDatasetTree(Widget):
                 and self._select_all_datasets_checkbox.is_checked()
             ):
                 self._select_dataset.select_all()
-                self._select_dataset.hide()
+                self._select_dataset_field.hide()
+
+            for callback in self._project_changed_callbacks:
+                callback(project_id)
 
         self._select_team = Select(
-            items=self._get_select_items(), placeholder="Select team", filterable=True
+            items=self._get_select_items(),
+            placeholder="Select team",
+            filterable=True,
+            width_px=self._width,
         )
         self._select_team.set_value(self._team_id)
         if not team_is_selectable:
             self._select_team.disable()
+        self._select_team_field = Field(self._select_team, title="Team")
 
         self._select_workspace = Select(
             items=self._get_select_items(team_id=self._team_id),
             placeholder="Select workspace",
             filterable=True,
+            width_px=self._width,
         )
         self._select_workspace.set_value(self._workspace_id)
         if not workspace_is_selectable:
             self._select_workspace.disable()
+        self._select_workspace_field = Field(self._select_workspace, title="Workspace")
 
         self._select_project = Select(
             items=self._get_select_items(workspace_id=self._workspace_id),
             placeholder="Select project",
             filterable=True,
+            width_px=self._width,
         )
         self._select_project.set_value(self._project_id)
+        self._select_project_field = Field(self._select_project, title="Project")
 
-        # Register the event handlers.
+        # Register the event handlers._select_project
         self._select_team.value_changed(team_selector_handler)
         self._select_workspace.value_changed(workspace_selector_handler)
         self._select_project.value_changed(project_selector_handler)
 
         # Adding widgets to the list, so they can be added to the container.
-        self._widgets.extend([self._select_team, self._select_workspace, self._select_project])
+        self._widgets.extend(
+            [self._select_team_field, self._select_workspace_field, self._select_project_field]
+        )
 
     def _get_select_items(self, **kwargs) -> List[Select.Item]:
         """Get the list of items for the team, workspace, and project selectors.

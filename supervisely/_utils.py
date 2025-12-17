@@ -4,6 +4,7 @@ import asyncio
 import base64
 import copy
 import hashlib
+import inspect
 import json
 import os
 import random
@@ -95,6 +96,17 @@ def find_value_by_keys(d: Dict, keys: List[str], default=object()):
 def batched(seq, batch_size=50):
     for i in range(0, len(seq), batch_size):
         yield seq[i : i + batch_size]
+
+
+def batched_iter(iterable, batch_size=50):
+    batch = []
+    for item in iterable:
+        batch.append(item)
+        if len(batch) == batch_size:
+            yield batch
+            batch = []
+    if batch:
+        yield batch
 
 
 def get_bytes_hash(bytes):
@@ -307,6 +319,87 @@ def resize_image_url(
         return full_storage_url
 
 
+def get_storage_url(
+    entity_type: Literal["dataset-entities", "dataset", "project", "file-storage"],
+    entity_id: int,
+    source_type: Literal["original", "preview"],
+) -> str:
+    """
+    Generate URL for storage resources endpoints.
+
+    :param entity_type: Type of entity ("dataset-entities", "dataset", "project", "file-storage")
+    :type entity_type: str
+    :param entity_id: ID of the entity
+    :type entity_id: int
+    :param source_type: Type of source ("original" or "preview")
+    :type source_type: Literal["original", "preview"]
+    :return: Storage URL
+    :rtype: str
+    """
+    relative_url = f"/storage-resources/{entity_type}/{source_type}/{entity_id}"
+    if is_development():
+        return abs_url(relative_url)
+    return relative_url
+
+
+def get_image_storage_url(image_id: int, source_type: Literal["original", "preview"]) -> str:
+    """
+    Generate URL for image storage resources.
+
+    :param image_id: ID of the image
+    :type image_id: int
+    :param source_type: Type of source ("original" or "preview")
+    :type source_type: Literal["original", "preview"]
+    :return: Storage URL for image
+    :rtype: str
+    """
+    return get_storage_url("dataset-entities", image_id, source_type)
+
+
+def get_dataset_storage_url(
+    dataset_id: int, source_type: Literal["original", "preview", "raw"]
+) -> str:
+    """
+    Generate URL for dataset storage resources.
+
+    :param dataset_id: ID of the dataset
+    :type dataset_id: int
+    :param source_type: Type of source ("original", "preview", or "raw")
+    :type source_type: Literal["original", "preview", "raw"]
+    :return: Storage URL for dataset
+    :rtype: str
+    """
+    return get_storage_url("dataset", dataset_id, source_type)
+
+
+def get_project_storage_url(
+    project_id: int, source_type: Literal["original", "preview", "raw"]
+) -> str:
+    """
+    Generate URL for project storage resources.
+
+    :param project_id: ID of the project
+    :type project_id: int
+    :param source_type: Type of source ("original", "preview", or "raw")
+    :type source_type: Literal["original", "preview", "raw"]
+    :return: Storage URL for project
+    :rtype: str
+    """
+    return get_storage_url("project", project_id, source_type)
+
+
+def get_file_storage_url(file_id: int) -> str:
+    """
+    Generate URL for file storage resources (raw files).
+
+    :param file_id: ID of the file
+    :type file_id: int
+    :return: Storage URL for file
+    :rtype: str
+    """
+    return get_storage_url("file-storage", file_id, "raw")
+
+
 def get_preview_link(title="preview"):
     return (
         f'<a href="javascript:;">{title}<i class="zmdi zmdi-cast" style="margin-left: 5px"></i></a>'
@@ -500,8 +593,9 @@ def run_coroutine(coroutine):
             async def async_function():
                 await asyncio.sleep(1)
                 return "Hello, World!"
-            coro = async_function()
-            result = run_coroutine(coro)
+
+            coroutine = async_function()
+            result = run_coroutine(coroutine)
             print(result)
             # Output: Hello, World!
     """
@@ -529,4 +623,97 @@ def get_filename_from_headers(url):
         return filename
     except Exception as e:
         print(f"Error retrieving file name from headers: {e}")
+        return None
+
+
+def get_valid_kwargs(kwargs, func, exclude=None):
+    signature = inspect.signature(func)
+    valid_kwargs = {}
+    for key, value in kwargs.items():
+        if exclude is not None and key in exclude:
+            continue
+        if key in signature.parameters:
+            valid_kwargs[key] = value
+    return valid_kwargs
+
+
+def removesuffix(string, suffix):
+    """
+    Returns the string without the specified suffix if the string ends with that suffix.
+    Otherwise returns the original string.
+    Uses for Python versions < 3.9.
+
+    :param string: The original string.
+    :type string: str
+    :param suffix: The suffix to remove.
+    :type suffix: str
+    :return: The string without the suffix or the original string.
+    :rtype: str
+
+    :Usage example:
+    .. code-block:: python
+
+        from supervisely._utils import removesuffix
+
+        original_string = "example.txt"
+        suffix_to_remove = ".txt"
+
+        result = removesuffix(original_string, suffix_to_remove)
+        print(result)
+
+        # Output: example
+
+    """
+    if string.endswith(suffix):
+        return string[: -len(suffix)]
+    return string
+
+
+def remove_non_printable(text: str) -> str:
+    """Remove non-printable characters from a string.
+
+    :param text: Input string
+    :type text: str
+    :return: String with non-printable characters removed
+    :rtype: str
+    """
+    return "".join(char for char in text if char.isprintable()).strip()
+
+
+def get_latest_instance_version_from_json() -> Optional[str]:
+    """
+    Get the latest (last) instance version from versions.json file.
+
+    The versions.json file should contain a mapping of SDK versions to instance versions.
+    This function returns the instance version from the last entry in the file.
+
+    :return: Latest instance version or None if not found
+    :rtype: Optional[str]
+    """
+    import json
+
+    try:
+        # Get the path to versions.json relative to this file
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        versions_file = os.path.join(current_dir, "versions.json")
+
+        if not os.path.exists(versions_file):
+            logger.debug(f"versions.json file not found at {versions_file}")
+            return None
+
+        with open(versions_file, "r", encoding="utf-8") as f:
+            versions_mapping = json.load(f)
+
+        if not versions_mapping:
+            return None
+
+        # Get the last (latest) entry from the versions mapping
+        # Since JSON preserves order in Python 3.7+, the last item is the latest
+        latest_instance_version = list(versions_mapping.keys())[-1]
+        logger.debug(f"Latest instance version found: {latest_instance_version}")
+        return latest_instance_version
+
+    except Exception:
+        # Silently fail - don't break the import if versions.json is missing or malformed
+        logger.debug("Failed to get latest instance version from versions.json")
         return None

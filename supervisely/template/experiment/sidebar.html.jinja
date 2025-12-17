@@ -1,0 +1,240 @@
+<div>
+
+    <sly-style>
+        /* Sidebar styles */
+        .experiment-sidebar {
+        position: sticky;
+        top: 30px;
+        width: 300px;
+        height: 100vh;
+        background: #fff;
+        padding: 0 20px 20px;
+        border-left: 1px solid #ccc;
+        border-right: 1px solid #ccc;
+        flex-shrink: 0;
+        }
+
+        .experiment-main-wrapper {
+        display: flex;
+        }
+
+        .experiment-sidebar-nav a {
+        display: flex;
+        align-items: center;
+        margin-bottom: 8px;
+        color: #007bff;
+        text-decoration: none;
+        font-size: 14px;
+        }
+        .experiment-sidebar-nav a .icon {
+        margin-right: 6px;
+        }
+        .experiment-sidebar-nav a:hover {
+        text-decoration: underline;
+        }
+
+        .experiment-sidebar-section {
+        margin: 20px 0;
+        }
+        .experiment-sidebar-section h3 {
+        margin-bottom: 8px;
+        font-size: 14px;
+        color: #878787;
+        padding-bottom: 4px;
+        }
+
+        .experiment-checkpoints-list {
+        list-style: none;
+        padding: 0;
+        margin-left: 10px;
+        }
+        .experiment-checkpoints-list li {
+        margin-bottom: 6px;
+        font-size: 13px;
+        }
+        .experiment-checkpoints-list li a {
+        color: #007bff;
+        text-decoration: none;
+        }
+        .experiment-checkpoints-list li a:hover {
+        text-decoration: underline;
+        }
+
+        .experiment-metric {
+        margin-bottom: 12px;
+        font-size: 13px;
+        margin-left: 10px;
+        }
+        .experiment-metric .experiment-label {
+        display: inline-block;
+        width: 40px;
+        }
+        .experiment-metric .experiment-value {
+        float: right;
+        }
+        .experiment-progress-bar {
+        background: #eee;
+        height: 6px;
+        border-radius: 3px;
+        overflow: hidden;
+        margin-top: 4px;
+        }
+        .experiment-progress {
+        height: 100%;
+        background: #28a745;
+        }
+
+        .experiment-divider {
+        border: none;
+        height: 1px;
+        background-color: #ddd;
+        margin: 20px 0;
+        width: 50%;
+        margin-left: auto;
+        margin-right: auto;
+        }
+
+        html {
+        scroll-behavior: smooth;
+        }
+    </sly-style>
+
+    <div>
+        <div class="experiment-sidebar-section">
+            <h3>🚀 Actions</h3>
+
+            <div>
+
+            <sly-iw-launch-button 
+                style="min-height: 30px; height: 30px; margin-bottom: 5px;"
+                title="Deploy"
+                description="Deploy to Supervisely"
+                icon="https://img.icons8.com/?size=100&id=59881&format=png&color=000000"
+                :disabled="false"
+                :autoRun="false"
+                :state="{ 'trainTaskId': {{ experiment.task_id }}, }"
+                :moduleId="{{ resources.apps.serve.module_id }}"
+                :openInNewWindow="true"
+                :command="command">
+            </sly-iw-launch-button>
+
+            <sly-iw-launch-button
+                style="min-height: 30px; height: 30px; margin-bottom: 5px;"
+                title="Predict"
+                description="Apply Model to Supervisely project"
+                icon="https://img.icons8.com/?size=100&id=79621&format=png&color=000000"
+                :selectContext="true"
+                :disabled="false"
+                :autoRun="false"
+                :moduleId="{{ resources.apps.apply_nn_to_images.module_id }}"
+                :openInNewWindow="true"
+                :command="command">
+            </sly-iw-launch-button>
+
+            <sly-iw-download-button
+                style="min-height: 30px; height: 30px; margin-bottom: 5px;"
+                title="Download"
+                description="Zip archive with artifacts"
+                icon="https://img.icons8.com/?size=100&id=59783&format=png&color=000000"
+                :disabled="false"
+                teamFilesPath="{{ experiment.paths.artifacts_dir.path + '/' }}"
+                :command="command">
+            </sly-iw-download-button>
+            
+            <sly-iw-launch-button
+                style="min-height: 30px; height: 30px; margin-bottom: 5px;"
+                title="Fine-tune"
+                description="Continue training"
+                icon="https://img.icons8.com/?size=100&id=61035&format=png&color=000000"
+                :disabled="false"
+                :autoRun="false"
+                :openInNewWindow="true"
+                :selectContext="true"
+                :state="{ 'trainTaskId': {{ experiment.task_id }}, 'trainMode': 'new' }"
+                :moduleId="{{ resources.apps.train.module_id }}"
+                :command="command">
+            </sly-iw-launch-button>
+
+            <sly-iw-launch-button
+                style="min-height: 30px; height: 30px; margin-bottom: 5px;"
+                title="Train New"
+                description="Start new training with the same configurations"
+                icon="https://img.icons8.com/?size=100&id=74239&format=png&color=000000"
+                :disabled="false"
+                :autoRun="false"
+                :openInNewWindow="true"
+                :selectContext="true"
+                :state="{ 'trainTaskId': {{ experiment.task_id }}, 'trainMode': 'continue' }"
+                :moduleId="{{ resources.apps.train.module_id }}"
+                :command="command">
+            </sly-iw-launch-button>
+
+            <sly-iw-launch-button 
+                style="min-height: 30px; height: 30px; margin-bottom: 5px;"
+                title="Logs"
+                description="Open training logs"
+                icon="https://img.icons8.com/?size=100&id=59881&format=png&color=000000"
+                :disabled="false"
+                :autoRun="true"
+                :state="{ 'slyFolder': {{ experiment.training.logs.path }} }"
+                :moduleId="{{ resources.apps.log_viewer.module_id }}"
+                :openInNewWindow="true"
+                :command="command">
+            </sly-iw-launch-button>
+
+            </div>
+        </div>
+        <hr class="experiment-divider">
+        <div class="experiment-sidebar-section">
+            <h3>🔗 Links</h3>
+            <nav class="experiment-sidebar-nav">
+                <a href="{{ experiment.training.session.url }}" target="_blank"><span class="icon">🎓</span> Open Train App
+                    <i class="zmdi zmdi-arrow-right-top" style="margin-left: 5px"></i></a>
+                <a href="{{ experiment.training.logs.url }}" target="_blank"><span class="icon">📈</span> Training Logs <i
+                        class="zmdi zmdi-arrow-right-top" style="margin-left: 5px"></i></a>
+                <a href="{{ experiment.paths.artifacts_dir.url }}" target="_blank"><span class="icon">📂</span> Team Files Artifacts
+                    <i class="zmdi zmdi-arrow-right-top" style="margin-left: 5px"></i></a>
+                {% if experiment.training.evaluation.id %}
+                <a href="{{ experiment.training.evaluation.url }}" target="_blank"><span class="icon">📊</span> Evaluation
+                    Report <i class="zmdi zmdi-arrow-right-top" style="margin-left: 5px"></i></a>
+                {% endif %}
+            </nav>
+        </div>
+
+        <div class="experiment-sidebar-section">
+            <h3>🏆 Checkpoints</h3>
+            <ul class="experiment-checkpoints-list">
+                <li><strong>🔥 PyTorch:</strong> <a href="{{ experiment.training.checkpoints.pytorch.url }}"
+                        download="{{ experiment.training.checkpoints.pytorch.name}}">{{ experiment.training.checkpoints.pytorch.name }}</a> ({{
+                    experiment.training.checkpoints.pytorch.size }})</li>
+                {% if experiment.training.checkpoints.onnx.name %}
+                <li><strong>📦 ONNX:</strong> <a href="{{ experiment.training.checkpoints.onnx.url }}"
+                        download="{{ experiment.training.checkpoints.onnx.name}}">{{ experiment.training.checkpoints.onnx.name }}</a> ({{
+                    experiment.training.checkpoints.onnx.size }})</li>
+                {% endif %}
+                {% if experiment.training.checkpoints.tensorrt.name %}
+                <li><strong>⚡ TensorRT:</strong> <a href="{{ experiment.training.checkpoints.tensorrt.url }}"
+                        download="{{ experiment.training.checkpoints.tensorrt.name}}">{{ experiment.training.checkpoints.tensorrt.name }}</a> ({{
+                    experiment.training.checkpoints.tensorrt.size }})</li>
+                {% endif %}
+            </ul>
+        </div>
+
+        {% if experiment.training.evaluation.id %}
+        <div class="experiment-sidebar-section">
+            <h3>📊 Evaluation</h3>
+
+            {% for metric in experiment.training.evaluation.display_metrics %}
+            <div class="experiment-metric">
+                <span class="experiment-label">{{ metric.name }}</span>
+                <span class="experiment-value">{{ metric.value }}</span>
+                <div class="experiment-progress-bar">
+                    <div class="experiment-progress" style="width: {{ metric.percent_value }}%"></div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        <hr class="experiment-divider">
+        {% endif %}
+    </div>
+</div>

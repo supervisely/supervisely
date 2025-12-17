@@ -171,6 +171,15 @@ class CustomTqdm(tqdm):
             **kwargs,
         )
 
+    def __setattr__(self, name, value):
+        if name == "total":
+            if hasattr(self, "fp"):
+                self.fp.total = value
+        if name == "message":
+            if hasattr(self, "fp"):
+                self.fp.progress["message"] = value
+        return super().__setattr__(name, value)
+
     def refresh(self, *args, **kwargs):
         if self.fp is not None:
             self.fp._n = self.n

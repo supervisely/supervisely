@@ -106,7 +106,7 @@ class Rectangle(Geometry):
 
     def to_json(self) -> Dict:
         """
-        Convert the Rectangle to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert the Rectangle to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :return: Json format as a dict
         :rtype: :class:`dict`
@@ -138,7 +138,7 @@ class Rectangle(Geometry):
     @classmethod
     def from_json(cls, data: Dict) -> Rectangle:
         """
-        Convert a json dict to Rectangle. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert a json dict to Rectangle. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: Rectangle in json format as a dict.
         :type data: dict
@@ -737,8 +737,9 @@ class Rectangle(Geometry):
         from supervisely.geometry.any_geometry import AnyGeometry
         from supervisely.geometry.bitmap import Bitmap
         from supervisely.geometry.polygon import Polygon
+        from supervisely.geometry.oriented_bbox import OrientedBBox
 
-        return [AlphaMask, AnyGeometry, Bitmap, Polygon]
+        return [AlphaMask, AnyGeometry, Bitmap, Polygon, Rectangle, OrientedBBox]
 
     @classmethod
     def _round_subpixel_coordinates(

@@ -124,7 +124,9 @@ API
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
-    AppApi
+    AppApi    
+    WorkflowSettings
+    WorkflowMeta
 
 .. currentmodule:: supervisely.api.dataset_api
 
@@ -143,6 +145,15 @@ API
     :template: autosummary/custom-class-template.rst
 
     FileApi
+
+.. currentmodule:: supervisely.api.guides_api
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    GuidesApi
 
 .. currentmodule:: supervisely.api.storage_api
 
@@ -172,6 +183,7 @@ API
 
     ImageApi
     ImageInfo
+    BlobImageInfo
 
 .. currentmodule:: supervisely.api.import_storage_api
 
@@ -182,6 +194,15 @@ API
 
     ImportStorageApi
 
+.. currentmodule:: supervisely.api.issues_api
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    IssuesApi
+
 .. currentmodule:: supervisely.api.labeling_job_api
 
 .. autosummary::
@@ -190,6 +211,24 @@ API
     :template: autosummary/custom-class-template.rst
 
     LabelingJobApi
+
+.. currentmodule:: supervisely.api.entities_collection_api
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    EntitiesCollectionApi
+
+.. currentmodule:: supervisely.api.labeling_queue_api
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    LabelingQueueApi
 
 .. currentmodule:: supervisely.api.module_api
 
@@ -206,15 +245,6 @@ API
     RemoveableModuleApi
     RemoveableBulkModuleApi
     ModuleWithStatus
-
-.. currentmodule:: supervisely.api.neural_network_api
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    NeuralNetworkApi
 
 .. currentmodule:: supervisely.api.object_class_api
 
@@ -297,6 +327,49 @@ API
     :template: autosummary/custom-class-template.rst
 
     WorkspaceApi
+
+
+Neural Networks API
+------------
+**Neural Networks API**
+- API for working with videos in Supervisely.
+
+.. currentmodule:: supervisely.api.nn.deploy_api
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    DeployApi 
+
+.. currentmodule:: supervisely.api.nn.neural_network_api
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    NeuralNetworkApi 
+
+.. currentmodule:: supervisely.nn.model.model_api
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    ModelApi 
+
+.. currentmodule:: supervisely.nn.model.prediction
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    Prediction
+
 
 Video API
 ------------
@@ -580,6 +653,16 @@ Geometry
 
     Cuboid3d
     Vector3d
+
+
+.. currentmodule:: supervisely.geometry.mask_3d
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    Mask3D
 
 .. currentmodule:: supervisely.geometry.geometry
 
@@ -913,6 +996,16 @@ Project
     VolumeProject
     VolumeDataset
 
+.. currentmodule:: supervisely.project.data_version
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    VersionInfo
+    DataVersion
+
 Task
 ----
 **Task**
@@ -1121,3 +1214,16 @@ Volume Annotation
     :template: autosummary/custom-class-template.rst
 
       Slice
+
+Utility Functions
+-----------------
+**A collection of useful utility functions for common tasks in the Supervisely SDK**
+
+.. currentmodule:: supervisely.project.download
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-function-template.rst
+
+    download_fast

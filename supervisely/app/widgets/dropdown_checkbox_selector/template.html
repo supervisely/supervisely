@@ -1,0 +1,12 @@
+<sly-dropdown-checkbox-selection
+    :label="data.{{{widget.widget_id}}}.label"
+    class="mr5"
+    :items="data.{{{widget.widget_id}}}.items"
+    :selected="state.{{{widget.widget_id}}}.selected"
+    options="{multipleSelection: {{{widget._multiple}}}}"
+    {% if widget._changes_handled == true %}
+    @update:selected="state.{{{widget.widget_id}}}.selected = $event; post('/{{{widget.widget_id}}}/value_changed')"
+    {% else %}
+    @update:selected="state.{{{widget.widget_id}}}.selected = $event"
+    {% endif %}
+/>

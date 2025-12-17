@@ -627,6 +627,96 @@ class ApiField:
     """"""
     HOTKEY = "hotkey"
     """"""
+    RELATED_DATA_ID = "relatedDataId"
+    """"""
+    DOWNLOAD_ID = "downloadId"
+    """"""
+    OFFSET_START = "offsetStart"
+    """"""
+    OFFSET_END = "offsetEnd"
+    """"""
+    SOURCE_BLOB = "sourceBlob"
+    """"""
+    JOBS = "jobs"
+    """"""
+    LABELERS = "labelers"
+    """"""
+    REVIEWERS = "reviewers"
+    """"""
+    REVIEWER_IDS = "reviewerIds"
+    """"""
+    ENTITIES_COUNT = "entitiesCount"
+    """"""
+    ACCEPTED_COUNT = "acceptedCount"
+    """"""
+    ANNOTATED_COUNT = "annotatedCount"
+    """"""
+    IN_PROGRESS_COUNT = "inProgressCount"
+    """"""
+    PENDING_COUNT = "pendingCount"
+    """"""
+    QUEUE_META = "queueMeta"
+    """"""
+    ENTITY_IDS = "entityIds"
+    """"""
+    COLLECTION_ID = "collectionId"
+    """"""
+    QUALITY_CHECK_USER_IDS = "qualityCheckUserIds"
+    """"""
+    EMBEDDINGS = "embeddings"
+    """"""
+    EMBEDDINGS_ENABLED = "embeddingsEnabled"
+    """"""
+    EMBEDDINGS_UPDATED_AT = "embeddingsUpdatedAt"
+    """"""
+    EMBEDDINGS_IN_PROGRESS = "embeddingsInProgress"
+    """"""
+    AI_SEARCH_KEY = "aiSearchKey"
+    """"""
+    AI_SEARCH_META = "aiSearchMeta"
+    """"""
+    ENTITY_ITEMS = "entityItems"
+    """"""
+    SCORE = "score"
+    """"""
+    HARD_DELETE = "hardDelete"
+    """"""
+    THRESHOLD = "threshold"
+    """"""
+    THRESHOLD_DIRECTION = "thresholdDirection"
+    """"""
+    METHOD = "method"
+    """"""
+    PROMPT = "prompt"
+    """"""
+    UPDATE_STRATEGY = "updateStrategy"
+    """"""
+    FILE_PATH = "filePath"
+    """"""
+    FILE_KEY = "fileKey"
+    """"""
+    LOCAL_ENTITIES_COUNT = "localEntitiesCount"
+    """"""
+    REMOTE_ENTITIES_COUNT = "remoteEntitiesCount"
+    """"""
+    RESTRICTED_IMAGE_IDS = "restrictedImageIds"
+    """"""
+    NUMBER_OF_CLUSTERS = "numberOfClusters"
+    """"""
+    CLUSTERING_METHOD = "clusteringMethod"
+    """"""
+    ERROR_MESSAGE = "errorMessage"
+    """"""
+    UNIQUE_ITEMS = "uniqueItems"
+    """"""
+    NN_CREATED = "nnCreated"
+    """"""
+    NN_UPDATED = "nnUpdated"
+    """"""
+    M_GUIDE_ID = (["meta", "guide"], "guide_id")
+    """"""
+    GUIDE_ID = "guideId"
+
 
 def _get_single_item(items):
     """_get_single_item"""
@@ -1046,7 +1136,7 @@ class ModuleApi(ModuleApiBase):
             import supervisely as sly
 
             # You can connect to API directly
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -1096,7 +1186,7 @@ class ModuleApi(ModuleApiBase):
             import supervisely as sly
 
             # You can connect to API directly
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -1135,7 +1225,7 @@ class ModuleApi(ModuleApiBase):
             import supervisely as sly
 
             # You can connect to API directly
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -1171,7 +1261,7 @@ class ModuleApi(ModuleApiBase):
             import supervisely as sly
 
             # You can connect to API directly
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -1456,7 +1546,7 @@ class RemoveableBulkModuleApi(ModuleApi):
             import supervisely as sly
 
             # You can connect to API directly
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -1490,7 +1580,7 @@ class RemoveableBulkModuleApi(ModuleApi):
             import supervisely as sly
 
             # You can connect to API directly
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 

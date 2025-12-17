@@ -23,7 +23,8 @@ import numpy as np
 from requests_toolbelt import MultipartDecoder, MultipartEncoder
 from tqdm import tqdm
 
-from supervisely._utils import batched
+from supervisely._utils import batched, logger, run_coroutine
+from supervisely.annotation.label import LabelingStatus
 from supervisely.api.module_api import ApiField, ModuleApi, RemoveableBulkModuleApi
 from supervisely.geometry.rectangle import Rectangle
 from supervisely.video_annotation.key_id_map import KeyIdMap
@@ -69,6 +70,7 @@ class FigureInfo(NamedTuple):
     meta: dict
     area: str
     priority: Optional[int] = None
+    custom_data: Optional[dict] = None
 
     @property
     def bbox(self) -> Optional[Rectangle]:
@@ -135,6 +137,7 @@ class FigureApi(RemoveableBulkModuleApi):
             ApiField.META,
             ApiField.AREA,
             ApiField.PRIORITY,
+            ApiField.CUSTOM_DATA,
         ]
 
     @staticmethod
@@ -219,6 +222,8 @@ class FigureApi(RemoveableBulkModuleApi):
             "meta",
             "area",
             "priority",
+            "nnCreated",
+            "nnUpdated",
         ]
         return self._get_info_by_id(id, "figures.info", {ApiField.FIELDS: fields})
 
@@ -229,7 +234,9 @@ class FigureApi(RemoveableBulkModuleApi):
         meta: Dict,
         geometry_json: Dict,
         geometry_type: str,
-        track_id: int = None,
+        track_id: Optional[int] = None,
+        custom_data: Optional[dict] = None,
+        status: Optional[LabelingStatus] = None,
     ) -> int:
         """"""
         input_figure = {
@@ -239,8 +246,18 @@ class FigureApi(RemoveableBulkModuleApi):
             ApiField.GEOMETRY: geometry_json,
         }
 
+        if status is None:
+            status = LabelingStatus.MANUAL
+
+        nn_created, nn_updated = LabelingStatus.to_flags(status)
+        input_figure[ApiField.NN_CREATED] = nn_created
+        input_figure[ApiField.NN_UPDATED] = nn_updated
+
         if track_id is not None:
             input_figure[ApiField.TRACK_ID] = track_id
+
+        if custom_data is not None:
+            input_figure[ApiField.CUSTOM_DATA] = custom_data
 
         body = {ApiField.ENTITY_ID: entity_id, ApiField.FIGURES: [input_figure]}
 
@@ -354,21 +371,24 @@ class FigureApi(RemoveableBulkModuleApi):
         """
         filters = [{"field": "id", "operator": "in", "value": ids}]
         fields = [
-            "id",
-            "createdAt",
-            "updatedAt",
-            "imageId",
-            "objectId",
-            "classId",
-            "projectId",
-            "datasetId",
-            "geometry",
-            "geometryType",
-            "geometryMeta",
-            "tags",
-            "meta",
-            "area",
-            "priority",
+            ApiField.ID,
+            ApiField.CREATED_AT,
+            ApiField.UPDATED_AT,
+            ApiField.IMAGE_ID,
+            ApiField.OBJECT_ID,
+            ApiField.CLASS_ID,
+            ApiField.PROJECT_ID,
+            ApiField.DATASET_ID,
+            ApiField.GEOMETRY,
+            ApiField.GEOMETRY_TYPE,
+            ApiField.GEOMETRY_META,
+            ApiField.TAGS,
+            ApiField.META,
+            ApiField.AREA,
+            ApiField.PRIORITY,
+            ApiField.CUSTOM_DATA,
+            ApiField.NN_CREATED,
+            ApiField.NN_UPDATED,
         ]
         figures_infos = self.get_list_all_pages(
             "figures.list",
@@ -473,24 +493,27 @@ class FigureApi(RemoveableBulkModuleApi):
         :rtype: :class: `Dict[int, List[FigureInfo]]`
         """
         fields = [
-            "id",
-            "createdAt",
-            "updatedAt",
-            "imageId",
-            "objectId",
-            "classId",
-            "projectId",
-            "datasetId",
-            "geometry",
-            "geometryType",
-            "geometryMeta",
-            "tags",
-            "meta",
-            "area",
-            "priority",
+            ApiField.ID,
+            ApiField.CREATED_AT,
+            ApiField.UPDATED_AT,
+            ApiField.IMAGE_ID,
+            ApiField.OBJECT_ID,
+            ApiField.CLASS_ID,
+            ApiField.PROJECT_ID,
+            ApiField.DATASET_ID,
+            ApiField.GEOMETRY,
+            ApiField.GEOMETRY_TYPE,
+            ApiField.GEOMETRY_META,
+            ApiField.TAGS,
+            ApiField.META,
+            ApiField.AREA,
+            ApiField.PRIORITY,
+            ApiField.CUSTOM_DATA,
+            ApiField.NN_CREATED,
+            ApiField.NN_UPDATED,
         ]
         if skip_geometry is True:
-            fields = [x for x in fields if x != "geometry"]
+            fields = [x for x in fields if x != ApiField.GEOMETRY]
 
         if image_ids is None:
             filters = []
@@ -498,8 +521,8 @@ class FigureApi(RemoveableBulkModuleApi):
             filters = [
                 {
                     ApiField.FIELD: ApiField.ENTITY_ID,
-                    "operator": "in",
-                    "value": image_ids,
+                    ApiField.OPERATOR: "in",
+                    ApiField.VALUE: image_ids,
                 }
             ]
         data = {
@@ -572,10 +595,13 @@ class FigureApi(RemoveableBulkModuleApi):
         """
         geometries = {}
         for idx, part in self._download_geometries_generator(ids):
-            if progress_cb is not None:
-                progress_cb(len(part.content))
-            geometry_json = json.loads(part.content)
-            geometries[idx] = geometry_json
+            try:
+                if progress_cb is not None:
+                    progress_cb(len(part.content))
+                geometry_json = json.loads(part.content)
+                geometries[idx] = geometry_json
+            except Exception as e:
+                raise RuntimeError(f"Failed to decode geometry for figure ID {idx}") from e
 
         if len(geometries) != len(ids):
             raise RuntimeError("Not all geometries were downloaded")
@@ -700,3 +726,351 @@ class FigureApi(RemoveableBulkModuleApi):
             raise RuntimeError("Not all geometries were downloaded")
         ordered_results = [geometries[i] for i in ids]
         return ordered_results
+
+    async def upload_geometries_batch_async(
+        self,
+        figure_ids: List[int],
+        geometries: List[dict],
+        semaphore: Optional[asyncio.Semaphore] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+    ) -> None:
+        """
+        Upload figure geometries with given figure IDs to storage asynchronously in batches.
+
+        :param figure_ids: List of figure IDs in Supervisely.
+        :type figure_ids: List[int]
+        :param geometries: List of figure geometries in Supervisely JSON format.
+        :type geometries: List[dict]
+        :param semaphore: Semaphore to limit the number of concurrent uploads.
+        :type semaphore: Optional[asyncio.Semaphore], optional
+        :param progress_cb: Progress bar to show the upload progress. Shows the number of geometries uploaded.
+        :type progress_cb: Union[tqdm, Callable], optional
+        :return: None
+        :rtype: None
+
+        :Usage example:
+
+            .. code-block:: python
+
+                import asyncio
+                import supervisely as sly
+
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                figure_ids = [642155547, 642155548, 642155549]
+                geometries = [{...}, {...}, {...}]  # Your geometry data
+
+                upload_coroutine = api.figure.upload_geometries_batch_async(
+                        figure_ids,
+                        geometries,
+                        semaphore=asyncio.Semaphore(10),
+                    )
+                sly.run_coroutine(upload_coroutine)
+        """
+        if semaphore is None:
+            semaphore = self._api.get_default_semaphore()
+
+        encoded_geometries = [json.dumps(geometry).encode("utf-8") for geometry in geometries]
+
+        batch_size = 100
+        tasks = []
+
+        for batch_ids, batch_geometries in zip(
+            batched(figure_ids, batch_size),
+            batched(encoded_geometries, batch_size),
+        ):
+            fields = []
+            for figure_id, geometry in zip(batch_ids, batch_geometries):
+                fields.append((ApiField.FIGURE_ID, str(figure_id)))
+                fields.append(
+                    (
+                        ApiField.GEOMETRY,
+                        (str(figure_id), geometry, "application/octet-stream"),
+                    )
+                )
+
+            async def upload_batch(fields, progress_cb, num):
+                async with semaphore:
+                    encoder = MultipartEncoder(fields=fields)
+                    headers = {"Content-Type": encoder.content_type}
+                    async for _, _ in self._api.stream_async(
+                        "figures.bulk.upload.geometry",
+                        "POST",
+                        data=encoder,
+                        content=encoder.to_string(),
+                        headers=headers,
+                    ):
+                        pass
+                if progress_cb is not None:
+                    progress_cb.update(num)
+
+            tasks.append(upload_batch(fields, progress_cb, len(batch_ids)))
+
+        if tasks:
+            await asyncio.gather(*tasks)
+
+    async def download_async(
+        self,
+        dataset_id: int,
+        image_ids: Optional[List[int]] = None,
+        skip_geometry: bool = False,
+        semaphore: Optional[asyncio.Semaphore] = None,
+        log_progress: bool = True,
+        batch_size: int = 300,
+    ) -> Dict[int, List[FigureInfo]]:
+        """
+        Asynchronously download figures for the given dataset ID. Can be filtered by image IDs.
+        This method is significantly faster than the synchronous version for large datasets.
+
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param image_ids: Specify the list of image IDs within the given dataset ID. If image_ids is None, the method returns all possible pairs of images with figures.
+        :type image_ids: List[int], optional
+        :param skip_geometry: Skip the download of figure geometry. May be useful for a significant api request speed increase in the large datasets.
+        :type skip_geometry: bool
+        :param semaphore: Semaphore to limit the number of concurrent downloads.
+        :type semaphore: Optional[asyncio.Semaphore], optional
+        :param log_progress: If True, log the progress of the download.
+        :type log_progress: bool, optional
+        :param batch_size: Size of the batch for downloading figures per 1 request. Default is 300.
+                        Used for batching image_ids when filtering by specific images.
+                        Adjust this value for optimal performance, value cannot exceed 500.
+        :type batch_size: int, optional
+        :return: A dictionary where keys are image IDs and values are lists of figures.
+        :rtype: Dict[int, List[FigureInfo]]
+
+        :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            dataset_id = 12345
+            download_coroutine = api.image.figure.download_async(dataset_id)
+            figures = sly.run_coroutine(download_coroutine)
+        """
+        fields = [
+            ApiField.ID,
+            ApiField.CREATED_AT,
+            ApiField.UPDATED_AT,
+            ApiField.IMAGE_ID,
+            ApiField.OBJECT_ID,
+            ApiField.CLASS_ID,
+            ApiField.PROJECT_ID,
+            ApiField.DATASET_ID,
+            ApiField.GEOMETRY,
+            ApiField.GEOMETRY_TYPE,
+            ApiField.GEOMETRY_META,
+            ApiField.TAGS,
+            ApiField.META,
+            ApiField.AREA,
+            ApiField.PRIORITY,
+            ApiField.CUSTOM_DATA,
+            ApiField.NN_CREATED,
+            ApiField.NN_UPDATED,
+        ]
+        if skip_geometry is True:
+            fields = [x for x in fields if x != ApiField.GEOMETRY]
+
+        # Base data setup
+        base_data = {
+            ApiField.DATASET_ID: dataset_id,
+            ApiField.FIELDS: fields,
+        }
+
+        if semaphore is None:
+            semaphore = self._api.get_default_semaphore()
+
+        async def _get_page_figures(page_data, semaphore, progress_cb: tqdm = None):
+            """Helper function to get figures from a single page"""
+            async with semaphore:
+                response = await self._api.post_async("figures.list", page_data)
+                response_json = response.json()
+
+                page_figures = []
+                for info in response_json["entities"]:
+                    figure_info = self._convert_json_info(info, True)
+                    page_figures.append(figure_info)
+                if progress_cb is not None:
+                    progress_cb.update(len(response_json["entities"]))
+                return page_figures
+
+        async def _get_all_pages(ids_filter, progress_cb: tqdm = None):
+            """Internal function to process all pages for given filter"""
+            data = base_data.copy()
+            data[ApiField.FILTER] = ids_filter
+
+            # Get first page to determine pagination
+            data[ApiField.PAGE] = 1
+            async with semaphore:
+                response = await self._api.post_async("figures.list", data)
+                response_json = response.json()
+
+            pages_count = response_json["pagesCount"]
+            all_figures = []
+
+            # Process first page
+            for info in response_json["entities"]:
+                figure_info = self._convert_json_info(info, True)
+                all_figures.append(figure_info)
+            if progress_cb is not None:
+                progress_cb.update(len(response_json["entities"]))
+
+            # Process remaining pages in parallel if needed
+            if pages_count > 1:
+                tasks = []
+                for page in range(2, pages_count + 1):
+                    page_data = data.copy()
+                    page_data[ApiField.PAGE] = page
+                    tasks.append(
+                        asyncio.create_task(
+                            _get_page_figures(page_data, semaphore, progress_cb=progress_cb)
+                        )
+                    )
+
+                if tasks:
+                    page_results = await asyncio.gather(*tasks)
+                    for page_figures in page_results:
+                        all_figures.extend(page_figures)
+
+            return all_figures
+
+        if log_progress:
+            progress_cb = tqdm(desc="Downloading figures", unit="figure", total=0)
+        else:
+            progress_cb = None
+
+        # Strategy: batch processing based on image_ids
+        tasks = []
+
+        if image_ids is None:
+            # Single task for all figures in dataset
+            filters = []
+            tasks.append(_get_all_pages(filters, progress_cb=progress_cb))
+        else:
+            # Batch image_ids and create tasks for each batch
+            for batch_ids in batched(image_ids, batch_size):
+                filters = [
+                    {
+                        ApiField.FIELD: ApiField.ENTITY_ID,
+                        ApiField.OPERATOR: "in",
+                        ApiField.VALUE: list(batch_ids),
+                    }
+                ]
+                tasks.append(_get_all_pages(filters, progress_cb=progress_cb))
+                # Small delay between batches to reduce server load
+                await asyncio.sleep(0.02)
+
+        # Execute all tasks in parallel and collect results
+        all_results = await asyncio.gather(*tasks)
+
+        # Combine results from all batches
+        images_figures = defaultdict(list)
+
+        for batch_figures in all_results:
+            for figure in batch_figures:
+                images_figures[figure.entity_id].append(figure)
+
+        return dict(images_figures)
+
+    def download_fast(
+        self,
+        dataset_id: int,
+        image_ids: Optional[List[int]] = None,
+        skip_geometry: bool = False,
+        semaphore: Optional[asyncio.Semaphore] = None,
+        log_progress: bool = True,
+        batch_size: int = 300,
+    ) -> Dict[int, List[FigureInfo]]:
+        """
+        Download figures for the given dataset ID. Can be filtered by image IDs.
+        This method is significantly faster than the synchronous version for large datasets and
+        is designed to be used in an asynchronous context.
+        Will fallback to the synchronous version if async fails.
+
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param image_ids: Specify the list of image IDs within the given dataset ID. If image_ids is None, the method returns all possible pairs of images with figures.
+        :type image_ids: List[int], optional
+        :param skip_geometry: Skip the download of figure geometry. May be useful for a significant api request speed increase in the large datasets.
+        :type skip_geometry: bool
+        :param semaphore: Semaphore to limit the number of concurrent downloads.
+        :type semaphore: Optional[asyncio.Semaphore], optional
+        :param log_progress: If True, log the progress of the download.
+        :type log_progress: bool, optional
+        :param batch_size: Size of the batch for downloading figures per 1 request. Default is 300.
+                        Used for batching image_ids when filtering by specific images.
+                        Adjust this value for optimal performance, value cannot exceed 500.
+        :type batch_size: int, optional
+
+        :return: A dictionary where keys are image IDs and values are lists of figures.
+        :rtype: Dict[int, List[FigureInfo]]
+
+        :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            dataset_id = 12345
+            figures = api.image.figure.download_fast(dataset_id)
+        """
+        try:
+            return run_coroutine(
+                self.download_async(
+                    dataset_id=dataset_id,
+                    image_ids=image_ids,
+                    skip_geometry=skip_geometry,
+                    semaphore=semaphore,
+                    log_progress=log_progress,
+                    batch_size=batch_size,
+                )
+            )
+        except Exception:
+            # Fallback to the synchronous version if async fails
+            logger.debug("Async download of figures is failed, falling back to sync download.")
+            if log_progress:
+                logger.debug("Downloading figures without progress bar.")
+            return self.download(
+                dataset_id=dataset_id,
+                image_ids=image_ids,
+                skip_geometry=skip_geometry,
+            )
+
+    def restore_batch(self, ids: List[int], progress_cb: Optional[Callable] = None, batch_size: int = 50):
+        """
+        Restore archived figures in batches from the Supervisely server.
+
+        :param ids: IDs of figures in Supervisely.
+        :type ids: List[int]
+        :param progress_cb: Optional callback to track restore progress. Receives number of restored figures in the current batch.
+        :type progress_cb: Optional[Callable]
+        :param batch_size: Number of figure IDs to send in a single request.
+        :type batch_size: int
+        """
+        for ids_batch in batched(ids, batch_size=batch_size):
+            self._api.post(
+                "figures.bulk.restore",
+                {ApiField.FIGURE_IDS: ids_batch},
+            )
+            if progress_cb is not None:
+                progress_cb(len(ids_batch))
+
+    def restore(self, id: int):
+        """
+        Restore a single archived figure with the specified ID from the Supervisely server.
+
+        :param id: Figure ID in Supervisely.
+        :type id: int
+        """
+        self.restore_batch([id])

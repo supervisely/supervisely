@@ -10,6 +10,8 @@ from pathlib import Path
 # docs
 from typing import Any, Callable, Dict, List, Literal, NamedTuple, Optional, Union
 
+import requests
+from pydantic import BaseModel, Field
 from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 from tqdm import tqdm
 
@@ -22,12 +24,35 @@ from supervisely.api.module_api import (
     WaitingTimeExceeded,
 )
 from supervisely.collection.str_enum import StrEnum
+from supervisely.io.env import app_categories
 from supervisely.io.fs import (
     ensure_base_path,
     get_file_hash,
     get_file_name,
     get_file_name_with_ext,
 )
+
+
+class KubernetesSettings(BaseModel):
+    """
+    KubernetesSettings for application resource limits and requests.
+    """
+
+    use_health_check: Optional[bool] = Field(None, alias="useHealthCheck")
+    request_cpus: Optional[int] = Field(None, alias="requestCpus")
+    limit_cpus: Optional[int] = Field(None, alias="limitCpus")
+    limit_memory_gb: Optional[int] = Field(None, alias="limitMemoryGb")
+    limit_shm_gb: Optional[int] = Field(None, alias="limitShmGb")
+    limit_storage_gb: Optional[int] = Field(None, alias="limitStorageGb")
+    limit_gpus: Optional[int] = Field(None, alias="limitGpus")
+    limit_gpu_memory_mb: Optional[int] = Field(None, alias="limitGpuMemoryMb")
+    limit_gpu_cores_perc: Optional[int] = Field(None, alias="limitGpuCoresPerc")
+
+    model_config = {"populate_by_name": True}
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dict with only non-None values using aliases."""
+        return self.model_dump(exclude_none=True, by_alias=True)
 
 
 class TaskFinishedWithError(Exception):
@@ -58,7 +83,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         api = sly.Api.from_env()
 
         # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
         task_id = 121230
         task_info = api.task.get_info_by_id(task_id)
@@ -307,56 +332,6 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             f"Waiting time exceeded: total waiting time {wait_attempts * effective_wait_timeout} seconds, i.e. {wait_attempts} attempts for {effective_wait_timeout} seconds each"
         )
 
-    def upload_dtl_archive(
-        self,
-        task_id: int,
-        archive_path: str,
-        progress_cb: Optional[Union[tqdm, Callable]] = None,
-    ):
-        """upload_dtl_archive"""
-        encoder = MultipartEncoder(
-            {
-                "id": str(task_id).encode("utf-8"),
-                "name": get_file_name(archive_path),
-                "archive": (
-                    os.path.basename(archive_path),
-                    open(archive_path, "rb"),
-                    "application/x-tar",
-                ),
-            }
-        )
-
-        def callback(monitor_instance):
-            read_mb = monitor_instance.bytes_read / 1024.0 / 1024.0
-            if progress_cb is not None:
-                progress_cb(read_mb)
-
-        monitor = MultipartEncoderMonitor(encoder, callback)
-        self._api.post("tasks.upload.dtl_archive", monitor)
-
-    def _deploy_model(
-        self,
-        agent_id,
-        model_id,
-        plugin_id=None,
-        version=None,
-        restart_policy=RestartPolicy.NEVER,
-        settings=None,
-    ):
-        """_deploy_model"""
-        response = self._api.post(
-            "tasks.run.deploy",
-            {
-                ApiField.AGENT_ID: agent_id,
-                ApiField.MODEL_ID: model_id,
-                ApiField.RESTART_POLICY: restart_policy.value,
-                ApiField.SETTINGS: settings or {"gpu_device": 0},
-                ApiField.PLUGIN_ID: plugin_id,
-                ApiField.VERSION: version,
-            },
-        )
-        return response.json()[ApiField.TASK_ID]
-
     def get_context(self, id: int) -> Dict:
         """
         Get context information by task ID.
@@ -397,113 +372,6 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         """_convert_json_info"""
         return info
 
-    def run_dtl(self, workspace_id: int, dtl_graph: Dict, agent_id: Optional[int] = None):
-        """run_dtl"""
-        response = self._api.post(
-            "tasks.run.dtl",
-            {
-                ApiField.WORKSPACE_ID: workspace_id,
-                ApiField.CONFIG: dtl_graph,
-                "advanced": {ApiField.AGENT_ID: agent_id},
-            },
-        )
-        return response.json()[ApiField.TASK_ID]
-
-    def _run_plugin_task(
-        self,
-        task_type,
-        agent_id,
-        plugin_id,
-        version,
-        config,
-        input_projects,
-        input_models,
-        result_name,
-    ):
-        """_run_plugin_task"""
-        response = self._api.post(
-            "tasks.run.plugin",
-            {
-                "taskType": task_type,
-                ApiField.AGENT_ID: agent_id,
-                ApiField.PLUGIN_ID: plugin_id,
-                ApiField.VERSION: version,
-                ApiField.CONFIG: config,
-                "projects": input_projects,
-                "models": input_models,
-                ApiField.NAME: result_name,
-            },
-        )
-        return response.json()[ApiField.TASK_ID]
-
-    def run_train(
-        self,
-        agent_id: int,
-        input_project_id: int,
-        input_model_id: int,
-        result_nn_name: str,
-        train_config: Optional[Dict] = None,
-    ):
-        """run_train"""
-        model_info = self._api.model.get_info_by_id(input_model_id)
-        return self._run_plugin_task(
-            task_type=TaskApi.PluginTaskType.TRAIN.value,
-            agent_id=agent_id,
-            plugin_id=model_info.plugin_id,
-            version=None,
-            input_projects=[input_project_id],
-            input_models=[input_model_id],
-            result_name=result_nn_name,
-            config={} if train_config is None else train_config,
-        )
-
-    def run_inference(
-        self,
-        agent_id: int,
-        input_project_id: int,
-        input_model_id: int,
-        result_project_name: str,
-        inference_config: Optional[Dict] = None,
-    ):
-        """run_inference"""
-        model_info = self._api.model.get_info_by_id(input_model_id)
-        return self._run_plugin_task(
-            task_type=TaskApi.PluginTaskType.INFERENCE.value,
-            agent_id=agent_id,
-            plugin_id=model_info.plugin_id,
-            version=None,
-            input_projects=[input_project_id],
-            input_models=[input_model_id],
-            result_name=result_project_name,
-            config={} if inference_config is None else inference_config,
-        )
-
-    def get_training_metrics(self, task_id: int):
-        """get_training_metrics"""
-        response = self._get_response_by_id(
-            id=task_id, method="tasks.train-metrics", id_field=ApiField.TASK_ID
-        )
-        return response.json() if (response is not None) else None
-
-    def deploy_model(self, agent_id: int, model_id: int) -> int:
-        """deploy_model"""
-        task_ids = self._api.model.get_deploy_tasks(model_id)
-        if len(task_ids) == 0:
-            task_id = self._deploy_model(agent_id, model_id)
-        else:
-            task_id = task_ids[0]
-        self.wait(task_id, self.Status.DEPLOYED)
-        return task_id
-
-    def deploy_model_async(self, agent_id: int, model_id: int) -> int:
-        """deploy_model_async"""
-        task_ids = self._api.model.get_deploy_tasks(model_id)
-        if len(task_ids) == 0:
-            task_id = self._deploy_model(agent_id, model_id)
-        else:
-            task_id = task_ids[0]
-        return task_id
-
     def start(
         self,
         agent_id,
@@ -521,6 +389,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         module_id: Optional[int] = None,
         redirect_requests: Optional[Dict[str, int]] = {},
         limit_by_workspace: bool = False,
+        kubernetes_settings: Optional[Union[KubernetesSettings, Dict[str, Any]]] = None,
     ) -> Dict[str, Any]:
         """Starts the application task on the agent.
 
@@ -557,6 +426,8 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         :param limit_by_workspace: If set to True tasks will be only visible inside of the workspace
             with specified workspace_id.
         :type limit_by_workspace: bool, optional
+        :param kubernetes_settings: Kubernetes settings for the application.
+        :type kubernetes_settings: Union[KubernetesSettings, Dict[str, Any]], optional
         :return: Task information in JSON format.
         :rtype: Dict[str, Any]
 
@@ -595,6 +466,15 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             ApiField.LIMIT_BY_WORKSPACE: limit_by_workspace,
         }
 
+        if kubernetes_settings is not None:
+            if isinstance(kubernetes_settings, KubernetesSettings):
+                kubernetes_settings = kubernetes_settings.to_dict()
+            if not isinstance(kubernetes_settings, dict):
+                raise TypeError(
+                    f"kubernetes_settings must be a dict or an instance of KubernetesSettings, got {type(kubernetes_settings)}"
+                )
+            advanced_settings.update(kubernetes_settings)
+
         data = {
             ApiField.AGENT_ID: agent_id,
             # "nodeId": agent_id,
@@ -627,36 +507,6 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         """stop"""
         response = self._api.post("tasks.stop", {ApiField.ID: id})
         return self.Status(response.json()[ApiField.STATUS])
-
-    def get_import_files_list(self, id: int) -> Union[Dict, None]:
-        """get_import_files_list"""
-        response = self._api.post("tasks.import.files_list", {ApiField.ID: id})
-        return response.json() if (response is not None) else None
-
-    def download_import_file(self, id, file_path, save_path):
-        """download_import_file"""
-        response = self._api.post(
-            "tasks.import.download_file",
-            {ApiField.ID: id, ApiField.FILENAME: file_path},
-            stream=True,
-        )
-
-        ensure_base_path(save_path)
-        with open(save_path, "wb") as fd:
-            for chunk in response.iter_content(chunk_size=1024 * 1024):
-                fd.write(chunk)
-
-    def create_task_detached(self, workspace_id: int, task_type: Optional[str] = None):
-        """create_task_detached"""
-        response = self._api.post(
-            "tasks.run.python",
-            {
-                ApiField.WORKSPACE_ID: workspace_id,
-                ApiField.SCRIPT: "xxx",
-                ApiField.ADVANCED: {ApiField.IGNORE_AGENT: True},
-            },
-        )
-        return response.json()[ApiField.TASK_ID]
 
     def submit_logs(self, logs) -> None:
         """submit_logs"""
@@ -786,32 +636,10 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         resp = self._api.post("tasks.data.get", data)
         return resp.json()["result"]
 
-    def get_field(self, task_id: int, field: Dict):
+    def get_field(self, task_id: int, field: str):
         """get_field"""
         result = self.get_fields(task_id, [field])
         return result[field]
-
-    def _validate_checkpoints_support(self, task_id):
-        """_validate_checkpoints_support"""
-        # pylint: disable=too-few-format-args
-        info = self.get_info_by_id(task_id)
-        if info["type"] != str(TaskApi.PluginTaskType.TRAIN):
-            raise RuntimeError(
-                "Task (id={!r}) has type {!r}. "
-                "Checkpoints are available only for tasks of type {!r}".format()
-            )
-
-    def list_checkpoints(self, task_id: int):
-        """list_checkpoints"""
-        self._validate_checkpoints_support(task_id)
-        resp = self._api.post("tasks.checkpoints.list", {ApiField.ID: task_id})
-        return resp.json()
-
-    def delete_unused_checkpoints(self, task_id: int) -> Dict:
-        """delete_unused_checkpoints"""
-        self._validate_checkpoints_support(task_id)
-        resp = self._api.post("tasks.checkpoints.clear", {ApiField.ID: task_id})
-        return resp.json()
 
     def _set_output(self):
         """_set_output"""
@@ -825,6 +653,8 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         project_preview: Optional[str] = None,
     ) -> Dict:
         """set_output_project"""
+        if "import" in app_categories():
+            self._api.project.add_import_history(project_id, task_id)
         if project_name is None:
             project = self._api.project.get_info_by_id(project_id, raise_error=True)
             project_name = project.name
@@ -1180,11 +1010,12 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         Example of experiment_info:
 
             experiment_info = {
-                'experiment_name': '247_Lemons_RT-DETRv2-M',
+                'experiment_name': '247 Lemons RT-DETRv2-M',
                 'framework_name': 'RT-DETRv2',
                 'model_name': 'RT-DETRv2-M',
                 'task_type': 'object detection',
                 'project_id': 76,
+                'project_version': {'id': 222, 'version': 4},
                 'task_id': 247,
                 'model_files': {'config': 'model_config.yml'},
                 'checkpoints': ['checkpoints/best.pth', 'checkpoints/checkpoint0025.pth', 'checkpoints/checkpoint0050.pth', 'checkpoints/last.pth'],
@@ -1195,10 +1026,13 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                 'train_val_split': 'train_val_split.json',
                 'train_size': 4,
                 'val_size': 2,
+                'train_collection_id': 530,
+                'val_collection_id': 531,
                 'hyperparameters': 'hyperparameters.yaml',
                 'hyperparameters_id': 45234,
                 'artifacts_dir': '/experiments/76_Lemons/247_RT-DETRv2/',
                 'datetime': '2025-01-22 18:13:43',
+                'experiment_report_id': 87654,
                 'evaluation_report_id': 12961,
                 'evaluation_report_link': 'https://app.supervisely.com/model-benchmark?id=12961',
                 'evaluation_metrics': {
@@ -1219,6 +1053,9 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                     'type': 'tensorboard',
                     'link': '/experiments/76_Lemons/247_RT-DETRv2/logs/'
                 },
+                # These fields are present only in task_info
+                'project_preview': 'https://app.supervisely.com/...',
+                'has_report': True,
             }
         """
         output = {
@@ -1229,267 +1066,34 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         )
         return resp.json()
 
-    def deploy_model_from_api(self, task_id, deploy_params):
-        self.send_request(
-            task_id,
-            "deploy_from_api",
-            data={"deploy_params": deploy_params},
-            raise_error=True,
-        )
-
-    def deploy_model_app(
-        self,
-        module_id: int,
-        workspace_id: int,
-        agent_id: Optional[int] = None,
-        description: Optional[str] = "application description",
-        params: Dict[str, Any] = None,
-        log_level: Optional[Literal["info", "debug", "warning", "error"]] = "info",
-        users_ids: Optional[List[int]] = None,
-        app_version: Optional[str] = "",
-        is_branch: Optional[bool] = False,
-        task_name: Optional[str] = "pythonSpawned",
-        restart_policy: Optional[Literal["never", "on_error"]] = "never",
-        proxy_keep_url: Optional[bool] = False,
-        redirect_requests: Optional[Dict[str, int]] = {},
-        limit_by_workspace: bool = False,
-        deploy_params: Dict[str, Any] = None,
-        timeout: int = 100,
-    ):
-        if deploy_params is None:
-            deploy_params = {}
-        task_info = self.start(
-            agent_id=agent_id,
-            workspace_id=workspace_id,
-            module_id=module_id,
-            description=description,
-            params=params,
-            log_level=log_level,
-            users_ids=users_ids,
-            app_version=app_version,
-            is_branch=is_branch,
-            task_name=task_name,
-            restart_policy=restart_policy,
-            proxy_keep_url=proxy_keep_url,
-            redirect_requests=redirect_requests,
-            limit_by_workspace=limit_by_workspace,
-        )
-
-        attempt_delay_sec = 10
-        attempts = (timeout + attempt_delay_sec) // attempt_delay_sec
-        ready = self._api.app.wait_until_ready_for_api_calls(
-            task_info["id"], attempts, attempt_delay_sec
-        )
-        if not ready:
-            raise TimeoutError(
-                f"Task {task_info['id']} is not ready for API calls after {timeout} seconds."
-            )
-        logger.info("Deploying model from API")
-        self.deploy_model_from_api(task_info["id"], deploy_params=deploy_params)
-        return task_info
-
-    def deploy_custom_model(
-        self,
-        workspace_id: int,
-        artifacts_dir: str,
-        checkpoint_name: str = None,
-        agent_id: int = None,
-        device: str = "cuda",
-    ) -> int:
+    def is_running(self, task_id: int) -> bool:
         """
-        Deploy a custom model based on the artifacts directory.
+        Check if the task is running.
 
-        :param workspace_id: Workspace ID in Supervisely.
-        :type workspace_id: int
-        :param artifacts_dir: Path to the artifacts directory.
-        :type artifacts_dir: str
-        :param checkpoint_name: Checkpoint name (with extension) to deploy.
-        :type checkpoint_name: Optional[str]
-        :param agent_id: Agent ID in Supervisely.
-        :type agent_id: Optional[int]
-        :param device: Device string (default is "cuda").
-        :type device: str
-        :raises ValueError: if validations fail.
+        :param task_id: Task ID in Supervisely.
+        :type task_id: int
+        :return: True if the task is running, False otherwise.
+        :rtype: bool
         """
-        from dataclasses import asdict
+        try:
+            self.send_request(task_id, "is_running", {}, retries=1, raise_error=True)
+        except requests.exceptions.HTTPError as e:
+            return False
+        return True
 
-        from supervisely.nn.artifacts import (
-            RITM,
-            RTDETR,
-            Detectron2,
-            MMClassification,
-            MMDetection,
-            MMDetection3,
-            MMSegmentation,
-            UNet,
-            YOLOv5,
-            YOLOv5v2,
-            YOLOv8,
-        )
-        from supervisely.nn.experiments import get_experiment_info_by_artifacts_dir
-        from supervisely.nn.utils import ModelSource, RuntimeType
+    def is_ready(self, task_id: int) -> bool:
+        """
+        Check if the task is ready.
 
-        if not isinstance(workspace_id, int) or workspace_id <= 0:
-            raise ValueError(f"workspace_id must be a positive integer. Received: {workspace_id}")
-        if not isinstance(artifacts_dir, str) or not artifacts_dir.strip():
-            raise ValueError("artifacts_dir must be a non-empty string.")
-
-        workspace_info = self._api.workspace.get_info_by_id(workspace_id)
-        if workspace_info is None:
-            raise ValueError(f"Workspace with ID '{workspace_id}' not found.")
-
-        team_id = workspace_info.team_id
-        logger.debug(
-            f"Starting model deployment. Team: {team_id}, Workspace: {workspace_id}, Artifacts Dir: '{artifacts_dir}'"
-        )
-
-        # Train V1 logic (if artifacts_dir does not start with '/experiments')
-        if not artifacts_dir.startswith("/experiments"):
-            logger.debug("Deploying model from Train V1 artifacts")
-            frameworks = {
-                "/detectron2": Detectron2,
-                "/mmclassification": MMClassification,
-                "/mmdetection": MMDetection,
-                "/mmdetection-3": MMDetection3,
-                "/mmsegmentation": MMSegmentation,
-                "/RITM_training": RITM,
-                "/RT-DETR": RTDETR,
-                "/unet": UNet,
-                "/yolov5_train": YOLOv5,
-                "/yolov5_2.0_train": YOLOv5v2,
-                "/yolov8_train": YOLOv8,
-            }
-
-            framework_cls = next(
-                (cls for prefix, cls in frameworks.items() if artifacts_dir.startswith(prefix)),
-                None,
+        :param task_id: Task ID in Supervisely.
+        :type task_id: int
+        :return: True if the task is ready, False otherwise.
+        :rtype: bool
+        """
+        try:
+            return (
+                self.send_request(task_id, "is_ready", {}, retries=1, raise_error=True)["status"]
+                == "ready"
             )
-            if not framework_cls:
-                raise ValueError(f"Unsupported framework for artifacts_dir: '{artifacts_dir}'")
-
-            framework = framework_cls(team_id)
-            if framework_cls is RITM or framework_cls is YOLOv5:
-                raise ValueError(
-                    f"{framework.framework_name} framework is not supported for deployment"
-                )
-
-            logger.debug(f"Detected framework: '{framework.framework_name}'")
-
-            module_id = self._api.app.get_ecosystem_module_id(framework.serve_slug)
-            serve_app_name = framework.serve_app_name
-            logger.debug(f"Module ID fetched:' {module_id}'. App name: '{serve_app_name}'")
-
-            train_info = framework.get_info_by_artifacts_dir(artifacts_dir.rstrip("/"))
-            if not hasattr(train_info, "checkpoints") or not train_info.checkpoints:
-                raise ValueError("No checkpoints found in train info.")
-
-            checkpoint = None
-            if checkpoint_name is not None:
-                for cp in train_info.checkpoints:
-                    if cp.name == checkpoint_name:
-                        checkpoint = cp
-                        break
-                if checkpoint is None:
-                    raise ValueError(f"Checkpoint '{checkpoint_name}' not found in train info.")
-            else:
-                logger.debug("Checkpoint name not provided. Using the last checkpoint.")
-                checkpoint = train_info.checkpoints[-1]
-
-            checkpoint_name = checkpoint.name
-            deploy_params = {
-                "device": device,
-                "model_source": ModelSource.CUSTOM,
-                "task_type": train_info.task_type,
-                "checkpoint_name": checkpoint_name,
-                "checkpoint_url": checkpoint.path,
-            }
-
-            if getattr(train_info, "config_path", None) is not None:
-                deploy_params["config_url"] = train_info.config_path
-
-            if framework.require_runtime:
-                deploy_params["runtime"] = RuntimeType.PYTORCH
-
-        else:  # Train V2 logic (when artifacts_dir starts with '/experiments')
-            logger.debug("Deploying model from Train V2 artifacts")
-
-            def get_framework_from_artifacts_dir(artifacts_dir: str) -> str:
-                clean_path = artifacts_dir.rstrip("/")
-                parts = clean_path.split("/")
-                if not parts or "_" not in parts[-1]:
-                    raise ValueError(f"Invalid artifacts_dir format: '{artifacts_dir}'")
-                return parts[-1].split("_", 1)[1]
-
-            # TODO: temporary solution, need to add Serve App Name into config.json
-            framework_name = get_framework_from_artifacts_dir(artifacts_dir)
-            logger.debug(f"Detected framework: {framework_name}")
-
-            modules = self._api.app.get_list_all_pages(
-                method="ecosystem.list",
-                data={"filter": [], "search": framework_name, "categories": ["serve"]},
-                convert_json_info_cb=lambda x: x,
-            )
-            if not modules:
-                raise ValueError(f"No serve apps found for framework: '{framework_name}'")
-
-            module = modules[0]
-            module_id = module["id"]
-            serve_app_name = module["name"]
-            logger.debug(f"Serving app delected: '{serve_app_name}'. Module ID: '{module_id}'")
-
-            experiment_info = get_experiment_info_by_artifacts_dir(
-                self._api, team_id, artifacts_dir
-            )
-            if not experiment_info:
-                raise ValueError(
-                    f"Failed to retrieve experiment info for artifacts_dir: '{artifacts_dir}'"
-                )
-
-            if len(experiment_info.checkpoints) == 0:
-                raise ValueError(f"No checkpoints found in: '{artifacts_dir}'.")
-
-            checkpoint = None
-            if checkpoint_name is not None:
-                for checkpoint_path in experiment_info.checkpoints:
-                    if get_file_name_with_ext(checkpoint_path) == checkpoint_name:
-                        checkpoint = get_file_name_with_ext(checkpoint_path)
-                        break
-                if checkpoint is None:
-                    raise ValueError(
-                        f"Provided checkpoint '{checkpoint_name}' not found. Using the best checkpoint."
-                    )
-            else:
-                logger.debug("Checkpoint name not provided. Using the best checkpoint.")
-                checkpoint = experiment_info.best_checkpoint
-
-            checkpoint_name = checkpoint
-            deploy_params = {
-                "device": device,
-                "model_source": ModelSource.CUSTOM,
-                "model_files": {
-                    "checkpoint": f"{experiment_info.artifacts_dir}checkpoints/{checkpoint_name}"
-                },
-                "model_info": asdict(experiment_info),
-                "runtime": RuntimeType.PYTORCH,
-            }
-            # TODO: add support for **kwargs
-
-            config = experiment_info.model_files.get("config")
-            if config is not None:
-                deploy_params["model_files"]["config"] = f"{experiment_info.artifacts_dir}{config}"
-                logger.debug(f"Config file added: {experiment_info.artifacts_dir}{config}")
-
-        logger.info(
-            f"{serve_app_name} app deployment started. Checkpoint: '{checkpoint_name}'. Deploy params: '{deploy_params}'"
-        )
-        task_info = self.deploy_model_app(
-            module_id,
-            workspace_id,
-            agent_id,
-            description=f"Deployed via deploy_custom_model",
-            task_name=f"{serve_app_name} ({checkpoint_name})",
-            deploy_params=deploy_params,
-        )
-        if task_info is None:
-            raise RuntimeError(f"Failed to run '{serve_app_name}'.")
-        return task_info["id"]
+        except requests.exceptions.HTTPError as e:
+            return False

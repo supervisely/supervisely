@@ -1,26 +1,34 @@
 This project uses Supervisely JSON format. Learn more about the format and the project in the README above.<br>
+
 # General information
+
 This is a general information about the project.<br>
 {{general_info}}<br>
 
 ## Dataset structure
-In this section, you can find information about the dataset structure. Dataset names are clickable and will redirect you to the corresponding folder.<br>
+
+In this section, you can find information about the dataset structure. Dataset names are clickable and will redirect you to the corresponding folder.<br><br>
 {{dataset_structure_info}}<br>
 
-## Useful links
-Please, visit the [Supervisely blog](https://supervisely.com/blog) to keep up with the latest news, updates, and tutorials and subscribe to [our YouTube channel](https://www.youtube.com/c/Supervisely) to watch video tutorials.<br> 
+## Additional information (descriptions and custom data for datasets)
 
-- [Supervisely Developer Portal](https://developer.supervisely.com/)
-- [Supervisely JSON format](https://docs.supervise.ly/data-organization/00_ann_format_navi)
-- [Intro to Python SDK](https://developer.supervisely.com/getting-started/intro-to-python-sdk)
-- [Python SDK reference](https://supervisely.readthedocs.io/en/latest/sdk_packages.html)
-- [API documentnation](https://api.docs.supervisely.com/)
-- [Supervisely Applications development](https://developer.supervisely.com/app-development/basics)
-- [Supervisely Ecosystem](https://ecosystem.supervisely.com/)
+{{dataset_description_info}}
+
+## Useful links
+
+Please, visit the [Supervisely blog](https://supervisely.com/blog) to keep up with the latest news, updates, and tutorials and subscribe to [our YouTube channel](https://www.youtube.com/c/Supervisely) to watch video tutorials.<br>
+
+-   [Supervisely Developer Portal](https://developer.supervisely.com/)
+-   [Supervisely JSON format](https://docs.supervisely.com/data-organization/00_ann_format_navi)
+-   [Intro to Python SDK](https://developer.supervisely.com/getting-started/intro-to-python-sdk)
+-   [Python SDK reference](https://supervisely.readthedocs.io/en/latest/sdk_packages.html)
+-   [API documentnation](https://api.docs.supervisely.com/)
+-   [Supervisely Applications development](https://developer.supervisely.com/app-development/basics)
+-   [Supervisely Ecosystem](https://ecosystem.supervisely.com/)
 
 ## Supervisely JSON format
-In this section, you'll find a short description of the format and examples of working with it. To learn more about the format, please refer to the [Useful links](#useful-links) section.<br>
 
+In this section, you'll find a short description of the format and examples of working with it. To learn more about the format, please refer to the [Useful links](#useful-links) section.<br>
 
 ### Overview
 
@@ -74,9 +82,11 @@ sly.Project.upload("/path/to/project", api, workspace_id)
 ```
 
 ### Project Meta
+
 Project Meta is a crucial part of any project in Supervisely. It contains the essential information about the project - Classes and Tags. These are defined project-wide and can be used for labeling every dataset inside the current project. Project Meta is stored in the `meta.json` file in the root of the project folder. Each tag or class must be present in the project meta to be used in the project.
 
 This is how we can download the project meta of an existing project:
+
 ```python
 import supervisely as sly
 
@@ -118,7 +128,7 @@ for tag_meta in meta.tag_metas:
 ### Working with Tags or Classes
 
 In Supervisely tags provide an option to associate some additional information with the labeled image or the labels on it. Each tag can be attached to a single image or a single annotation only once, but there's no limit on how many times the same tag can be attached to different parts of the scene. There are different lists of tags for images and figures in the annotation file.
-Classes are used to define the types of objects that can be labeled in the project. Each class has a name, a color, and a set of properties. 
+Classes are used to define the types of objects that can be labeled in the project. Each class has a name, a color, and a set of properties.
 
 Creating a new tag and adding it to the project meta:
 
@@ -190,7 +200,7 @@ class_kiwi = sly.ObjClass('kiwi', sly.Rectangle)
 # Now, let's create a new label with this class and add it to the annotation.
 label_kiwi = sly.Label(sly.Rectangle(0, 0, 300, 300), class_kiwi)
 
-# Annotation object is immutable, so we'll need to create a new one, using 
+# Annotation object is immutable, so we'll need to create a new one, using
 # add_label() method:
 new_ann = ann.add_label(label_kiwi)
 

@@ -62,6 +62,7 @@ from supervisely.app.widgets.video_player.video_player import VideoPlayer
 from supervisely.app.widgets.radio_group.radio_group import RadioGroup
 from supervisely.app.widgets.switch.switch import Switch
 from supervisely.app.widgets.input_tag.input_tag import InputTag
+
 from supervisely.app.widgets.file_viewer.file_viewer import FileViewer
 from supervisely.app.widgets.switch.switch import Switch
 from supervisely.app.widgets.folder_thumbnail.folder_thumbnail import FolderThumbnail
@@ -103,6 +104,8 @@ from supervisely.app.widgets.pie_chart.pie_chart import PieChart
 from supervisely.app.widgets.timeline.timeline import Timeline
 from supervisely.app.widgets.nodes_flow.nodes_flow import NodesFlow
 from supervisely.app.widgets.dialog.dialog import Dialog
+from supervisely.app.widgets.modal.modal import Modal
+from supervisely.app.widgets.activity_feed.activity_feed import ActivityFeed
 from supervisely.app.widgets.draggable.draggable import Draggable
 from supervisely.app.widgets.tooltip.tooltip import Tooltip
 from supervisely.app.widgets.image_annotation_preview.image_annotation_preview import (
@@ -128,6 +131,9 @@ from supervisely.app.widgets.classes_mapping_preview.classes_mapping_preview imp
 )
 from supervisely.app.widgets.classes_list_selector.classes_list_selector import ClassesListSelector
 from supervisely.app.widgets.classes_list_preview.classes_list_preview import ClassesListPreview
+from supervisely.app.widgets.select_class.select_class import SelectClass
+from supervisely.app.widgets.select_tag.select_tag import SelectTag
+from supervisely.app.widgets.select_user.select_user import SelectUser
 from supervisely.app.widgets.tags_list_selector.tags_list_selector import TagsListSelector
 from supervisely.app.widgets.tags_list_preview.tags_list_preview import TagsListPreview
 from supervisely.app.widgets.members_list_selector.members_list_selector import MembersListSelector
@@ -150,3 +156,14 @@ from supervisely.app.widgets.report_thumbnail.report_thumbnail import ReportThum
 from supervisely.app.widgets.experiment_selector.experiment_selector import ExperimentSelector
 from supervisely.app.widgets.bokeh.bokeh import Bokeh
 from supervisely.app.widgets.run_app_button.run_app_button import RunAppButton
+from supervisely.app.widgets.select_collection.select_collection import SelectCollection
+from supervisely.app.widgets.sampling.sampling import Sampling
+from supervisely.app.widgets.input_tag_list.input_tag_list import InputTagList
+from supervisely.app.widgets.deploy_model.deploy_model import DeployModel
+from supervisely.app.widgets.dropdown_checkbox_selector.dropdown_checkbox_selector import (
+    DropdownCheckboxSelector,
+)
+from supervisely.app.widgets.ecosystem_model_selector.ecosystem_model_selector import (
+    EcosystemModelSelector,
+)
+from supervisely.app.widgets.heatmap.heatmap import Heatmap

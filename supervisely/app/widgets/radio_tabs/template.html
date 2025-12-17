@@ -20,6 +20,7 @@
     {% for tab_pane in widget._items %}
     <el-tab-pane
         name="{{{tab_pane.name}}}"
+        :disabled="data.{{{widget.widget_id}}}.tabsOptions['{{{tab_pane.name}}}'].disabled"
     >
         <el-radio 
             slot="label" 

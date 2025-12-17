@@ -24,6 +24,7 @@ type_to_zmdi_icon = {
     Pointcloud: "zmdi zmdi-cloud-outline",  # "zmdi zmdi-border-clear"
     sly.MultichannelBitmap: "zmdi zmdi-layers",  # "zmdi zmdi-collection-item"
     Point3d: "zmdi zmdi-filter-center-focus",  # "zmdi zmdi-select-all"
+    sly.OrientedBBox: "zmdi zmdi-rotate-cw",
 }
 
 
@@ -412,10 +413,12 @@ class ClassesTable(Widget):
         :rtype: List[str]
         """
         classes = []
+        checkboxes = StateJson()[self.widget_id]["checkboxes"]
         for i, line in enumerate(self._table_data):
-            checkboxes = StateJson()[self.widget_id]["checkboxes"]
             if len(checkboxes) == 0:
                 checkboxes = [False] * len(self._table_data)
+            if i >= len(checkboxes):
+                continue
             if checkboxes[i]:
                 for col in line:
                     if col["name"] == "CLASS":

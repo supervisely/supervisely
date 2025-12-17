@@ -7,6 +7,7 @@ from PIL import Image
 from typing import Union, List
 
 from supervisely import Rectangle, Label, logger
+from supervisely.geometry.oriented_bbox import OrientedBBox
 from supervisely.imaging.image import read, write
 from supervisely.io.fs import (
     get_file_ext,
@@ -48,8 +49,8 @@ def validate_mimetypes(name: str, path: str) -> list:
     mimetypes.add_type("image/webp", ".webp")  # to extend types_map
     mimetypes.add_type("image/jpeg", ".jfif")  # to extend types_map
 
-    mime = magic.Magic(mime=True)
-    mimetype = mime.from_file(path)
+    with open(path, "rb") as f:
+        mimetype = magic.from_buffer(f.read(), mime=True)
     file_ext = get_file_ext(path).lower()
     if file_ext in mimetypes.guess_all_extensions(mimetype):
         return name
@@ -58,11 +59,10 @@ def validate_mimetypes(name: str, path: str) -> list:
     if new_img_ext == ".bin" or new_img_ext is None:
         new_img_ext = ".jpeg"
     new_img_name = f"{get_file_name(name)}{new_img_ext}"
-    logger.info(
-        f"Image {name} with mimetype {mimetype} will be converted to {new_img_ext}"
-    )
+    logger.info(f"Image {name} with mimetype {mimetype} will be converted to {new_img_ext}")
 
     return new_img_name
+
 
 def convert_to_jpg(path) -> tuple:
     """Convert image to jpg."""
@@ -78,6 +78,7 @@ def convert_to_jpg(path) -> tuple:
         image.convert("RGB").save(new_path)
     silent_remove(path)
     return new_path
+
 
 def read_tiff_image(path: str) -> Union[np.ndarray, None]:
     """
@@ -95,9 +96,7 @@ def read_tiff_image(path: str) -> Union[np.ndarray, None]:
         if image.ndim == 3:
             if tiff_shape[0] < tiff_shape[1] and tiff_shape[0] < tiff_shape[2]:
                 image = image.transpose(1, 2, 0)
-                logger.warning(
-                    f"{name}: transposed shape from {tiff_shape} to {image.shape}"
-                )
+                logger.warning(f"{name}: transposed shape from {tiff_shape} to {image.shape}")
 
     return image
 
@@ -106,7 +105,12 @@ def validate_image_bounds(labels: List[Label], img_rect: Rectangle) -> List[Labe
     """
     Check if labels are localed inside the image canvas, print a warning and skip them if not.
     """
-    new_labels = [label for label in labels if img_rect.contains(label.geometry.to_bbox())]
+    new_labels = []
+    for label in labels:
+        if isinstance(label.geometry, OrientedBBox):
+            new_labels.append(label)
+        elif img_rect.contains(label.geometry.to_bbox()):
+            new_labels.append(label)
     if new_labels != labels:
         logger.warning(
             f"{len(labels) - len(new_labels)} annotation objects are out of image bounds. Skipping..."

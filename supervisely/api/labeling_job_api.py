@@ -88,6 +88,8 @@ class LabelingJobInfo(NamedTuple):
     include_images_with_tags: list
     exclude_images_with_tags: list
     entities: list
+    priority: int
+    guide_id: Optional[int] = None
 
 
 class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
@@ -112,7 +114,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         api = sly.Api.from_env()
 
         # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
         jobs = api.labeling_job.get_list(9) # api usage example
     """
@@ -129,6 +131,8 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         COMPLETED = "completed"
         """"""
         STOPPED = "stopped"
+        """"""
+        REVIEW_COMPLETED = "review_completed"
         """"""
 
     @staticmethod
@@ -177,7 +181,8 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
                              filter_images_by_tags=[],
                              include_images_with_tags=[],
                              exclude_images_with_tags=[],
-                             entities=None)
+                             entities=None,
+                             priority=2)
         """
         return [
             ApiField.ID,
@@ -218,6 +223,8 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             ApiField.INCLUDE_IMAGES_WITH_TAGS,
             ApiField.EXCLUDE_IMAGES_WITH_TAGS,
             ApiField.ENTITIES,
+            ApiField.PRIORITY,
+            ApiField.M_GUIDE_ID,
         ]
 
     @staticmethod
@@ -256,7 +263,10 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
                             else:
                                 value = info[sub_name]
                         else:
-                            value = value[sub_name]
+                            if skip_missing is True:
+                                value = value.get(sub_name, None)
+                            else:
+                                value = value[sub_name]
                 else:
                     raise RuntimeError("Can not parse field {!r}".format(field_name))
 
@@ -335,6 +345,8 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         disable_confirm: Optional[bool] = None,
         disable_submit: Optional[bool] = None,
         toolbox_settings: Optional[Dict] = None,
+        enable_quality_check: Optional[bool] = None,
+        guide_id: Optional[int] = None,
     ) -> List[LabelingJobInfo]:
         """
         Creates Labeling Job and assigns given Users to it.
@@ -377,6 +389,10 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type disable_submit: bool, optional
         :param toolbox_settings: Settings for the labeling tool. Only video projects are supported.
         :type toolbox_settings: Dict, optional
+        :param enable_quality_check: If True, adds an intermediate step between "review" and completing the Labeling Job.
+        :type enable_quality_check: bool, optional
+        :param guide_id: Guide ID in Supervisely to assign a guide to the Labeling Job.
+        :type guide_id: int, optional
         :return: List of information about new Labeling Job. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[LabelingJobInfo]`
         :Usage example:
@@ -457,6 +473,15 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             "dynamicTags": dynamic_tags,
         }
 
+        if guide_id is not None:
+            try:
+                guide_id = int(guide_id)
+            except Exception as e:
+                raise ValueError(
+                    f"guide_id must be an integer, got {type(guide_id)} with value '{guide_id}'"
+                ) from None
+            meta["guide"] = guide_id
+
         if toolbox_settings is not None:
             dataset_info = self._api.dataset.get_info_by_id(dataset_id)
             project_id = dataset_info.project_id
@@ -494,6 +519,8 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             meta.update({"disableConfirm": disable_confirm})
         if disable_submit is not None:
             meta.update({"disableSubmit": disable_submit})
+        if enable_quality_check is not None:
+            meta.update({"enableIntermediateReview": enable_quality_check})
 
         data = {
             ApiField.NAME: name,
@@ -1450,3 +1477,64 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
 
         response = self._api.post("jobs.restart", data).json()
         return response
+
+    def get_custom_data(self, id: int) -> dict:
+        """
+        Get custom data of Labeling Job with given ID.
+
+        :param id: Labeling Job ID in Supervisely.
+        :type id: int
+        :return: Custom data of the job
+        :rtype: :class:`dict`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            custom_data = api.labeling_job.get_custom_data(9)
+            print(custom_data)
+        """
+        method = "jobs.info"
+        response = self._get_response_by_id(id, method, id_field=ApiField.ID)
+        json_response = response.json() if response is not None else None
+        if json_response is not None:
+            return json_response.get(ApiField.CUSTOM_DATA, {})
+        return {}
+
+    def set_custom_data(self, id: int, custom_data: dict, update: bool = True) -> None:
+        """
+        Update or replace custom data of Labeling Job with given ID.
+        By default, updates existing custom data. To replace it entirely, set `update` to False.
+
+        :param id: Labeling Job ID in Supervisely.
+        :type id: int
+        :param custom_data: Custom data to set
+        :type custom_data: dict
+        :param update: Whether to update existing custom data or replace it entirely.
+        :type update: bool
+        :return: None
+        :rtype: :class:`NoneType`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            api.labeling_job.set_custom_data(9, {"key": "value"})
+        """
+        method = "jobs.editInfo"
+
+        if update is True:
+            existing_custom_data = self.get_custom_data(id)
+            existing_custom_data.update(custom_data)
+            custom_data = existing_custom_data
+        self._api.post(method, {ApiField.ID: id, ApiField.CUSTOM_DATA: custom_data})

@@ -1,6 +1,6 @@
 <link rel="stylesheet" href="./sly/css/app/widgets/fast_table/style.css" />
 
-<fast-table
+<fast-table 
   style="width: {{{widget._width}}}"
   :page.sync="state.{{{widget.widget_id}}}.page"
   :total="data.{{{widget.widget_id}}}.total"
@@ -11,12 +11,20 @@
   :project-meta="data.{{{widget.widget_id}}}.projectMeta"
   :sort.sync="state.{{{widget.widget_id}}}.sort"
   :search.sync="state.{{{widget.widget_id}}}.search"
-  :data="data.{{{widget.widget_id}}}.data"
+  :data="Object.values(data.{{{widget.widget_id}}}.data || [])"
+  :show-header="data.{{{widget.widget_id}}}.showHeader"
+  :selected-rows="state.{{{widget.widget_id}}}.selectedRows"
+  :selected-radio-idx="state.{{{widget.widget_id}}}.selectedRows && state.{{{widget.widget_id}}}.selectedRows.length > 0 ? state.{{{widget.widget_id}}}.selectedRows[0].idx : null"
+  :disabled="data.{{{widget.widget_id}}}.disabled"
+  @update:selected-rows="(rows) => {
+    state.{{{widget.widget_id}}}.selectedRows = rows;
+    data.{{{widget.widget_id}}}.selectionChangedHandled && post('/{{{widget.widget_id}}}/selection_changed_cb');
+  }"
   {%
   if
   widget._row_click_handled
   %}
-  @row-click="state.{{{widget.widget_id}}}.selectedRow = $event; post('/{{{widget.widget_id}}}/row_clicked_cb')"
+  @row-click="state.{{{widget.widget_id}}}.clickedRow = $event; post('/{{{widget.widget_id}}}/row_clicked_cb')"
   {%
   endif
   %}
@@ -28,5 +36,38 @@
   {%
   endif
   %}
-  @filters-changed="post('/{{{widget.widget_id}}}/update_data_cb')"
-/>
+  @filters-changed="state.reactToChanges = false; post('/{{{widget.widget_id}}}/update_data_cb');"
+>
+  {% if widget._header_left_content %}
+  <span slot="header-left-side-start" class="header-left-side-start-cls">
+    <div style="padding-right: 10px">
+      {{{ widget._header_left_content }}}
+    </div>
+  </span>
+  {% endif %}
+  {% if widget._header_right_content %}
+  <span slot="header-left-side-end" class="header-right-side-end-cls">
+    <div style="padding-left: 10px">
+      {{{ widget._header_right_content }}}
+    </div>
+  </span>
+  {% endif %}
+  <span slot="cell-content" slot-scope="{ row, column, cellValue, idx }">
+    {% for column_data in widget._columns_data %}
+    {% if column_data.is_widget %}
+    <div 
+      v-if="column === '{{{ column_data.name }}}'"
+      :class="data.{{{widget.widget_id}}}.columnsOptions?.[{{{ loop.index0 }}}]?.classes || ''" JINJA TEMPLATE
+      :style="data.{{{widget.widget_id}}}.columnsOptions?.[{{{ loop.index0 }}}]?.style || ''"
+      @click.native.stop
+    >
+      {{{ column_data.widget_html }}}
+    </div>
+    {% else %}
+    <div v-if="column === '{{{ column_data.name }}}'">
+      <span v-html="highlight(col)"></span>
+    </div>
+    {% endif %}
+    {% endfor %}
+  </span>
+</fast-table>

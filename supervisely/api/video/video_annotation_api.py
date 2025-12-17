@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections import defaultdict
 from typing import Callable, Dict, List, Optional, Union
 
 from tqdm import tqdm
@@ -13,6 +14,7 @@ from supervisely.io.json import load_json_file
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.video_annotation.video_annotation import VideoAnnotation
+from supervisely.video_annotation.video_tag_collection import VideoTagCollection
 
 
 class VideoAnnotationAPI(EntityAnnotationAPI):
@@ -37,7 +39,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         api = sly.Api.from_env()
 
         # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
         video_id = 186648102
         ann_info = api.video.annotation.download(video_id)
@@ -173,7 +175,6 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
             api.video.annotation.upload_paths(video_ids, ann_paths, meta)
         """
         # video_ids from the same dataset
-
         for video_id, ann_path in zip(video_ids, ann_paths):
             ann_json = load_json_file(ann_path)
             ann = VideoAnnotation.from_json(ann_json, project_meta)
@@ -182,6 +183,119 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
             self.append(video_id, ann)
             if progress_cb is not None:
                 progress_cb(1)
+
+    def upload_paths_multiview(
+        self,
+        video_ids: List[int],
+        ann_paths: List[str],
+        project_meta: ProjectMeta,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+    ) -> None:
+        """
+        Upload VideoAnnotations for multi-view video project.
+        All provided video ids must belong to the same project and dataset.
+
+        Objects with the same key are created only once and shared between videos.
+        In this mode annotation objects are created without binding to a specific entityId.
+
+        :param video_ids: Video IDs in Supervisely.
+        :type video_ids: List[int]
+        :param ann_paths: Paths to annotations on local machine.
+        :type ann_paths: List[str]
+        :param project_meta: Input :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>` for VideoAnnotations.
+        :type project_meta: ProjectMeta
+        :param progress_cb: Function for tracking upload progress.
+        :type progress_cb: tqdm or callable, optional
+        :return: None
+        :rtype: :class:`NoneType`
+        """
+        if len(video_ids) != len(ann_paths):
+            raise RuntimeError(
+                f'Can not match "video_ids" and "ann_paths" lists, len(video_ids) != len(ann_paths): {len(video_ids)} != {len(ann_paths)}'
+            )
+        if len(video_ids) == 0:
+            return
+
+        anns = []
+        for ann_path in ann_paths:
+            ann_json = load_json_file(ann_path)
+            ann = VideoAnnotation.from_json(ann_json, project_meta)
+            anns.append(ann)
+
+        self.upload_anns_multiview(video_ids, anns, progress_cb)
+
+    def upload_anns_multiview(
+        self,
+        video_ids: List[int],
+        anns: List[VideoAnnotation],
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+    ) -> None:
+        """
+        Upload already constructed VideoAnnotation objects for multi-view video project.
+        All provided video ids must belong to the same project and dataset.
+
+        Objects with the same key are created only once and shared between videos.
+        In this mode annotation objects are created without binding to a specific entityId.
+
+        :param video_ids: Video IDs in Supervisely.
+        :type video_ids: List[int]
+        :param anns: List of VideoAnnotation objects corresponding to the video_ids.
+        :type anns: List[VideoAnnotation]
+        :param progress_cb: Function for tracking upload progress (by number of figures).
+        :type progress_cb: tqdm or callable, optional
+        :return: None
+        :rtype: :class:`NoneType`
+        """
+        if len(video_ids) != len(anns):
+            raise RuntimeError(
+                'Can not match "video_ids" and "anns" lists, len(video_ids) != len(anns)'
+            )
+        if len(video_ids) == 0:
+            return
+
+        try:
+            video_infos = self._api.video.get_info_by_id_batch(video_ids)
+        except RuntimeError as e:
+            raise RuntimeError("All videos must belong to the same project and dataset.") from e
+
+        project_id = video_infos[0].project_id
+        dataset_id = video_infos[0].dataset_id
+
+        tag_api = self._api.video.tag
+        object_api = self._api.video.object
+        figure_api = self._api.video.figure
+
+        key_id_map = KeyIdMap()
+        for video_id, ann in zip(video_ids, anns):
+            tag_api.append_to_entity(video_id, project_id, ann.tags, key_id_map=key_id_map)
+            new_objects = []
+            for obj in ann.objects:
+                if key_id_map.get_object_id(obj.key()) is None:
+                    new_objects.append(obj)
+            if len(new_objects) > 0:
+                object_api._append_bulk(
+                    tag_api=tag_api,
+                    entity_id=video_id,
+                    project_id=project_id,
+                    dataset_id=dataset_id,
+                    objects=new_objects,
+                    key_id_map=key_id_map,
+                    is_pointcloud=False,
+                    is_video_multi_view=True,
+                )
+            tags_to_obj = {}
+            for obj in ann.objects:
+                obj_id = key_id_map.get_object_id(obj.key())
+                tags_to_obj[obj_id] = obj.tags
+            if len(tags_to_obj) > 0:
+                tag_api.add_tags_collection_to_objects(project_id, tags_to_obj, is_video_multi_view=True, entity_id=video_id)
+
+            figure_api.append_bulk(video_id, ann.figures, key_id_map)
+            if progress_cb is not None and len(ann.figures) > 0:
+                if hasattr(progress_cb, "update") and callable(getattr(progress_cb, "update")):
+                    progress_cb.update(len(ann.figures))
+                else:
+                    progress_cb(len(ann.figures))
 
     def copy_batch(
         self,
@@ -236,11 +350,13 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         dst_project_meta = ProjectMeta.from_json(
             self._api.project.get_meta(dst_dataset_info.project_id)
         )
-        for src_ids_batch, dst_ids_batch in batched(list(zip(src_video_ids, dst_video_ids))):
+        for src_ids_batch, dst_ids_batch in zip(batched(src_video_ids), batched(dst_video_ids)):
             ann_jsons = self.download_bulk(src_dataset_id, src_ids_batch)
             for dst_id, ann_json in zip(dst_ids_batch, ann_jsons):
                 try:
-                    ann = VideoAnnotation.from_json(ann_json, dst_project_meta)
+                    ann = VideoAnnotation.from_json(
+                        ann_json, dst_project_meta, key_id_map=KeyIdMap()
+                    )
                 except Exception as e:
                     raise RuntimeError("Failed to validate Annotation") from e
                 self.append(dst_id, ann)

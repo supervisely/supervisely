@@ -135,6 +135,28 @@ def create_pixel_data_set(dcm: FileDataset, frame_axis: int) -> Tuple[List[np.nd
     list_of_images = np.split(pixel_array, int(dcm.NumberOfFrames), axis=frame_axis)
     return list_of_images, frame_axis
 
+def convert_to_monochrome2(dcm_path: str, dcm: FileDataset) -> FileDataset:
+    if getattr(dcm, "PhotometricInterpretation", None) == "YBR_FULL_422":
+        # * Convert dicom to monochrome
+        if len(dcm.pixel_array.shape) == 4 and dcm.pixel_array.shape[-1] == 3:
+            monochrome = dcm.pixel_array[..., 0].astype(np.uint8)
+        else:
+            logger.warn("Unexpected shape for YBR_FULL_422 data: " + str(dcm.pixel_array.shape))
+
+        try:
+            dcm.SamplesPerPixel = 1
+            dcm.PhotometricInterpretation = "MONOCHROME2"
+            dcm.PlanarConfiguration = 0
+            if len(monochrome.shape) == 3:
+                dcm.NumberOfFrames = str(monochrome.shape[0])
+                dcm.Rows, dcm.Columns = monochrome.shape[1:3]
+            dcm.PixelData = monochrome.tobytes()
+        except AttributeError as ae:
+            logger.error(f"Error occurred while converting dicom to monochrome: {ae}")
+
+        logger.info("Rewriting DICOM file with monochrome2 format")
+        dcm.save_as(dcm_path)
+    return dcm
 
 def convert_dcm_to_nrrd(
     image_path: str, converted_dir: str, group_tag_name: Optional[list] = None
@@ -147,6 +169,13 @@ def convert_dcm_to_nrrd(
     mkdir(curr_convert_dir)
 
     dcm = pydicom.read_file(image_path)
+    try:
+        if dcm.file_meta.TransferSyntaxUID.is_compressed:
+            dcm.decompress()
+    except AttributeError:
+        logger.warn("Couldn't find key 'TransferSyntaxUID' in dicom's metadata.")
+    dcm = convert_to_monochrome2(image_path, dcm)
+
     dcm_meta = get_dcm_meta(dcm)
 
     if group_tag_name is None:

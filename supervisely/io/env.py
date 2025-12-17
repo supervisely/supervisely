@@ -1,9 +1,14 @@
 # coding: utf-8
+import json
 import os
+from contextvars import ContextVar, Token
 from typing import Callable, List, Literal, Optional, Union
 
 RAISE_IF_NOT_FOUND = True
-
+_MULTIUSER_USER_CTX: ContextVar[Optional[Union[int, str]]] = ContextVar(
+    "supervisely_multiuser_app_user_id",
+    default=None,
+)
 
 def flag_from_env(s: str) -> bool:
     """Returns True if passed string is a flag, False otherwise.
@@ -36,6 +41,12 @@ def _int_from_env(value):
     return int(value)
 
 
+def _parse_list_from_env(value: str) -> List[str]:
+    import ast
+
+    return [str(x).strip() for x in ast.literal_eval(value)]
+
+
 def _parse_from_env(
     name: str,
     keys: List[str],
@@ -50,7 +61,7 @@ def _parse_from_env(
     # env not found
     if raise_not_found is True:
         raise KeyError(
-            f"{name} is not defined as environment variable. One of the envs has to be defined: {keys}. Learn more in developer portal: https://developer.supervise.ly/getting-started/environment-variables"
+            f"{name} is not defined as environment variable. One of the envs has to be defined: {keys}. Learn more in developer portal: https://developer.supervisely.com/getting-started/environment-variables"
         )
 
     return default
@@ -214,6 +225,32 @@ def team_files_folder(raise_not_found: Optional[bool] = True) -> str:
     )
 
 
+def team_files_folders(raise_not_found: Optional[bool] = True) -> List[str]:
+    """Returns paths to the team files folders from environment variable using following keys:
+        - CONTEXT_SLYFOLDERS
+        - context.slyFolders
+        - modal.state.slyFolders
+        - FOLDERS
+    NOTE: same as team_files_folders
+    :param raise_not_found: if True, raises KeyError if team files folders are not found in environment variables
+    :type raise_not_found: Optional[bool]
+    :return: path to the team files folders
+    :rtype: str
+    """
+    return _parse_from_env(
+        name="team_files_folders",
+        keys=[
+            "CONTEXT_SLYFOLDERS",
+            "context.slyFolders",
+            "modal.state.slyFolders",
+            "FOLDERS",
+        ],
+        postprocess_fn=_parse_list_from_env,
+        default=[],
+        raise_not_found=raise_not_found,
+    )
+
+
 def folder(raise_not_found: Optional[bool] = True) -> str:
     """Returns path to the team files folder from environment variable using following keys:
         - CONTEXT_SLYFOLDER
@@ -227,6 +264,21 @@ def folder(raise_not_found: Optional[bool] = True) -> str:
     :rtype: str
     """
     return team_files_folder(raise_not_found)
+
+
+def folders(raise_not_found: Optional[bool] = True) -> List[str]:
+    """Returns paths to the team files folders from environment variable using following keys:
+        - CONTEXT_SLYFOLDERS
+        - context.slyFolders
+        - modal.state.slyFolders
+        - FOLDERS
+    NOTE: Same as team_files_folders
+    :param raise_not_found: if True, raises KeyError if team files folders are not found in environment variables
+    :type raise_not_found: Optional[bool]
+    :return: path to the team files folders
+    :rtype: str
+    """
+    return team_files_folders(raise_not_found)
 
 
 def team_files_file(raise_not_found: Optional[bool] = True) -> str:
@@ -247,6 +299,28 @@ def team_files_file(raise_not_found: Optional[bool] = True) -> str:
         keys=["CONTEXT_SLYFILE", "context.slyFile", "modal.state.slyFile", "FILE"],
         postprocess_fn=lambda x: str(x),
         default=None,
+        raise_not_found=raise_not_found,
+    )
+
+
+def team_files_files(raise_not_found: Optional[bool] = True) -> List[str]:
+    """Returns paths to the files in the team files from environment variable using following keys:
+        - CONTEXT_SLYFILES
+        - context.slyFiles
+        - modal.state.slyFiles
+        - FILES
+
+    NOTE: same as team_files_file
+    :param raise_not_found: if True, raises KeyError if file is not found in environment variables
+    :type raise_not_found: Optional[bool]
+    :return: path to the file in the team files
+    :rtype: str
+    """
+    return _parse_from_env(
+        name="team_files_files",
+        keys=["CONTEXT_SLYFILES", "context.slyFiles", "modal.state.slyFiles", "FILES"],
+        postprocess_fn=_parse_list_from_env,
+        default=[],
         raise_not_found=raise_not_found,
     )
 
@@ -319,6 +393,22 @@ def file(raise_not_found: Optional[bool] = True) -> str:
     :rtype: str
     """
     return team_files_file(raise_not_found)
+
+
+def files(raise_not_found: Optional[bool] = True) -> List[str]:
+    """Returns paths to the files in the team files from environment variable using following keys:
+        - CONTEXT_SLYFILES
+        - context.slyFiles
+        - modal.state.slyFiles
+        - FILES
+
+    NOTE: Same as team_files_files
+    :param raise_not_found: if True, raises KeyError if file is not found in environment variables
+    :type raise_not_found: Optional[bool]
+    :return: path to the file in the team files
+    :rtype: str
+    """
+    return team_files_files(raise_not_found)
 
 
 def task_id(raise_not_found: Optional[bool] = True) -> int:
@@ -570,3 +660,189 @@ def supervisely_server_path_prefix() -> str:
         default="",
         raise_not_found=False,
     )
+
+
+def supervisely_skip_https_user_helper_check() -> bool:
+    """Returns decision to skip `_check_https_redirect` for API from environment variable using following
+        - SUPERVISELY_SKIP_HTTPS_USER_HELPER_CHECK"
+
+    :return: decision to skip `_check_https_redirect` for API
+    :rtype: bool
+    """
+    return _parse_from_env(
+        name="supervisely_skip_https_user_helper_check",
+        keys=["SUPERVISELY_SKIP_HTTPS_USER_HELPER_CHECK"],
+        postprocess_fn=flag_from_env,
+        default=False,
+        raise_not_found=False,
+    )
+
+
+def configure_minimum_instance_version() -> None:
+    """
+    Configure MINIMUM_INSTANCE_VERSION_FOR_SDK environment variable
+    from the latest entry in versions.json file.
+
+    This function should be called during SDK initialization to automatically
+    set the minimum required instance version based on the versions.json file.
+    """
+    from supervisely._utils import get_latest_instance_version_from_json
+
+    latest_version = get_latest_instance_version_from_json()
+    if latest_version:
+        os.environ["MINIMUM_INSTANCE_VERSION_FOR_SDK"] = latest_version
+
+def app_categories(raise_not_found: Optional[bool] = False) -> list:
+    """Returns a list of app categories from environment variable using following keys:
+        - APP_CATEGORIES
+    :param raise_not_found: if True, raises KeyError if app category is not found in environment variables
+    :type raise_not_found: Optional[bool]
+    :return: app categories
+    :rtype: list
+    """
+    return _parse_from_env(
+        name="app_category",
+        keys=["APP_CATEGORIES"],
+        postprocess_fn=lambda x: json.loads(x),
+        default=[],
+        raise_not_found=raise_not_found,
+    )
+
+
+def upload_count(raise_not_found: Optional[bool] = False) -> dict:
+    """Returns a dictionary of upload counts from environment variable using following
+        - UPLOAD_COUNT
+    :param raise_not_found: if True, raises KeyError if upload count is not found in environment variables
+    :type raise_not_found: Optional[bool]
+    :return: upload count
+    :rtype: dict
+    """
+    return _parse_from_env(
+        name="upload_count",
+        keys=["UPLOAD_COUNT"],
+        postprocess_fn=lambda x: json.loads(x),
+        default={},
+        raise_not_found=raise_not_found,
+    )
+
+
+def uploaded_ids(raise_not_found: Optional[bool] = False) -> dict:
+    """Returns a dictionary with dataset IDs as keys and lists of uploaded IDs as values from environment variable using following
+        - UPLOADED_IDS
+    :param raise_not_found: if True, raises KeyError if uploaded IDs is not found in environment variables
+    :type raise_not_found: Optional[bool]
+    :return: uploaded IDs
+    :rtype: dict
+    """
+    return _parse_from_env(
+        name="uploaded_ids",
+        keys=["UPLOADED_IDS"],
+        postprocess_fn=lambda x: json.loads(x),
+        default={},
+        raise_not_found=raise_not_found,
+    )
+
+
+def increment_upload_count(dataset_id: int, count: int = 1) -> None:
+    """Increments the upload count for the given dataset id by the specified count.
+
+    :param dataset_id: The dataset id to increment the upload count for.
+    :type dataset_id: int
+    :param count: The amount to increment the upload count by. Defaults to 1.
+    :type count: int
+    """
+    upload_info = upload_count()
+    upload_info[str(dataset_id)] = upload_info.get(str(dataset_id), 0) + count
+    os.environ["UPLOAD_COUNT"] = json.dumps(upload_info)
+
+
+def add_uploaded_ids_to_env(dataset_id: int, ids: List[int]) -> None:
+    """Adds the list of uploaded IDs to the environment variable for the given dataset ID.
+
+    :param dataset_id: The dataset ID to associate the uploaded IDs with.
+    :type dataset_id: int
+    :param ids: The list of uploaded IDs to add.
+    :type ids: List[int]
+    """
+    uploaded = uploaded_ids()
+    if str(dataset_id) not in uploaded:
+        uploaded[str(dataset_id)] = []
+    existing_ids = set(uploaded[str(dataset_id)])
+    if set(ids).intersection(existing_ids):
+        for _id in ids:
+            if _id not in existing_ids:
+                uploaded[str(dataset_id)].append(_id)
+    else:
+        uploaded[str(dataset_id)].extend(ids)
+    os.environ["UPLOADED_IDS"] = json.dumps(uploaded)
+
+
+def is_multiuser_mode_enabled() -> bool:
+    """Returns multiuser app mode flag from environment variable using following keys:
+        - SUPERVISELY_MULTIUSER_APP_MODE
+    :return: multiuser app mode flag
+    :rtype: bool
+    """
+    return _parse_from_env(
+        name="is_multiuser_mode_enabled",
+        keys=["SUPERVISELY_MULTIUSER_APP_MODE"],
+        default=False,
+        raise_not_found=False,
+        postprocess_fn=flag_from_env,
+    )
+
+
+def enable_multiuser_app_mode() -> None:
+    """
+    Enables multiuser app mode by setting the environment variable.
+    This function can be used to activate multiuser mode in the application allowing
+    separation of user DataJson/StateJson.
+    """
+    os.environ["SUPERVISELY_MULTIUSER_APP_MODE"] = "true"
+
+
+def disable_multiuser_app_mode() -> None:
+    """Disables multiuser app mode by removing the environment variable."""
+    os.environ.pop("SUPERVISELY_MULTIUSER_APP_MODE", None)
+
+
+def set_user_for_multiuser_app(user_id: Optional[Union[int, str]]) -> Token:
+    """
+    Sets the user ID for multiuser app mode by setting the environment variable.
+    This function should be used in multiuser mode to separate user DataJson/StateJson.
+
+    :param user_id: The user ID (or session key) to set for the current request.
+    :type user_id: int | str
+    :return: A context token that can be used to reset the user ID later.
+    :rtype: Token
+    :raises RuntimeError: If multiuser app mode is not enabled.
+    """
+    if not is_multiuser_mode_enabled():
+        raise RuntimeError("Multiuser app mode is not enabled. Cannot set user ID.")
+    return _MULTIUSER_USER_CTX.set(user_id)
+
+
+def reset_user_for_multiuser_app(token: Token) -> None:
+    """
+    Resets the user ID for multiuser app mode using the provided context token.
+
+    :param token: Context token obtained from `set_user_for_multiuser_app`.
+    :type token: Token
+    """
+    if not is_multiuser_mode_enabled():
+        return
+    _MULTIUSER_USER_CTX.reset(token)
+
+
+def user_from_multiuser_app() -> Optional[Union[int, str]]:
+    """
+    Retrieves the user ID for multiuser app mode from the environment variable.
+
+    :return: The user ID if set, otherwise None.
+    :rtype: Optional[Union[int, str]]
+    """
+    if not is_multiuser_mode_enabled():
+        return None
+    user_id = _MULTIUSER_USER_CTX.get(None)
+    if user_id is not None:
+        return user_id

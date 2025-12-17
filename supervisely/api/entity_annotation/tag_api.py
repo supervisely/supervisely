@@ -1,13 +1,14 @@
 # coding: utf-8
 
-from typing import List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from supervisely._utils import batched
 from supervisely.api.module_api import ApiField, ModuleApi
 from supervisely.collection.key_indexed_collection import KeyIndexedCollection
+from supervisely.project.project_meta import ProjectMeta
+from supervisely.project.project_settings import LabelingInterface
 from supervisely.task.progress import tqdm_sly
 from supervisely.video_annotation.key_id_map import KeyIdMap
-from supervisely.task.progress import tqdm_sly
 
 
 class TagApi(ModuleApi):
@@ -158,7 +159,12 @@ class TagApi(ModuleApi):
         return ids
 
     def append_to_objects(
-        self, entity_id: int, project_id: int, objects: KeyIndexedCollection, key_id_map: KeyIdMap
+        self,
+        entity_id: int,
+        project_id: int,
+        objects: KeyIndexedCollection,
+        key_id_map: KeyIdMap,
+        is_video_multi_view: bool = False,
     ):
         """
         Add Tags to Annotation Objects for a specific entity (image etc.).
@@ -171,6 +177,8 @@ class TagApi(ModuleApi):
         :type objects: KeyIndexedCollection
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap
+        :param is_video_multi_view: If True, indicates that the entity is a multi-view video.
+        :type is_video_multi_view: bool
         :return: List of tags IDs
         :rtype: list
         :Usage example:
@@ -211,11 +219,17 @@ class TagApi(ModuleApi):
             raise RuntimeError("SDK error: len(tags_keys) != len(tags_to_add)")
         if len(tags_keys) == 0:
             return
-        ids = self.append_to_objects_json(entity_id, tags_to_add)
+        ids = self.append_to_objects_json(entity_id, tags_to_add, project_id, is_video_multi_view)
         KeyIdMap.add_tags_to(key_id_map, tags_keys, ids)
         return ids
 
-    def append_to_objects_json(self, entity_id: int, tags_json: dict) -> list:
+    def append_to_objects_json(
+        self,
+        entity_id: int,
+        tags_json: List[Dict],
+        project_id: Optional[int] = None,
+        is_video_multi_view: bool = False,
+    ) -> List[int]:
         """
         Add Tags to Annotation Objects for specific entity (image etc.).
 
@@ -223,16 +237,62 @@ class TagApi(ModuleApi):
         :type entity_id: int
         :param tags_json: Collection of tags in JSON format
         :type tags_json: dict
+        :param project_id: Project ID in Supervisely. Uses to get tag name to tag ID mapping.
+                           Not required if `multi_view` is True.
+        :type project_id: int, optional
+        :param is_video_multi_view: If True, indicates that the entity is a multi-view video.
+        :type is_video_multi_view: bool
         :return: List of tags IDs
         :rtype: list
+
+        :Usage example:
+
+             .. code-block:: python
+
+                import supervisely as sly
+
+                api = sly.Api(server_address, token)
+
+                tags_list = [
+                    {
+                        "tagId": 25926,
+                        "objectId": 652959,
+                        "value": None
+                    },
+                    {
+                        "tagId": 25927,
+                        "objectId": 652959,
+                        "value": "v1"
+                    },
+                    {
+                        "tagId": 25927,
+                        "objectId": 652958,
+                        "value": "v2"
+                    }
+                ]
+                response = api.video.tag.append_to_objects_json(12345, tags_list)
+
+                print(response)
+                # Output:
+                #    [
+                #        80421101,
+                #        80421102,
+                #        80421103
+                #    ]
         """
+        project_meta = self._api.optimization_context.get("project_meta")
+
+        if isinstance(project_meta, ProjectMeta):
+            if project_meta.labeling_interface == LabelingInterface.MULTIVIEW:
+                is_video_multi_view = True
 
         if len(tags_json) == 0:
             return []
-        response = self._api.post(
-            "annotation-objects.tags.bulk.add",
-            {ApiField.ENTITY_ID: entity_id, ApiField.TAGS: tags_json},
-        )
+        if project_id is not None and not is_video_multi_view:
+            json_data = {ApiField.PROJECT_ID: project_id, ApiField.TAGS: tags_json}
+        else:
+            json_data = {ApiField.ENTITY_ID: entity_id, ApiField.TAGS: tags_json}
+        response = self._api.post("annotation-objects.tags.bulk.add", json_data)
         ids = [obj[ApiField.ID] for obj in response.json()]
         return ids
 
@@ -243,11 +303,23 @@ class TagApi(ModuleApi):
         batch_size: int = 100,
         log_progress: bool = False,
         progress: Optional[tqdm_sly] = None,
-    ) -> List[dict]:
+        is_video_multi_view: bool = False,
+        entity_id: Optional[int] = None,
+    ) -> List[Dict[str, Union[str, int, None]]]:
         """
-        Add Tags to existing Annotation Figures.
-        All figures must belong to entities of the same project.
-        Applies only to images project.
+        For images project:
+            Add Tags to existing Annotation Figures (labels).
+            The `tags_list` example:
+                [{"tagId": 12345, "figureId": 54321, "value": "tag_value"}, ...].
+        For video, pointcloud, volume and pointcloud episodes projects:
+            Add Tags to existing Annotation Objects.
+            The `frameRange` field is optional and is supported only for video and pointcloud episodes projects.
+            The `tags_list`` example:
+                [{"tagId": 12345, "objectId": 54321, "value": "tag_value"}, ...].
+            or with frameRange:
+                [{"tagId": 12345, "objectId": 54321, "value": "tag_value", "frameRange": [1, 10]}, ...].
+
+        All objects must belong to entities of the same project.
 
         :param project_id: Project ID in Supervisely.
         :type project_id: int
@@ -259,8 +331,13 @@ class TagApi(ModuleApi):
         :type log_progress: bool
         :param progress: Progress bar object to display progress.
         :type progress: Optional[tqdm_sly]
+        :param is_video_multi_view: If True, indicates that the entity is a multi-view video.
+        :type is_video_multi_view: bool
+        :param entity_id: ID of the entity in Supervisely to add a tag to its objects.
+                          Required if `is_video_multi_view` is True.
+        :type entity_id: Optional[int]
         :return: List of tags infos as dictionaries.
-        :rtype: List[dict]
+        :rtype: List[Dict[str, Union[str, int, None]]]
 
         Usage example:
         .. code-block:: python
@@ -273,7 +350,8 @@ class TagApi(ModuleApi):
                 {
                     "tagId": 25926,
                     "figureId": 652959,
-                    "value": None # value is optional for tag with type 'None'
+                    "value": None # optional for tag with type 'None'
+                    "frameRange": [1, 10] # optional (supported only for video and pointcloud episodes projects)
                 },
                 {
                     "tagId": 25927,
@@ -283,7 +361,7 @@ class TagApi(ModuleApi):
                 {
                     "tagId": 25927,
                     "figureId": 652958,
-                    "value": "v2"
+                    "value": "v2",
                 }
             ]
             response = api.image.tag.add_to_figures(12345, tag_list)
@@ -311,25 +389,200 @@ class TagApi(ModuleApi):
             #        }
             #    ]
         """
-        if type(self) is not TagApi:
-            raise NotImplementedError("This method is not available for classes except TagApi")
-
-        if len(tags_list) == 0:
-            return []
 
         if progress is not None:
             log_progress = False
 
+        project_meta = self._api.optimization_context.get("project_meta")
+
+        if isinstance(project_meta, ProjectMeta):
+            if project_meta.labeling_interface == LabelingInterface.MULTIVIEW:
+                is_video_multi_view = True
+
         result = []
+
+        if len(tags_list) == 0:
+            return result
         if log_progress:
             progress = tqdm_sly(
                 desc="Adding tags to figures",
                 total=len(tags_list),
             )
         for batch in batched(tags_list, batch_size):
-            data = {ApiField.PROJECT_ID: project_id, ApiField.TAGS: batch}
-            response = self._api.post("figures.tags.bulk.add", data)
+            if is_video_multi_view:
+                if entity_id is None:
+                    raise ValueError("entity_id must be provided when is_video_multi_view is True")
+                data = {ApiField.ENTITY_ID: entity_id, ApiField.TAGS: batch}
+            else:
+                data = {ApiField.PROJECT_ID: project_id, ApiField.TAGS: batch}
+            if type(self) is TagApi:
+                response = self._api.post("figures.tags.bulk.add", data)
+            else:
+                response = self._api.post("annotation-objects.tags.bulk.add", data)
             result.extend(response.json())
             if progress is not None:
                 progress.update(len(batch))
         return result
+
+    def add_to_entities_json(
+        self,
+        project_id: int,
+        tags_list: List[Dict[str, Union[str, int, None]]],
+        batch_size: int = 100,
+        log_progress: bool = False,
+    ) -> List[int]:
+        """
+        Bulk add tags to entities (images, videos, pointclouds, volumes) in a project.
+        Not supported for pointcloud episodes projects.
+        All entities must belong to the same project.
+        The `frameRange` field in a tag object within the tags list is optional and is supported only for video projects.
+
+        The `tags_list` example:
+            [{"tagId": 12345, "entityId": 54321, "value": "tag_value"}, ...].
+        or with frameRange:
+            [{"tagId": 12345, "entityId": 54321, "value": "tag_value", "frameRange": [1, 10]}, ...].
+
+        :param project_id: Project ID in Supervisely.
+        :type project_id: int
+        :param tags_list: List of tag object infos as dictionaries
+                          (e.g. {"tagId": 12345, "entityId": 54321, "value": "tag_value"}).
+        :param batch_size: Number of tags to add in one request.
+        :type batch_size: int
+        :param log_progress: If True, will display a progress bar.
+        :type log_progress: bool
+        :return: List of tags IDs.
+        :rtype: List[int]
+
+        Usage example:
+        .. code-block:: python
+
+            import supervisely as sly
+
+            api = sly.Api(server_address, token)
+
+            tag_list = [
+                {
+                    "tagId": 25926,
+                    "entityId": 652959,
+                    "value": None # optional for tag with type 'None'
+                    "frameRange": [1, 10] # optional (supported only for video projects)
+                },
+                {
+                    "tagId": 25927,
+                    "entityId": 652959,
+                    "value": "v1"
+                },
+                {
+                    "tagId": 25927,
+                    "entityId": 652958,
+                    "value": "v2"
+                }
+            ]
+            api.image.tag.add_to_entities_json(project_id=12345, tag_list=tag_list)
+        """
+
+        result = []
+
+        if len(tags_list) == 0:
+            return result
+
+        if log_progress:
+            ds_progress = tqdm_sly(desc="Adding tags to entities", total=len(tags_list))
+
+        for batch in batched(tags_list, batch_size):
+            data = {ApiField.PROJECT_ID: project_id, ApiField.TAGS: batch}
+            response = self._api.post("tags.entities.bulk.add", data)
+            result.extend([obj[ApiField.ID] for obj in response.json()])
+            if log_progress:
+                ds_progress.update(len(batch))
+
+        return result
+
+    def add_tags_collection_to_objects(
+        self,
+        project_id: int,
+        tags_map: Dict[int, Any],
+        batch_size: int = 100,
+        log_progress: bool = False,
+        is_video_multi_view: bool = False,
+        entity_id: Optional[int] = None,
+    ) -> List[Dict[str, Union[str, int, None]]]:
+        """
+        For images project:
+            Add Tags to existing Annotation Figures (labels).
+            The `tags_map` example: {figure_id_1: TagCollection, ...}.
+        For video, pointcloud, volume and pointcloud episodes projects:
+            Add Tags to existing Annotation Objects.
+            The `frameRange` field is optional and is supported only for video and pointcloud episodes projects.
+            The `tags_map` example: {object_id_1: TagCollection, ...}.
+
+        All objects must belong to entities of the same project.
+
+        :param project_id: Project ID in Supervisely.
+        :type project_id: int
+        :param tags_map: Dictionary with mapping figure/object ID to tags collection.
+        :type tags_map: Dict[int, Any]
+        :param batch_size: Number of tags to add in one request.
+        :type batch_size: int
+        :param log_progress: If True, will display a progress bar.
+        :type log_progress: bool
+        :param is_video_multi_view: If True, indicates that the entity is a multi-view video.
+        :type is_video_multi_view: bool
+        :param entity_id: ID of the entity in Supervisely to add a tag to its objects.
+                          Required if `is_video_multi_view` is True.
+        :type entity_id: Optional[int]
+        :return: List of tags infos as dictionaries.
+        :rtype: List[Dict[str, Union[str, int, None]]]
+
+        Usage example:
+        .. code-block:: python
+
+            import supervisely as sly
+
+            api = sly.Api(server_address, token)
+
+            project_id = 12345
+
+            tag_meta = sly.TagMeta("tag_name", sly.TagValueType.ANY_STRING)
+            meta = sly.ProjectMeta(tag_metas=[tag_meta])
+            meta = sly.ProjectMeta.from_json(api.project.update_meta(project_id, meta))
+            tag_meta = meta.get_tag_meta("tag_name")
+
+            # for images project:
+            tag_map = {
+                652959: sly.TagCollection([sly.Tag(tag_meta, value="v1"), sly.Tag(tag_meta, value="v2"), ...]),
+                652958: sly.TagCollection([sly.Tag(tag_meta, value="v3"), sly.Tag(tag_meta, value="v4"), ...]),
+                ...
+            }
+            api.image.tag.add_tags_to_objects(project_id, tag_map)
+
+            # for videos projects (frameRange is optional):
+            tag_map = {
+                652959: sly.VideoTagCollection([sly.VideoTag(tag_meta, value="v1", frameRange=[1, 10]), ...]),
+                652958: sly.VideoTagCollection([sly.VideoTag(tag_meta, value="v2", frameRange=[4, 12]), ...]),
+                ...
+            }
+            api.video.tag.add_to_objects_json_batch(project_id, tag_map)
+        """
+
+        OBJ_ID_FIELD = ApiField.FIGURE_ID if type(self) is TagApi else ApiField.OBJECT_ID
+
+        data = []
+        for obj_id, tags in tags_map.items():
+            for tag in tags:
+
+                if tag.meta.sly_id is None:
+                    raise ValueError(f"Tag {tag.name} meta has no sly_id")
+
+                data.append(
+                    {ApiField.TAG_ID: tag.meta.sly_id, OBJ_ID_FIELD: obj_id, **tag.to_json()}
+                )
+
+        return self.add_to_objects(
+            project_id,
+            data,
+            batch_size,
+            log_progress,
+            is_video_multi_view=is_video_multi_view,
+            entity_id=entity_id,
+        )

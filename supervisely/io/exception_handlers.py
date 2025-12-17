@@ -9,7 +9,7 @@ from typing import Callable, Dict, List, Optional, Union
 from requests.exceptions import HTTPError, RetryError
 from rich.console import Console
 
-from supervisely import is_development, is_community
+from supervisely import is_community, is_development
 from supervisely.app import DialogWindowError
 from supervisely.sly_logger import EventType, logger
 
@@ -250,7 +250,9 @@ class ErrorHandler:
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 2004
                 self.title = "Image files size limit exceeded"
-                self.message = "The given image file size is too large (more than 1 GB) for Community Edition."
+                self.message = (
+                    "The given image file size is too large (more than 1 GB) for Community Edition."
+                )
 
                 super().__init__(
                     exception,
@@ -290,12 +292,14 @@ class ErrorHandler:
 
         class OutOfMemory(HandleException):
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
-                device_prefix = "GPU memory" if any([s in exception.args[0] for s in ["CUDA", "cuda", "GPU"]]) else "memory"
+                device_prefix = (
+                    "GPU memory"
+                    if any([s in exception.args[0] for s in ["CUDA", "cuda", "GPU"]])
+                    else "memory"
+                )
                 self.code = 2007
                 self.title = f"Out of {device_prefix} on the computer where the agent is deployed"
-                self.message = (
-                    "Please, check your agent's memory usage, reduce batch size or use a device with more memory capacity."
-                )
+                self.message = "Please, check your agent's memory usage, reduce batch size or use a device with more memory capacity."
 
                 super().__init__(
                     exception,
@@ -471,7 +475,9 @@ class ErrorHandler:
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 2019
                 self.title = "Upload remote images is only available for PRO teams"
-                self.message = "Please, upgrade plan to upload remote images: https://supervisely.com/pricing/"
+                self.message = (
+                    "Please, upgrade plan to upload remote images: https://supervisely.com/pricing/"
+                )
 
                 super().__init__(
                     exception,
@@ -485,7 +491,9 @@ class ErrorHandler:
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 2020
                 self.title = "Upload remote videos is only available for PRO teams"
-                self.message = "Please, upgrade plan to upload remote videos: https://supervisely.com/pricing/"
+                self.message = (
+                    "Please, upgrade plan to upload remote videos: https://supervisely.com/pricing/"
+                )
 
                 super().__init__(
                     exception,
@@ -681,6 +689,7 @@ ERROR_PATTERNS = {
         r".*images\.bulk\.upload.*FileSize.*\"sizeLimit\":1073741824.*": ErrorHandler.API.ImageFilesSizeTooLarge,
         r".*videos\.bulk\.upload.*FileSize.*sizeLimit\":314572800.*": ErrorHandler.API.VideoFilesSizeTooLarge,
         r".*images\.bulk\.upload.*FileSize.*\"sizeLimit\":157286400.*": ErrorHandler.API.VolumeFilesSizeTooLarge,
+        r".*images\.bulk\.upload.*FileSize.*\"sizeLimit\":\"25mb\".*": ErrorHandler.API.VolumeFilesSizeTooLarge,
         r".*Dataset with datasetId.*is either archived, doesn't exist or you don't have enough permissions to access.*": ErrorHandler.API.DatasetNotFound,
         r".*Project with projectId.*is either archived, doesn't exist or you don't have enough permissions to access.*": ErrorHandler.API.ProjectNotFound,
         r".*api\.task\.set_field.*": ErrorHandler.API.AppSetFieldError,

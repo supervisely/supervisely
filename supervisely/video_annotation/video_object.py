@@ -1,25 +1,28 @@
 # coding: utf-8
 
 from __future__ import annotations
-from typing import List, Dict, Optional
+
 import uuid
+from typing import Dict, List, Optional
+
 from bidict import bidict
 
+from supervisely._utils import take_with_default
 from supervisely.annotation.label import LabelJsonFields
 from supervisely.annotation.obj_class import ObjClass
-from supervisely.project.project_meta import ProjectMeta
-from supervisely._utils import take_with_default
-from supervisely.video_annotation.constants import KEY, ID, OBJECTS_MAP
-from supervisely.video_annotation.video_tag_collection import VideoTagCollection
-from supervisely.video_annotation.video_tag import VideoTag
 from supervisely.collection.key_indexed_collection import KeyObject
-from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.geometry.constants import (
+    CLASS_ID,
+    CREATED_AT,
     LABELER_LOGIN,
     UPDATED_AT,
-    CREATED_AT,
-    CLASS_ID,
 )
+from supervisely.project.project_meta import ProjectMeta
+from supervisely.project.project_settings import LabelingInterface
+from supervisely.video_annotation.constants import ID, KEY, OBJECTS_MAP
+from supervisely.video_annotation.key_id_map import KeyIdMap
+from supervisely.video_annotation.video_tag import VideoTag
+from supervisely.video_annotation.video_tag_collection import VideoTagCollection
 
 
 class VideoObject(KeyObject):
@@ -56,9 +59,17 @@ class VideoObject(KeyObject):
         #     "tags": []
         # }
     """
-    def __init__(self, obj_class: ObjClass, tags: Optional[VideoTagCollection] = None, key: Optional[uuid.UUID]=None,
-                 class_id: Optional[int]=None, labeler_login: Optional[str]=None, updated_at: Optional[str]=None,
-                 created_at: Optional[str]=None):
+
+    def __init__(
+        self,
+        obj_class: ObjClass,
+        tags: Optional[VideoTagCollection] = None,
+        key: Optional[uuid.UUID] = None,
+        class_id: Optional[int] = None,
+        labeler_login: Optional[str] = None,
+        updated_at: Optional[str] = None,
+        created_at: Optional[str] = None,
+    ):
         self.labeler_login = labeler_login
         self.updated_at = updated_at
         self.created_at = created_at
@@ -273,7 +284,7 @@ class VideoObject(KeyObject):
 
     def to_json(self, key_id_map: Optional[KeyIdMap] = None) -> Dict:
         """
-        Convert the VideoObject to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert the VideoObject to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
@@ -312,9 +323,11 @@ class VideoObject(KeyObject):
         return data_json
 
     @classmethod
-    def from_json(cls, data: Dict, project_meta: ProjectMeta, key_id_map: Optional[KeyIdMap] = None) -> VideoObject:
+    def from_json(
+        cls, data: Dict, project_meta: ProjectMeta, key_id_map: Optional[KeyIdMap] = None
+    ) -> VideoObject:
         """
-        Convert a json dict to VideoObject. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert a json dict to VideoObject. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: Dict in json format.
         :type data: dict
@@ -350,10 +363,34 @@ class VideoObject(KeyObject):
                 f"was not found in the given project meta."
             )
 
-        key = uuid.UUID(data[KEY]) if KEY in data else uuid.uuid4()
+        is_multiview = False
+        try:
+            if project_meta.labeling_interface == LabelingInterface.MULTIVIEW:
+                is_multiview = True
+        except AttributeError:
+            is_multiview = False
 
-        if key_id_map is not None:
-            key_id_map.add_object(key, data.get(ID, None))
+        raw_id = data.get(ID, None)
+
+        if not is_multiview:
+            key = uuid.UUID(data[KEY]) if KEY in data else uuid.uuid4()
+            if key_id_map is not None:
+                key_id_map.add_object(key, raw_id)
+        else:
+            if KEY in data:
+                key = uuid.UUID(data[KEY])
+            elif key_id_map is not None and isinstance(raw_id, int):
+                existing_key = key_id_map.get_object_key(raw_id)
+                if isinstance(existing_key, uuid.UUID):
+                    key = existing_key
+                else:
+                    key = uuid.uuid4()
+            else:
+                key = uuid.uuid4()
+
+            if key_id_map is not None and isinstance(raw_id, int):
+                if key_id_map.get_object_id(key) is None:
+                    key_id_map.add_object(key, raw_id)
 
         class_id = data.get(CLASS_ID, None)
         labeler_login = data.get(LABELER_LOGIN, None)
@@ -363,17 +400,23 @@ class VideoObject(KeyObject):
         return cls(
             obj_class=obj_class,
             key=key,
-            tags=VideoTagCollection.from_json(
-                data[LabelJsonFields.TAGS], project_meta.tag_metas
-            ),
+            tags=VideoTagCollection.from_json(data[LabelJsonFields.TAGS], project_meta.tag_metas),
             class_id=class_id,
             labeler_login=labeler_login,
             updated_at=updated_at,
             created_at=created_at,
         )
 
-    def clone(self, obj_class: Optional[ObjClass]=None, tags: Optional[VideoTagCollection] = None, key: Optional[KeyIdMap]=None,
-              class_id: Optional[int]=None, labeler_login: Optional[str]=None, updated_at: Optional[str]=None, created_at: Optional[str]=None) -> VideoObject:
+    def clone(
+        self,
+        obj_class: Optional[ObjClass] = None,
+        tags: Optional[VideoTagCollection] = None,
+        key: Optional[KeyIdMap] = None,
+        class_id: Optional[int] = None,
+        labeler_login: Optional[str] = None,
+        updated_at: Optional[str] = None,
+        created_at: Optional[str] = None,
+    ) -> VideoObject:
         """
         Makes a copy of VideoObject with new fields, if fields are given, otherwise it will use fields of the original VideoObject.
 
@@ -428,11 +471,12 @@ class VideoObject(KeyObject):
             #     ]
             # }
         """
-        return self.__class__(obj_class=take_with_default(obj_class, self.obj_class),
-                              key=take_with_default(key, self._key),
-                              tags=take_with_default(tags, self.tags),
-                              class_id=take_with_default(class_id, self.class_id),
-                              labeler_login=take_with_default(labeler_login, self.labeler_login),
-                              updated_at=take_with_default(updated_at, self.updated_at),
-                              created_at=take_with_default(created_at, self.created_at))
-
+        return self.__class__(
+            obj_class=take_with_default(obj_class, self.obj_class),
+            key=take_with_default(key, self._key),
+            tags=take_with_default(tags, self.tags),
+            class_id=take_with_default(class_id, self.class_id),
+            labeler_login=take_with_default(labeler_login, self.labeler_login),
+            updated_at=take_with_default(updated_at, self.updated_at),
+            created_at=take_with_default(created_at, self.created_at),
+        )

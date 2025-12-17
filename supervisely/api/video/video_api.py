@@ -5,8 +5,10 @@ import asyncio
 import datetime
 import json
 import os
+import re
 import urllib.parse
 from functools import partial
+from itertools import zip_longest
 from typing import (
     AsyncGenerator,
     Callable,
@@ -23,7 +25,11 @@ from typing import (
 import aiofiles
 from numerize.numerize import numerize
 from requests import Response
-from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
+from requests_toolbelt import (
+    MultipartDecoder,
+    MultipartEncoder,
+    MultipartEncoderMonitor,
+)
 from tqdm import tqdm
 
 import supervisely.io.fs as sly_fs
@@ -44,8 +50,9 @@ from supervisely.io.fs import (
     ensure_base_path,
     get_file_ext,
     get_file_hash,
-    get_file_hash_chunked,
     get_file_hash_async,
+    get_file_hash_chunked,
+    get_file_hash_chunked_async,
     get_file_name_with_ext,
     get_file_size,
     list_files,
@@ -246,7 +253,7 @@ class VideoApi(RemoveableBulkModuleApi):
         api = sly.Api.from_env()
 
         # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
         video_id = 19371139
         video_info = api.video.get_info_by_id(video_id) # api usage example
@@ -630,7 +637,7 @@ class VideoApi(RemoveableBulkModuleApi):
             #         'streams': [],
             #         'width': 1920
             #     },
-            #     'fullStorageUrl': 'https://app.supervise.ly/h..i35vz.mp4',
+            #     'fullStorageUrl': 'https://app.supervisely.com/h..i35vz.mp4',
             #     'hash': '30/TQ1BcIOn1ykA2psRtr3lq3HF6NPmr4uQ=',
             #     'id': 19371139,
             #     'link': None,
@@ -700,7 +707,7 @@ class VideoApi(RemoveableBulkModuleApi):
         return project_id, dataset_id
 
     def upload_hash(
-        self, dataset_id: int, name: str, hash: str, stream_index: Optional[int] = None
+        self, dataset_id: int, name: str, hash: str, stream_index: Optional[int] = None, metadata: Optional[Dict] = None
     ) -> VideoInfo:
         """
         Upload Video from given hash to Dataset.
@@ -713,6 +720,8 @@ class VideoApi(RemoveableBulkModuleApi):
         :type hash: str
         :param stream_index: Index of video stream.
         :type stream_index: int, optional
+        :param metadata: Video metadata.
+        :type metadata: dict, optional
         :return: Information about Video. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`VideoInfo`
         :Usage example:
@@ -781,6 +790,8 @@ class VideoApi(RemoveableBulkModuleApi):
         meta = {}
         if stream_index is not None and type(stream_index) is int:
             meta = {"videoStreamIndex": stream_index}
+        if metadata is not None:
+            meta.update(metadata)
         return self.upload_hashes(dataset_id, [name], [hash], [meta])[0]
 
     def upload_hashes(
@@ -1106,10 +1117,10 @@ class VideoApi(RemoveableBulkModuleApi):
             validate_ext(os.path.splitext(name)[1])
 
         for batch in batched(list(zip(names, items, metas))):
-            images = []
+            videos = []
             for name, item, meta in batch:
                 item_tuple = func_item_to_kv(item)
-                images.append(
+                videos.append(
                     {
                         "title": name,
                         item_tuple[0]: item_tuple[1],
@@ -1120,12 +1131,12 @@ class VideoApi(RemoveableBulkModuleApi):
                 "videos.bulk.add",
                 {
                     ApiField.DATASET_ID: dataset_id,
-                    ApiField.VIDEOS: images,
+                    ApiField.VIDEOS: videos,
                     ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
                 },
             )
             if progress_cb is not None:
-                progress_cb(len(images))
+                progress_cb(len(videos))
 
             results = [self._convert_json_info(item) for item in response.json()]
             name_to_res = {img_info.name: img_info for img_info in results}
@@ -1185,6 +1196,41 @@ class VideoApi(RemoveableBulkModuleApi):
 
                 if progress_cb is not None:
                     progress_cb(len(chunk))
+
+    def download_frames(
+        self, video_id: int, frames: List[int], paths: List[str], progress_cb=None
+    ) -> None:
+        endpoint = "videos.bulk.download-frame"
+        response: Response = self._api.get(
+            endpoint,
+            params={},
+            data={ApiField.VIDEO_ID: video_id, ApiField.FRAMES: frames},
+            stream=True,
+        )
+        response.raise_for_status()
+
+        files = {frame_n: None for frame_n in frames}
+        file_paths = {frame_n: path for frame_n, path in zip(frames, paths)}
+
+        try:
+            decoder = MultipartDecoder.from_response(response)
+            for part in decoder.parts:
+                content_utf8 = part.headers[b"Content-Disposition"].decode("utf-8")
+                # Find name="1245" preceded by a whitespace, semicolon or beginning of line.
+                # The regex has 2 capture group: one for the prefix and one for the actual name value.
+                frame_n = int(re.findall(r'(^|[\s;])name="(\d*)"', content_utf8)[0][1])
+                if files[frame_n] is None:
+                    file_path = file_paths[frame_n]
+                    files[frame_n] = open(file_path, "wb")
+                    if progress_cb is not None:
+                        progress_cb(1)
+                f = files[frame_n]
+                f.write(part.content)
+
+        finally:
+            for f in files.values():
+                if f is not None:
+                    f.close()
 
     def download_range_by_id(
         self,
@@ -1403,7 +1449,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type hashes: List[str]
         :return: List of existing hashes
         :rtype: :class:`List[str]`
-        :Usage example: Checkout detailed example `here <https://app.supervise.ly/explore/notebooks/guide-10-check-existing-images-and-upload-only-the-new-ones-1545/overview>`_ (you must be logged into your Supervisely account)
+        :Usage example:
 
          .. code-block:: python
 
@@ -1536,15 +1582,20 @@ class VideoApi(RemoveableBulkModuleApi):
         for hash_value, meta in zip(unique_hashes, unique_metas):
             hash_meta_dict[hash_value] = meta
 
-        metas = [hash_meta_dict[hash_value] for hash_value in hashes]
-
-        metas2 = [meta["meta"] for meta in metas]
-
+        video_metadatas = [hash_meta_dict[hash_value] for hash_value in hashes]
+        video_metadatas2 = [meta["meta"] for meta in video_metadatas]
         names = self.get_free_names(dataset_id, names)
 
-        for name, hash, meta in zip(names, hashes, metas2):
+        if metas is None:
+            metas = [None] * len(names)
+        if not isinstance(metas, list):
+            raise ValueError("metas must be a list")
+
+        for name, hash, video_metadata, metadata in zip_longest(
+            names, hashes, video_metadatas2, metas
+        ):
             try:
-                all_streams = meta["streams"]
+                all_streams = video_metadata["streams"]
                 video_streams = get_video_streams(all_streams)
                 for stream_info in video_streams:
                     stream_index = stream_info["index"]
@@ -1559,7 +1610,7 @@ class VideoApi(RemoveableBulkModuleApi):
                     # info = self._api.video.get_info_by_name(dataset_id, item_name)
                     # if info is not None:
                     #     item_name = gen_video_stream_name(name, stream_index)
-                    res = self.upload_hash(dataset_id, name, hash, stream_index)
+                    res = self.upload_hash(dataset_id, name, hash, stream_index, metadata)
                     video_info_results.append(res)
             except Exception as e:
                 from supervisely.io.exception_handlers import (
@@ -2355,11 +2406,14 @@ class VideoApi(RemoveableBulkModuleApi):
 
     def set_remote(self, videos: List[int], links: List[str]):
         """
-        This method helps to change local source to remote for videos without re-uploading them as new.
+        Updates the source of existing videos by setting new remote links.
+        This method is used when a video was initially uploaded as a file or added via a link,
+        but later it was decided to change its location (e.g., moved to another storage or re-uploaded elsewhere).
+        By updating the link, the video source can be redirected to the new location.
 
         :param videos: List of video ids.
         :type videos: List[int]
-        :param links: List of remote links.
+        :param links: List of new remote links.
         :type links: List[str]
         :return: json-encoded content of a response.
 
@@ -2367,17 +2421,17 @@ class VideoApi(RemoveableBulkModuleApi):
 
             .. code-block:: python
 
-                    import supervisely as sly
+                import supervisely as sly
 
-                    api = sly.Api.from_env()
+                api = sly.Api.from_env()
 
-                    videos = [123, 124, 125]
-                    links = [
-                        "s3://bucket/f1champ/ds1/lap_1.mp4",
-                        "s3://bucket/f1champ/ds1/lap_2.mp4",
-                        "s3://bucket/f1champ/ds1/lap_3.mp4",
-                    ]
-                    result = api.video.set_remote(videos, links)
+                videos = [123, 124, 125]
+                links = [
+                    "s3://bucket/f1champ/ds1/lap_1.mp4",
+                    "s3://bucket/f1champ/ds1/lap_2.mp4",
+                    "s3://bucket/f1champ/ds1/lap_3.mp4",
+                ]
+                result = api.video.set_remote(videos, links)
         """
 
         if len(videos) == 0:
@@ -2528,7 +2582,7 @@ class VideoApi(RemoveableBulkModuleApi):
                         progress_cb(len(chunk))
             if check_hash:
                 if hash_to_check is not None:
-                    downloaded_file_hash = await get_file_hash_async(path)
+                    downloaded_file_hash = await get_file_hash_chunked_async(path)
                     if hash_to_check != downloaded_file_hash:
                         raise RuntimeError(
                             f"Downloaded hash of video with ID:{id} does not match the expected hash: {downloaded_file_hash} != {hash_to_check}"
@@ -2607,3 +2661,41 @@ class VideoApi(RemoveableBulkModuleApi):
 
             tasks.append(task)
         await asyncio.gather(*tasks)
+
+    def rename(
+        self,
+        id: int,
+        name: str,
+    ) -> VideoInfo:
+        """Renames Video with given ID to a new name.
+
+        :param id: Video ID in Supervisely.
+        :type id: int
+        :param name: New Video name.
+        :type name: str
+        :return: Information about updated Video.
+        :rtype: :class:`VideoInfo`
+
+        :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            api = sly.Api.from_env()
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+
+            video_id = 123456
+            new_video_name = "VID_3333_new.mp4"
+
+            api.video.rename(id=video_id, name=new_video_name)
+        """
+
+        data = {
+            ApiField.ID: id,
+            ApiField.NAME: name,
+        }
+
+        response = self._api.post("images.editInfo", data)
+        return self._convert_json_info(response.json())

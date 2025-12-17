@@ -21,3 +21,4 @@ ARG tag_ref_name
 RUN pip install --upgrade supervisely==$tag_ref_name
 RUN pip install --upgrade supervisely[apps]==$tag_ref_name
 RUN pip install --upgrade supervisely[aug]==$tag_ref_name
+RUN pip install --upgrade supervisely[agent]==$tag_ref_name

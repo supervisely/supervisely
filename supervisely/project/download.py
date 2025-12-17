@@ -1,12 +1,11 @@
 import asyncio
 import os
-import shutil
 from typing import Callable, List, Optional, Tuple, Union
 
 from tqdm import tqdm
 
 from supervisely import get_project_class
-from supervisely._utils import get_or_create_event_loop, rand_str
+from supervisely._utils import run_coroutine
 from supervisely.annotation.annotation import Annotation, ProjectMeta
 from supervisely.api.api import Api
 from supervisely.api.dataset_api import DatasetInfo
@@ -20,7 +19,7 @@ from supervisely.io.fs import (
     get_directory_size,
     remove_dir,
 )
-from supervisely.io.json import dump_json_file, load_json_file
+from supervisely.io.json import load_json_file
 from supervisely.project import Project
 from supervisely.project.project import Dataset, OpenMode, ProjectType
 from supervisely.sly_logger import logger
@@ -46,7 +45,7 @@ def download(
     :type project_id: int
     :param dest_dir: Destination path to local directory.
     :type dest_dir: str
-    :param dataset_ids: Specified list of Dataset IDs which will be downloaded. Datasets could be downloaded from different projects but with the same data type.
+    :param dataset_ids: Specified list of Dataset IDs which will be downloaded.
     :type dataset_ids: list(int), optional
     :param log_progress: Show downloading logs in the output.
     :type log_progress: bool
@@ -72,7 +71,7 @@ def download(
         api = sly.Api.from_env()
 
         # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
         dest_dir = 'your/local/dest/dir'
 
@@ -205,12 +204,7 @@ def download_async(
             progress_cb=progress_cb,
             **kwargs,
         )
-        loop = get_or_create_event_loop()
-        if loop.is_running():
-            future = asyncio.run_coroutine_threadsafe(download_coro, loop=loop)
-            future.result()
-        else:
-            loop.run_until_complete(download_coro)
+        run_coroutine(download_coro)
     else:
         raise NotImplementedError(f"Method download_async is not implemented for {project_class}")
 
@@ -222,7 +216,7 @@ def download_async_or_sync(
     dataset_ids: Optional[List[int]] = None,
     log_progress: bool = True,
     progress_cb: Optional[Union[tqdm, Callable]] = None,
-    semaphore: Optional[asyncio.Semaphore] = None,
+    semaphore: Optional[Union[asyncio.Semaphore, int]] = None,
     **kwargs,
 ):
     """
@@ -254,12 +248,7 @@ def download_async_or_sync(
                 progress_cb=progress_cb,
                 **kwargs,
             )
-            loop = get_or_create_event_loop()
-            if loop.is_running():
-                future = asyncio.run_coroutine_threadsafe(download_coro, loop=loop)
-                future.result()
-            else:
-                loop.run_until_complete(download_coro)
+            run_coroutine(download_coro)
         except Exception as e:
             if kwargs.get("resume_download", False) is False:
                 remove_dir(dest_dir)
@@ -295,8 +284,66 @@ def download_fast(
     Download project in a fast mode.
     Items are downloaded asynchronously. If an error occurs, the method will fallback to synchronous download.
     Automatically detects project type.
-    You can pass :class:`ProjectInfo` as `project_info` kwarg to avoid additional API requests.
+
+    :param api: Supervisely API address and token.
+    :type api: :class:`Api<supervisely.api.api.Api>`
+    :param project_id: Supervisely downloadable project ID.
+    :type project_id: :class:`int`
+    :param dest_dir: Destination directory.
+    :type dest_dir: :class:`str`
+    :param dataset_ids: Filter datasets by IDs.
+    :type dataset_ids: :class:`list` [ :class:`int` ], optional
+    :param log_progress: Show uploading progress bar.
+    :type log_progress: :class:`bool`
+    :param progress_cb: Function for tracking download progress.
+    :type progress_cb: tqdm or callable, optional
+    :param semaphore: Semaphore to limit the number of concurrent downloads of items.
+    :type semaphore: :class:`asyncio.Semaphore`, optional
+    :param only_image_tags: Download project with only images tags (without objects tags).
+    :type only_image_tags: :class:`bool`, optional
+    :param save_image_info: Download images infos or not.
+    :type save_image_info: :class:`bool`, optional
+    :param save_images: Download images or not.
+    :type save_images: :class:`bool`, optional
+    :param save_image_meta: Download images metadata in JSON format or not.
+    :type save_image_meta: :class:`bool`, optional
+    :param images_ids: Filter images by IDs.
+    :type images_ids: :class:`list` [ :class:`int` ], optional
+    :param resume_download: Resume download enables to download only missing files avoiding erase of existing files.
+    :type resume_download: :class:`bool`, optional
+    :param switch_size: Size threshold that determines how an item will be downloaded.
+                        Items larger than this size will be downloaded as single files, while smaller items will be downloaded as a batch.
+                        Useful for projects with different item sizes and when you exactly know which size will perform better with batch download.
+    :type switch_size: :class:`int`, optional
+    :param batch_size: Number of items to download in a single batch.
+    :type batch_size: :class:`int`, optional
+    :param download_blob_files: Download project with Blob files in native format.
+                                If False - download project like a regular project in classic Supervisely format.
+    :type download_blob_files: :class:`bool`, optional
+    :param project_info: Project info object. To avoid additional API requests.
+    :type project_info: :class:`ProjectInfo`, optional
+    :param skip_create_readme: Skip creating README.md file. Default is False.
+    :type skip_create_readme: bool, optional
+    :return: None
+    :rtype: NoneType
+
+    :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            project_id = 8888
+            save_directory = "/path/to/save/projects"
+
+            sly.download_fast(api, project_id, save_directory)
+
     """
+
     download_async_or_sync(
         api=api,
         project_id=project_id,
@@ -362,12 +409,22 @@ def _project_meta_changed(meta1: ProjectMeta, meta2: ProjectMeta) -> bool:
     return False
 
 
+def _get_ds_full_name(
+    dataset_info: DatasetInfo, all_ds_infos: List[DatasetInfo], suffix: str = ""
+) -> str:
+    if dataset_info.parent_id is None:
+        return dataset_info.name + suffix
+    parent = next((ds_info for ds_info in all_ds_infos if ds_info.id == dataset_info.parent_id))
+    return _get_ds_full_name(parent, all_ds_infos, "/" + dataset_info.name + suffix)
+
+
 def _validate_dataset(
     api: Api,
     project_id: int,
     project_type: str,
     project_meta: ProjectMeta,
     dataset_info: DatasetInfo,
+    all_ds_infos: List[DatasetInfo] = None,
 ):
     try:
         project_class = get_project_class(project_type)
@@ -383,10 +440,12 @@ def _validate_dataset(
     except:
         logger.debug("Validating dataset failed. Unable to download items infos.", exc_info=True)
         return False
+    if all_ds_infos is None:
+        all_ds_infos = api.dataset.get_list(project_id, recursive=True)
     project_meta_changed = _project_meta_changed(project_meta, project.meta)
     for dataset in project.datasets:
         dataset: Dataset
-        if dataset.name.endswith(dataset_info.name):  # TODO: fix it later
+        if dataset.name == _get_ds_full_name(dataset_info, all_ds_infos):
             diff = set(items_infos_dict.keys()).difference(set(dataset.get_items_names()))
             if diff:
                 logger.debug(
@@ -434,15 +493,19 @@ def _validate_dataset(
 
 
 def _validate(
-    api: Api, project_info: ProjectInfo, project_meta: ProjectMeta, dataset_infos: List[DatasetInfo]
+    api: Api,
+    project_info: ProjectInfo,
+    project_meta: ProjectMeta,
+    dataset_infos: List[DatasetInfo],
+    all_ds_infos: List[DatasetInfo] = None,
 ):
     project_id = project_info.id
     to_download, cached = _split_by_cache(
-        project_id, [_get_dataset_path(api, dataset_infos, info.id) for info in dataset_infos]
+        project_id, [get_dataset_path(api, dataset_infos, info.id) for info in dataset_infos]
     )
     to_download, cached = set(to_download), set(cached)
     for dataset_info in dataset_infos:
-        ds_path = _get_dataset_path(api, dataset_infos, dataset_info.id)
+        ds_path = get_dataset_path(api, dataset_infos, dataset_info.id)
         if ds_path in to_download:
             continue
         if not _validate_dataset(
@@ -451,6 +514,7 @@ def _validate(
             project_info.type,
             project_meta,
             dataset_info,
+            all_ds_infos,
         ):
             to_download.add(ds_path)
             cached.remove(ds_path)
@@ -473,7 +537,7 @@ def _add_save_items_infos_to_kwargs(kwargs: dict, project_type: str):
 
 
 def _add_resume_download_to_kwargs(kwargs: dict, project_type: str):
-    supported_force_projects = (str(ProjectType.IMAGES),)
+    supported_force_projects = (str(ProjectType.IMAGES), (str(ProjectType.VIDEOS)))
     if project_type in supported_force_projects:
         kwargs["resume_download"] = True
     return kwargs
@@ -545,13 +609,14 @@ def download_to_cache(
     project_meta = ProjectMeta.from_json(api.project.get_meta(project_id))
     if dataset_infos is not None and dataset_ids is not None:
         raise ValueError("dataset_infos and dataset_ids cannot be specified at the same time")
+    all_ds_infos = api.dataset.get_list(project_id, recursive=True)
     if dataset_infos is None:
         if dataset_ids is None:
-            dataset_infos = api.dataset.get_list(project_id, recursive=True)
+            dataset_infos = all_ds_infos
         else:
-            dataset_infos = [api.dataset.get_info_by_id(dataset_id) for dataset_id in dataset_ids]
-    path_to_info = {_get_dataset_path(api, dataset_infos, info.id): info for info in dataset_infos}
-    to_download, cached = _validate(api, project_info, project_meta, dataset_infos)
+            dataset_infos = [ds_info for ds_info in all_ds_infos if ds_info.id in dataset_ids]
+    path_to_info = {get_dataset_path(api, dataset_infos, info.id): info for info in dataset_infos}
+    to_download, cached = _validate(api, project_info, project_meta, dataset_infos, all_ds_infos)
     if progress_cb is not None:
         cached_items_n = sum(path_to_info[ds_path].items_count for ds_path in cached)
         progress_cb(cached_items_n)
@@ -567,24 +632,28 @@ def download_to_cache(
     return to_download, cached
 
 
-def _get_dataset_parents(api, dataset_infos, dataset_id):
+def _get_dataset_parents(api: Api, dataset_infos: List[DatasetInfo], dataset_id):
     dataset_infos_dict = {info.id: info for info in dataset_infos}
-    this_dataset_info = dataset_infos_dict.get(dataset_id, api.dataset.get_info_by_id(dataset_id))
+    this_dataset_info = dataset_infos_dict.get(dataset_id, None)
+    if this_dataset_info is None:
+        this_dataset_info = api.dataset.get_info_by_id(dataset_id)
     if this_dataset_info.parent_id is None:
         return []
     parent = _get_dataset_parents(
         api, list(dataset_infos_dict.values()), this_dataset_info.parent_id
     )
-    this_parent_name = dataset_infos_dict.get(
-        this_dataset_info.parent_id, api.dataset.get_info_by_id(dataset_id)
-    ).name
-    return [*parent, this_parent_name]
+    this_parent = dataset_infos_dict.get(this_dataset_info.parent_id, None)
+    if this_parent is None:
+        this_parent = api.dataset.get_info_by_id(this_dataset_info.parent_id)
+    return [*parent, this_parent.name]
 
 
-def _get_dataset_path(api: Api, dataset_infos: List[DatasetInfo], dataset_id: int) -> str:
+def get_dataset_path(api: Api, dataset_infos: List[DatasetInfo], dataset_id: int) -> str:
     parents = _get_dataset_parents(api, dataset_infos, dataset_id)
     dataset_infos_dict = {info.id: info for info in dataset_infos}
-    this_dataset_info = dataset_infos_dict.get(dataset_id, api.dataset.get_info_by_id(dataset_id))
+    this_dataset_info = dataset_infos_dict.get(dataset_id, None)
+    if this_dataset_info is None:
+        this_dataset_info = api.dataset.get_info_by_id(dataset_id)
     return Dataset._get_dataset_path(this_dataset_info.name, parents)
 
 

@@ -1,21 +1,25 @@
+import hashlib
 import inspect
 import json
 import os
 import signal
 import sys
-from contextlib import suppress
+import time
+from contextlib import contextmanager, suppress
+from contextvars import ContextVar
 from functools import wraps
 from pathlib import Path
 from threading import Event as ThreadingEvent
 from threading import Thread
 from time import sleep
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union
 
 import arel
 import jinja2
 import numpy as np
 import psutil
 from async_asgi_testclient import TestClient
+from cachetools import TTLCache
 from fastapi import (
     Depends,
     FastAPI,
@@ -30,6 +34,7 @@ from fastapi.responses import JSONResponse
 from fastapi.routing import APIRouter
 from fastapi.staticfiles import StaticFiles
 
+import supervisely.app.fastapi.multi_user as multi_user
 import supervisely.io.env as sly_env
 from supervisely._utils import (
     is_debug_with_sly_net,
@@ -61,6 +66,14 @@ SUPERVISELY_SERVER_PATH_PREFIX = sly_env.supervisely_server_path_prefix()
 if SUPERVISELY_SERVER_PATH_PREFIX and not SUPERVISELY_SERVER_PATH_PREFIX.startswith("/"):
     SUPERVISELY_SERVER_PATH_PREFIX = f"/{SUPERVISELY_SERVER_PATH_PREFIX}"
 
+HEALTH_ENDPOINTS = ["/health", "/is_ready"]
+
+# Context variable for response time
+response_time_ctx: ContextVar[float] = ContextVar("response_time", default=None)
+
+# Mapping from user_id to Api instance
+_USER_API_CACHE = TTLCache(maxsize=500, ttl=60 * 15)  # Cache up to 15 minutes
+
 
 class ReadyzFilter(logging.Filter):
     def filter(self, record):
@@ -70,11 +83,22 @@ class ReadyzFilter(logging.Filter):
         return True
 
 
+class ResponseTimeFilter(logging.Filter):
+    def filter(self, record):
+        # Check if this is an HTTP access log line by logger name
+        if getattr(record, "name", "") == "uvicorn.access":
+            response_time = response_time_ctx.get(None)
+            if response_time is not None:
+                record.responseTime = int(response_time)
+        return True
+
+
 def _init_uvicorn_logger():
     uvicorn_logger = logging.getLogger("uvicorn.access")
     for handler in uvicorn_logger.handlers:
         handler.setFormatter(create_formatter())
     uvicorn_logger.addFilter(ReadyzFilter())
+    uvicorn_logger.addFilter(ResponseTimeFilter())
 
 
 _init_uvicorn_logger()
@@ -606,18 +630,30 @@ def create(
         shutdown(process_id, before_shutdown_callbacks)
 
     if headless is False:
-
         @app.post("/data")
         async def send_data(request: Request):
-            data = DataJson()
-            response = JSONResponse(content=dict(data))
+            if not sly_env.is_multiuser_mode_enabled():
+                data = DataJson()
+                response = JSONResponse(content=dict(data))
+                return response
+            user_id = await multi_user.extract_user_id_from_request(request)
+            multi_user.remember_cookie(request, user_id)
+            with multi_user.session_context(user_id):
+                data = DataJson()
+                response = JSONResponse(content=dict(data))
             return response
 
         @app.post("/state")
         async def send_state(request: Request):
-            state = StateJson()
-
-            response = JSONResponse(content=dict(state))
+            if not sly_env.is_multiuser_mode_enabled():
+                state = StateJson()
+                response = JSONResponse(content=dict(state))
+            else:
+                user_id = await multi_user.extract_user_id_from_request(request)
+                multi_user.remember_cookie(request, user_id)
+                with multi_user.session_context(user_id):
+                    state = StateJson()
+                    response = JSONResponse(content=dict(state))
             gettrace = getattr(sys, "gettrace", None)
             if (gettrace is not None and gettrace()) or is_development():
                 response.headers["x-debug-mode"] = "1"
@@ -794,41 +830,64 @@ def _init(
 
     @app.middleware("http")
     async def get_state_from_request(request: Request, call_next):
-        if headless is False:
-            await StateJson.from_request(request)
+        # Start timer for response time measurement
+        start_time = time.perf_counter()
 
-        if not ("application/json" not in request.headers.get("Content-Type", "")):
-            # {'command': 'inference_batch_ids', 'context': {}, 'state': {'dataset_id': 49711, 'batch_ids': [3120204], 'settings': None}, 'user_api_key': 'XXX', 'api_token': 'XXX', 'instance_type': None, 'server_address': 'https://app.supervisely.com'}
-            content = await request.json()
+        async def _process_request(request: Request, call_next):
+            if "application/json" in request.headers.get("Content-Type", ""):
+                content = await request.json()
+                request.state.context = content.get("context")
+                request.state.state = content.get("state")
+                request.state.api_token = content.get(
+                    "api_token",
+                    (
+                        request.state.context.get("apiToken")
+                        if request.state.context is not None
+                        else None
+                    ),
+                )
+                request.state.server_address = content.get(
+                    "server_address", sly_env.server_address(raise_not_found=False)
+                )
+                if (
+                    request.state.server_address is not None
+                    and request.state.api_token is not None
+                ):
+                    request.state.api = Api(
+                        request.state.server_address, request.state.api_token
+                    )
+                    if sly_env.is_multiuser_mode_enabled():
+                        user_id = sly_env.user_from_multiuser_app()
+                        if user_id is not None:
+                            _USER_API_CACHE[user_id] = request.state.api
+                else:
+                    request.state.api = None
 
-            request.state.context = content.get("context")
-            request.state.state = content.get("state")
-            request.state.api_token = content.get(
-                "api_token",
-                (
-                    request.state.context.get("apiToken")
-                    if request.state.context is not None
-                    else None
-                ),
-            )
-            # logger.debug(f"middleware request api_token {request.state.api_token}")
-            request.state.server_address = content.get(
-                "server_address", sly_env.server_address(raise_not_found=False)
-            )
-            # request.state.server_address = sly_env.server_address(raise_not_found=False)
-            # logger.debug(f"middleware request server_address {request.state.server_address}")
-            # logger.debug(f"middleware request context {request.state.context}")
-            # logger.debug(f"middleware request state {request.state.state}")
-            if request.state.server_address is not None and request.state.api_token is not None:
-                request.state.api = Api(request.state.server_address, request.state.api_token)
-            else:
-                request.state.api = None
+            try:
+                response = await call_next(request)
+            except Exception as exc:
+                need_to_handle_error = is_production()
+                response = await process_server_error(
+                    request, exc, need_to_handle_error
+                )
 
-        try:
-            response = await call_next(request)
-        except Exception as exc:
-            need_to_handle_error = is_production()
-            response = await process_server_error(request, exc, need_to_handle_error)
+            return response
+
+        if not sly_env.is_multiuser_mode_enabled():
+            if headless is False:
+                await StateJson.from_request(request)
+            response = await _process_request(request, call_next)
+        else:
+            user_id = await multi_user.extract_user_id_from_request(request)
+            multi_user.remember_cookie(request, user_id)
+
+            with multi_user.session_context(user_id):
+                if headless is False:
+                    await StateJson.from_request(request, local=False)
+                response = await _process_request(request, call_next)
+        # Calculate response time and set it for uvicorn logger in ms
+        elapsed_ms = round((time.perf_counter() - start_time) * 1000)
+        response_time_ctx.set(elapsed_ms)
         return response
 
     def verify_localhost(request: Request):
@@ -904,10 +963,38 @@ class Application(metaclass=Singleton):
         ready_check_function: Optional[
             Callable
         ] = None,  # function to check if the app is ready for requests (e.g serving app: model is served and ready)
+        show_header: bool = True,
+        hide_health_check_logs: bool = True,  # whether to hide health check logs in info level
+        health_check_endpoints: Optional[List[str]] = None,  # endpoints to check health of the app
     ):
-        self._favicon = os.environ.get("icon", "https://cdn.supervise.ly/favicon.ico")
+        """Initialize the Supervisely Application.
+
+        :param layout: Main layout of the application.
+        :type layout: Widget
+        :param templates_dir: Directory with Jinja2 templates. It is preferred to use `layout` instead of `templates_dir`.
+        :type templates_dir: str, optional
+        :param static_dir: Directory with static files (e.g. CSS, JS), used for serving static content.
+        :type static_dir: str, optional
+        :param hot_reload: Whether to enable hot reload during development (default is False).
+        :type hot_reload: bool, optional
+        :param session_info_extra_content: Additional content to be displayed in the session info area.
+        :type session_info_extra_content: Widget, optional
+        :param session_info_solid: Whether to use solid background for the session info area.
+        :type session_info_solid: bool, optional
+        :param ready_check_function: Function to check if the app is ready for requests.
+        :type ready_check_function: Callable, optional
+        :param show_header: Whether to show the header in the application.
+        :type show_header: bool, optional
+        :param hide_health_check_logs: Whether to hide health check logs in info level.
+        :type hide_health_check_logs: bool, optional
+        :param health_check_endpoints: List of additional endpoints to check health of the app.
+            Add your custom endpoints here to be able to manage logging of health check requests on info level with `hide_health_check_logs`.
+        :type health_check_endpoints: List[str], optional
+        """
+        self._favicon = os.environ.get("icon", "https://cdn.supervisely.com/favicon.ico")
         JinjaWidgets().context["__favicon__"] = self._favicon
         JinjaWidgets().context["__no_html_mode__"] = True
+        JinjaWidgets().context["__show_header__"] = show_header
 
         self._static_dir = static_dir
 
@@ -978,6 +1065,17 @@ class Application(metaclass=Singleton):
             hot_reload=hot_reload,
             before_shutdown_callbacks=self._before_shutdown_callbacks,
         )
+
+        # add filter to hide health check logs for info level
+        if health_check_endpoints is None or len(health_check_endpoints) == 0:
+            self._health_check_endpoints = HEALTH_ENDPOINTS
+        else:
+            health_check_endpoints = [endpoint.strip() for endpoint in health_check_endpoints]
+            self._health_check_endpoints = HEALTH_ENDPOINTS + health_check_endpoints
+
+        if hide_health_check_logs:
+            self._setup_health_check_filter()
+
         self.test_client = TestClient(self._fastapi)
 
         if not headless:
@@ -1018,6 +1116,7 @@ class Application(metaclass=Singleton):
 
         @server.get("/readyz")
         @server.get("/is_ready")
+        @server.post("/is_ready")
         async def is_ready(response: Response, request: Request):
             is_ready = True
             if self._ready_check_function is not None:
@@ -1123,6 +1222,34 @@ class Application(metaclass=Singleton):
     def set_ready_check_function(self, func: Callable):
         self._ready_check_function = func
 
+    def _setup_health_check_filter(self):
+        """Setup filter to hide health check logs for info level."""
+
+        class HealthCheckFilter(logging.Filter):
+            def __init__(self, app_instance):
+                super().__init__()
+                self.app: Application = app_instance
+
+            def filter(self, record):
+                # Hide health check requests if NOT in debug mode
+                if not self.app._fastapi.debug and hasattr(record, "getMessage"):
+                    message = record.getMessage()
+                    # Check if the message contains health check paths
+                    if any(path in message for path in self.app._health_check_endpoints):
+                        return False
+                return True
+
+        # Apply filter to uvicorn access logger
+        health_filter = HealthCheckFilter(self)
+        uvicorn_logger = logging.getLogger("uvicorn.access")
+
+        # Remove old filters of this type, if any (for safety)
+        uvicorn_logger.filters = [
+            f for f in uvicorn_logger.filters if not isinstance(f, HealthCheckFilter)
+        ]
+
+        uvicorn_logger.addFilter(health_filter)
+
 
 def set_autostart_flag_from_state(default: Optional[str] = None):
     """Set `autostart` flag recieved from task state. Env name: `modal.state.autostart`.
@@ -1187,3 +1314,12 @@ def call_on_autostart(
 
 def get_name_from_env(default="Supervisely App"):
     return os.environ.get("APP_NAME", default)
+
+def session_user_api() -> Optional[Api]:
+    """Returns the API instance for the current session user."""
+    if not sly_env.is_multiuser_mode_enabled():
+        return Api.from_env()
+    user_id = sly_env.user_from_multiuser_app()
+    if user_id is None:
+        return None
+    return _USER_API_CACHE.get(user_id, None)

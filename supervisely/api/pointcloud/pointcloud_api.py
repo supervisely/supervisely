@@ -36,6 +36,7 @@ from supervisely.io.fs import (
 )
 from supervisely.pointcloud.pointcloud import is_valid_format
 from supervisely.sly_logger import logger
+from supervisely.imaging import image as sly_image
 
 
 class PointcloudInfo(NamedTuple):
@@ -148,7 +149,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
         api = sly.Api.from_env()
 
         # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
         pcd_id = 19618654
         pcd_info = api.pointcloud.get_info_by_id(pcd_id) # api usage example
@@ -420,7 +421,15 @@ class PointcloudApi(RemoveableBulkModuleApi):
             convert_json_info_cb=lambda x: x,
         )
 
-    def download_related_image(self, id: int, path: str) -> Response:
+    def get_list_related_images_batch(self, dataset_id: int, ids: List[int]) -> List:
+        filters = [{"field": ApiField.ENTITY_ID, "operator": "in", "value": ids}]
+        return self.get_list_all_pages(
+            "point-clouds.images.list",
+            {ApiField.DATASET_ID: dataset_id, ApiField.FILTER: filters},
+            convert_json_info_cb=lambda x: x,
+        )
+
+    def download_related_image(self, id: int, path: str = None) -> Response:
         """
         Download a related context image from Supervisely to local directory by image id.
 
@@ -454,11 +463,16 @@ class PointcloudApi(RemoveableBulkModuleApi):
             {ApiField.ID: id},
             stream=True,
         )
-        ensure_base_path(path)
-        with open(path, "wb") as fd:
-            for chunk in response.iter_content(chunk_size=1024 * 1024):
-                fd.write(chunk)
-        return response
+
+        if path:
+            ensure_base_path(path)
+            with open(path, "wb") as fd:
+                for chunk in response.iter_content(chunk_size=1024 * 1024):
+                    fd.write(chunk)
+            return response
+        else:
+            related_image = sly_image.read_bytes(response.content, False)
+            return related_image
 
     # @TODO: copypaste from video_api
     def upload_hash(
@@ -1417,3 +1431,41 @@ class PointcloudApi(RemoveableBulkModuleApi):
             )
             tasks.append(task)
         await asyncio.gather(*tasks)
+
+    def rename(
+        self,
+        id: int,
+        name: str,
+    ) -> PointcloudInfo:
+        """Renames Pointcloud with given ID to a new name.
+
+        :param id: Pointcloud ID in Supervisely.
+        :type id: int
+        :param name: New Pointcloud name.
+        :type name: str
+        :return: Information about updated Pointcloud.
+        :rtype: :class:`PointcloudInfo`
+
+        :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            api = sly.Api.from_env()
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+
+            pointcloud_id = 123456
+            new_pointcloud_name = "3333_new.pcd"
+
+            api.pointcloud.rename(id=pointcloud_id, name=new_pointcloud_name)
+        """
+
+        data = {
+            ApiField.ID: id,
+            ApiField.NAME: name,
+        }
+
+        response = self._api.post("images.editInfo", data)
+        return self._convert_json_info(response.json())

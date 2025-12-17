@@ -17,9 +17,10 @@ from supervisely.api.api import Api
 from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.convert.image.image_helper import validate_image_bounds
-from supervisely.io.fs import dirs_filter, file_exists, get_file_ext
+from supervisely.io.fs import dirs_filter, file_exists, get_file_ext, get_file_name
 from supervisely.io.json import load_json_file
 from supervisely.project.project import find_project_dirs
+from supervisely.project.project import upload_project as upload_project_fs
 from supervisely.project.project_settings import LabelingInterface
 
 DATASET_ITEMS = "items"
@@ -32,9 +33,18 @@ class SLYImageConverter(ImageConverter):
         super().__init__(*args, **kwargs)
         self._project_structure = None
         self._supports_links = True
+        self._blob_project = False
 
     def __str__(self):
         return AvailableImageConverters.SLY
+
+    @property
+    def blob_project(self) -> bool:
+        return self._blob_project
+
+    @blob_project.setter
+    def blob_project(self, value: bool):
+        self._blob_project = value
 
     @property
     def ann_ext(self) -> str:
@@ -112,17 +122,19 @@ class SLYImageConverter(ImageConverter):
         self._items = []
         for image_path in images_list:
             item = self.Item(image_path)
-            ann_name = f"{item.name}.json"
-            if ann_name in ann_dict:
-                ann_path = ann_dict[ann_name]
+            json_name, json_name_noext = f"{item.name}.json", f"{get_file_name(item.name)}.json"
+            ann_path = ann_dict.get(json_name, ann_dict.get(json_name_noext))
+            if ann_path:
                 if self._meta is None:
                     meta = self.generate_meta_from_annotation(ann_path, meta)
                 is_valid = self.validate_ann_file(ann_path, meta)
                 if is_valid:
                     item.ann_data = ann_path
-                    detected_ann_cnt += 1
-            if ann_name in img_meta_dict:
-                item.set_meta_data(img_meta_dict[ann_name])
+            meta_path = img_meta_dict.get(json_name, img_meta_dict.get(json_name_noext))
+            if meta_path:
+                item.set_meta_data(meta_path)
+            if item.ann_data is not None or item.meta is not None:
+                detected_ann_cnt += 1
             self._items.append(item)
         self._meta = meta
         return detected_ann_cnt > 0
@@ -149,7 +161,10 @@ class SLYImageConverter(ImageConverter):
                 ann_json = ann_json["annotation"]
             if renamed_classes or renamed_tags:
                 ann_json = sly_image_helper.rename_in_json(ann_json, renamed_classes, renamed_tags)
-            img_size = list(ann_json["size"].values())
+            img_size = ann_json["size"]  # dict { "width": 1280, "height": 720 }
+            if "width" not in img_size or "height" not in img_size:
+                raise ValueError("Invalid image size in annotation JSON")
+            img_size = (img_size["height"], img_size["width"])
             labels = validate_image_bounds(
                 [Label.from_json(obj, meta) for obj in ann_json["objects"]],
                 Rectangle.from_size(img_size),
@@ -174,6 +189,11 @@ class SLYImageConverter(ImageConverter):
             meta = None
             for project_dir in project_dirs:
                 project_fs = Project(project_dir, mode=OpenMode.READ)
+                if len(project_fs.blob_files) > 0:
+                    self.blob_project = True
+                    logger.info("Found blob files in the project, skipping")
+                    continue
+
                 if meta is None:
                     meta = project_fs.meta
                 else:
@@ -206,6 +226,8 @@ class SLYImageConverter(ImageConverter):
                 self._meta = meta
                 if ds_cnt > 1:  # multiple datasets
                     self._project_structure = project
+                return True
+            elif self.blob_project:
                 return True
             else:
                 return False
@@ -272,6 +294,26 @@ class SLYImageConverter(ImageConverter):
 
         if self._project_structure:
             self.upload_project(api, dataset_id, batch_size, log_progress)
+        elif self.blob_project:
+            dataset_info = api.dataset.get_info_by_id(dataset_id, raise_error=True)
+            project_dirs = [d for d in find_project_dirs(self._input_data)]
+            if len(project_dirs) == 0:
+                raise RuntimeError(
+                    "Failed to find Supervisely project with blobs in the input data"
+                )
+            project_dir = project_dirs[0]
+            if len(project_dirs) > 1:
+                logger.info(
+                    "Found multiple possible Supervisely projects with blobs in the input data. "
+                    f"Only the first one will be uploaded: {project_dir}"
+                )
+            upload_project_fs(
+                dir=project_dir,
+                api=api,
+                workspace_id=dataset_info.workspace_id,
+                log_progress=log_progress,
+                project_id=dataset_info.project_id,
+            )
         else:
             super().upload_dataset(api, dataset_id, batch_size, log_progress)
 
@@ -289,6 +331,7 @@ class SLYImageConverter(ImageConverter):
             progress, progress_cb = None, None
 
         logger.info("Uploading project structure")
+
         def _upload_project(
             project_structure: Dict,
             project_id: int,
@@ -306,7 +349,9 @@ class SLYImageConverter(ImageConverter):
 
                 items = value.get(DATASET_ITEMS, [])
                 nested_datasets = value.get(NESTED_DATASETS, {})
-                logger.info(f"Dataset: {ds_name}, items: {len(items)}, nested datasets: {len(nested_datasets)}")
+                logger.info(
+                    f"Dataset: {ds_name}, items: {len(items)}, nested datasets: {len(nested_datasets)}"
+                )
                 if items:
                     super(SLYImageConverter, self).upload_dataset(
                         api, dataset_id, batch_size, entities=items, progress_cb=progress_cb

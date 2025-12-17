@@ -8,12 +8,16 @@ import asyncio
 import copy
 import io
 import json
+import os
+import pickle
 import re
+import tempfile
 import urllib.parse
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
-from datetime import datetime
+from dataclasses import dataclass
+from datetime import datetime, timezone
 from functools import partial
 from math import ceil
 from pathlib import Path
@@ -51,15 +55,29 @@ from supervisely._utils import (
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.tag import Tag
 from supervisely.annotation.tag_meta import TagApplicableTo, TagMeta, TagValueType
+from supervisely.api.constants import DOWNLOAD_BATCH_SIZE
+from supervisely.api.dataset_api import DatasetInfo
+from supervisely.api.entities_collection_api import (
+    AiSearchThresholdDirection,
+    CollectionTypeFilter,
+)
 from supervisely.api.entity_annotation.figure_api import FigureApi
 from supervisely.api.entity_annotation.tag_api import TagApi
+from supervisely.api.file_api import FileInfo
 from supervisely.api.module_api import (
     ApiField,
     RemoveableBulkModuleApi,
     _get_single_item,
 )
 from supervisely.imaging import image as sly_image
+from supervisely.io.env import (
+    add_uploaded_ids_to_env,
+    app_categories,
+    increment_upload_count,
+)
 from supervisely.io.fs import (
+    OFFSETS_PKL_BATCH_SIZE,
+    OFFSETS_PKL_SUFFIX,
     clean_dir,
     ensure_base_path,
     get_file_ext,
@@ -72,6 +90,7 @@ from supervisely.io.fs import (
 )
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import (
+    _BLOB_TAG_NAME,
     _MULTISPECTRAL_TAG_NAME,
     _MULTIVIEW_TAG_NAME,
 )
@@ -79,6 +98,181 @@ from supervisely.sly_logger import logger
 
 SUPPORTED_CONFLICT_RESOLUTIONS = ["skip", "rename", "replace"]
 API_DEFAULT_PER_PAGE = 500
+
+
+@dataclass
+class BlobImageInfo:
+    """
+    Object with image parameters that describes image in blob file.
+
+    :Example:
+
+     .. code-block:: python
+
+        BlobImageInfo(
+            name='IMG_3861.jpeg',
+            offset_start=0,
+            offset_end=148388,
+        )
+    """
+
+    name: str
+    offset_start: int
+    offset_end: int
+
+    @staticmethod
+    def from_image_info(image_info: ImageInfo) -> BlobImageInfo:
+        return BlobImageInfo(
+            name=image_info.name,
+            offset_start=image_info.offset_start,
+            offset_end=image_info.offset_end,
+        )
+
+    def add_team_file_id(self, team_file_id: int):
+        """
+        Add file ID from Team Files to BlobImageInfo object to extend data imported from offsets file.
+        This data is used to link offsets with blob file that is already uploaded to Supervisely storage.
+        """
+        setattr(self, "team_file_id", team_file_id)
+        return self
+
+    def to_dict(self, team_file_id: int = None) -> Dict:
+        """
+        Create dictionary from BlobImageInfo object that can be used for request to Supervisely API.
+        """
+        return {
+            ApiField.TITLE: self.name,
+            ApiField.TEAM_FILE_ID: team_file_id or getattr(self, "team_file_id", None),
+            ApiField.SOURCE_BLOB: {
+                ApiField.OFFSET_START: self.offset_start,
+                ApiField.OFFSET_END: self.offset_end,
+            },
+        }
+
+    @staticmethod
+    def from_dict(offset_dict: Dict, return_team_file_id: bool = False) -> BlobImageInfo:
+        """
+        Create BlobImageInfo object from dictionary that is returned by Supervisely API.
+
+        :param offset_dict: Dictionary with image offsets.
+        :type offset_dict: Dict
+        :param return_team_file_id: If True, return team file ID.
+                                    Default is False to make size of the object smaller for pickling.
+        :type return_team_file_id: bool
+        :return: BlobImageInfo object.
+        :rtype: BlobImageInfo
+        """
+        blob_info = BlobImageInfo(
+            name=offset_dict[ApiField.TITLE],
+            offset_start=offset_dict[ApiField.SOURCE_BLOB][ApiField.OFFSET_START],
+            offset_end=offset_dict[ApiField.SOURCE_BLOB][ApiField.OFFSET_END],
+        )
+        if return_team_file_id:
+            blob_info.add_team_file_id(offset_dict[ApiField.TEAM_FILE_ID])
+        return blob_info
+
+    @property
+    def offsets_dict(self) -> Dict:
+        return {
+            ApiField.OFFSET_START: self.offset_start,
+            ApiField.OFFSET_END: self.offset_end,
+        }
+
+    @staticmethod
+    def load_from_pickle_generator(
+        file_path: str, batch_size: int = OFFSETS_PKL_BATCH_SIZE
+    ) -> Generator[List["BlobImageInfo"], None, None]:
+        """
+        Load BlobImageInfo objects from a pickle file in batches of specified size.
+        The file should contain a list of BlobImageInfo objects.
+
+        :param file_path: Path to the pickle file containing BlobImageInfo objects.
+        :type file_path: str
+        :param batch_size: Size of each batch. Default is 10000.
+        :type batch_size: int
+        :return: Generator yielding batches of BlobImageInfo objects.
+        :rtype: Generator[List[BlobImageInfo], None, None]
+        """
+        try:
+            current_batch = []
+
+            with open(file_path, "rb") as f:
+                while True:
+                    try:
+                        # Load one pickle object at a time
+                        data = pickle.load(f)
+
+                        if isinstance(data, list):
+                            # More efficient way to process lists
+                            remaining_items = data
+                            while remaining_items:
+                                # Calculate how many more items we need to fill the current batch
+                                items_needed = batch_size - len(current_batch)
+
+                                if items_needed > 0:
+                                    # Take only what we need from the remaining items
+                                    current_batch.extend(remaining_items[:items_needed])
+                                    remaining_items = remaining_items[items_needed:]
+                                else:
+                                    # current_batch is already full or overflowing, don't add more items
+                                    # and proceed directly to yielding the batch
+                                    pass
+
+                                # If we have a full batch, yield it
+                                if len(current_batch) >= batch_size:
+                                    yield current_batch
+                                    current_batch = []
+                        else:
+                            # Handle single item
+                            current_batch.append(data)
+
+                            if len(current_batch) >= batch_size:
+                                yield current_batch
+                                current_batch = []
+
+                    except EOFError:
+                        # End of file reached
+                        break
+                    except Exception as e:
+                        logger.error(f"Error reading pickle data: {str(e)}")
+                        break
+
+            # Yield any remaining items in the final batch
+            if current_batch:
+                yield current_batch
+
+        except Exception as e:
+            logger.error(f"Failed to load BlobImageInfo objects from {file_path}: {str(e)}")
+            yield []
+
+    @staticmethod
+    def dump_to_pickle(
+        offsets: Union[Generator[List[BlobImageInfo]], List[BlobImageInfo]], file_path: str
+    ):
+        """
+        Dump BlobImageInfo objects to a pickle file in batches.
+        To read the data back, use the `load_from_pickle_generator` method.
+
+        :param offsets: Generator yielding batches of BlobImageInfo objects or a list of BlobImageInfo objects.
+        :type offsets: Generator[List[BlobImageInfo]] or List[BlobImageInfo]
+        :param file_path: Path to the pickle file.
+        :type file_path: str
+        """
+
+        try:
+            if isinstance(offsets, Generator):
+                with open(file_path, "ab") as f:
+                    for batch in offsets:
+                        pickle.dump(batch, f)
+            elif isinstance(offsets, list):
+                with open(file_path, "ab") as f:
+                    pickle.dump(offsets, f)
+            else:
+                raise NotImplementedError(
+                    f"Invalid type of 'offsets' parameter for 'dump_offsets' method: {type(offsets)}"
+                )
+        except Exception as e:
+            logger.error(f"Failed to dump BlobImageInfo objects to {file_path}: {str(e)}")
 
 
 class ImageInfo(NamedTuple):
@@ -105,9 +299,13 @@ class ImageInfo(NamedTuple):
             updated_at='2021-03-02T10:04:33.973Z',
             meta={},
             path_original='/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpg',
-            full_storage_url='http://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpg'),
+            full_storage_url='http://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpg'),
             tags=[],
             created_by='admin'
+            related_data_id=None,
+            download_id=None,
+            offset_start=None,
+            offset_end=None,
         )
     """
 
@@ -166,7 +364,7 @@ class ImageInfo(NamedTuple):
     path_original: str
 
     #: :class:`str`: Full storage URL to image. e.g.
-    #: "http://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpg".
+    #: "http://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpg".
     full_storage_url: str
 
     #: :class:`str`: Image :class:`Tags<supervisely.annotation.tag.Tag>` list.
@@ -174,8 +372,36 @@ class ImageInfo(NamedTuple):
     #: 'createdAt': '2021-03-05T14:15:39.923Z', 'updatedAt': '2021-03-05T14:15:39.923Z'}, {...}]".
     tags: List[Dict]
 
-    #: :class:`str`: Id of a user who created the image.
+    #: :class:`str`: ID of a user who created the image.
     created_by: str
+
+    #: :class:`int`: ID of the blob file in Supervisely storage related to the image.
+    related_data_id: Optional[int] = None
+
+    #: :class:`str`: Unique ID of the image that links it to the corresponding blob file in Supervisely storage
+    #: uses for downloading source blob file.
+    download_id: Optional[str] = None
+
+    #: :class:`int`: Bytes offset of the blob file that points to the start of the image data.
+    offset_start: Optional[int] = None
+
+    #: :class:`int`: Bytes offset of the blob file that points to the end of the image data.
+    offset_end: Optional[int] = None
+
+    #: :class:`dict`: Image meta that could have the confidence level of the image in Enntities Collection of type AI Search.
+    ai_search_meta: Optional[dict] = None
+
+    #: :class:`str`: Timestamp of the last update of the embeddings for the image.
+    #: This field is used to track when the embeddings were last updated.
+    #: It is set to None if the embeddings have never been computed for the image.
+    #: Format: "YYYY-MM-DDTHH:MM:SS.sssZ"
+    embeddings_updated_at: Optional[str] = None
+
+    #: :class:`int`: :class:`Dataset<supervisely.project.project.Project>` ID in Supervisely.
+    project_id: int = None
+
+    # DO NOT DELETE THIS COMMENT
+    #! New fields must be added with default values to keep backward compatibility.
 
     @property
     def preview_url(self):
@@ -210,7 +436,7 @@ class ImageApi(RemoveableBulkModuleApi):
         api = sly.Api.from_env()
 
         # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
         image_info = api.image.get_info_by_id(image_id) # api usage example
     """
@@ -247,6 +473,13 @@ class ImageApi(RemoveableBulkModuleApi):
             ApiField.FULL_STORAGE_URL,
             ApiField.TAGS,
             ApiField.CREATED_BY_ID[0][0],
+            ApiField.RELATED_DATA_ID,
+            ApiField.DOWNLOAD_ID,
+            ApiField.OFFSET_START,
+            ApiField.OFFSET_END,
+            ApiField.AI_SEARCH_META,
+            ApiField.EMBEDDINGS_UPDATED_AT,
+            ApiField.PROJECT_ID,
         ]
 
     @staticmethod
@@ -392,6 +625,11 @@ class ImageApi(RemoveableBulkModuleApi):
         only_labelled: Optional[bool] = False,
         fields: Optional[List[str]] = None,
         recursive: Optional[bool] = False,
+        entities_collection_id: Optional[int] = None,
+        ai_search_collection_id: Optional[int] = None,
+        ai_search_threshold: Optional[float] = None,
+        ai_search_threshold_direction: AiSearchThresholdDirection = AiSearchThresholdDirection.ABOVE,
+        extra_fields: Optional[List[str]] = None,
     ) -> List[ImageInfo]:
         """
         List of Images in the given :class:`Dataset<supervisely.project.project.Dataset>`.
@@ -418,6 +656,16 @@ class ImageApi(RemoveableBulkModuleApi):
         :type fields: List[str], optional
         :param recursive: If True, returns all images from dataset recursively (including images in nested datasets).
         :type recursive: bool, optional
+        :param entities_collection_id: :class:`EntitiesCollection` ID of `Default` type to which the images belong.
+        :type entities_collection_id: int, optional
+        :param ai_search_collection_id: :class:`EntitiesCollection` ID of type `AI Search` to which the images belong.
+        :type ai_search_collection_id: int, optional
+        :param ai_search_threshold: Confidence level to filter images in AI Search collection.
+        :type ai_search_threshold: float, optional
+        :param ai_search_threshold_direction: Direction of the confidence level filter. One of {'above' (default), 'below'}.
+        :type ai_search_threshold_direction: str, optional
+        :param extra_fields: List of extra fields to return. If None, returns no extra fields.
+        :type extra_fields: List[str], optional
         :return: Objects with image information from Supervisely.
         :rtype: :class:`List[ImageInfo]<ImageInfo>`
         :Usage example:
@@ -448,7 +696,7 @@ class ImageApi(RemoveableBulkModuleApi):
             #                    updated_at='2021-03-02T10:04:33.973Z',
             #                    meta={},
             #                    path_original='/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpg',
-            #                    full_storage_url='http://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpg'),
+            #                    full_storage_url='http://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpg'),
             #                    tags=[],
             # ImageInfo(id=770916,
             #           name='IMG_1836.jpeg',
@@ -465,7 +713,7 @@ class ImageApi(RemoveableBulkModuleApi):
             #           updated_at='2021-03-02T10:04:33.973Z',
             #           meta={},
             #           path_original='/h5un6l2bnaz1vj8a9qgms4-public/images/original/C/Y/Hq/...jpg',
-            #           full_storage_url='http://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/C/Y/Hq/...jpg'),
+            #           full_storage_url='http://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/C/Y/Hq/...jpg'),
             #           tags=[]
             # ]
         """
@@ -491,8 +739,44 @@ class ImageApi(RemoveableBulkModuleApi):
                     },
                 }
             ]
+        # Handle collection filtering
+        collection_info = None
+        if entities_collection_id is not None and ai_search_collection_id is not None:
+            raise ValueError(
+                "You can use only one of entities_collection_id or ai_search_collection_id"
+            )
+        elif entities_collection_id is not None:
+            collection_info = (CollectionTypeFilter.DEFAULT, entities_collection_id)
+        elif ai_search_collection_id is not None:
+            collection_info = (CollectionTypeFilter.AI_SEARCH, ai_search_collection_id)
+
+        if collection_info is not None:
+            collection_type, collection_id = collection_info
+            if ApiField.FILTERS not in data:
+                data[ApiField.FILTERS] = []
+
+            collection_filter_data = {
+                ApiField.COLLECTION_ID: collection_id,
+                ApiField.INCLUDE: True,
+            }
+            if ai_search_threshold is not None:
+                if collection_type != CollectionTypeFilter.AI_SEARCH:
+                    raise ValueError(
+                        "ai_search_threshold is only available for AI Search collection"
+                    )
+                collection_filter_data[ApiField.THRESHOLD] = ai_search_threshold
+                collection_filter_data[ApiField.THRESHOLD_DIRECTION] = ai_search_threshold_direction
+            data[ApiField.FILTERS].append(
+                {
+                    ApiField.TYPE: collection_type,
+                    ApiField.DATA: collection_filter_data,
+                }
+            )
+
         if fields is not None:
             data[ApiField.FIELDS] = fields
+        if extra_fields is not None:
+            data[ApiField.EXTRA_FIELDS] = extra_fields
         return self.get_list_all_pages(
             "images.list",
             data=data,
@@ -650,6 +934,7 @@ class ImageApi(RemoveableBulkModuleApi):
         ids: List[int],
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         force_metadata_for_links=True,
+        fields: Optional[List[str]] = None,
     ) -> List[ImageInfo]:
         """
         Get Images information by ID.
@@ -688,13 +973,16 @@ class ImageApi(RemoveableBulkModuleApi):
             dataset_id = image_info.dataset_id
             for batch in batched(ids):
                 filters = [{"field": ApiField.ID, "operator": "in", "value": batch}]
+                data = {
+                    ApiField.DATASET_ID: dataset_id,
+                    ApiField.FILTER: filters,
+                    ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
+                }
+                if fields is not None:
+                    data[ApiField.FIELDS] = fields
                 temp_results = self.get_list_all_pages(
                     "images.list",
-                    {
-                        ApiField.DATASET_ID: dataset_id,
-                        ApiField.FILTER: filters,
-                        ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
-                    },
+                    data,
                 )
                 results.extend(temp_results)
                 if progress_cb is not None and len(temp_results) > 0:
@@ -807,7 +1095,14 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         Get image id and it content from given dataset and list of images ids.
         """
-        for batch_ids in batched(ids):
+        if DOWNLOAD_BATCH_SIZE is not None and isinstance(DOWNLOAD_BATCH_SIZE, int):
+            batches = batched(ids, DOWNLOAD_BATCH_SIZE)
+            logger.debug(
+                f"Batch size for func 'ImageApi._download_batch' changed to: {DOWNLOAD_BATCH_SIZE}"
+            )
+        else:
+            batches = batched(ids)
+        for batch_ids in batches:
             response = self._api.post(
                 "images.bulk.download",
                 {ApiField.DATASET_ID: dataset_id, ApiField.IMAGE_IDS: batch_ids},
@@ -913,7 +1208,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
             img_bytes = api.image.download_bytes(dataset_id, [770918])
             print(img_bytes)
-            # Output: [b'\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\...]
+            # Output: [b'\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\ ...']
         """
         if len(ids) == 0:
             return []
@@ -987,7 +1282,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type progress_cb: tqdm or callable, optional
         :return: List of existing hashes
         :rtype: :class:`List[str]`
-        :Usage example: Checkout detailed example `here <https://app.supervise.ly/explore/notebooks/guide-10-check-existing-images-and-upload-only-the-new-ones-1545/overview>`_ (you must be logged into your Supervisely account)
+        :Usage example: Checkout detailed example `here <https://app.supervisely.com/explore/notebooks/guide-10-check-existing-images-and-upload-only-the-new-ones-1545/overview>`_ (you must be logged into your Supervisely account)
 
          .. code-block:: python
 
@@ -1653,7 +1948,7 @@ class ImageApi(RemoveableBulkModuleApi):
             #         "1": "meta_example"
             #     },
             #     "/h5un6l2bnaz1vj8a9qgms4-public/images/original/P/a/kn/W2mzMQg435d6wG0.jpg",
-            #     "https://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/P/a/kn/W2mzMQg435hiHJAPgMU.jpg"
+            #     "https://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/P/a/kn/W2mzMQg435hiHJAPgMU.jpg"
             # ]
 
             # Add custom sort parameter for image
@@ -1818,7 +2113,7 @@ class ImageApi(RemoveableBulkModuleApi):
             #         "1": "meta_example"
             #     },
             #     "/h5un6l2bnaz1vj8a9qgms4-public/images/original/P/a/kn/W2mzMQg435d6wG0AJGJTOsL1FqMUNOPqu4VdzFAN36LqtGwBIE4AmLOQ1BAxuIyB0bHJAPgMU.jpg",
-            #     "https://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/P/a/kn/iEaDEkejnfnb1Tz56ka0hiHJAPgMU.jpg"
+            #     "https://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/P/a/kn/iEaDEkejnfnb1Tz56ka0hiHJAPgMU.jpg"
             # ]
 
             # Add custom sort parameter for image
@@ -1841,7 +2136,7 @@ class ImageApi(RemoveableBulkModuleApi):
         metas: Optional[List[Dict]] = None,
         batch_size: Optional[int] = 50,
         force_metadata_for_links: bool = True,
-        infos: List[ImageInfo] = None,
+        infos: List[ImageInfo] = None,  # deprecated
         skip_validation: Optional[bool] = False,
         conflict_resolution: Optional[Literal["rename", "skip", "replace"]] = None,
     ) -> List[ImageInfo]:
@@ -1866,7 +2161,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type batch_size: int, optional
         :param force_metadata_for_links: Calculate metadata for links. If False, metadata will be empty.
         :type force_metadata_for_links: bool, optional
-        :param infos: List of ImageInfo objects. If None, will be requested from server.
+        :param infos: DEPRECATED: This parameter is not used.
         :type infos: List[ImageInfo], optional
         :param skip_validation: Skips validation for images, can result in invalid images being uploaded.
         :type skip_validation: bool, optional
@@ -1913,59 +2208,292 @@ class ImageApi(RemoveableBulkModuleApi):
         if metas is None:
             metas = [{}] * len(names)
 
-        if infos is None:
-            infos = self.get_info_by_id_batch(
-                ids, force_metadata_for_links=force_metadata_for_links
+        return self._upload_bulk_add(
+            lambda item: (ApiField.IMAGE_ID, item),
+            dataset_id,
+            names,
+            ids,
+            progress_cb,
+            metas=metas,
+            batch_size=batch_size,
+            force_metadata_for_links=force_metadata_for_links,
+            skip_validation=skip_validation,
+            conflict_resolution=conflict_resolution,
+        )
+
+    def upload_by_offsets(
+        self,
+        dataset: Union[DatasetInfo, int],
+        team_file_id: int,
+        names: List[str] = None,
+        offsets: List[dict] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        metas: Optional[List[Dict]] = None,
+        batch_size: Optional[int] = 50,
+        skip_validation: Optional[bool] = False,
+        conflict_resolution: Optional[Literal["rename", "skip", "replace"]] = None,
+        validate_meta: Optional[bool] = False,
+        use_strict_validation: Optional[bool] = False,
+        use_caching_for_validation: Optional[bool] = False,
+    ) -> List[ImageInfo]:
+        """
+        Upload images from blob file in Team Files by offsets to Dataset with prepared names.
+        To upload large number of images, use :func:`api.image.upload_by_offsets_generator` instead.
+
+        If you include `metas` during the upload, you can add a custom sort parameter for images.
+        To achieve this, use the context manager :func:`api.image.add_custom_sort` with the desired key name from the meta dictionary to be used for sorting.
+
+        :param dataset: Dataset ID or DatasetInfo object in Supervisely.
+        :type dataset: Union[DatasetInfo,int]
+        :param team_file_id: ID of the binary file in the team storage.
+        :type team_file_id: int
+        :param names: Images names with extension.
+
+                      REQUIRED if there is no file containing offsets in the team storage at the same level as the TAR file.
+                      Offset file must be named as the TAR file with the `_offsets.pkl` suffix and must be represented in pickle format.
+                      Example: `tar_name_offsets.pkl`
+        :type names: List[str], optional
+        :param offsets: List of dictionaries with file offsets that define the range of bytes representing the image in the binary.
+                        Example: `[{"offsetStart": 0, "offsetEnd": 100}, {"offsetStart": 101, "offsetEnd": 200}]`.
+
+                        REQUIRED if there is no file containing offsets in the team storage at the same level as the TAR file.
+                        Offset file must be named as the TAR file with the `_offsets.pkl` suffix and must be represented in pickle format.
+                        Example: `tar_name_offsets.pkl`
+        :type offsets: List[dict], optional
+        :param progress_cb: Function for tracking the progress of uploading.
+        :type progress_cb: tqdm or callable, optional
+        :param metas: Custom additional image infos that contain images technical and/or user-generated data as list of separate dicts.
+        :type metas: List[dict], optional
+        :param batch_size: Number of images to upload in one batch.
+        :type batch_size: int, optional
+        :param skip_validation: Skips validation for images, can result in invalid images being uploaded.
+        :type skip_validation: bool, optional
+        :param conflict_resolution: The strategy to resolve upload conflicts. 'Replace' option will replace the existing images in the dataset with the new images. The images that are being deleted are logged. 'Skip' option will ignore the upload of new images that would result in a conflict. An original image's ImageInfo list will be returned instead. 'Rename' option will rename the new images to prevent any conflict.
+        :type conflict_resolution: Optional[Literal["rename", "skip", "replace"]]
+        :param validate_meta: If True, validates provided meta with saved JSON schema.
+        :type validate_meta: bool, optional
+        :param use_strict_validation: If True, uses strict validation.
+        :type use_strict_validation: bool, optional
+        :param use_caching_for_validation: If True, uses caching for validation.
+        :type use_caching_for_validation: bool, optional
+        :return: List with information about Images. See :class:`info_sequence<info_sequence>`
+        :rtype: :class:`List[ImageInfo]`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            from supervisely.api.module_api import ApiField
+
+
+            server_address = 'https://app.supervisely.com'
+            api_token = 'Your Supervisely API Token'
+            api = sly.Api(server_address, api_token)
+
+            dataset_id = 452984
+            names = ['lemon_1.jpg', 'lemon_1.jpg']
+            offsets = [
+                {ApiField.OFFSET_START: 0, ApiField.OFFSET_END: 100},
+                {ApiField.OFFSET_START: 101, ApiField.OFFSET_END: 200}
+            ]
+            team_file_id = 123456
+            new_imgs_info = api.image.upload_by_offsets(dataset_id, team_file_id, names, offsets,  metas)
+
+            # Output example:
+            #   ImageInfo(id=136281,
+            #             name='lemon_1.jpg',
+            #             link=None,
+            #             hash=None,
+            #             mime=None,
+            #             ext=None,
+            #             size=100,
+            #             width=None,
+            #             height=None,
+            #             labels_count=0,
+            #             dataset_id=452984,
+            #             created_at='2025-03-21T18:30:08.551Z',
+            #             updated_at='2025-03-21T18:30:08.551Z',
+            #             meta={},
+            #             path_original='/h5un6l2.../eyJ0eXBlIjoic291cmNlX2Jsb2I...',
+            #             full_storage_url='http://storage:port/h5un6l2...,
+            #             tags=[],
+            #             created_by_id=user),
+            #   ImageInfo(...)
+        """
+
+        if isinstance(dataset, int):
+            dataset = self._api.dataset.get_info_by_id(dataset)
+
+        items = []
+        if len(names) != len(offsets):
+            raise ValueError(
+                f"The number of images in the offset file does not match the number of offsets: {len(names)} != {len(offsets)}"
             )
+        for offset in offsets:
+            if not isinstance(offset, dict):
+                raise ValueError("Offset should be a dictionary")
+            if ApiField.OFFSET_START not in offset or ApiField.OFFSET_END not in offset:
+                raise ValueError(
+                    f"Offset should contain '{ApiField.OFFSET_START}' and '{ApiField.OFFSET_END}' keys"
+                )
 
-        # prev implementation
-        # hashes = [info.hash for info in infos]
-        # return self.upload_hashes(dataset_id, names, hashes, progress_cb, metas=metas)
+            items.append({ApiField.TEAM_FILE_ID: team_file_id, ApiField.SOURCE_BLOB: offset})
 
-        links, links_names, links_order, links_metas = [], [], [], []
-        hashes, hashes_names, hashes_order, hashes_metas = [], [], [], []
-        for idx, (name, info, meta) in enumerate(zip(names, infos, metas)):
-            if info.link is not None:
-                links.append(info.link)
-                links_names.append(name)
-                links_order.append(idx)
-                links_metas.append(meta)
-            else:
-                hashes.append(info.hash)
-                hashes_names.append(name)
-                hashes_order.append(idx)
-                hashes_metas.append(meta)
+        custom_data = self._api.project.get_custom_data(dataset.project_id)
+        custom_data[_BLOB_TAG_NAME] = True
+        self._api.project.update_custom_data(dataset.project_id, custom_data)
 
-        result = [None] * len(names)
-        if len(links) > 0:
-            res_infos_links = self.upload_links(
-                dataset_id,
-                links_names,
-                links,
-                progress_cb,
-                metas=links_metas,
+        return self._upload_bulk_add(
+            func_item_to_kv=lambda image_data, item: {**image_data, **item},
+            dataset_id=dataset.id,
+            names=names,
+            items=items,
+            progress_cb=progress_cb,
+            metas=metas,
+            batch_size=batch_size,
+            skip_validation=skip_validation,
+            conflict_resolution=conflict_resolution,
+            validate_meta=validate_meta,
+            use_strict_validation=use_strict_validation,
+            use_caching_for_validation=use_caching_for_validation,
+        )
+
+    def upload_by_offsets_generator(
+        self,
+        dataset: Union[DatasetInfo, int],
+        team_file_id: int,
+        offsets_file_path: Optional[str] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        metas: Optional[Dict] = None,
+        batch_size: Optional[int] = 10000,
+        skip_validation: Optional[bool] = False,
+        conflict_resolution: Optional[Literal["rename", "skip", "replace"]] = None,
+        validate_meta: Optional[bool] = False,
+        use_strict_validation: Optional[bool] = False,
+        use_caching_for_validation: Optional[bool] = False,
+    ) -> Generator[ImageInfo, None, None]:
+        """
+        Upload images from blob file in Team Files by offsets to Dataset.
+        Generates information about uploaded images in batches of max size 10000.
+        File names will be taken from the offset file.
+
+        This method is better suited for large datasets, as it does not require resulting all the images into memory at once.
+
+        If you include `metas` during the upload, you can add a custom sort parameter for images.
+        To achieve this, use the context manager :func:`api.image.add_custom_sort` with the desired key name from the meta dictionary to be used for sorting.
+
+        :param dataset: Dataset ID or DatasetInfo object in Supervisely.
+        :type dataset: Union[DatasetInfo,int]
+        :param team_file_id: ID of the binary file in the team storage.
+        :type team_file_id: int
+        :param offsets_file_path: Local path to the file with blob images offsets.
+        :type offsets_file_path: str, optional
+        :param progress_cb: Function for tracking the progress of uploading.
+        :type progress_cb: tqdm or callable, optional
+        :param metas: Custom additional image infos as dict where:
+                     `keys` - image names,
+                     `values` - image technical and/or user-generated data dicts
+        :type metas: Dict, optional
+        :param batch_size: Number of images to upload in one batch.
+        :type batch_size: int, optional
+        :param skip_validation: Skips validation for images, can result in invalid images being uploaded.
+        :type skip_validation: bool, optional
+        :param conflict_resolution: The strategy to resolve upload conflicts. 'Replace' option will replace the existing images in the dataset with the new images. The images that are being deleted are logged. 'Skip' option will ignore the upload of new images that would result in a conflict. An original image's ImageInfo list will be returned instead. 'Rename' option will rename the new images to prevent any conflict.
+        :type conflict_resolution: Optional[Literal["rename", "skip", "replace"]]
+        :param validate_meta: If True, validates provided meta with saved JSON schema.
+        :type validate_meta: bool, optional
+        :param use_strict_validation: If True, uses strict validation.
+        :type use_strict_validation: bool, optional
+        :param use_caching_for_validation: If True, uses caching for validation.
+        :type use_caching_for_validation: bool, optional
+        :return: Generator with information about Images. See :class:`ImageInfo`
+        :rtype: :class:`Generator[ImageInfo, None, None]`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            from supervisely.api.module_api import ApiField
+
+
+            server_address = 'https://app.supervisely.com'
+            api_token = 'Your Supervisely API Token'
+            api = sly.Api(server_address, api_token)
+
+            dataset_id = 452984
+            team_file_id = 123456
+            img_infos = []
+            new_imgs_info_generator = api.image.upload_by_offsets_generator(dataset_id, team_file_id)
+            for img_infos_batch in new_imgs_info_generator:
+                img_infos.extend(img_infos_batch)
+        """
+
+        if isinstance(dataset, int):
+            dataset = self._api.dataset.get_info_by_id(dataset)
+
+        if offsets_file_path is None:
+            offsets_file_path = self.get_blob_offsets_file(team_file_id)
+        blob_image_infos_generator = BlobImageInfo.load_from_pickle_generator(
+            offsets_file_path, OFFSETS_PKL_BATCH_SIZE
+        )
+
+        for batch in blob_image_infos_generator:
+            names = [item.name for item in batch]
+            metas_batch = (
+                [metas[name] for name in names] if metas is not None else [{}] * len(names)
+            )
+            items = [
+                {ApiField.TEAM_FILE_ID: team_file_id, ApiField.SOURCE_BLOB: item.offsets_dict}
+                for item in batch
+            ]
+            yield self._upload_bulk_add(
+                func_item_to_kv=lambda image_data, item: {**image_data, **item},
+                dataset_id=dataset.id,
+                names=names,
+                items=items,
+                progress_cb=progress_cb,
+                metas=metas_batch,
                 batch_size=batch_size,
-                force_metadata_for_links=force_metadata_for_links,
                 skip_validation=skip_validation,
                 conflict_resolution=conflict_resolution,
+                validate_meta=validate_meta,
+                use_strict_validation=use_strict_validation,
+                use_caching_for_validation=use_caching_for_validation,
             )
-            for info, pos in zip(res_infos_links, links_order):
-                result[pos] = info
+        custom_data = self._api.project.get_custom_data(dataset.project_id)
+        custom_data[_BLOB_TAG_NAME] = True
+        self._api.project.update_custom_data(dataset.project_id, custom_data)
 
-        if len(hashes) > 0:
-            res_infos_hashes = self.upload_hashes(
-                dataset_id,
-                hashes_names,
-                hashes,
-                progress_cb,
-                metas=hashes_metas,
-                batch_size=batch_size,
-                skip_validation=skip_validation,
-                conflict_resolution=conflict_resolution,
-            )
-            for info, pos in zip(res_infos_hashes, hashes_order):
-                result[pos] = info
-        return result
+    def get_blob_offsets_file(
+        self,
+        team_file_id: int,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+    ) -> str:
+        """
+        Get file with blob images offsets from the team storage.
+
+        :param team_file_id: ID of the binary file in the team storage.
+        :type team_file_id: int
+        :param progress_cb: Function for tracking the progress of downloading.
+        :type progress_cb: tqdm or callable, optional
+        :return: Path to the file with blob images offsets in temporary directory.
+        :rtype: str
+
+        """
+        file_info = self._api.file.get_info_by_id(team_file_id)
+        if file_info is None:
+            raise ValueError(f"Blob file ID: {team_file_id} with images not found")
+        offset_file_name = Path(file_info.path).stem + OFFSETS_PKL_SUFFIX
+        offset_file_path = os.path.join(Path(file_info.path).parent, offset_file_name)
+        temp_dir = tempfile.mkdtemp()
+        local_offset_file_path = os.path.join(temp_dir, offset_file_name)
+        self._api.file.download(
+            team_id=file_info.team_id,
+            remote_path=offset_file_path,
+            local_save_path=local_offset_file_path,
+            progress_cb=progress_cb,
+        )
+        return local_offset_file_path
 
     def _upload_bulk_add(
         self,
@@ -2036,8 +2564,17 @@ class ImageApi(RemoveableBulkModuleApi):
         def _pack_for_request(names: List[str], items: List[Any], metas: List[Dict]) -> List[Any]:
             images = []
             for name, item, meta in zip(names, items, metas):
-                item_tuple = func_item_to_kv(item)
-                image_data = {ApiField.TITLE: name, item_tuple[0]: item_tuple[1]}
+                image_data = {ApiField.TITLE: name}
+                # Check if the item is a data format for upload by offset
+                if (
+                    isinstance(item, dict)
+                    and ApiField.TEAM_FILE_ID in item
+                    and ApiField.SOURCE_BLOB in item
+                ):
+                    image_data = func_item_to_kv(image_data, item)
+                else:
+                    item_tuple = func_item_to_kv(item)
+                    image_data[item_tuple[0]] = item_tuple[1]
                 if hasattr(self, "sort_by") and self.sort_by is not None:
                     meta = self._add_custom_sort(meta, name)
                 if len(meta) != 0 and type(meta) == dict:
@@ -2085,6 +2622,16 @@ class ImageApi(RemoveableBulkModuleApi):
                             info_json_copy[ApiField.EXT] = info_json[ApiField.MIME].split("/")[1]
                         # results.append(self.InfoType(*[info_json_copy[field_name] for field_name in self.info_sequence()]))
                         results.append(self._convert_json_info(info_json_copy))
+
+                    try:
+                        if "import" in app_categories():
+                            ids = [info.id for info in results[-len(batch_names) :]]
+                            if len(ids) > 0:
+                                increment_upload_count(dataset_id, len(ids))
+                                add_uploaded_ids_to_env(dataset_id, ids)
+                    except:
+                        pass
+
                     break
                 except HTTPError as e:
                     error_details = e.response.json().get("details", {})
@@ -2245,7 +2792,7 @@ class ImageApi(RemoveableBulkModuleApi):
         if len(ids) == 0:
             return
 
-        existing_images = self.get_list(dst_dataset_id)
+        existing_images = self.get_list(dst_dataset_id, force_metadata_for_links=False)
         existing_names = {image.name for image in existing_images}
 
         ids_info = self.get_info_by_id_batch(ids, force_metadata_for_links=False)
@@ -2271,7 +2818,8 @@ class ImageApi(RemoveableBulkModuleApi):
                     "names intersection"
                 )
 
-        new_images = self.upload_ids(dst_dataset_id, new_names, ids, progress_cb)
+        img_metas = [info.meta or {} for info in ids_info]
+        new_images = self.upload_ids(dst_dataset_id, new_names, ids, progress_cb, metas=img_metas)
         new_ids = [new_image.id for new_image in new_images]
 
         if with_annotations:
@@ -2356,12 +2904,14 @@ class ImageApi(RemoveableBulkModuleApi):
                 raise RuntimeError("len(dst_names) != len(src_image_infos)")
             new_names = dst_names
 
+        img_metas = [info.meta or {} for info in src_image_infos]
         src_ids = [info.id for info in src_image_infos]
         new_images = self.upload_ids(
             dst_dataset_id,
             new_names,
             src_ids,
             progress_cb,
+            metas=img_metas,
             batch_size=batch_size,
             force_metadata_for_links=False,
             infos=src_image_infos,
@@ -2619,7 +3169,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
             img_url = api.image.url(team_id, workspace_id, project_id, dataset_id, image_id)
             print(url)
-            # Output: https://app.supervise.ly/app/images/16087/23821/53939/254737#image-121236920
+            # Output: https://app.supervisely.com/app/images/16087/23821/53939/254737#image-121236920
         """
         result = urllib.parse.urljoin(
             self._api.server_address,
@@ -3120,6 +3670,84 @@ class ImageApi(RemoveableBulkModuleApi):
             self._api.post("image-tags.bulk.add-to-image", data)
             if progress_cb is not None:
                 progress_cb(len(batch_ids))
+
+    def add_tags_batch(
+        self,
+        image_ids: List[int],
+        tag_ids: Union[int, List[int]],
+        values: Optional[Union[str, int, List[Union[str, int, None]]]] = None,
+        log_progress: bool = False,
+        batch_size: Optional[int] = 100,
+        tag_metas: Optional[Union[TagMeta, List[TagMeta]]] = None,
+    ) -> List[int]:
+        """
+        Add tag with given ID to Images by IDs with different values.
+
+        :param image_ids: List of Images IDs in Supervisely.
+        :type image_ids: List[int]
+        :param tag_ids: Tag IDs in Supervisely.
+        :type tag_ids: int or List[int]
+        :param values: List of tag values for each image or single value for all images.
+        :type values: List[str] or List[int] or str or int, optional
+        :param log_progress: If True, will log progress.
+        :type log_progress: bool, optional
+        :param batch_size: Batch size
+        :type batch_size: int, optional
+        :param tag_metas: Tag Metas. Needed for values validation, omit to skip validation
+        :type tag_metas: TagMeta or List[TagMeta], optional
+        :return: List of tags IDs.
+        :rtype: List[int]
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+            image_ids = [2389126, 2389127]
+            tag_ids = 277083
+            values = ['value1', 'value2']
+            api.image.add_tags_batch(image_ids, tag_ids, values)
+        """
+        if len(image_ids) == 0:
+            return []
+
+        if isinstance(tag_ids, int):
+            tag_ids = [tag_ids] * len(image_ids)
+
+        if isinstance(tag_metas, TagMeta):
+            tag_metas = [tag_metas] * len(image_ids)
+
+        if values is None:
+            values = [None] * len(image_ids)
+        elif isinstance(values, (str, int)):
+            values = [values] * len(image_ids)
+
+        if len(values) != len(image_ids):
+            raise ValueError("Length of image_ids and values should be the same")
+
+        if len(tag_ids) != len(image_ids):
+            raise ValueError("Length of image_ids and tag_ids should be the same")
+
+        if tag_metas and len(tag_metas) != len(image_ids):
+            raise ValueError("Length of image_ids and tag_metas should be the same")
+
+        if tag_metas:
+            for tag_meta, tag_id, value in zip(tag_metas, tag_ids, values):
+                if not (tag_meta.sly_id == tag_id):
+                    raise ValueError(f"{tag_meta.name = } and {tag_id = } should be same")
+                if not tag_meta.is_valid_value(value):
+                    raise ValueError(f"{tag_meta.name = } can not have value {value = }")
+
+        project_id = self.get_project_id(image_ids[0])
+        data = [
+            {ApiField.ENTITY_ID: image_id, ApiField.TAG_ID: tag_id, ApiField.VALUE: value}
+            for image_id, tag_id, value in zip(image_ids, tag_ids, values)
+        ]
+
+        return self.tag.add_to_entities_json(project_id, data, batch_size, log_progress)
 
     def update_tag_value(self, tag_id: int, value: Union[str, float]) -> Dict:
         """
@@ -3852,11 +4480,14 @@ class ImageApi(RemoveableBulkModuleApi):
 
     def set_remote(self, images: List[int], links: List[str]):
         """
-        This method helps to change local source to remote for images without re-uploading them as new.
+        Updates the source of existing images by setting new remote links.
+        This method is used when an image was initially uploaded as a file or added via a link,
+        but later it was decided to change its location (e.g., moved to another storage or re-uploaded elsewhere).
+        By updating the link, the image source can be redirected to the new location.
 
         :param images: List of image ids.
         :type images: List[int]
-        :param links: List of remote links.
+        :param links: List of new remote links.
         :type links: List[str]
         :return: json-encoded content of a response.
 
@@ -3864,17 +4495,17 @@ class ImageApi(RemoveableBulkModuleApi):
 
             .. code-block:: python
 
-                    import supervisely as sly
+                import supervisely as sly
 
-                    api = sly.Api.from_env()
+                api = sly.Api.from_env()
 
-                    images = [123, 124, 125]
-                    links = [
-                        "s3://bucket/lemons/ds1/img/IMG_444.jpeg",
-                        "s3://bucket/lemons/ds1/img/IMG_445.jpeg",
-                        "s3://bucket/lemons/ds1/img/IMG_446.jpeg",
-                    ]
-                    result = api.image.set_remote(images, links)
+                images = [123, 124, 125]
+                links = [
+                    "s3://bucket/lemons/ds1/img/IMG_444.jpeg",
+                    "s3://bucket/lemons/ds1/img/IMG_445.jpeg",
+                    "s3://bucket/lemons/ds1/img/IMG_446.jpeg",
+                ]
+                result = api.image.set_remote(images, links)
         """
 
         if len(images) == 0:
@@ -4612,3 +5243,350 @@ class ImageApi(RemoveableBulkModuleApi):
         meta_copy = copy.deepcopy(meta)
         meta_copy[ApiField.CUSTOM_SORT] = custom_sort
         return meta_copy
+
+    def download_blob_file(
+        self,
+        project_id: int,
+        download_id: str,
+        path: Optional[str] = None,
+        log_progress: bool = True,
+        chunk_size: Optional[int] = None,
+    ) -> Optional[bytes]:
+        """
+        Downloads blob file from Supervisely storage by download ID of any Image that belongs to this file.
+
+        :param project_id: Project ID in Supervisely.
+        :type project_id: int
+        :param download_id: Download ID of any Image that belongs to the blob file in Supervisely storage.
+        :type download_id: str
+        :param path: Path to save the blob file. If None, returns blob file content as bytes.
+        :type path: str, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: tqdm or callable, optional
+        :param chunk_size: Size of chunk for streaming. Default is 8 MB.
+        :type chunk_size: int, optional
+        :return: Blob file content if path is None, otherwise None.
+        :rtype: bytes or None
+
+        :Usage example:
+
+         .. code-block:: python
+
+
+            api = sly.Api.from_env()
+
+
+            image_id = 6789
+            image_info = api.image.get_info_by_id(image_id)
+            project_id = api.dataset.get_info_by_id(image_info.dataset_id).project_id
+
+            # Download and save to file
+            api.image.download_blob_file(project_id, image_info.download_id, "/path/to/save/archive.tar")
+
+            # Get archive as bytes
+            archive_bytes = api.image.download_blob_file(project_id, image_info.download_id)
+        """
+        if chunk_size is None:
+            chunk_size = 8 * 1024 * 1024
+
+        response = self._api.post(
+            "images.data.download",
+            {ApiField.PROJECT_ID: project_id, ApiField.DOWNLOAD_ID: download_id},
+            stream=True,
+        )
+
+        if log_progress:
+            total_size = int(response.headers.get("Content-Length", 0))
+            progress_cb = tqdm(
+                total=total_size,
+                unit="B",
+                unit_scale=True,
+                desc="Downloading images blob file",
+                leave=True,
+            )
+        if path is not None:
+            ensure_base_path(path)
+            with open(path, "wb") as fd:
+                for chunk in response.iter_content(chunk_size=chunk_size):
+                    fd.write(chunk)
+                    if log_progress:
+                        progress_cb.update(len(chunk))
+            return None
+        else:
+            content = response.content
+            if log_progress:
+                progress_cb.update(len(content))
+            return content
+
+    def upload_blob_images(
+        self,
+        dataset: Union[DatasetInfo, int],
+        blob_file: Union[FileInfo, str],
+        metas: Optional[List[Dict[str, Any]]] = None,
+        change_name_if_conflict: bool = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        return_image_infos_generator: bool = False,
+    ) -> Union[Generator[ImageInfo, None], None]:
+        """
+        Uploads images from blob file in Team Files to dataset.
+
+        IMPORTANT: File with image offsets should be in the same directory as the blob file.
+        This file should be named as the blob file but with the suffix `_offsets.pkl`.
+        It must be a Pickle file with the BlobImageInfos that define the range of bytes representing the image in the binary.
+        To prepare the offsets file, use the `supervisely.fs.save_blob_offsets_pkl` function.
+
+        :param dataset: Dataset in Supervisely. Can be DatasetInfo object or dataset ID.
+                        It is recommended to use DatasetInfo object to avoid additional API requests.
+        :type dataset: Union[DatasetInfo, int]
+        :param blob_file: Blob file in Team Files. Can be FileInfo object or path to blob file.
+                        It is recommended to use FileInfo object to avoid additional API requests.
+        :type blob_file: Union[FileInfo, str]
+        :param metas: List of metas for images.
+        :type metas: Optional[List[Dict[str, Any]], optional
+        :param change_name_if_conflict: If True adds suffix to the end of Image name when Dataset already contains an Image with identical name, If False and images with the identical names already exist in Dataset skips them.
+        :type change_name_if_conflict: bool, optional
+        :param progress_cb: Function for tracking upload progress. Tracks the count of processed items.
+        :type progress_cb: Optional[Union[tqdm, Callable]]
+        :param return_image_infos_generator: If True, returns generator of ImageInfo objects. Otherwise, returns None.
+        :type return_image_infos_generator: bool, optional
+
+        :return: Generator of ImageInfo objects if return_image_infos_generator is True, otherwise None.
+        :rtype: Union[Generator[ImageInfo, None], None]
+
+
+        """
+        if isinstance(dataset, int):
+            dataset_id = dataset
+            dataset_info = self._api.dataset.get_info_by_id(dataset_id)
+        else:
+            dataset_id = dataset.id
+            dataset_info = dataset
+
+        if isinstance(blob_file, str):
+            team_file_info = self._api.file.get_info_by_path(dataset_info.team_id, blob_file)
+        else:
+            team_file_info = blob_file
+
+        image_infos_generator = self.upload_by_offsets_generator(
+            dataset=dataset_info,
+            team_file_id=team_file_info.id,
+            progress_cb=progress_cb,
+            metas=metas,
+            conflict_resolution="rename" if change_name_if_conflict else "skip",
+        )
+        if return_image_infos_generator:
+            return image_infos_generator
+        else:
+            for _ in image_infos_generator:
+                pass
+
+    async def download_blob_file_async(
+        self,
+        project_id: int,
+        download_id: str,
+        path: str,
+        semaphore: Optional[asyncio.Semaphore] = None,
+        log_progress: bool = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+    ):
+        """
+        Downloads blob file from Supervisely storage by download ID asynchronously.
+
+        :param project_id: Project ID in Supervisely.
+        :type project_id: int
+        :param download_id: Download ID of any Image that belongs to the blob file in Supervisely storage.
+        :type download_id: str
+        :param path: Path to save the blob file.
+        :type path: str
+        :param semaphore: Semaphore for limiting the number of simultaneous downloads.
+        :type semaphore: asyncio.Semaphore, optional
+        :param log_progress: If True, shows progress bar.
+        :type log_progress: bool, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: tqdm or callable, optional
+        """
+        api_method_name = "images.data.download"
+
+        if semaphore is None:
+            semaphore = self._api.get_default_semaphore()
+
+        async with semaphore:
+            ensure_base_path(path)
+
+            if log_progress:
+                response = self._api.get(
+                    api_method_name,
+                    {ApiField.PROJECT_ID: project_id, ApiField.DOWNLOAD_ID: download_id},
+                    stream=True,
+                )
+                total_size = int(response.headers.get("Content-Length", 0))
+                response.close()
+                name = os.path.basename(path)
+                if progress_cb is None:
+                    progress_cb = tqdm(
+                        total=total_size,
+                        unit="B",
+                        unit_scale=True,
+                        desc=f"Downloading images blob file {name}",
+                        leave=True,
+                    )
+
+            async with aiofiles.open(path, "wb") as fd:
+                async for chunk, _ in self._api.stream_async(
+                    method=api_method_name,
+                    method_type="POST",
+                    data={ApiField.PROJECT_ID: project_id, ApiField.DOWNLOAD_ID: download_id},
+                    chunk_size=8 * 1024 * 1024,
+                ):
+                    if log_progress:
+                        progress_cb.update(len(chunk))
+                    await fd.write(chunk)
+
+    async def download_blob_files_async(
+        self,
+        project_id: int,
+        download_ids: List[str],
+        paths: List[str],
+        semaphore: Optional[asyncio.Semaphore] = None,
+        log_progress: bool = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+    ):
+        """
+        Downloads multiple blob files from Supervisely storage by download IDs asynchronously.
+
+        :param project_id: Project ID in Supervisely.
+        :type project_id: int
+        :param download_ids: List of download IDs of any Image that belongs to the blob files in Supervisely storage.
+        :type download_ids: List[str]
+        :param paths: List of paths to save the blob files.
+        :type paths: List[str]
+        :param semaphore: Semaphore for limiting the number of simultaneous downloads.
+        :type semaphore: asyncio.Semaphore, optional
+        :param log_progress: If True, shows progress bar.
+        :type log_progress: bool, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: tqdm or callable, optional
+        """
+
+        if semaphore is None:
+            semaphore = self._api.get_default_semaphore()
+
+        tasks = []
+        for download_id, path in zip(download_ids, paths):
+            task = self.download_blob_file_async(
+                project_id=project_id,
+                download_id=download_id,
+                path=path,
+                semaphore=semaphore,
+                log_progress=log_progress,
+                progress_cb=progress_cb,
+            )
+            tasks.append(task)
+        await asyncio.gather(*tasks)
+
+    def set_embeddings_updated_at(self, ids: List[int], timestamps: Optional[List[str]] = None):
+        """
+        Updates the `updated_at` field of images with the timestamp of the embeddings were created.
+
+        :param ids: List of Image IDs in Supervisely.
+        :type ids: List[int]
+        :param timestamps: List of timestamps in ISO format. If None, uses current time.
+                            You could set timestamps to [None, ..., None] if you need to recreate embeddings for images.
+        :type timestamps: List[str], optional
+        :return: None
+        :rtype: NoneType
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            import datetime
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            image_ids = [123, 456, 789]
+            timestamps = [datetime.datetime.now().isoformat() for _ in image_ids]
+            api.image.set_embeddings_updated_at(image_ids, timestamps)
+        """
+        method = "images.embeddings-updated-at.update"
+
+        if timestamps is None:
+            timestamps = [datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ") for _ in ids]
+
+        if len(ids) != len(timestamps):
+            raise ValueError(
+                f"Length of ids and timestamps should be equal. {len(ids)} != {len(timestamps)}"
+            )
+        images = [
+            {ApiField.ID: image_id, ApiField.EMBEDDINGS_UPDATED_AT: timestamp}
+            for image_id, timestamp in zip(ids, timestamps)
+        ]
+        self._api.post(
+            method,
+            {ApiField.IMAGES: images},
+        )
+
+    def get_subsequent_image_ids(
+        self,
+        image_id: int,
+        images_count: Optional[int] = None,
+        job_id: Optional[int] = None,
+        params: Optional[dict] = None,
+        dataset_id: Optional[int] = None,
+        project_id: Optional[int] = None,
+    ) -> List[int]:
+        """
+        Get list of subsequent image IDs after the specified image ID.
+
+        :param image_id: Image ID in Supervisely.
+        :type image_id: int
+        :param images_count: Number of subsequent images to retrieve. If None, retrieves all subsequent images.
+        :type images_count: int, optional
+        :param job_id: Job ID to filter images. If None, does not filter by job ID.
+        :type job_id: int, optional
+        :param params: Additional parameters for filtering and sorting images.
+        :type params: dict, optional
+        :param dataset_id: Dataset ID to filter images.
+        :type dataset_id: int, optional
+        :param project_id: Project ID to filter images. If None, makes a request to retrieve it from the specified image.
+        :type project_id: int, optional
+        """
+        data = {
+            "recursive": True,
+            "projectId": project_id,
+            "filters": [],
+            "sort": "name",
+            "sort_order": "asc",
+        }
+
+        if params is not None:
+            data.update(params)
+
+        if data["projectId"] is None:
+            image_info = self.get_info_by_id(image_id)
+            if image_info is None:
+                raise ValueError(f"Image with ID {image_id} not found.")
+            project_id = self._api.dataset.get_info_by_id(image_info.dataset_id).project_id
+        if job_id is not None:
+            self._api.add_header("x-job-id", str(job_id))
+        if dataset_id is not None:
+            data["datasetId"] = dataset_id
+
+        image_infos = self.get_list_all_pages(
+            "images.list",
+            data,
+            limit=None,
+            return_first_response=False,
+        )
+        self._api.headers.pop("x-job-id", None)
+        image_ids = [img_info.id for img_info in image_infos]
+        if len(image_ids) == 0:
+            raise ValueError("No images found with the specified criteria.")
+        elif image_id not in image_ids:
+            raise ValueError(f"Image with ID {image_id} not found in the specified entity.")
+
+        target_idx = image_ids.index(image_id) + 1
+        to_idx = target_idx + images_count if images_count is not None else len(image_ids)
+        return image_ids[target_idx:to_idx]
