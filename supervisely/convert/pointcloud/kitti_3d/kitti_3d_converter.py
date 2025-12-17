@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from typing import Optional
 
 from supervisely import PointcloudAnnotation, ProjectMeta, is_development, logger
 from supervisely.api.api import Api, ApiField
@@ -41,13 +42,11 @@ class KITTI3DConverter(PointcloudConverter):
 
         def _dir_filter_fn(path):
             return all(
-                [
-                    _resolve_dir(path, name, name.split("_")[0]) is not None
-                    for name in kitti_3d_helper.FOLDER_NAMES
-                ]
+                [_resolve_dir(path, name) is not None for name in kitti_3d_helper.FOLDER_NAMES]
             )
 
-        def _resolve_dir(base_dir: str, expected_name: str, prefix: str) -> str:
+        def _resolve_dir(base_dir: str, expected_name: str) -> Optional[str]:
+            prefix = expected_name.split("_")[0]
             exact_path = os.path.join(base_dir, expected_name)
             if os.path.isdir(exact_path):
                 return exact_path
@@ -63,8 +62,8 @@ class KITTI3DConverter(PointcloudConverter):
 
         input_path = input_paths[0]
         velodyne_dir = os.path.join(input_path, "velodyne")
-        image_2_dir = _resolve_dir(input_path, "image_2", "image")
-        label_2_dir = _resolve_dir(input_path, "label_2", "label")
+        image_2_dir = _resolve_dir(input_path, "image_2")
+        label_2_dir = _resolve_dir(input_path, "label_2")
         calib_dir = os.path.join(input_path, "calib")
 
         self._items = []
@@ -96,7 +95,7 @@ class KITTI3DConverter(PointcloudConverter):
                 continue
 
             label = kitti_3d_helper.read_kitti_label(label_path, calib_path)
-            if not label:
+            if label is None:
                 continue
             kitti_labels.append(label)
             self._items.append(self.Item(velodyne_path, label, (image_path, calib_path)))
