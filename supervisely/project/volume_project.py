@@ -127,9 +127,6 @@ class VolumeProject(VideoProject):
     _SECTION_VOLUMES = 4
     _SECTION_ANNOTATIONS = 5
 
-    class _LegacyPayloadFormatError(Exception):
-        pass
-
     def get_classes_stats(
         self,
         dataset_names: Optional[List[str]] = None,
@@ -410,10 +407,7 @@ class VolumeProject(VideoProject):
             with open(file, "rb") as src:
                 raw_data = src.read()
 
-        try:
-            payload = VolumeProject._deserialize_payload_from_parquet(pa, raw_data)
-        except VolumeProject._LegacyPayloadFormatError:
-            payload = VolumeProject._deserialize_legacy_payload(pa, raw_data)
+        payload = VolumeProject._deserialize_payload_from_parquet(pa, raw_data)
 
         project_meta = ProjectMeta.from_json(payload["project_meta"])
         dataset_records: List[Dict] = payload.get("dataset_infos", [])
@@ -666,9 +660,9 @@ class VolumeProject(VideoProject):
         view = raw_data if isinstance(raw_data, memoryview) else memoryview(raw_data)
         header_len = len(magic) + 2
         if len(view) < header_len:
-            raise VolumeProject._LegacyPayloadFormatError()
+            raise RuntimeError("Corrupted VolumeProject binary payload")
         if view[: len(magic)].tobytes() != magic:
-            raise VolumeProject._LegacyPayloadFormatError()
+            raise RuntimeError("Unsupported VolumeProject binary payload format")
 
         offset = len(magic)
         version = view[offset]
@@ -695,10 +689,7 @@ class VolumeProject(VideoProject):
 
     @staticmethod
     def _deserialize_payload_from_parquet(pa_module, raw_data) -> Dict:
-        try:
-            sections = VolumeProject._parse_parquet_sections(raw_data)
-        except VolumeProject._LegacyPayloadFormatError as exc:
-            raise VolumeProject._LegacyPayloadFormatError() from exc
+        sections = VolumeProject._parse_parquet_sections(raw_data)
 
         try:
             project_info = json.loads(sections[VolumeProject._SECTION_PROJECT_INFO].decode("utf-8"))
@@ -739,18 +730,6 @@ class VolumeProject(VideoProject):
             "volume_infos": volume_records,
             "annotations": annotations,
         }
-
-    @staticmethod
-    def _deserialize_legacy_payload(pa_module, raw_data):
-        deserializer = getattr(pa_module, "deserialize", None)
-        if deserializer is None:
-            raise RuntimeError(
-                "This archive was created with the legacy pyarrow serialization format. "
-                "Install pyarrow<15 and re-export the project to convert it to the new Parquet format."
-            )
-
-        buffer = raw_data if isinstance(raw_data, memoryview) else memoryview(raw_data)
-        return deserializer(buffer)
 
     @staticmethod
     def _load_mask_geometries(api: Api, ann: VolumeAnnotation, key_id_map: KeyIdMap) -> None:
