@@ -1,0 +1,21 @@
+<link rel="stylesheet" href="./sly/css/app/widgets/heatmap/style.css" />
+<heatmap-image
+  :background-url="data.{{{widget.widget_id}}}.backgroundUrl"
+  :mask-url="data.{{{widget.widget_id}}}.heatmapUrl"
+  :opacity.sync="state.{{{widget.widget_id}}}.opacity"
+  :width="data.{{{widget.widget_id}}}.width"
+  :height="data.{{{widget.widget_id}}}.height"
+  :mask-width="data.{{{widget.widget_id}}}.maskWidth"
+  :mask-height="data.{{{widget.widget_id}}}.maskHeight"
+  :min-value="data.{{{widget.widget_id}}}.minValue"
+  :max-value="data.{{{widget.widget_id}}}.maxValue"
+  :legend-colors="data.{{{widget.widget_id}}}.legendColors"
+  :clicked-value="state.{{{widget.widget_id}}}.clickedValue"
+  :mask-x="state.{{{widget.widget_id}}}.maskX"
+  :mask-y="state.{{{widget.widget_id}}}.maskY"
+  @update:clicked-value="state.{{{widget.widget_id}}}.clickedValue = $event"
+  @update:mask-x="state.{{{widget.widget_id}}}.maskX = $event"
+  @update:mask-y="state.{{{widget.widget_id}}}.maskY = $event"
+  :on-image-click="() => {post('/{{{widget.widget_id}}}/heatmap_clicked_cb')}"
+>
+</heatmap-image>

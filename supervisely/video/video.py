@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import os
-from typing import Dict, Generator, List, Optional, Tuple
+from typing import Dict, Generator, Iterable, List, Optional, Tuple
 
 import cv2
 import numpy as np
@@ -18,7 +18,7 @@ ALLOWED_VIDEO_EXTENSIONS = [".avi", ".mp4", ".3gp", ".flv", ".webm", ".wmv", ".m
 
 
 _SUPPORTED_CONTAINERS = {"mp4", "webm", "ogg", "ogv"}
-_SUPPORTED_CODECS = {"h264", "vp8", "vp9"}
+_SUPPORTED_CODECS = {"h264", "vp8", "vp9", "h265", "hevc", "av1"}
 
 
 class VideoExtensionError(Exception):
@@ -537,11 +537,9 @@ class VideoFrameReader:
             try:
                 import decord
 
-                self.vr = decord.VideoReader(str(self.video_path))
+                self.vr = decord.VideoReader(str(self.video_path), num_threads=1)
             except ImportError:
-                default_logger.debug(
-                    "Decord is not installed. Falling back to OpenCV for video reading."
-                )
+                default_logger.debug("Decord is not installed. Falling back to OpenCV for video reading.")
                 self.cap = cv2.VideoCapture(str(self.video_path))
 
     def close(self):
@@ -562,24 +560,30 @@ class VideoFrameReader:
     def __del__(self):
         self.close()
 
-    def iterate_frames(self, frame_indexes: List[int] = None) -> Generator[np.ndarray, None, None]:
+    def iterate_frames(self, frame_indexes: Optional[List[int]] = None) -> Generator[np.ndarray, None, None]:
         self._ensure_initialized()
         if frame_indexes is None:
             frame_indexes = self.frame_indexes
         if self.vr is not None:
+            # Decord
             if frame_indexes is None:
                 frame_indexes = range(len(self.vr))
-            for frame_index in frame_indexes:
-                frame = self.vr[frame_index]
-                yield frame.asnumpy()
+            for idx in frame_indexes:
+                arr = self.vr[idx].asnumpy()
+                yield arr
+                del arr
         else:
+            # OpenCV fallback
             if frame_indexes is None:
                 frame_count = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
                 frame_indexes = range(frame_count)
             for frame_index in frame_indexes:
-                if 1 > frame_index - self.prev_idx < 20:
+                if 1 < frame_index - self.prev_idx < 20:
                     while self.prev_idx < frame_index - 1:
-                        self.cap.read()
+                        ok, _ = self.cap.read()
+                        if not ok:
+                            break
+                        self.prev_idx += 1
                 if frame_index != self.prev_idx + 1:
                     self.cap.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
                 ret, frame = self.cap.read()
@@ -587,6 +591,17 @@ class VideoFrameReader:
                     raise KeyError(f"Frame {frame_index} not found in video {self.video_path}")
                 yield cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 self.prev_idx = frame_index
+
+    def read_batch(self, frame_indexes: List[int]) -> List[np.ndarray]:
+        self._ensure_initialized()
+        if self.vr is not None:
+            batch_nd = self.vr.get_batch(frame_indexes)
+            batch_np = batch_nd.asnumpy()
+            frames = [batch_np[i].copy() for i in range(batch_np.shape[0])]
+            del batch_np
+            return frames
+        else:
+            return list(self.iterate_frames(frame_indexes))
 
     def read_frames(self, frame_indexes: List[int] = None) -> List[np.ndarray]:
         return list(self.iterate_frames(frame_indexes))
@@ -625,3 +640,17 @@ class VideoFrameReader:
             return self.vr.get_avg_fps()
         else:
             return int(self.cap.get(cv2.CAP_PROP_FPS))
+
+
+def create_from_frames(frames: Iterable[np.ndarray], output_path: str, fps: int = 30) -> None:
+    video_writer = None
+    for frame in frames:
+        if video_writer is None:
+            height, width, _ = frame.shape
+            fourcc = cv2.VideoWriter.fourcc(*"mp4v")
+            video_writer = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+        if frame.dtype != np.uint8:
+            frame = (frame * 255).astype(np.uint8) if frame.max() <= 1.0 else frame.astype(np.uint8)
+
+        video_writer.write(frame)
+    video_writer.release()

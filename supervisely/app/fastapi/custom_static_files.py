@@ -42,7 +42,7 @@ class CustomStaticFiles(StaticFiles):
         def _get_range_header(range_header: str, file_size: int) -> typing.Tuple[int, int]:
             def _invalid_range():
                 return HTTPException(
-                    status.HTTP_416_REQUESTED_RANGE_NOT_SATISFIABLE,
+                    status.HTTP_416_REQUESTED_RANGE_NOT_SATISFIABLE, #TODO: change to status.HTTP_416_RANGE_NOT_SATISFIABLE if update starlette to 0.48.0+
                     detail=f"Invalid request range (Range:{range_header!r})",
                 )
 

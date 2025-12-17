@@ -71,7 +71,7 @@ class PredictionSession:
         tracking_config: dict = None,
         **kwargs: dict,
     ): 
-                  
+
         extra_input_args = ["image_ids", "video_ids", "dataset_ids", "project_ids"]
         assert (
             sum(
@@ -90,7 +90,6 @@ class PredictionSession:
             == 1
         ), "Exactly one of input, image_ids, video_id, dataset_id, project_id or image_id must be provided."
 
-        
         self._iterator = None
         self._base_url = url
         self.inference_request_uuid = None
@@ -115,12 +114,12 @@ class PredictionSession:
         self.inference_settings = {
             k: v for k, v in kwargs.items() if isinstance(v, (str, int, float))
         }
-        
+
         if tracking is True:
             model_info = self._get_session_info()
             if not model_info.get("tracking_on_videos_support", False):
                 raise ValueError("Tracking is not supported by this model")
-            
+
             if tracking_config is None:
                 self.tracker = "botsort"
                 self.tracker_settings = {}
@@ -286,7 +285,7 @@ class PredictionSession:
         if self.api is not None:
             return self.api.token
         return env.api_token(raise_not_found=False)
-    
+
     def _get_json_body(self):
         body = {"state": {}, "context": {}}
         if self.inference_request_uuid is not None:
@@ -298,7 +297,7 @@ class PredictionSession:
         if "model_prediction_suffix" in self.kwargs:
             body["state"]["model_prediction_suffix"] = self.kwargs["model_prediction_suffix"]
         return body
-    
+
     def _post(self, method, *args, retries=5, **kwargs) -> requests.Response:
         if kwargs.get("headers") is None:
             kwargs["headers"] = {}
@@ -336,7 +335,7 @@ class PredictionSession:
         method = "get_session_info"
         r = self._post(method, json=self._get_json_body())
         return r.json()
-    
+
     def _get_inference_progress(self):
         method = "get_inference_progress"
         r = self._post(method, json=self._get_json_body())
@@ -365,9 +364,21 @@ class PredictionSession:
         logger.info("Inference request will be cleared on the server")
         return r.json()
 
+    def _get_final_result(self):
+        method = "get_inference_result"
+        r = self._post(
+            method,
+            json=self._get_json_body(),
+        )
+        return r.json()
+
     def _on_infernce_end(self):
         if self.inference_request_uuid is None:
             return
+        try:
+            self.final_result = self._get_final_result()
+        except Exception as e:
+            logger.debug("Failed to get final result:", exc_info=True)
         self._clear_inference_request()
 
     @property
@@ -512,18 +523,16 @@ class PredictionSession:
                 "Inference is already running. Please stop it before starting a new one."
             )
         resp = self._post(method, **kwargs).json()
-
         self.inference_request_uuid = resp["inference_request_uuid"]
-
-        logger.info(
-            "Inference has started:",
-            extra={"inference_request_uuid": resp.get("inference_request_uuid")},
-        )
         try:
             resp, has_started = self._wait_for_inference_start(tqdm=self.tqdm)
         except:
             self.stop()
             raise
+        logger.info(
+            "Inference has started:",
+            extra={"inference_request_uuid": resp.get("inference_request_uuid")},
+        )
         frame_iterator = self.Iterator(resp["progress"]["total"], self, tqdm=self.tqdm)
         return frame_iterator
 
@@ -636,8 +645,11 @@ class PredictionSession:
                 encoder = MultipartEncoder(fields)
                 if self.tqdm is not None:
 
+                    bytes_read = 0
                     def _callback(monitor):
-                        self.tqdm.update(monitor.bytes_read)
+                        nonlocal bytes_read
+                        self.tqdm.update(monitor.bytes_read - bytes_read)
+                        bytes_read = monitor.bytes_read
 
                     video_size = get_file_size(video_path)
                     self._update_progress(self.tqdm, "Uploading video", 0, video_size, is_size=True)

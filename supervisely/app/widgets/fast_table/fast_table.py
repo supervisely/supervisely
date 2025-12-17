@@ -221,6 +221,11 @@ class FastTable(Widget):
         self._validate_input_data(data)
         self._source_data = self._prepare_input_data(data)
 
+        # Initialize filtered and searched data for proper initialization
+        self._filtered_data = self._filter(self._filter_value)
+        self._searched_data = self._search(self._search_str)
+        self._sorted_data = self._sort_table_data(self._searched_data)
+
         # prepare parsed_source_data, sliced_data, parsed_active_data
         (
             self._parsed_source_data,
@@ -265,7 +270,7 @@ class FastTable(Widget):
         self._sliced_data = self._slice_table_data(self._sorted_data, actual_page=self._active_page)
         self._parsed_active_data = self._unpack_pandas_table_data(self._sliced_data)
         StateJson().send_changes()
-        DataJson()[self.widget_id]["data"] = self._parsed_active_data["data"]
+        DataJson()[self.widget_id]["data"] = list(self._parsed_active_data["data"])
         DataJson()[self.widget_id]["total"] = self._rows_total
         DataJson().send_changes()
         StateJson()["reactToChanges"] = True
@@ -295,7 +300,7 @@ class FastTable(Widget):
         :rtype: Dict[str, Any]
         """
         return {
-            "data": self._parsed_active_data["data"],
+            "data": list(self._parsed_active_data["data"]),
             "columns": self._parsed_source_data["columns"],
             "projectMeta": self._project_meta,
             "columnsOptions": self._columns_options,
@@ -307,7 +312,7 @@ class FastTable(Widget):
                 "isRadio": self._is_radio,
                 "isRowSelectable": self._is_selectable,
                 "maxSelectedRows": self._max_selected_rows,
-                "searchPosition": self._search_position
+                "searchPosition": self._search_position,
             },
             "pageSize": self._page_size,
             "showHeader": self._show_header,
@@ -420,6 +425,8 @@ class FastTable(Widget):
     def read_json(self, data: Dict, meta: Dict = None, custom_columns: Optional[List[Union[str, tuple]]] = None) -> None:
         """Replace table data with options and project meta in the widget
 
+        More about options in `Developer Portal <https://developer.supervisely.com/app-development/widgets/tables/fasttable#read_json>`_
+
         :param data: Table data with options:
             - data: table data
             - columns: list of column names
@@ -475,12 +482,7 @@ class FastTable(Widget):
         table_data = data.get("data", None)
         self._validate_input_data(table_data)
         self._source_data = self._prepare_input_data(table_data)
-        (
-            self._parsed_source_data,
-            self._sliced_data,
-            self._parsed_active_data,
-        ) = self._prepare_working_data()
-        self._rows_total = len(self._parsed_source_data["data"])
+
         init_options = DataJson()[self.widget_id]["options"]
         init_options.update(self._table_options)
         sort = init_options.pop("sort", {"column": None, "order": None})
@@ -489,8 +491,15 @@ class FastTable(Widget):
         if self._sort_column_idx is not None and self._sort_column_idx > len(self._columns_first_idx) - 1:
             self._sort_column_idx = None
         self._sort_order = sort.get("order", None)
-        self._page_size = init_options.pop("pageSize", 10) 
-        DataJson()[self.widget_id]["data"] = self._parsed_active_data["data"]
+        self._page_size = init_options.pop("pageSize", 10)
+
+        # Apply sorting before preparing working data
+        self._sorted_data = self._sort_table_data(self._source_data)
+        self._sliced_data = self._slice_table_data(self._sorted_data, actual_page=self._active_page)
+        self._parsed_active_data = self._unpack_pandas_table_data(self._sliced_data)
+        self._parsed_source_data = self._unpack_pandas_table_data(self._source_data)
+        self._rows_total = len(self._parsed_source_data["data"]) 
+        DataJson()[self.widget_id]["data"] = list(self._parsed_active_data["data"])
         DataJson()[self.widget_id]["columns"] = self._parsed_active_data["columns"]
         DataJson()[self.widget_id]["columnsOptions"] = self._columns_options
         DataJson()[self.widget_id]["options"] = init_options
@@ -519,7 +528,7 @@ class FastTable(Widget):
         self._parsed_active_data = self._unpack_pandas_table_data(self._sliced_data)
         self._parsed_source_data = self._unpack_pandas_table_data(self._source_data)
         self._rows_total = len(self._parsed_source_data["data"])
-        DataJson()[self.widget_id]["data"] = self._parsed_active_data["data"]
+        DataJson()[self.widget_id]["data"] = list(self._parsed_active_data["data"])
         DataJson()[self.widget_id]["columns"] = self._parsed_active_data["columns"]
         DataJson()[self.widget_id]["total"] = len(self._source_data)
         DataJson().send_changes()
@@ -578,10 +587,17 @@ class FastTable(Widget):
         :rtype: pd.DataFrame
         """
         if active_page is True:
-            temp_parsed_data = [d["items"] for d in self._parsed_active_data["data"]]
+            # Return sliced data directly from source to preserve None/NaN values
+            packed_data = self._sliced_data.copy()
+            # Reset column names to first level only
+            if isinstance(packed_data.columns, pd.MultiIndex):
+                packed_data.columns = packed_data.columns.get_level_values("first")
         else:
-            temp_parsed_data = [d["items"] for d in self._parsed_source_data["data"]]
-        packed_data = pd.DataFrame(data=temp_parsed_data, columns=self._columns_first_idx)
+            # Return source data directly to preserve None/NaN values
+            packed_data = self._source_data.copy()
+            # Reset column names to first level only
+            if isinstance(packed_data.columns, pd.MultiIndex):
+                packed_data.columns = packed_data.columns.get_level_values("first")
         return packed_data
 
     def clear_selection(self) -> None:
@@ -621,8 +637,12 @@ class FastTable(Widget):
             rows = []
             for row in selected_rows:
                 row_index = row["idx"]
-                row_data = row.get("row", row.get("items", None))
-                if row_index is None or row_data is None:
+                if row_index is None:
+                    continue
+                # Get original data from source_data to preserve None/NaN values
+                try:
+                    row_data = self._source_data.loc[row_index].values.tolist()
+                except (KeyError, IndexError):
                     continue
                 rows.append(self.ClickedRow(row_data, row_index))
             return rows
@@ -633,8 +653,12 @@ class FastTable(Widget):
         if clicked_row is None:
             return None
         row_index = clicked_row["idx"]
-        row = clicked_row["row"]
-        if row_index is None or row is None:
+        if row_index is None:
+            return None
+        # Get original data from source_data to preserve None/NaN values
+        try:
+            row = self._source_data.loc[row_index].values.tolist()
+        except (KeyError, IndexError):
             return None
         return self.ClickedRow(row, row_index)
 
@@ -644,15 +668,19 @@ class FastTable(Widget):
         :return: Selected cell
         :rtype: ClickedCell
         """
-        cell_data = StateJson()[self.widget_id]["clickedCell"]
+        cell_data = StateJson()[self.widget_id]["selectedCell"]
         if cell_data is None:
             return None
         row_index = cell_data["idx"]
-        row = cell_data["row"]
         column_index = cell_data["column"]
+        if column_index is None or row_index is None:
+            return None
         column_name = self._columns_first_idx[column_index]
-        column_value = row[column_index]
-        if column_index is None or row is None:
+        # Get original data from source_data to preserve None/NaN values
+        try:
+            row = self._source_data.loc[row_index].values.tolist()
+            column_value = row[column_index]
+        except (KeyError, IndexError):
             return None
         return self.ClickedCell(row, column_index, row_index, column_name, column_value)
 
@@ -715,7 +743,25 @@ class FastTable(Widget):
             self._parsed_active_data,
         ) = self._prepare_working_data()
         self._rows_total = len(self._parsed_source_data["data"])
-        DataJson()[self.widget_id]["data"] = self._parsed_active_data["data"]
+        DataJson()[self.widget_id]["data"] = list(self._parsed_active_data["data"])
+        DataJson()[self.widget_id]["total"] = self._rows_total
+        DataJson().send_changes()
+        self._maybe_update_selected_row()
+
+    def add_rows(self, rows: List):
+        for row in rows:
+            self._validate_table_sizes(row)
+            self._validate_row_values_types(row)
+        self._source_data = pd.concat(
+            [self._source_data, pd.DataFrame(rows, columns=self._source_data.columns)]
+        ).reset_index(drop=True)
+        (
+            self._parsed_source_data,
+            self._sliced_data,
+            self._parsed_active_data,
+        ) = self._prepare_working_data()
+        self._rows_total = len(self._parsed_source_data["data"])
+        DataJson()[self.widget_id]["data"] = list(self._parsed_active_data["data"])
         DataJson()[self.widget_id]["total"] = self._rows_total
         DataJson().send_changes()
         self._maybe_update_selected_row()
@@ -743,7 +789,7 @@ class FastTable(Widget):
                 self._parsed_active_data,
             ) = self._prepare_working_data()
             self._rows_total = len(self._parsed_source_data["data"])
-            DataJson()[self.widget_id]["data"] = self._parsed_active_data["data"]
+            DataJson()[self.widget_id]["data"] = list(self._parsed_active_data["data"])
             DataJson()[self.widget_id]["total"] = self._rows_total
             self._maybe_update_selected_row()
             return popped_row
@@ -755,7 +801,7 @@ class FastTable(Widget):
         self._sliced_data = pd.DataFrame(columns=self._columns_first_idx)
         self._parsed_active_data = {"data": [], "columns": []}
         self._rows_total = 0
-        DataJson()[self.widget_id]["data"] = []
+        DataJson()[self.widget_id]["data"] = {}
         DataJson()[self.widget_id]["total"] = 0
         DataJson().send_changes()
         self._maybe_update_selected_row()
@@ -856,7 +902,11 @@ class FastTable(Widget):
         self._refresh()
 
     def _default_search_function(self, data: pd.DataFrame, search_value: str) -> pd.DataFrame:
-        data = data[data.applymap(lambda x: search_value in str(x)).any(axis=1)]
+        # Use map() for pandas >= 2.1.0, fallback to applymap() for older versions
+        if hasattr(pd.DataFrame, "map"):
+            data = data[data.map(lambda x: search_value.lower() in str(x).lower()).any(axis=1)]
+        else:
+            data = data[data.applymap(lambda x: search_value.lower() in str(x).lower()).any(axis=1)]
         return data
 
     def _search(self, search_value: str) -> pd.DataFrame:
@@ -867,8 +917,14 @@ class FastTable(Widget):
         :return: Filtered data
         :rtype: pd.DataFrame
         """
-        filtered_data = self._filtered_data.copy()
+        # Use filtered_data if available, otherwise use source_data directly
+        if self._filtered_data is not None:
+            filtered_data = self._filtered_data.copy()
+        else:
+            filtered_data = self._source_data.copy()
+
         if search_value == "":
+            self._search_str = search_value
             return filtered_data
         if self._search_str != search_value:
             self._active_page = 1
@@ -894,7 +950,24 @@ class FastTable(Widget):
         else:
             ascending = False
         try:
-            data = data.sort_values(by=data.columns[column_idx], ascending=ascending)
+            column = data.columns[column_idx]
+            # Try to convert to numeric for proper sorting
+            numeric_column = pd.to_numeric(data[column], errors="coerce")
+
+            # Check if column contains numeric data (has at least one non-NaN numeric value)
+            if numeric_column.notna().sum() > 0:
+                # Create temporary column for sorting
+                data_copy = data.copy()
+                data_copy["_sort_key"] = numeric_column
+                # Sort by numeric values with NaN at the end
+                data_copy = data_copy.sort_values(
+                    by="_sort_key", ascending=ascending, na_position="last"
+                )
+                # Remove temporary column and return original data in sorted order
+                data = data.loc[data_copy.index]
+            else:
+                # Sort as strings with NaN values at the end
+                data = data.sort_values(by=column, ascending=ascending, na_position="last")
         except IndexError as e:
             e.args = (
                 f"Sorting by column idx = {column_idx} is not possible, your table has only {len(data.columns)} columns with idx from 0 to {len(data.columns) - 1}",
@@ -903,29 +976,59 @@ class FastTable(Widget):
         return data
 
     def sort(
-        self, column_idx: Optional[int] = None, order: Optional[Literal["asc", "desc"]] = None
+        self,
+        column_idx: Optional[int] = None,
+        order: Optional[Literal["asc", "desc"]] = None,
+        reset: bool = False,
     ) -> None:
         """Sorts table data by column index and order.
 
-        :param column_idx: Index of the column to sort by
+        :param column_idx: Index of the column to sort by. If None, keeps current column (unless reset=True).
         :type column_idx: Optional[int]
-        :param order: Sorting order
+        :param order: Sorting order. If None, keeps current order (unless reset=True).
         :type order: Optional[Literal["asc", "desc"]]
+        :param reset: If True, clears sorting completely. Default is False.
+        :type reset: bool
+
+        :Usage example:
+
+        .. code-block:: python
+            # Sorting examples
+            sort(column_idx=0, order="asc") # sort by column 0 ascending
+            sort(column_idx=1) # sort by column 1, keep current order
+            sort(order="desc") # keep current column, change order to descending
+            sort(reset=True) # clear sorting completely
         """
-        self._sort_column_idx = column_idx
-        self._sort_order = order
+        # If reset=True, clear sorting completely
+        if reset:
+            self._sort_column_idx = None
+            self._sort_order = None
+        else:
+            # Preserve current values if new ones are not provided
+            if column_idx is not None:
+                self._sort_column_idx = column_idx
+            # else: keep current self._sort_column_idx
+
+            if order is not None:
+                self._sort_order = order
+            # else: keep current self._sort_order
+
         self._validate_sort_attrs()
-        if self._sort_column_idx is not None:
-            StateJson()[self.widget_id]["sort"]["column"] = self._sort_column_idx
-        if self._sort_order is not None:
-            StateJson()[self.widget_id]["sort"]["order"] = self._sort_order
+
+        # Always update StateJson with current values (including None)
+        StateJson()[self.widget_id]["sort"]["column"] = self._sort_column_idx
+        StateJson()[self.widget_id]["sort"]["order"] = self._sort_order
+
+        # Apply filter, search, sort pipeline
         self._filtered_data = self._filter(self._filter_value)
         self._searched_data = self._search(self._search_str)
         self._rows_total = len(self._searched_data)
         self._sorted_data = self._sort_table_data(self._searched_data)
         self._sliced_data = self._slice_table_data(self._sorted_data, actual_page=self._active_page)
         self._parsed_active_data = self._unpack_pandas_table_data(self._sliced_data)
-        DataJson()[self.widget_id]["data"] = self._parsed_active_data["data"]
+
+        # Update DataJson with sorted and paginated data
+        DataJson()[self.widget_id]["data"] = list(self._parsed_active_data["data"])
         DataJson()[self.widget_id]["total"] = self._rows_total
         self._maybe_update_selected_row()
         StateJson().send_changes()
@@ -933,22 +1036,22 @@ class FastTable(Widget):
     def _prepare_json_data(self, data: dict, key: str):
         if key in ("data", "columns"):
             default_value = []
+        elif key == "options":
+            default_value = {}
         else:
             default_value = None
+
         source_data = data.get(key, default_value)
-        if key == "data":
-            source_data = self._sort_table_data(
-                pd.DataFrame(data=source_data, columns=self._multi_idx_columns)
-            )
-        if key == "options":
-            options = data.get(key, default_value)
-            if options is not None:
-                sort = options.get("sort", None)
-                if sort is not None:
-                    column_idx = sort.get("columnIndex", None)
-                    if column_idx is not None:
-                        sort["column"] = sort.get("columnIndex")
-                        sort.pop("columnIndex")
+
+        # Normalize options format: convert "columnIndex" to "column"
+        if key == "options" and source_data is not None:
+            sort = source_data.get("sort", None)
+            if sort is not None:
+                column_idx = sort.get("columnIndex", None)
+                if column_idx is not None:
+                    sort["column"] = column_idx
+                    sort.pop("columnIndex")
+
         return source_data
 
     def _validate_sort(
@@ -1030,12 +1133,21 @@ class FastTable(Widget):
     def _get_pandas_unpacked_data(self, data: pd.DataFrame) -> dict:
         if not isinstance(data, pd.DataFrame):
             raise TypeError("Cannot parse input data, please use Pandas Dataframe as input data")
-        data = data.replace({np.nan: None})
-        # data = data.astype(object).replace(np.nan, "-") # TODO: replace None later
+
+        # Create a copy for frontend display to avoid modifying source data
+        display_data = data.copy()
+        # Replace NaN and None with empty string only for display
+        display_data = display_data.replace({np.nan: "", None: ""})
+
+        # Handle MultiIndex columns - extract only the first level
+        if isinstance(display_data.columns, pd.MultiIndex):
+            columns = display_data.columns.get_level_values("first").tolist()
+        else:
+            columns = display_data.columns.to_list()
 
         unpacked_data = {
-            "columns": data.columns.to_list(),
-            "data": data.values.tolist(),
+            "columns": columns,
+            "data": display_data.values.tolist(),
         }
         return unpacked_data
 
@@ -1206,7 +1318,7 @@ class FastTable(Widget):
 
         self._sliced_data = self._slice_table_data(self._sorted_data, actual_page=self._active_page)
         self._parsed_active_data = self._unpack_pandas_table_data(self._sliced_data)
-        DataJson()[self.widget_id]["data"] = self._parsed_active_data["data"]
+        DataJson()[self.widget_id]["data"] = list(self._parsed_active_data["data"])
         DataJson()[self.widget_id]["total"] = self._rows_total
         DataJson().send_changes()
         StateJson().send_changes()
@@ -1275,6 +1387,7 @@ class FastTable(Widget):
 
     def select_row_by_value(self, column, value: Any):
         """Selects a row by value in a specific column.
+        The first column with the given name is used in case of duplicate column names.
 
         :param column: Column name to filter by
         :type column: str
@@ -1288,7 +1401,12 @@ class FastTable(Widget):
         if column not in self._columns_first_idx:
             raise ValueError(f"Column '{column}' does not exist in the table.")
 
-        idx = self._source_data[self._source_data[column] == value].index.tolist()
+        # Find the first column index with this name (in case of duplicates)
+        column_idx = self._columns_first_idx.index(column)
+        column_tuple = self._source_data.columns[column_idx]
+
+        # Use column tuple to access the specific column
+        idx = self._source_data[self._source_data[column_tuple] == value].index.tolist()
         if not idx:
             raise ValueError(f"No rows found with {column} = {value}.")
         if len(idx) > 1:
@@ -1299,6 +1417,7 @@ class FastTable(Widget):
 
     def select_rows_by_value(self, column, values: List):
         """Selects rows by value in a specific column.
+        The first column with the given name is used in case of duplicate column names.
 
         :param column: Column name to filter by
         :type column: str
@@ -1312,7 +1431,12 @@ class FastTable(Widget):
         if column not in self._columns_first_idx:
             raise ValueError(f"Column '{column}' does not exist in the table.")
 
-        idxs = self._source_data[self._source_data[column].isin(values)].index.tolist()
+        # Find the first column index with this name (in case of duplicates)
+        column_idx = self._columns_first_idx.index(column)
+        column_tuple = self._source_data.columns[column_idx]
+
+        # Use column tuple to access the specific column
+        idxs = self._source_data[self._source_data[column_tuple].isin(values)].index.tolist()
         self.select_rows(idxs)
 
     def _read_custom_columns(self, columns: List[Union[str, tuple]]) -> None:

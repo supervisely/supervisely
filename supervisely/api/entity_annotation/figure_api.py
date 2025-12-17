@@ -24,6 +24,7 @@ from requests_toolbelt import MultipartDecoder, MultipartEncoder
 from tqdm import tqdm
 
 from supervisely._utils import batched, logger, run_coroutine
+from supervisely.annotation.label import LabelingStatus
 from supervisely.api.module_api import ApiField, ModuleApi, RemoveableBulkModuleApi
 from supervisely.geometry.rectangle import Rectangle
 from supervisely.video_annotation.key_id_map import KeyIdMap
@@ -221,6 +222,8 @@ class FigureApi(RemoveableBulkModuleApi):
             "meta",
             "area",
             "priority",
+            "nnCreated",
+            "nnUpdated",
         ]
         return self._get_info_by_id(id, "figures.info", {ApiField.FIELDS: fields})
 
@@ -233,6 +236,7 @@ class FigureApi(RemoveableBulkModuleApi):
         geometry_type: str,
         track_id: Optional[int] = None,
         custom_data: Optional[dict] = None,
+        status: Optional[LabelingStatus] = None,
     ) -> int:
         """"""
         input_figure = {
@@ -241,6 +245,13 @@ class FigureApi(RemoveableBulkModuleApi):
             ApiField.GEOMETRY_TYPE: geometry_type,
             ApiField.GEOMETRY: geometry_json,
         }
+
+        if status is None:
+            status = LabelingStatus.MANUAL
+
+        nn_created, nn_updated = LabelingStatus.to_flags(status)
+        input_figure[ApiField.NN_CREATED] = nn_created
+        input_figure[ApiField.NN_UPDATED] = nn_updated
 
         if track_id is not None:
             input_figure[ApiField.TRACK_ID] = track_id
@@ -376,6 +387,8 @@ class FigureApi(RemoveableBulkModuleApi):
             ApiField.AREA,
             ApiField.PRIORITY,
             ApiField.CUSTOM_DATA,
+            ApiField.NN_CREATED,
+            ApiField.NN_UPDATED,
         ]
         figures_infos = self.get_list_all_pages(
             "figures.list",
@@ -496,6 +509,8 @@ class FigureApi(RemoveableBulkModuleApi):
             ApiField.AREA,
             ApiField.PRIORITY,
             ApiField.CUSTOM_DATA,
+            ApiField.NN_CREATED,
+            ApiField.NN_UPDATED,
         ]
         if skip_geometry is True:
             fields = [x for x in fields if x != ApiField.GEOMETRY]
@@ -580,10 +595,13 @@ class FigureApi(RemoveableBulkModuleApi):
         """
         geometries = {}
         for idx, part in self._download_geometries_generator(ids):
-            if progress_cb is not None:
-                progress_cb(len(part.content))
-            geometry_json = json.loads(part.content)
-            geometries[idx] = geometry_json
+            try:
+                if progress_cb is not None:
+                    progress_cb(len(part.content))
+                geometry_json = json.loads(part.content)
+                geometries[idx] = geometry_json
+            except Exception as e:
+                raise RuntimeError(f"Failed to decode geometry for figure ID {idx}") from e
 
         if len(geometries) != len(ids):
             raise RuntimeError("Not all geometries were downloaded")
@@ -854,6 +872,8 @@ class FigureApi(RemoveableBulkModuleApi):
             ApiField.AREA,
             ApiField.PRIORITY,
             ApiField.CUSTOM_DATA,
+            ApiField.NN_CREATED,
+            ApiField.NN_UPDATED,
         ]
         if skip_geometry is True:
             fields = [x for x in fields if x != ApiField.GEOMETRY]
@@ -1026,3 +1046,31 @@ class FigureApi(RemoveableBulkModuleApi):
                 image_ids=image_ids,
                 skip_geometry=skip_geometry,
             )
+
+    def restore_batch(self, ids: List[int], progress_cb: Optional[Callable] = None, batch_size: int = 50):
+        """
+        Restore archived figures in batches from the Supervisely server.
+
+        :param ids: IDs of figures in Supervisely.
+        :type ids: List[int]
+        :param progress_cb: Optional callback to track restore progress. Receives number of restored figures in the current batch.
+        :type progress_cb: Optional[Callable]
+        :param batch_size: Number of figure IDs to send in a single request.
+        :type batch_size: int
+        """
+        for ids_batch in batched(ids, batch_size=batch_size):
+            self._api.post(
+                "figures.bulk.restore",
+                {ApiField.FIGURE_IDS: ids_batch},
+            )
+            if progress_cb is not None:
+                progress_cb(len(ids_batch))
+
+    def restore(self, id: int):
+        """
+        Restore a single archived figure with the specified ID from the Supervisely server.
+
+        :param id: Figure ID in Supervisely.
+        :type id: int
+        """
+        self.restore_batch([id])

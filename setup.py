@@ -78,15 +78,14 @@ version = get_version()
 
 INSTALL_REQUIRES = [
     "cachetools>=4.2.3, <=5.5.0",
-    "numpy>=1.19, <2.0.0",
+    "numpy>=1.19, <=2.3.3",
     "opencv-python>=4.6.0.66, <5.0.0.0",
     "PTable>=0.9.2, <1.0.0",
-    "pillow>=5.4.1, <=10.2.0",
-    "protobuf>=3.19.5, <=3.20.3",
-    "python-json-logger>=0.1.11, <3.0.0",
+    "pillow>=5.4.1, <=10.4.0",
+    "python-json-logger>=0.1.11, <=3.0.1",
     "requests>=2.27.1, <3.0.0",
     "requests-toolbelt>=0.9.1",  # , <1.0.0
-    "Shapely>=1.7.1, <=2.0.2",
+    "Shapely>=1.7.1, <=2.1.2",
     "bidict>=0.21.2, <1.0.0",
     "varname>=0.8.1, <1.0.0",
     "python-dotenv>=0.19.2, <=1.0.1",
@@ -97,17 +96,17 @@ INSTALL_REQUIRES = [
     "python-magic>=0.4.25, <1.0.0",
     "trimesh>=3.11.2, <=4.5.0",
     "uvicorn[standard]>=0.18.2, <1.0.0",
-    "pydantic>=1.7.4, <=2.11.3",
-    "anyio>=3.7.1,<=4.2.0",  # TODO: remove after upgrade fastapi version up to 0.103.1
-    "fastapi>=0.79.0, <=0.109.0",
+    "starlette<=0.47.3",  # if update to 0.48.0+ change supervisely/app/fastapi/custom_static_files.py line 45
+    "pydantic>=1.7.4, <=2.12.3",
+    "fastapi>=0.103.1, <=0.119.1",
     "websockets>=10.3, <=13.1",
     "jinja2>=3.0.3, <4.0.0",
-    "psutil>=5.9.0, <6.0.0",
+    "psutil>=5.9.0, <=7.2.0",
     "jsonpatch>=1.32, <2.0",
     "MarkupSafe>=2.1.1, <3.0.0",
     "arel>=0.2.0, <1.0.0",
     "tqdm>=4.62.3, <5.0.0",
-    "pandas>=1.1.3, <=2.1.4",
+    "pandas>=1.1.3, <=2.3.3",
     "async_asgi_testclient",
     "PyYAML>=5.4.0",
     "distinctipy",
@@ -128,6 +127,7 @@ INSTALL_REQUIRES = [
     "aiofiles",
     "httpx[http2]==0.27.2",
     "debugpy",
+    "setuptools<81.0.0",
 ]
 
 ALT_INSTALL_REQUIRES = {
@@ -201,7 +201,7 @@ setup(
             "app/development/*.sh",
             "imaging/colors.json.gz",
             "nn/benchmark/*/*.yaml",
-            "nn/tracker/botsort/botsort_config.yaml"
+            "nn/tracker/botsort/botsort_config.yaml",
         ],
     },
     entry_points={
@@ -233,7 +233,7 @@ setup(
             "matplotlib>=3.3.2, <4.0.0",
             "pascal-voc-writer>=0.1.4, <1.0.0",
             "scipy>=1.8.0, <2.0.0",
-            "pandas>=1.1.3, <1.4.0",
+            "pandas>=1.1.3, <=2.3.3",
             "ruamel.yaml==0.17.21",
         ],
         "apps": [
@@ -246,7 +246,7 @@ setup(
             "MarkupSafe>=2.1.1, <3.0.0",
             "arel>=0.2.0, <1.0.0",
             "tqdm>=4.62.3, <5.0.0",
-            "pandas>=1.1.3, <1.4.0",
+            "pandas>=1.1.3, <=2.3.3",
         ],
         "docs": [
             "sphinx==4.4.0",
@@ -270,12 +270,13 @@ setup(
             "cython_bbox",
             "termcolor",
             "scikit-learn",
-            "faiss-gpu",
+            "faiss-gpu",  # Not supported in Python 3.11+
             "tabulate",
             "tensorboard",
             "decord",
             "gdown",
             "torch",
+            "motmetrics",
         ],
         "model-benchmark": [
             "pycocotools",
@@ -307,6 +308,10 @@ setup(
         "aug": [
             "imgaug>=0.4.0, <1.0.0",
             "imagecorruptions>=1.1.2, <2.0.0",
+            "numpy>=1.19, <2.0.0",
+        ],
+        "agent": [
+            "protobuf>=3.19.5, <=3.20.3",
         ],
     },
 )

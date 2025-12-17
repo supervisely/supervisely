@@ -15,6 +15,8 @@ from supervisely.io.fs import (
     change_directory_at_index,
 )
 
+if not hasattr(np, "bool"):
+    np.bool = np.bool_
 
 def matrix_from_nrrd_header(header: Dict) -> np.ndarray:
     """

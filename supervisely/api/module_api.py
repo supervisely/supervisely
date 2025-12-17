@@ -709,6 +709,13 @@ class ApiField:
     """"""
     UNIQUE_ITEMS = "uniqueItems"
     """"""
+    NN_CREATED = "nnCreated"
+    """"""
+    NN_UPDATED = "nnUpdated"
+    """"""
+    M_GUIDE_ID = (["meta", "guide"], "guide_id")
+    """"""
+    GUIDE_ID = "guideId"
 
 
 def _get_single_item(items):

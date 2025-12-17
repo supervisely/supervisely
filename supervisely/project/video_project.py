@@ -21,6 +21,7 @@ from supervisely.io.json import dump_json_file, dump_json_file_async, load_json_
 from supervisely.project.project import Dataset, OpenMode, Project
 from supervisely.project.project import read_single_project as read_project_wrapper
 from supervisely.project.project_meta import ProjectMeta
+from supervisely.project.project_settings import LabelingInterface
 from supervisely.project.project_type import ProjectType
 from supervisely.sly_logger import logger
 from supervisely.task.progress import tqdm_sly
@@ -62,6 +63,9 @@ class VideoDataset(Dataset):
 
     #: :class:`str`: Items info directory name
     item_info_dir_name = "video_info"
+
+    #: :class:`str`: Metadata directory name
+    metadata_dir_name = "metadata"
 
     #: :class:`str`: Segmentation masks directory name
     seg_dir_name = None
@@ -1036,7 +1040,7 @@ class VideoProject(Project):
         raise NotImplementedError(
             f"Static method 'get_train_val_splits_by_tag()' is not supported for VideoProject class now."
         )
-    
+
     @staticmethod
     def get_train_val_splits_by_collections(
         project_dir: str,
@@ -1193,7 +1197,7 @@ class VideoProject(Project):
         api: Api,
         project_id: int,
         dest_dir: str,
-        semaphore: asyncio.Semaphore = None,
+        semaphore: Optional[Union[asyncio.Semaphore, int]] = None,
         dataset_ids: List[int] = None,
         download_videos: bool = True,
         save_video_info: bool = False,
@@ -1213,7 +1217,7 @@ class VideoProject(Project):
         :param dest_dir: Directory to download video project.
         :type dest_dir: :class:`str`
         :param semaphore: Semaphore to limit the number of concurrent downloads of items.
-        :type semaphore: :class:`asyncio.Semaphore`, optional
+        :type semaphore: :class:`asyncio.Semaphore` or :class:`int`, optional
         :param dataset_ids: Datasets IDs in Supervisely to download.
         :type dataset_ids: :class:`list` [ :class:`int` ], optional
         :param download_videos: Download videos from Supervisely video project in dest_dir or not.
@@ -1492,11 +1496,18 @@ def upload_video_project(
     if project_name is None:
         project_name = project_fs.name
 
+    is_multiview = False
+    try:
+        if project_fs.meta.labeling_interface == LabelingInterface.MULTIVIEW:
+            is_multiview = True
+    except AttributeError:
+        is_multiview = False
+
     if api.project.exists(workspace_id, project_name):
         project_name = api.project.get_free_name(workspace_id, project_name)
 
     project = api.project.create(workspace_id, project_name, ProjectType.VIDEOS)
-    api.project.update_meta(project.id, project_fs.meta.to_json())
+    project_meta = api.project.update_meta(project.id, project_fs.meta.to_json())
 
     if progress_cb is not None:
         log_progress = False
@@ -1564,7 +1575,14 @@ def upload_video_project(
                 leave=False,
             )
         try:
-            api.video.annotation.upload_paths(video_ids, ann_paths, project_fs.meta, anns_progress)
+            if is_multiview:
+                api.video.annotation.upload_paths_multiview(
+                    video_ids, ann_paths, project_meta, anns_progress
+                )
+            else:
+                api.video.annotation.upload_paths(
+                    video_ids, ann_paths, project_fs.meta, anns_progress
+                )
         except Exception as e:
             logger.info(
                 "INFO FOR DEBUGGING",
@@ -1584,7 +1602,7 @@ async def download_video_project_async(
     api: Api,
     project_id: int,
     dest_dir: str,
-    semaphore: Optional[asyncio.Semaphore] = None,
+    semaphore: Optional[Union[asyncio.Semaphore, int]] = None,
     dataset_ids: Optional[List[int]] = None,
     download_videos: Optional[bool] = True,
     save_video_info: Optional[bool] = False,
@@ -1604,7 +1622,7 @@ async def download_video_project_async(
     :param dest_dir: Destination path to local directory.
     :type dest_dir: str
     :param semaphore: Semaphore to limit the number of simultaneous downloads of items.
-    :type semaphore: asyncio.Semaphore, optional
+    :type semaphore: asyncio.Semaphore or int, optional
     :param dataset_ids: Specified list of Dataset IDs which will be downloaded. Datasets could be downloaded from different projects but with the same data type.
     :type dataset_ids: list(int), optional
     :param download_videos: Include videos in the download.
@@ -1643,6 +1661,8 @@ async def download_video_project_async(
     """
     if semaphore is None:
         semaphore = api.get_default_semaphore()
+    elif isinstance(semaphore, int):
+        semaphore = asyncio.Semaphore(semaphore)
 
     key_id_map = KeyIdMap()
 
@@ -1734,7 +1754,7 @@ def _log_warning(
 async def _download_project_item_async(
     api: Api,
     video: VideoInfo,
-    semaphore: asyncio.Semaphore,
+    semaphore: Union[asyncio.Semaphore, int],
     dataset: DatasetInfo,
     dest_dir: str,
     project_fs: Project,
@@ -1748,6 +1768,9 @@ async def _download_project_item_async(
     """
     This function downloads a video item from the project in Supervisely platform asynchronously.
     """
+
+    if isinstance(semaphore, int):
+        semaphore = asyncio.Semaphore(semaphore)
 
     try:
         ann_json = await api.video.annotation.download_async(video.id, video, semaphore=semaphore)
