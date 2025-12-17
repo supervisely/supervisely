@@ -35,12 +35,28 @@ class SemanticSegmentationEvalResult(BaseEvalResult):
         eval_data_archive_path = Path(path) / "eval_data.zip"
         eval_data_json_path = Path(path) / "eval_data.json"
         if eval_data_pickle_path.exists():
-            with open(Path(path, "eval_data.pkl"), "rb") as f:
-                self.eval_data = pickle.load(f)
-        elif eval_data_archive_path.exists() and eval_data_json_path.exists():
-            self.eval_data = self._load_eval_data_archive(
-                eval_data_archive_path, eval_data_json_path
-            )
+            try:
+                with open(Path(path, "eval_data.pkl"), "rb") as f:
+                    self.eval_data = pickle.load(f)
+            except Exception:
+                logger.warning("Failed to load eval_data.pkl.")
+                self.eval_data = None
+
+        if (
+            self.eval_data is None
+            and eval_data_archive_path.exists()
+            and eval_data_json_path.exists()
+        ):
+            try:
+                self.eval_data = self._load_eval_data_archive(
+                    eval_data_archive_path, eval_data_json_path
+                )
+            except Exception:
+                logger.warning("Failed to load eval_data from archive.")
+                self.eval_data = None
+
+        if self.eval_data is None:
+            raise ValueError("Failed to load eval_data.")
 
         inference_info_path = Path(path) / "inference_info.json"
         if inference_info_path.exists():
@@ -77,7 +93,7 @@ class SemanticSegmentationEvalResult(BaseEvalResult):
             return int(value)
         else:
             return value
-        
+
     def _is_float(self, s: str) -> bool:
         if not s or not isinstance(s, str):
             return False
