@@ -2814,6 +2814,11 @@ class Inference:
     def _freeze_model(self):
         if self._model_frozen or not self._model_served:
             return
+
+        if not self._deploy_params:
+            logger.warning("Deploy params are not set, cannot freeze the model.")
+            return
+
         logger.debug("Freezing model...")
         runtime = self._deploy_params.get("runtime")
         if runtime and runtime.lower() != RuntimeType.PYTORCH.lower():

@@ -3,6 +3,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Dict, List, Union
 
+from supervisely.api.api import Api
 import supervisely.convert.video.sly.sly_video_helper as sly_video_helper
 from supervisely import OpenMode, ProjectMeta, VideoAnnotation, VideoProject, logger
 from supervisely.convert.base_converter import AvailableVideoConverters
@@ -403,7 +404,7 @@ class MultiViewVideoConverter(VideoConverter):
 
     def _upload_single_dataset(
         self,
-        api,
+        api: Api,
         dataset_id: int,
         items: list,
         batch_size: int = 10,
@@ -446,6 +447,7 @@ class MultiViewVideoConverter(VideoConverter):
                 if has_large_files:
                     upload_progress = []
                     size_progress_cb = self._get_video_upload_progress(upload_progress)
+
         batch_size = 1 if has_large_files and not self.upload_as_links else batch_size
         for batch in batched(items, batch_size=batch_size):
             item_names = []
@@ -500,10 +502,12 @@ class MultiViewVideoConverter(VideoConverter):
                     figures_cnt, "Uploading annotations..."
                 )
 
-            for vid, ann, item, info in zip(vid_ids, anns, batch, vid_infos):
+            for idx, (ann, info) in enumerate(zip(anns, vid_infos)):
                 if ann is None:
-                    ann = VideoAnnotation((info.frame_height, info.frame_width), info.frames_count)
-                api.video.annotation.append(vid, ann, progress_cb=ann_progress_cb)
+                    anns[idx] = VideoAnnotation(
+                        (info.frame_height, info.frame_width), info.frames_count
+                    )
+            api.video.annotation.upload_anns_multiview(vid_ids, anns, ann_progress_cb)
 
         if log_progress and is_development():
             if progress is not None:

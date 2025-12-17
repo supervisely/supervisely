@@ -929,6 +929,27 @@ def get_file_hash_chunked(path: str, chunk_size: Optional[int] = 1024 * 1024) ->
     return base64.b64encode(digest).decode("utf-8")
 
 
+async def get_file_hash_chunked_async(path: str, chunk_size: Optional[int] = 1024 * 1024) -> str:
+    """
+    Asynchronously get hash from target file by reading it in chunks.
+
+    :param path: Target file path.
+    :type path: str
+    :param chunk_size: Number of bytes to read per iteration. Default is 1 MB.
+    :type chunk_size: int, optional
+    :returns: File hash as a base64 encoded string.
+    :rtype: str
+    """
+    hash_sha256 = hashlib.sha256()
+    async with aiofiles.open(path, "rb") as file:
+        while True:
+            chunk = await file.read(chunk_size)
+            if not chunk:
+                break
+            hash_sha256.update(chunk)
+    return base64.b64encode(hash_sha256.digest()).decode("utf-8")
+
+
 def tree(dir_path: str) -> str:
     """
     Get tree for target directory.
