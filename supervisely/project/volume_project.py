@@ -697,6 +697,13 @@ class VolumeProject(VideoProject):
         except KeyError as exc:
             raise RuntimeError("VolumeProject payload missing metadata section") from exc
 
+        if VolumeProject._SECTION_DATASETS not in sections:
+            logger.warning("VolumeProject blob has no datasets section; treating as empty.")
+        if VolumeProject._SECTION_VOLUMES not in sections:
+            logger.warning("VolumeProject blob has no volumes section; treating as empty.")
+        if VolumeProject._SECTION_ANNOTATIONS not in sections:
+            logger.warning("VolumeProject blob has no annotations section; treating as empty.")
+
         dataset_table = VolumeProject._parquet_bytes_to_table(
             pa_module, sections.get(VolumeProject._SECTION_DATASETS, b"")
         )
@@ -707,21 +714,37 @@ class VolumeProject(VideoProject):
             pa_module, sections.get(VolumeProject._SECTION_ANNOTATIONS, b"")
         )
 
-        dataset_jsons = dataset_table.column("json").to_pylist() if dataset_table.num_rows else []
-        dataset_records = [json.loads(item) for item in dataset_jsons]
+        dataset_records: List[Dict] = []
+        if (
+            dataset_table is not None
+            and dataset_table.num_rows
+            and "json" in dataset_table.column_names
+        ):
+            dataset_jsons = dataset_table.column("json").to_pylist()
+            dataset_records = [json.loads(item) for item in dataset_jsons]
 
-        volume_rows = volume_table.to_pydict() if volume_table.num_rows else {}
-        volume_jsons = volume_rows.get("json", []) if volume_rows else []
-        volume_records = [json.loads(item) for item in volume_jsons]
+        volume_records: List[Dict] = []
+        if (
+            volume_table is not None
+            and volume_table.num_rows
+            and "json" in volume_table.column_names
+        ):
+            volume_jsons = volume_table.column("json").to_pylist()
+            volume_records = [json.loads(item) for item in volume_jsons]
 
-        annotations_rows = annotations_table.to_pydict() if annotations_table.num_rows else {}
-        annotation_ids = annotations_rows.get("volume_id", []) if annotations_rows else []
-        annotation_payloads = annotations_rows.get("annotation", []) if annotations_rows else []
         annotations: Dict[str, Dict] = {}
-        for volume_id, annotation_json in zip(annotation_ids, annotation_payloads):
-            if volume_id is None:
-                continue
-            annotations[str(volume_id)] = json.loads(annotation_json)
+        if (
+            annotations_table is not None
+            and annotations_table.num_rows
+            and "volume_id" in annotations_table.column_names
+            and "annotation" in annotations_table.column_names
+        ):
+            annotation_ids = annotations_table.column("volume_id").to_pylist()
+            annotation_payloads = annotations_table.column("annotation").to_pylist()
+            for volume_id, annotation_json in zip(annotation_ids, annotation_payloads):
+                if volume_id is None:
+                    continue
+                annotations[str(volume_id)] = json.loads(annotation_json)
 
         return {
             "project_info": project_info,
