@@ -660,17 +660,34 @@ class VolumeProject(VideoProject):
         view = raw_data if isinstance(raw_data, memoryview) else memoryview(raw_data)
         header_len = len(magic) + 2
         if len(view) < header_len:
+            logger.warning(
+                f"VolumeProject binary payload too small: {len(view)} bytes (need >= {header_len}). First bytes(hex)={view[: min(len(view), 16)].tobytes().hex()}",
+            )
             raise RuntimeError("Corrupted VolumeProject binary payload")
         if view[: len(magic)].tobytes() != magic:
-            raise RuntimeError("Unsupported VolumeProject binary payload format")
+            found = view[: len(magic)].tobytes()
+            logger.warning(
+                f"VolumeProject binary payload magic mismatch. expected={magic.hex()} found={found.hex()} total_bytes={len(view)} prefix16(hex)={view[:16].tobytes().hex()}",
+            )
+            raise RuntimeError(
+                "Unsupported VolumeProject binary payload format (magic mismatch). "
+                "Expected magic={!r}, found={!r}".format(magic, found)
+            )
 
         offset = len(magic)
         version = view[offset]
         offset += 1
         if version != VolumeProject._SERIALIZATION_VERSION:
+            logger.warning(
+                "VolumeProject binary payload version mismatch. expected=%d found=%d total_bytes=%d",
+                VolumeProject._SERIALIZATION_VERSION,
+                version,
+                len(view),
+            )
             raise RuntimeError(
                 "Unsupported VolumeProject binary payload version: {}".format(version)
             )
+
         section_count = view[offset]
         offset += 1
         sections: Dict[int, bytes] = {}
