@@ -20,11 +20,9 @@ jobs:
         with:
           repository: ${{ github.repository }}
 
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-      
+      - name: Add local bin to PATH
+        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
+
       - name: Import
         run: |
           python -m pip install --upgrade pip
@@ -114,12 +112,10 @@ jobs:
             echo "No Python files to check"
           fi
 
-      - name: Set up Python
+      - name: Add local bin to PATH
         if: ${{ env.HAS_PYTHON_FILES == 'true' }}
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-          
+        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
+        
       - name: Install dependencies
         if: ${{ env.HAS_PYTHON_FILES == 'true' }}
         run: |

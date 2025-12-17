@@ -104,6 +104,8 @@ from supervisely.app.widgets.pie_chart.pie_chart import PieChart
 from supervisely.app.widgets.timeline.timeline import Timeline
 from supervisely.app.widgets.nodes_flow.nodes_flow import NodesFlow
 from supervisely.app.widgets.dialog.dialog import Dialog
+from supervisely.app.widgets.modal.modal import Modal
+from supervisely.app.widgets.activity_feed.activity_feed import ActivityFeed
 from supervisely.app.widgets.draggable.draggable import Draggable
 from supervisely.app.widgets.tooltip.tooltip import Tooltip
 from supervisely.app.widgets.image_annotation_preview.image_annotation_preview import (
@@ -129,6 +131,9 @@ from supervisely.app.widgets.classes_mapping_preview.classes_mapping_preview imp
 )
 from supervisely.app.widgets.classes_list_selector.classes_list_selector import ClassesListSelector
 from supervisely.app.widgets.classes_list_preview.classes_list_preview import ClassesListPreview
+from supervisely.app.widgets.select_class.select_class import SelectClass
+from supervisely.app.widgets.select_tag.select_tag import SelectTag
+from supervisely.app.widgets.select_user.select_user import SelectUser
 from supervisely.app.widgets.tags_list_selector.tags_list_selector import TagsListSelector
 from supervisely.app.widgets.tags_list_preview.tags_list_preview import TagsListPreview
 from supervisely.app.widgets.members_list_selector.members_list_selector import MembersListSelector

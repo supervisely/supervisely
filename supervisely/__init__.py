@@ -106,6 +106,7 @@ from supervisely.geometry.graph import GraphNodes, Node
 from supervisely.geometry.multichannel_bitmap import MultichannelBitmap
 from supervisely.geometry.alpha_mask import AlphaMask
 from supervisely.geometry.cuboid_2d import Cuboid2d
+from supervisely.geometry.oriented_bbox import OrientedBBox
 
 from supervisely.geometry.helpers import geometry_to_bitmap
 from supervisely.geometry.helpers import deserialize_geometry

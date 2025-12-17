@@ -24,6 +24,7 @@ type_to_zmdi_icon = {
     Pointcloud: "zmdi zmdi-cloud-outline",  # "zmdi zmdi-border-clear"
     sly.MultichannelBitmap: "zmdi zmdi-layers",  # "zmdi zmdi-collection-item"
     Point3d: "zmdi zmdi-filter-center-focus",  # "zmdi zmdi-select-all"
+    sly.OrientedBBox: "zmdi zmdi-rotate-cw",
 }
 
 

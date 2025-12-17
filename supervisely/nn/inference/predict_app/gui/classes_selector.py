@@ -23,6 +23,7 @@ from supervisely.geometry.pointcloud import Pointcloud
 from supervisely.geometry.polygon import Polygon
 from supervisely.geometry.polyline import Polyline
 from supervisely.geometry.rectangle import Rectangle
+from supervisely.geometry.oriented_bbox import OrientedBBox
 from supervisely.project.project_meta import ProjectMeta
 
 type_to_zmdi_icon = {
@@ -39,6 +40,7 @@ type_to_zmdi_icon = {
     Pointcloud: "zmdi zmdi-cloud-outline",  # "zmdi zmdi-border-clear"
     MultichannelBitmap: "zmdi zmdi-layers",  # "zmdi zmdi-collection-item"
     Point3d: "zmdi zmdi-filter-center-focus",  # "zmdi zmdi-select-all"
+    OrientedBBox: "zmdi zmdi-rotate-cw",
 }
 class ClassesSelector:
     title = "Classes"
