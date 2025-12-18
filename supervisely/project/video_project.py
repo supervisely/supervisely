@@ -1397,11 +1397,23 @@ class VideoProject(Project):
 
             dataset_ids_filter = set(dataset_ids) if dataset_ids is not None else None
 
+            # api.dataset.tree() doesn't include custom_data
+            ds_custom_data_by_id: dict[int, dict] = {}
+            try:
+                for ds in api.dataset.get_list(
+                    project_id, recursive=True, include_custom_data=True
+                ):
+                    if getattr(ds, "custom_data", None) is not None:
+                        ds_custom_data_by_id[ds.id] = ds.custom_data
+            except Exception:
+                ds_custom_data_by_id = {}
+
             for parents, ds_info in api.dataset.tree(project_id):
                 if dataset_ids_filter is not None and ds_info.id not in dataset_ids_filter:
                     continue
 
                 full_path = Dataset._get_dataset_path(ds_info.name, parents)
+                ds_custom_data = ds_custom_data_by_id.get(ds_info.id)
                 datasets_rows.append(
                     {
                         "src_dataset_id": ds_info.id,
@@ -1410,7 +1422,9 @@ class VideoProject(Project):
                         "full_path": full_path,
                         "description": ds_info.description,
                         "custom_data": (
-                            json.dumps(ds_info.custom_data) if ds_info.custom_data else None
+                            json.dumps(ds_custom_data)
+                            if isinstance(ds_custom_data, dict) and len(ds_custom_data) > 0
+                            else None
                         ),
                     }
                 )
@@ -1776,6 +1790,11 @@ class VideoProject(Project):
                     parent_id=parent_id,
                     custom_data=custom_data,
                 )
+                if with_custom_data and custom_data is not None:
+                    try:
+                        api.dataset.update_custom_data(ds.id, custom_data)
+                    except Exception:
+                        logger.warning(f"Failed to restore custom_data for dataset '{row.get('name')}'")
                 dataset_mapping[src_ds_id] = ds
 
             # Videos
