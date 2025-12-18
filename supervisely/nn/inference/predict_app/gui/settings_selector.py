@@ -502,7 +502,7 @@ class Preview:
             if pred_video_annotation is None:
                 raise RuntimeError("Model did not return video annotation")
             pred_video_annotation = VideoAnnotation.from_json(
-                pred_video_annotation, project_meta=project_meta
+                pred_video_annotation, project_meta=model_api.get_model_meta()
             )
             _, pred_video_annotation, _ = update_meta_and_ann_for_video_annotation(
                 self._project_meta,
@@ -834,7 +834,7 @@ class SettingsSelector:
             "inference_settings": self.get_inference_settings(),
         }
         if self.input_selector.radio.get_value() == ProjectType.VIDEOS.value:
-            settings["tracking_settings"] = self.get_tracking_settings()
+            settings["tracking_config"] = self.get_tracking_settings()
             if self.input_selector.get_settings().get("video_ids", None) is not None:
                 settings["tracking"] = self.tracking_checkbox.is_checked()
         return settings

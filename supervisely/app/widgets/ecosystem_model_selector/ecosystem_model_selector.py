@@ -95,7 +95,7 @@ class EcosystemModelSelector(Widget):
         for model in models:
             if frameworks and model["framework"] not in frameworks:
                 continue
-            if task_types and model["model"]["task"] not in task_types:
+            if task_types and model["task"] not in task_types:
                 continue
             filtered_models.append(model)
         return filtered_models

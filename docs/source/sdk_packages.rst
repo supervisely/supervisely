@@ -146,6 +146,15 @@ API
 
     FileApi
 
+.. currentmodule:: supervisely.api.guides_api
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    GuidesApi
+
 .. currentmodule:: supervisely.api.storage_api
 
 .. autosummary::
@@ -184,6 +193,15 @@ API
     :template: autosummary/custom-class-template.rst
 
     ImportStorageApi
+
+.. currentmodule:: supervisely.api.issues_api
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    IssuesApi
 
 .. currentmodule:: supervisely.api.labeling_job_api
 

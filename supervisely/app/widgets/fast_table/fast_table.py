@@ -904,9 +904,9 @@ class FastTable(Widget):
     def _default_search_function(self, data: pd.DataFrame, search_value: str) -> pd.DataFrame:
         # Use map() for pandas >= 2.1.0, fallback to applymap() for older versions
         if hasattr(pd.DataFrame, "map"):
-            data = data[data.map(lambda x: search_value in str(x)).any(axis=1)]
+            data = data[data.map(lambda x: search_value.lower() in str(x).lower()).any(axis=1)]
         else:
-            data = data[data.applymap(lambda x: search_value in str(x)).any(axis=1)]
+            data = data[data.applymap(lambda x: search_value.lower() in str(x).lower()).any(axis=1)]
         return data
 
     def _search(self, search_value: str) -> pd.DataFrame:

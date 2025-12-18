@@ -105,9 +105,9 @@ class ImportManager:
         )
         return modality_converter.detect_format()
 
-    def upload_dataset(self, dataset_id):
+    def upload_dataset(self, dataset_id) -> Optional[int]:
         """Upload converted data to Supervisely"""
-        self.converter.upload_dataset(self._api, dataset_id)
+        return self.converter.upload_dataset(self._api, dataset_id)
 
     # def validate_format(self):
     #     raise NotImplementedError

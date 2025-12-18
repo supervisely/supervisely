@@ -1,4 +1,4 @@
-FROM supervisely/base-py-sdk:6.73.137
+FROM supervisely/base-py-sdk:6.73.484
 
 ARG tag_ref_name
 
