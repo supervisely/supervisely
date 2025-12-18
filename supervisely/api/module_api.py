@@ -716,6 +716,8 @@ class ApiField:
     M_GUIDE_ID = (["meta", "guide"], "guide_id")
     """"""
     GUIDE_ID = "guideId"
+    """"""
+    MAX_MODULE = "maxModule"
 
 
 def _get_single_item(items):

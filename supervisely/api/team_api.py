@@ -133,6 +133,19 @@ class UsageInfo(NamedTuple):
     """ """
 
     plan: Optional[str]
+    max_module: Optional[str]
+
+    @staticmethod
+    def info_sequence() -> List[str]:
+        return [ApiField.ACCOUNT_TYPE, ApiField.MAX_MODULE]
+
+    @classmethod
+    def from_json(cls, data: Optional[Dict[str, Optional[str]]]) -> Optional["UsageInfo"]:
+        if not data:
+            return None
+        mapping = dict(zip(cls._fields, cls.info_sequence()))
+        values = {attr: data.get(api_field) for attr, api_field in mapping.items()}
+        return cls(**values)
 
 
 class TeamInfo(NamedTuple):
@@ -566,5 +579,5 @@ class TeamApi(ModuleNoParent, UpdateableModule):
         res_dict = res._asdict()
         if isinstance(res_dict.get("usage"), dict):
             usage_dict = {f: res_dict["usage"].get(f) for f in UsageInfo._fields}
-            res_dict["usage"] = UsageInfo(**usage_dict)
+            res_dict["usage"] = UsageInfo.from_json(usage_dict)
         return TeamInfo(**res_dict)
