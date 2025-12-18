@@ -128,7 +128,7 @@ INSTALL_REQUIRES = [
     "httpx[http2]==0.27.2",
     "debugpy",
     "setuptools<81.0.0",
-    "pyarrow==17.0.0",
+    "pyarrow>=17.0.0, <=22.0.0",
 ]
 
 ALT_INSTALL_REQUIRES = {
