@@ -11,7 +11,7 @@ import zstd
 
 from supervisely._utils import logger
 from supervisely.api.module_api import ApiField, ModuleApiBase
-from supervisely.api.project_api import ProjectInfo, ProjectType
+from supervisely.api.project_api import ProjectInfo
 from supervisely.io import json
 from supervisely.io.fs import remove_dir, silent_remove
 
@@ -98,7 +98,7 @@ class DataVersion(ModuleApiBase):
 
         project_type = self.project_info.type
         if project_type == ProjectType.IMAGES.value:
-            self.__version_format: str = "v1.0.0"
+            self.__version_format = "v1.0.0"
             return Project
         elif project_type == ProjectType.VIDEOS.value:
             self.__version_format = "v2.0.0"
@@ -372,7 +372,6 @@ class DataVersion(ModuleApiBase):
                         raise RuntimeError(
                             "Failed to reserve version. Another process is already committing a version. Maximum number of attempts reached."
                         )
-                    version = details.get("version", {}).get("version")
                     time.sleep(retry_delay)
                     retry_delay *= 2
                     continue
@@ -488,15 +487,28 @@ class DataVersion(ModuleApiBase):
         local_path = os.path.join(temp_dir, "download.tar.zst")
         try:
             self._api.file.download(self.project_info.team_id, path, local_path)
-            with open(local_path, "rb") as zst:
-                decompressed_data = zstd.decompress(zst.read())
-            with tarfile.open(fileobj=io.BytesIO(decompressed_data)) as tar:
-                file = tar.extractfile("version.bin")
-                if not file:
-                    raise RuntimeError("version.bin not found in the archive")
-                data = file.read()
-                bin_io = io.BytesIO(data)
-                return bin_io
+            # Stream-decompress and stream-read tar to avoid loading the whole archive in memory.
+            try:
+                dctx = zstd.ZstdDecompressor()
+                with open(local_path, "rb") as zst_f:
+                    with dctx.stream_reader(zst_f) as reader:
+                        with tarfile.open(fileobj=reader, mode="r|") as tar:
+                            for member in tar:
+                                if member.name == "version.bin":
+                                    file = tar.extractfile(member)
+                                    if not file:
+                                        raise RuntimeError("version.bin not found in the archive")
+                                    return io.BytesIO(file.read())
+                            raise RuntimeError("version.bin not found in the archive")
+            except Exception:
+                # Fallback: one-shot decompress
+                with open(local_path, "rb") as zst_f:
+                    decompressed_data = zstd.decompress(zst_f.read())
+                with tarfile.open(fileobj=io.BytesIO(decompressed_data), mode="r") as tar:
+                    file = tar.extractfile("version.bin")
+                    if not file:
+                        raise RuntimeError("version.bin not found in the archive")
+                    return io.BytesIO(file.read())
         except Exception as e:
             raise RuntimeError(f"Failed to extract version: {e}")
         finally:
@@ -540,25 +552,31 @@ class DataVersion(ModuleApiBase):
         )
         data.seek(0)
         info = tarfile.TarInfo(name="version.bin")
-        info.size = len(data.getvalue())
-        chunk_size = 1024 * 1024 * 50  # 50 MiB
-        tar_data = io.BytesIO()
-
-        # Create a tarfile object that writes into the BytesIO object
-        with tarfile.open(fileobj=tar_data, mode="w") as tar:
-            tar.addfile(tarinfo=info, fileobj=data)
-        data.close()
-        # Reset the BytesIO object's cursor to the beginning
-        tar_data.seek(0)
+        data.seek(0, io.SEEK_END)
+        info.size = data.tell()
+        data.seek(0)
         zst_archive_path = os.path.join(temp_dir, "download.tar.zst")
 
-        with open(zst_archive_path, "wb") as zst:
-            while True:
-                chunk = tar_data.read(chunk_size)
-                if not chunk:
-                    break
-                zst.write(zstd.compress(chunk))
+        # Stream-decompress and stream-read tar to avoid loading the whole archive in memory.
+        try:
+            cctx = zstd.ZstdCompressor()
+            with open(zst_archive_path, "wb") as zst_f:
+                try:
+                    stream = cctx.stream_writer(zst_f, closefd=False)
+                except TypeError:
+                    stream = cctx.stream_writer(zst_f)
+                with stream as compressor:
+                    with tarfile.open(fileobj=compressor, mode="w|") as tar:
+                        tar.addfile(tarinfo=info, fileobj=data)
+        except Exception:
+            # Fallback: build tar in memory + one-shot compress
+            tar_data = io.BytesIO()
+            with tarfile.open(fileobj=tar_data, mode="w") as tar:
+                tar.addfile(tarinfo=info, fileobj=data)
+            tar_data.seek(0)
+            with open(zst_archive_path, "wb") as zst_f:
+                zst_f.write(zstd.compress(tar_data.read()))
         file_info = self._api.file.upload(self.project_info.team_id, zst_archive_path, path)
-        tar_data.close()
+        data.close()
         remove_dir(temp_dir)
         return file_info

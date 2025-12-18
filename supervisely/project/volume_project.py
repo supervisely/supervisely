@@ -4,8 +4,6 @@ import json
 import os
 import re
 import struct
-import sys
-import tempfile
 from collections import defaultdict, namedtuple
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
@@ -232,10 +230,64 @@ class VolumeProject(VideoProject):
         **kwargs,
     ) -> Union[str, io.BytesIO]:
         """
-        Download project contents into a Parquet-backed binary blob.
+        Download a Volume Project snapshot into a Parquet-backed binary blob (`.tar.zst` file or in-memory BytesIO).
 
-        The payload stores project info, meta, dataset tree, volume infos, and annotations so it can
-        be restored later with :func:`upload_bin`.
+        The snapshot stores:
+
+        - Project info and meta
+        - Dataset tree (dataset infos)
+        - Volume infos (optionally)
+        - Volume annotations (for the included volumes)
+
+        The resulting binary snapshot can be restored later with :func:`upload_bin`.
+
+        :param api: Supervisely API client.
+        :type api: :class:`~supervisely.api.api.Api`
+        :param project_id: Source Volume Project ID on the server.
+        :type project_id: int
+        :param dest_dir: Local folder where the snapshot file will be written. Required when `return_bytesio=False`.
+        :type dest_dir: str, optional
+        :param dataset_ids: Optional list of dataset IDs to include. If provided, only these datasets will be included (recursively, preserving tree structure where applicable).
+        :type dataset_ids: List[int], optional
+        :param download_volumes: If False, only project/meta/dataset tree is stored (volume infos and annotations are skipped). This is useful for “structure-only” snapshots.
+        :type download_volumes: bool, optional
+        :param log_progress: If True, show a progress bar (unless a custom ``progress_cb`` is provided).
+        :type log_progress: bool
+        :param progress_cb: Optional callback (or tqdm-like object) called with incremental progress.
+        :type progress_cb: tqdm or callable, optional
+        :param return_bytesio: If True, return an in-memory :class:`io.BytesIO` with snapshot bytes. If False, write snapshot to ``dest_dir`` and return the file path.
+        :type return_bytesio: bool, optional
+        :return: Snapshot file path (when ``return_bytesio=False``) or a BytesIO (when ``return_bytesio=True``).
+        :rtype: str or io.BytesIO
+        :raises ValueError: If ``dest_dir`` is not provided and ``return_bytesio`` is False.
+        :raises RuntimeError: If required optional dependencies (e.g. pyarrow) are missing.
+
+        :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+            import os
+
+            api = sly.Api(os.environ["SERVER_ADDRESS"], os.environ["API_TOKEN"])
+
+            # 1) Save snapshot to disk
+            out_path = sly.VolumeProject.download_bin(
+                api,
+                project_id=123,
+                dest_dir="/tmp/vol_project_snapshot",
+                download_volumes=True,
+                log_progress=True,
+            )
+
+            # 2) Create an in-memory snapshot (BytesIO) and restore it
+            blob = sly.VolumeProject.download_bin(
+                api,
+                project_id=123,
+                return_bytesio=True,
+                download_volumes=False,  # structure-only
+            )
+            restored = sly.VolumeProject.upload_bin(api, blob, workspace_id=45, project_name="Restored")
         """
 
         pa = VolumeProject._require_pyarrow()
@@ -283,16 +335,34 @@ class VolumeProject(VideoProject):
             ann_jsons = api.volume.annotation.download_bulk(dataset_info.id, volume_ids)
 
             # insert custom_data into ann_jsons (api does not return it in download_bulk atm)
+            # Build mappings:
+            # - volume_id -> ann_json
+            # - volume_id -> {figure_id -> spatial_figure_dict}
+            ann_by_volume_id: Dict[int, Dict[str, Any]] = {}
+            spatial_figures_by_volume: Dict[int, Dict[int, Dict[str, Any]]] = {}
+            for ann_json in ann_jsons:
+                volume_id = ann_json.get(ApiField.VOLUME_ID)
+                if volume_id is None:
+                    continue
+                ann_by_volume_id[volume_id] = ann_json
+                figures_list = ann_json.get(volume_constants.SPATIAL_FIGURES, []) or []
+                fig_id_to_spatial_figure: Dict[int, Dict[str, Any]] = {}
+                for spatial_figure in figures_list:
+                    fig_id = spatial_figure.get("id")
+                    if fig_id is not None:
+                        fig_id_to_spatial_figure[fig_id] = spatial_figure
+                spatial_figures_by_volume[volume_id] = fig_id_to_spatial_figure
+
             figures_dict = api.volume.figure.download(dataset_info.id, volume_ids)
             for volume_id, figure_infos in figures_dict.items():
-                for ann_json in ann_jsons:
-                    if not ann_json.get(ApiField.VOLUME_ID) == volume_id:
-                        continue
-                    for figure_info in figure_infos:
-                        for spatial_figure in ann_json.get(volume_constants.SPATIAL_FIGURES, []):
-                            if spatial_figure["id"] == figure_info.id:
-                                spatial_figure[ApiField.CUSTOM_DATA] = figure_info.custom_data
-                                break
+                ann_json = ann_by_volume_id.get(volume_id)
+                if ann_json is None:
+                    continue
+                fig_id_to_spatial_figure = spatial_figures_by_volume.get(volume_id, {})
+                for figure_info in figure_infos:
+                    spatial_figure = fig_id_to_spatial_figure.get(figure_info.id)
+                    if spatial_figure is not None:
+                        spatial_figure[ApiField.CUSTOM_DATA] = figure_info.custom_data
 
             for volume_info, ann_json in zip(volumes, ann_jsons):
                 ann = VolumeAnnotation.from_json(ann_json, project_meta_obj, key_id_map)
