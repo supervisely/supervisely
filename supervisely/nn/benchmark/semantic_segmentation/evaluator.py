@@ -3,15 +3,13 @@ from __future__ import annotations
 import os
 import pickle
 import shutil
-import zipfile
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import List, Optional
 
 import cv2
 import numpy as np
-import pandas as pd
 
-from supervisely.io.json import dump_json_file, load_json_file
+from supervisely.io.json import load_json_file
 from supervisely.nn.benchmark.base_evaluator import BaseEvalResult, BaseEvaluator
 from supervisely.nn.benchmark.semantic_segmentation.metric_provider import (
     MetricProvider,
@@ -33,7 +31,6 @@ class SemanticSegmentationEvalResult(BaseEvalResult):
 
         eval_data_pickle_path = Path(path) / "eval_data.pkl"
         eval_data_archive_path = Path(path) / "eval_data.zip"
-        eval_data_json_path = Path(path) / "eval_data.json"
         if eval_data_pickle_path.exists():
             try:
                 with open(Path(path, "eval_data.pkl"), "rb") as f:
@@ -42,15 +39,9 @@ class SemanticSegmentationEvalResult(BaseEvalResult):
                 logger.warning("Failed to load eval_data.pkl.")
                 self.eval_data = None
 
-        if (
-            self.eval_data is None
-            and eval_data_archive_path.exists()
-            and eval_data_json_path.exists()
-        ):
+        if self.eval_data is None and eval_data_archive_path.exists():
             try:
-                self.eval_data = self._load_eval_data_archive(
-                    eval_data_archive_path, eval_data_json_path
-                )
+                self.eval_data = self._load_eval_data_archive(eval_data_archive_path)
             except Exception:
                 logger.warning("Failed to load eval_data from archive.")
                 self.eval_data = None
@@ -130,48 +121,6 @@ class SemanticSegmentationEvaluator(BaseEvaluator):
                 palette.append(obj_cls.color)
 
         return palette
-
-    def _dump_eval_results_archive(self):
-        with zipfile.ZipFile(os.path.join(self.result_dir, "eval_data.zip"), mode="w") as zf:
-            data = self._process_value_for_archive(self.eval_data, "", zf)
-            filepath = os.path.join(self.result_dir, "eval_data.json")
-            dump_json_file(data, filepath, indent=4)
-            zf.write(filepath, arcname="eval_data.json")
-
-    def _process_value_for_archive(self, value: Any, key_prefix: str, zf: zipfile.ZipFile) -> Any:
-        """Recursively process values for archiving, handling nested dicts and lists."""
-        if isinstance(value, np.ndarray):
-            filename = f"{key_prefix}.npy" if key_prefix else "array.npy"
-            filepath = os.path.join(self.result_dir, filename)
-            np.save(filepath, value)
-            zf.write(filepath, arcname=filename)
-            os.remove(filepath)
-            return filename
-        elif isinstance(value, pd.DataFrame):
-            filename = f"{key_prefix}.csv" if key_prefix else "dataframe.csv"
-            filepath = os.path.join(self.result_dir, filename)
-            value.to_csv(filepath, sep="\t")
-            zf.write(filepath, arcname=filename)
-            os.remove(filepath)
-            return filename
-        elif isinstance(value, dict):
-            return {
-                k: self._process_value_for_archive(v, f"{key_prefix}.{k}" if key_prefix else k, zf)
-                for k, v in value.items()
-            }
-        elif isinstance(value, list):
-            return [
-                self._process_value_for_archive(item, f"{key_prefix}[{i}]", zf)
-                for i, item in enumerate(value)
-            ]
-        elif isinstance(value, (np.integer, np.floating)):
-            return value.item()
-        elif isinstance(value, np.bool_):
-            return bool(value)
-        elif isinstance(value, str) and value.isdigit():
-            return int(value)
-        else:
-            return value
 
     def _dump_eval_results(self):
         self._dump_eval_results_archive()

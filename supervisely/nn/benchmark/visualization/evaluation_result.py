@@ -199,22 +199,43 @@ class EvalResult:
     #             progress_cb=pbar.update,
     #         )
 
-    def _load_eval_data_archive(self, path: str) -> Dict:
+    def _load_eval_data_archive(self, path: Path) -> Dict:
         """Load eval_data from archive"""
         with zipfile.ZipFile(path, mode="r") as zf:
-            with zf.open("eval_data.json") as f:
-                data = load_json_file(f)
-            eval_data = {}
-            for key, value in data.items():
-                if isinstance(value, str) and value.endswith(".npy"):
-                    with zf.open(value) as arr_f:
-                        eval_data[key] = np.load(arr_f)
-                elif isinstance(value, str) and value.endswith(".parquet"):
-                    with zf.open(value) as df_f:
-                        eval_data[key] = pd.read_parquet(df_f)
-                else:
-                    eval_data[key] = value
-            return eval_data
+            with zf.open("eval_data.json") as json_f:
+                data = load_json_file(json_f)
+            return self._process_value_from_archive(data, zf)
+
+    def _process_value_from_archive(self, value, zf: zipfile.ZipFile):
+        """Recursively process values from archive, handling nested dicts and lists."""
+        if isinstance(value, str) and value.endswith(".npy"):
+            with zf.open(value) as arr_f:
+                return np.load(arr_f)
+        elif isinstance(value, str) and value.endswith(".csv"):
+            with zf.open(value) as df_f:
+                return pd.read_csv(df_f, sep="\t")
+        elif isinstance(value, dict):
+            res = {}
+            for k, v in value.items():
+                k = int(k) if isinstance(k, str) and k.isdigit() else k
+                k = float(k) if isinstance(k, str) and self._is_float(k) else k
+                res[k] = self._process_value_from_archive(v, zf)
+            return res
+        elif isinstance(value, list):
+            return [self._process_value_from_archive(item, zf) for item in value]
+        elif isinstance(value, str) and value.isdigit():
+            return int(value)
+        else:
+            return value
+
+    def _is_float(self, s: str) -> bool:
+        if not s or not isinstance(s, str):
+            return False
+        try:
+            float(s)
+            return "." in s or "e" in s.lower()
+        except (ValueError, AttributeError):
+            return False
 
     def _read_eval_data(self):
         from pycocotools.coco import COCO  # pylint: disable=import-error
@@ -227,13 +248,22 @@ class EvalResult:
         eval_data_pickle_path = Path(self.local_dir, "evaluation", "eval_data.pkl")
         eval_data_archive_path = Path(self.local_dir, "evaluation", "eval_data.zip")
         if eval_data_pickle_path.exists():
-            self.eval_data = pickle.load(
-                open(eval_data_pickle_path, "rb")
-            )
-        elif eval_data_archive_path.exists():
-            self.eval_data = self._load_eval_data_archive(eval_data_archive_path)
-        else:
-            raise ValueError("No eval_data.pkl or eval_data.zip found in evaluation directory.")
+            try:
+                with open(eval_data_pickle_path, "rb") as f:
+                    self.eval_data = pickle.load(f)
+            except Exception:
+                logger.warning("Failed to load eval_data.pkl.")
+                self.eval_data = None
+        if self.eval_data is None and eval_data_archive_path.exists():
+            try:
+                self.eval_data = self._load_eval_data_archive(eval_data_archive_path)
+            except Exception:
+                logger.warning("Failed to load eval_data from archive.")
+                self.eval_data = None
+
+        if self.eval_data is None:
+            raise ValueError("Failed to load eval_data. Please contact support.")
+
         self.inference_info = load_json_file(
             Path(self.local_dir, "evaluation", "inference_info.json")
         )
