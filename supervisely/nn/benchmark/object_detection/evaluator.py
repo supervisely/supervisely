@@ -58,7 +58,7 @@ class ObjectDetectionEvalResult(BaseEvalResult):
                 self.eval_data = None
 
         if self.eval_data is None:
-            raise ValueError("Failed to load eval_data.")
+            raise ValueError("Failed to load eval_data. Please contact support.")
 
         inference_info_path = Path(path) / "inference_info.json"
         if inference_info_path.exists():
@@ -266,10 +266,11 @@ class ObjectDetectionEvaluator(BaseEvaluator):
             return value
 
     def _dump_eval_results(self):
-        cocoGt_path, cocoDt_path, _ = self._get_eval_paths()
+        cocoGt_path, cocoDt_path, eval_data_path = self._get_eval_paths()
         dump_json_file(self.cocoGt_json, cocoGt_path, indent=None)
         dump_json_file(self.cocoDt_json, cocoDt_path, indent=None)
         self._dump_eval_results_archive()
+        self._dump_pickle(self.eval_data, eval_data_path)
 
     def _get_eval_paths(self):
         base_dir = self.result_dir

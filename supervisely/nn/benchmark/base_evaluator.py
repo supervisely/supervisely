@@ -17,8 +17,8 @@ class BaseEvalResult:
     def __init__(self, directory: Optional[str] = None):
         self.directory = directory
         self.inference_info: Dict = {}
-        self.speedtest_info: Dict = None
-        self.eval_data: Dict = None
+        self.speedtest_info: Optional[Dict] = None
+        self.eval_data: Optional[Dict] = None
         self.mp = None
 
         if self.directory is not None:
@@ -44,19 +44,19 @@ class BaseEvalResult:
         )
 
     @property
-    def short_name(self) -> str:
+    def short_name(self) -> Union[str, None]:
         if not self.name:
-            return
+            return None
         if len(self.name) > 20:
             return self.name[:9] + "..." + self.name[-7:]
         return self.name
 
     @property
-    def gt_project_id(self) -> int:
+    def gt_project_id(self) -> Optional[int]:
         return self.inference_info.get("gt_project_id")
 
     @property
-    def gt_dataset_ids(self) -> List[int]:
+    def gt_dataset_ids(self) -> Optional[List[int]]:
         return self.inference_info.get("gt_dataset_ids", None)
 
     @property
@@ -114,7 +114,7 @@ class BaseEvalResult:
 
 
 class BaseEvaluator:
-    EVALUATION_PARAMS_YAML_PATH: str = None
+    EVALUATION_PARAMS_YAML_PATH: Optional[str] = None
     eval_result_cls = BaseEvalResult
 
     def __init__(
@@ -133,7 +133,7 @@ class BaseEvaluator:
         self.total_items = items_count
         self.pbar = progress or tqdm_sly
         os.makedirs(result_dir, exist_ok=True)
-        self.classes_whitelist = classes_whitelist
+        self.classes_whitelist = classes_whitelist or []
 
         if evaluation_params is None:
             evaluation_params = self._get_default_evaluation_params()
@@ -160,7 +160,10 @@ class BaseEvaluator:
         if cls.EVALUATION_PARAMS_YAML_PATH is None:
             return {}
         else:
-            return yaml.safe_load(cls.load_yaml_evaluation_params())
+            params = cls.load_yaml_evaluation_params()
+            if params is None:
+                return {}
+            return yaml.safe_load(params)
 
     def _dump_pickle(self, data, file_path):
         with open(file_path, "wb") as f:

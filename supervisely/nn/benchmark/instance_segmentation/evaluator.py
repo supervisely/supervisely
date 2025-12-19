@@ -57,6 +57,8 @@ class InstanceSegmentationEvaluator(ObjectDetectionEvaluator):
 
     def _dump_eval_results(self):
         self._dump_eval_results_archive()
+        _, _, eval_data_path = self._get_eval_paths()
+        self._dump_pickle(self.eval_data, eval_data_path)
 
     def _dump_datasets(self):
         cocoGt_path, cocoDt_path, _ = self._get_eval_paths()
