@@ -310,7 +310,7 @@ class VolumeProject(VideoProject):
         project_info = api.project.get_info_by_id(project_id)
         project_meta = api.project.get_meta(project_id, with_settings=True)
         project_meta_obj = ProjectMeta.from_json(project_meta)
-        dataset_infos = api.dataset.get_list(project_id, filters=ds_filters, recursive=True)
+        dataset_infos = api.dataset.get_list(project_id, filters=ds_filters, recursive=True, include_custom_data=True)
 
         dataset_records = [dataset_info._asdict() for dataset_info in dataset_infos]
         volume_records: List[Dict] = []
@@ -497,7 +497,10 @@ class VolumeProject(VideoProject):
         project_title = project_name or payload["project_info"].get("name")
         if api.project.exists(workspace_id, project_title):
             project_title = api.project.get_free_name(workspace_id, project_title)
-        new_project_info = api.project.create(workspace_id, project_title, ProjectType.VOLUMES)
+        src_project_desc = payload.get("project_info", {}).get("description")
+        new_project_info = api.project.create(
+            workspace_id, project_title, ProjectType.VOLUMES, description=src_project_desc
+        )
         api.project.update_meta(new_project_info.id, project_meta)
 
         custom_data = new_project_info.custom_data
@@ -772,6 +775,8 @@ class VolumeProject(VideoProject):
             project_meta = json.loads(sections[VolumeProject._SECTION_PROJECT_META].decode("utf-8"))
         except KeyError as exc:
             raise RuntimeError("VolumeProject payload missing metadata section") from exc
+
+        schema_version = project_info.get(VersionSchemaField.SCHEMA_VERSION, "v2.0.0")
 
         if VolumeProject._SECTION_DATASETS not in sections:
             logger.warning("VolumeProject blob has no datasets section; treating as empty.")
