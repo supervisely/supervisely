@@ -173,6 +173,7 @@ class BaseEvaluator:
         classes_whitelist: Optional[List[str]] = None,
         evaluation_params: Optional[dict] = None,
     ):
+        self.eval_data: Optional[Dict] = None
         self.gt_project_path = gt_project_path
         self.pred_project_path = pred_project_path
         self.result_dir = result_dir
