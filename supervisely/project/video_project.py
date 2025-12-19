@@ -23,6 +23,7 @@ from supervisely.api.video.video_api import VideoInfo
 from supervisely.collection.key_indexed_collection import KeyIndexedCollection
 from supervisely.io.fs import clean_dir, mkdir, touch, touch_async
 from supervisely.io.json import dump_json_file, dump_json_file_async, load_json_file
+from supervisely.project.data_version import VersionSchemaField
 from supervisely.project.project import Dataset, OpenMode, Project
 from supervisely.project.project import read_single_project as read_project_wrapper
 from supervisely.project.project_meta import ProjectMeta
@@ -1633,9 +1634,14 @@ class VideoProject(Project):
             meta = ProjectMeta.from_json(meta_json)
             _ = KeyIdMap().load_json(key_id_map_path)
 
-            if manifest.get("schema_version") != "video_arrow_v1":
+            schema_version = manifest.get(VersionSchemaField.SCHEMA_VERSION) or manifest.get(
+                "schema_version"
+            )
+            try:
+                _ = get_video_snapshot_schema(schema_version)
+            except Exception:
                 raise RuntimeError(
-                    f"Unsupported video snapshot schema_version: {manifest.get('schema_version')}"
+                    f"Unsupported video snapshot schema_version: {schema_version}"
                 )
 
             src_project_name = project_info_json.get("name")
