@@ -137,7 +137,7 @@ class UsageInfo(NamedTuple):
 
     @staticmethod
     def info_sequence() -> List[str]:
-        return [ApiField.ACCOUNT_TYPE, ApiField.MAX_MODULE]
+        return [ApiField.ACCOUNT_TYPE, ApiField.MAX_MODULES]
 
     @classmethod
     def from_json(cls, data: Optional[Dict[str, Optional[str]]]) -> Optional["UsageInfo"]:
