@@ -68,36 +68,6 @@ class ObjectDetectionEvalResult(BaseEvalResult):
         if speedtest_info_path.exists():
             self.speedtest_info = load_json_file(str(speedtest_info_path))
 
-    def _load_eval_data_archive(self, path: Path, json_path: Path) -> Dict:
-        """Load eval_data from archive"""
-        with zipfile.ZipFile(path, mode="r") as zf:
-            data = load_json_file(str(json_path))
-            return self._process_value_from_archive(data, zf)
-
-    def _process_value_from_archive(self, value, zf: zipfile.ZipFile):
-        """Recursively process values from archive, handling nested dicts and lists."""
-        if isinstance(value, str) and value.endswith(".npy"):
-            with zf.open(value) as arr_f:
-                return np.load(arr_f)
-        elif isinstance(value, str) and value.endswith(".parquet"):
-            with zf.open(value) as df_f:
-                return pd.read_parquet(df_f)
-        elif isinstance(value, str) and value.endswith(".csv"):
-            with zf.open(value) as df_f:
-                return pd.read_csv(df_f, sep="\t", index_col=0)
-        elif isinstance(value, dict):
-            res = {}
-            for k, v in value.items():
-                k = int(k) if isinstance(k, str) and k.isdigit() else k
-                res[k] = self._process_value_from_archive(v, zf)
-            return res
-        elif isinstance(value, list):
-            return [self._process_value_from_archive(item, zf) for item in value]
-        elif isinstance(value, str) and value.isdigit():
-            return int(value)
-        else:
-            return value
-
     def _prepare_data(self) -> None:
         """Prepare data to allow easy access to the most important parts"""
 

@@ -2,12 +2,17 @@ from __future__ import annotations
 
 import os
 import pickle
+import zipfile
+from pathlib import Path
 from typing import Dict, List, Optional, Union
 
+import numpy as np
+import pandas as pd
 import yaml
 
 from supervisely.app.widgets import SlyTqdm
 from supervisely.io.fs import get_file_name_with_ext
+from supervisely.io.json import load_json_file
 from supervisely.task.progress import tqdm_sly
 
 
@@ -111,6 +116,43 @@ class BaseEvalResult:
         if name is None:
             name = self.inference_info.get("checkpoint_name", "")
         return name
+
+    def _load_eval_data_archive(self, path: Path, json_path: Path) -> Dict:
+        """Load eval_data from archive"""
+        with zipfile.ZipFile(path, mode="r") as zf:
+            data = load_json_file(str(json_path))
+            return self._process_value_from_archive(data, zf)
+
+    def _process_value_from_archive(self, value, zf: zipfile.ZipFile):
+        """Recursively process values from archive, handling nested dicts and lists."""
+        if isinstance(value, str) and value.endswith(".npy"):
+            with zf.open(value) as arr_f:
+                return np.load(arr_f)
+        elif isinstance(value, str) and value.endswith(".csv"):
+            with zf.open(value) as df_f:
+                return pd.read_csv(df_f, sep="\t", index_col=0)
+        elif isinstance(value, dict):
+            res = {}
+            for k, v in value.items():
+                k = int(k) if isinstance(k, str) and k.isdigit() else k
+                k = float(k) if isinstance(k, str) and self._is_float(k) else k
+                res[k] = self._process_value_from_archive(v, zf)
+            return res
+        elif isinstance(value, list):
+            return [self._process_value_from_archive(item, zf) for item in value]
+        elif isinstance(value, str) and value.isdigit():
+            return int(value)
+        else:
+            return value
+
+    def _is_float(self, s: str) -> bool:
+        if not s or not isinstance(s, str):
+            return False
+        try:
+            float(s)
+            return "." in s or "e" in s.lower()
+        except (ValueError, AttributeError):
+            return False
 
 
 class BaseEvaluator:
