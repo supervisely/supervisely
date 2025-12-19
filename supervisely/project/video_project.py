@@ -1397,11 +1397,23 @@ class VideoProject(Project):
 
             dataset_ids_filter = set(dataset_ids) if dataset_ids is not None else None
 
+            # api.dataset.tree() doesn't include custom_data
+            ds_custom_data_by_id: dict[int, dict] = {}
+            try:
+                for ds in api.dataset.get_list(
+                    project_id, recursive=True, include_custom_data=True
+                ):
+                    if getattr(ds, "custom_data", None) is not None:
+                        ds_custom_data_by_id[ds.id] = ds.custom_data
+            except Exception:
+                ds_custom_data_by_id = {}
+
             for parents, ds_info in api.dataset.tree(project_id):
                 if dataset_ids_filter is not None and ds_info.id not in dataset_ids_filter:
                     continue
 
                 full_path = Dataset._get_dataset_path(ds_info.name, parents)
+                ds_custom_data = ds_custom_data_by_id.get(ds_info.id)
                 datasets_rows.append(
                     {
                         "src_dataset_id": ds_info.id,
@@ -1410,7 +1422,9 @@ class VideoProject(Project):
                         "full_path": full_path,
                         "description": ds_info.description,
                         "custom_data": (
-                            json.dumps(ds_info.custom_data) if ds_info.custom_data else None
+                            json.dumps(ds_custom_data)
+                            if isinstance(ds_custom_data, dict) and len(ds_custom_data) > 0
+                            else None
                         ),
                     }
                 )
@@ -1622,19 +1636,33 @@ class VideoProject(Project):
             manifest_path = os.path.join(payload_dir, "manifest.json")
             dump_json_file(manifest, manifest_path)
 
-            # Pack into tar and compress tar.zst in BytesIO
             tar_path = os.path.join(tmp_root, "snapshot.tar")
             with tarfile.open(tar_path, "w") as tar:
                 tar.add(payload_dir, arcname=".")
 
             chunk_size = 1024 * 1024 * 50  # 50 MiB
-            outio = io.BytesIO()
-            with open(tar_path, "rb") as src:
-                while True:
-                    chunk = src.read(chunk_size)
-                    if not chunk:
-                        break
-                    outio.write(zstd.compress(chunk))
+            zst_path = os.path.join(tmp_root, "snapshot.tar.zst")
+            # Try streaming compression first, fallback to single-shot
+            try:
+                cctx = zstd.ZstdCompressor()
+                with open(tar_path, "rb") as src, open(zst_path, "wb") as dst:
+                    try:
+                        stream = cctx.stream_writer(dst, closefd=False)
+                    except TypeError:
+                        stream = cctx.stream_writer(dst)
+                    with stream as compressor:
+                        while True:
+                            chunk = src.read(chunk_size)
+                            if not chunk:
+                                break
+                            compressor.write(chunk)
+            # Fallback: single-shot compression
+            except Exception:
+                with open(tar_path, "rb") as src, open(zst_path, "wb") as dst:
+                    dst.write(zstd.compress(src.read()))
+
+            with open(zst_path, "rb") as f:
+                outio = io.BytesIO(f.read())
             outio.seek(0)
             return outio
 
@@ -1671,13 +1699,15 @@ class VideoProject(Project):
         mkdir(payload_dir)
 
         try:
-            tar_bytes = zstd.decompress(snapshot_bytes)
-            tar_path = os.path.join(tmp_root, "snapshot.tar")
-            with open(tar_path, "wb") as f:
-                f.write(tar_bytes)
-
-            with tarfile.open(tar_path, "r") as tar:
-                tar.extractall(payload_dir)
+            try:
+                dctx = zstd.ZstdDecompressor()
+                with dctx.stream_reader(io.BytesIO(snapshot_bytes)) as reader:
+                    with tarfile.open(fileobj=reader, mode="r|") as tar:
+                        tar.extractall(payload_dir)
+            except Exception:
+                tar_bytes = zstd.decompress(snapshot_bytes)
+                with tarfile.open(fileobj=io.BytesIO(tar_bytes), mode="r") as tar:
+                    tar.extractall(payload_dir)
 
             proj_info_path = os.path.join(payload_dir, "project_info.json")
             proj_meta_path = os.path.join(payload_dir, "project_meta.json")
@@ -1740,13 +1770,31 @@ class VideoProject(Project):
                 else:
                     parent_id = None
 
+                custom_data = None
+                if with_custom_data:
+                    raw_cd = row.get("custom_data")
+                    if isinstance(raw_cd, str) and raw_cd.strip():
+                        try:
+                            custom_data = json.loads(raw_cd)
+                        except Exception:
+                            logger.warning(
+                                f"Failed to parse dataset custom_data for '{row.get('name')}', skipping it."
+                            )
+                    elif isinstance(raw_cd, dict):
+                        custom_data = raw_cd
+
                 ds = api.dataset.create(
                     project.id,
                     name=row["name"],
                     description=row["description"],
                     parent_id=parent_id,
-                    custom_data=row.get("custom_data"),
+                    custom_data=custom_data,
                 )
+                if with_custom_data and custom_data is not None:
+                    try:
+                        api.dataset.update_custom_data(ds.id, custom_data)
+                    except Exception:
+                        logger.warning(f"Failed to restore custom_data for dataset '{row.get('name')}'")
                 dataset_mapping[src_ds_id] = ds
 
             # Videos
@@ -1784,6 +1832,18 @@ class VideoProject(Project):
                     )
 
                 if hashed_rows:
+                    if skip_missed:
+                        existing_hashes = api.video.check_existing_hashes(
+                            list({r["hash"] for r in hashed_rows})
+                        )
+                        kept_hashed_rows = [r for r in hashed_rows if r["hash"] in existing_hashes]
+                        if not kept_hashed_rows:
+                            logger.warning(
+                                f"All hashed videos for dataset '{ds_info.name}' "
+                                f"are missing on server; nothing to upload."
+                            )
+                        hashed_rows = kept_hashed_rows
+
                     hashes = [r["hash"] for r in hashed_rows]
                     names = [r["name"] for r in hashed_rows]
                     metas: List[dict] = []
@@ -1795,18 +1855,6 @@ class VideoProject(Project):
                             except Exception:
                                 pass
                         metas.append(meta_dict)
-
-                    if skip_missed:
-                        existing_hashes = api.video.check_existing_hashes(list(set(hashes)))
-                        keep_mask = [h in existing_hashes for h in hashes]
-                        if not any(keep_mask):
-                            logger.warning(
-                                f"All hashed videos for dataset '{ds_info.name}' "
-                                f"are missing on server; nothing to upload."
-                            )
-                        hashes = [h for h, keep in zip(hashes, keep_mask) if keep]
-                        names = [n for n, keep in zip(names, keep_mask) if keep]
-                        metas = [m for m, keep in zip(metas, keep_mask) if keep]
 
                     if hashes:
                         new_infos = api.video.upload_hashes(
