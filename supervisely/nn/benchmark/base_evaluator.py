@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import pickle
 import zipfile
@@ -117,73 +118,32 @@ class BaseEvalResult:
             name = self.inference_info.get("checkpoint_name", "")
         return name
 
-    def _process_value_for_archive(self, value: Any, key_prefix: str, zf: zipfile.ZipFile) -> Any:
-        """Recursively process values for archiving, handling nested dicts and lists."""
-        if isinstance(value, np.ndarray):
-            filename = f"{key_prefix}.npy" if key_prefix else "array.npy"
-            filepath = os.path.join(self.result_dir, filename)
-            np.save(filepath, value)
-            zf.write(filepath, arcname=filename)
-            os.remove(filepath)
-            return filename
-        elif isinstance(value, pd.DataFrame):
-            filename = f"{key_prefix}.csv" if key_prefix else "dataframe.csv"
-            filepath = os.path.join(self.result_dir, filename)
-            value.to_csv(filepath, sep="\t")
-            zf.write(filepath, arcname=filename)
-            os.remove(filepath)
-            return filename
-        elif isinstance(value, dict):
-            return {
-                k: self._process_value_for_archive(v, f"{key_prefix}.{k}" if key_prefix else k, zf)
-                for k, v in value.items()
-            }
-        elif isinstance(value, list):
-            return [
-                self._process_value_for_archive(item, f"{key_prefix}[{i}]", zf)
-                for i, item in enumerate(value)
-            ]
-        elif isinstance(value, (np.integer, np.floating)):
-            return value.item()
-        elif isinstance(value, np.bool_):
-            return bool(value)
-        elif isinstance(value, str) and value.isdigit():
-            return int(value)
-        else:
-            return value
-
-    def _dump_eval_results_archive(self):
-        with zipfile.ZipFile(os.path.join(self.result_dir, "eval_data.zip"), mode="w") as zf:
-            data = self._process_value_for_archive(self.eval_data, "", zf)
-            filepath = os.path.join(self.result_dir, "eval_data.json")
-            dump_json_file(data, filepath, indent=4)
-            zf.write(filepath, arcname="eval_data.json")
-            silent_remove(filepath)
-
-    def _load_eval_data_archive(self, path: Path) -> Dict:
+    def _load_eval_data_archive(self, path: Path, pd_index_col=False) -> Dict:
         """Load eval_data from archive"""
         with zipfile.ZipFile(path, mode="r") as zf:
             with zf.open("eval_data.json") as json_f:
-                data = load_json_file(json_f)
-            return self._process_value_from_archive(data, zf)
+                data = json.load(json_f)
+            return self._process_value_from_archive(data, zf, pd_index_col)
 
-    def _process_value_from_archive(self, value, zf: zipfile.ZipFile):
+    def _process_value_from_archive(self, value, zf: zipfile.ZipFile, pd_index_col: bool = False):
         """Recursively process values from archive, handling nested dicts and lists."""
         if isinstance(value, str) and value.endswith(".npy"):
             with zf.open(value) as arr_f:
                 return np.load(arr_f)
         elif isinstance(value, str) and value.endswith(".csv"):
             with zf.open(value) as df_f:
+                if pd_index_col:
+                    return pd.read_csv(df_f, sep="\t", index_col=0)
                 return pd.read_csv(df_f, sep="\t")
         elif isinstance(value, dict):
             res = {}
             for k, v in value.items():
                 k = int(k) if isinstance(k, str) and k.isdigit() else k
                 k = float(k) if isinstance(k, str) and self._is_float(k) else k
-                res[k] = self._process_value_from_archive(v, zf)
+                res[k] = self._process_value_from_archive(v, zf, pd_index_col)
             return res
         elif isinstance(value, list):
-            return [self._process_value_from_archive(item, zf) for item in value]
+            return [self._process_value_from_archive(item, zf, pd_index_col) for item in value]
         elif isinstance(value, str) and value.isdigit():
             return int(value)
         else:
@@ -254,6 +214,49 @@ class BaseEvaluator:
     def _dump_pickle(self, data, file_path):
         with open(file_path, "wb") as f:
             pickle.dump(data, f)
+
+    def _process_value_for_archive(self, value: Any, key_prefix: str, zf: zipfile.ZipFile) -> Any:
+        """Recursively process values for archiving, handling nested dicts and lists."""
+        if isinstance(value, np.ndarray):
+            filename = f"{key_prefix}.npy" if key_prefix else "array.npy"
+            filepath = os.path.join(self.result_dir, filename)
+            np.save(filepath, value)
+            zf.write(filepath, arcname=filename)
+            os.remove(filepath)
+            return filename
+        elif isinstance(value, pd.DataFrame):
+            filename = f"{key_prefix}.csv" if key_prefix else "dataframe.csv"
+            filepath = os.path.join(self.result_dir, filename)
+            value.to_csv(filepath, sep="\t")
+            zf.write(filepath, arcname=filename)
+            os.remove(filepath)
+            return filename
+        elif isinstance(value, dict):
+            return {
+                k: self._process_value_for_archive(v, f"{key_prefix}.{k}" if key_prefix else k, zf)
+                for k, v in value.items()
+            }
+        elif isinstance(value, list):
+            return [
+                self._process_value_for_archive(item, f"{key_prefix}[{i}]", zf)
+                for i, item in enumerate(value)
+            ]
+        elif isinstance(value, (np.integer, np.floating)):
+            return value.item()
+        elif isinstance(value, np.bool_):
+            return bool(value)
+        elif isinstance(value, str) and value.isdigit():
+            return int(value)
+        else:
+            return value
+
+    def _dump_eval_results_archive(self):
+        with zipfile.ZipFile(os.path.join(self.result_dir, "eval_data.zip"), mode="w") as zf:
+            data = self._process_value_for_archive(self.eval_data, "", zf)
+            filepath = os.path.join(self.result_dir, "eval_data.json")
+            dump_json_file(data, filepath, indent=4)
+            zf.write(filepath, arcname="eval_data.json")
+            silent_remove(filepath)
 
     def get_eval_result(self) -> BaseEvalResult:
         return self.eval_result_cls(self.result_dir)

@@ -37,14 +37,14 @@ class ObjectDetectionEvalResult(BaseEvalResult):
             try:
                 with open(Path(path, "eval_data.pkl"), "rb") as f:
                     self.eval_data = pickle.load(f)
-            except Exception:
-                logger.warning("Failed to load eval_data.pkl.")
+            except Exception as e:
+                logger.warning(f"Failed to load eval_data.pkl: {e}", exc_info=True)
                 self.eval_data = None
         if self.eval_data is None and eval_data_archive_path.exists():
             try:
                 self.eval_data = self._load_eval_data_archive(eval_data_archive_path)
-            except Exception:
-                logger.warning("Failed to load eval_data from archive.")
+            except Exception as e:
+                logger.warning(f"Failed to load eval_data from archive: {e}", exc_info=True)
                 self.eval_data = None
 
         if self.eval_data is None:

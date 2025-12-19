@@ -1,3 +1,4 @@
+import json
 import pickle
 import zipfile
 from pathlib import Path
@@ -199,30 +200,35 @@ class EvalResult:
     #             progress_cb=pbar.update,
     #         )
 
-    def _load_eval_data_archive(self, path: Path) -> Dict:
+    def _load_eval_data_archive(self, path: Path, pd_index_col: bool = False) -> Dict:
         """Load eval_data from archive"""
         with zipfile.ZipFile(path, mode="r") as zf:
             with zf.open("eval_data.json") as json_f:
-                data = load_json_file(json_f)
-            return self._process_value_from_archive(data, zf)
+                data = json.load(json_f)
+            return self._process_value_from_archive(data, zf, pd_index_col=pd_index_col)
 
-    def _process_value_from_archive(self, value, zf: zipfile.ZipFile):
+    def _process_value_from_archive(self, value, zf: zipfile.ZipFile, pd_index_col: bool = False):
         """Recursively process values from archive, handling nested dicts and lists."""
         if isinstance(value, str) and value.endswith(".npy"):
             with zf.open(value) as arr_f:
                 return np.load(arr_f)
         elif isinstance(value, str) and value.endswith(".csv"):
             with zf.open(value) as df_f:
+                if pd_index_col:
+                    return pd.read_csv(df_f, sep="\t", index_col=0)
                 return pd.read_csv(df_f, sep="\t")
         elif isinstance(value, dict):
             res = {}
             for k, v in value.items():
                 k = int(k) if isinstance(k, str) and k.isdigit() else k
                 k = float(k) if isinstance(k, str) and self._is_float(k) else k
-                res[k] = self._process_value_from_archive(v, zf)
+                res[k] = self._process_value_from_archive(v, zf, pd_index_col=pd_index_col)
             return res
         elif isinstance(value, list):
-            return [self._process_value_from_archive(item, zf) for item in value]
+            return [
+                self._process_value_from_archive(item, zf, pd_index_col=pd_index_col)
+                for item in value
+            ]
         elif isinstance(value, str) and value.isdigit():
             return int(value)
         else:
@@ -251,14 +257,14 @@ class EvalResult:
             try:
                 with open(eval_data_pickle_path, "rb") as f:
                     self.eval_data = pickle.load(f)
-            except Exception:
-                logger.warning("Failed to load eval_data.pkl.")
+            except Exception as e:
+                logger.warning(f"Failed to load eval_data.pkl: {e}", exc_info=True)
                 self.eval_data = None
         if self.eval_data is None and eval_data_archive_path.exists():
             try:
                 self.eval_data = self._load_eval_data_archive(eval_data_archive_path)
-            except Exception:
-                logger.warning("Failed to load eval_data from archive.")
+            except Exception as e:
+                logger.warning(f"Failed to load eval_data from archive: {e}", exc_info=True)
                 self.eval_data = None
 
         if self.eval_data is None:
