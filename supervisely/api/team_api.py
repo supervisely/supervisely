@@ -133,7 +133,7 @@ class UsageInfo(NamedTuple):
     """ """
 
     plan: Optional[str]
-    max_module: Optional[str]
+    max_modules: Optional[int]
 
     @staticmethod
     def info_sequence() -> List[str]:
