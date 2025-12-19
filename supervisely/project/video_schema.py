@@ -188,6 +188,32 @@ class VideoSnapshotSchema:
             ann_json=ann_json,
         )
 
+    def object_row_from_object(self, obj, *, src_object_id: int, src_video_id: int) -> Dict[str, Any]:
+        return self.object_row(
+            src_object_id=src_object_id,
+            src_video_id=src_video_id,
+            class_name=obj.obj_class.name,
+            key_hex=obj.key().hex,
+            tags_json=obj.tags.to_json() if getattr(obj, "tags", None) is not None else None,
+        )
+
+    def figure_row_from_figure(
+        self,
+        fig,
+        *,
+        figure_row_idx: int,
+        src_object_id: int,
+        src_video_id: int,
+        frame_index: int,
+    ) -> Dict[str, Any]:
+        return self.figure_row(
+            src_figure_id=figure_row_idx + 1,
+            src_object_id=src_object_id,
+            src_video_id=src_video_id,
+            frame_index=frame_index,
+            geometry_type=fig.geometry.geometry_name(),
+            geometry_json=fig.geometry.to_json(),
+        )
 
 _VIDEO_SCHEMAS: Dict[str, VideoSnapshotSchema] = {
     "v2.0.0": VideoSnapshotSchema(schema_version="v2.0.0"),

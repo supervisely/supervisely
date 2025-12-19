@@ -1454,12 +1454,8 @@ class VideoProject(Project):
                             src_obj_id = len(objects_rows) + 1
                             obj_key_to_src_id[obj.key().hex] = src_obj_id
                             objects_rows.append(
-                                snapshot_schema.object_row(
-                                    src_object_id=src_obj_id,
-                                    src_video_id=video_info.id,
-                                    class_name=obj.obj_class.name,
-                                    key_hex=obj.key().hex,
-                                    tags_json=obj.tags.to_json() if obj.tags is not None else None,
+                                snapshot_schema.object_row_from_object(
+                                    obj, src_object_id=src_obj_id, src_video_id=video_info.id
                                 )
                             )
 
@@ -1474,13 +1470,12 @@ class VideoProject(Project):
                                     )
                                     continue
                                 figures_rows.append(
-                                    snapshot_schema.figure_row(
-                                        src_figure_id=len(figures_rows) + 1,
+                                    snapshot_schema.figure_row_from_figure(
+                                        fig,
+                                        figure_row_idx=len(figures_rows),
                                         src_object_id=src_obj_id,
                                         src_video_id=video_info.id,
                                         frame_index=frame.index,
-                                        geometry_type=fig.geometry.geometry_name(),
-                                        geometry_json=fig.geometry.to_json(),
                                     )
                                 )
 
