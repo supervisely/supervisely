@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 from supervisely.io.json import dump_json_file
@@ -57,15 +56,9 @@ class InstanceSegmentationEvaluator(ObjectDetectionEvaluator):
         self._dump_eval_results()
 
     def _dump_eval_results(self):
+        self._dump_eval_results_archive()
         _, _, eval_data_path = self._get_eval_paths()
         self._dump_pickle(self.eval_data, eval_data_path)
-
-    def _get_eval_paths(self):
-        base_dir = self.result_dir
-        cocoGt_path = os.path.join(base_dir, "cocoGt.json")
-        cocoDt_path = os.path.join(base_dir, "cocoDt.json")
-        eval_data_path = os.path.join(base_dir, "eval_data.pkl")
-        return cocoGt_path, cocoDt_path, eval_data_path
 
     def _dump_datasets(self):
         cocoGt_path, cocoDt_path, _ = self._get_eval_paths()
