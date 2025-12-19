@@ -29,12 +29,11 @@ from supervisely.project.project import read_single_project as read_project_wrap
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_settings import LabelingInterface
 from supervisely.project.project_type import ProjectType
+from supervisely.project.video_schema import get_video_snapshot_schema
 from supervisely.task.progress import tqdm_sly
 from supervisely.video import video as sly_video
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.video_annotation.video_annotation import VideoAnnotation
-from supervisely.project.video_schema import get_video_snapshot_schema
-from supervisely.project.data_version import VersionSchemaField
 
 
 class VideoItemPaths(NamedTuple):
@@ -1646,6 +1645,7 @@ class VideoProject(Project):
 
             src_project_name = project_info_json.get("name")
             src_project_desc = project_info_json.get("description")
+            src_project_readme = project_info_json.get("readme")
             if project_name is None:
                 project_name = src_project_name
 
@@ -1653,7 +1653,11 @@ class VideoProject(Project):
                 project_name = api.project.get_free_name(workspace_id, project_name)
 
             project = api.project.create(
-                workspace_id, project_name, ProjectType.VIDEOS, src_project_desc
+                workspace_id,
+                project_name,
+                ProjectType.VIDEOS,
+                src_project_desc,
+                readme=src_project_readme,
             )
             new_meta = api.project.update_meta(project.id, meta.to_json())
 

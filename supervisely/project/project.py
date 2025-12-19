@@ -3630,6 +3630,7 @@ class Project:
             project_name,
             description=project_info.description,
             change_name_if_conflict=True,
+            readme=project_info.readme,
         )
         custom_data = new_project_info.custom_data
         version_num = project_info.version.get("version", None) if project_info.version else 0

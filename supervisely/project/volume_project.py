@@ -21,10 +21,12 @@ from supervisely.collection.key_indexed_collection import KeyIndexedCollection
 from supervisely.geometry.closed_surface_mesh import ClosedSurfaceMesh
 from supervisely.geometry.mask_3d import Mask3D
 from supervisely.io.fs import change_directory_at_index, touch
+from supervisely.project.data_version import VersionSchemaField
 from supervisely.project.project import OpenMode
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import ProjectType
 from supervisely.project.video_project import VideoDataset, VideoProject
+from supervisely.project.volume_schema import get_volume_snapshot_schema
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress, tqdm_sly
 from supervisely.video_annotation.key_id_map import KeyIdMap
@@ -32,8 +34,6 @@ from supervisely.volume import stl_converter
 from supervisely.volume import volume as sly_volume
 from supervisely.volume_annotation.volume_annotation import VolumeAnnotation
 from supervisely.volume_annotation.volume_figure import VolumeFigure
-from supervisely.project.data_version import VersionSchemaField
-from supervisely.project.volume_schema import get_volume_snapshot_schema
 
 VolumeItemPaths = namedtuple("VolumeItemPaths", ["volume_path", "ann_path"])
 
@@ -490,16 +490,21 @@ class VolumeProject(VideoProject):
         payload = VolumeProject._deserialize_payload_from_parquet(pa, raw_data)
 
         project_meta = ProjectMeta.from_json(payload["project_meta"])
+        project_info: Dict = payload.get("project_info", {})
         dataset_records: List[Dict] = payload.get("dataset_infos", [])
         volume_records: List[Dict] = payload.get("volume_infos", [])
         annotations: Dict[str, Dict] = payload.get("annotations", {})
 
-        project_title = project_name or payload["project_info"].get("name")
+        project_title = project_name or project_info.get("name")
         if api.project.exists(workspace_id, project_title):
             project_title = api.project.get_free_name(workspace_id, project_title)
-        src_project_desc = payload.get("project_info", {}).get("description")
+        src_project_desc = project_info.get("description")
         new_project_info = api.project.create(
-            workspace_id, project_title, ProjectType.VOLUMES, description=src_project_desc
+            workspace_id,
+            project_title,
+            ProjectType.VOLUMES,
+            description=src_project_desc,
+            readme=project_info.get("readme"),
         )
         api.project.update_meta(new_project_info.id, project_meta)
 
