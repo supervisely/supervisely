@@ -13,11 +13,13 @@
 }
 
 .image-wrapper img {
-  width: 100%;
+  max-width: 100%;
+    max-height: 100%;
+    width: auto;
   height: auto;
   display: block;
   object-fit: contain;
-  object-position: center;
+  object-position: top left;
   -webkit-user-drag: none;
   user-select: none;
   -webkit-user-select: none;
@@ -26,6 +28,9 @@
   pointer-events: auto;
 }
 
+.image-wrapper .base-image {
+  position: relative;
+}
 .overlay-image {
   position: absolute;
   top: 0;

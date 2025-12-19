@@ -68,6 +68,43 @@ def to_json_safe(val):
     return str(val)
 
 
+def calculate_fit_size(src_height, src_width, max_height, max_width):
+    """
+    Calculate target size that fits within max dimensions while preserving aspect ratio.
+
+    Args:
+        src_height: Source image height
+        src_width: Source image width
+        max_height: Maximum allowed height (widget height)
+        max_width: Maximum allowed width (widget width)
+
+    Returns:
+        tuple: (target_height, target_width) that fits within max dimensions
+    """
+    if src_height is None or src_width is None:
+        raise ValueError(f"Source dimensions cannot be None: {src_height}x{src_width}")
+    if max_height is None or max_width is None:
+        raise ValueError(f"Max dimensions cannot be None: {max_height}x{max_width}")
+    if src_height <= 0 or src_width <= 0:
+        raise ValueError(f"Source dimensions must be positive: {src_height}x{src_width}")
+    if max_height <= 0 or max_width <= 0:
+        raise ValueError(f"Max dimensions must be positive: {max_height}x{max_width}")
+
+    src_aspect = src_width / src_height
+    max_aspect = max_width / max_height
+
+    if src_aspect > max_aspect:
+        # Image is wider - constrain by width
+        target_width = max_width
+        target_height = int(round(max_width / src_aspect))
+    else:
+        # Image is taller or same - constrain by height
+        target_height = max_height
+        target_width = int(round(max_height * src_aspect))
+
+    return target_height, target_width
+
+
 class Heatmap(Widget):
     """
     Supervisely widget that displays an interactive heatmap overlay on top of a background image.
@@ -142,6 +179,8 @@ class Heatmap(Widget):
         self._colormap = colormap
         self._width = width
         self._height = height
+        self._background_width = None  # Actual background size after fitting
+        self._background_height = None
         self._opacity = 70
         self._min_value = 0
         self._max_value = 0
@@ -253,45 +292,57 @@ class Heatmap(Widget):
 
             # Determine target size based on widget dimensions
             if self._width is not None and self._height is not None:
-                # Both dimensions specified - resize image to match
-                target_size = (self._height, self._width)
-                if (bg_height, bg_width) != target_size:
+                # Both dimensions specified - FIT image within widget bounds preserving aspect ratio
+                # Widget size is FIXED and never changes!
+                target_height, target_width = calculate_fit_size(
+                    bg_height, bg_width, self._height, self._width
+                )
+                if (bg_height, bg_width) != (target_height, target_width):
                     np_image = cv2.resize(
-                        np_image, (self._width, self._height), interpolation=cv2.INTER_AREA
+                        np_image, (target_width, target_height), interpolation=cv2.INTER_AREA
                     )
                     logger.debug(
-                        f"Resized background from ({bg_height}, {bg_width}) to {target_size}"
+                        f"Fitted background from {bg_width}x{bg_height} to {target_width}x{target_height} "
+                        f"within widget {self._width}x{self._height}"
                     )
+                # Store actual background size (may be smaller than widget to preserve aspect ratio)
+                self._background_width = target_width
+                self._background_height = target_height
             elif self._width is not None or self._height is not None:
-                # Only one dimension specified - calculate the other from aspect ratio
-                aspect_ratio = bg_width / bg_height
+                # Only one dimension specified - calculate the other from background aspect ratio
+                # This auto-sets the missing widget dimension
+                bg_aspect = bg_width / bg_height
 
                 if self._width is not None:
-                    # Width specified, calculate height
-                    target_height = int(round(self._width / aspect_ratio))
-                    target_size = (target_height, self._width)
-                    self._height = target_height
-                    logger.debug(f"Auto-calculated height={target_height} from width={self._width}")
+                    # Width specified, calculate height from aspect ratio
+                    target_width = self._width
+                    target_height = int(round(self._width / bg_aspect))
+                    self._height = target_height  # Auto-set widget height
+                    logger.debug(f"Auto-set widget height={target_height} from width={self._width}")
                 else:
-                    # Height specified, calculate width
-                    target_width = int(round(self._height * aspect_ratio))
-                    target_size = (self._height, target_width)
-                    self._width = target_width
-                    logger.debug(f"Auto-calculated width={target_width} from height={self._height}")
+                    # Height specified, calculate width from aspect ratio
+                    target_height = self._height
+                    target_width = int(round(self._height * bg_aspect))
+                    self._width = target_width  # Auto-set widget width
+                    logger.debug(f"Auto-set widget width={target_width} from height={self._height}")
 
-                if (bg_height, bg_width) != target_size:
+                if (bg_height, bg_width) != (target_height, target_width):
                     np_image = cv2.resize(
-                        np_image, (target_size[1], target_size[0]), interpolation=cv2.INTER_AREA
+                        np_image, (target_width, target_height), interpolation=cv2.INTER_AREA
                     )
                     logger.debug(
-                        f"Resized background from ({bg_height}, {bg_width}) to {target_size}"
+                        f"Resized background from {bg_width}x{bg_height} to {target_width}x{target_height}"
                     )
+                self._background_width = target_width
+                self._background_height = target_height
             else:
-                # No dimensions specified - use image dimensions
+                # No dimensions specified - set widget dimensions from image
                 self._width = bg_width
                 self._height = bg_height
+                self._background_width = bg_width
+                self._background_height = bg_height
                 logger.debug(
-                    f"Auto-set dimensions to ({bg_height}, {bg_width}) from background image"
+                    f"Auto-set widget dimensions to {bg_width}x{bg_height} from background image"
                 )
 
             # Convert to data URL
@@ -338,14 +389,55 @@ class Heatmap(Widget):
             heatmap.set_heatmap(temp_mask)
         """
         try:
-            # Auto-set dimensions from mask if not already set
             mask_height, mask_width = mask.shape[:2]
-            if self._width is None:
+
+            # Determine target size for mask
+            if self._background_width is not None and self._background_height is not None:
+                # Background exists - match mask to background size (fit within widget preserving aspect ratio)
+                target_height, target_width = calculate_fit_size(
+                    mask_height, mask_width, self._background_height, self._background_width
+                )
+                logger.debug(
+                    f"Fitting mask ({mask_height}x{mask_width}) to background size ({self._background_height}x{self._background_width})"
+                )
+            elif self._width is not None and self._height is not None:
+                # No background but widget dimensions set - fit mask within widget bounds
+                target_height, target_width = calculate_fit_size(
+                    mask_height, mask_width, self._height, self._width
+                )
+                logger.debug(
+                    f"Fitting mask ({mask_height}x{mask_width}) within widget ({self._height}x{self._width})"
+                )
+            elif self._width is not None or self._height is not None:
+                # Only one dimension specified - scale preserving aspect ratio
+                mask_aspect = mask_width / mask_height
+                if self._width is not None:
+                    target_width = self._width
+                    target_height = int(round(self._width / mask_aspect))
+                    self._height = target_height
+                    logger.debug(f"Auto-set height={target_height} from width={self._width}")
+                else:
+                    target_height = self._height
+                    target_width = int(round(self._height * mask_aspect))
+                    self._width = target_width
+                    logger.debug(f"Auto-set width={target_width} from height={self._height}")
+            else:
+                # No dimensions specified - use mask dimensions as-is
+                target_height, target_width = mask_height, mask_width
                 self._width = mask_width
-                logger.debug(f"Auto-set width to {self._width} from heatmap mask")
-            if self._height is None:
                 self._height = mask_height
-                logger.debug(f"Auto-set height to {self._height} from heatmap mask")
+                logger.debug(
+                    f"Auto-set widget dimensions to ({mask_height}x{mask_width}) from mask"
+                )
+
+            # Resize mask if needed
+            if (mask_height, mask_width) != (target_height, target_width):
+                mask = cv2.resize(
+                    mask, (target_width, target_height), interpolation=cv2.INTER_LINEAR
+                )
+                logger.debug(
+                    f"Resized mask from ({mask_height}x{mask_width}) to ({target_height}x{target_width})"
+                )
 
             heatmap = mask_to_heatmap(
                 mask,

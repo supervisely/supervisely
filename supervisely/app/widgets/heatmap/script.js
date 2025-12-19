@@ -112,6 +112,14 @@ Vue.component('heatmap-image', {
     imageWrapperStyle() {
       const styles = { ...this.widthStyle };
       
+      // If both widget dimensions are specified, use them (fixed container size)
+      if (this.width && this.height) {
+        styles.width = typeof this.width === 'number' ? `${this.width}px` : this.width;
+        styles.height = typeof this.height === 'number' ? `${this.height}px` : this.height;
+        // Don't set max-height or aspect-ratio - we want exact dimensions
+        return styles;
+      }
+      
       // Use max-height instead of height to allow responsive scaling
       if (this.height) {
         styles.maxHeight = typeof this.height === 'number' ? `${this.height}px` : this.height;
@@ -121,7 +129,7 @@ Vue.component('heatmap-image', {
       const effectiveWidth = this.naturalWidth || this.maskWidth;
       const effectiveHeight = this.naturalHeight || this.maskHeight;
       
-      // Always use aspect-ratio if we have dimensions
+      // Use aspect-ratio only when widget dimensions are not fully specified
       if (effectiveWidth && effectiveHeight) {
         styles.aspectRatio = `${effectiveWidth} / ${effectiveHeight}`;
       }
