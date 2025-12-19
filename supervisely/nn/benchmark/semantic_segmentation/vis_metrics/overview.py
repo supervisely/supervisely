@@ -22,7 +22,7 @@ class Overview(SemanticSegmVisMetric):
         url = self.eval_result.inference_info.get("checkpoint_url")
         link_text = self.eval_result.inference_info.get("custom_checkpoint_path")
         if link_text is None:
-            link_text = url
+            link_text = url or ""
         link_text = link_text.replace("_", "\_")
 
         model_name = self.eval_result.inference_info.get("model_name") or "Custom"

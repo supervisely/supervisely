@@ -15,6 +15,7 @@ from supervisely.nn.benchmark.utils import (
     sly2coco,
 )
 from supervisely.nn.benchmark.visualization.vis_click_data import ClickData, IdMapper
+from supervisely.sly_logger import logger
 
 
 class ObjectDetectionEvalResult(BaseEvalResult):
@@ -30,10 +31,24 @@ class ObjectDetectionEvalResult(BaseEvalResult):
         if self.coco_gt.exists() and self.coco_dt.exists():
             self.coco_gt, self.coco_dt = read_coco_datasets(self.coco_gt, self.coco_dt)
 
-        eval_data_path = Path(path) / "eval_data.pkl"
-        if eval_data_path.exists():
-            with open(Path(path, "eval_data.pkl"), "rb") as f:
-                self.eval_data = pickle.load(f)
+        eval_data_pickle_path = Path(path) / "eval_data.pkl"
+        eval_data_archive_path = Path(path) / "eval_data.zip"
+        if eval_data_pickle_path.exists():
+            try:
+                with open(Path(path, "eval_data.pkl"), "rb") as f:
+                    self.eval_data = pickle.load(f)
+            except Exception as e:
+                logger.warning(f"Failed to load eval_data.pkl: {e}", exc_info=True)
+                self.eval_data = None
+        if self.eval_data is None and eval_data_archive_path.exists():
+            try:
+                self.eval_data = self._load_eval_data_archive(eval_data_archive_path)
+            except Exception as e:
+                logger.warning(f"Failed to load eval_data from archive: {e}", exc_info=True)
+                self.eval_data = None
+
+        if self.eval_data is None:
+            raise ValueError("Failed to load eval_data. Please contact support.")
 
         inference_info_path = Path(path) / "inference_info.json"
         if inference_info_path.exists():
@@ -172,6 +187,7 @@ class ObjectDetectionEvaluator(BaseEvaluator):
         cocoGt_path, cocoDt_path, eval_data_path = self._get_eval_paths()
         dump_json_file(self.cocoGt_json, cocoGt_path, indent=None)
         dump_json_file(self.cocoDt_json, cocoDt_path, indent=None)
+        self._dump_eval_results_archive()
         self._dump_pickle(self.eval_data, eval_data_path)
 
     def _get_eval_paths(self):

@@ -228,7 +228,9 @@ class StorageApi(FileApi):
         path_infos = self.list(team_id, parent_dir, recursive=False, return_type="dict")
         for info in path_infos:
             if info["type"] == path_type:
-                if info["path"].rstrip("/") == remote_path.rstrip("/"):
+                if path_type == "file" and info["path"] == remote_path:
+                    return True
+                elif path_type == "folder" and info["path"].rstrip("/") == remote_path.rstrip("/"):
                     return True
         return False
 
