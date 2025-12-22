@@ -1,13 +1,12 @@
 import os
-from os.path import join
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 import yaml
 
 import supervisely.io.env as sly_env
 import supervisely.io.fs as sly_fs
-import supervisely.io.json as sly_json
 from supervisely import Api
+from supervisely._utils import logger
 from supervisely.app.widgets import (
     Card,
     Container,
@@ -23,10 +22,9 @@ from supervisely.app.widgets.experiment_selector.experiment_selector import (
 from supervisely.app.widgets.pretrained_models_selector.pretrained_models_selector import (
     PretrainedModelsSelector,
 )
-from supervisely.nn.experiments import get_experiment_infos
+from supervisely.nn.experiments import ExperimentInfo, get_experiment_infos
 from supervisely.nn.inference.gui.serving_gui import ServingGUI
 from supervisely.nn.utils import ModelSource, RuntimeType, _get_model_name
-from supervisely.nn.experiments import ExperimentInfo
 
 
 class ServingGUITemplate(ServingGUI):
@@ -39,9 +37,6 @@ class ServingGUITemplate(ServingGUI):
         if not isinstance(framework_name, str):
             raise ValueError("'framework_name' must be a string")
         super().__init__()
-
-        self.api = Api.from_env()
-        self.team_id = sly_env.team_id()
 
         self.framework_name = framework_name
         self.models = models
@@ -78,8 +73,7 @@ class ServingGUITemplate(ServingGUI):
 
         # Custom models
         if use_custom_models:
-            experiments = get_experiment_infos(self.api, self.team_id, self.framework_name)
-            self.experiment_selector = ExperimentSelector(self.api, self.team_id, experiments)
+            self.experiment_selector = self._initialize_custom_model_widget()
         else:
             self.experiment_selector = None
 
@@ -160,6 +154,18 @@ class ServingGUITemplate(ServingGUI):
         self._update_export_message()
 
         return card_widgets
+    
+    def _initialize_custom_model_widget(self):
+        try:
+            api = Api.from_env()
+            team_id = sly_env.team_id()
+        except (ValueError, FileNotFoundError) as e:
+            logger.info("Custom model selection is unavailable: cannot connect to Supervisely API.")
+            logger.debug(f"Error details: {e}", exc_info=True)
+            return None
+        experiments = get_experiment_infos(api, team_id, self.framework_name)
+        return ExperimentSelector(api, team_id, experiments)
+
 
     def _initialize_extra_widgets(self) -> List[Widget]:
         return []

@@ -96,6 +96,7 @@ class PredictionSession:
         self.input = input
         self.api = api
 
+        self.server_address = self._get_server_address()
         self.api_token = self._get_api_token()
         self._model_meta = None
         self.final_result = None
@@ -285,6 +286,11 @@ class PredictionSession:
         if self.api is not None:
             return self.api.token
         return env.api_token(raise_not_found=False)
+    
+    def _get_server_address(self):
+        if self.api is not None:
+            return self.api.server_address
+        return env.server_address(raise_not_found=False)
 
     def _get_json_body(self):
         body = {"state": {}, "context": {}}
@@ -292,6 +298,8 @@ class PredictionSession:
             body["state"]["inference_request_uuid"] = self.inference_request_uuid
         if self.inference_settings:
             body["state"]["settings"] = self.inference_settings
+        if self.server_address is not None:
+            body["server_address"] = self.server_address
         if self.api_token is not None:
             body["api_token"] = self.api_token
         if "model_prediction_suffix" in self.kwargs:

@@ -63,8 +63,6 @@ class PretrainedModelsSelector(Widget):
         widget_id: str = None,
         sort_models: bool = False,
     ):
-        self._api = Api.from_env()
-
         self._models = models_list
         filtered_models = self._filter_and_sort_models(self._models, sort_models)
 

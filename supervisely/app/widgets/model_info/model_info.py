@@ -1,13 +1,9 @@
-try:
-    from typing import Literal
-except ImportError:
-    from typing_extensions import Literal
-from typing import Any, Dict, Optional
+from typing import Optional
 
 import supervisely.io.env as sly_env
-from supervisely.app import StateJson, DataJson
-from supervisely.app.widgets import Widget
 from supervisely.api.api import Api
+from supervisely.app import DataJson, StateJson
+from supervisely.app.widgets import Widget
 from supervisely.nn.inference import Session
 
 
@@ -19,7 +15,7 @@ class ModelInfo(Widget):
         widget_id: str = None,
         replace_none_with: Optional[str] = None,
     ):
-        self._api = Api()
+        self._api = None
         self._session_id = session_id
         self._team_id = team_id
         self._model_info = None
@@ -30,6 +26,12 @@ class ModelInfo(Widget):
             self._team_id = sly_env.team_id()
 
         super().__init__(widget_id=widget_id, file_path=__file__)
+
+    @property
+    def api(self) -> Api:
+        if self._api is None:
+            self._api = Api()
+        return self._api
 
     def get_json_data(self):
         data = {}
@@ -78,7 +80,7 @@ class ModelInfo(Widget):
         StateJson().send_changes()
 
     def _get_info(self):
-        session = Session(self._api, self._session_id)
+        session = Session(self.api, self._session_id)
         return session.get_human_readable_info(self._replace_none_with)
 
     @property

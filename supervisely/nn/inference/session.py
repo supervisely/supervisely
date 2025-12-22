@@ -14,6 +14,7 @@ import yaml
 from requests import HTTPError, Timeout
 
 import supervisely as sly
+import supervisely.io.env as env
 from supervisely.convert.image.sly.sly_image_helper import get_meta_from_annotation
 from supervisely.io.network_exceptions import process_requests_exception
 from supervisely.nn.utils import DeployInfo
@@ -23,7 +24,7 @@ from supervisely.sly_logger import logger
 class SessionJSON:
     def __init__(
         self,
-        api: sly.Api,
+        api: sly.Api = None,
         task_id: int = None,
         session_url: str = None,
         inference_settings: Union[dict, str] = None,
@@ -38,8 +39,8 @@ class SessionJSON:
 
         Note: Either a `task_id` or a `session_url` has to be passed as a parameter (not both).
 
-        :param api: initialized :class:`sly.Api` object.
-        :type api: sly.Api
+        :param api: initialized :class:`sly.Api` object. Defaults to None
+        :type api: sly.Api, optional
         :param task_id: the task_id of a served model in the Supervisely platform. If None, the `session_url` will be used instead, defaults to None
         :type task_id: int, optional
         :param session_url: the url for direct connection to the served model. If None, the `task_id` will be used instead, defaults to None
@@ -71,6 +72,8 @@ class SessionJSON:
 
         self.api = api
         self._task_id = task_id
+        self.server_address = self._get_server_address()
+        self.api_token = self._get_api_token()
 
         if task_id is not None:
             try:
@@ -116,6 +119,16 @@ class SessionJSON:
     @property
     def base_url(self) -> str:
         return self._base_url
+
+    def _get_api_token(self):
+        if self.api is not None:
+            return self.api.token
+        return env.api_token(raise_not_found=False)
+
+    def _get_server_address(self):
+        if self.api is not None:
+            return self.api.server_address
+        return env.server_address(raise_not_found=False)
 
     def get_session_info(self) -> Dict[str, Any]:
         self._session_info = self._get_from_endpoint("get_session_info")
@@ -592,7 +605,7 @@ class SessionJSON:
             self._async_inference_uuid = None
 
     def _post(self, *args, retries=5, **kwargs) -> requests.Response:
-        retries = min(self.api.retry_count, retries)
+        retries = min(self.api.retry_count, retries) if self.api else retries
         url = kwargs.get("url") or args[0]
         method = url[len(self._base_url) :]
         for retry_idx in range(retries):
@@ -651,11 +664,14 @@ class SessionJSON:
         return state
 
     def _get_default_json_body(self) -> Dict[str, Any]:
-        return {
-            "state": {"settings": self.inference_settings},
-            "context": {},
-            "api_token": self.api.token,
-        }
+        body = {"state": {}, "context": {}}
+        if self.inference_settings:
+            body["state"]["settings"] = self.inference_settings
+        if self.server_address is not None:
+            body["server_address"] = self.server_address
+        if self.api_token is not None:
+            body["api_token"] = self.api_token
+        return body
 
     def _get_default_json_body_for_async_inference(self) -> Dict[str, Any]:
         json_body = self._get_default_json_body()
@@ -705,7 +721,7 @@ class AsyncInferenceIterator:
 class Session(SessionJSON):
     def __init__(
         self,
-        api: sly.Api,
+        api: sly.Api = None,
         task_id: int = None,
         session_url: str = None,
         inference_settings: Union[dict, str] = None,
