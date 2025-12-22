@@ -614,37 +614,43 @@ class DataVersion(ModuleApiBase):
         :rtype: dict
         """
         temp_dir = tempfile.mkdtemp()
-
-        data = self.project_cls.download_bin(
-            self._api, self.project_info.id, batch_size=200, return_bytesio=True
-        )
-        data.seek(0)
-        info = tarfile.TarInfo(name="version.bin")
-        data.seek(0, io.SEEK_END)
-        info.size = data.tell()
-        data.seek(0)
-        zst_archive_path = os.path.join(temp_dir, "download.tar.zst")
-
-        # Stream-decompress and stream-read tar to avoid loading the whole archive in memory.
+        data = None
         try:
-            cctx = zstd.ZstdCompressor()
-            with open(zst_archive_path, "wb") as zst_f:
+            data = self.project_cls.download_bin(
+                self._api, self.project_info.id, batch_size=200, return_bytesio=True
+            )
+            info = tarfile.TarInfo(name="version.bin")
+            data.seek(0, io.SEEK_END)
+            info.size = data.tell()
+            data.seek(0)
+            zst_archive_path = os.path.join(temp_dir, "download.tar.zst")
+
+            # Stream-decompress and stream-read tar to avoid loading the whole archive in memory.
+            try:
+                cctx = zstd.ZstdCompressor()
+                with open(zst_archive_path, "wb") as zst_f:
+                    try:
+                        stream = cctx.stream_writer(zst_f, closefd=False)
+                    except TypeError:
+                        stream = cctx.stream_writer(zst_f)
+                    with stream as compressor:
+                        with tarfile.open(fileobj=compressor, mode="w|") as tar:
+                            tar.addfile(tarinfo=info, fileobj=data)
+            except Exception:
+                # Fallback: build tar in memory + one-shot compress
+                tar_data = io.BytesIO()
+                with tarfile.open(fileobj=tar_data, mode="w") as tar:
+                    tar.addfile(tarinfo=info, fileobj=data)
+                tar_data.seek(0)
+                with open(zst_archive_path, "wb") as zst_f:
+                    zst_f.write(zstd.compress(tar_data.read()))
+
+            file_info = self._api.file.upload(self.project_info.team_id, zst_archive_path, path)
+            return file_info
+        finally:
+            if data is not None:
                 try:
-                    stream = cctx.stream_writer(zst_f, closefd=False)
-                except TypeError:
-                    stream = cctx.stream_writer(zst_f)
-                with stream as compressor:
-                    with tarfile.open(fileobj=compressor, mode="w|") as tar:
-                        tar.addfile(tarinfo=info, fileobj=data)
-        except Exception:
-            # Fallback: build tar in memory + one-shot compress
-            tar_data = io.BytesIO()
-            with tarfile.open(fileobj=tar_data, mode="w") as tar:
-                tar.addfile(tarinfo=info, fileobj=data)
-            tar_data.seek(0)
-            with open(zst_archive_path, "wb") as zst_f:
-                zst_f.write(zstd.compress(tar_data.read()))
-        file_info = self._api.file.upload(self.project_info.team_id, zst_archive_path, path)
-        data.close()
-        remove_dir(temp_dir)
-        return file_info
+                    data.close()
+                except Exception:
+                    pass
+            remove_dir(temp_dir)
