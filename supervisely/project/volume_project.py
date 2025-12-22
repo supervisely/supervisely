@@ -21,10 +21,12 @@ from supervisely.collection.key_indexed_collection import KeyIndexedCollection
 from supervisely.geometry.closed_surface_mesh import ClosedSurfaceMesh
 from supervisely.geometry.mask_3d import Mask3D
 from supervisely.io.fs import change_directory_at_index, touch
+from supervisely.project.data_version import VersionSchemaField
 from supervisely.project.project import OpenMode
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import ProjectType
 from supervisely.project.video_project import VideoDataset, VideoProject
+from supervisely.project.volume_schema import get_volume_snapshot_schema
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress, tqdm_sly
 from supervisely.video_annotation.key_id_map import KeyIdMap
@@ -226,6 +228,7 @@ class VolumeProject(VideoProject):
         log_progress: bool = False,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         return_bytesio: bool = False,
+        schema_version: str = "v2.0.0",
         *args,
         **kwargs,
     ) -> Union[str, io.BytesIO]:
@@ -291,6 +294,7 @@ class VolumeProject(VideoProject):
         """
 
         pa = VolumeProject._require_pyarrow()
+        snapshot_schema = get_volume_snapshot_schema(schema_version)
 
         if dest_dir is None and not return_bytesio:
             raise ValueError(
@@ -306,7 +310,7 @@ class VolumeProject(VideoProject):
         project_info = api.project.get_info_by_id(project_id)
         project_meta = api.project.get_meta(project_id, with_settings=True)
         project_meta_obj = ProjectMeta.from_json(project_meta)
-        dataset_infos = api.dataset.get_list(project_id, filters=ds_filters, recursive=True)
+        dataset_infos = api.dataset.get_list(project_id, filters=ds_filters, recursive=True, include_custom_data=True)
 
         dataset_records = [dataset_info._asdict() for dataset_info in dataset_infos]
         volume_records: List[Dict] = []
@@ -365,23 +369,29 @@ class VolumeProject(VideoProject):
                         spatial_figure[ApiField.CUSTOM_DATA] = figure_info.custom_data
 
             for volume_info, ann_json in zip(volumes, ann_jsons):
-                ann = VolumeAnnotation.from_json(ann_json, project_meta_obj, key_id_map)
-                VolumeProject._load_mask_geometries(api, ann, key_id_map)
+                ann_dict = snapshot_schema.annotation_dict_from_raw(
+                    api=api,
+                    raw_ann_json=ann_json,
+                    project_meta_obj=project_meta_obj,
+                    key_id_map=key_id_map,
+                )
                 volume_records.append(volume_info._asdict())
-                annotations[str(volume_info.id)] = ann.to_json()
+                annotations[str(volume_info.id)] = ann_dict
                 if progress_cb is not None:
                     progress_cb(1)
                 if ds_progress is not None:
                     ds_progress(1)
 
+        project_info_dict = project_info._asdict()
+        project_info_dict[VersionSchemaField.SCHEMA_VERSION] = schema_version
         payload = {
-            "project_info": project_info._asdict(),
+            "project_info": project_info_dict,
             "project_meta": project_meta,
             "dataset_infos": dataset_records,
             "volume_infos": volume_records,
             "annotations": annotations,
         }
-        blob = VolumeProject._serialize_payload_to_parquet_blob(pa, payload)
+        blob = VolumeProject._serialize_payload_to_parquet_blob(pa, payload, snapshot_schema)
 
         if return_bytesio:
             stream = io.BytesIO(blob)
@@ -480,14 +490,22 @@ class VolumeProject(VideoProject):
         payload = VolumeProject._deserialize_payload_from_parquet(pa, raw_data)
 
         project_meta = ProjectMeta.from_json(payload["project_meta"])
+        project_info: Dict = payload.get("project_info", {})
         dataset_records: List[Dict] = payload.get("dataset_infos", [])
         volume_records: List[Dict] = payload.get("volume_infos", [])
         annotations: Dict[str, Dict] = payload.get("annotations", {})
 
-        project_title = project_name or payload["project_info"].get("name")
+        project_title = project_name or project_info.get("name")
         if api.project.exists(workspace_id, project_title):
             project_title = api.project.get_free_name(workspace_id, project_title)
-        new_project_info = api.project.create(workspace_id, project_title, ProjectType.VOLUMES)
+        src_project_desc = project_info.get("description")
+        new_project_info = api.project.create(
+            workspace_id,
+            project_title,
+            ProjectType.VOLUMES,
+            description=src_project_desc,
+            readme=project_info.get("readme"),
+        )
         api.project.update_meta(new_project_info.id, project_meta)
 
         custom_data = new_project_info.custom_data
@@ -600,53 +618,32 @@ class VolumeProject(VideoProject):
         return pa
 
     @staticmethod
-    def _serialize_payload_to_parquet_blob(pa_module, payload: Dict[str, Dict]) -> bytes:
+    def _serialize_payload_to_parquet_blob(pa_module, payload: Dict[str, Dict], snapshot_schema) -> bytes:
         dataset_records: List[Dict] = payload.get("dataset_infos", []) or []
         volume_records: List[Dict] = payload.get("volume_infos", []) or []
         annotations_dict: Dict[str, Dict] = payload.get("annotations", {}) or {}
 
-        dataset_table = VolumeProject._build_table(
-            pa_module,
-            {
-                "dataset_id": ([record.get("id") for record in dataset_records], pa_module.int64()),
-                "json": (
-                    [VolumeProject._json_dumps(record) for record in dataset_records],
-                    pa_module.large_string(),
-                ),
-            },
+        dataset_rows = [snapshot_schema.dataset_row_from_record(r) for r in dataset_records]
+        dataset_table = pa_module.Table.from_pylist(
+            dataset_rows, schema=snapshot_schema.datasets_table_schema(pa_module)
         )
 
-        volume_table = VolumeProject._build_table(
-            pa_module,
-            {
-                "volume_id": ([record.get("id") for record in volume_records], pa_module.int64()),
-                "dataset_id": (
-                    [record.get("dataset_id") for record in volume_records],
-                    pa_module.int64(),
-                ),
-                "json": (
-                    [VolumeProject._json_dumps(record) for record in volume_records],
-                    pa_module.large_string(),
-                ),
-            },
+        volume_rows = [snapshot_schema.volume_row_from_record(r) for r in volume_records]
+        volume_table = pa_module.Table.from_pylist(
+            volume_rows, schema=snapshot_schema.volumes_table_schema(pa_module)
         )
 
-        ann_volume_ids: List[Optional[int]] = []
-        ann_payloads: List[str] = []
+        ann_rows = []
         for volume_id_str, ann in annotations_dict.items():
             try:
-                volume_id = int(volume_id_str)
+                src_volume_id = int(volume_id_str)
             except (TypeError, ValueError):
-                volume_id = None
-            ann_volume_ids.append(volume_id)
-            ann_payloads.append(VolumeProject._json_dumps(ann))
-
-        annotations_table = VolumeProject._build_table(
-            pa_module,
-            {
-                "volume_id": (ann_volume_ids, pa_module.int64()),
-                "annotation": (ann_payloads, pa_module.large_string()),
-            },
+                continue
+            ann_rows.append(
+                snapshot_schema.annotation_row_from_dict(src_volume_id=src_volume_id, annotation=ann)
+            )
+        annotations_table = pa_module.Table.from_pylist(
+            ann_rows, schema=snapshot_schema.annotations_table_schema(pa_module)
         )
 
         sections = [
@@ -784,6 +781,8 @@ class VolumeProject(VideoProject):
         except KeyError as exc:
             raise RuntimeError("VolumeProject payload missing metadata section") from exc
 
+        schema_version = project_info.get(VersionSchemaField.SCHEMA_VERSION, "v2.0.0")
+
         if VolumeProject._SECTION_DATASETS not in sections:
             logger.warning("VolumeProject blob has no datasets section; treating as empty.")
         if VolumeProject._SECTION_VOLUMES not in sections:
@@ -802,36 +801,46 @@ class VolumeProject(VideoProject):
         )
 
         dataset_records: List[Dict] = []
-        if (
-            dataset_table is not None
-            and dataset_table.num_rows
-            and "json" in dataset_table.column_names
-        ):
-            dataset_jsons = dataset_table.column("json").to_pylist()
-            dataset_records = [json.loads(item) for item in dataset_jsons]
+        if dataset_table is not None and dataset_table.num_rows:
+            col_json = (
+                VersionSchemaField.JSON
+                if VersionSchemaField.JSON in dataset_table.column_names
+                else "json"
+            )
+            if col_json in dataset_table.column_names:
+                dataset_jsons = dataset_table.column(col_json).to_pylist()
+                dataset_records = [json.loads(item) for item in dataset_jsons]
 
         volume_records: List[Dict] = []
-        if (
-            volume_table is not None
-            and volume_table.num_rows
-            and "json" in volume_table.column_names
-        ):
-            volume_jsons = volume_table.column("json").to_pylist()
-            volume_records = [json.loads(item) for item in volume_jsons]
+        if volume_table is not None and volume_table.num_rows:
+            col_json = (
+                VersionSchemaField.JSON
+                if VersionSchemaField.JSON in volume_table.column_names
+                else "json"
+            )
+            if col_json in volume_table.column_names:
+                volume_jsons = volume_table.column(col_json).to_pylist()
+                volume_records = [json.loads(item) for item in volume_jsons]
 
         annotations: Dict[str, Dict] = {}
-        if (
-            annotations_table is not None
-            and annotations_table.num_rows
-            and "volume_id" in annotations_table.column_names
-            and "annotation" in annotations_table.column_names
-        ):
-            annotation_ids = annotations_table.column("volume_id").to_pylist()
-            annotation_payloads = annotations_table.column("annotation").to_pylist()
-            for volume_id, annotation_json in zip(annotation_ids, annotation_payloads):
-                if volume_id is None:
-                    continue
-                annotations[str(volume_id)] = json.loads(annotation_json)
+        if annotations_table is not None and annotations_table.num_rows:
+            col_vol_id = (
+                VersionSchemaField.SRC_VOLUME_ID
+                if VersionSchemaField.SRC_VOLUME_ID in annotations_table.column_names
+                else "volume_id"
+            )
+            col_ann = (
+                VersionSchemaField.ANNOTATION
+                if VersionSchemaField.ANNOTATION in annotations_table.column_names
+                else "annotation"
+            )
+            if col_vol_id in annotations_table.column_names and col_ann in annotations_table.column_names:
+                annotation_ids = annotations_table.column(col_vol_id).to_pylist()
+                annotation_payloads = annotations_table.column(col_ann).to_pylist()
+                for volume_id, annotation_json in zip(annotation_ids, annotation_payloads):
+                    if volume_id is None:
+                        continue
+                    annotations[str(volume_id)] = json.loads(annotation_json)
 
         return {
             "project_info": project_info,

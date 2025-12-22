@@ -23,11 +23,13 @@ from supervisely.api.video.video_api import VideoInfo
 from supervisely.collection.key_indexed_collection import KeyIndexedCollection
 from supervisely.io.fs import clean_dir, mkdir, touch, touch_async
 from supervisely.io.json import dump_json_file, dump_json_file_async, load_json_file
+from supervisely.project.data_version import VersionSchemaField
 from supervisely.project.project import Dataset, OpenMode, Project
 from supervisely.project.project import read_single_project as read_project_wrapper
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_settings import LabelingInterface
 from supervisely.project.project_type import ProjectType
+from supervisely.project.video_schema import get_video_snapshot_schema
 from supervisely.task.progress import tqdm_sly
 from supervisely.video import video as sly_video
 from supervisely.video_annotation.key_id_map import KeyIdMap
@@ -1362,6 +1364,7 @@ class VideoProject(Project):
         batch_size: int = 50,
         log_progress: bool = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
+        schema_version: str = "v2.0.0",
     ) -> io.BytesIO:
         """
         Create a video project snapshot in Arrow/Parquet+tar.zst format and return it as BytesIO.
@@ -1377,6 +1380,7 @@ class VideoProject(Project):
         project_info = api.project.get_info_by_id(project_id)
         meta = ProjectMeta.from_json(api.project.get_meta(project_id, with_settings=True))
         key_id_map = KeyIdMap()
+        snapshot_schema = get_video_snapshot_schema(schema_version)
 
         tmp_root = tempfile.mkdtemp()
         payload_dir = os.path.join(tmp_root, "payload")
@@ -1415,18 +1419,9 @@ class VideoProject(Project):
                 full_path = Dataset._get_dataset_path(ds_info.name, parents)
                 ds_custom_data = ds_custom_data_by_id.get(ds_info.id)
                 datasets_rows.append(
-                    {
-                        "src_dataset_id": ds_info.id,
-                        "parent_src_dataset_id": ds_info.parent_id,
-                        "name": ds_info.name,
-                        "full_path": full_path,
-                        "description": ds_info.description,
-                        "custom_data": (
-                            json.dumps(ds_custom_data)
-                            if isinstance(ds_custom_data, dict) and len(ds_custom_data) > 0
-                            else None
-                        ),
-                    }
+                    snapshot_schema.dataset_row_from_ds_info(
+                        ds_info, full_path=full_path, custom_data=ds_custom_data
+                    )
                 )
 
                 videos = api.video.get_list(ds_info.id)
@@ -1447,38 +1442,10 @@ class VideoProject(Project):
                                 "Error in api.video.annotation.download_bulk: broken order"
                             )
 
-                        frames_to_timecodes = getattr(video_info, "frames_to_timecodes", None)
-                        frames_to_timecodes_json = (
-                            json.dumps(frames_to_timecodes) if frames_to_timecodes else None
-                        )
-                        meta_json = (
-                            json.dumps(getattr(video_info, "meta", None))
-                            if getattr(video_info, "meta", None)
-                            else None
-                        )
-                        custom_data_json = (
-                            json.dumps(video_info.custom_data)
-                            if getattr(video_info, "custom_data", None)
-                            else None
-                        )
-
                         videos_rows.append(
-                            {
-                                "src_video_id": video_info.id,
-                                "src_dataset_id": ds_info.id,
-                                "name": video_info.name,
-                                "hash": getattr(video_info, "hash", None),
-                                "link": getattr(video_info, "link", None),
-                                "frames_count": getattr(video_info, "frames_count", None),
-                                "frame_width": getattr(video_info, "frame_width", None),
-                                "frame_height": getattr(video_info, "frame_height", None),
-                                "frames_to_timecodes": frames_to_timecodes_json,
-                                "meta": meta_json,
-                                "custom_data": custom_data_json,
-                                "created_at": getattr(video_info, "created_at", None),
-                                "updated_at": getattr(video_info, "updated_at", None),
-                                "ann_json": json.dumps(ann_json),
-                            }
+                            snapshot_schema.video_row_from_video_info(
+                                video_info, src_dataset_id=ds_info.id, ann_json=ann_json
+                            )
                         )
 
                         video_ann = VideoAnnotation.from_json(ann_json, meta, key_id_map)
@@ -1487,17 +1454,9 @@ class VideoProject(Project):
                             src_obj_id = len(objects_rows) + 1
                             obj_key_to_src_id[obj.key().hex] = src_obj_id
                             objects_rows.append(
-                                {
-                                    "src_object_id": src_obj_id,
-                                    "src_video_id": video_info.id,
-                                    "class_name": obj.obj_class.name,
-                                    "key": obj.key().hex,
-                                    "tags_json": (
-                                        json.dumps(obj.tags.to_json())
-                                        if obj.tags is not None
-                                        else None
-                                    ),
-                                }
+                                snapshot_schema.object_row_from_object(
+                                    obj, src_object_id=src_obj_id, src_video_id=video_info.id
+                                )
                             )
 
                         for frame in video_ann.frames:
@@ -1511,14 +1470,13 @@ class VideoProject(Project):
                                     )
                                     continue
                                 figures_rows.append(
-                                    {
-                                        "src_figure_id": len(figures_rows) + 1,
-                                        "src_object_id": src_obj_id,
-                                        "src_video_id": video_info.id,
-                                        "frame_index": frame.index,
-                                        "geometry_type": fig.geometry.geometry_name(),
-                                        "geometry_json": json.dumps(fig.geometry.to_json()),
-                                    }
+                                    snapshot_schema.figure_row_from_figure(
+                                        fig,
+                                        figure_row_idx=len(figures_rows),
+                                        src_object_id=src_obj_id,
+                                        src_video_id=video_info.id,
+                                        frame_index=frame.index,
+                                    )
                                 )
 
                     if ds_progress is not None:
@@ -1530,56 +1488,10 @@ class VideoProject(Project):
 
             # Arrow schemas
             tables_meta = []
-            datasets_schema = pyarrow.schema(
-                [
-                    ("src_dataset_id", pyarrow.int64()),
-                    ("parent_src_dataset_id", pyarrow.int64()),
-                    ("name", pyarrow.utf8()),
-                    ("full_path", pyarrow.utf8()),
-                    ("description", pyarrow.utf8()),
-                    ("custom_data", pyarrow.utf8()),
-                ]
-            )
-
-            videos_schema = pyarrow.schema(
-                [
-                    ("src_video_id", pyarrow.int64()),
-                    ("src_dataset_id", pyarrow.int64()),
-                    ("name", pyarrow.utf8()),
-                    ("hash", pyarrow.utf8()),
-                    ("link", pyarrow.utf8()),
-                    ("frames_count", pyarrow.int32()),
-                    ("frame_width", pyarrow.int32()),
-                    ("frame_height", pyarrow.int32()),
-                    ("frames_to_timecodes", pyarrow.utf8()),
-                    ("meta", pyarrow.utf8()),
-                    ("custom_data", pyarrow.utf8()),
-                    ("created_at", pyarrow.utf8()),
-                    ("updated_at", pyarrow.utf8()),
-                    ("ann_json", pyarrow.utf8()),
-                ]
-            )
-
-            objects_schema = pyarrow.schema(
-                [
-                    ("src_object_id", pyarrow.int64()),
-                    ("src_video_id", pyarrow.int64()),
-                    ("class_name", pyarrow.utf8()),
-                    ("key", pyarrow.utf8()),
-                    ("tags_json", pyarrow.utf8()),
-                ]
-            )
-
-            figures_schema = pyarrow.schema(
-                [
-                    ("src_figure_id", pyarrow.int64()),
-                    ("src_object_id", pyarrow.int64()),
-                    ("src_video_id", pyarrow.int64()),
-                    ("frame_index", pyarrow.int32()),
-                    ("geometry_type", pyarrow.utf8()),
-                    ("geometry_json", pyarrow.utf8()),
-                ]
-            )
+            datasets_schema = snapshot_schema.datasets_schema(pyarrow)
+            videos_schema = snapshot_schema.videos_schema(pyarrow)
+            objects_schema = snapshot_schema.objects_schema(pyarrow)
+            figures_schema = snapshot_schema.figures_schema(pyarrow)
 
             if datasets_rows:
                 ds_table = pyarrow.Table.from_pylist(datasets_rows, schema=datasets_schema)
@@ -1630,8 +1542,8 @@ class VideoProject(Project):
                 )
 
             manifest = {
-                "schema_version": "video_arrow_v1",
-                "tables": tables_meta,
+                VersionSchemaField.SCHEMA_VERSION: schema_version,
+                VersionSchemaField.TABLES: tables_meta,
             }
             manifest_path = os.path.join(payload_dir, "manifest.json")
             dump_json_file(manifest, manifest_path)
@@ -1721,13 +1633,19 @@ class VideoProject(Project):
             meta = ProjectMeta.from_json(meta_json)
             _ = KeyIdMap().load_json(key_id_map_path)
 
-            if manifest.get("schema_version") != "video_arrow_v1":
+            schema_version = manifest.get(VersionSchemaField.SCHEMA_VERSION) or manifest.get(
+                "schema_version"
+            )
+            try:
+                _ = get_video_snapshot_schema(schema_version)
+            except Exception:
                 raise RuntimeError(
-                    f"Unsupported video snapshot schema_version: {manifest.get('schema_version')}"
+                    f"Unsupported video snapshot schema_version: {schema_version}"
                 )
 
             src_project_name = project_info_json.get("name")
             src_project_desc = project_info_json.get("description")
+            src_project_readme = project_info_json.get("readme")
             if project_name is None:
                 project_name = src_project_name
 
@@ -1735,7 +1653,11 @@ class VideoProject(Project):
                 project_name = api.project.get_free_name(workspace_id, project_name)
 
             project = api.project.create(
-                workspace_id, project_name, ProjectType.VIDEOS, src_project_desc
+                workspace_id,
+                project_name,
+                ProjectType.VIDEOS,
+                src_project_desc,
+                readme=src_project_readme,
             )
             new_meta = api.project.update_meta(project.id, meta.to_json())
 
