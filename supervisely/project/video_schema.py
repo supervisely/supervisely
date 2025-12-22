@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from supervisely.project.data_version import VersionSchemaField
 
@@ -131,7 +131,7 @@ class VideoSnapshotSchema:
         src_video_id: int,
         class_name: str,
         key_hex: str,
-        tags_json: Optional[dict],
+        tags_json: Optional[List[Dict[str, Any]]],
     ) -> Dict[str, Any]:
         return {
             VersionSchemaField.SRC_OBJECT_ID: src_object_id,
@@ -225,5 +225,3 @@ def get_video_snapshot_schema(schema_version: str) -> VideoSnapshotSchema:
     if schema is None:
         raise RuntimeError(f"Unsupported video snapshot schema_version: {schema_version!r}")
     return schema
-
-
