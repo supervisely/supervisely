@@ -424,7 +424,12 @@ class DataVersion(ModuleApiBase):
                 return reserve_info.get(ApiField.ID), reserve_info.get(ApiField.COMMIT_TOKEN)
 
             except requests.exceptions.HTTPError as e:
-                details = e.response.json().get("details", {}) if e.response is not None else {}
+                details = {}
+                if e.response is not None:
+                    try:
+                        details = (e.response.json() or {}).get("details", {})  # type: ignore[union-attr]
+                    except Exception:
+                        details = {}
 
                 if details.get("useExistingVersion"):
                     version_id = details.get("version", {}).get("id")

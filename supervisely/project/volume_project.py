@@ -260,6 +260,8 @@ class VolumeProject(VideoProject):
         :type progress_cb: tqdm or callable, optional
         :param return_bytesio: If True, return an in-memory :class:`io.BytesIO` with snapshot bytes. If False, write snapshot to ``dest_dir`` and return the file path.
         :type return_bytesio: bool, optional
+        :param schema_version: Snapshot schema version. Controls the internal Parquet layout/fields. Supported values are the keys from :func:`~supervisely.project.volume_schema.get_volume_snapshot_schema` (currently: ``"v2.0.0"``).
+        :type schema_version: str, optional
         :return: Snapshot file path (when ``return_bytesio=False``) or a BytesIO (when ``return_bytesio=True``).
         :rtype: str or io.BytesIO
         :raises ValueError: If ``dest_dir`` is not provided and ``return_bytesio`` is False.
@@ -477,7 +479,27 @@ class VolumeProject(VideoProject):
         *args,
         **kwargs,
     ) -> ProjectInfo:
-        """Restore a volume project from a Parquet blob produced by :func:`download_bin`."""
+        """
+        Restore a volume project from a Parquet blob produced by :func:`download_bin`.
+
+        :param api: Supervisely API client.
+        :type api: :class:`~supervisely.api.api.Api`
+        :param file: Snapshot file path (``.tar.zst``) or an in-memory :class:`io.BytesIO` stream.
+        :type file: Union[str, io.BytesIO]
+        :param workspace_id: Target workspace ID where the project will be created.
+        :type workspace_id: int
+        :param project_name: Optional new project name. If not provided, the name from the snapshot will be used. If the name already exists in the workspace, a free name will be chosen.
+        :type project_name: str, optional
+        :param log_progress: If True, show a progress bar (unless a custom ``progress_cb`` is provided).
+        :type log_progress: bool
+        :param progress_cb: Optional callback (or tqdm-like object) called with incremental progress.
+        :type progress_cb: tqdm or callable, optional
+        :param skip_missed_entities: If True, skip volumes that cannot be restored because their source hash is missing in the snapshot payload. If False, such cases raise an error.
+        :type skip_missed_entities: bool
+        :return: Info of the newly created project.
+        :rtype: :class:`~supervisely.api.project_api.ProjectInfo`
+        :raises RuntimeError: If the snapshot contains volumes without hashes and ``skip_missed_entities`` is False.
+        """
 
         pa = VolumeProject._require_pyarrow()
 
@@ -546,18 +568,21 @@ class VolumeProject(VideoProject):
             if new_dataset_info is None:
                 continue
 
-            missing_hash_volumes = [vol for vol in dataset_volumes if not vol.get("hash")]
-            if missing_hash_volumes:
-                missing_names = [
-                    vol.get("name") or str(vol.get("id")) for vol in missing_hash_volumes
-                ]
+            dataset_volumes_to_upload: List[Dict] = []
+            missing_names: List[str] = []
+            for vol in dataset_volumes:
+                if vol.get("hash"):
+                    dataset_volumes_to_upload.append(vol)
+                else:
+                    missing_names.append(vol.get("name") or str(vol.get("id")))
+
+            if missing_names:
                 if skip_missed_entities:
                     for vol_name in missing_names:
                         logger.warning(
                             "Volume %r skipped during restoration because its source hash is unavailable.",
                             vol_name,
                         )
-                    dataset_volumes_to_upload = [vol for vol in dataset_volumes if vol.get("hash")]
                     if len(dataset_volumes_to_upload) == 0:
                         continue
                 else:
@@ -566,8 +591,6 @@ class VolumeProject(VideoProject):
                             ", ".join(missing_names)
                         )
                     )
-            else:
-                dataset_volumes_to_upload = list(dataset_volumes)
 
             hashes = [volume.get("hash") for volume in dataset_volumes_to_upload]
             names = [volume.get("name") for volume in dataset_volumes_to_upload]
@@ -780,8 +803,6 @@ class VolumeProject(VideoProject):
             project_meta = json.loads(sections[VolumeProject._SECTION_PROJECT_META].decode("utf-8"))
         except KeyError as exc:
             raise RuntimeError("VolumeProject payload missing metadata section") from exc
-
-        schema_version = project_info.get(VersionSchemaField.SCHEMA_VERSION, "v2.0.0")
 
         if VolumeProject._SECTION_DATASETS not in sections:
             logger.warning("VolumeProject blob has no datasets section; treating as empty.")

@@ -38,9 +38,9 @@ from supervisely.video_annotation.video_annotation import VideoAnnotation
 
 class VideoItemPaths(NamedTuple):
     video_path: str
-    """Full video file path of item"""
+    # Full video file path of item
     ann_path: str
-    """Full annotation file path of item"""
+    # Full annotation file path of item
 
 
 class VideoDataset(Dataset):
@@ -1296,6 +1296,25 @@ class VideoProject(Project):
             - videos.parquet
             - objects.parquet
             - figures.parquet
+
+        :param api: Supervisely API client.
+        :type api: Api
+        :param project_id: Source project ID.
+        :type project_id: int
+        :param dest_dir: Directory to save the resulting ``.tar.zst`` file. Required if ``return_bytesio`` is False.
+        :type dest_dir: Optional[str]
+        :param dataset_ids: Optional list of dataset IDs to include. If provided, only those datasets (and their videos/annotations) will be included in the snapshot.
+        :type dataset_ids: Optional[List[int]]
+        :param batch_size: Batch size for downloading video annotations.
+        :type batch_size: int
+        :param log_progress: If True, shows progress (uses internal tqdm progress bars) when ``progress_cb`` is not provided.
+        :type log_progress: bool
+        :param progress_cb: Optional progress callback. Can be a ``tqdm``-like callable or a function accepting an integer increment.
+        :type progress_cb: Optional[Union[tqdm, Callable]]
+        :param return_bytesio: If True, return the snapshot as :class:`io.BytesIO`. If False, write the snapshot to ``dest_dir`` and return the output file path.
+        :type return_bytesio: bool
+        :return: Either output file path (``.tar.zst``) when ``return_bytesio`` is False, or an in-memory snapshot stream when ``return_bytesio`` is True.
+        :rtype: Union[str, io.BytesIO]
         """
         if dest_dir is None and not return_bytesio:
             raise ValueError(
@@ -1338,6 +1357,25 @@ class VideoProject(Project):
     ) -> "ProjectInfo":
         """
         Restore a video project from an Arrow/Parquet-based binary snapshot.
+
+        :param api: Supervisely API client.
+        :type api: Api
+        :param file: Snapshot file path (``.tar.zst``) or in-memory snapshot stream.
+        :type file: Union[str, io.BytesIO]
+        :param workspace_id: Target workspace ID where the project will be created.
+        :type workspace_id: int
+        :param project_name: Optional new project name. If not provided, the name from the snapshot will be used. If the name already exists in the workspace, a free name will be chosen.
+        :type project_name: Optional[str]
+        :param with_custom_data: If True, restore project/dataset/video custom data (when present in the snapshot).
+        :type with_custom_data: bool
+        :param log_progress: If True, shows progress (uses internal tqdm progress bars) when ``progress_cb`` is not provided.
+        :type log_progress: bool
+        :param progress_cb: Optional progress callback. Can be a ``tqdm``-like callable or a function accepting an integer increment.
+        :type progress_cb: Optional[Union[tqdm, Callable]]
+        :param skip_missed: If True, skip videos that are missing on server when restoring by hash.
+        :type skip_missed: bool
+        :return: Info of the newly created project.
+        :rtype: ProjectInfo
         """
         if isinstance(file, io.BytesIO):
             snapshot_bytes = file.getvalue()
@@ -1402,7 +1440,7 @@ class VideoProject(Project):
             dataset_ids_filter = set(dataset_ids) if dataset_ids is not None else None
 
             # api.dataset.tree() doesn't include custom_data
-            ds_custom_data_by_id: dict[int, dict] = {}
+            ds_custom_data_by_id: Dict[int, dict] = {}
             try:
                 for ds in api.dataset.get_list(
                     project_id, recursive=True, include_custom_data=True
@@ -1449,7 +1487,7 @@ class VideoProject(Project):
                         )
 
                         video_ann = VideoAnnotation.from_json(ann_json, meta, key_id_map)
-                        obj_key_to_src_id: dict[str, int] = {}
+                        obj_key_to_src_id: Dict[str, int] = {}
                         for obj in video_ann.objects:
                             src_obj_id = len(objects_rows) + 1
                             obj_key_to_src_id[obj.key().hex] = src_obj_id
@@ -1682,7 +1720,7 @@ class VideoProject(Project):
                     key=lambda r: (r["parent_src_dataset_id"] is not None, r["parent_src_dataset_id"])
                 )
 
-            dataset_mapping: dict[int, DatasetInfo] = {}
+            dataset_mapping: Dict[int, DatasetInfo] = {}
             for row in ds_rows:
                 src_ds_id = row["src_dataset_id"]
                 parent_src_id = row["parent_src_dataset_id"]
@@ -1726,12 +1764,12 @@ class VideoProject(Project):
                 v_table = parquet.read_table(videos_path)
                 v_rows = v_table.to_pylist()
 
-            videos_by_dataset: dict[int, List[dict]] = {}
+            videos_by_dataset: Dict[int, List[dict]] = {}
             for row in v_rows:
                 src_ds_id = row["src_dataset_id"]
                 videos_by_dataset.setdefault(src_ds_id, []).append(row)
 
-            src_to_new_video: dict[int, VideoInfo] = {}
+            src_to_new_video: Dict[int, VideoInfo] = {}
 
             for src_ds_id, rows in videos_by_dataset.items():
                 ds_info = dataset_mapping.get(src_ds_id)
@@ -1835,7 +1873,7 @@ class VideoProject(Project):
             ann_temp_dir = os.path.join(tmp_root, "anns")
             mkdir(ann_temp_dir)
 
-            anns_by_dataset: dict[int, List[Tuple[int, str]]] = {}
+            anns_by_dataset: Dict[int, List[Tuple[int, str]]] = {}
             for row in v_rows:
                 src_vid = row["src_video_id"]
                 new_info = src_to_new_video.get(src_vid)
