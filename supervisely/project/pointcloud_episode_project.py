@@ -655,6 +655,25 @@ class PointcloudEpisodeProject(PointcloudProject):
             f"Static method 'download_async()' is not supported for PointcloudEpisodeProject class now."
         )
 
+    # ----------------------------------- #
+    # Pointcloud Episodes Data Versioning #
+    # ----------------------------------- #
+    @staticmethod
+    def download_bin(*args, **kwargs):
+        raise NotImplementedError("Data versioning is not supported for PointcloudEpisodeProject.")
+
+    @staticmethod
+    def upload_bin(*args, **kwargs):
+        raise NotImplementedError("Data versioning is not supported for PointcloudEpisodeProject.")
+
+    @staticmethod
+    def build_snapshot(*args, **kwargs):
+        raise NotImplementedError("Data versioning is not supported for PointcloudEpisodeProject.")
+
+    @staticmethod
+    def restore_snapshot(*args, **kwargs):
+        raise NotImplementedError("Data versioning is not supported for PointcloudEpisodeProject.")
+
 
 def download_pointcloud_episode_project(
     api: Api,
