@@ -635,7 +635,7 @@ class VolumeProject(VideoProject):
     @staticmethod
     def _require_pyarrow():
         try:
-            import pyarrow as pa
+            import pyarrow as pa  # pylint: disable=import-error
         except ModuleNotFoundError as exc:
             raise ModuleNotFoundError(
                 "VolumeProject binary versioning requires the optional dependency 'pyarrow'. "
@@ -706,7 +706,7 @@ class VolumeProject(VideoProject):
 
     @staticmethod
     def _table_to_parquet_bytes(pa_module, table) -> bytes:
-        from pyarrow import parquet as pq
+        from pyarrow import parquet as pq  # pylint: disable=import-error
 
         sink = pa_module.BufferOutputStream()
         pq.write_table(table, sink)
@@ -716,7 +716,7 @@ class VolumeProject(VideoProject):
     def _parquet_bytes_to_table(pa_module, data: bytes):
         if not data:
             return pa_module.table({})
-        from pyarrow import parquet as pq
+        from pyarrow import parquet as pq  # pylint: disable=import-error
 
         buffer = pa_module.BufferReader(data)
         return pq.read_table(buffer)

@@ -1411,8 +1411,8 @@ class VideoProject(Project):
         Create a video project snapshot in Arrow/Parquet+tar.zst format and return it as BytesIO.
         """
         try:
-            import pyarrow
-            import pyarrow.parquet as parquet
+            import pyarrow  # pylint: disable=import-error
+            import pyarrow.parquet as parquet  # pylint: disable=import-error
         except Exception as e:
             raise RuntimeError(
                 "pyarrow is required to build video snapshot. Please install pyarrow."
@@ -1640,8 +1640,8 @@ class VideoProject(Project):
         Restore a video project from a snapshot and return ProjectInfo.
         """
         try:
-            import pyarrow
-            import pyarrow.parquet as parquet
+            import pyarrow  # pylint: disable=import-error
+            import pyarrow.parquet as parquet  # pylint: disable=import-error
         except Exception as e:
             raise RuntimeError(
                 "pyarrow is required to restore video snapshot. Please install pyarrow."
