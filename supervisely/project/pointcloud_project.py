@@ -908,6 +908,25 @@ class PointcloudProject(VideoProject):
             f"Static method 'download_async()' is not supported for PointcloudProject class now."
         )
 
+    # -------------------------- #
+    # Pointcloud Data Versioning #
+    # -------------------------- #
+    @staticmethod
+    def download_bin(*args, **kwargs):
+        raise NotImplementedError("Data versioning is not supported for PointcloudProject.")
+
+    @staticmethod
+    def upload_bin(*args, **kwargs):
+        raise NotImplementedError("Data versioning is not supported for PointcloudProject.")
+
+    @staticmethod
+    def build_snapshot(*args, **kwargs):
+        raise NotImplementedError("Data versioning is not supported for PointcloudProject.")
+
+    @staticmethod
+    def restore_snapshot(*args, **kwargs):
+        raise NotImplementedError("Data versioning is not supported for PointcloudProject.")
+
 
 def download_pointcloud_project(
     api: Api,
