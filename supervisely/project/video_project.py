@@ -23,7 +23,6 @@ from supervisely.api.video.video_api import VideoInfo
 from supervisely.collection.key_indexed_collection import KeyIndexedCollection
 from supervisely.io.fs import clean_dir, mkdir, touch, touch_async
 from supervisely.io.json import dump_json_file, dump_json_file_async, load_json_file
-from supervisely.project.data_version import VersionSchemaField
 from supervisely.project.project import Dataset, OpenMode, Project
 from supervisely.project.project import read_single_project as read_project_wrapper
 from supervisely.project.project_meta import ProjectMeta
@@ -33,6 +32,7 @@ from supervisely.project.versioning.common import (
     DEFAULT_VIDEO_SCHEMA_VERSION,
     get_video_snapshot_schema,
 )
+from supervisely.project.versioning.schema_fields import VersionSchemaField
 from supervisely.task.progress import tqdm_sly
 from supervisely.video import video as sly_video
 from supervisely.video_annotation.key_id_map import KeyIdMap

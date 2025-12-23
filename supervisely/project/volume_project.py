@@ -21,7 +21,6 @@ from supervisely.collection.key_indexed_collection import KeyIndexedCollection
 from supervisely.geometry.closed_surface_mesh import ClosedSurfaceMesh
 from supervisely.geometry.mask_3d import Mask3D
 from supervisely.io.fs import change_directory_at_index, touch
-from supervisely.project.data_version import VersionSchemaField
 from supervisely.project.project import OpenMode
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import ProjectType
@@ -30,6 +29,7 @@ from supervisely.project.versioning.common import (
     DEFAULT_VOLUME_SCHEMA_VERSION,
     get_volume_snapshot_schema,
 )
+from supervisely.project.versioning.schema_fields import VersionSchemaField
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress, tqdm_sly
 from supervisely.video_annotation.key_id_map import KeyIdMap

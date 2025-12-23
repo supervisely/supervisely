@@ -4,7 +4,7 @@ import json
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
-from supervisely.project.data_version import VersionSchemaField
+from supervisely.project.versioning.schema_fields import VersionSchemaField
 
 
 @dataclass(frozen=True)
