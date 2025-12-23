@@ -168,3 +168,25 @@ class SelectCudaDevice(Widget):
         :return: None
         """
         return self._select.set_value(value)
+
+    def disable(self) -> None:
+        """Disables the widget.
+
+        This method disables the widget and grays out the selector.
+
+        :return: None
+        """
+        self._disabled = True
+        self._select.disable()
+        self._refresh_button.disable()
+
+    def enable(self) -> None:
+        """Enables the widget.
+
+        This method enables the widget and makes the selector clickable.
+
+        :return: None
+        """
+        self._disabled = False
+        self._select.enable()
+        self._refresh_button.enable()
