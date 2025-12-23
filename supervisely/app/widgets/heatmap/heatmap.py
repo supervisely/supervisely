@@ -10,7 +10,7 @@ from supervisely.annotation.annotation import Annotation
 from supervisely.app.content import DataJson, StateJson
 from supervisely.app.widgets import Widget
 from supervisely.app.widgets_context import JinjaWidgets
-from supervisely.imaging.image import np_image_to_data_url_backup_rgb, read
+from supervisely.imaging.image import np_image_to_data_url, read
 
 
 def mask_to_heatmap(
@@ -21,6 +21,14 @@ def mask_to_heatmap(
     else:
         mask_gray = mask.copy()
     mask_gray = mask_gray.astype(np.float64)
+
+    # Save original zero mask BEFORE normalization for transparent_low
+    # This ensures we detect true zero values in the original mask data
+    # Use a small threshold to handle floating point precision and interpolation artifacts
+    if transparent_low:
+        threshold = 0.01 if mask_gray.max() > 1 else 0.0001  # Adaptive threshold
+        original_zeros = mask_gray <= threshold
+
     if vmin is None:
         vmin = np.nanmin(mask_gray)
     if vmax is None:
@@ -30,16 +38,17 @@ def mask_to_heatmap(
         mask_norm = np.full_like(mask_gray, 128, dtype=np.uint8)
     else:
         mask_norm = ((mask_gray - vmin) / (vmax - vmin) * 255).astype(np.uint8)
+
     mask_norm = cv2.GaussianBlur(mask_norm, (5, 5), 0)
     heatmap_bgr = cv2.applyColorMap(mask_norm, colormap)
     heatmap_bgra = cv2.cvtColor(heatmap_bgr, cv2.COLOR_BGR2BGRA)
 
     if transparent_low:
-        alpha = np.where(mask_norm == 0, 0, 255).astype(np.uint8)
+        alpha = np.where(original_zeros, 0, 255).astype(np.uint8)
         heatmap_bgra[..., 3] = alpha
-    heatmap_rgba = heatmap_bgra[..., [2, 1, 0, 3]]
 
-    return heatmap_rgba
+    # Return BGRA format for cv2.imencode (used by np_image_to_data_url)
+    return heatmap_bgra
 
 
 def colormap_to_hex_list(colormap=cv2.COLORMAP_JET, n=5):
@@ -57,6 +66,43 @@ def to_json_safe(val):
     if isinstance(val, (np.floating, float)):
         return float(val)
     return str(val)
+
+
+def calculate_fit_size(src_height, src_width, max_height, max_width):
+    """
+    Calculate target size that fits within max dimensions while preserving aspect ratio.
+
+    Args:
+        src_height: Source image height
+        src_width: Source image width
+        max_height: Maximum allowed height (widget height)
+        max_width: Maximum allowed width (widget width)
+
+    Returns:
+        tuple: (target_height, target_width) that fits within max dimensions
+    """
+    if src_height is None or src_width is None:
+        raise ValueError(f"Source dimensions cannot be None: {src_height}x{src_width}")
+    if max_height is None or max_width is None:
+        raise ValueError(f"Max dimensions cannot be None: {max_height}x{max_width}")
+    if src_height <= 0 or src_width <= 0:
+        raise ValueError(f"Source dimensions must be positive: {src_height}x{src_width}")
+    if max_height <= 0 or max_width <= 0:
+        raise ValueError(f"Max dimensions must be positive: {max_height}x{max_width}")
+
+    src_aspect = src_width / src_height
+    max_aspect = max_width / max_height
+
+    if src_aspect > max_aspect:
+        # Image is wider - constrain by width
+        target_width = max_width
+        target_height = int(round(max_width / src_aspect))
+    else:
+        # Image is taller or same - constrain by height
+        target_height = max_height
+        target_width = int(round(max_height * src_aspect))
+
+    return target_height, target_width
 
 
 class Heatmap(Widget):
@@ -133,6 +179,8 @@ class Heatmap(Widget):
         self._colormap = colormap
         self._width = width
         self._height = height
+        self._background_width = None  # Actual background size after fitting
+        self._background_height = None
         self._opacity = 70
         self._min_value = 0
         self._max_value = 0
@@ -187,47 +235,127 @@ class Heatmap(Widget):
 
         All images are converted to data URLs for efficient in-memory serving.
 
+        If widget dimensions (width/height) are specified, the background image will be resized
+        to match them. Otherwise, widget dimensions will be set from the background image size.
+
         :Usage example:
 
          .. code-block:: python
 
             from supervisely.app.widgets.heatmap import Heatmap
             import numpy as np
-            heatmap = Heatmap()
+            heatmap = Heatmap(width=640, height=480)
 
-            # Using a local file path
+            # Using a local file path - will be resized to 640x480
             heatmap.set_background("/path/to/image.jpg")
 
             # Using a NumPy array (RGB image)
-            bg_array = np.random.randint(0, 255, size=(480, 640, 3), dtype=np.uint8)
-            heatmap.set_background(bg_array)
+            bg_array = np.random.randint(0, 255, size=(1080, 1920, 3), dtype=np.uint8)
+            heatmap.set_background(bg_array)  # Will be resized to widget dimensions
 
             # Using a remote URL
             heatmap.set_background("https://example.com/background.png")
         """
         try:
+            np_image = None
             if isinstance(background_image, np.ndarray):
-                self._background_url = np_image_to_data_url_backup_rgb(background_image)
+                np_image = background_image
             elif isinstance(background_image, str):
                 parsed = urlparse(background_image)
                 bg_image_path = Path(background_image)
                 if parsed.scheme in ("http", "https") and parsed.netloc:
                     self._background_url = background_image
+                    # For remote URLs, we can't easily get dimensions without downloading
+                    # User should set width/height manually in this case
+                    DataJson()[self.widget_id]["backgroundUrl"] = self._background_url
+                    DataJson().send_changes()
+                    return
                 elif parsed.scheme == "data":
                     self._background_url = background_image
+                    # For data URLs, we can't easily decode dimensions
+                    # User should set width/height manually in this case
+                    DataJson()[self.widget_id]["backgroundUrl"] = self._background_url
+                    DataJson().send_changes()
+                    return
                 elif bg_image_path.exists() and bg_image_path.is_file():
                     np_image = read(bg_image_path, remove_alpha_channel=False)
-                    self._background_url = np_image_to_data_url_backup_rgb(np_image)
                 else:
                     raise ValueError(f"Unable to find image at {background_image}")
             else:
                 raise ValueError(f"Unsupported background_image type: {type(background_image)}")
+
+            # At this point we have np_image
+            if np_image is None:
+                raise ValueError("Failed to load image as NumPy array")
+
+            bg_height, bg_width = np_image.shape[:2]
+
+            # Determine target size based on widget dimensions
+            if self._width is not None and self._height is not None:
+                # Both dimensions specified - FIT image within widget bounds preserving aspect ratio
+                # Widget size is FIXED and never changes!
+                target_height, target_width = calculate_fit_size(
+                    bg_height, bg_width, self._height, self._width
+                )
+                if (bg_height, bg_width) != (target_height, target_width):
+                    np_image = cv2.resize(
+                        np_image, (target_width, target_height), interpolation=cv2.INTER_AREA
+                    )
+                    logger.debug(
+                        f"Fitted background from {bg_width}x{bg_height} to {target_width}x{target_height} "
+                        f"within widget {self._width}x{self._height}"
+                    )
+                # Store actual background size (may be smaller than widget to preserve aspect ratio)
+                self._background_width = target_width
+                self._background_height = target_height
+            elif self._width is not None or self._height is not None:
+                # Only one dimension specified - calculate the other from background aspect ratio
+                # This auto-sets the missing widget dimension
+                bg_aspect = bg_width / bg_height
+
+                if self._width is not None:
+                    # Width specified, calculate height from aspect ratio
+                    target_width = self._width
+                    target_height = int(round(self._width / bg_aspect))
+                    self._height = target_height  # Auto-set widget height
+                    logger.debug(f"Auto-set widget height={target_height} from width={self._width}")
+                else:
+                    # Height specified, calculate width from aspect ratio
+                    target_height = self._height
+                    target_width = int(round(self._height * bg_aspect))
+                    self._width = target_width  # Auto-set widget width
+                    logger.debug(f"Auto-set widget width={target_width} from height={self._height}")
+
+                if (bg_height, bg_width) != (target_height, target_width):
+                    np_image = cv2.resize(
+                        np_image, (target_width, target_height), interpolation=cv2.INTER_AREA
+                    )
+                    logger.debug(
+                        f"Resized background from {bg_width}x{bg_height} to {target_width}x{target_height}"
+                    )
+                self._background_width = target_width
+                self._background_height = target_height
+            else:
+                # No dimensions specified - set widget dimensions from image
+                self._width = bg_width
+                self._height = bg_height
+                self._background_width = bg_width
+                self._background_height = bg_height
+                logger.debug(
+                    f"Auto-set widget dimensions to {bg_width}x{bg_height} from background image"
+                )
+
+            # Convert to data URL
+            self._background_url = np_image_to_data_url(np_image)
+
         except Exception as e:
             logger.error(f"Error setting background: {e}", exc_info=True)
             self._background_url = None
             raise
         finally:
             DataJson()[self.widget_id]["backgroundUrl"] = self._background_url
+            DataJson()[self.widget_id]["width"] = self._width
+            DataJson()[self.widget_id]["height"] = self._height
             DataJson().send_changes()
 
     def set_heatmap(self, mask: np.ndarray):
@@ -240,6 +368,8 @@ class Heatmap(Widget):
         :raises Exception: If there's an error during heatmap generation
 
         The heatmap is converted to a data URL for efficient in-memory serving.
+        If widget dimensions (width/height) are not set, they will be automatically
+        set to match the mask dimensions.
 
         :Usage example:
 
@@ -259,6 +389,56 @@ class Heatmap(Widget):
             heatmap.set_heatmap(temp_mask)
         """
         try:
+            mask_height, mask_width = mask.shape[:2]
+
+            # Determine target size for mask
+            if self._background_width is not None and self._background_height is not None:
+                # Background exists - match mask to background size (fit within widget preserving aspect ratio)
+                target_height, target_width = calculate_fit_size(
+                    mask_height, mask_width, self._background_height, self._background_width
+                )
+                logger.debug(
+                    f"Fitting mask ({mask_height}x{mask_width}) to background size ({self._background_height}x{self._background_width})"
+                )
+            elif self._width is not None and self._height is not None:
+                # No background but widget dimensions set - fit mask within widget bounds
+                target_height, target_width = calculate_fit_size(
+                    mask_height, mask_width, self._height, self._width
+                )
+                logger.debug(
+                    f"Fitting mask ({mask_height}x{mask_width}) within widget ({self._height}x{self._width})"
+                )
+            elif self._width is not None or self._height is not None:
+                # Only one dimension specified - scale preserving aspect ratio
+                mask_aspect = mask_width / mask_height
+                if self._width is not None:
+                    target_width = self._width
+                    target_height = int(round(self._width / mask_aspect))
+                    self._height = target_height
+                    logger.debug(f"Auto-set height={target_height} from width={self._width}")
+                else:
+                    target_height = self._height
+                    target_width = int(round(self._height * mask_aspect))
+                    self._width = target_width
+                    logger.debug(f"Auto-set width={target_width} from height={self._height}")
+            else:
+                # No dimensions specified - use mask dimensions as-is
+                target_height, target_width = mask_height, mask_width
+                self._width = mask_width
+                self._height = mask_height
+                logger.debug(
+                    f"Auto-set widget dimensions to ({mask_height}x{mask_width}) from mask"
+                )
+
+            # Resize mask if needed
+            if (mask_height, mask_width) != (target_height, target_width):
+                mask = cv2.resize(
+                    mask, (target_width, target_height), interpolation=cv2.INTER_LINEAR
+                )
+                logger.debug(
+                    f"Resized mask from ({mask_height}x{mask_width}) to ({target_height}x{target_width})"
+                )
+
             heatmap = mask_to_heatmap(
                 mask,
                 colormap=self._colormap,
@@ -266,7 +446,8 @@ class Heatmap(Widget):
                 vmax=self._vmax,
                 transparent_low=self._transparent_low,
             )
-            self._heatmap_url = np_image_to_data_url_backup_rgb(heatmap)
+            # Use np_image_to_data_url to preserve alpha channel when transparent_low=True
+            self._heatmap_url = np_image_to_data_url(heatmap)
             self._min_value = to_json_safe(mask.min())
             self._max_value = to_json_safe(mask.max())
 
@@ -281,6 +462,9 @@ class Heatmap(Widget):
             self._mask_data = None
             raise
         finally:
+            # Update widget dimensions in DataJson
+            DataJson()[self.widget_id]["width"] = self._width
+            DataJson()[self.widget_id]["height"] = self._height
             DataJson()[self.widget_id]["heatmapUrl"] = self._heatmap_url
             DataJson()[self.widget_id]["minValue"] = self._min_value
             DataJson()[self.widget_id]["maxValue"] = self._max_value
