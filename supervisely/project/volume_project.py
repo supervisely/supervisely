@@ -26,7 +26,10 @@ from supervisely.project.project import OpenMode
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import ProjectType
 from supervisely.project.video_project import VideoDataset, VideoProject
-from supervisely.project.volume_schema import get_volume_snapshot_schema
+from supervisely.project.versioning.common import (
+    DEFAULT_VOLUME_SCHEMA_VERSION,
+    get_volume_snapshot_schema,
+)
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress, tqdm_sly
 from supervisely.video_annotation.key_id_map import KeyIdMap
@@ -228,7 +231,7 @@ class VolumeProject(VideoProject):
         log_progress: bool = False,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         return_bytesio: bool = False,
-        schema_version: str = "v2.0.0",
+        schema_version: str = DEFAULT_VOLUME_SCHEMA_VERSION,
         *args,
         **kwargs,
     ) -> Union[str, io.BytesIO]:

@@ -29,7 +29,10 @@ from supervisely.project.project import read_single_project as read_project_wrap
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_settings import LabelingInterface
 from supervisely.project.project_type import ProjectType
-from supervisely.project.video_schema import get_video_snapshot_schema
+from supervisely.project.versioning.common import (
+    DEFAULT_VIDEO_SCHEMA_VERSION,
+    get_video_snapshot_schema,
+)
 from supervisely.task.progress import tqdm_sly
 from supervisely.video import video as sly_video
 from supervisely.video_annotation.key_id_map import KeyIdMap
@@ -1402,7 +1405,7 @@ class VideoProject(Project):
         batch_size: int = 50,
         log_progress: bool = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
-        schema_version: str = "v2.0.0",
+        schema_version: str = DEFAULT_VIDEO_SCHEMA_VERSION,
     ) -> io.BytesIO:
         """
         Create a video project snapshot in Arrow/Parquet+tar.zst format and return it as BytesIO.

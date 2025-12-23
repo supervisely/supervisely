@@ -84,12 +84,3 @@ class VolumeSnapshotSchema:
 _VOLUME_SCHEMAS: Dict[str, VolumeSnapshotSchema] = {
     "v2.0.0": VolumeSnapshotSchema(schema_version="v2.0.0"),
 }
-
-
-def get_volume_snapshot_schema(schema_version: str) -> VolumeSnapshotSchema:
-    schema = _VOLUME_SCHEMAS.get(schema_version)
-    if schema is None:
-        raise RuntimeError(f"Unsupported volume snapshot schema_version: {schema_version!r}")
-    return schema
-
-

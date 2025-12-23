@@ -14,6 +14,11 @@ from supervisely.api.module_api import ApiField, ModuleApiBase
 from supervisely.api.project_api import ProjectInfo
 from supervisely.io import json
 from supervisely.io.fs import remove_dir, silent_remove
+from supervisely.project.versioning.common import (
+    DEFAULT_IMAGE_SCHEMA_VERSION,
+    DEFAULT_VIDEO_SCHEMA_VERSION,
+    DEFAULT_VOLUME_SCHEMA_VERSION,
+)
 
 
 class VersionSchemaField:
@@ -117,7 +122,7 @@ class DataVersion(ModuleApiBase):
 
         self._api: Api = api
         self.__storage_dir: str = "/system/versions/"
-        self.__version_format: str = "v1.0.0"
+        self.__version_format: str = DEFAULT_IMAGE_SCHEMA_VERSION
         self.project_info = None
         self.project_dir = None
         self.versions_path = None
@@ -166,13 +171,13 @@ class DataVersion(ModuleApiBase):
 
         project_type = self.project_info.type
         if project_type == ProjectType.IMAGES.value:
-            self.__version_format = "v1.0.0"
+            self.__version_format = DEFAULT_IMAGE_SCHEMA_VERSION
             return Project
         elif project_type == ProjectType.VIDEOS.value:
-            self.__version_format = "v2.0.0"
+            self.__version_format = DEFAULT_VIDEO_SCHEMA_VERSION
             return VideoProject
         elif project_type == ProjectType.VOLUMES.value:
-            self.__version_format = "v2.0.0"
+            self.__version_format = DEFAULT_VOLUME_SCHEMA_VERSION
             return VolumeProject
         else:
             raise ValueError(f"Unsupported project type: {project_type}")

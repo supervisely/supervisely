@@ -219,9 +219,3 @@ _VIDEO_SCHEMAS: Dict[str, VideoSnapshotSchema] = {
     "v2.0.0": VideoSnapshotSchema(schema_version="v2.0.0"),
 }
 
-
-def get_video_snapshot_schema(schema_version: str) -> VideoSnapshotSchema:
-    schema = _VIDEO_SCHEMAS.get(schema_version)
-    if schema is None:
-        raise RuntimeError(f"Unsupported video snapshot schema_version: {schema_version!r}")
-    return schema
