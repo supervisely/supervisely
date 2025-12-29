@@ -114,7 +114,7 @@ class _PatchableJson(dict):
     async def synchronize_changes(self, user_id: Optional[Union[int, str]] = None):
         patch = self._get_patch()
         if user_id is not None:
-            with multi_user.session_context(user_id):
+            async with multi_user.async_session_context(user_id):
                 await self._apply_patch(patch)
                 await self._ws.broadcast(
                     self.get_changes(patch), user_id=user_id
