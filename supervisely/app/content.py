@@ -18,6 +18,7 @@ from fastapi import Request
 
 from supervisely._utils import is_production
 from supervisely.api.api import Api
+import supervisely.app.fastapi.multi_user as multi_user
 from supervisely.app.fastapi import run_sync
 from supervisely.app.fastapi.websocket import WebsocketManager
 from supervisely.app.singleton import Singleton
@@ -111,6 +112,14 @@ class _PatchableJson(dict):
             self._last = copy.deepcopy(self._last)
 
     async def synchronize_changes(self, user_id: Optional[Union[int, str]] = None):
+        if user_id is not None:
+            with multi_user.session_context(user_id):
+                patch = self._get_patch()
+                await self._apply_patch(patch)
+                await self._ws.broadcast(
+                    self.get_changes(patch), user_id=user_id
+                )
+            return
         patch = self._get_patch()
         await self._apply_patch(patch)
         await self._ws.broadcast(self.get_changes(patch), user_id=user_id)
