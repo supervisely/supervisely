@@ -112,17 +112,16 @@ class _PatchableJson(dict):
             self._last = copy.deepcopy(self._last)
 
     async def synchronize_changes(self, user_id: Optional[Union[int, str]] = None):
+        patch = self._get_patch()
         if user_id is not None:
             with multi_user.session_context(user_id):
-                patch = self._get_patch()
                 await self._apply_patch(patch)
                 await self._ws.broadcast(
                     self.get_changes(patch), user_id=user_id
                 )
-            return
-        patch = self._get_patch()
-        await self._apply_patch(patch)
-        await self._ws.broadcast(self.get_changes(patch), user_id=user_id)
+        else:
+            await self._apply_patch(patch)
+            await self._ws.broadcast(self.get_changes(patch), user_id=user_id)
 
     async def send_changes_async(self):
         user_id = None
