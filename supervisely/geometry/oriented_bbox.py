@@ -501,9 +501,14 @@ class OrientedBBox(Rectangle):
         """Crop the OrientedBBox by another OrientedBBox using the Sutherland-Hodgman algorithm."""
         subject_corners = self._calculate_rotated_corners(self)
         if isinstance(clip, Rectangle):
+            if all([clip.contains_point_location(corner) for corner in subject_corners]):
+                return [self]
             clip_corners = clip.corners
         else:
+            if clip.contains_obb(self):
+                return [self]
             clip_corners = self._calculate_rotated_corners(clip)
+
 
         def inside(p: PointLocation, edge_start: PointLocation, edge_end: PointLocation) -> bool:
             cx1, cy1 = edge_start.col, edge_start.row
