@@ -127,10 +127,8 @@ Vue.component('heatmap-image', {
         styles.maxHeight = typeof this.height === 'number' ? `${this.height}px` : this.height;
       }
 
-      const effectiveWidth =
-        this.naturalWidth || this.maskWidth;
-      const effectiveHeight =
-        this.naturalHeight || this.maskHeight;
+      const effectiveWidth = this.naturalWidth || this.maskWidth;
+      const effectiveHeight = this.naturalHeight || this.maskHeight;
 
       if (effectiveWidth && effectiveHeight) {
         styles.aspectRatio = `${effectiveWidth} / ${effectiveHeight}`;
