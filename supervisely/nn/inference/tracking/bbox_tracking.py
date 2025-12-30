@@ -414,7 +414,7 @@ class BBoxTracking(BaseTracking):
 
                     logger.debug("Start prediction")
                     t = time.time()
-                    if target.angle:
+                    if target.angle is not None:
                         geometry = self.predict_oriented(
                             rgb_image=next_frame.image,
                             prev_rgb_image=frame.image,
