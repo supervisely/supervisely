@@ -7,6 +7,7 @@ from supervisely.convert.base_converter import AvailablePointcloudEpisodesConver
 from supervisely.convert.pointcloud_episodes.pointcloud_episodes_converter import (
     PointcloudEpisodeConverter,
 )
+from supervisely.convert.utils import ProjectStructureUploader
 from supervisely.io.fs import JUNK_FILES, get_file_ext, get_file_name_with_ext
 from supervisely.io.json import load_json_file
 from supervisely.pointcloud.pointcloud import validate_ext as validate_pcd_ext
@@ -270,12 +271,10 @@ class SLYPointcloudEpisodesConverter(PointcloudEpisodeConverter):
             )
 
     def _upload_project(self, api, dataset_id: int, batch_size: int = 10, log_progress=True):
-        from supervisely import generate_free_name, is_development
+        from supervisely import is_development
 
         dataset_info = api.dataset.get_info_by_id(dataset_id, raise_error=True)
         project_id = dataset_info.project_id
-        existing_datasets = api.dataset.get_list(project_id, recursive=True)
-        existing_datasets = {ds.name for ds in existing_datasets}
 
         if log_progress:
             progress, progress_cb = self.get_progress(self.items_count, "Uploading project")
@@ -288,6 +287,7 @@ class SLYPointcloudEpisodesConverter(PointcloudEpisodeConverter):
                 # Temporarily switch current items/map to only this dataset scope
                 prev_items = self._items
                 prev_map = getattr(self, "_frame_pointcloud_map", None)
+                prev_count = getattr(self, "_frame_count", None)
                 try:
                     self._items = items
                     # Rebuild local frame->pcd mapping for this dataset scope
@@ -301,36 +301,19 @@ class SLYPointcloudEpisodesConverter(PointcloudEpisodeConverter):
                 finally:
                     self._items = prev_items
                     self._frame_pointcloud_map = prev_map
+                    self._frame_count = prev_count
             except Exception:
                 # If base method is unavailable, just advance progress so UI doesn't freeze
                 if progress_cb:
                     progress_cb(len(items))
 
-        def _upload_datasets_recursive(
-            project_structure: dict, parent_id=None, first_dataset=False
-        ):
-            nonlocal dataset_id
-            for ds_name, value in project_structure.items():
-                ds_name = generate_free_name(existing_datasets, ds_name, extend_used_names=True)
-                if first_dataset:
-                    first_dataset = False
-                    api.dataset.update(dataset_id, ds_name)  # rename first dataset
-                    current_dataset_id = dataset_id
-                else:
-                    current_dataset_id = api.dataset.create(
-                        project_id, ds_name, parent_id=parent_id
-                    ).id
-
-                items = value.get(DATASET_ITEMS, [])
-                nested = value.get(NESTED_DATASETS, {})
-
-                if items:
-                    _upload_single_dataset(current_dataset_id, items)
-
-                if nested:
-                    _upload_datasets_recursive(nested, parent_id=current_dataset_id)
-
-        _upload_datasets_recursive(self._project_structure, parent_id=None, first_dataset=True)
+        ProjectStructureUploader.upload(
+            api=api,
+            project_id=project_id,
+            root_dataset_id=dataset_id,
+            project_structure=self._project_structure,
+            upload_items_cb=_upload_single_dataset,
+        )
 
         if is_development() and progress is not None:
             progress.close()

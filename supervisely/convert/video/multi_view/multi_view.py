@@ -3,10 +3,11 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Dict, List, Union
 
-from supervisely.api.api import Api
 import supervisely.convert.video.sly.sly_video_helper as sly_video_helper
 from supervisely import OpenMode, ProjectMeta, VideoAnnotation, VideoProject, logger
+from supervisely.api.api import Api
 from supervisely.convert.base_converter import AvailableVideoConverters
+from supervisely.convert.utils import ProjectStructureUploader
 from supervisely.convert.video.video_converter import VideoConverter
 from supervisely.io.fs import JUNK_FILES, file_exists, get_file_ext
 from supervisely.io.json import load_json_file
@@ -348,12 +349,10 @@ class MultiViewVideoConverter(VideoConverter):
 
     def _upload_project(self, api, dataset_id: int, batch_size: int = 10, log_progress=True):
         """Upload multi-view video project with multiple datasets."""
-        from supervisely import generate_free_name, is_development
+        from supervisely import is_development
 
         dataset_info = api.dataset.get_info_by_id(dataset_id, raise_error=True)
         project_id = dataset_info.project_id
-        existing_datasets = api.dataset.get_list(project_id, recursive=True)
-        existing_datasets = {ds.name for ds in existing_datasets}
 
         if log_progress:
             progress, progress_cb = self.get_progress(self.items_count, "Uploading project")
@@ -362,41 +361,22 @@ class MultiViewVideoConverter(VideoConverter):
 
         logger.info("Uploading multi-view video project structure")
 
-        def _upload_datasets_recursive(
-            project_structure: dict,
-            project_id: int,
-            dataset_id: int,
-            parent_id=None,
-            first_dataset=False,
-        ):
-            for ds_name, value in project_structure.items():
-                ds_name = generate_free_name(existing_datasets, ds_name, extend_used_names=True)
-                if first_dataset:
-                    first_dataset = False
-                    api.dataset.update(dataset_id, ds_name)  # rename first dataset
-                else:
-                    dataset_id = api.dataset.create(project_id, ds_name, parent_id=parent_id).id
+        def _upload_single_dataset_cb(_dataset_id: int, items: list):
+            self._upload_single_dataset(
+                api,
+                _dataset_id,
+                items,
+                batch_size,
+                log_progress=False,
+                progress_cb=progress_cb,
+            )
 
-                items = value.get(DATASET_ITEMS, [])
-                nested_datasets = value.get(NESTED_DATASETS, {})
-                logger.info(
-                    f"Dataset: {ds_name}, items: {len(items)}, nested datasets: {len(nested_datasets)}"
-                )
-                if items:
-                    self._upload_single_dataset(
-                        api,
-                        dataset_id,
-                        items,
-                        batch_size,
-                        log_progress=False,
-                        progress_cb=progress_cb,
-                    )
-
-                if nested_datasets:
-                    _upload_datasets_recursive(nested_datasets, project_id, dataset_id, dataset_id)
-
-        _upload_datasets_recursive(
-            self._project_structure, project_id, dataset_id, first_dataset=True
+        ProjectStructureUploader.upload(
+            api=api,
+            project_id=project_id,
+            root_dataset_id=dataset_id,
+            project_structure=self._project_structure,
+            upload_items_cb=_upload_single_dataset_cb,
         )
 
         if is_development() and progress is not None:
