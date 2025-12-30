@@ -606,7 +606,8 @@ class BBoxTracking(BaseTracking):
     
     def predict_oriented(self, rgb_image: np.ndarray, settings: Dict[str, Any], prev_rgb_image: np.ndarray, target_bbox: PredictionBBox) -> PredictionBBox:
         if not target_bbox.angle:
-            return self.predict(rgb_image, settings, prev_rgb_image, target_bbox)
+            predicted = self.predict(rgb_image, settings, prev_rgb_image, target_bbox)
+            return PredictionBBox(predicted.class_name, predicted.bbox_tlbr, predicted.score, 0)
         circumscribed_bbox = self._get_circumscribed_box(target_bbox.bbox_tlbr, target_bbox.angle)
         circumscribed_target = self.predict(rgb_image, settings, prev_rgb_image, PredictionBBox(target_bbox.class_name, circumscribed_bbox, target_bbox.score))
         inscribed_bbox = self._inscribe_oriented_box(circumscribed_target.bbox_tlbr, target_bbox.angle)
