@@ -111,21 +111,31 @@ Vue.component('heatmap-image', {
     },
     imageWrapperStyle() {
       const styles = { ...this.widthStyle };
-      
-      // Use max-height instead of height to allow responsive scaling
-      if (this.height) {
+
+      const hasWidth = this.width !== undefined && this.width !== null;
+      const hasHeight = this.height !== undefined && this.height !== null;
+
+      // CASE 1: both width & height → FIXED BOX
+      if (hasWidth && hasHeight) {
+        styles.width = typeof this.width === 'number' ? `${this.width}px` : this.width;
+        styles.height = typeof this.height === 'number' ? `${this.height}px` : this.height;
+        return styles;
+      }
+
+      // CASE 2 & 3: aspect-ratio driven
+      if (hasHeight) {
         styles.maxHeight = typeof this.height === 'number' ? `${this.height}px` : this.height;
       }
-      
-      // Use naturalWidth/Height from loaded image, or fallback to maskWidth/Height
-      const effectiveWidth = this.naturalWidth || this.maskWidth;
-      const effectiveHeight = this.naturalHeight || this.maskHeight;
-      
-      // Always use aspect-ratio if we have dimensions
+
+      const effectiveWidth =
+        this.naturalWidth || this.maskWidth;
+      const effectiveHeight =
+        this.naturalHeight || this.maskHeight;
+
       if (effectiveWidth && effectiveHeight) {
         styles.aspectRatio = `${effectiveWidth} / ${effectiveHeight}`;
       }
-      
+
       return styles;
     },
     indicatorStyle() {
