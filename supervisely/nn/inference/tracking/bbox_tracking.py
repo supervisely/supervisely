@@ -337,7 +337,7 @@ class BBoxTracking(BaseTracking):
                     )
                 sly_pred_geometry = self._to_sly_geometry(pred_geometry)
                 results[i].append(
-                    {"type": Rectangle.geometry_name(), "data": sly_pred_geometry.to_json()}
+                    {"type": sly_pred_geometry.geometry_name(), "data": sly_pred_geometry.to_json()}
                 )
         return results
 
