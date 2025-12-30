@@ -98,6 +98,8 @@ class OrientedBBox(Rectangle):
             created_at=created_at,
         )
         self._angle = angle
+        if self._angle is None:
+            self._angle = 0
 
     @property
     def angle(self) -> Union[int, float]:
