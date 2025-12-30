@@ -142,8 +142,6 @@ class BBoxTracking(BaseTracking):
                     sly_geometry = self._to_sly_geometry(geometry)
 
                     uploader.put([(sly_geometry, obj_id, video_interface._cur_frames_indexes[-1])])
-                    # TODO: remove TEMP
-                    uploader.put([(self._to_sly_geometry(PredictionBBox(geometry.class_name, self._get_circumscribed_box(geometry.bbox_tlbr, geometry.angle), geometry.score, 0)), obj_id, video_interface._cur_frames_indexes[-1])])
 
                     if inference_request.is_stopped() or video_interface.global_stop_indicatior:
                         api.logger.info(
