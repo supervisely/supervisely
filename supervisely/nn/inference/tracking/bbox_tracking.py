@@ -601,8 +601,8 @@ class BBoxTracking(BaseTracking):
         if abs(det) < 1e-10:  # angle ≈ 45° or 135°
             half_w = half_h = min(dx, dy) / (cos_a + sin_a)
         else:
-            half_w = (dx * cos_a - dy * sin_a) / det
-            half_h = (dy * cos_a - dx * sin_a) / det
+            half_w = abs(dx * cos_a - dy * sin_a) / abs(det)
+            half_h = abs(dy * cos_a - dx * sin_a) / abs(det)
         
         return [cy - half_h, cx - half_w, cy + half_h, cx + half_w]
     
