@@ -24,6 +24,7 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 
 CONVERTIBLE_EXTENSIONS = [".bin"]
 
+
 class PointcloudConverter(BaseConverter):
     allowed_exts = ALLOWED_POINTCLOUD_EXTENSIONS + CONVERTIBLE_EXTENSIONS
     modality = "pointclouds"
@@ -306,21 +307,14 @@ class PointcloudConverter(BaseConverter):
 
             if data.size % 5 == 0:
                 points = data.reshape(-1, 5)
-                if not np.isfinite(points).all():
-                    return False
-                ring = points[:, 4]
-                if not (np.all(ring >= 0) and np.allclose(ring, np.round(ring))):
-                    return False
-                return True
+                return bool(np.isfinite(points).all())
 
             if data.size % 4 == 0:
                 points = data.reshape(-1, 4)
-                if not np.isfinite(points).all():
-                    return False
-                return True
+                return bool(np.isfinite(points).all())
 
             return False
-        except Exception as e:
+        except Exception:
             return False
 
     def _convert_bin_to_pcd(self, bin_file: str, pcd_file: str) -> None:
