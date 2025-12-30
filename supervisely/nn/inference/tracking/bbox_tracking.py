@@ -142,6 +142,8 @@ class BBoxTracking(BaseTracking):
                     sly_geometry = self._to_sly_geometry(geometry)
 
                     uploader.put([(sly_geometry, obj_id, video_interface._cur_frames_indexes[-1])])
+                    # TODO: remove TEMP
+                    uploader.put([(self._to_sly_geometry(self._get_circumscribed_box(geometry.bbox_tlbr, geometry.angle)), obj_id, video_interface._cur_frames_indexes[-1])])
 
                     if inference_request.is_stopped() or video_interface.global_stop_indicatior:
                         api.logger.info(
@@ -599,8 +601,8 @@ class BBoxTracking(BaseTracking):
         if abs(det) < 1e-10:  # angle ≈ 45° or 135°
             half_w = half_h = min(dx, dy) / (cos_a + sin_a)
         else:
-            half_w = abs(dx * cos_a - dy * sin_a) / abs(det)
-            half_h = abs(dy * cos_a - dx * sin_a) / abs(det)
+            half_w = (dx * cos_a - dy * sin_a) / det
+            half_h = (dy * cos_a - dx * sin_a) / det
         
         return [cy - half_h, cx - half_w, cy + half_h, cx + half_w]
     
