@@ -587,33 +587,22 @@ class BBoxTracking(BaseTracking):
         
         return [cy - dy, cx - dx, cy + dy, cx + dx]
     
-    def _inscribe_oriented_box(self, tlbr, angle, eps=1e-9):
-        top, left, bottom, right = tlbr
+    def _inscribe_oriented_box(self, tracked_box, angle):
+        top, left, bottom, right = tracked_box
         cx = (left + right) / 2
         cy = (top + bottom) / 2
         dx = (right - left) / 2
         dy = (bottom - top) / 2
-        c = abs(np.cos(angle))
-        s = abs(np.sin(angle))
-        det = c * c - s * s
-        wA = hA = None
-        if abs(det) > eps:
-            wA = (dx * c - dy * s) / det
-            hA = (dy * c - dx * s) / det
-            if wA > 0 and hA > 0:
-                return [
-                    cy - hA,
-                    cx - wA,
-                    cy + hA,
-                    cx + wA,
-                ]
-        half = min(dx, dy) / (c + s)
-        return [
-            cy - half,
-            cx - half,
-            cy + half,
-            cx + half,
-        ]
+        cos_a = abs(np.cos(angle))
+        sin_a = abs(np.sin(angle))
+        det = cos_a * cos_a - sin_a * sin_a  # = cos(2*angle)
+        if abs(det) < 1e-10:  # angle ≈ 45° or 135°
+            half_w = half_h = min(dx, dy) / (cos_a + sin_a)
+        else:
+            half_w = abs(dx * cos_a - dy * sin_a) / abs(det)
+            half_h = abs(dy * cos_a - dx * sin_a) / abs(det)
+        
+        return [cy - half_h, cx - half_w, cy + half_h, cx + half_w]
     
     def predict_oriented(self, rgb_image: np.ndarray, settings: Dict[str, Any], prev_rgb_image: np.ndarray, target_bbox: PredictionBBox) -> PredictionBBox:
         if not target_bbox.angle:
