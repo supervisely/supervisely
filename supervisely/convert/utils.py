@@ -27,14 +27,47 @@ class ProjectStructureUploader:
 
     existing_datasets: Set[str]
 
+    @staticmethod
+    def create_node() -> Dict[str, Any]:
+        return {DATASET_ITEMS: [], NESTED_DATASETS: {}}
+
+    @classmethod
+    def append_items(cls, project_structure: Dict, dataset_name: str, items: Iterable[Any]) -> None:
+        """
+        Append items into project_structure by a path-like dataset name.
+
+        Example dataset_name:
+          "root/sub1/sub2" -> project_structure["root"]["datasets"]["sub1"]["datasets"]["sub2"]["items"]
+        """
+        normalized_name = (dataset_name or "").replace("\\", "/").strip("/")
+        if not normalized_name:
+            normalized_name = dataset_name or "dataset"
+
+        parts = [p for p in normalized_name.split("/") if p]
+        if not parts:
+            parts = ["dataset"]
+
+        curr = project_structure.setdefault(parts[0], cls.create_node())
+        for part in parts[1:]:
+            curr = curr[NESTED_DATASETS].setdefault(part, cls.create_node())
+        curr[DATASET_ITEMS].extend(list(items))
+
     def upload(
         self,
         api: Api,
         project_id: int,
         root_dataset_id: int,
         project_structure: Dict,
-        upload_items: Callable[[int, Iterable[Any]], None],
+        upload_items: Optional[Callable[[int, Iterable[Any]], None]] = None,
+        **kwargs,
     ) -> None:
+        upload_items_cb = kwargs.pop("upload_items_cb", None)
+
+        if upload_items is None:
+            upload_items = upload_items_cb
+        if upload_items is None:
+            raise ValueError("Either 'upload_items' or 'upload_items_cb' must be provided")
+
         def _walk(
             node: Dict,
             parent_id: Optional[int],

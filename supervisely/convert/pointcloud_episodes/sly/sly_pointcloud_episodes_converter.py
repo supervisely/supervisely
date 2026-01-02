@@ -67,24 +67,6 @@ class SLYPointcloudEpisodesConverter(PointcloudEpisodeConverter):
         except Exception:
             return False
 
-    @staticmethod
-    def _create_project_node():
-        return {DATASET_ITEMS: [], NESTED_DATASETS: {}}
-
-    @classmethod
-    def _append_to_project_structure(cls, project_structure: dict, dataset_name: str, items: list):
-        normalized_name = (dataset_name or "").replace("\\", "/").strip("/")
-        if not normalized_name:
-            normalized_name = dataset_name or "dataset"
-        parts = [part for part in normalized_name.split("/") if part]
-        if not parts:
-            parts = ["dataset"]
-
-        curr_ds = project_structure.setdefault(parts[0], cls._create_project_node())
-        for part in parts[1:]:
-            curr_ds = curr_ds[NESTED_DATASETS].setdefault(part, cls._create_project_node())
-        curr_ds[DATASET_ITEMS].extend(items)
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._effective_input_data = None
@@ -227,7 +209,7 @@ class SLYPointcloudEpisodesConverter(PointcloudEpisodeConverter):
 
                 ds_name = self._infer_dataset_name(item.path)
                 dataset_names_seen.add(ds_name)
-                self._append_to_project_structure(project, ds_name, [item])
+                ProjectStructureUploader.append_items(project, ds_name, [item])
             else:
                 logger.warning(f"Pointcloud file {pcd_name} not found. Skipping frame.")
                 continue
@@ -275,6 +257,8 @@ class SLYPointcloudEpisodesConverter(PointcloudEpisodeConverter):
 
         dataset_info = api.dataset.get_info_by_id(dataset_id, raise_error=True)
         project_id = dataset_info.project_id
+        existing_datasets = api.dataset.get_list(project_id, recursive=True)
+        existing_datasets = {ds.name for ds in existing_datasets}
 
         if log_progress:
             progress, progress_cb = self.get_progress(self.items_count, "Uploading project")
@@ -307,7 +291,7 @@ class SLYPointcloudEpisodesConverter(PointcloudEpisodeConverter):
                 if progress_cb:
                     progress_cb(len(items))
 
-        ProjectStructureUploader.upload(
+        ProjectStructureUploader(existing_datasets=existing_datasets).upload(
             api=api,
             project_id=project_id,
             root_dataset_id=dataset_id,

@@ -36,26 +36,6 @@ class MultiViewVideoConverter(VideoConverter):
     def key_file_ext(self) -> str:
         return ".json"
 
-    @staticmethod
-    def _create_project_node() -> Dict[str, dict]:
-        return {DATASET_ITEMS: [], NESTED_DATASETS: {}}
-
-    @classmethod
-    def _append_to_project_structure(
-        cls, project_structure: Dict[str, dict], dataset_name: str, items: list
-    ):
-        normalized_name = (dataset_name or "").replace("\\", "/").strip("/")
-        if not normalized_name:
-            normalized_name = dataset_name or "dataset"
-        parts = [part for part in normalized_name.split("/") if part]
-        if not parts:
-            parts = ["dataset"]
-
-        curr_ds = project_structure.setdefault(parts[0], cls._create_project_node())
-        for part in parts[1:]:
-            curr_ds = curr_ds[NESTED_DATASETS].setdefault(part, cls._create_project_node())
-        curr_ds[DATASET_ITEMS].extend(items)
-
     def validate_labeling_interface(self) -> bool:
         return self._labeling_interface == LabelingInterface.MULTIVIEW
 
@@ -121,7 +101,7 @@ class MultiViewVideoConverter(VideoConverter):
                         ds_items.append(item)
 
                     if len(ds_items) > 0:
-                        self._append_to_project_structure(project, dataset.name, ds_items)
+                        ProjectStructureUploader.append_items(project, dataset.name, ds_items)
                         ds_cnt += 1
                         self._items.extend(ds_items)
 
@@ -348,11 +328,12 @@ class MultiViewVideoConverter(VideoConverter):
             self._upload_single_dataset(api, dataset_id, self._items, batch_size, log_progress)
 
     def _upload_project(self, api, dataset_id: int, batch_size: int = 10, log_progress=True):
-        """Upload multi-view video project with multiple datasets."""
         from supervisely import is_development
 
         dataset_info = api.dataset.get_info_by_id(dataset_id, raise_error=True)
         project_id = dataset_info.project_id
+        existing_datasets = api.dataset.get_list(project_id, recursive=True)
+        existing_datasets = {ds.name for ds in existing_datasets}
 
         if log_progress:
             progress, progress_cb = self.get_progress(self.items_count, "Uploading project")
@@ -371,7 +352,7 @@ class MultiViewVideoConverter(VideoConverter):
                 progress_cb=progress_cb,
             )
 
-        ProjectStructureUploader.upload(
+        ProjectStructureUploader(existing_datasets=existing_datasets).upload(
             api=api,
             project_id=project_id,
             root_dataset_id=dataset_id,

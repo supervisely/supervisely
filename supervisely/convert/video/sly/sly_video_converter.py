@@ -58,26 +58,6 @@ class SLYVideoConverter(VideoConverter):
         except Exception:
             return False
 
-    @staticmethod
-    def _create_project_node() -> Dict[str, dict]:
-        return {DATASET_ITEMS: [], NESTED_DATASETS: {}}
-
-    @classmethod
-    def _append_to_project_structure(
-        cls, project_structure: Dict[str, dict], dataset_name: str, items: List
-    ):
-        normalized_name = (dataset_name or "").replace("\\", "/").strip("/")
-        if not normalized_name:
-            normalized_name = dataset_name or "dataset"
-        parts = [part for part in normalized_name.split("/") if part]
-        if not parts:
-            parts = ["dataset"]
-
-        curr_ds = project_structure.setdefault(parts[0], cls._create_project_node())
-        for part in parts[1:]:
-            curr_ds = curr_ds[NESTED_DATASETS].setdefault(part, cls._create_project_node())
-        curr_ds[DATASET_ITEMS].extend(items)
-
     def validate_format(self) -> bool:
         if self.upload_as_links and self._supports_links:
             self._download_remote_ann_files()
@@ -195,7 +175,7 @@ class SLYVideoConverter(VideoConverter):
                         ds_items.append(item)
 
                     if len(ds_items) > 0:
-                        self._append_to_project_structure(project, dataset.name, ds_items)
+                        ProjectStructureUploader.append_items(project, dataset.name, ds_items)
                         ds_cnt += 1
                         self._items.extend(ds_items)
 
