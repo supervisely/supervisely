@@ -227,7 +227,7 @@ class SLYVideoConverter(VideoConverter):
                     ds_items.append(item)
 
                 if len(ds_items) > 0:
-                    self._append_to_project_structure(project, dataset_fs.name, ds_items)
+                    ProjectStructureUploader.append_items(project, dataset_fs.name, ds_items)
                     ds_cnt += 1
                     self._items.extend(ds_items)
 
