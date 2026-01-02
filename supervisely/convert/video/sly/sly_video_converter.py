@@ -5,6 +5,7 @@ import supervisely.convert.video.sly.sly_video_helper as sly_video_helper
 from supervisely import ProjectMeta, VideoAnnotation, logger
 from supervisely.api.api import Api, ApiContext
 from supervisely.convert.base_converter import AvailableVideoConverters
+from supervisely.convert.utils import ProjectStructureUploader
 from supervisely.convert.video.video_converter import VideoConverter
 from supervisely.io.fs import JUNK_FILES, file_exists, get_file_ext
 from supervisely.io.json import load_json_file
@@ -56,26 +57,6 @@ class SLYVideoConverter(VideoConverter):
             return True
         except Exception:
             return False
-
-    @staticmethod
-    def _create_project_node() -> Dict[str, dict]:
-        return {DATASET_ITEMS: [], NESTED_DATASETS: {}}
-
-    @classmethod
-    def _append_to_project_structure(
-        cls, project_structure: Dict[str, dict], dataset_name: str, items: List
-    ):
-        normalized_name = (dataset_name or "").replace("\\", "/").strip("/")
-        if not normalized_name:
-            normalized_name = dataset_name or "dataset"
-        parts = [part for part in normalized_name.split("/") if part]
-        if not parts:
-            parts = ["dataset"]
-
-        curr_ds = project_structure.setdefault(parts[0], cls._create_project_node())
-        for part in parts[1:]:
-            curr_ds = curr_ds[NESTED_DATASETS].setdefault(part, cls._create_project_node())
-        curr_ds[DATASET_ITEMS].extend(items)
 
     def validate_format(self) -> bool:
         if self.upload_as_links and self._supports_links:
@@ -194,7 +175,7 @@ class SLYVideoConverter(VideoConverter):
                         ds_items.append(item)
 
                     if len(ds_items) > 0:
-                        self._append_to_project_structure(project, dataset.name, ds_items)
+                        ProjectStructureUploader.append_items(project, dataset.name, ds_items)
                         ds_cnt += 1
                         self._items.extend(ds_items)
 
@@ -246,7 +227,7 @@ class SLYVideoConverter(VideoConverter):
                     ds_items.append(item)
 
                 if len(ds_items) > 0:
-                    self._append_to_project_structure(project, dataset_fs.name, ds_items)
+                    ProjectStructureUploader.append_items(project, dataset_fs.name, ds_items)
                     ds_cnt += 1
                     self._items.extend(ds_items)
 
@@ -274,7 +255,7 @@ class SLYVideoConverter(VideoConverter):
         self, api: Api, dataset_id: int, batch_size: int = 10, log_progress=True
     ) -> Optional[int]:
         """Upload video project with multiple datasets."""
-        from supervisely import generate_free_name, is_development
+        from supervisely import is_development
 
         dataset_info = api.dataset.get_info_by_id(dataset_id, raise_error=True)
         project_id = dataset_info.project_id
@@ -290,9 +271,6 @@ class SLYVideoConverter(VideoConverter):
                 )
                 new_project_created = True
 
-        existing_datasets = api.dataset.get_list(project_id, recursive=True)
-        existing_datasets = {ds.name for ds in existing_datasets}
-
         if log_progress:
             progress, progress_cb = self.get_progress(self.items_count, "Uploading project")
         else:
@@ -300,41 +278,22 @@ class SLYVideoConverter(VideoConverter):
 
         logger.info("Uploading video project structure")
 
-        def _upload_datasets_recursive(
-            project_structure: dict,
-            project_id: int,
-            dataset_id: int,
-            parent_id=None,
-            first_dataset=False,
-        ):
-            for ds_name, value in project_structure.items():
-                ds_name = generate_free_name(existing_datasets, ds_name, extend_used_names=True)
-                if first_dataset:
-                    first_dataset = False
-                    api.dataset.update(dataset_id, ds_name)  # rename first dataset
-                else:
-                    dataset_id = api.dataset.create(project_id, ds_name, parent_id=parent_id).id
+        def _upload_single_dataset_cb(_dataset_id: int, items: List):
+            self._upload_single_dataset(
+                api,
+                _dataset_id,
+                items,
+                batch_size,
+                log_progress=False,
+                progress_cb=progress_cb,
+            )
 
-                items = value.get(DATASET_ITEMS, [])
-                nested_datasets = value.get(NESTED_DATASETS, {})
-                logger.info(
-                    f"Dataset: {ds_name}, items: {len(items)}, nested datasets: {len(nested_datasets)}"
-                )
-                if items:
-                    self._upload_single_dataset(
-                        api,
-                        dataset_id,
-                        items,
-                        batch_size,
-                        log_progress=False,
-                        progress_cb=progress_cb,
-                    )
-
-                if nested_datasets:
-                    _upload_datasets_recursive(nested_datasets, project_id, dataset_id, dataset_id)
-
-        _upload_datasets_recursive(
-            self._project_structure, project_id, dataset_id, first_dataset=True
+        ProjectStructureUploader.upload(
+            api=api,
+            project_id=project_id,
+            root_dataset_id=dataset_id,
+            project_structure=self._project_structure,
+            upload_items_cb=_upload_single_dataset_cb,
         )
 
         if is_development() and progress is not None:
