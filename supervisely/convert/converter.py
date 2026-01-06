@@ -71,19 +71,21 @@ class ImportManager:
             prepared_data = self._prepare_input_data(data)
             if prepared_data is not None:
                 data = prepared_data
-            self._unpack_archives(data)
+            self._unpack_archives(os.path.dirname(data))
             remove_junk_from_dir(data)
 
             converter = self.get_converter(data)
             if isinstance(converter, (HighColorDepthImageConverter, CSVConverter)):
                 converter.team_id = self._team_id
 
-            for existing_converter, paths in self._converter_entries:
-                if type(existing_converter) == type(converter):
-                    paths.append(data)
-                    break
-                else:
-                    self._converter_entries.append((converter, [data]))
+            self._converter_entries.append((converter, [data]))
+
+            # for existing_converter, paths in self._converter_entries:
+            #     if type(existing_converter) == type(converter):
+            #         paths.append(data)
+            #         break
+            #     else:
+            #         self._converter_entries.append((converter, [data]))
 
     @property
     def converters(self):

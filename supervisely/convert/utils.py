@@ -52,6 +52,24 @@ class ProjectStructureUploader:
             curr = curr[NESTED_DATASETS].setdefault(part, cls.create_node())
         curr[DATASET_ITEMS].extend(list(items))
 
+    def _create_new_project_if_needed(self, api: Api, project_id: int) -> int:
+        project_info = api.project.get_info_by_id(project_id)
+        if project_info.items_count != 0:
+            used_project_names = list(
+                {p.name for p in api.project.get_list(project_info.workspace_id)}
+            )
+            new_project_name = generate_free_name(used_project_names, project_info.name)
+            new_project = api.project.create(
+                project_info.workspace_id, new_project_name, type=project_info.type
+            )
+            logger.info(
+                f"Original project has multiple datasets. Created a new project '{new_project_name}' (ID: {new_project.id}) for uploading the converted structure."
+            )
+            self.existing_datasets = set()
+            return new_project.id
+        else:
+            return project_id
+
     def upload(
         self,
         api: Api,
@@ -67,6 +85,12 @@ class ProjectStructureUploader:
             upload_items = upload_items_cb
         if upload_items is None:
             raise ValueError("Either 'upload_items' or 'upload_items_cb' must be provided")
+
+        project_id = self._create_new_project_if_needed(api, project_id)
+
+        root_ds_info = api.dataset.get_info_by_id(root_dataset_id)
+        if root_ds_info.project_id != project_id:
+            root_dataset_id = api.dataset.create(project_id, root_ds_info.name).id
 
         def _walk(
             node: Dict,
