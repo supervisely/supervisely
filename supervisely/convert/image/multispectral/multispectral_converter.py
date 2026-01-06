@@ -130,6 +130,12 @@ class MultiSpectralImageConverter(ImageConverter):
         
         if image is None:
             logger.warning(f"Failed to read image {file_path}.")
-            return
+            return []
 
+        # Handle single-channel images (grayscale)
+        if len(image.shape) == 2:
+            logger.debug(f"Image {file_path} has single channel.")
+            return [image]
+        
+        # Handle multi-channel images
         return [image[:, :, i] for i in range(image.shape[2])]
