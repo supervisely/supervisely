@@ -526,7 +526,9 @@ def instance_crop(
 
 
 # Resize
-def resize(img: np.ndarray, ann: Annotation, size: Tuple) -> Tuple[np.ndarray, Annotation]:
+def resize(
+    img: np.ndarray, ann: Annotation, size: Tuple, skip_empty_masks: bool = False
+) -> Tuple[np.ndarray, Annotation]:
     """
     Resizes an input Image and Annotation to a given size.
 
@@ -536,6 +538,8 @@ def resize(img: np.ndarray, ann: Annotation, size: Tuple) -> Tuple[np.ndarray, A
     :type ann: Annotation
     :param size: Desired size (height, width) in pixels or -1.
     :type size: Tuple[int, int]
+    :param skip_empty_masks: If True, skips resizing of empty masks in Annotation.
+    :type skip_empty_masks: bool, optional
     :raises: :class:`RuntimeError` if Image shape does not match img_size in Annotation
     :return: Tuple containing resized Image and Annotation
     :rtype: :class:`Tuple[np.ndarray, Annotation]`
@@ -576,7 +580,7 @@ def resize(img: np.ndarray, ann: Annotation, size: Tuple) -> Tuple[np.ndarray, A
 
     new_size = sly_image.restore_proportional_size(in_size=ann.img_size, out_size=size)
     res_img = sly_image.resize(img, new_size)
-    res_ann = ann.resize(new_size)
+    res_ann = ann.resize(new_size, skip_empty_masks=skip_empty_masks)
     return res_img, res_ann
 
 
