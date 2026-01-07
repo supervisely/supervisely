@@ -64,7 +64,6 @@ class LiveTraining:
         self.dataset: IncrementalDataset = None
         self.model: nn.Module  = None
         
-        # reslove start mode vars: TODO: check where vars come from 
         self.checkpoint_mode = os.getenv("modal.state.checkpointMode", "scratch")
         self.selected_experiment_task_id = int(os.getenv("modal.state.selectedExperimentTaskId"))
         self.work_dir = 'app_data'

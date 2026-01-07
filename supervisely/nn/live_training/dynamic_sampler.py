@@ -2,10 +2,8 @@ import random
 import time
 from collections.abc import Sized
 from torch.utils.data import Sampler
-from mmdet.registry import DATA_SAMPLERS
 
 
-@DATA_SAMPLERS.register_module()
 class DynamicSampler(Sampler[int]):
     def __init__(self, dataset: Sized, shuffle: bool = True, seed: int = 0):
         self.dataset = dataset
