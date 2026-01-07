@@ -128,7 +128,7 @@ class LiveTraining:
 
         new_samples_added = False
         
-        for request in requests:
+        for request in requests: 
             try:
                 if request.type == RequestType.PREDICT:
                     result = self._handle_predict(request.data)
@@ -144,14 +144,8 @@ class LiveTraining:
                     request.future.set_result(result)
 
             except Exception as e:
-                logger.error(f"❌ Error processing request {request.type}: {e}", exc_info=True)
+                logger.error(f"Error processing request {request.type}: {e}", exc_info=True)
                 request.future.set_exception(e)
-
-        # if new_samples_added:
-        #     self.rebuild_dataloader()
-        #     if self.plateau_detector is not None:
-        #         self._adapt_loss_plateau_detector()
-        #         self.plateau_detector.reset()
 
     def train(self):
         # Prepare for training: generate config, set hyperparameters, etc.
