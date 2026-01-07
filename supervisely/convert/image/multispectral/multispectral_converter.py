@@ -6,7 +6,7 @@ import cv2
 import nrrd
 import numpy as np
 
-from supervisely import is_development, logger, ProjectMeta
+from supervisely import ProjectMeta, is_development, logger
 from supervisely.api.api import Api, ApiContext
 from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
@@ -127,9 +127,22 @@ class MultiSpectralImageConverter(ImageConverter):
         else:
             logger.warning(f"File {file_path} has unsupported extension.")
             return
-        
+
         if image is None:
             logger.warning(f"Failed to read image {file_path}.")
             return
 
-        return [image[:, :, i] for i in range(image.shape[2])]
+        if image.ndim == 2:
+            return [image]
+        if image.ndim != 3:
+            logger.warning(
+                f"Unexpected image shape {getattr(image, 'shape', None)} for {file_path}."
+            )
+            return
+
+        channels_count = image.shape[2]
+        if channels_count is None or channels_count == 0:
+            logger.warning(f"Image {file_path} has no channels (shape={image.shape}).")
+            return
+
+        return [image[:, :, i] for i in range(channels_count)]
