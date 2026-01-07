@@ -256,7 +256,6 @@ class PointcloudConverter(BaseConverter):
                     rimg_dict[dir_name].append(full_path)
                 elif ext.lower() in self.allowed_exts:
                     try:
-                        validate_pcd_ext(ext)
                         path = self._convert_to_pcd_if_needed(full_path, ext)
                         if not path:
                             continue

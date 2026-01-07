@@ -11,7 +11,7 @@ from supervisely.io.fs import ensure_base_path
 from supervisely.sly_logger import logger
 
 # Do NOT use directly for extension validation. Use is_valid_ext() /  has_valid_ext() below instead.
-ALLOWED_POINTCLOUD_EXTENSIONS = [".pcd", ".bin"]
+ALLOWED_POINTCLOUD_EXTENSIONS = [".pcd"]
 
 
 class PointcloudExtensionError(Exception):
