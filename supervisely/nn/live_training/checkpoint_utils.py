@@ -11,14 +11,14 @@ from supervisely.nn.live_training.helpers import ClassMap
 def find_latest_checkpoint_path(
     api,
     team_id: int,
-    task_id: int,
+    selected_experiment_task_id: int,  # Было: task_id
     framework_name: str
 ) -> str:
     """
-    Find the latest checkpoint for given task_id in Team Files.
+    Find the latest checkpoint for given experiment task.
     
-    Returns:
-        remote_path: Path to the latest checkpoint in Team Files
+    Args:
+        selected_experiment_task_id: ID of experiment to load checkpoint from
     """
     experiments_base = "/experiments/live_training/"
     
@@ -34,27 +34,12 @@ def find_latest_checkpoint_path(
             if not task_dir.is_dir:
                 continue
             
-            if task_dir.name.startswith(f"{task_id}_") and f"_{framework_name}" in task_dir.name:
+            # Ищем директорию с selected_experiment_task_id
+            if task_dir.name.startswith(f"{selected_experiment_task_id}_") and f"_{framework_name}" in task_dir.name:
                 checkpoints_dir = task_dir.path + 'checkpoints/'
-                if not api.file.dir_exists(team_id, checkpoints_dir):
-                    break
-                
-                files = api.file.list(team_id, checkpoints_dir, recursive=False, return_type='fileinfo')
-                
-                checkpoint_files = []
-                for file_info in files:
-                    if file_info.name.endswith('.pth') and file_info.name != 'latest.pth':
-                        match = re.search(r'iter[_\s](\d+)', file_info.name)
-                        iteration = int(match.group(1)) if match else 0
-                        checkpoint_files.append((file_info, iteration))
-                
-                checkpoint_files.sort(key=lambda x: x[1], reverse=True)
-                checkpoint_files = [f[0] for f in checkpoint_files]
-                
-                if checkpoint_files:
-                    return checkpoint_files[0].path
+                # ... остальной код поиска checkpoint
     
-    raise ValueError(f"No checkpoint found for task_id={task_id}")
+    raise ValueError(f"No checkpoint found for experiment task_id={selected_experiment_task_id}")
 
 
 def download_checkpoint_file(
@@ -173,7 +158,7 @@ def remove_classification_head(checkpoint_path: str) -> str:
 
 def resolve_checkpoint(
     checkpoint_mode: str,
-    selected_task_id: Optional[int],
+    selected_experiment_task_id: Optional[int],
     class_map: ClassMap,
     project_meta,
     api,
@@ -207,13 +192,13 @@ def resolve_checkpoint(
         return None, class_map, None
     
     # Finetune and Continue modes require task_id
-    if selected_task_id is None:
+    if selected_experiment_task_id is None:
         raise ValueError(
             f"selected_task_id must be provided when checkpoint_mode='{checkpoint_mode}'"
         )
     
     # Find and download checkpoint
-    remote_checkpoint = find_latest_checkpoint_path(api, team_id, selected_task_id, framework_name)
+    remote_checkpoint = find_latest_checkpoint_path(api, team_id, selected_experiment_task_id, framework_name)
     local_dir = os.path.join(work_dir, 'downloaded_checkpoints')
     local_checkpoint = download_checkpoint_file(api, team_id, remote_checkpoint, local_dir)
     

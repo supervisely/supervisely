@@ -43,6 +43,7 @@ class LiveTraining:
         
         self.project_id = sly.env.project_id()
         self.team_id = sly.env.team_id()
+        self.task_id = sly.env.task_id(raise_not_found=False)
         self.app = sly.Application()
         self.api = sly.Api()
         self.request_queue = RequestQueue()
@@ -65,7 +66,8 @@ class LiveTraining:
         self.model: nn.Module  = None
         
         self.checkpoint_mode = os.getenv("modal.state.checkpointMode", "scratch")
-        self.selected_experiment_task_id = int(os.getenv("modal.state.selectedExperimentTaskId"))
+        selected_task_id_env = os.getenv("modal.state.selectedExperimentTaskId")
+        self.selected_experiment_task_id = int(selected_task_id_env) if selected_task_id_env else None
         self.work_dir = 'app_data'
         self.checkpoint_path = None
         self.dataset_metadata = None
@@ -251,7 +253,7 @@ class LiveTraining:
         """Resolve and configure checkpoint based on checkpoint_mode."""
         self.checkpoint_path, self.class_map, state = resolve_checkpoint(
             checkpoint_mode=self.checkpoint_mode,
-            selected_task_id=self.selected_experiment_task_id,
+            selected_experiment_task_id=self.selected_experiment_task_id,
             class_map=self.class_map,
             project_meta=self.project_meta,
             api=self.api,
