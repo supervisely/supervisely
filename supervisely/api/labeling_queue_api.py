@@ -37,6 +37,7 @@ class LabelingQueueInfo(NamedTuple):
     in_progress_count: int
     pending_count: int
     meta: dict
+    collection_id: Optional[int] = None
 
 
 class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
@@ -93,7 +94,8 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
                 annotated_count=3,
                 in_progress_count=2,
                 pending_count=1,
-                meta={}
+                meta={},
+                collection_id=None,
             )
         """
         return [
@@ -115,6 +117,7 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
             ApiField.IN_PROGRESS_COUNT,
             ApiField.PENDING_COUNT,
             ApiField.META,
+            ApiField.COLLECTION_ID,
         ]
 
     @staticmethod
@@ -431,6 +434,7 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
         ids: Optional[List[int]] = None,
         names: Optional[List[str]] = None,
         show_disabled: Optional[bool] = False,
+        collection_id: Optional[int] = None,
     ) -> List[LabelingQueueInfo]:
         """
         Get list of information about Labeling Queues in the given Team.
@@ -447,6 +451,8 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type names: List[str], optional
         :param show_disabled: Show disabled Labeling Queues.
         :type show_disabled: bool, optional
+        :param collection_id: Entities Collection ID in Supervisely.
+        :type collection_id: int, optional
         :return: List of information about Labeling Queues. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[LabelingQueueInfo]`
         :Usage example:
@@ -467,6 +473,10 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
             filters.append({"field": ApiField.PROJECT_ID, "operator": "=", "value": project_id})
         if dataset_id is not None:
             filters.append({"field": ApiField.DATASET_ID, "operator": "=", "value": dataset_id})
+        if collection_id is not None:
+            filters.append(
+                {"field": ApiField.COLLECTION_ID, "operator": "=", "value": collection_id}
+            )
         if names is not None:
             filters.append({"field": ApiField.NAME, "operator": "in", "value": names})
         if ids is not None:
