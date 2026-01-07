@@ -171,7 +171,7 @@ def resolve_checkpoint(
     
     Args:
         checkpoint_mode: One of 'scratch', 'finetune', 'continue'
-        selected_task_id: Task ID to load checkpoint from (required for finetune/continue)
+        selected_experiment_task_id: Task ID to load checkpoint from (required for finetune/continue)
         class_map: Current ClassMap
         project_meta: Project metadata
         api: Supervisely API instance
@@ -194,7 +194,7 @@ def resolve_checkpoint(
     # Finetune and Continue modes require task_id
     if selected_experiment_task_id is None:
         raise ValueError(
-            f"selected_task_id must be provided when checkpoint_mode='{checkpoint_mode}'"
+            f"selected_experiment_task_id must be provided when checkpoint_mode='{checkpoint_mode}'"
         )
     
     # Find and download checkpoint
@@ -234,9 +234,9 @@ def resolve_checkpoint(
     
     # Continue mode - strict class matching required
     elif checkpoint_mode == "continue":
-        logger.info(f"Continue mode: loading checkpoint from task_id={selected_task_id}")
+        logger.info(f"Continue mode: loading checkpoint from task_id={selected_experiment_task_id}")
         validate_classes_exact_match(saved_classes, current_classes)
-        logger.info(f"Checkpoint loaded from task_id={selected_task_id}")
+        logger.info(f"Checkpoint loaded from task_id={selected_experiment_task_id}")
         state = load_state_json(local_checkpoint)
 
         return local_checkpoint, class_map, state
