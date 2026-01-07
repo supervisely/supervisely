@@ -107,6 +107,8 @@ class LiveTraining:
         self.phase = Phase.INITIAL_TRAINING
         self.train()
 
+        # TODO: implement uploading weights to Team Files, generate experiment report, etc.
+
     def _wait_for_start(self):
         request = self.request_queue.get()
         while request.type != RequestType.START:
