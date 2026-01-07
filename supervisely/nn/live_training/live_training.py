@@ -148,17 +148,17 @@ class LiveTraining:
                 request.future.set_exception(e)
 
     def train(self):
-        # Prepare for training: generate config, set hyperparameters, etc.
-        # Run train loop
+        """
+        Main training loop. Implement framework-specific training logic here.
+        Prepare model config, set hyperparameters and run training.
+        Handle phases: initial training, training
+        """
         raise NotImplementedError
     
     def predict(self, model: nn.Module, image_np, image_info) -> list:
-        # Return predictions as a list of sly objects (json).
-        # Alternatives:
-        # return list of sly.Labels?
-        # list of Prediction objects? Possibly
-        # list of sly.Geometry objects? No
-        # sly.nn.prediction : BBox, InstanceMask, Segmentation. The best option, but requires implementation.
+        """
+        Run inference on a single image and return predictions as a list of sly figures in json format.
+        """
         raise NotImplementedError
 
     def _handle_predict(self, data: dict):

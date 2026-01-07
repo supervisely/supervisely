@@ -1,10 +1,14 @@
 import random
 import time
 from collections.abc import Sized
-from torch.utils.data import Sampler
 
 
-class DynamicSampler(Sampler[int]):
+class DynamicSampler:
+    """
+    A sampler that dynamically adjusts to the size of a dataset that grows over time.
+    Implements torch.utils.data.Sampler interface.
+    """
+    
     def __init__(self, dataset: Sized, shuffle: bool = True, seed: int = 0):
         self.dataset = dataset
         self.shuffle = shuffle

@@ -120,8 +120,6 @@ class IncrementalDataset:
         image.save(image_path)
         return image_path
 
-
-
     def _decode_sly_bitmap_png(bitmap_data: str) -> np.ndarray:
         """Decode Supervisely bitmap from base64 -> zlib -> PNG."""
         compressed_data = base64.b64decode(bitmap_data)
@@ -134,7 +132,6 @@ class IncrementalDataset:
             bitmap_mask = bitmap_mask[:, :, 0]
         
         return (bitmap_mask > 0).astype(np.uint8)
-
 
     def _render_segmentation_mask(ann_json: dict, img_size: tuple, class2idx: dict) -> np.ndarray:
         """
@@ -200,7 +197,6 @@ class IncrementalDataset:
         
         return mask_path
 
-    
     def __len__(self) -> int:
         return len(self.samples)
     

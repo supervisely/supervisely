@@ -55,5 +55,3 @@ panda.deb
 
 /test*.py
 .python-version
-
-*.jpg
