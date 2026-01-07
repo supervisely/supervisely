@@ -25,10 +25,21 @@ class PredictionMask(Prediction):
 
 
 class PredictionBBox(Prediction):
-    def __init__(self, class_name: str, bbox_tlbr: List[int], score: Optional[float]):
+    def __init__(self, class_name: str, bbox_tlbr: List[int], score: Optional[float], angle: Optional[float] = None):
+        """
+        :param class_name: Predicted class name.
+        :type class_name: str
+        :param bbox_tlbr: Bounding box in (top, left, bottom, right) format.
+        :type bbox_tlbr: list of 4 ints
+        :param score: Confidence score.
+        :type score: float, optional
+        :param angle: Angle of rotation in radians. Positive values mean clockwise rotation.
+        :type angle: int or float, optional
+        """
         super(PredictionBBox, self).__init__(class_name=class_name)
         self.bbox_tlbr = bbox_tlbr
         self.score = score
+        self.angle = angle
 
 
 class PredictionSegmentation(Prediction):

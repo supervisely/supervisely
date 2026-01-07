@@ -10,7 +10,7 @@ from supervisely.annotation.annotation import Annotation
 from supervisely.app.content import DataJson, StateJson
 from supervisely.app.widgets import Widget
 from supervisely.app.widgets_context import JinjaWidgets
-from supervisely.imaging.image import np_image_to_data_url_backup_rgb, read
+from supervisely.imaging.image import np_image_to_data_url, read
 
 
 def mask_to_heatmap(
@@ -35,11 +35,9 @@ def mask_to_heatmap(
     heatmap_bgra = cv2.cvtColor(heatmap_bgr, cv2.COLOR_BGR2BGRA)
 
     if transparent_low:
-        alpha = np.where(mask_norm == 0, 0, 255).astype(np.uint8)
+        alpha = np.where(mask_norm == mask_norm.min(), 0, 255).astype(np.uint8)
         heatmap_bgra[..., 3] = alpha
-    heatmap_rgba = heatmap_bgra[..., [2, 1, 0, 3]]
-
-    return heatmap_rgba
+    return heatmap_bgra
 
 
 def colormap_to_hex_list(colormap=cv2.COLORMAP_JET, n=5):
@@ -207,7 +205,9 @@ class Heatmap(Widget):
         """
         try:
             if isinstance(background_image, np.ndarray):
-                self._background_url = np_image_to_data_url_backup_rgb(background_image)
+                # rgb or rgba to bgr or bgra
+                background_image = background_image[..., ::-1]
+                self._background_url = np_image_to_data_url(background_image)
             elif isinstance(background_image, str):
                 parsed = urlparse(background_image)
                 bg_image_path = Path(background_image)
@@ -217,7 +217,8 @@ class Heatmap(Widget):
                     self._background_url = background_image
                 elif bg_image_path.exists() and bg_image_path.is_file():
                     np_image = read(bg_image_path, remove_alpha_channel=False)
-                    self._background_url = np_image_to_data_url_backup_rgb(np_image)
+                    np_image = np_image[..., ::-1]  # rgb or rgba to bgr or bgra
+                    self._background_url = np_image_to_data_url(np_image)
                 else:
                     raise ValueError(f"Unable to find image at {background_image}")
             else:
@@ -266,7 +267,7 @@ class Heatmap(Widget):
                 vmax=self._vmax,
                 transparent_low=self._transparent_low,
             )
-            self._heatmap_url = np_image_to_data_url_backup_rgb(heatmap)
+            self._heatmap_url = np_image_to_data_url(heatmap)
             self._min_value = to_json_safe(mask.min())
             self._max_value = to_json_safe(mask.max())
 

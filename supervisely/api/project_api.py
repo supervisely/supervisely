@@ -692,6 +692,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         type: ProjectType = ProjectType.IMAGES,
         description: Optional[str] = "",
         change_name_if_conflict: Optional[bool] = False,
+        readme: Optional[str] = None,
     ) -> ProjectInfo:
         """
         Create Project with given name in the given Workspace ID.
@@ -706,6 +707,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type description: str
         :param change_name_if_conflict: Checks if given name already exists and adds suffix to the end of the name.
         :type change_name_if_conflict: bool, optional
+        :param readme: Project readme.
+        :type readme: str, optional
         :return: Information about Project. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`ProjectInfo`
         :Usage example:
@@ -746,15 +749,15 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             name=name,
             change_name_if_conflict=change_name_if_conflict,
         )
-        response = self._api.post(
-            "projects.add",
-            {
-                ApiField.WORKSPACE_ID: workspace_id,
-                ApiField.NAME: effective_name,
-                ApiField.DESCRIPTION: description,
-                ApiField.TYPE: str(type),
-            },
-        )
+        payload = {
+            ApiField.NAME: effective_name,
+            ApiField.WORKSPACE_ID: workspace_id,
+            ApiField.DESCRIPTION: description,
+            ApiField.TYPE: str(type),
+        }
+        if readme is not None:
+            payload[ApiField.README] = readme
+        response = self._api.post("projects.add", payload)
         return self._convert_json_info(response.json())
 
     def _get_update_method(self):
