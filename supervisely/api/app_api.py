@@ -1750,6 +1750,7 @@ class AppApi(TaskApi):
         module_id: Optional[int] = None,
         redirect_requests: Dict[str, int] = {},
         kubernetes_settings: Optional[Union[KubernetesSettings, Dict[str, Any]]] = None,
+        multi_user_session: bool = False,
     ) -> SessionInfo:
         """Start a new application session (task).
 
@@ -1783,13 +1784,20 @@ class AppApi(TaskApi):
         :type redirect_requests: dict
         :param kubernetes_settings: Kubernetes settings for the task. If not specified, default settings will be used.
         :type kubernetes_settings: Optional[Union[KubernetesSettings, Dict[str, Any]]]
+        :param multi_user_session: If True, the application session will be created as multi-user.
+                                   In this case, multiple users will be able to connect to the same application session.
+                                   All users will have separate application states.
+                                   Available only for applications that support multi-user sessions.
+        :type multi_user_session: bool, default is False
         :return: SessionInfo object with information about the started task.
         :rtype: SessionInfo
         :raises ValueError: If both app_id and module_id are not provided.
         :raises ValueError: If both app_id and module_id are provided.
         """
         users_ids = None
-        if users_id is not None:
+        if isinstance(users_id, list) and all(isinstance(u, int) for u in users_id):
+            users_ids = users_id
+        elif isinstance(users_id, int):
             users_ids = [users_id]
 
         new_params = {}
@@ -1818,6 +1826,7 @@ class AppApi(TaskApi):
             module_id=module_id,
             redirect_requests=redirect_requests,
             kubernetes_settings=kubernetes_settings,
+            multi_user_session=multi_user_session,
         )
         if type(result) is not list:
             result = [result]
