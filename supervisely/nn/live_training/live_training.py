@@ -265,7 +265,7 @@ class LiveTraining:
             'loss': self._loss,
             'clases': [cls.name for cls in self.class_map.obj_classes],
             'dataset_metadata': self.dataset_metadata,
-            'image_ids': self.dataset.get_image_ids() if self.dataset else [],
+            'images_ids': self.dataset.get_images_ids() if self.dataset else [],
             'dataset_size': len(self.dataset) if self.dataset else 0,
             # add more variables as needed
         }
@@ -277,12 +277,12 @@ class LiveTraining:
         self._loss = state.get('loss', None)
         # classes are handled during checkpoint loading
         self.dataset_metadata = state.get('dataset_metadata', {})
-        self.image_ids = state.get('image_ids', [])
+        self.images_ids = state.get('images_ids', [])
         dataset_size = state.get('dataset_size', 0)
 
     def _restore_dataset(self):
         """
-        Restore dataset from image_ids by downloading from Supervisely.
+        Restore dataset from images_ids by downloading from Supervisely.
         Must be implemented in subclass (framework-specific logic).
         """
         raise NotImplementedError(
