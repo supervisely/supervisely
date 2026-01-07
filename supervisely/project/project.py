@@ -3626,7 +3626,11 @@ class Project:
         if project_name is None:
             project_name = project_info.name
         new_project_info = api.project.create(
-            workspace_id, project_name, change_name_if_conflict=True
+            workspace_id,
+            project_name,
+            description=project_info.description,
+            change_name_if_conflict=True,
+            readme=project_info.readme,
         )
         custom_data = new_project_info.custom_data
         version_num = project_info.version.get("version", None) if project_info.version else 0

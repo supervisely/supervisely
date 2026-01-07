@@ -1,5 +1,5 @@
 import hashlib
-from contextlib import contextmanager
+from contextlib import contextmanager, asynccontextmanager
 from typing import Optional, Union
 
 from fastapi import Request
@@ -60,20 +60,37 @@ async def extract_user_id_from_request(request: Request) -> Optional[Union[int, 
     return user_id
 
 
+def _session_context_impl(user_id: Optional[Union[int, str]]):
+    """Internal implementation for session context."""
+    if not sly_env.is_multiuser_mode_enabled() or user_id is None:
+        return None
+    return sly_env.set_user_for_multiuser_app(user_id)
+
 @contextmanager
 def session_context(user_id: Optional[Union[int, str]]):
     """
     Context manager to set and reset user context for multiuser applications.
     Call this at the beginning of a request handling to ensure the correct user context is set in environment variables (`supervisely_multiuser_app_user_id` ContextVar).
     """
-    if not sly_env.is_multiuser_mode_enabled() or user_id is None:
-        yield
-        return
-    token = sly_env.set_user_for_multiuser_app(user_id)
+    token = _session_context_impl(user_id)
     try:
         yield
     finally:
-        sly_env.reset_user_for_multiuser_app(token)
+        if token is not None:
+            sly_env.reset_user_for_multiuser_app(token)
+
+@asynccontextmanager
+async def async_session_context(user_id: Optional[Union[int, str]]):
+    """
+    Asynchronous context manager to set and reset user context for multiuser applications.
+    Call this at the beginning of an async request handling to ensure the correct user context is set in environment variables (`supervisely_multiuser_app_user_id` ContextVar).
+    """
+    token = _session_context_impl(user_id)
+    try:
+        yield
+    finally:
+        if token is not None:
+            sly_env.reset_user_for_multiuser_app(token)
 
 
 def remember_cookie(request: Request, user_id: Optional[Union[int, str]]):
