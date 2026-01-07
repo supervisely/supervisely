@@ -4,7 +4,7 @@ from .artifacts_uploader import OnlineTrainingArtifactsUploader
 from .live_training import LiveTraining
 from .incremental_dataset import IncrementalDataset
 from .dynamic_sampler import DynamicSampler
-from .checkpoint_utils import restore_dataset_from_checkpoint
+from .checkpoint_utils import resolve_checkpoint
 
 __all__ = [
     'LossPlateauDetector',
@@ -14,5 +14,5 @@ __all__ = [
     'LiveTraining',
     'IncrementalDataset',
     'DynamicSampler',
-    'restore_dataset_from_checkpoint'
+    'resolve_checkpoint',
 ]
