@@ -8,17 +8,18 @@ from .helpers import ClassMap
 import supervisely as sly
 from supervisely import logger
 from supervisely.nn import TaskType
+from datetime import datetime
+import signal
+import sys
 
-# Import resolve_checkpoint
 from .checkpoint_utils import resolve_checkpoint
-
+from .artifacts_utils import upload_artifacts
 
 class Phase:
     READY_TO_START = "ready_to_start"
     WAITING_FOR_SAMPLES = "waiting_for_samples"
     INITIAL_TRAINING = "initial_training"
     TRAINING = "training"
-
 
 class LiveTraining:
     
@@ -40,6 +41,8 @@ class LiveTraining:
         self.filter_classes_by_task = filter_classes_by_task
         if self.task_type is None and self.filter_classes_by_task:
             raise ValueError("task_type must be set in subclass if filter_classes_by_task is set to True")
+        if self.framework_name is None:
+            raise ValueError("framework_name must be set in subclass")
         
         self.project_id = sly.env.project_id()
         self.team_id = sly.env.team_id()
@@ -69,10 +72,7 @@ class LiveTraining:
         selected_task_id_env = os.getenv("modal.state.selectedExperimentTaskId")
         self.selected_experiment_task_id = int(selected_task_id_env) if selected_task_id_env else None
         self.work_dir = 'app_data'
-        self.checkpoint_path = None
-        self.dataset_metadata = None
-        self.images_ids = []    
-    
+
         # from . import live_training_instance
         # live_training_instance = self  # for access from other modules
     
@@ -89,30 +89,82 @@ class LiveTraining:
             'initial_iters': self.initial_iters,
         }
     
-    def run(self):
-        if checkpoint_mode == "scratch":
-            self._run_from_scratch()
-        else:
-            self._run_from_checkpoint()
-        # Phase 1: wait for /start request
-        self.phase = Phase.READY_TO_START
-        self._resolve_checkpoint_mode()
-        self._wait_for_start()
+    # def run(self):
+    #     if checkpoint_mode == "scratch":
+    #         self._run_from_scratch()
+    #     else:
+    #         self._run_from_checkpoint()
+    #     # Phase 1: wait for /start request
+    #     self.phase = Phase.READY_TO_START
+    #     self._resolve_checkpoint_mode()
+    #     self._wait_for_start()
 
-        # Phase 2: add initial samples or restore dataset
-        if self.checkpoint_mode == "continue" and self.images_ids:
-            logger.info("Restoring dataset from checkpoint...")
-            self._restore_dataset()
+    #     # Phase 2: add initial samples or restore dataset
+    #     if self.checkpoint_mode == "continue" and self.images_ids:
+    #         logger.info("Restoring dataset from checkpoint...")
+    #         self._restore_dataset()
+    #     else:
+    #         self.phase = Phase.WAITING_FOR_SAMPLES
+    #         self._wait_for_initial_samples()
+
+    #     # Phase 3: training
+    #     self.phase = Phase.INITIAL_TRAINING
+    #     self.train()
+
+        # TODO: implement uploading weights to Team Files, generate experiment report, etc.
+
+    def run(self):
+        training_start_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        upload_in_progress = [False]
+        
+        def signal_handler(signum, frame):
+            if upload_in_progress[0]:
+                signal.signal(signal.SIGINT, lambda s, f: sys.exit(1))
+                signal.signal(signal.SIGTERM, lambda s, f: sys.exit(1))
+                return
+            
+            self._save_experiment(training_start_time, upload_in_progress)
+            sys.exit(0)
+        
+        signal.signal(signal.SIGINT, signal_handler)
+        signal.signal(signal.SIGTERM, signal_handler)
+        
+        try:
+            if self.checkpoint_mode in ("continue", "finetune"):
+                self._run_from_checkpoint()
+            else:
+                self._run_from_scratch()
+        finally:
+            self._upload_artifacts(training_start_time, upload_in_progress)
+
+    def _run_from_scratch(self):
+        self.phase = Phase.READY_TO_START
+        self._wait_for_start()
+        
+        self.phase = Phase.WAITING_FOR_SAMPLES
+        self._wait_for_initial_samples()
+        
+        self.phase = Phase.INITIAL_TRAINING
+        self.train(self, checkpoint_path=None)
+
+    def _run_from_checkpoint(self):
+        checkpoint_path, state = self._load_checkpoint()
+        images_ids = state.get('images_ids', [])
+        dataset_metadata = state.get('dataset_metadata', {})
+        self.phase = state.get('phase', Phase.READY_TO_START)
+        self.iter = state.get('iter', 0)
+        self._loss = state.get('loss', None)
+
+        self._wait_for_start()
+        if images_ids:
+            self._restore_dataset(images_ids, dataset_metadata)
         else:
             self.phase = Phase.WAITING_FOR_SAMPLES
             self._wait_for_initial_samples()
 
-        # Phase 3: training
-        self.phase = Phase.INITIAL_TRAINING
-        self.train()
-
-        # TODO: implement uploading weights to Team Files, generate experiment report, etc.
-
+        self.phase = Phase.TRAINING
+        self.train(self, checkpoint_path=checkpoint_path)
+    
     def _wait_for_start(self):
         request = self.request_queue.get()
         while request.type != RequestType.START:
@@ -153,7 +205,7 @@ class LiveTraining:
                 logger.error(f"Error processing request {request.type}: {e}", exc_info=True)
                 request.future.set_exception(e)
 
-    def train(self):
+    def train(self, checkpoint_path: str = None):
         """
         Main training loop. Implement framework-specific training logic here.
         Prepare model config, set hyperparameters and run training.
@@ -248,10 +300,9 @@ class LiveTraining:
         assert hasattr(dataset, 'add_or_update'), "Dataset must implement add_or_update method. Consider inheriting from IncrementalDataset."
         self.dataset = dataset
     
-
-    def _resolve_checkpoint_mode(self):
+    def _load_checkpoint(self) -> tuple:
         """Resolve and configure checkpoint based on checkpoint_mode."""
-        self.checkpoint_path, self.class_map, state = resolve_checkpoint(
+        checkpoint_path, class_map, state = resolve_checkpoint(
             checkpoint_mode=self.checkpoint_mode,
             selected_experiment_task_id=self.selected_experiment_task_id,
             class_map=self.class_map,
@@ -259,10 +310,11 @@ class LiveTraining:
             api=self.api,
             team_id=self.team_id,
             framework_name=self.framework_name,
-            work_dir=self.work_dir)
+            work_dir=self.work_dir
+        )
         
-        if state is not None:
-            self.load_state(state)
+        self.class_map = class_map  
+        return checkpoint_path, state
 
     def state(self):
         state = {
@@ -286,12 +338,81 @@ class LiveTraining:
         self.images_ids = state.get('images_ids', [])
         dataset_size = state.get('dataset_size', 0)
 
-    def _restore_dataset(self):
+    def _restore_dataset(self, images_ids: list, dataset_metadata: dict):
+        if not images_ids:
+            return
+
+        logger.info(f"Restoring {len(images_ids)} images from Supervisely...")
+    
+        restored_count = 0
+        for img_id in images_ids:
+            img_info = self.api.image.get_info_by_id(img_id)
+            
+            if img_info is None:
+                logger.warning(f"Image {img_id} not found, skipping")
+                continue
+            
+            image_np = self.api.image.download_np(img_id)
+            ann_json = self.api.annotation.download_json(img_id)
+            ann = sly.Annotation.from_json(ann_json, self.project_meta)
+            
+            self.dataset.add_or_update(
+                image_id=img_id,
+                image_np=image_np,
+                annotation=ann,
+                image_name=img_info.name
+            )
+            
+            restored_count += 1
+            
+            if restored_count % 10 == 0:
+                logger.info(f"Restored {restored_count}/{len(images_ids)}")
+        
+        logger.info(f"Restored {restored_count} images")
+
+
+    def get_upload_params(self) -> dict:
         """
-        Restore dataset from images_ids by downloading from Supervisely.
-        Must be implemented in subclass (framework-specific logic).
+        Subclass must implement this to provide upload parameters.
+        
+        Returns:
+            dict with keys: config_file, model_name, model_config
         """
         raise NotImplementedError(
-            "Subclass must implement _restore_dataset() to download images "
-            "from Supervisely and populate IncrementalDataset"
+            f"{self.__class__.__name__} must implement get_upload_params()"
         )
+
+    def _save_experiment(self, training_start_time: str, upload_in_progress: list):
+        if upload_in_progress[0]:
+            return
+        
+        upload_in_progress[0] = True
+        
+        try:
+            upload_params = self.get_upload_params()
+            samples_added = len(self.dataset) - self.initial_samples if self.dataset else 0
+            
+            report_url = upload_artifacts(
+                api=self.api,
+                team_id=self.team_id,
+                task_id=self.task_id,
+                project_id=self.project_id,
+                work_dir=self.work_dir,
+                config_file=upload_params['config_file'],
+                framework_name=self.framework_name,
+                model_name=upload_params['model_name'],
+                task_type=self.task_type,
+                model_meta=self.project_meta,
+                model_config=upload_params['model_config'],
+                start_time=training_start_time,
+                initial_samples=self.initial_samples,
+                samples_added=samples_added
+            )
+            
+            logger.info(f"Report: {report_url}")
+        
+        except Exception as e:
+            logger.error(f"Upload failed: {e}", exc_info=True)
+        
+        finally:
+            upload_in_progress[0] = False

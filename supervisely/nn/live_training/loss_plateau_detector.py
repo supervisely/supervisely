@@ -44,7 +44,7 @@ class LossPlateauDetector():
         self.loss_history = []
         self.consecutive_plateau_count = 0
     
-    def register_save_checkpoint_callback(self, fn: Callable[???]):
+    def register_save_checkpoint_callback(self, fn: Callable[[], None]) -> None:
         """Register a callback function to save checkpoints."""
         self._save_checkpoint_fn = fn
 
@@ -107,7 +107,7 @@ class LossPlateauDetector():
                         checkpoint_hook.filename_tmpl = f'plateau_iter_{current_iter}.pth'
                         
                         # Trigger checkpoint save through the hook
-                        self._save_checkpoint_fn(???)
+                        self._save_checkpoint_fn()
                         
                         # Restore original filename
                         checkpoint_hook.filename_tmpl = original_filename
