@@ -1,5 +1,5 @@
 import numpy as np
-from torch.utils.tensorboard import SummaryWriter
+from typing import Callable
 
 
 class LossPlateauDetector():
@@ -28,17 +28,12 @@ class LossPlateauDetector():
         threshold: float = 0.005,
         patience: int = 1,
         check_interval: int = 1,
-        log_tensorboard: bool = False,
     ) -> None:
         self.window_size = window_size
         self.threshold = threshold
         self.check_interval = check_interval or window_size
         self.patience = patience
         self._min_iterations = 2 * window_size
-        if log_tensorboard:
-            self._tb_writer = SummaryWriter(log_dir='loss_plateau_logs')
-        else:
-            self._tb_writer = None
 
         # State variables
         self.loss_history = []
@@ -61,8 +56,6 @@ class LossPlateauDetector():
         runner=None,
     ) -> bool:        
         self.loss_history.append(loss)
-        if self._tb_writer:
-            self._tb_writer.add_scalar('loss_plateau_detector/loss', loss, current_iter)
 
         # Only check at specified intervals
         if (current_iter + 1) % self.check_interval != 0:
@@ -74,10 +67,7 @@ class LossPlateauDetector():
         
         # Perform plateau detection
         is_plateau, info = self._check_plateau(current_iter)
-        
-        if self._tb_writer:
-            self._tb_writer.add_scalar('loss_plateau_detector/metric', info['metric'], current_iter)
-        
+
         # Handle plateau detection
         if is_plateau:
             self.consecutive_plateau_count += 1

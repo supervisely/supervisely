@@ -11,7 +11,7 @@ from supervisely.nn import TaskType
 from datetime import datetime
 import signal
 import sys
-
+import time
 from .checkpoint_utils import resolve_checkpoint
 from .artifacts_utils import upload_artifacts
 
@@ -178,6 +178,36 @@ class LiveTraining:
         status = self.status()
         status['phase'] = Phase.WAITING_FOR_SAMPLES
         request.future.set_result(status)
+    
+    def _wait_for_initial_samples(self):
+        """Wait until dataset has enough samples to start training"""
+        if len(self.dataset) >= self.initial_samples:
+            return
+        samples_needed = self.initial_samples - len(self.dataset)
+        self._is_paused = True
+        
+        logger.info(f"Waiting for {samples_needed} initial samples...")
+        
+        sleep_interval = 0.5
+        elapsed_time = 0
+        samples_before = len(self.dataset)
+        max_wait_time = 3600
+        
+        while len(self.dataset) - samples_before < samples_needed:
+            if elapsed_time >= max_wait_time:
+                raise RuntimeError(
+                    f"Training cannot proceed: no new samples added after {max_wait_time}s"
+                )
+            
+            if not self.request_queue.is_empty():
+                self._process_pending_requests()
+            
+            time.sleep(sleep_interval)
+            elapsed_time += sleep_interval
+        
+        logger.info(f"Dataset ready with {len(self.dataset)} samples")
+        self._is_paused = False
+
     
     def _process_pending_requests(self):
         requests = self.request_queue.get_all()
