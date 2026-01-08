@@ -45,7 +45,7 @@ class ObjClass(KeyObject, JsonSerializable):
     :param name: Class name.
     :type name: str
     :param geometry_type: Defines the shape of ObjClass: :class:`Bitmap<supervisely.geometry.bitmap.Bitmap>`, :class:`Cuboid<supervisely.geometry.cuboid.Cuboid>`, :class:`Graph<supervisely.geometry.graph.GraphNodes>`, :class:`Point<supervisely.geometry.point.Point>`, :class:`Polygon<supervisely.geometry.polygon.Polygon>`, :class:`Polyline<supervisely.geometry.polyline.Polyline>`, :class:`Rectangle<supervisely.geometry.rectangle.Rectangle>`.
-    :type geometry_type: dict, optional
+    :type geometry_type: type, optional
     :param color: :class:`[R, G, B]`, generates random color by default.
     :type color: List[int, int, int], optional
     :param geometry_config: Additional settings of the geometry.
