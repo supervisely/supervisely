@@ -200,3 +200,7 @@ class IncrementalDataset:
     def __len__(self) -> int:
         return len(self.samples)
     
+    def get_images_ids(self) -> list:
+        """Get list of image IDs in dataset"""
+        return list(self.samples.keys())
+    

@@ -96,7 +96,7 @@ class LiveTraining:
     #         self._run_from_checkpoint()
     #     # Phase 1: wait for /start request
     #     self.phase = Phase.READY_TO_START
-    #     self._resolve_checkpoint_mode()
+wa    #     self._resolve_checkpoint_mode()
     #     self._wait_for_start()
 
     #     # Phase 2: add initial samples or restore dataset
