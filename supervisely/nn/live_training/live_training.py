@@ -1,6 +1,5 @@
 import os
 import numpy as np
-from torch import nn
 from .api_server import start_api_server
 from .request_queue import RequestQueue, RequestType
 from .incremental_dataset import IncrementalDataset
@@ -23,6 +22,7 @@ class Phase:
 
 class LiveTraining:
     
+    from torch import nn  # pylint: disable=import-error
     task_type: str = None  # Should be set in subclass
     framework_name: str = None # Should be set in subclass
     
@@ -37,6 +37,7 @@ class LiveTraining:
             initial_samples: int = 2,
             filter_classes_by_task: bool = True,
         ):
+        from torch import nn  # pylint: disable=import-error
         self.initial_samples = initial_samples
         self.filter_classes_by_task = filter_classes_by_task
         if self.task_type is None and self.filter_classes_by_task:
@@ -149,11 +150,9 @@ class LiveTraining:
 
     def _run_from_checkpoint(self):
         checkpoint_path, state = self._load_checkpoint()
+        self.load_state(state)
         images_ids = state.get('images_ids', [])
         dataset_metadata = state.get('dataset_metadata', {})
-        self.phase = state.get('phase', Phase.READY_TO_START)
-        self.iter = state.get('iter', 0)
-        self._loss = state.get('loss', None)
 
         self._wait_for_start()
         if images_ids:
@@ -352,7 +351,6 @@ class LiveTraining:
             'iter': self.iter,
             'loss': self._loss,
             'clases': [cls.name for cls in self.class_map.obj_classes],
-            'dataset_metadata': self.dataset_metadata,
             'images_ids': self.dataset.get_images_ids() if self.dataset else [],
             'dataset_size': len(self.dataset) if self.dataset else 0,
             # add more variables as needed
@@ -364,7 +362,6 @@ class LiveTraining:
         self.iter = state.get('iter', 0)
         self._loss = state.get('loss', None)
         # classes are handled during checkpoint loading
-        self.dataset_metadata = state.get('dataset_metadata', {})
         self.images_ids = state.get('images_ids', [])
         dataset_size = state.get('dataset_size', 0)
 

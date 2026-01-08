@@ -9,7 +9,7 @@ from supervisely.template.live_training.live_training_generator import LiveTrain
 import supervisely.io.json as sly_json
 import yaml
 import re
-import torch
+
 
 
 # ============= CHECKPOINTS =============
@@ -63,6 +63,7 @@ def process_checkpoint(
     loss_lookup: dict
 ) -> Tuple[str, dict]:
     """Process single checkpoint - extract metadata and copy to output"""
+    import torch  # pylint: disable=import-error
     state_dict = torch.load(str(ckpt_file), map_location='cpu', weights_only=False)
     
     # Extract iteration
@@ -327,6 +328,7 @@ def prepare_experiment_info(
 
 def calculate_duration(start_time: str) -> str:
     """Calculate training duration in 'Xh Ym' format"""
+    import torch  # pylint: disable=import-error
     try:
         start_dt = datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S")
         duration_sec = (datetime.now() - start_dt).total_seconds()
@@ -339,6 +341,7 @@ def calculate_duration(start_time: str) -> str:
 
 def get_device_name() -> str:
     """Get GPU device name or 'cpu'"""
+    import torch  # pylint: disable=import-error
     if not os.path.exists("/dev/nvidia0"):
         return "cpu"
     

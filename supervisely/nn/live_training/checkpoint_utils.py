@@ -2,8 +2,6 @@ import os
 import re
 from typing import Tuple, List, Optional
 import json
-
-import torch
 from supervisely import logger
 from supervisely.nn.live_training.helpers import ClassMap
 
@@ -93,6 +91,7 @@ def load_checkpoint_metadata(checkpoint_path: str) -> Tuple[dict, List[str]]:
         checkpoint: Loaded torch checkpoint dict
         saved_classes: List of class names from metadata
     """
+    import torch  # pylint: disable=import-error
     checkpoint = torch.load(checkpoint_path, map_location='cpu', weights_only=False)
     
     dataset_metadata = checkpoint.get('dataset_metadata', {})
@@ -137,6 +136,7 @@ def remove_classification_head(checkpoint_path: str) -> str:
     Returns:
         modified_path: Path to checkpoint without classification head
     """
+    import torch  # pylint: disable=import-error
     checkpoint = torch.load(checkpoint_path, map_location='cpu', weights_only=False)
     state_dict = checkpoint.get('state_dict', {})
     
