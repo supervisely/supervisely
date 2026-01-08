@@ -120,77 +120,20 @@ class IncrementalDataset:
         image.save(image_path)
         return image_path
 
-    def _decode_sly_bitmap_png(bitmap_data: str) -> np.ndarray:
-        """Decode Supervisely bitmap from base64 -> zlib -> PNG."""
-        compressed_data = base64.b64decode(bitmap_data)
-        png_bytes = zlib.decompress(compressed_data)
-        img_stream = BytesIO(png_bytes)
-        pil_img = Image.open(img_stream)
-        bitmap_mask = np.array(pil_img)
-        
-        if len(bitmap_mask.shape) == 3:
-            bitmap_mask = bitmap_mask[:, :, 0]
-        
-        return (bitmap_mask > 0).astype(np.uint8)
+    def _save_mask(self, annotation: sly.Annotation, image_name: str) -> str:
 
-    def _render_segmentation_mask(ann_json: dict, img_size: tuple, class2idx: dict) -> np.ndarray:
-        """
-        Render semantic segmentation mask from Supervisely annotation JSON.
-        Returns: np.ndarray of shape (H, W) with class indices
-        - Background = 0
-        - Class1 = 1, Class2 = 2, etc.
-        """
-        h, w = img_size
+        mapping = {label.obj_class: label.obj_class for label in annotation.labels}
+        ann_nonoverlap = annotation.to_nonoverlapping_masks(mapping)
+        
+        h, w = annotation.img_size.height, annotation.img_size.width
         mask = np.zeros((h, w), dtype=np.uint8)
         
-        for obj in ann_json.get('objects', []):
-            class_title = obj.get('classTitle', '')
-            geom_type = obj.get('geometryType', '')
-            
-            if geom_type == 'bitmap' and 'bitmap' in obj:
-                bitmap_info = obj['bitmap']
-                if 'data' in bitmap_info:
-                    origin = bitmap_info.get('origin', [0, 0])
-                    bitmap_mask = self._decode_sly_bitmap_png(bitmap_info['data'])
-                    
-                    if bitmap_mask is not None:
-                        class_id = class2idx.get(class_title)
-                        if class_id is not None:
-                            class_id = class_id + 1  # 0 = background, classes start from 1
-                            offset_x, offset_y = origin
-                            bh, bw = bitmap_mask.shape
-                            
-                            y_start = max(0, offset_y)
-                            x_start = max(0, offset_x)
-                            y_end = min(h, offset_y + bh)
-                            x_end = min(w, offset_x + bw)
-                            
-                            src_y_start = max(0, -offset_y)
-                            src_x_start = max(0, -offset_x)
-                            src_y_end = src_y_start + (y_end - y_start)
-                            src_x_end = src_x_start + (x_end - x_start)
-                            
-                            if y_end > y_start and x_end > x_start:
-                                mask_region = mask[y_start:y_end, x_start:x_end]
-                                bitmap_region = bitmap_mask[src_y_start:src_y_end, src_x_start:src_x_end]
-                                mask[y_start:y_end, x_start:x_end] = np.where(
-                                    bitmap_region > 0, class_id, mask_region
-                                )
+        for label in ann_nonoverlap.labels:
+            class_name = label.obj_class.name
+            class_id = self.class2idx.get(class_name)
+            if class_id is not None:
+                label.geometry.draw(mask, color=class_id + 1)
         
-        return mask
-    
-    def _save_mask(self, annotation: sly.Annotation, image_name: str) -> str:
-        ann_json = annotation.to_json()
-        img_size = (annotation.img_size.width, annotation.img_size.height)
-        mask = self._render_segmentation_mask(ann_json, img_size, self.class2idx)
-        
-        # Validate mask
-        if mask.shape != (img_size[1], img_size[0]):
-            raise ValueError(f"Mask shape {mask.shape} doesn't match image size {img_size}")
-        if mask.max() > len(self.class2idx):
-            raise ValueError(f"Mask contains invalid class ID {mask.max()}")
-        
-        mask = mask.astype(np.uint8)
         mask_name = Path(image_name).stem + '.png' 
         mask_path = str(self.masks_dir / mask_name)
         cv2.imwrite(mask_path, mask)
