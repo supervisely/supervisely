@@ -152,11 +152,10 @@ class LiveTraining:
         checkpoint_path, state = self._load_checkpoint()
         self.load_state(state)
         images_ids = state.get('images_ids', [])
-        dataset_metadata = state.get('dataset_metadata', {})
 
         self._wait_for_start()
         if images_ids:
-            self._restore_dataset(images_ids, dataset_metadata)
+            self._restore_dataset(images_ids)
         else:
             self.phase = Phase.WAITING_FOR_SAMPLES
             self._wait_for_initial_samples()
@@ -365,7 +364,7 @@ class LiveTraining:
         self.images_ids = state.get('images_ids', [])
         dataset_size = state.get('dataset_size', 0)
 
-    def _restore_dataset(self, images_ids: list, dataset_metadata: dict):
+    def _restore_dataset(self, images_ids: list):
         if not images_ids:
             return
 
