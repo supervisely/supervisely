@@ -73,6 +73,8 @@ class LiveTraining:
         selected_task_id_env = os.getenv("modal.state.selectedExperimentTaskId")
         self.selected_experiment_task_id = int(selected_task_id_env) if selected_task_id_env else None
         self.work_dir = 'app_data'
+        self.training_start_time = None
+        self._upload_in_progress = False
 
         # from . import live_training_instance
         # live_training_instance = self  # for access from other modules
@@ -90,45 +92,26 @@ class LiveTraining:
             'initial_iters': self.initial_iters,
         }
     
-    # def run(self):
-    #     if checkpoint_mode == "scratch":
-    #         self._run_from_scratch()
-    #     else:
-    #         self._run_from_checkpoint()
-    #     # Phase 1: wait for /start request
-    #     self.phase = Phase.READY_TO_START
-    #     self._resolve_checkpoint_mode()
-    #     self._wait_for_start()
-
-    #     # Phase 2: add initial samples or restore dataset
-    #     if self.checkpoint_mode == "continue" and self.images_ids:
-    #         logger.info("Restoring dataset from checkpoint...")
-    #         self._restore_dataset()
-    #     else:
-    #         self.phase = Phase.WAITING_FOR_SAMPLES
-    #         self._wait_for_initial_samples()
-
-    #     # Phase 3: training
-    #     self.phase = Phase.INITIAL_TRAINING
-    #     self.train()
-
-        # TODO: implement uploading weights to Team Files, generate experiment report, etc.
-
-    def run(self):
-        training_start_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        upload_in_progress = [False]
+    def _add_shutdown_callback(self):
+        """Setup graceful shutdown: save experiment on SIGINT/SIGTERM"""
+        self._upload_in_progress = False
         
         def signal_handler(signum, frame):
-            if upload_in_progress[0]:
+            if self._upload_in_progress:
+                # Already uploading - force exit on second signal
                 signal.signal(signal.SIGINT, lambda s, f: sys.exit(1))
                 signal.signal(signal.SIGTERM, lambda s, f: sys.exit(1))
                 return
             
-            self._save_experiment(training_start_time, upload_in_progress)
+            self._save_experiment()
             sys.exit(0)
         
         signal.signal(signal.SIGINT, signal_handler)
         signal.signal(signal.SIGTERM, signal_handler)
+
+    def run(self):
+        self.training_start_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self._add_shutdown_callback()
         
         try:
             if self.checkpoint_mode in ("continue", "finetune"):
@@ -136,8 +119,8 @@ class LiveTraining:
             else:
                 self._run_from_scratch()
         finally:
-            self._upload_artifacts(training_start_time, upload_in_progress)
-
+            self._save_experiment()
+            
     def _run_from_scratch(self):
         self.phase = Phase.READY_TO_START
         self._wait_for_start()
@@ -408,11 +391,11 @@ class LiveTraining:
             f"{self.__class__.__name__} must implement get_upload_params()"
         )
 
-    def _save_experiment(self, training_start_time: str, upload_in_progress: list):
-        if upload_in_progress[0]:
+    def _save_experiment(self):
+        if self._upload_in_progress:
             return
         
-        upload_in_progress[0] = True
+        self._upload_in_progress = True
         
         try:
             upload_params = self.get_upload_params()
@@ -430,7 +413,7 @@ class LiveTraining:
                 task_type=self.task_type,
                 model_meta=self.project_meta,
                 model_config=upload_params['model_config'],
-                start_time=training_start_time,
+                start_time=self.training_start_time,  # From self
                 initial_samples=self.initial_samples,
                 samples_added=samples_added
             )
@@ -441,4 +424,4 @@ class LiveTraining:
             logger.error(f"Upload failed: {e}", exc_info=True)
         
         finally:
-            upload_in_progress[0] = False
+            self._upload_in_progress = False

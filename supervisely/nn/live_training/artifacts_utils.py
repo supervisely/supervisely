@@ -372,12 +372,10 @@ def generate_and_upload_report(
     checkpoints_info: list,
     loss_history: dict,
     initial_samples: int,
-    samples_added: int
+    samples_added: int,
+    hyperparams: dict = None
 ) -> str:
     """Generate Live Training report and upload to Team Files"""
-    hyperparams = LiveTrainingGenerator.parse_hyperparameters(config_file) \
-        if os.path.exists(config_file) else {}
-    
     train_size = experiment_info.get("train_size", 0)
     val_size = experiment_info.get("val_size", 0)
     
