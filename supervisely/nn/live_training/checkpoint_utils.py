@@ -9,7 +9,7 @@ from supervisely.nn.live_training.helpers import ClassMap
 def find_latest_checkpoint_path(
     api,
     team_id: int,
-    selected_experiment_task_id: int,  # Было: task_id
+    selected_experiment_task_id: int, 
     framework_name: str
 ) -> str:
     """
@@ -32,13 +32,27 @@ def find_latest_checkpoint_path(
             if not task_dir.is_dir:
                 continue
             
-            # Ищем директорию с selected_experiment_task_id
             if task_dir.name.startswith(f"{selected_experiment_task_id}_") and f"_{framework_name}" in task_dir.name:
                 checkpoints_dir = task_dir.path + 'checkpoints/'
-                # ... остальной код поиска checkpoint
+                if not api.file.dir_exists(team_id, checkpoints_dir):
+                    break
+                
+                files = api.file.list(team_id, checkpoints_dir, recursive=False, return_type='fileinfo')
+                
+                checkpoint_files = []
+                for file_info in files:
+                    if file_info.name.endswith('.pth') and file_info.name != 'latest.pth':
+                        match = re.search(r'iter[_\s](\d+)', file_info.name)
+                        iteration = int(match.group(1)) if match else 0
+                        checkpoint_files.append((file_info, iteration))
+                
+                checkpoint_files.sort(key=lambda x: x[1], reverse=True)
+                checkpoint_files = [f[0] for f in checkpoint_files]
+                
+                if checkpoint_files:
+                    return checkpoint_files[0].path
     
     raise ValueError(f"No checkpoint found for experiment task_id={selected_experiment_task_id}")
-
 
 def download_checkpoint_file(
     api,
