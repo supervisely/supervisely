@@ -717,6 +717,8 @@ class ApiField:
     """"""
     GUIDE_ID = "guideId"
     """"""
+    ALLOW_RESTORE = "allowRestore"
+    """"""
     SINGLE_SESSION_MODE = "singleSessionMode"
 
 

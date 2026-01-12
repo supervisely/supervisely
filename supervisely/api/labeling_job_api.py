@@ -347,6 +347,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         toolbox_settings: Optional[Dict] = None,
         enable_quality_check: Optional[bool] = None,
         guide_id: Optional[int] = None,
+        allow_restore: Optional[bool] = False,
     ) -> List[LabelingJobInfo]:
         """
         Creates Labeling Job and assigns given Users to it.
@@ -393,6 +394,8 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type enable_quality_check: bool, optional
         :param guide_id: Guide ID in Supervisely to assign a guide to the Labeling Job.
         :type guide_id: int, optional
+        :param allow_restore: If True, allows restoring a previously deleted labeling job with the same name in the same dataset.
+        :type allow_restore: bool, optional
         :return: List of information about new Labeling Job. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[LabelingJobInfo]`
         :Usage example:
@@ -471,6 +474,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             "entityIds": images_ids,
             "dynamicClasses": dynamic_classes,
             "dynamicTags": dynamic_tags,
+            "allowRestore": allow_restore,
         }
 
         if guide_id is not None:
