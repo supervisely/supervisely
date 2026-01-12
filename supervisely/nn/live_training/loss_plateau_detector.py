@@ -2,24 +2,15 @@ import numpy as np
 from typing import Callable
 
 
-class LossPlateauDetector():
-    """Detect plateau in training loss using moving average comparison.
-    
-    This hook monitors the training loss and detects when it has plateaued
-    by comparing the moving average of recent losses with the previous window.
+class LossPlateauDetector:
+    """
+    Detect plateau in training loss using moving average comparison.
     
     Args:
-        window_size (int): Number of iterations to use for computing the 
-            moving average. Default: 50.
-        threshold (float): Relative change threshold below which plateau is 
-            detected (e.g., 0.005 means 0.5% change). Default: 0.005.
-        patience (int): Number of consecutive plateau detections required before
-            taking action. This prevents premature stopping due to temporary
-            fluctuations. Default: 1.
-        check_interval (int): How often to check for plateau (every N iterations).
-            If None, defaults to window_size.
-            Default: None.
-    
+        window_size: Number of iterations for moving average
+        threshold: Relative change threshold (e.g., 0.005 = 0.5%)
+        patience: Number of consecutive plateau detections before action
+        check_interval: Check frequency (every N iterations)
     """
 
     def __init__(
@@ -28,96 +19,81 @@ class LossPlateauDetector():
         threshold: float = 0.005,
         patience: int = 1,
         check_interval: int = 1,
-    ) -> None:
+    ):
         self.window_size = window_size
         self.threshold = threshold
-        self.check_interval = check_interval or window_size
+        self.check_interval = check_interval
         self.patience = patience
         self._min_iterations = 2 * window_size
 
-        # State variables
+        # State
         self.loss_history = []
         self.consecutive_plateau_count = 0
+        self._save_checkpoint_fn = None
     
-    def register_save_checkpoint_callback(self, fn: Callable[[], None]) -> None:
-        """Register a callback function to save checkpoints."""
+    def register_save_checkpoint_callback(self, fn: Callable[[], None]):
+        """Register callback function to save checkpoint when plateau detected"""
         self._save_checkpoint_fn = fn
 
-    def reset(self) -> None:
-        """Reset the detector state."""
+    def reset(self):
+        """Reset detector state"""
         self.loss_history = []
         self.consecutive_plateau_count = 0
-        self._min_iterations = 2 * self.window_size
 
-    def step(
-        self,
-        loss: float,
-        current_iter: int,
-        runner=None,
-    ) -> bool:        
+    def step(self, loss: float, current_iter: int) -> bool:
+        """
+        Process one training iteration.
+        
+        Args:
+            loss: Current loss value
+            current_iter: Current iteration number
+            
+        Returns:
+            True if plateau confirmed and checkpoint saved, False otherwise
+        """
         self.loss_history.append(loss)
 
-        # Only check at specified intervals
+        # Check only at specified intervals
         if (current_iter + 1) % self.check_interval != 0:
-            return
+            return False
         
-        # Check if we have enough data
+        # Need enough data
         if len(self.loss_history) < self._min_iterations:
-            return
+            return False
         
-        # Perform plateau detection
+        # Check for plateau
         is_plateau, info = self._check_plateau(current_iter)
-
-        # Handle plateau detection
+        
         if is_plateau:
             self.consecutive_plateau_count += 1
             print(
                 f'[Plateau Detection] Iteration {current_iter}: '
-                f'Plateau signal {self.consecutive_plateau_count}/{self.patience}\n'
-                f'    Change: {info["metric"]:.6f} '
-                f'(Previous Avg: {info["previous_avg"]:.6f}, Current Avg: {info["current_avg"]:.6f}) '
-                f'(threshold: {self.threshold})'
+                f'Signal {self.consecutive_plateau_count}/{self.patience} '
+                f'(change: {info["metric"]:.6f}, threshold: {self.threshold})'
             )
             
-            # Check if we've reached patience threshold
+            # Trigger action when patience reached
             if self.consecutive_plateau_count >= self.patience:
-                print(f'[Plateau Detection] Plateau confirmed! Triggering checkpoint save...')
+                print(f'[Plateau Detection] Plateau confirmed, saving checkpoint...')
                 
-                if runner is not None:
-                    # Find CheckpointHook in runner's hooks
-                    checkpoint_hook = None
-                    for hook in runner.hooks:
-                        if hook.__class__.__name__ == 'CheckpointHook':
-                            checkpoint_hook = hook
-                            break
-                    
-                    if checkpoint_hook is not None:
-                        # Temporarily override filename
-                        original_filename = checkpoint_hook.filename_tmpl
-                        checkpoint_hook.filename_tmpl = f'plateau_iter_{current_iter}.pth'
-                        
-                        # Trigger checkpoint save through the hook
-                        self._save_checkpoint_fn()
-                        
-                        # Restore original filename
-                        checkpoint_hook.filename_tmpl = original_filename
-                        
-                        print(f'[Plateau Detection] Checkpoint saved via CheckpointHook')
-                    else:
-                        print(f'[Plateau Detection] CheckpointHook not found, cannot save checkpoint')
+                if self._save_checkpoint_fn is not None:
+                    self._save_checkpoint_fn()
+                    print(f'[Plateau Detection] Checkpoint saved')
                 else:
-                    print(f'[Plateau Detection] Runner not available, checkpoint not saved')
+                    print(f'[Plateau Detection] No callback registered')
                 
-                # Reset counter after action
                 self.consecutive_plateau_count = 0
                 return True
+        
+        return False
     
     def _check_plateau(self, current_iter: int) -> tuple:
-        # Calculate current window average (last N steps)
+        """Check if current window shows plateau"""
+        # Current window average
         current_window = self.loss_history[-self.window_size:]
         current_avg = np.mean(current_window)
         
-        # Calculate previous window average (N steps before current window)
+        # Previous window average
         previous_window = self.loss_history[-2*self.window_size:-self.window_size]
         previous_avg = np.mean(previous_window)
         
