@@ -129,7 +129,7 @@ class LiveTraining:
         self._wait_for_initial_samples()
         
         self.phase = Phase.INITIAL_TRAINING
-        self.train(self, checkpoint_path=None)
+        self.train(checkpoint_path=None)
 
     def _run_from_checkpoint(self):
         checkpoint_path, state = self._load_checkpoint()
