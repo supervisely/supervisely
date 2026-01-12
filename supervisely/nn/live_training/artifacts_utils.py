@@ -15,10 +15,7 @@ import re
 # ============= CHECKPOINTS =============
 
 def prepare_checkpoints(
-    work_dir: Path,
-    output_dir: Path,
-    model_meta: sly.ProjectMeta,
-    model_name: str
+    checkpoint_dir: Path,
 ) -> Tuple[List[str], List[dict]]:
     """
     Prepare checkpoints with metadata (iteration, loss).
@@ -291,7 +288,7 @@ def prepare_experiment_info(
         "experiment_name": f"Live Training {task_type.capitalize()} - Task {task_id}",
         "framework_name": framework_name,
         "model_name": model_name,
-        "base_checkpoint": model_config.get("backbone", "N/A"),
+        "base_checkpoint": None,
         "base_checkpoint_link": None,
         "task_type": task_type,
         "project_id": project_id,
@@ -373,7 +370,7 @@ def generate_and_upload_report(
     loss_history: dict,
     initial_samples: int,
     samples_added: int,
-    hyperparams: dict = None
+    hyperparameters: dict = None
 ) -> str:
     """Generate Live Training report and upload to Team Files"""
     train_size = experiment_info.get("train_size", 0)
@@ -389,7 +386,7 @@ def generate_and_upload_report(
         "logs_dir": f"{remote_dir}logs/",
         "checkpoints": checkpoints_info,
         "loss_history": loss_history,
-        "hyperparameters": hyperparams,
+        "hyperparameters": hyperparameters,
         "status": "completed",
         "device": experiment_info["device"],
         "dataset_size": train_size,
@@ -431,15 +428,18 @@ def upload_artifacts(
     task_id: int,
     project_id: int,
     work_dir: str,
+    experiment_info: dict,
+    checkpoint_dir: str = "checkpoints",
+    log_dir: str = "logs",
     config_file: str,
     framework_name: str,
     model_name: str,
     task_type: str,
     model_meta: sly.ProjectMeta,
     model_config: dict,
-    start_time: str,
-    initial_samples: int = 0,
-    samples_added: int = 0
+    # start_time: str,
+    # initial_samples: int = 0,
+    # samples_added: int = 0
 ) -> str:
     """
     Main function: prepare artifacts, upload to Team Files, generate report.
@@ -468,7 +468,7 @@ def upload_artifacts(
     
     # Copy logs and parse metrics
     copy_logs(work_dir, output_dir)
-    loss_history = parse_tensorboard_logs(work_dir)
+    loss_history = parse_tensorboard_logs(log_dir)
     
     # Generate auxiliary files
     model_files = generate_auxiliary_files(output_dir, config_file, model_meta, task_id)
@@ -488,18 +488,19 @@ def upload_artifacts(
         start_time, checkpoints, best_checkpoint, remote_dir, model_files
     )
     
-    # Get hyperparameters file_id
-    hyperparams_info = api.file.get_info_by_path(
-        team_id, os.path.join(remote_dir, "hyperparameters.yaml")
-    )
-    if hyperparams_info:
-        experiment_info["hyperparameters_id"] = hyperparams_info.id
+    # # Get hyperparameters file_id
+    # hyperparams_info = api.file.get_info_by_path(
+    #     team_id, os.path.join(remote_dir, "hyperparameters.yaml")
+    # )
+    # if hyperparams_info:
+    #     experiment_info["hyperparameters_id"] = hyperparams_info.id
     
     # Generate report
     report_url = generate_and_upload_report(
         api, team_id, task_id, project_id, work_dir, config_file, task_type,
         experiment_info, model_meta, model_config, remote_dir,
-        checkpoints_info, loss_history, initial_samples, samples_added
+        checkpoints_info, loss_history, initial_samples, samples_added,
+        hyperparameters=experiment_info.get("hyperparameters")
     )
     
     # Mark report exists and save experiment_info

@@ -103,7 +103,7 @@ class LiveTraining:
                 signal.signal(signal.SIGTERM, lambda s, f: sys.exit(1))
                 return
             
-            self._save_experiment()
+            self._upload_artifacts()
             sys.exit(0)
         
         signal.signal(signal.SIGINT, signal_handler)
@@ -119,7 +119,8 @@ class LiveTraining:
             else:
                 self._run_from_scratch()
         finally:
-            self._save_experiment()
+            self.save_checkpoint(...)
+            self._upload_artifacts()
             
     def _run_from_scratch(self):
         self.phase = Phase.READY_TO_START
@@ -134,11 +135,11 @@ class LiveTraining:
     def _run_from_checkpoint(self):
         checkpoint_path, state = self._load_checkpoint()
         self.load_state(state)
-        images_ids = state.get('images_ids', [])
+        image_ids = state.get('image_ids', [])
 
         self._wait_for_start()
-        if images_ids:
-            self._restore_dataset(images_ids)
+        if image_ids:
+            self._restore_dataset(image_ids)
         else:
             self.phase = Phase.WAITING_FOR_SAMPLES
             self._wait_for_initial_samples()
@@ -333,7 +334,7 @@ class LiveTraining:
             'iter': self.iter,
             'loss': self._loss,
             'clases': [cls.name for cls in self.class_map.obj_classes],
-            'images_ids': self.dataset.get_images_ids() if self.dataset else [],
+            'image_ids': self.dataset.get_image_ids() if self.dataset else [],
             'dataset_size': len(self.dataset) if self.dataset else 0,
             # add more variables as needed
         }
@@ -344,17 +345,17 @@ class LiveTraining:
         self.iter = state.get('iter', 0)
         self._loss = state.get('loss', None)
         # classes are handled during checkpoint loading
-        self.images_ids = state.get('images_ids', [])
+        self.image_ids = state.get('image_ids', [])
         dataset_size = state.get('dataset_size', 0)
 
-    def _restore_dataset(self, images_ids: list):
-        if not images_ids:
+    def _restore_dataset(self, image_ids: list):
+        if not image_ids:
             return
 
-        logger.info(f"Restoring {len(images_ids)} images from Supervisely...")
+        logger.info(f"Restoring {len(image_ids)} images from Supervisely...")
     
         restored_count = 0
-        for img_id in images_ids:
+        for img_id in image_ids:
             img_info = self.api.image.get_info_by_id(img_id)
             
             if img_info is None:
@@ -375,7 +376,7 @@ class LiveTraining:
             restored_count += 1
             
             if restored_count % 10 == 0:
-                logger.info(f"Restored {restored_count}/{len(images_ids)}")
+                logger.info(f"Restored {restored_count}/{len(image_ids)}")
         
         logger.info(f"Restored {restored_count} images")
 
@@ -391,7 +392,7 @@ class LiveTraining:
             f"{self.__class__.__name__} must implement get_upload_params()"
         )
 
-    def _save_experiment(self):
+    def _upload_artifacts(self):
         if self._upload_in_progress:
             return
         
@@ -425,3 +426,6 @@ class LiveTraining:
         
         finally:
             self._upload_in_progress = False
+    
+    def save_checkpoint(self, checkpoint_path: str):
+        pass
