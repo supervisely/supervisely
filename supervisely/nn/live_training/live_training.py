@@ -144,7 +144,7 @@ class LiveTraining:
             self._wait_for_initial_samples()
 
         self.phase = Phase.TRAINING
-        self.train(self, checkpoint_path=checkpoint_path)
+        self.train(checkpoint_path=checkpoint_path)
     
     def _wait_for_start(self):
         request = self.request_queue.get()
@@ -216,7 +216,7 @@ class LiveTraining:
                 logger.error(f"Error processing request {request.type}: {e}", exc_info=True)
                 request.future.set_exception(e)
 
-    def train(self, checkpoint_path: str = None):
+    def train(checkpoint_path: str = None):
         """
         Main training loop. Implement framework-specific training logic here.
         Prepare model config, set hyperparameters and run training.
