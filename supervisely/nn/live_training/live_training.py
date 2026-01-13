@@ -13,6 +13,7 @@ import sys
 import time
 from .checkpoint_utils import resolve_checkpoint, save_state_json
 from .artifacts_utils import upload_artifacts
+from .loss_plateau_detector import LossPlateauDetector
 from pathlib import Path
 
 class Phase:
@@ -69,6 +70,9 @@ class LiveTraining:
         self.class_map = self._init_class_map(self.project_meta)
         self.dataset: IncrementalDataset = None
         self.model: nn.Module  = None
+        self.loss_plateau_detector = LossPlateauDetector()
+        self.loss_plateau_detector.register_save_checkpoint_callback(self.save_checkpoint)
+        self.latest_checkpoint_path = f"{self.work_dir}/checkpoints/latest.pth"
         
         self.checkpoint_mode = os.getenv("modal.state.checkpointMode", "scratch")
         selected_task_id_env = os.getenv("modal.state.selectedExperimentTaskId")
@@ -125,10 +129,10 @@ class LiveTraining:
             else:
                 self._run_from_scratch()
         finally:
-            final_checkpoint = f"{self.work_dir}/checkpoints/final.pth"
+            final_checkpoint = self.latest_checkpoint_path
             self.save_checkpoint(final_checkpoint)
             save_state_json(self.state(), final_checkpoint)
-            self._upload_artifacts()
+            self._upload_artifacts() #TODO: write best ckpt path to experiment info
         
     def _run_from_scratch(self):
         self.phase = Phase.READY_TO_START
@@ -311,6 +315,7 @@ class LiveTraining:
     def after_train_step(self, loss: float):
         self.iter += 1
         self._loss = loss
+        self.loss_plateau_detector.step(loss, self.iter)
         self._process_pending_requests()
     
     def register_model(self, model: nn.Module):
