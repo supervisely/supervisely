@@ -138,10 +138,16 @@ def create_pixel_data_set(dcm: FileDataset, frame_axis: int) -> Tuple[List[np.nd
 def convert_to_monochrome2(dcm_path: str, dcm: FileDataset) -> FileDataset:
     if getattr(dcm, "PhotometricInterpretation", None) == "YBR_FULL_422":
         # * Convert dicom to monochrome
-        if len(dcm.pixel_array.shape) == 4 and dcm.pixel_array.shape[-1] == 3:
-            monochrome = dcm.pixel_array[..., 0].astype(np.uint8)
+        monochrome = None
+        pixel_array = dcm.pixel_array
+
+        if len(pixel_array.shape) == 4 and pixel_array.shape[-1] == 3:
+            monochrome = pixel_array[..., 0].astype(np.uint8)
+        elif len(pixel_array.shape) == 3 and pixel_array.shape[-1] == 3:
+            monochrome = pixel_array[..., 0].astype(np.uint8)
         else:
-            logger.warn("Unexpected shape for YBR_FULL_422 data: " + str(dcm.pixel_array.shape))
+            logger.warning("Unexpected shape for YBR_FULL_422 data: " + str(pixel_array.shape))
+            return dcm
 
         try:
             dcm.SamplesPerPixel = 1
@@ -150,9 +156,14 @@ def convert_to_monochrome2(dcm_path: str, dcm: FileDataset) -> FileDataset:
             if len(monochrome.shape) == 3:
                 dcm.NumberOfFrames = str(monochrome.shape[0])
                 dcm.Rows, dcm.Columns = monochrome.shape[1:3]
+            elif len(monochrome.shape) == 2:
+                dcm.Rows, dcm.Columns = monochrome.shape[0:2]
+                if hasattr(dcm, "NumberOfFrames"):
+                    delattr(dcm, "NumberOfFrames")
             dcm.PixelData = monochrome.tobytes()
         except AttributeError as ae:
             logger.error(f"Error occurred while converting dicom to monochrome: {ae}")
+            return dcm
 
         logger.info("Rewriting DICOM file with monochrome2 format")
         dcm.save_as(dcm_path)
