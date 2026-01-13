@@ -22,13 +22,22 @@ def validate_classes_exact_match(saved_classes: List[str], current_classes: List
 def reorder_class_map(saved_classes: List[str], project_meta) -> ClassMap:
     """
     Create ClassMap with reordered classes matching checkpoint order.
-    
+
     Returns:
         class_map: New ClassMap with correct order
     """
     class_mapping = {cls: idx for idx, cls in enumerate(saved_classes)}
     logger.info(f"Class mapping: {class_mapping}")
-    return ClassMap.from_names(list(class_mapping.keys()), project_meta)
+
+    # Create ClassMap from class names in checkpoint order
+    obj_classes = []
+    for name in saved_classes:
+        obj_class = project_meta.get_obj_class(name)
+        if obj_class is None:
+            raise ValueError(f"Class '{name}' not found in project metadata")
+        obj_classes.append(obj_class)
+
+    return ClassMap(obj_classes)
 
 
 def remove_classification_head(checkpoint_path: str) -> str:

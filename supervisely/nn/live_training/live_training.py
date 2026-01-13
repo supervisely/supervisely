@@ -393,44 +393,51 @@ class LiveTraining:
         logger.info(f"Restored {restored_count} images")
 
 
-    def get_upload_params(self) -> dict:
+    def prepare_artifacts(self) -> dict:
         """
-        Subclass must implement this to provide upload parameters.
-        
+        Prepare all artifacts for upload (framework-specific).
+
         Returns:
-            dict with keys: config_file, model_name, model_config
+            Dict with:
+                - checkpoint_path: path to checkpoint file
+                - checkpoint_info: dict with {name, iteration, loss}
+                - config_path: path to config file
+                - logs_dir: path to logs directory or None
+                - model_name: model name
+                - model_config: model configuration dict
         """
         raise NotImplementedError(
-            f"{self.__class__.__name__} must implement get_upload_params()"
+            f"{self.__class__.__name__} must implement prepare_artifacts()"
         )
 
     def _upload_artifacts(self):
         if self._upload_in_progress:
             return
-        
+
         self._upload_in_progress = True
-        
+
         try:
-            upload_params = self.get_upload_params()
-            samples_added = len(self.dataset) - self.initial_samples if self.dataset else 0
-            
+            artifacts = self.prepare_artifacts()
+            train_size = len(self.dataset) if self.dataset else 0
+
             report_url = upload_artifacts(
                 api=self.api,
                 team_id=self.team_id,
                 task_id=self.task_id,
                 project_id=self.project_id,
-                work_dir=self.work_dir,
-                config_file=upload_params['config_file'],
+                checkpoint_path=artifacts['checkpoint_path'],
+                checkpoint_info=artifacts['checkpoint_info'],
+                config_path=artifacts['config_path'],
+                logs_dir=artifacts.get('logs_dir'),
                 framework_name=self.framework_name,
-                model_name=upload_params['model_name'],
+                model_name=artifacts['model_name'],
                 task_type=self.task_type,
                 model_meta=self.project_meta,
-                model_config=upload_params['model_config'],
-                start_time=self.training_start_time,  # From self
-                initial_samples=self.initial_samples,
-                samples_added=samples_added
+                model_config=artifacts['model_config'],
+                start_time=self.training_start_time,
+                train_size=train_size,
             )
-            
+
             logger.info(f"Report: {report_url}")
         
         except Exception as e:
