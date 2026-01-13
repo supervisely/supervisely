@@ -65,7 +65,6 @@ def resolve_checkpoint(
     project_meta,
     api,
     team_id: int,
-    framework_name: str,
     work_dir: str
 ) -> Tuple[Optional[str], ClassMap, Optional[dict]]:
     """
@@ -86,6 +85,7 @@ def resolve_checkpoint(
         class_map: Updated ClassMap (may be reordered for finetune/continue)
         state: Training state dict (only for continue mode)
     """
+    checkpoint_name = "latest.pth"
     current_classes = [cls.name for cls in class_map.obj_classes]
     logger.info(f"Checkpoint mode: {checkpoint_mode}")
     
@@ -101,18 +101,17 @@ def resolve_checkpoint(
     # Get experiment info
     task_info = api.task.get_info_by_id(selected_experiment_task_id)
     experiment_info = task_info["meta"]["output"]["experiment"]["data"]
-    
+
     artifacts_dir = experiment_info["artifacts_dir"]
-    best_checkpoint = experiment_info["best_checkpoint"]
     model_meta_filename = experiment_info.get("model_meta", "model_meta.json")
-    
+
     # Setup local paths
     local_dir = os.path.join(work_dir, 'downloaded_checkpoints')
     os.makedirs(local_dir, exist_ok=True)
-    
+
     # Download checkpoint
-    remote_checkpoint = f"{artifacts_dir}checkpoints/{best_checkpoint}"
-    local_checkpoint = os.path.join(local_dir, best_checkpoint)
+    remote_checkpoint = f"{artifacts_dir}checkpoints/{checkpoint_name}"
+    local_checkpoint = os.path.join(local_dir, checkpoint_name)
     
     logger.info(f"Downloading checkpoint from {remote_checkpoint}")
     api.file.download(team_id, remote_checkpoint, local_checkpoint)
@@ -159,9 +158,9 @@ def resolve_checkpoint(
     elif checkpoint_mode == "continue":
         logger.info(f"Continue mode: loading from task_id={selected_experiment_task_id}")
         validate_classes_exact_match(saved_classes, current_classes)
-        
+
         # Download state JSON
-        state_filename = best_checkpoint.replace('.pth', '_state.json')
+        state_filename = checkpoint_name.replace('.pth', '_state.json')
         remote_state = f"{artifacts_dir}checkpoints/{state_filename}"
         local_state = local_checkpoint.replace('.pth', '_state.json')
         

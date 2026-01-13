@@ -334,7 +334,6 @@ class LiveTraining:
             project_meta=self.project_meta,
             api=self.api,
             team_id=self.team_id,
-            framework_name=self.framework_name,
             work_dir=self.work_dir
         )
         
