@@ -247,21 +247,6 @@ def generate_auxiliary_files(
     return model_files
 
 
-def count_dataset_images(work_dir: Path) -> int:
-    """Count images in training dataset directory"""
-    images_dir = work_dir.parent / 'images' / 'train'
-    
-    if not images_dir.exists():
-        logger.warning(f"Images directory not found: {images_dir}")
-        return 0
-    
-    image_extensions = ['.jpg', '.jpeg', '.png', '.JPG', '.JPEG', '.PNG']
-    count = sum(len(list(images_dir.glob(f'*{ext}'))) for ext in image_extensions)
-    
-    logger.info(f"Found {count} training images in {images_dir}")
-    return count
-
-
 # ============= EXPERIMENT INFO =============
 
 def prepare_experiment_info(
@@ -278,11 +263,11 @@ def prepare_experiment_info(
     checkpoints: List[str],
     best_checkpoint: str,
     remote_dir: str,
-    model_files: dict
+    model_files: dict,
+    train_size: int
 ) -> dict:
     """Build experiment_info dictionary for Supervisely experiments page"""
     project_info = api.project.get_info_by_id(project_id)
-    train_size = count_dataset_images(work_dir)
     
     experiment_info = {
         "experiment_name": f"Live Training {task_type.capitalize()} - Task {task_id}",

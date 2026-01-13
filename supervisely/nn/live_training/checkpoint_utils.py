@@ -6,7 +6,7 @@ from supervisely import logger
 from supervisely.nn.live_training.helpers import ClassMap
 
 
-def find_latest_checkpoint_path(
+ьdef find_latest_checkpoint_path(
     api,
     team_id: int,
     selected_experiment_task_id: int, 
