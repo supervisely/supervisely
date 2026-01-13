@@ -4,119 +4,7 @@ from typing import Tuple, List, Optional
 import json
 from supervisely import logger
 from supervisely.nn.live_training.helpers import ClassMap
-
-
-ьdef find_latest_checkpoint_path(
-    api,
-    team_id: int,
-    selected_experiment_task_id: int, 
-    framework_name: str
-) -> str:
-    """
-    Find the latest checkpoint for given experiment task.
-    
-    Args:
-        selected_experiment_task_id: ID of experiment to load checkpoint from
-    """
-    experiments_base = "/experiments/live_training/"
-    
-    project_dirs = api.file.list(team_id, experiments_base, recursive=False, return_type='fileinfo')
-    
-    for project_dir in project_dirs:
-        if not project_dir.is_dir:
-            continue
-        
-        task_dirs = api.file.list(team_id, project_dir.path, recursive=False, return_type='fileinfo')
-        
-        for task_dir in task_dirs:
-            if not task_dir.is_dir:
-                continue
-            
-            if task_dir.name.startswith(f"{selected_experiment_task_id}_") and f"_{framework_name}" in task_dir.name:
-                checkpoints_dir = task_dir.path + 'checkpoints/'
-                if not api.file.dir_exists(team_id, checkpoints_dir):
-                    break
-                
-                files = api.file.list(team_id, checkpoints_dir, recursive=False, return_type='fileinfo')
-                
-                checkpoint_files = []
-                for file_info in files:
-                    if file_info.name.endswith('.pth') and file_info.name != 'latest.pth':
-                        match = re.search(r'iter[_\s](\d+)', file_info.name)
-                        iteration = int(match.group(1)) if match else 0
-                        checkpoint_files.append((file_info, iteration))
-                
-                checkpoint_files.sort(key=lambda x: x[1], reverse=True)
-                checkpoint_files = [f[0] for f in checkpoint_files]
-                
-                if checkpoint_files:
-                    return checkpoint_files[0].path
-    
-    raise ValueError(f"No checkpoint found for experiment task_id={selected_experiment_task_id}")
-
-def download_checkpoint_file(
-    api,
-    team_id: int,
-    remote_path: str,
-    local_dir: str
-) -> str:
-    """
-    Download checkpoint file from Team Files with size validation.
-    
-    Returns:
-        local_path: Path to downloaded checkpoint file
-    """
-    os.makedirs(local_dir, exist_ok=True)
-    
-    checkpoint_name = os.path.basename(remote_path)
-    local_path = os.path.join(local_dir, checkpoint_name)
-    
-    logger.info(f"Downloading checkpoint...")
-    logger.info(f"Remote: {remote_path}")
-    logger.info(f"Local: {local_path}")
-    
-    remote_file_info = api.file.get_info_by_path(team_id, remote_path)
-    expected_size = remote_file_info.sizeb
-    
-    api.file.download(
-        team_id=team_id,
-        remote_path=remote_path,
-        local_save_path=local_path
-    )
-    
-    actual_size = os.path.getsize(local_path)
-    if actual_size != expected_size:
-        if os.path.exists(local_path):
-            os.remove(local_path)
-        raise ValueError(
-            f"Downloaded file size mismatch! "
-            f"Expected: {expected_size} bytes, Got: {actual_size} bytes"
-        )
-    
-    logger.info(f"Checkpoint downloaded ({actual_size / 1024 / 1024:.1f} MB)")
-    return local_path
-
-
-def load_checkpoint_metadata(checkpoint_path: str) -> Tuple[dict, List[str]]:
-    """
-    Load checkpoint and extract dataset metadata.
-    
-    Returns:
-        checkpoint: Loaded torch checkpoint dict
-        saved_classes: List of class names from metadata
-    """
-    import torch  # pylint: disable=import-error
-    checkpoint = torch.load(checkpoint_path, map_location='cpu', weights_only=False)
-    
-    dataset_metadata = checkpoint.get('dataset_metadata', {})
-    if not dataset_metadata:
-        raise ValueError(
-            "Checkpoint does not contain dataset metadata. "
-            "This checkpoint was created with an older version."
-        )
-    
-    saved_classes = dataset_metadata.get('classes', [])
-    return checkpoint, saved_classes
+import supervisely as sly
 
 
 def validate_classes_exact_match(saved_classes: List[str], current_classes: List[str]):
@@ -179,7 +67,7 @@ def resolve_checkpoint(
     team_id: int,
     framework_name: str,
     work_dir: str
-) -> Tuple[Optional[str], ClassMap]:
+) -> Tuple[Optional[str], ClassMap, Optional[dict]]:
     """
     Main orchestrator function to resolve checkpoint loading based on mode.
     
@@ -190,35 +78,58 @@ def resolve_checkpoint(
         project_meta: Project metadata
         api: Supervisely API instance
         team_id: Team ID
-        framework_name: Framework name (e.g., 'mmseg', 'mmdet')
+        framework_name: Framework name (unused, kept for compatibility)
         work_dir: Working directory for downloaded files
     
     Returns:
         checkpoint_path: Path to checkpoint file (None for scratch mode)
         class_map: Updated ClassMap (may be reordered for finetune/continue)
+        state: Training state dict (only for continue mode)
     """
     current_classes = [cls.name for cls in class_map.obj_classes]
     logger.info(f"Checkpoint mode: {checkpoint_mode}")
     
-    # Scratch mode - no checkpoint needed
     if checkpoint_mode == "scratch":
         logger.info("Starting from pretrained weights (scratch mode)")
         return None, class_map, None
     
-    # Finetune and Continue modes require task_id
     if selected_experiment_task_id is None:
         raise ValueError(
             f"selected_experiment_task_id must be provided when checkpoint_mode='{checkpoint_mode}'"
         )
     
-    # Find and download checkpoint
-    remote_checkpoint = find_latest_checkpoint_path(api, team_id, selected_experiment_task_id, framework_name)
-    local_dir = os.path.join(work_dir, 'downloaded_checkpoints')
-    local_checkpoint = download_checkpoint_file(api, team_id, remote_checkpoint, local_dir)
+    # Get experiment info
+    task_info = api.task.get_info_by_id(selected_experiment_task_id)
+    experiment_info = task_info["meta"]["output"]["experiment"]["data"]
     
-    # Load metadata
-    checkpoint, saved_classes = load_checkpoint_metadata(local_checkpoint)
-    logger.info(f"Saved classes in checkpoint: {saved_classes}")
+    artifacts_dir = experiment_info["artifacts_dir"]
+    best_checkpoint = experiment_info["best_checkpoint"]
+    model_meta_filename = experiment_info.get("model_meta", "model_meta.json")
+    
+    # Setup local paths
+    local_dir = os.path.join(work_dir, 'downloaded_checkpoints')
+    os.makedirs(local_dir, exist_ok=True)
+    
+    # Download checkpoint
+    remote_checkpoint = f"{artifacts_dir}checkpoints/{best_checkpoint}"
+    local_checkpoint = os.path.join(local_dir, best_checkpoint)
+    
+    logger.info(f"Downloading checkpoint from {remote_checkpoint}")
+    api.file.download(team_id, remote_checkpoint, local_checkpoint)
+    logger.info(f"Checkpoint downloaded to {local_checkpoint}")
+    
+    # Download model_meta.json
+    remote_model_meta = f"{artifacts_dir}{model_meta_filename}"
+    local_model_meta = os.path.join(local_dir, 'model_meta.json')
+    
+    logger.info(f"Downloading model_meta from {remote_model_meta}")
+    api.file.download(team_id, remote_model_meta, local_model_meta)
+    
+    # Load saved classes
+    saved_project_meta = sly.ProjectMeta.from_json_file(local_model_meta)
+    saved_classes = [cls.name for cls in saved_project_meta.obj_classes]
+    
+    logger.info(f"Saved classes: {saved_classes}")
     logger.info(f"Current classes: {current_classes}")
     
     # Finetune mode - flexible class handling
@@ -226,39 +137,46 @@ def resolve_checkpoint(
         saved_set = set(saved_classes)
         current_set = set(current_classes)
         
-        # Case 1: Classes match exactly (possibly different order)
         if saved_set == current_set:
             if saved_classes != current_classes:
-                logger.info("The class order is different. Reordering classes")
+                logger.info("Class order differs. Reordering classes")
                 class_map = reorder_class_map(saved_classes, project_meta)
             else:
                 logger.info("Class names match exactly")
             return local_checkpoint, class_map, None
         
-        # Case 2: Same number of classes, different names -> remove head
         elif len(saved_classes) == len(current_classes):
-            logger.info("Class names differ but number of classes match. Removing classification head weights")
-            modified_checkpoint = remove_classification_head(local_checkpoint)
-            return modified_checkpoint, class_map, None
-        
-        # Case 3: Different number of classes -> keep full checkpoint, ignore head during loading
+            # logger.info("Class names differ but count matches. Removing classification head")
+            # modified_checkpoint = remove_classification_head(local_checkpoint)
+            logger.warning("Class names differ but count matches. Classification head will be kept as is")
+            return local_checkpoint, class_map, None
+            
         else:
-            logger.info("Class names and number of classes do not match. Removing classification head weights")
+            logger.info("Classes differ completely. Starting from checkpoint")
             return local_checkpoint, class_map, None
     
-    # Continue mode - strict class matching required
+    # Continue mode - strict matching required
     elif checkpoint_mode == "continue":
-        logger.info(f"Continue mode: loading checkpoint from task_id={selected_experiment_task_id}")
+        logger.info(f"Continue mode: loading from task_id={selected_experiment_task_id}")
         validate_classes_exact_match(saved_classes, current_classes)
-        logger.info(f"Checkpoint loaded from task_id={selected_experiment_task_id}")
+        
+        # Download state JSON
+        state_filename = best_checkpoint.replace('.pth', '_state.json')
+        remote_state = f"{artifacts_dir}checkpoints/{state_filename}"
+        local_state = local_checkpoint.replace('.pth', '_state.json')
+        
+        logger.info(f"Downloading state from {remote_state}")
+        api.file.download(team_id, remote_state, local_state)
+        
+        # Use existing utility function
         state = load_state_json(local_checkpoint)
-
+        
+        logger.info(f"State loaded with {state.get('dataset_size', 0)} samples at iter {state.get('iter', 0)}")
         return local_checkpoint, class_map, state
     
     else:
         raise ValueError(
-            f"Invalid checkpoint_mode='{checkpoint_mode}'. "
-            f"Valid values: 'scratch', 'finetune', 'continue'"
+            f"Invalid checkpoint_mode='{checkpoint_mode}'. Valid: 'scratch', 'finetune', 'continue'"
         )
 
 def save_state_json(state: dict, checkpoint_path: str):
@@ -275,7 +193,6 @@ def save_state_json(state: dict, checkpoint_path: str):
         json.dump(state, f, indent=2)
     
     logger.info(f"State saved to {state_path}")
-
 
 def load_state_json(checkpoint_path: str) -> dict:
     """

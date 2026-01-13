@@ -11,8 +11,9 @@ from datetime import datetime
 import signal
 import sys
 import time
-from .checkpoint_utils import resolve_checkpoint
+from .checkpoint_utils import resolve_checkpoint, save_state_json
 from .artifacts_utils import upload_artifacts
+from pathlib import Path
 
 class Phase:
     READY_TO_START = "ready_to_start"
@@ -112,6 +113,11 @@ class LiveTraining:
     def run(self):
         self.training_start_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self._add_shutdown_callback()
+
+        work_dir_path = Path(self.work_dir)
+        work_dir_path.mkdir(parents=True, exist_ok=True)
+        model_meta_path = work_dir_path / "model_meta.json"
+        self.project_meta.to_json_file(str(model_meta_path))
         
         try:
             if self.checkpoint_mode in ("continue", "finetune"):
@@ -119,9 +125,11 @@ class LiveTraining:
             else:
                 self._run_from_scratch()
         finally:
-            self.save_checkpoint(...)
+            final_checkpoint = f"{self.work_dir}/checkpoints/final.pth"
+            self.save_checkpoint(final_checkpoint)
+            save_state_json(self.state(), final_checkpoint)
             self._upload_artifacts()
-            
+        
     def _run_from_scratch(self):
         self.phase = Phase.READY_TO_START
         self._wait_for_start()
