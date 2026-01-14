@@ -29,7 +29,7 @@ class LiveTraining:
     framework_name: str = None # Should be set in subclass
     
     _task2geometries = {
-        TaskType.OBJECT_DETECTION: [sly.Rectangle],
+        TaskType.OBJECT_DETECTION: [sly.Rectangle], 
         TaskType.INSTANCE_SEGMENTATION: [sly.Bitmap, sly.Polygon],
         TaskType.SEMANTIC_SEGMENTATION: [sly.Bitmap, sly.Polygon],
     }
@@ -107,10 +107,13 @@ class LiveTraining:
                 signal.signal(signal.SIGINT, lambda s, f: sys.exit(1))
                 signal.signal(signal.SIGTERM, lambda s, f: sys.exit(1))
                 return
-            
+        
+            logger.info("Received shutdown signal, saving checkpoint...")
+            self.save_checkpoint(self.latest_checkpoint_path)
+            save_state_json(self.state(), self.latest_checkpoint_path)
             self._upload_artifacts()
             sys.exit(0)
-        
+            
         signal.signal(signal.SIGINT, signal_handler)
         signal.signal(signal.SIGTERM, signal_handler)
 
@@ -129,10 +132,9 @@ class LiveTraining:
             else:
                 self._run_from_scratch()
         finally:
-            final_checkpoint = self.latest_checkpoint_path
-            self.save_checkpoint(final_checkpoint)
-            save_state_json(self.state(), final_checkpoint)
-            self._upload_artifacts() #TODO: write best ckpt path to experiment info
+            self.save_checkpoint(self.latest_checkpoint_path)
+            save_state_json(self.state(), self.latest_checkpoint_path)
+            self._upload_artifacts() 
         
     def _run_from_scratch(self):
         self.phase = Phase.READY_TO_START
