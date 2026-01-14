@@ -11,46 +11,55 @@ import yaml
 
 
 def upload_artifacts(
-    api: sly.Api,
-    team_id: int,
-    task_id: int,
-    project_id: int,
-    checkpoint_path: str,
-    checkpoint_info: dict,
-    config_path: str,
-    logs_dir: Optional[str],
-    framework_name: str,
-    model_name: str,
-    task_type: str,
-    model_meta: sly.ProjectMeta,
-    model_config: dict,
-    start_time: str,
-    train_size: int,
+    session_info: dict,
+    artifacts: dict,
 ) -> str:
     """
     Upload artifacts to Team Files and generate experiment report.
 
     Args:
-        api: Supervisely API instance
-        team_id: Team ID
-        task_id: Task ID
-        project_id: Project ID
-        checkpoint_path: Path to checkpoint file
-        checkpoint_info: Dict with {name, iteration, loss}
-        config_path: Path to config file
-        logs_dir: Path to TensorBoard logs directory or None
-        framework_name: Framework name (e.g. 'mmdet')
-        model_name: Model name
-        task_type: Task type
-        model_meta: Project metadata
-        model_config: Model configuration dict
-        start_time: Training start time string
-        train_size: Final dataset size
+        session_info: Training session context
+            - api: Supervisely API instance
+            - team_id: Team ID
+            - task_id: Task ID
+            - project_id: Project ID
+            - framework_name: Framework name (e.g. 'mmdet')
+            - task_type: Task type
+            - project_meta: Project metadata
+            - start_time: Training start time string
+            - train_size: Final dataset size
+        
+        artifacts: Framework-specific artifacts
+            - checkpoint_path: Path to checkpoint file
+            - checkpoint_info: Dict with {name, iteration, loss}
+            - config_path: Path to config file
+            - logs_dir: Path to TensorBoard logs or None
+            - model_name: Model name
+            - model_config: Model configuration dict
 
     Returns:
         report_url: URL to experiment report
     """
     logger.info("Starting artifacts upload")
+
+    # Unpack session_info
+    api = session_info['api']
+    team_id = session_info['team_id']
+    task_id = session_info['task_id']
+    project_id = session_info['project_id']
+    framework_name = session_info['framework_name']
+    task_type = session_info['task_type']
+    model_meta = session_info['project_meta']
+    start_time = session_info['start_time']
+    train_size = session_info['train_size']
+    
+    # Unpack artifacts
+    checkpoint_path = artifacts['checkpoint_path']
+    checkpoint_info = artifacts['checkpoint_info']
+    config_path = artifacts['config_path']
+    logs_dir = artifacts.get('logs_dir')
+    model_name = artifacts['model_name']
+    model_config = artifacts['model_config']
 
     work_dir = Path(os.path.dirname(checkpoint_path)).parent
     output_dir = work_dir / "upload_artifacts"

@@ -29,7 +29,7 @@ class LiveTraining:
     framework_name: str = None # Should be set in subclass
     
     _task2geometries = {
-        TaskType.OBJECT_DETECTION: [sly.Rectangle], 
+        TaskType.OBJECT_DETECTION: [sly.Rectangle],
         TaskType.INSTANCE_SEGMENTATION: [sly.Bitmap, sly.Polygon],
         TaskType.SEMANTIC_SEGMENTATION: [sly.Bitmap, sly.Polygon],
     }
@@ -107,13 +107,14 @@ class LiveTraining:
                 signal.signal(signal.SIGINT, lambda s, f: sys.exit(1))
                 signal.signal(signal.SIGTERM, lambda s, f: sys.exit(1))
                 return
-        
+            
+            # Save checkpoint and state before upload
             logger.info("Received shutdown signal, saving checkpoint...")
             self.save_checkpoint(self.latest_checkpoint_path)
             save_state_json(self.state(), self.latest_checkpoint_path)
             self._upload_artifacts()
             sys.exit(0)
-            
+        
         signal.signal(signal.SIGINT, signal_handler)
         signal.signal(signal.SIGTERM, signal_handler)
 
@@ -132,9 +133,10 @@ class LiveTraining:
             else:
                 self._run_from_scratch()
         finally:
-            self.save_checkpoint(self.latest_checkpoint_path)
-            save_state_json(self.state(), self.latest_checkpoint_path)
-            self._upload_artifacts() 
+            final_checkpoint = self.latest_checkpoint_path
+            self.save_checkpoint(final_checkpoint)
+            save_state_json(self.state(), final_checkpoint)
+            self._upload_artifacts()
         
     def _run_from_scratch(self):
         self.phase = Phase.READY_TO_START
@@ -231,7 +233,7 @@ class LiveTraining:
                 logger.error(f"Error processing request {request.type}: {e}", exc_info=True)
                 request.future.set_exception(e)
 
-    def train(checkpoint_path: str = None):
+    def train(self, checkpoint_path: str = None):
         """
         Main training loop. Implement framework-specific training logic here.
         Prepare model config, set hyperparameters and run training.
@@ -412,6 +414,20 @@ class LiveTraining:
             f"{self.__class__.__name__} must implement prepare_artifacts()"
         )
 
+    def _get_session_info(self) -> dict:
+        """Collect training session context"""
+        return {
+            'api': self.api,
+            'team_id': self.team_id,
+            'task_id': self.task_id,
+            'project_id': self.project_id,
+            'framework_name': self.framework_name,
+            'task_type': self.task_type,
+            'project_meta': self.project_meta,
+            'start_time': self.training_start_time,
+            'train_size': len(self.dataset) if self.dataset else 0,
+        }
+
     def _upload_artifacts(self):
         if self._upload_in_progress:
             return
@@ -419,25 +435,12 @@ class LiveTraining:
         self._upload_in_progress = True
 
         try:
+            session_info = self._get_session_info()
             artifacts = self.prepare_artifacts()
-            train_size = len(self.dataset) if self.dataset else 0
 
             report_url = upload_artifacts(
-                api=self.api,
-                team_id=self.team_id,
-                task_id=self.task_id,
-                project_id=self.project_id,
-                checkpoint_path=artifacts['checkpoint_path'],
-                checkpoint_info=artifacts['checkpoint_info'],
-                config_path=artifacts['config_path'],
-                logs_dir=artifacts.get('logs_dir'),
-                framework_name=self.framework_name,
-                model_name=artifacts['model_name'],
-                task_type=self.task_type,
-                model_meta=self.project_meta,
-                model_config=artifacts['model_config'],
-                start_time=self.training_start_time,
-                train_size=train_size,
+                session_info=session_info,
+                artifacts=artifacts
             )
 
             logger.info(f"Report: {report_url}")
