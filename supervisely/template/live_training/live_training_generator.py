@@ -230,7 +230,6 @@ class LiveTrainingGenerator(BaseGenerator):
         return {
             "current_size": self.session_info.get("dataset_size", 0),
             "initial_samples": self.session_info.get("initial_samples", 0),
-            "samples_added": self.session_info.get("samples_added", 0),
         }
 
     def _get_training_plots_html(self) -> Optional[str]:

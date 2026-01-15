@@ -36,6 +36,7 @@ def upload_artifacts(
             - logs_dir: Path to TensorBoard logs or None
             - model_name: Model name
             - model_config: Model configuration dict
+            - loss_history: Dict with loss history
 
     Returns:
         report_url: URL to experiment report
@@ -157,7 +158,7 @@ def upload_artifacts(
     }
 
     checkpoints_info = [checkpoint_info]
-    loss_history = {}
+    loss_history = artifacts.get('loss_history', {})
 
     session_info = {
         "session_id": task_id,

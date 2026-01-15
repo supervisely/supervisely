@@ -446,6 +446,7 @@ class LiveTraining:
                 - logs_dir: path to logs directory or None
                 - model_name: model name
                 - model_config: model configuration dict
+                - loss_history: dict with loss history
         """
         raise NotImplementedError(
             f"{self.__class__.__name__} must implement prepare_artifacts()"
@@ -463,6 +464,7 @@ class LiveTraining:
             'project_meta': self.project_meta,
             'start_time': self.training_start_time,
             'train_size': len(self.dataset) if self.dataset else 0,
+            'initial_samples': self.initial_samples
         }
 
     def _upload_artifacts(self):
