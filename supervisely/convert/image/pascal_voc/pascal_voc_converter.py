@@ -180,11 +180,14 @@ class PascalVOCConverter(ImageConverter):
             if tag_meta is not None:
                 continue
             if tag_name in pascal_voc_helper.DEFAULT_SUBCLASSES:
-                if values.difference({"0", "1"}):
+                if tag_name == "pose":
+                    tag_meta = TagMeta(tag_name, TagValueType.ANY_STRING)
+                elif values.difference({"0", "1"}):
                     logger.warning(
                         f"Tag '{tag_name}' has non-binary values.", extra={"values": values}
                     )
-                tag_meta = TagMeta(tag_name, TagValueType.NONE)
+                else:
+                    tag_meta = TagMeta(tag_name, TagValueType.NONE)
             elif tag_name in object_class_names:
                 tag_meta = TagMeta(
                     tag_name,
