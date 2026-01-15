@@ -70,14 +70,14 @@ class LiveTraining:
         self.class_map = self._init_class_map(self.project_meta)
         self.dataset: IncrementalDataset = None
         self.model: nn.Module  = None
-        self.loss_plateau_detector = LossPlateauDetector()
-        self.loss_plateau_detector.register_save_checkpoint_callback(self.save_checkpoint)
+        self.loss_plateau_detector = self._init_loss_plateau_detector()
+        self.work_dir = 'app_data'
         self.latest_checkpoint_path = f"{self.work_dir}/checkpoints/latest.pth"
         
         self.checkpoint_mode = os.getenv("modal.state.checkpointMode", "scratch")
         selected_task_id_env = os.getenv("modal.state.selectedExperimentTaskId")
         self.selected_experiment_task_id = int(selected_task_id_env) if selected_task_id_env else None
-        self.work_dir = 'app_data'
+        
         self.training_start_time = None
         self._upload_in_progress = False
 
@@ -125,13 +125,18 @@ class LiveTraining:
         work_dir_path = Path(self.work_dir)
         work_dir_path.mkdir(parents=True, exist_ok=True)
         model_meta_path = work_dir_path / "model_meta.json"
-        self.project_meta.to_json_file(str(model_meta_path))
+        sly.json.dump_json_file(self.project_meta.to_json(), str(model_meta_path))
         
         try:
             if self.checkpoint_mode in ("continue", "finetune"):
                 self._run_from_checkpoint()
             else:
                 self._run_from_scratch()
+        except Exception as e:
+            if not sly.is_production():
+                raise e
+            else:
+                logger.error(f"Live training failed: {e}", exc_info=True)
         finally:
             final_checkpoint = self.latest_checkpoint_path
             self.save_checkpoint(final_checkpoint)
@@ -176,34 +181,61 @@ class LiveTraining:
         status = self.status()
         status['phase'] = Phase.WAITING_FOR_SAMPLES
         request.future.set_result(status)
-    
-    def _wait_for_initial_samples(self):
-        """Wait until dataset has enough samples to start training"""
-        if len(self.dataset) >= self.initial_samples:
-            return
-        samples_needed = self.initial_samples - len(self.dataset)
-        self._is_paused = True
-        
-        logger.info(f"Waiting for {samples_needed} initial samples...")
-        
+
+    def _wait_until_samples_added(
+        self,
+        *,
+        samples_before: int,
+        samples_needed: int,
+        max_wait_time: int | None,
+    ):
         sleep_interval = 0.5
         elapsed_time = 0
-        samples_before = len(self.dataset)
-        max_wait_time = 3600
-        
+
         while len(self.dataset) - samples_before < samples_needed:
-            if elapsed_time >= max_wait_time:
-                raise RuntimeError(
-                    f"Training cannot proceed: no new samples added after {max_wait_time}s"
-                )
-            
+            if max_wait_time is not None and elapsed_time >= max_wait_time:
+                raise RuntimeError("Timeout waiting for samples")
+
             if not self.request_queue.is_empty():
                 self._process_pending_requests()
-            
+
             time.sleep(sleep_interval)
             elapsed_time += sleep_interval
-        
-        logger.info(f"Dataset ready with {len(self.dataset)} samples")
+
+    def _wait_for_initial_samples(self):
+        if len(self.dataset) >= self.initial_samples:
+            return
+
+        self.phase = Phase.WAITING_FOR_SAMPLES
+        self._is_paused = True
+
+        samples_before = len(self.dataset)
+        samples_needed = self.initial_samples - samples_before
+
+        logger.info(f"Waiting for {samples_needed} initial samples")
+
+        self._wait_until_samples_added(
+            samples_before=samples_before,
+            samples_needed=samples_needed,
+            max_wait_time=3600,
+        )
+
+        self._is_paused = False
+
+
+    def _wait_for_new_samples(self, num_samples: int = 1):
+        self.phase = Phase.WAITING_FOR_SAMPLES
+        self._is_paused = True
+
+        samples_before = len(self.dataset)
+
+        self._wait_until_samples_added(
+            samples_before=samples_before,
+            samples_needed=num_samples,
+            max_wait_time=None,
+        )
+
+        self.phase = Phase.TRAINING
         self._is_paused = False
 
     
@@ -227,7 +259,7 @@ class LiveTraining:
 
                 elif request.type == RequestType.STATUS:
                     result = self.status()
-                    request.future.set_result(result)
+                    request.future.set_result(result) #TODO: bug here
 
             except Exception as e:
                 logger.error(f"Error processing request {request.type}: {e}", exc_info=True)
@@ -319,7 +351,12 @@ class LiveTraining:
     def after_train_step(self, loss: float):
         self.iter += 1
         self._loss = loss
-        self.loss_plateau_detector.step(loss, self.iter)
+        if self.loss_plateau_detector is not None:
+            is_plateau = self.loss_plateau_detector.step(loss, self.iter)
+            if is_plateau:
+                logger.info(f"Loss plateau detected at iteration {self.iter}")
+                self._wait_for_new_samples()
+                self.loss_plateau_detector.reset()
         self._process_pending_requests()
     
     def register_model(self, model: nn.Module):
@@ -453,3 +490,8 @@ class LiveTraining:
     
     def save_checkpoint(self, checkpoint_path: str):
         pass
+
+    def _init_loss_plateau_detector(self):
+        loss_plateau_detector = LossPlateauDetector()
+        loss_plateau_detector.register_save_checkpoint_callback(self.save_checkpoint)
+        return loss_plateau_detector

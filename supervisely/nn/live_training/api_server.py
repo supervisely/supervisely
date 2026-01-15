@@ -81,7 +81,7 @@ def create_api(app: FastAPI, request_queue: RequestQueue) -> FastAPI:
     return app
 
 
-async def _wait_for_result(future: asyncio.Future, response: Response, timeout: float = 30.0):
+async def _wait_for_result(future: asyncio.Future, response: Response, timeout: float = 90.0):
     """Wait for the future to complete with a timeout."""
     try:
         result = await asyncio.wait_for(future, timeout=timeout)
