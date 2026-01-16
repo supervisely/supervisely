@@ -37,6 +37,7 @@ class LabelingQueueInfo(NamedTuple):
     in_progress_count: int
     pending_count: int
     meta: dict
+    collection_id: Optional[int] = None
 
 
 class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
@@ -93,7 +94,8 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
                 annotated_count=3,
                 in_progress_count=2,
                 pending_count=1,
-                meta={}
+                meta={},
+                collection_id=None,
             )
         """
         return [
@@ -115,6 +117,7 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
             ApiField.IN_PROGRESS_COUNT,
             ApiField.PENDING_COUNT,
             ApiField.META,
+            ApiField.COLLECTION_ID,
         ]
 
     @staticmethod
@@ -201,24 +204,23 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
         enable_quality_check: Optional[bool] = None,
         quality_check_user_ids: Optional[List[int]] = None,
         guide_id: Optional[int] = None,
+        description: Optional[str] = None,
     ) -> int:
         """
         Creates Labeling Queue and assigns given Users to it.
 
         :param name: Labeling Queue name in Supervisely.
         :type name: str
-        :param dataset_id: Dataset ID in Supervisely.
-        :type dataset_id: int
-        :param collection_id: Entities Collection ID in Supervisely.
-        :type collection_id: int, optional
         :param user_ids: User IDs in Supervisely to assign Users as labelers to Labeling Queue.
         :type user_ids: List[int]
         :param reviewer_ids: User IDs in Supervisely to assign Users as reviewers to Labeling Queue.
         :type reviewer_ids: List[int]
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param collection_id: Entities Collection ID in Supervisely.
+        :type collection_id: int, optional
         :param readme: Additional information about Labeling Queue.
         :type readme: str, optional
-        :param description: Description of Labeling Queue.
-        :type description: str, optional
         :param classes_to_label: List of classes to label in Dataset.
         :type classes_to_label: List[str], optional
         :param objects_limit_per_image: Limit the number of objects that the labeler can create on each image.
@@ -259,6 +261,8 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type quality_check_user_ids: List[int], optional
         :param guide_id: Guide ID in Supervisely to assign a guide to the Labeling Queue.
         :type guide_id: int, optional
+        :param description: Description of Labeling Queue.
+        :type description: str, optional
         :return: Labeling Queue ID in Supervisely.
         :rtype: int
         :Usage example:
@@ -411,6 +415,9 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
         if readme is not None:
             data[ApiField.README] = str(readme)
 
+        if description is not None:
+            data[ApiField.DESCRIPTION] = str(description)
+
         if images_range is not None and images_range != (None, None):
             if len(images_range) != 2:
                 raise RuntimeError("images_range has to contain 2 elements (start, end)")
@@ -431,6 +438,7 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
         ids: Optional[List[int]] = None,
         names: Optional[List[str]] = None,
         show_disabled: Optional[bool] = False,
+        collection_id: Optional[int] = None,
     ) -> List[LabelingQueueInfo]:
         """
         Get list of information about Labeling Queues in the given Team.
@@ -447,6 +455,8 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type names: List[str], optional
         :param show_disabled: Show disabled Labeling Queues.
         :type show_disabled: bool, optional
+        :param collection_id: Entities Collection ID in Supervisely.
+        :type collection_id: int, optional
         :return: List of information about Labeling Queues. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[LabelingQueueInfo]`
         :Usage example:
@@ -467,6 +477,10 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
             filters.append({"field": ApiField.PROJECT_ID, "operator": "=", "value": project_id})
         if dataset_id is not None:
             filters.append({"field": ApiField.DATASET_ID, "operator": "=", "value": dataset_id})
+        if collection_id is not None:
+            filters.append(
+                {"field": ApiField.COLLECTION_ID, "operator": "=", "value": collection_id}
+            )
         if names is not None:
             filters.append({"field": ApiField.NAME, "operator": "in", "value": names})
         if ids is not None:
