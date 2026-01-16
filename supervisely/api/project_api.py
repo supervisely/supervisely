@@ -1372,6 +1372,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
     def get_settings(self, id: int) -> Dict[str, str]:
         info = self._get_info_by_id(id, "projects.info")
+        if info is None:
+            raise ProjectNotFound(f"Project with id={id} not found")
         return info.settings
 
     def update_settings(self, id: int, settings: Dict[str, str]) -> None:
@@ -2368,7 +2370,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         """
         info = self.get_info_by_id(id, extra_fields=[ApiField.EMBEDDINGS_IN_PROGRESS])
         if info is None:
-            raise RuntimeError(f"Project with ID {id} not found.")
+            raise ProjectNotFound(f"Project with ID {id} not found.")
         if not hasattr(info, "embeddings_in_progress"):
             raise RuntimeError(
                 f"Project with ID {id} does not have 'embeddings_in_progress' field in its info."
@@ -2433,7 +2435,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         """
         info = self.get_info_by_id(id, extra_fields=[ApiField.EMBEDDINGS_UPDATED_AT])
         if info is None:
-            raise RuntimeError(f"Project with ID {id} not found.")
+            raise ProjectNotFound(f"Project with ID {id} not found.")
         if not hasattr(info, "embeddings_updated_at"):
             raise RuntimeError(
                 f"Project with ID {id} does not have 'embeddings_updated_at' field in its info."

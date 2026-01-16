@@ -3162,9 +3162,7 @@ class TrainApp:
 
         # Case 1: Use existing collections for training. No need to create new collections
         split_method = self.gui.train_val_splits_selector.get_split_method()
-        self.gui.train_val_splits_selector._detect_splits(
-            collections_split=True, datasets_split=False
-        )
+        self.gui.train_val_splits_selector._parse_collections()
         all_train_collections = self.gui.train_val_splits_selector.all_train_collections
         all_val_collections = self.gui.train_val_splits_selector.all_val_collections
         latest_train_collection = self.gui.train_val_splits_selector.latest_train_collection
