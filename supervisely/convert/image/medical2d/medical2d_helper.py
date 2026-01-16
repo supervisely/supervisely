@@ -8,10 +8,9 @@ import nrrd
 import numpy as np
 import pydicom
 from pydicom import FileDataset
-from tqdm import tqdm
-
 from supervisely import image, logger, volume
 from supervisely.annotation.tag import Tag
+from supervisely.convert.volume.dicom.dicom_helper import convert_to_monochrome2
 from supervisely.io.fs import (
     dir_exists,
     get_file_ext,
@@ -19,6 +18,7 @@ from supervisely.io.fs import (
     get_file_name_with_ext,
     mkdir,
 )
+from tqdm import tqdm
 
 _MEDICAL_DEFAULT_GROUP_TAG_NAMES = [
     "StudyInstanceUID",
@@ -135,39 +135,6 @@ def create_pixel_data_set(dcm: FileDataset, frame_axis: int) -> Tuple[List[np.nd
     list_of_images = np.split(pixel_array, int(dcm.NumberOfFrames), axis=frame_axis)
     return list_of_images, frame_axis
 
-def convert_to_monochrome2(dcm_path: str, dcm: FileDataset) -> FileDataset:
-    if getattr(dcm, "PhotometricInterpretation", None) == "YBR_FULL_422":
-        # * Convert dicom to monochrome
-        monochrome = None
-        pixel_array = dcm.pixel_array
-
-        if len(pixel_array.shape) == 4 and pixel_array.shape[-1] == 3:
-            monochrome = pixel_array[..., 0].astype(np.uint8)
-        elif len(pixel_array.shape) == 3 and pixel_array.shape[-1] == 3:
-            monochrome = pixel_array[..., 0].astype(np.uint8)
-        else:
-            logger.warning("Unexpected shape for YBR_FULL_422 data: " + str(pixel_array.shape))
-            return dcm
-
-        try:
-            dcm.SamplesPerPixel = 1
-            dcm.PhotometricInterpretation = "MONOCHROME2"
-            dcm.PlanarConfiguration = 0
-            if len(monochrome.shape) == 3:
-                dcm.NumberOfFrames = str(monochrome.shape[0])
-                dcm.Rows, dcm.Columns = monochrome.shape[1:3]
-            elif len(monochrome.shape) == 2:
-                dcm.Rows, dcm.Columns = monochrome.shape[0:2]
-                if hasattr(dcm, "NumberOfFrames"):
-                    delattr(dcm, "NumberOfFrames")
-            dcm.PixelData = monochrome.tobytes()
-        except AttributeError as ae:
-            logger.error(f"Error occurred while converting dicom to monochrome: {ae}")
-            return dcm
-
-        logger.info("Rewriting DICOM file with monochrome2 format")
-        dcm.save_as(dcm_path)
-    return dcm
 
 def convert_dcm_to_nrrd(
     image_path: str, converted_dir: str, group_tag_name: Optional[list] = None
