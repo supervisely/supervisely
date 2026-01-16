@@ -74,6 +74,8 @@ def convert_to_monochrome2(dcm_path: str, dcm: FileDataset) -> FileDataset:
             )
             return dcm
 
+        logger.debug("Monochrome shape: " + str(monochrome.shape))
+
         try:
             dcm.SamplesPerPixel = 1
             dcm.PhotometricInterpretation = "MONOCHROME2"
