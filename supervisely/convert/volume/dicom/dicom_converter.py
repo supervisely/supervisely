@@ -1,15 +1,21 @@
 from typing import List
 
+from supervisely import ProjectMeta, generate_free_name, logger
 from supervisely.api.api import Api
-from supervisely import generate_free_name, logger, ProjectMeta
 from supervisely.convert.base_converter import AvailableVolumeConverters
-from supervisely.convert.volume.volume_converter import VolumeConverter
 from supervisely.convert.volume.dicom import dicom_helper as h
-from supervisely.volume.volume import inspect_dicom_series, get_extension, read_dicom_serie_volume
+from supervisely.convert.volume.volume_converter import VolumeConverter
+from supervisely.volume.volume import (
+    get_extension,
+    inspect_dicom_series,
+    read_dicom_serie_volume,
+)
+
 
 class DICOMConverter(VolumeConverter):
     class Item(VolumeConverter.Item):
         """Item class for DICOM series."""
+
         def __init__(self, serie_id: str, item_paths: List[str], volume_meta: dict):
             item_path = item_paths[0] if len(item_paths) > 0 else None
             super().__init__(item_path, volume_meta=volume_meta)
@@ -62,9 +68,11 @@ class DICOMConverter(VolumeConverter):
                 continue
 
             for dicom_path in dicom_paths:
-                h.convert_to_monochrome2(dicom_path)
+                h.read_and_convert_to_monochrome2(dicom_path)
             _, meta = read_dicom_serie_volume(dicom_paths, anonymize=True)
-            item = self.Item(serie_id=dicom_id, item_paths=dicom_paths, volume_meta=meta)
+            item = self.Item(
+                serie_id=dicom_id, item_paths=dicom_paths, volume_meta=meta
+            )
             self._items.append(item)
         self._meta = ProjectMeta()
 
