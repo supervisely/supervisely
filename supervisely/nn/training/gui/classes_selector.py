@@ -107,6 +107,8 @@ class ClassesSelector:
             TaskType.INSTANCE_SEGMENTATION: {Bitmap},
             TaskType.SEMANTIC_SEGMENTATION: {Bitmap},
             TaskType.POSE_ESTIMATION: {GraphNodes},
+            TaskType.PROMPTABLE_SEGMENTATION: {Bitmap},
+            TaskType.INSTANCE_SEGMENTATION: {Bitmap},
         }
 
         if task_type not in allowed_shapes:
