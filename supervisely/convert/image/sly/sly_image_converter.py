@@ -17,6 +17,7 @@ from supervisely.api.api import Api
 from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.convert.image.image_helper import validate_image_bounds
+from supervisely.convert.utils import ProjectStructureUploader
 from supervisely.io.fs import dirs_filter, file_exists, get_file_ext, get_file_name
 from supervisely.io.json import load_json_file
 from supervisely.project.project import find_project_dirs
@@ -211,15 +212,7 @@ class SLYImageConverter(ImageConverter):
                             item.set_meta_data(meta_path)
                         ds_items.append(item)
                     if len(ds_items) > 0:
-                        parts = dataset.name.split("/")
-                        curr_ds = project.setdefault(
-                            parts[0], {DATASET_ITEMS: [], NESTED_DATASETS: {}}
-                        )
-                        for part in parts[1:]:
-                            curr_ds = curr_ds[NESTED_DATASETS].setdefault(
-                                part, {DATASET_ITEMS: [], NESTED_DATASETS: {}}
-                            )
-                        curr_ds[DATASET_ITEMS].extend(ds_items)
+                        ProjectStructureUploader.append_items(project, dataset.name, ds_items)
                         ds_cnt += 1
                         self._items.extend(ds_items)
             if self.items_count > 0:
@@ -267,13 +260,7 @@ class SLYImageConverter(ImageConverter):
                         item.set_meta_data(meta_path)
                     ds_items.append(item)
                 if len(ds_items) > 0:
-                    parts = dataset_fs.name.split("/")
-                    curr_ds = project.setdefault(parts[0], {DATASET_ITEMS: [], NESTED_DATASETS: {}})
-                    for part in parts[1:]:
-                        curr_ds = curr_ds[NESTED_DATASETS].setdefault(
-                            part, {DATASET_ITEMS: [], NESTED_DATASETS: {}}
-                        )
-                    curr_ds[DATASET_ITEMS].extend(ds_items)
+                    ProjectStructureUploader.append_items(project, dataset_fs.name, ds_items)
                     ds_cnt += 1
                     self._items.extend(ds_items)
 
@@ -332,35 +319,18 @@ class SLYImageConverter(ImageConverter):
 
         logger.info("Uploading project structure")
 
-        def _upload_project(
-            project_structure: Dict,
-            project_id: int,
-            dataset_id: int,
-            parent_id: Optional[int] = None,
-            first_dataset=False,
-        ):
-            for ds_name, value in project_structure.items():
-                ds_name = generate_free_name(existing_datasets, ds_name, extend_used_names=True)
-                if first_dataset:
-                    first_dataset = False
-                    api.dataset.update(dataset_id, ds_name)  # rename first dataset
-                else:
-                    dataset_id = api.dataset.create(project_id, ds_name, parent_id=parent_id).id
+        def _upload_items_cb(_dataset_id: int, items):
+            super(SLYImageConverter, self).upload_dataset(
+                api, _dataset_id, batch_size, entities=items, progress_cb=progress_cb
+            )
 
-                items = value.get(DATASET_ITEMS, [])
-                nested_datasets = value.get(NESTED_DATASETS, {})
-                logger.info(
-                    f"Dataset: {ds_name}, items: {len(items)}, nested datasets: {len(nested_datasets)}"
-                )
-                if items:
-                    super(SLYImageConverter, self).upload_dataset(
-                        api, dataset_id, batch_size, entities=items, progress_cb=progress_cb
-                    )
-
-                if nested_datasets:
-                    _upload_project(nested_datasets, project_id, dataset_id, dataset_id)
-
-        _upload_project(self._project_structure, project_id, dataset_id, first_dataset=True)
+        ProjectStructureUploader(existing_datasets=existing_datasets).upload(
+            api=api,
+            project_id=project_id,
+            root_dataset_id=dataset_id,
+            project_structure=self._project_structure,
+            upload_items=_upload_items_cb,
+        )
 
         if is_development() and progress is not None:
             progress.close()
