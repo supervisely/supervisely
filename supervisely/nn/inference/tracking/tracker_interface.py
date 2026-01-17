@@ -84,7 +84,7 @@ class TrackerInterface:
     @property
     def video_info(self):
         if self._video_info is None:
-            self._video_info = self.api.video.get_info_by_id(self.video_id)
+            self._video_info = self.api.video.get_info_by_id(self.video_id, raise_error=True)
         return self._video_info
 
     def add_object_geometries(self, geometries: List[Geometry], object_id: int, start_fig: int):
