@@ -1,12 +1,13 @@
 import mimetypes
+import re
 from pathlib import Path
+from typing import List, Union
 
 import magic
 import numpy as np
 from PIL import Image
-from typing import Union, List
 
-from supervisely import Rectangle, Label, logger
+from supervisely import Label, Rectangle, logger
 from supervisely.geometry.oriented_bbox import OrientedBBox
 from supervisely.imaging.image import read, write
 from supervisely.io.fs import (
@@ -89,7 +90,10 @@ def read_tiff_image(path: str) -> Union[np.ndarray, None]:
     import tifffile
 
     logger.debug(f"Found tiff file: {path}.")
-    image = tifffile.imread(path)
+    try:
+        image = tifffile.imread(path)
+    except Exception:
+        return Image.open(path).convert("RGB")
     name = get_file_name_with_ext(path)
     if image is not None:
         tiff_shape = image.shape
