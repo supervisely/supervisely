@@ -59,7 +59,7 @@ class ClassesSelector:
             if task_type.endswith("detection"):
                 allowed_types.append(Rectangle)
             elif task_type.endswith("segmentation"):
-                allowed_types.append(Bitmap, Polygon)
+                allowed_types.extend([Bitmap, Polygon])
             elif task_type == TaskType.POSE_ESTIMATION:
                 allowed_types.append(GraphNodes)
 
