@@ -228,7 +228,7 @@ def calculate_duration(start_time: str) -> str:
 
 def get_device_name() -> str:
     """Get GPU device name or 'cpu'."""
-    import torch
+    import torch # pylint: disable=import-error
     if not os.path.exists("/dev/nvidia0"):
         return "cpu"
 

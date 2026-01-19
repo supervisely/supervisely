@@ -4,6 +4,7 @@ from typing import Tuple, List, Optional
 import json
 from supervisely import logger
 from supervisely.nn.live_training.helpers import ClassMap
+from supervisely.io.json import load_json_file
 import supervisely as sly
 
 
@@ -134,7 +135,8 @@ def resolve_checkpoint(
     api.file.download(team_id, remote_model_meta, local_model_meta)
     
     # Load saved classes
-    saved_project_meta = sly.ProjectMeta.from_json_file(local_model_meta)
+    model_meta_json = load_json_file(local_model_meta)
+    saved_project_meta = sly.ProjectMeta.from_json(model_meta_json)
     saved_classes = [cls.name for cls in saved_project_meta.obj_classes]
     
     logger.info(f"Saved classes: {saved_classes}")

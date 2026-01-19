@@ -208,8 +208,8 @@ class LiveTraining:
         self.phase = Phase.WAITING_FOR_SAMPLES
         self._is_paused = True
 
-        logger.info(f"Waiting for {samples_needed} initial samples")
         samples_needed = self.initial_samples - len(self.dataset)
+        logger.info(f"Waiting for {samples_needed} initial samples")
         self._wait_until_samples_added(
             samples_needed=samples_needed,
             max_wait_time=3600,
