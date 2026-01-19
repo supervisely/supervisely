@@ -184,13 +184,12 @@ class LiveTraining:
 
     def _wait_until_samples_added(
         self,
-        *,
-        samples_before: int,
         samples_needed: int,
-        max_wait_time: int | None,
+        max_wait_time: int = None,
     ):
         sleep_interval = 0.5
         elapsed_time = 0
+        samples_before = len(self.dataset)
 
         while len(self.dataset) - samples_before < samples_needed:
             if max_wait_time is not None and elapsed_time >= max_wait_time:
@@ -209,28 +208,20 @@ class LiveTraining:
         self.phase = Phase.WAITING_FOR_SAMPLES
         self._is_paused = True
 
-        samples_before = len(self.dataset)
-        samples_needed = self.initial_samples - samples_before
-
         logger.info(f"Waiting for {samples_needed} initial samples")
-
+        samples_needed = self.initial_samples - len(self.dataset)
         self._wait_until_samples_added(
-            samples_before=samples_before,
             samples_needed=samples_needed,
             max_wait_time=3600,
         )
 
         self._is_paused = False
 
-
     def _wait_for_new_samples(self, num_samples: int = 1):
         self.phase = Phase.WAITING_FOR_SAMPLES
         self._is_paused = True
 
-        samples_before = len(self.dataset)
-
         self._wait_until_samples_added(
-            samples_before=samples_before,
             samples_needed=num_samples,
             max_wait_time=None,
         )
@@ -238,7 +229,6 @@ class LiveTraining:
         self.phase = Phase.TRAINING
         self._is_paused = False
 
-    
     def _process_pending_requests(self):
         requests = self.request_queue.get_all()
         if not requests:
@@ -431,7 +421,6 @@ class LiveTraining:
                 logger.info(f"Restored {restored_count}/{len(image_ids)}")
         
         logger.info(f"Restored {restored_count} images")
-
 
     def prepare_artifacts(self) -> dict:
         """
