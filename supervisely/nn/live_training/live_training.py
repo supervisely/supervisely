@@ -217,18 +217,6 @@ class LiveTraining:
 
         self._is_paused = False
 
-    def _wait_for_new_samples(self, num_samples: int = 1):
-        self.phase = Phase.WAITING_FOR_SAMPLES
-        self._is_paused = True
-
-        self._wait_until_samples_added(
-            samples_needed=num_samples,
-            max_wait_time=None,
-        )
-
-        self.phase = Phase.TRAINING
-        self._is_paused = False
-
     def _process_pending_requests(self):
         requests = self.request_queue.get_all()
         if not requests:
@@ -249,7 +237,7 @@ class LiveTraining:
 
                 elif request.type == RequestType.STATUS:
                     result = self.status()
-                    request.future.set_result(result) #TODO: bug here
+                    request.future.set_result(result)
 
             except Exception as e:
                 logger.error(f"Error processing request {request.type}: {e}", exc_info=True)
@@ -344,7 +332,12 @@ class LiveTraining:
         if self.loss_plateau_detector is not None:
             is_plateau = self.loss_plateau_detector.step(loss, self.iter)
             if is_plateau:
-                self._wait_for_new_samples()
+                self._is_paused = True
+                self._wait_until_samples_added(
+                    samples_needed=1,
+                    max_wait_time=None,
+                )
+                self._is_paused = False
                 self.loss_plateau_detector.reset()
         self._process_pending_requests()
     
