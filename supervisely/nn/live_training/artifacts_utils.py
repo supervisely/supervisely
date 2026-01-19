@@ -28,7 +28,9 @@ def upload_artifacts(
             - project_meta: Project metadata
             - start_time: Training start time string
             - train_size: Final dataset size
-        
+            - initial_samples: Number of initial samples
+            
+
         artifacts: Framework-specific artifacts
             - checkpoint_path: Path to checkpoint file
             - checkpoint_info: Dict with {name, iteration, loss}
@@ -53,6 +55,7 @@ def upload_artifacts(
     model_meta = session_info['project_meta']
     start_time = session_info['start_time']
     train_size = session_info['train_size']
+    initial_samples = session_info.get('initial_samples', 0)
     
     # Unpack artifacts
     checkpoint_path = artifacts['checkpoint_path']
@@ -154,6 +157,7 @@ def upload_artifacts(
         "val_collection_id": None,
         "project_preview": project_info.image_preview_url if project_info else None,
         "train_size": train_size,
+        "initial_samples": initial_samples,
         "val_size": 0,
     }
 
@@ -178,6 +182,7 @@ def upload_artifacts(
         "samples_added": 0,
         "final_size": train_size,
         "train_size": train_size,
+        "initial_samples": initial_samples,
         "val_size": 0,
     }
 
@@ -204,7 +209,7 @@ def upload_artifacts(
 
     experiment_info["has_report"] = True
     experiment_info["experiment_report_id"] = int(report_url.split('/')[-1])
-    api.task.set_output_experiment(task_id, experiment_info)
+    response = api.task.set_output_experiment(task_id, experiment_info)
 
     return report_url
 

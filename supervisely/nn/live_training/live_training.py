@@ -58,7 +58,7 @@ class LiveTraining:
             logger.info("🔧 Initializing Develop & Debug application...")
             sly.app.development.supervisely_vpn_network(action="up")
             debug_task = sly.app.development.create_debug_task(self.team_id, port="8000", project_id=self.project_id)
-
+            self.task_id = debug_task['id']
         self._api_thread = start_api_server(self.app, self.request_queue)
         self.phase = Phase.READY_TO_START
         self.iter = 0
@@ -354,7 +354,6 @@ class LiveTraining:
         if self.loss_plateau_detector is not None:
             is_plateau = self.loss_plateau_detector.step(loss, self.iter)
             if is_plateau:
-                logger.info(f"Loss plateau detected at iteration {self.iter}")
                 self._wait_for_new_samples()
                 self.loss_plateau_detector.reset()
         self._process_pending_requests()
