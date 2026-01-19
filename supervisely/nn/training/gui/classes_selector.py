@@ -120,7 +120,7 @@ class ClassesSelector:
             TaskType.SEMANTIC_SEGMENTATION: {Bitmap},
             TaskType.POSE_ESTIMATION: {GraphNodes},
             TaskType.PROMPTABLE_SEGMENTATION: {Bitmap},
-            TaskType.INSTANCE_SEGMENTATION: {Bitmap},
+            TaskType.INTERACTIVE_SEGMENTATION: {Bitmap},
             TaskType.PROMPT_BASED_OBJECT_DETECTION: {Rectangle},
         }
 
