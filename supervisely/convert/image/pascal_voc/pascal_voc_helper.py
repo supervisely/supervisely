@@ -231,11 +231,18 @@ def xml_to_sly_labels(
                 if tag_meta is None:
                     logger.warning(f"Tag meta for '{field_name}' is not found in meta. Skipping.")
                     continue
+
                 if tag_meta.value_type == TagValueType.ANY_STRING:
                     if not isinstance(value, str):
                         value = str(value)
                     tags.append(Tag(tag_meta, value))
                 elif tag_meta.value_type == TagValueType.NONE:
+                    # check if value is numeric
+                    try:
+                        int(value)
+                    except ValueError:
+                        logger.warning(f"Tag value is not numeric: '{value}'. Skipping.")
+                        continue
                     if int(value) == 1:
                         tags.append(Tag(tag_meta))
                     else:

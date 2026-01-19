@@ -390,6 +390,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         redirect_requests: Optional[Dict[str, int]] = {},
         limit_by_workspace: bool = False,
         kubernetes_settings: Optional[Union[KubernetesSettings, Dict[str, Any]]] = None,
+        multi_user_session: bool = False,
     ) -> Dict[str, Any]:
         """Starts the application task on the agent.
 
@@ -428,6 +429,11 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         :type limit_by_workspace: bool, optional
         :param kubernetes_settings: Kubernetes settings for the application.
         :type kubernetes_settings: Union[KubernetesSettings, Dict[str, Any]], optional
+        :param multi_user_session: If True, the application session will be created as multi-user.
+                                   In this case, multiple users will be able to connect to the same application session.
+                                   All users will have separate application states.
+                                   Available only for applications that support multi-user sessions.
+        :type multi_user_session: bool, default is False
         :return: Task information in JSON format.
         :rtype: Dict[str, Any]
 
@@ -497,6 +503,11 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             data[ApiField.APP_ID] = app_id
         if module_id is not None:
             data[ApiField.MODULE_ID] = module_id
+        if multi_user_session:
+            # * Enables single multi-user session mode for all users in the users_ids list.
+            # * Otherwise, if users_ids contains multiple IDs, separate single-user sessions will be created for each.
+            # * If users_ids is empty, a session is created only for the current user.
+            data[ApiField.SINGLE_SESSION_MODE] = multi_user_session
         resp = self._api.post(method="tasks.run.app", data=data)
         task = resp.json()[0]
         if "id" not in task:

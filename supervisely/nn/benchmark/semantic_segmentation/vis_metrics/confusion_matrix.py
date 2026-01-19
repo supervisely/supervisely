@@ -82,7 +82,7 @@ class ConfusionMatrix(SemanticSegmVisMetric):
                 res["clickData"][key]["imagesIds"] = []
 
                 cmat_key = str(ig) + "_" + str(ip)
-                for name in self.eval_result.mp.cmat_cell_img_names[cmat_key]:
+                for name in self.eval_result.mp.cmat_cell_img_names.get(cmat_key, []):
                     gt_img_id = self.eval_result.images_map[name]
                     pred_img_id = self.eval_result.matched_pair_data[gt_img_id].pred_image_info.id
                     res["clickData"][key]["imagesIds"].append(pred_img_id)
