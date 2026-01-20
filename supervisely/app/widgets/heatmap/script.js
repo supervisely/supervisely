@@ -362,6 +362,8 @@ Vue.component('heatmap-image', {
       }
     },
     handleMouseLeave() {
+      this.isDragging = false;
+
       if (this.clickedValue === null) return;
       
       this.isHiding = true;
@@ -399,6 +401,32 @@ Vue.component('heatmap-image', {
         event.preventDefault();
       }
     },
+    calculatePanLimits() {
+      const wrapper = this.$refs.wrapper;
+      if (!wrapper) return null;
+      
+      const container = wrapper.parentElement;
+      if (!container) return null;
+      
+      const rect = container.getBoundingClientRect();
+      const containerWidth = rect.width;
+      const containerHeight = rect.height;
+      
+      const imgRect = wrapper.getBoundingClientRect();
+      const imgWidth = imgRect.width
+      const imgHeight = imgRect.height
+      
+      maxPanDistance = 0.2
+      const maxPanX = (imgWidth - containerWidth) / 2 + containerWidth * maxPanDistance;
+      const maxPanY = (imgHeight - containerHeight) / 2 + containerHeight * maxPanDistance;
+      
+      return {
+        minX: -maxPanX / this.zoom,
+        maxX: maxPanX / this.zoom,
+        minY: -maxPanY / this.zoom,
+        maxY: maxPanY / this.zoom
+      };
+    },
     handleMouseMove(event) {
       if (this.isDragging) {
         const deltaX = event.clientX - this.dragStartX;
@@ -409,8 +437,17 @@ Vue.component('heatmap-image', {
           this.hasDragged = true;
         }
         
-        this.panX = this.dragStartPanX + deltaX;
-        this.panY = this.dragStartPanY + deltaY;
+        let newPanX = this.dragStartPanX + deltaX / this.zoom;
+        let newPanY = this.dragStartPanY + deltaY / this.zoom;
+
+        const limits = this.calculatePanLimits();
+        if (limits) {
+          newPanX = Math.max(limits.minX, Math.min(limits.maxX, newPanX));
+          newPanY = Math.max(limits.minY, Math.min(limits.maxY, newPanY));
+        }
+        
+        this.panX = newPanX;
+        this.panY = newPanY;
         
         event.preventDefault();
       }
@@ -440,6 +477,7 @@ Vue.component('heatmap-image', {
         this.zoom = 1.0;
         this.panX = 0;
         this.panY = 0;
+        this.hasDragged = false;
         return;
       }
       
