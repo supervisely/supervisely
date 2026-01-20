@@ -23,7 +23,7 @@ def upload_artifacts(
             - team_id: Team ID
             - task_id: Task ID
             - project_id: Project ID
-            - framework_name: Framework name (e.g. 'mmdet')
+            - framework_name: Framework name
             - task_type: Task type
             - project_meta: Project metadata
             - start_time: Training start time string
@@ -36,7 +36,6 @@ def upload_artifacts(
             - checkpoint_info: Dict with {name, iteration, loss}
             - config_path: Path to config file
             - logs_dir: Path to TensorBoard logs or None
-            - model_name: Model name
             - model_config: Model configuration dict
             - loss_history: Dict with loss history
 
@@ -62,7 +61,6 @@ def upload_artifacts(
     checkpoint_info = artifacts['checkpoint_info']
     config_path = artifacts['config_path']
     logs_dir = artifacts.get('logs_dir')
-    model_name = artifacts['model_name']
     model_config = artifacts['model_config']
 
     work_dir = Path(os.path.dirname(checkpoint_path)).parent
@@ -71,6 +69,8 @@ def upload_artifacts(
 
     project_info = api.project.get_info_by_id(project_id)
     project_name = project_info.name if project_info else "unknown"
+    model_name = f"Live training - {project_name}"
+    model_config['model_name'] = model_name
     remote_dir = f"/experiments/live_training/{project_id}_{project_name}/{task_id}_{framework_name}/"
     logger.info(f"Remote directory: {remote_dir}")
 
