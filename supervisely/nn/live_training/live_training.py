@@ -158,7 +158,6 @@ class LiveTraining:
         self.load_state(state)
         image_ids = state.get('image_ids', [])
 
-        # self._wait_for_start()
         if image_ids:
             self._restore_dataset(image_ids)
         else:
