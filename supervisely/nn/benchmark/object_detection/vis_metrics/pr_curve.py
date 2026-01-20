@@ -19,16 +19,21 @@ class PRCurve(DetectionVisMetric):
 
     @property
     def md(self) -> MarkdownWidget:
-        text = self.vis_texts.markdown_pr_curve.format(self.vis_texts.definitions.about_pr_tradeoffs)
+        text = self.vis_texts.markdown_pr_curve.format(
+            self.vis_texts.definitions.about_pr_tradeoffs
+        )
         return MarkdownWidget(self.MARKDOWN, "Precision-Recall Curve", text)
 
     @property
     def notification(self) -> NotificationWidget:
         title, _ = self.vis_texts.notification_ap.values()
-        return NotificationWidget(
-            self.NOTIFICATION,
-            title.format(self.eval_result.mp.base_metrics()["mAP"].round(2)),
-        )
+        _map = self.eval_result.mp.base_metrics()["mAP"]
+        if isinstance(_map, float):
+            _map = round(_map, 2)
+        elif isinstance(_map, np.ndarray):
+            _map = float(np.round(_map, 2))
+
+        return NotificationWidget(self.NOTIFICATION, title.format(_map))
 
     @property
     def chart(self) -> ChartWidget:

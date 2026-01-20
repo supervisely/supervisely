@@ -314,5 +314,8 @@ setup(
         "agent": [
             "protobuf>=3.19.5, <=3.20.3",
         ],
+        "versioning": [
+            "pyarrow>=17.0.0, <=22.0.0",
+        ],
     },
 )

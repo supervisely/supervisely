@@ -51,7 +51,19 @@ class ClassesSelector:
             text=f"<i class='zmdi zmdi-chart-donut' style='color: #7f858e'></i> <a href='{qa_stats_link}' target='_blank'> <b> QA & Stats </b></a>"
         )
 
-        self.classes_table = ClassesTable(project_id=project_id)
+        models = model_selector.models
+        task_types = [model["meta"]["task_type"] for model in models]
+        task_types = list(set(task_types))
+        allowed_types = []
+        for task_type in task_types:
+            if task_type.endswith("detection"):
+                allowed_types.append(Rectangle)
+            elif task_type.endswith("segmentation"):
+                allowed_types.extend([Bitmap, Polygon])
+            elif task_type == TaskType.POSE_ESTIMATION:
+                allowed_types.append(GraphNodes)
+
+        self.classes_table = ClassesTable(project_id=project_id, allowed_types=allowed_types)
         if len(classes) > 0:
             self.classes_table.select_classes(classes)
         else:
@@ -107,6 +119,9 @@ class ClassesSelector:
             TaskType.INSTANCE_SEGMENTATION: {Bitmap},
             TaskType.SEMANTIC_SEGMENTATION: {Bitmap},
             TaskType.POSE_ESTIMATION: {GraphNodes},
+            TaskType.PROMPTABLE_SEGMENTATION: {Bitmap},
+            TaskType.INTERACTIVE_SEGMENTATION: {Bitmap},
+            TaskType.PROMPT_BASED_OBJECT_DETECTION: {Rectangle},
         }
 
         if task_type not in allowed_shapes:

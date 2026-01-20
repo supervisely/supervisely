@@ -4,11 +4,10 @@ import os
 import pickle
 import shutil
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 import cv2
 import numpy as np
-from tqdm import tqdm
 
 from supervisely.io.json import load_json_file
 from supervisely.nn.benchmark.base_evaluator import BaseEvalResult, BaseEvaluator
@@ -30,10 +29,25 @@ class SemanticSegmentationEvalResult(BaseEvalResult):
     def _read_files(self, path: str) -> None:
         """Read all necessary files from the directory"""
 
-        eval_data_path = Path(path) / "eval_data.pkl"
-        if eval_data_path.exists():
-            with open(Path(path, "eval_data.pkl"), "rb") as f:
-                self.eval_data = pickle.load(f)
+        eval_data_pickle_path = Path(path) / "eval_data.pkl"
+        eval_data_archive_path = Path(path) / "eval_data.zip"
+        if eval_data_pickle_path.exists():
+            try:
+                with open(Path(path, "eval_data.pkl"), "rb") as f:
+                    self.eval_data = pickle.load(f)
+            except Exception as e:
+                logger.warning(f"Failed to load eval_data.pkl: {e}", exc_info=True)
+                self.eval_data = None
+
+        if self.eval_data is None and eval_data_archive_path.exists():
+            try:
+                self.eval_data = self._load_eval_data_archive(eval_data_archive_path, pd_index_col=True)
+            except Exception as e:
+                logger.warning(f"Failed to load eval_data from archive: {e}", exc_info=True)
+                self.eval_data = None
+
+        if self.eval_data is None:
+            raise ValueError("Failed to load eval_data. Please contact support.")
 
         inference_info_path = Path(path) / "inference_info.json"
         if inference_info_path.exists():
@@ -69,12 +83,12 @@ class SemanticSegmentationEvaluator(BaseEvaluator):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.bg_cls_name = None
-        self.bg_cls_color = None
+        self.bg_cls_name: Optional[str] = None
+        self.bg_cls_color: Optional[List[int]] = None
 
     def evaluate(self):
         self.bg_cls_name = self._get_bg_class_name()
-        if self.bg_cls_name not in self.classes_whitelist:
+        if self.bg_cls_name not in self.classes_whitelist and self.bg_cls_name is not None:
             self.classes_whitelist.append(self.bg_cls_name)
 
         gt_prep_path, pred_prep_path = self.prepare_segmentation_data()
@@ -94,9 +108,9 @@ class SemanticSegmentationEvaluator(BaseEvaluator):
         self._dump_eval_results()
         logger.info("Evaluation results are saved")
 
-    def _get_palette(self, project_path):
+    def _get_palette(self, project_path) -> List[List[int]]:
         meta_path = Path(project_path) / "meta.json"
-        meta = ProjectMeta.from_json(load_json_file(meta_path))
+        meta = ProjectMeta.from_json(load_json_file(str(meta_path)))
 
         palette = []
         for cls_name in self.classes_whitelist:
@@ -109,8 +123,9 @@ class SemanticSegmentationEvaluator(BaseEvaluator):
         return palette
 
     def _dump_eval_results(self):
+        self._dump_eval_results_archive()
         eval_data_path = self._get_eval_data_path()
-        self._dump_pickle(self.eval_data, eval_data_path)  # TODO: maybe dump JSON?
+        self._dump_pickle(self.eval_data, eval_data_path)
 
     def _get_eval_data_path(self):
         base_dir = self.result_dir
@@ -130,11 +145,14 @@ class SemanticSegmentationEvaluator(BaseEvaluator):
                 continue
 
             palette = self._get_palette(src_dir)
-            bg_cls_idx = self.classes_whitelist.index(self.bg_cls_name)
+            if self.bg_cls_name is not None:
+                bg_cls_idx = self.classes_whitelist.index(self.bg_cls_name)
+            else:
+                raise ValueError("Background class name is not set.")
             try:
                 bg_color = palette[bg_cls_idx]
             except IndexError:
-                bg_color = (0, 0, 0)
+                bg_color = [0, 0, 0]
             output_dir.mkdir(parents=True)
             temp_seg_dir = src_dir + "_temp"
             if not os.path.exists(temp_seg_dir):
@@ -174,14 +192,14 @@ class SemanticSegmentationEvaluator(BaseEvaluator):
 
         return output_dirs
 
-    def _get_bg_class_name(self):
+    def _get_bg_class_name(self) -> Optional[str]:
         possible_names = ["background", "bg", "unlabeled", "neutral", "__bg__"]
         logger.info(f"Searching for background class in projects. Possible names: {possible_names}")
 
         bg_cls_names = []
         for project_path in [self.gt_project_path, self.pred_project_path]:
             meta_path = Path(project_path) / "meta.json"
-            meta = ProjectMeta.from_json(load_json_file(meta_path))
+            meta = ProjectMeta.from_json(load_json_file(str(meta_path)))
 
             for obj_cls in meta.obj_classes:
                 if obj_cls.name in possible_names:
