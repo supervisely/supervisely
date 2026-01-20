@@ -244,7 +244,7 @@ Vue.component('heatmap-image', {
       const popupWidth = 80; // Approximate popup width (half width for centered popup)
       const margin = 20; // Minimum margin from edges
       
-      containerRect = container.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
       const screenClickX = event.clientX - containerRect.left;
       const screenClickY = event.clientY - containerRect.top;
 
