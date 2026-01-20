@@ -237,6 +237,9 @@ class LiveTraining:
         new_samples_added = False
         
         for request in requests: 
+            if request.future.cancelled():
+                logger.warning(f"Request {request.type} was cancelled, skipping")
+                continue
             try:
                 if request.type == RequestType.PREDICT:
                     result = self._handle_predict(request.data)
