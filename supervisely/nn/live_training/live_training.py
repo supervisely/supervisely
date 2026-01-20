@@ -64,7 +64,6 @@ class LiveTraining:
         self.iter = 0
         self._loss = None
         self._is_paused = False
-        self._ready_to_predict = False
         self.initial_iters = 60  # TODO: remove later
         self.project_meta = self._fetch_project_meta(self.project_id)
         self.class_map = self._init_class_map(self.project_meta)
@@ -93,7 +92,7 @@ class LiveTraining:
             'iteration': self.iter,
             'loss': self._loss,
             'training_paused': self._is_paused,
-            'ready_to_predict': self._ready_to_predict,  # TODO: can be removed? phase is used instead (ask Umar)
+            'ready_to_predict': self.ready_to_predict, 
             'initial_iters': self.initial_iters,
         }
     
@@ -137,11 +136,10 @@ class LiveTraining:
                 raise e
             else:
                 logger.error(f"Live training failed: {e}", exc_info=True)
-        finally:
-            final_checkpoint = self.latest_checkpoint_path
-            self.save_checkpoint(final_checkpoint)
-            save_state_json(self.state(), final_checkpoint)
-            self._upload_artifacts()
+                final_checkpoint = self.latest_checkpoint_path
+                self.save_checkpoint(final_checkpoint)
+                save_state_json(self.state(), final_checkpoint)
+                self._upload_artifacts()
         
     def _run_from_scratch(self):
         self.phase = Phase.READY_TO_START
@@ -149,25 +147,23 @@ class LiveTraining:
         
         self.phase = Phase.WAITING_FOR_SAMPLES
         self._wait_for_initial_samples()
-        
-        self.phase = Phase.INITIAL_TRAINING
         self.train(checkpoint_path=None)
 
     def _run_from_checkpoint(self):
         self.phase = Phase.READY_TO_START
         self._wait_for_start()
-
+        self._process_pending_requests() 
         checkpoint_path, state = self._load_checkpoint()
-        self.load_state(state)
-        image_ids = state.get('image_ids', [])
 
-        if image_ids:
+        image_ids = state.get('image_ids', [])
+        if self.checkpoint_mode == 'continue' and image_ids:
+            self.load_state(state)
             self._restore_dataset(image_ids)
         else:
-            self.phase = Phase.WAITING_FOR_SAMPLESs
+            self.phase = Phase.WAITING_FOR_SAMPLES
             self._wait_for_initial_samples()
 
-        self.phase = Phase.TRAINING
+        self._process_pending_requests() 
         self.train(checkpoint_path=checkpoint_path)
     
     def _wait_for_start(self):
@@ -196,7 +192,7 @@ class LiveTraining:
         while len(self.dataset) - samples_before < samples_needed:
             if max_wait_time is not None and elapsed_time >= max_wait_time:
                 raise RuntimeError("Timeout waiting for samples")
-
+            
             if not self.request_queue.is_empty():
                 self._process_pending_requests()
 
@@ -296,6 +292,8 @@ class LiveTraining:
             annotation=sly_ann,
             image_name=data['image_name']
         )
+        if (len(self.dataset) >= self.initial_samples) and self.phase==Phase.WAITING_FOR_SAMPLES:
+            self.phase = Phase.INITIAL_TRAINING
         return {
             'image_id': data['image_id'],
             'status': self.status(),
@@ -373,7 +371,7 @@ class LiveTraining:
             'clases': [cls.name for cls in self.class_map.obj_classes],
             'image_ids': self.dataset.get_image_ids() if self.dataset else [],
             'dataset_size': len(self.dataset) if self.dataset else 0,
-            # add more variables as needed
+            'is_paused': self._is_paused
         }
         return state
 
@@ -383,6 +381,7 @@ class LiveTraining:
         self._loss = state.get('loss', None)
         # classes are handled during checkpoint loading
         self.image_ids = state.get('image_ids', [])
+        self._is_paused = state.get('is_paused', False)
         dataset_size = state.get('dataset_size', 0)
 
     def _restore_dataset(self, image_ids: list):
@@ -480,3 +479,7 @@ class LiveTraining:
         loss_plateau_detector = LossPlateauDetector()
         loss_plateau_detector.register_save_checkpoint_callback(self.save_checkpoint)
         return loss_plateau_detector
+    
+    @property
+    def ready_to_predict(self):
+        return self.iter > self.initial_iters
