@@ -154,6 +154,9 @@ class LiveTraining:
         self.train(checkpoint_path=None)
 
     def _run_from_checkpoint(self):
+        self.phase = Phase.READY_TO_START
+        self._wait_for_start()
+
         checkpoint_path, state = self._load_checkpoint()
         self.load_state(state)
         image_ids = state.get('image_ids', [])
@@ -161,7 +164,7 @@ class LiveTraining:
         if image_ids:
             self._restore_dataset(image_ids)
         else:
-            self.phase = Phase.WAITING_FOR_SAMPLES
+            self.phase = Phase.WAITING_FOR_SAMPLESs
             self._wait_for_initial_samples()
 
         self.phase = Phase.TRAINING
