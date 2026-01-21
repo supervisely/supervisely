@@ -42,9 +42,23 @@ class ModelAPI:
             self.url = f'{self.api.server_address}/net/{task_info["meta"]["sessionToken"]}'
 
     # region Requests
+    def _get_default_body(self):
+        body = {}
+        if self.api is not None:
+            server_address = self.api.server_address
+            api_token = self.api.token
+        else:
+            api_token = sly_env.api_token(raise_not_found=False)
+            server_address = sly_env.server_address(raise_not_found=False)
+        if api_token is not None:
+            body["api_token"] = api_token
+        if server_address is not None:
+            body["server_address"] = server_address
+        return body
+ 
     def _post(self, method: str, data: dict, raise_for_status: bool = True):
         url = f"{self.url.rstrip('/')}/{method.lstrip('/')}"
-        response = requests.post(url, json=data)
+        response = requests.post(url, json={**self._get_default_body(), **data})
         if raise_for_status:
             response.raise_for_status()
         return response.json()
