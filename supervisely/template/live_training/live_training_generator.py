@@ -427,7 +427,7 @@ class LiveTrainingGenerator(BaseGenerator):
             if self.api.server_address.endswith("dev.internal.supervisely.com"):
                 logger.warning("Using hardcoded module ID for dev server")
                 task2module_map = {
-                    "object detection": 620,
+                    "object detection": 629,
                     "semantic segmentation": 621,
                 }
                 module_id = task2module_map.get(self.task_type)
