@@ -93,7 +93,7 @@ class LiveTraining:
             'iteration': self.iter,
             'loss': self._loss,
             'training_paused': self._is_paused,
-            'ready_to_predict': self._ready_to_predict,  # TODO: can be removed? phase is used instead (ask Umar)
+            'ready_to_predict': self.ready_to_predict, 
             'initial_iters': self.initial_iters,
         }
     
@@ -141,17 +141,14 @@ class LiveTraining:
                 raise e
             else:
                 logger.error(f"Live training failed: {e}", exc_info=True)
-        finally:
-            final_checkpoint = self.latest_checkpoint_path
-            self.save_checkpoint(final_checkpoint)
-            save_state_json(self.state(), final_checkpoint)
-            self._upload_artifacts()
+                final_checkpoint = self.latest_checkpoint_path
+                self.save_checkpoint(final_checkpoint)
+                save_state_json(self.state(), final_checkpoint)
+                self._upload_artifacts()
         
     def _run_from_scratch(self):
         self.phase = Phase.WAITING_FOR_SAMPLES
         self._wait_for_initial_samples()
-        
-        self.phase = Phase.INITIAL_TRAINING
         self.train(checkpoint_path=None)
     
     def _run_continue(self):
@@ -194,7 +191,7 @@ class LiveTraining:
         while len(self.dataset) - samples_before < samples_needed:
             if max_wait_time is not None and elapsed_time >= max_wait_time:
                 raise RuntimeError("Timeout waiting for samples")
-
+            
             if not self.request_queue.is_empty():
                 self._process_pending_requests()
 
@@ -217,18 +214,6 @@ class LiveTraining:
 
         self._is_paused = False
 
-    def _wait_for_new_samples(self, num_samples: int = 1):
-        self.phase = Phase.WAITING_FOR_SAMPLES
-        self._is_paused = True
-
-        self._wait_until_samples_added(
-            samples_needed=num_samples,
-            max_wait_time=None,
-        )
-
-        self.phase = Phase.TRAINING
-        self._is_paused = False
-
     def _process_pending_requests(self):
         requests = self.request_queue.get_all()
         if not requests:
@@ -237,9 +222,6 @@ class LiveTraining:
         new_samples_added = False
         
         for request in requests: 
-            if request.future.cancelled():
-                logger.warning(f"Request {request.type} was cancelled, skipping")
-                continue
             try:
                 if request.type == RequestType.PREDICT:
                     result = self._handle_predict(request.data)
@@ -252,7 +234,7 @@ class LiveTraining:
 
                 elif request.type == RequestType.STATUS:
                     result = self.status()
-                    request.future.set_result(result) #TODO: bug here
+                    request.future.set_result(result)
 
             except Exception as e:
                 logger.error(f"Error processing request {request.type}: {e}", exc_info=True)
@@ -309,6 +291,8 @@ class LiveTraining:
             annotation=sly_ann,
             image_name=data['image_name']
         )
+        if (len(self.dataset) >= self.initial_samples) and self.phase==Phase.WAITING_FOR_SAMPLES:
+            self.phase = Phase.INITIAL_TRAINING
         return {
             'image_id': data['image_id'],
             'status': self.status(),
@@ -354,7 +338,12 @@ class LiveTraining:
         if self.loss_plateau_detector is not None:
             is_plateau = self.loss_plateau_detector.step(loss, self.iter)
             if is_plateau:
-                self._wait_for_new_samples()
+                self._is_paused = True
+                self._wait_until_samples_added(
+                    samples_needed=1,
+                    max_wait_time=None,
+                )
+                self._is_paused = False
                 self.loss_plateau_detector.reset()
         self._process_pending_requests()
     
@@ -390,7 +379,7 @@ class LiveTraining:
             'clases': [cls.name for cls in self.class_map.obj_classes],
             'image_ids': self.dataset.get_image_ids() if self.dataset else [],
             'dataset_size': len(self.dataset) if self.dataset else 0,
-            # add more variables as needed
+            'is_paused': self._is_paused
         }
         return state
 
@@ -498,3 +487,7 @@ class LiveTraining:
         loss_plateau_detector = LossPlateauDetector()
         loss_plateau_detector.register_save_checkpoint_callback(self.save_checkpoint)
         return loss_plateau_detector
+    
+    @property
+    def ready_to_predict(self):
+        return self.iter > self.initial_iters
