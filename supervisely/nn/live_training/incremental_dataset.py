@@ -125,7 +125,11 @@ class IncrementalDataset:
         mapping = {label.obj_class: label.obj_class for label in annotation.labels}
         ann_nonoverlap = annotation.to_nonoverlapping_masks(mapping)
         
-        h, w = annotation.img_size.height, annotation.img_size.width
+        if isinstance(annotation.img_size, tuple):
+            h, w = annotation.img_size
+        else:
+            h, w = annotation.img_size.height, annotation.img_size.width
+    
         mask = np.zeros((h, w), dtype=np.uint8)
         
         for label in ann_nonoverlap.labels:
