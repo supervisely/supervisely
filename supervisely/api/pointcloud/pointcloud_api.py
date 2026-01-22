@@ -20,7 +20,7 @@ from requests import Response
 from requests_toolbelt import MultipartEncoder
 from tqdm import tqdm
 
-from supervisely._utils import batched, generate_free_name
+from supervisely._utils import batched, generate_free_name, rand_str
 from supervisely.api.module_api import ApiField, RemoveableBulkModuleApi
 from supervisely.api.pointcloud.pointcloud_annotation_api import PointcloudAnnotationAPI
 from supervisely.api.pointcloud.pointcloud_figure_api import PointcloudFigureApi
@@ -28,6 +28,7 @@ from supervisely.api.pointcloud.pointcloud_object_api import PointcloudObjectApi
 from supervisely.api.pointcloud.pointcloud_tag_api import PointcloudTagApi
 from supervisely.io.fs import (
     ensure_base_path,
+    get_file_ext,
     get_file_hash,
     get_file_hash_async,
     get_file_name_with_ext,
@@ -597,6 +598,124 @@ class PointcloudApi(RemoveableBulkModuleApi):
         return self._upload_bulk_add(
             lambda item: (ApiField.HASH, item), dataset_id, names, hashes, metas, progress_cb
         )
+
+    def upload_links(
+        self,
+        dataset_id: int,
+        links: List[str],
+        names: List[str],
+        metas: Optional[List[Dict]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        force_metadata_for_links: Optional[bool] = True,
+    ) -> List[PointcloudInfo]:
+        """
+        Upload point clouds from given links to Dataset.
+
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param links: Point cloud links.
+        :type links: List[str]
+        :param names: Point cloud names with extension.
+        :type names: List[str]
+        :param metas: Point cloud metadatas.
+        :type metas: Optional[List[Dict]]
+        :param progress_cb: Function for tracking the progress of uploading.
+        :type progress_cb: tqdm or callable, optional
+        :param force_metadata_for_links: Force metadata retrieval for links.
+        :type force_metadata_for_links: Optional[bool]
+        :return: List with information about Point clouds. See :class:`info_sequence<info_sequence>`
+        :rtype: List[:class:`PointcloudInfo`]
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            dataset_id = 62693
+            links = [
+                "https://example.com/pointclouds/scan1.pcd",
+                "https://example.com/pointclouds/scan2.pcd",
+                "https://example.com/pointclouds/scan3.pcd"
+            ]
+            names = ["scan1.pcd", "scan2.pcd", "scan3.pcd"]
+            pcd_infos = api.pointcloud.upload_links(dataset_id, links, names)
+            print(pcd_infos)
+        """
+
+        return self._upload_bulk_add(
+            lambda item: (ApiField.LINK, item),
+            dataset_id,
+            names,
+            links,
+            metas,
+            progress_cb,
+        )
+
+    def upload_link(
+        self,
+        dataset_id: int,
+        link: str,
+        name: Optional[str] = None,
+        meta: Optional[Dict] = None,
+        force_metadata_for_links: Optional[bool] = True,
+    ) -> PointcloudInfo:
+        """
+        Upload point cloud from given link to Dataset.
+
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param link: Point cloud link.
+        :type link: str
+        :param name: Point cloud name with extension.
+        :type name: str, optional
+        :param meta: Point cloud metadata.
+        :type meta: Dict, optional
+        :param force_metadata_for_links: Force metadata retrieval for links.
+        :type force_metadata_for_links: Optional[bool]
+        :return: Information about point cloud. See :class:`info_sequence<info_sequence>`
+        :rtype: :class:`PointcloudInfo`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            dataset_id = 62693
+            link = "https://example.com/pointclouds/scan1.pcd"
+            name = "scan1.pcd"
+
+            pcd_info = api.pointcloud.upload_link(dataset_id, link, name)
+            print(pcd_info)
+        """
+
+        if name is None:
+            name = rand_str(10) + get_file_ext(link)
+
+        name = self.get_free_name(dataset_id, name)
+        links = self.upload_links(
+            dataset_id,
+            links=[link],
+            names=[name],
+            metas=[meta] if meta is not None else None,
+            force_metadata_for_links=force_metadata_for_links,
+        )
+        if len(links) != 1:
+            raise RuntimeError(
+                (
+                    f"API response: '{links}' (len > 1). "
+                    "Validation error. Only one item is allowed. "
+                    "Please, contact technical support."
+                )
+            )
+        return links[0]
 
     # @TODO: copypaste from video_api
     def _upload_bulk_add(
