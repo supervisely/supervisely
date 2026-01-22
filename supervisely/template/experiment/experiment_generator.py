@@ -88,8 +88,8 @@ class ExperimentGenerator(BaseGenerator):
         self.app_info = self._get_app_info()
         self.app_options = app_options
 
-    def _report_url(self, template_id: int) -> str:
-        return f"/nn/experiments/{template_id}"
+    def _report_url(self, server_address: str, template_id: int) -> str:
+        return f"{server_address}/nn/experiments/{template_id}"
 
     def _datasets_url_with_entities_filter(self, project_id: int, entities_filter: List[dict]) -> str:
         path = f"/projects/{project_id}/datasets"
@@ -113,7 +113,7 @@ class ExperimentGenerator(BaseGenerator):
         return self.get_report().id
 
     def get_report_link(self) -> str:
-        return self._report_url(self.get_report_id())
+        return self._report_url(self.api.server_address, self.get_report_id())
 
     def state(self) -> dict:
         return {}
