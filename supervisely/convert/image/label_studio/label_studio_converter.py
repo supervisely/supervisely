@@ -31,6 +31,8 @@ class LabelStudioConverter(ImageConverter):
             return False
         if len(raw_ann) == 0:
             return False
+        if not all([isinstance(ann, dict) for ann in raw_ann]):
+            return False
         if not all([isinstance(ann.get("data"), dict) for ann in raw_ann]):
             return False
         anns = []
