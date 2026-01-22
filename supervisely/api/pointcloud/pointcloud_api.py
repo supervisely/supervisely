@@ -700,22 +700,22 @@ class PointcloudApi(RemoveableBulkModuleApi):
             name = rand_str(10) + get_file_ext(link)
 
         name = self.get_free_name(dataset_id, name)
-        links = self.upload_links(
+        pcd_infos = self.upload_links(
             dataset_id,
             links=[link],
             names=[name],
             metas=[meta] if meta is not None else None,
             force_metadata_for_links=force_metadata_for_links,
         )
-        if len(links) != 1:
+        if len(pcd_infos) != 1:
             raise RuntimeError(
                 (
-                    f"API response: '{links}' (len > 1). "
+                    f"API response: '{pcd_infos}' (len > 1). "
                     "Validation error. Only one item is allowed. "
                     "Please, contact technical support."
                 )
             )
-        return links[0]
+        return pcd_infos[0]
 
     # @TODO: copypaste from video_api
     def _upload_bulk_add(
