@@ -92,8 +92,12 @@ def read_tiff_image(path: str) -> Union[np.ndarray, None]:
     logger.debug(f"Found tiff file: {path}.")
     try:
         image = tifffile.imread(path)
-    except Exception:
-        return Image.open(path).convert("RGB")
+    except Exception as e:
+        logger.warning(
+            f"tifffile failed to read TIFF, trying Pillow fallback: {repr(e)}",
+            extra={"file_path": path},
+        )
+        image = _read_tiff_image_fallback(path)
     name = get_file_name_with_ext(path)
     if image is not None:
         tiff_shape = image.shape
@@ -103,6 +107,36 @@ def read_tiff_image(path: str) -> Union[np.ndarray, None]:
                 logger.warning(f"{name}: transposed shape from {tiff_shape} to {image.shape}")
 
     return image
+
+
+def _read_tiff_image_fallback(path: str) -> Union[np.ndarray, None]:
+    """
+    Fallback method to read tiff image using Pillow.
+    """
+    from PIL import ImageSequence
+
+    try:
+        with Image.open(path) as pil_img:
+            frames = [np.asarray(frame) for frame in ImageSequence.Iterator(pil_img)]
+        if not frames:
+            return None
+        if len(frames) == 1:
+            return frames[0]
+
+        if all(frame.shape == frames[0].shape for frame in frames):
+            return np.stack(frames, axis=0)
+
+        logger.warning(
+            "TIFF has multiple pages with different shapes; using the first page only.",
+            extra={"file_path": path},
+        )
+        return frames[0]
+    except Exception as e:
+        logger.warning(
+            f"Pillow failed to read TIFF: {repr(e)}",
+            extra={"file_path": path},
+        )
+        return None
 
 
 def validate_image_bounds(labels: List[Label], img_rect: Rectangle) -> List[Label]:
