@@ -3162,9 +3162,7 @@ class TrainApp:
 
         # Case 1: Use existing collections for training. No need to create new collections
         split_method = self.gui.train_val_splits_selector.get_split_method()
-        self.gui.train_val_splits_selector._detect_splits(
-            collections_split=True, datasets_split=False
-        )
+        self.gui.train_val_splits_selector._parse_collections()
         all_train_collections = self.gui.train_val_splits_selector.all_train_collections
         all_val_collections = self.gui.train_val_splits_selector.all_val_collections
         latest_train_collection = self.gui.train_val_splits_selector.latest_train_collection
@@ -3195,12 +3193,12 @@ class TrainApp:
         # Get train collection with max idx
         if latest_train_collection:
             train_collection_idx = (
-                _extract_index_from_col_name(latest_train_collection, "train") + 1
+                _extract_index_from_col_name(latest_train_collection.name, "train") + 1
             )
 
         # Get val collection with max idx
         if latest_val_collection:
-            val_collection_idx = _extract_index_from_col_name(latest_val_collection, "val") + 1
+            val_collection_idx = _extract_index_from_col_name(latest_val_collection.name, "val") + 1
         # -------------------------------- #
 
         # Create Train Collection

@@ -14,9 +14,9 @@
 
 .image-wrapper img {
   width: 100%;
-  height: auto;
+  height: 100%;
   display: block;
-  object-fit: contain;
+  object-fit: fill;
   object-position: center;
   -webkit-user-drag: none;
   user-select: none;
@@ -224,4 +224,10 @@
   margin-top: -4px;
   transform: rotate(45deg);
   box-shadow: 2px -2px 3px rgba(0, 0, 0, 0.1);
+}
+
+.image-container {
+  position: relative;
+  overflow: hidden;
+  max-width: 100%;
 }

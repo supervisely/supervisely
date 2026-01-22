@@ -655,6 +655,25 @@ class PointcloudEpisodeProject(PointcloudProject):
             f"Static method 'download_async()' is not supported for PointcloudEpisodeProject class now."
         )
 
+    # ----------------------------------- #
+    # Pointcloud Episodes Data Versioning #
+    # ----------------------------------- #
+    @staticmethod
+    def download_bin(*args, **kwargs):
+        raise NotImplementedError("Data versioning is not supported for PointcloudEpisodeProject.")
+
+    @staticmethod
+    def upload_bin(*args, **kwargs):
+        raise NotImplementedError("Data versioning is not supported for PointcloudEpisodeProject.")
+
+    @staticmethod
+    def build_snapshot(*args, **kwargs):
+        raise NotImplementedError("Data versioning is not supported for PointcloudEpisodeProject.")
+
+    @staticmethod
+    def restore_snapshot(*args, **kwargs):
+        raise NotImplementedError("Data versioning is not supported for PointcloudEpisodeProject.")
+
 
 def download_pointcloud_episode_project(
     api: Api,
@@ -946,7 +965,7 @@ def upload_pointcloud_episode_project(
     log_progress: bool = True,
     progress_cb: Optional[Union[tqdm, Callable]] = None,
 ) -> Tuple[int, str]:
-    # STEP 0 — create project remotely
+    # STEP 0 - create project remotely
     project_fs = PointcloudEpisodeProject.read_single(directory)
     project_name = project_fs.name if project_name is None else project_name
 
@@ -983,7 +1002,7 @@ def upload_pointcloud_episode_project(
         )
         name_to_dsinfo[dataset_fs.name] = dataset
 
-        # STEP 1 — upload episodes
+        # STEP 1 - upload episodes
         items_infos = {"names": [], "paths": [], "metas": []}
 
         for item_name in dataset_fs:
@@ -1025,7 +1044,7 @@ def upload_pointcloud_episode_project(
                 },
             )
             raise e
-        # STEP 2 — upload annotations
+        # STEP 2 - upload annotations
         frame_to_pcl_ids = {pcl_info.frame: pcl_info.id for pcl_info in pcl_infos}
         try:
             api.pointcloud_episode.annotation.append(
@@ -1043,9 +1062,9 @@ def upload_pointcloud_episode_project(
             )
             raise e
 
-        # STEP 3 — upload photo context
+        # STEP 3 - upload photo context
         img_infos = {"img_paths": [], "img_metas": []}
-        # STEP 3.1 — upload images
+        # STEP 3.1 - upload images
         pcl_to_rimg_figures: Dict[int, Dict[str, List[Dict]]] = {}
         pcl_to_hash_to_id: Dict[int, Dict[str, int]] = {}
         for pcl_info in pcl_infos:
@@ -1077,7 +1096,7 @@ def upload_pointcloud_episode_project(
             )
             raise e
 
-        # STEP 3.2 — upload images metas
+        # STEP 3.2 - upload images metas
         images_hashes_iterator = images_hashes.__iter__()
         for pcl_info in pcl_infos:
             related_items = dataset_fs.get_related_images(pcl_info.name)
