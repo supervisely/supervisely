@@ -33,9 +33,7 @@ def las2pcd(input_path: str, output_path: str) -> None:
                 f"{input_file_name} file read failed due to buffer size mismatch with EXTRA_BYTES. "
                 "Retrying with EXTRA_BYTES disabled as a workaround..."
             )
-            from laspy.point.record import (
-                PackedPointRecord,  # pylint: disable=import-error
-            )
+            from laspy.point.record import PackedPointRecord  # pylint: disable=import-error
 
             @classmethod
             def from_buffer_without_extra_bytes(cls, buffer, point_format, count=-1, offset=0):
