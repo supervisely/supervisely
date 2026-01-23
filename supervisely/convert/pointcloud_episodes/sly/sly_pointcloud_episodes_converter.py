@@ -12,24 +12,12 @@ from supervisely.io.fs import JUNK_FILES, get_file_ext, get_file_name_with_ext
 from supervisely.io.json import load_json_file
 from supervisely.pointcloud.pointcloud import validate_ext as validate_pcd_ext
 
-DATASET_ITEMS = "items"
-NESTED_DATASETS = "datasets"
-
-# folders that should never become dataset names (FS/layout/service dirs)
 _IGNORED_DATASET_PARTS = {
     "datasets",
-    "pointclouds",
-    "point clouds",
-    "point cloud",
     "pointcloud",
     "ann",
-    "annotations",
     "meta",
-    "metadata",
     "related_images",
-    "related images",
-    "photo_context",
-    "photo context",
 }
 
 
@@ -67,39 +55,15 @@ class SLYPointcloudEpisodesConverter(PointcloudEpisodeConverter):
         except Exception:
             return False
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._effective_input_data = None
-
-    def _get_effective_input_data(self) -> str:
-        if self._effective_input_data is not None:
-            return self._effective_input_data
-
-        root = os.path.abspath(self._input_data)
-        try:
-            entries = [e for e in os.listdir(root) if not e.startswith(".")]
-            entries = [e for e in entries if e not in {"__MACOSX"}]
-            dirs = [e for e in entries if os.path.isdir(os.path.join(root, e))]
-            files = [e for e in entries if os.path.isfile(os.path.join(root, e))]
-
-            if len(files) == 0 and len(dirs) == 1:
-                self._effective_input_data = os.path.join(root, dirs[0])
-            else:
-                self._effective_input_data = root
-        except Exception:
-            self._effective_input_data = root
-        return self._effective_input_data
-
     def _infer_dataset_name(self, pcd_path: str) -> str:
+        """
+        Turns pointcloud path into a full dataset name. Defaults to 'dataset' if no subfolder structure is found.
+        """
         p = os.path.dirname(os.path.abspath(pcd_path))
-        root = os.path.abspath(self._get_effective_input_data())
-
-        def _norm(name: str) -> str:
-            return name.strip().lower().replace("_", " ")
+        root = os.path.abspath(self._input_data)
 
         while True:
-            base = os.path.basename(p)
-            if _norm(base) in _IGNORED_DATASET_PARTS:
+            if os.path.basename(p) in _IGNORED_DATASET_PARTS:
                 parent = os.path.dirname(p)
                 if parent == p:
                     break
@@ -107,20 +71,17 @@ class SLYPointcloudEpisodesConverter(PointcloudEpisodeConverter):
                 continue
             break
 
-        rel_dir = os.path.relpath(p, root)
-        if rel_dir in (".", ""):
-            return "dataset"
+        rel_dir = os.path.relpath(p, root).replace(".", "")
 
-        parts = [seg for seg in rel_dir.replace("\\", "/").split("/") if seg and seg != "."]
+        dataset_names = []
+        for part in rel_dir.split(os.sep):
+            if part and part not in _IGNORED_DATASET_PARTS:
+                dataset_names.append(part)
 
-        while parts and _norm(parts[0]) == "datasets":
-            parts.pop(0)
-
-        cleaned = [seg for seg in parts if _norm(seg) not in _IGNORED_DATASET_PARTS]
-        return "/".join(cleaned) if cleaned else "dataset"
+        return "/".join(dataset_names) if dataset_names else "dataset"
 
     def validate_format(self) -> bool:
-        input_root = self._get_effective_input_data()
+        input_root = self._input_data
 
         sly_ann_detected = False
         ann_path = None
