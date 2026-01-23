@@ -7,10 +7,12 @@ import supervisely as sly
 from supervisely import logger
 from supervisely.template.live_training.live_training_generator import LiveTrainingGenerator
 import supervisely.io.json as sly_json
+from supervisely.nn.live_training.helpers import ClassMap
 import yaml
 
 
 def upload_artifacts(
+    api: sly.Api,
     session_info: dict,
     artifacts: dict,
 ) -> str:
@@ -19,13 +21,12 @@ def upload_artifacts(
 
     Args:
         session_info: Training session context
-            - api: Supervisely API instance
             - team_id: Team ID
             - task_id: Task ID
             - project_id: Project ID
-            - framework_name: Framework name (e.g. 'mmdet')
+            - framework_name: Framework name
             - task_type: Task type
-            - project_meta: Project metadata
+            - class_map: Model class map
             - start_time: Training start time string
             - train_size: Final dataset size
             - initial_samples: Number of initial samples
@@ -36,7 +37,6 @@ def upload_artifacts(
             - checkpoint_info: Dict with {name, iteration, loss}
             - config_path: Path to config file
             - logs_dir: Path to TensorBoard logs or None
-            - model_name: Model name
             - model_config: Model configuration dict
             - loss_history: Dict with loss history
 
@@ -46,13 +46,13 @@ def upload_artifacts(
     logger.info("Starting artifacts upload")
 
     # Unpack session_info
-    api = session_info['api']
     team_id = session_info['team_id']
     task_id = session_info['task_id']
     project_id = session_info['project_id']
     framework_name = session_info['framework_name']
     task_type = session_info['task_type']
-    model_meta = session_info['project_meta']
+    class_map: ClassMap = session_info['class_map']
+    model_meta = sly.ProjectMeta(obj_classes=class_map.obj_classes)
     start_time = session_info['start_time']
     train_size = session_info['train_size']
     initial_samples = session_info.get('initial_samples', 0)
@@ -62,7 +62,6 @@ def upload_artifacts(
     checkpoint_info = artifacts['checkpoint_info']
     config_path = artifacts['config_path']
     logs_dir = artifacts.get('logs_dir')
-    model_name = artifacts['model_name']
     model_config = artifacts['model_config']
 
     work_dir = Path(os.path.dirname(checkpoint_path)).parent
@@ -71,6 +70,8 @@ def upload_artifacts(
 
     project_info = api.project.get_info_by_id(project_id)
     project_name = project_info.name if project_info else "unknown"
+    model_name = f"Live training - {project_name}"
+    model_config['model_name'] = model_name
     remote_dir = f"/experiments/live_training/{project_id}_{project_name}/{task_id}_{framework_name}/"
     logger.info(f"Remote directory: {remote_dir}")
 
