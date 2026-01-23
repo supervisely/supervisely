@@ -10,11 +10,13 @@ from typing import OrderedDict as OrderedDictType
 import numpy as np
 
 from supervisely._utils import find_value_by_keys
+from supervisely.annotation.label import LabelingStatus
 from supervisely.api.api import Api
 from supervisely.api.module_api import ApiField
 from supervisely.geometry.geometry import Geometry
 from supervisely.geometry.graph import GraphNodes
 from supervisely.geometry.helpers import deserialize_geometry
+from supervisely.geometry.oriented_bbox import OrientedBBox
 from supervisely.geometry.point import Point
 from supervisely.geometry.polygon import Polygon
 from supervisely.geometry.polyline import Polyline
@@ -22,7 +24,6 @@ from supervisely.geometry.rectangle import Rectangle
 from supervisely.nn.inference.cache import InferenceImageCache
 from supervisely.sly_logger import logger
 from supervisely.video_annotation.key_id_map import KeyIdMap
-from supervisely.annotation.label import LabelingStatus
 
 
 class TrackerInterface:
@@ -83,7 +84,7 @@ class TrackerInterface:
     @property
     def video_info(self):
         if self._video_info is None:
-            self._video_info = self.api.video.get_info_by_id(self.video_id)
+            self._video_info = self.api.video.get_info_by_id(self.video_id, raise_error=True)
         return self._video_info
 
     def add_object_geometries(self, geometries: List[Geometry], object_id: int, start_fig: int):
@@ -132,6 +133,10 @@ class TrackerInterface:
             h = self.video_info.frame_height
             w = self.video_info.frame_width
         rect = Rectangle.from_size((h, w))
+        if isinstance(geometry, OrientedBBox):
+            if rect.contains_point_location(geometry.center):
+                return geometry
+            return None
         cropped = geometry.crop(rect)
         if len(cropped) == 0:
             return None

@@ -692,6 +692,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         type: ProjectType = ProjectType.IMAGES,
         description: Optional[str] = "",
         change_name_if_conflict: Optional[bool] = False,
+        readme: Optional[str] = None,
     ) -> ProjectInfo:
         """
         Create Project with given name in the given Workspace ID.
@@ -706,6 +707,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type description: str
         :param change_name_if_conflict: Checks if given name already exists and adds suffix to the end of the name.
         :type change_name_if_conflict: bool, optional
+        :param readme: Project readme.
+        :type readme: str, optional
         :return: Information about Project. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`ProjectInfo`
         :Usage example:
@@ -746,15 +749,15 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             name=name,
             change_name_if_conflict=change_name_if_conflict,
         )
-        response = self._api.post(
-            "projects.add",
-            {
-                ApiField.WORKSPACE_ID: workspace_id,
-                ApiField.NAME: effective_name,
-                ApiField.DESCRIPTION: description,
-                ApiField.TYPE: str(type),
-            },
-        )
+        payload = {
+            ApiField.NAME: effective_name,
+            ApiField.WORKSPACE_ID: workspace_id,
+            ApiField.DESCRIPTION: description,
+            ApiField.TYPE: str(type),
+        }
+        if readme is not None:
+            payload[ApiField.README] = readme
+        response = self._api.post("projects.add", payload)
         return self._convert_json_info(response.json())
 
     def _get_update_method(self):
@@ -1369,6 +1372,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
     def get_settings(self, id: int) -> Dict[str, str]:
         info = self._get_info_by_id(id, "projects.info")
+        if info is None:
+            raise ProjectNotFound(f"Project with id={id} not found")
         return info.settings
 
     def update_settings(self, id: int, settings: Dict[str, str]) -> None:
@@ -2365,7 +2370,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         """
         info = self.get_info_by_id(id, extra_fields=[ApiField.EMBEDDINGS_IN_PROGRESS])
         if info is None:
-            raise RuntimeError(f"Project with ID {id} not found.")
+            raise ProjectNotFound(f"Project with ID {id} not found.")
         if not hasattr(info, "embeddings_in_progress"):
             raise RuntimeError(
                 f"Project with ID {id} does not have 'embeddings_in_progress' field in its info."
@@ -2430,7 +2435,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         """
         info = self.get_info_by_id(id, extra_fields=[ApiField.EMBEDDINGS_UPDATED_AT])
         if info is None:
-            raise RuntimeError(f"Project with ID {id} not found.")
+            raise ProjectNotFound(f"Project with ID {id} not found.")
         if not hasattr(info, "embeddings_updated_at"):
             raise RuntimeError(
                 f"Project with ID {id} does not have 'embeddings_updated_at' field in its info."

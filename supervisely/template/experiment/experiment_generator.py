@@ -92,10 +92,9 @@ class ExperimentGenerator(BaseGenerator):
         return f"{server_address}/nn/experiments/{template_id}"
 
     def _datasets_url_with_entities_filter(self, project_id: int, entities_filter: List[dict]) -> str:
-        base_url = self.api.server_address.rstrip('/')
         path = f"/projects/{project_id}/datasets"
         query = urlencode({"entitiesFilter": json.dumps(entities_filter)})
-        return f"{base_url}{path}?{query}"
+        return f"{path}?{query}"
 
     def upload_to_artifacts(self):
         remote_dir = os.path.join(self.info["artifacts_dir"], "visualization")
@@ -477,10 +476,7 @@ class ExperimentGenerator(BaseGenerator):
             }
             return training_session
 
-        training_session = {
-            "id": task_id,
-            "url": f"{self.api.server_address}/apps/sessions/{task_id}",
-        }
+        training_session = {"id": task_id, "url": f"/apps/sessions/{task_id}"}
         return training_session
 
     def _get_training_duration(self) -> str:
@@ -790,6 +786,7 @@ class ExperimentGenerator(BaseGenerator):
         return train_app, serve_app
 
     def _get_agent_info(self) -> str:
+        # Not used
         task_id = self.info.get("task_id", None)
 
         agent_info = {
@@ -805,7 +802,7 @@ class ExperimentGenerator(BaseGenerator):
         if task_info is not None:
             agent_info["name"] = task_info["agentName"]
             agent_info["id"] = task_info["agentId"]
-            agent_info["link"] = f"{self.api.server_address}/nodes/{agent_info['id']}/info"
+            agent_info["link"] = f"/nodes/{agent_info['id']}/info"
         return agent_info
 
     def _get_class_names(self, model_classes: list) -> dict:
@@ -911,7 +908,7 @@ class ExperimentGenerator(BaseGenerator):
             version_info = {
                 "version": project_version["version"],
                 "id": project_version["id"],
-                "url": f"{self.api.server_address}/projects/{project_info.id}/versions",
+                "url": f"/projects/{project_info.id}/versions",
             }
         return version_info
 
@@ -920,7 +917,7 @@ class ExperimentGenerator(BaseGenerator):
         project_info = self.api.project.get_info_by_id(project_id)
         project_version = self._get_project_version(project_info)
         project_type = project_info.type
-        project_url = f"{self.api.server_address}/projects/{project_id}/datasets"
+        project_url = f"/projects/{project_id}/datasets"
         model_classes = [cls.name for cls in self.model_meta.obj_classes]
         class_names = self._get_class_names(model_classes)
         splits = self._get_project_splits()
@@ -951,9 +948,7 @@ class ExperimentGenerator(BaseGenerator):
                 )
                 base_checkpoint_name = base_checkpoint_info.name
                 base_checkpoint_link = base_checkpoint_info.full_storage_url
-                base_checkpoint_path = (
-                    f"{self.api.server_address}/files/?path={base_checkpoint_info.path}"
-                )
+                base_checkpoint_path = f"/files/?path={base_checkpoint_info.path}"
 
         base_checkpoint = {
             "name": base_checkpoint_name,
@@ -983,7 +978,7 @@ class ExperimentGenerator(BaseGenerator):
         onnx_checkpoint, trt_checkpoint = self._get_optimized_checkpoints()
 
         logs_path = self.info.get("logs", {}).get("link")
-        logs_url = f"{self.api.server_address}/files/?path={logs_path}" if logs_path else None
+        logs_url = f"/files/?path={logs_path}" if logs_path else None
 
         primary_metric = self._get_primary_metric()
         display_metrics = self._get_display_metrics(self.info["task_type"])
@@ -1002,7 +997,7 @@ class ExperimentGenerator(BaseGenerator):
             "logs": {"path": logs_path, "url": logs_url},
             "evaluation": {
                 "id": self.info.get("evaluation_report_id"),
-                "url": self.info.get("evaluation_report_link"),
+                "url": f"/model-benchmark/?id={self.info.get('evaluation_report_id')}",
                 "primary_metric": primary_metric,
                 "display_metrics": display_metrics,
                 "metrics": self.info.get("evaluation_metrics"),
@@ -1032,15 +1027,15 @@ class ExperimentGenerator(BaseGenerator):
             "paths": {
                 "experiment_dir": {
                     "path": experiment_dir,
-                    "url": f"{self.api.server_address}/files/?path={experiment_dir.rstrip('/') + '/'}",
+                    "url": f"/files/?path={experiment_dir.rstrip('/') + '/'}",
                 },
                 "artifacts_dir": {
                     "path": artifacts_dir,
-                    "url": f"{self.api.server_address}/files/?path={artifacts_dir.rstrip('/') + '/'}",
+                    "url": f"/files/?path={artifacts_dir.rstrip('/') + '/'}",
                 },
                 "checkpoints_dir": {
                     "path": checkpoints_dir,
-                    "url": f"{self.api.server_address}/files/?path={checkpoints_dir.rstrip('/') + '/'}",
+                    "url": f"/files/?path={checkpoints_dir.rstrip('/') + '/'}",
                 },
             },
         }
@@ -1138,7 +1133,3 @@ class ExperimentGenerator(BaseGenerator):
         except Exception as e:
             logger.warning(f"Failed to build or save static training plot: {e}")
             return None
-
-
-# Pylint Errors: ************* Module supervisely.api.app_api
-# supervisely/api/app_api.py:1463:20: E0606: Possibly using variable 'progress' before assignment (possibly-used-before-assignment)
