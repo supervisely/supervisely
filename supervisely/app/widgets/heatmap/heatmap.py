@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Callable, List, Union
+from typing import Any, Callable, List, Optional, Union
 from urllib.parse import urlparse
 
 import cv2
@@ -14,7 +14,7 @@ from supervisely.imaging.image import np_image_to_data_url, read
 
 
 def mask_to_heatmap(
-    mask: np.ndarray, colormap=cv2.COLORMAP_JET, transparent_low=False, vmin=None, vmax=None
+    mask: np.ndarray, colormap=cv2.COLORMAP_JET, transparent_low=False, vmin=None, vmax=None, blur_ksize=(5,5), blur_function: Optional[Callable[[np.ndarray], np.ndarray]] = None
 ):
     if mask.ndim == 3:
         mask_gray = mask.mean(axis=-1)
@@ -30,12 +30,16 @@ def mask_to_heatmap(
         mask_norm = np.full_like(mask_gray, 128, dtype=np.uint8)
     else:
         mask_norm = ((mask_gray - vmin) / (vmax - vmin) * 255).astype(np.uint8)
-    mask_norm = cv2.GaussianBlur(mask_norm, (5, 5), 0)
+    if transparent_low:
+        zeros = mask_norm == mask_norm.min()
+    if blur_function is not None:
+        mask_norm = blur_function(mask_norm)
+    elif blur_ksize is not None:
+        mask_norm = cv2.GaussianBlur(mask_norm, blur_ksize, 0)
     heatmap_bgr = cv2.applyColorMap(mask_norm, colormap)
     heatmap_bgra = cv2.cvtColor(heatmap_bgr, cv2.COLOR_BGR2BGRA)
-
     if transparent_low:
-        alpha = np.where(mask_norm == mask_norm.min(), 0, 255).astype(np.uint8)
+        alpha = np.where(zeros, 0, 255).astype(np.uint8)
         heatmap_bgra[..., 3] = alpha
     return heatmap_bgra
 
@@ -77,12 +81,20 @@ class Heatmap(Widget):
     :type width: int, optional
     :param height: Height of the output heatmap in pixels
     :type height: int, optional
+    :param blur_ksize: Kernel size for Gaussian blur applied to the heatmap mask. Set to None to disable blurring
+    :type blur_ksize: Optional[Union[tuple, None]], optional
+    :param blur_function: Custom function to apply blurring to the heatmap mask. Overrides blur_ksize if provided
+    :type blur_function: Optional[Callable[[np.ndarray], np.ndarray]], optional
     :param widget_id: Unique identifier for the widget instance
     :type widget_id: str, optional
 
     This widget provides an interactive visualization for numerical data as colored overlays.
     Users can click on the heatmap to get exact values at specific coordinates.
     The widget supports various colormaps, transparency controls, and value normalization.
+
+    Blurring can be applied to the heatmap visualization using either a Gaussian kernel (specified by `blur_ksize`)
+    or a custom blurring function (specified by `blur_function`). If both are provided, the custom function takes precedence.
+    Blurring only affects the visual representation of the heatmap and does not modify the underlying data.
 
     :Usage example:
 
@@ -104,7 +116,28 @@ class Heatmap(Widget):
         @heatmap.click
         def handle_click(y: int, x: int, value: float):
             print(f"Temperature at ({x}, {y}): {value:.1f}°C")
-    """
+
+
+    :Custom blur function example:
+
+     .. code-block:: python
+
+        from functools import partial
+        import cv2
+
+        # Using a predefined OpenCV function with fixed kernel size
+        blur_f = partial(cv2.medianBlur, ksize=5)
+        # Or define a custom blur function
+        def blur_f(img):
+            ksize = img.shape[0] // 20
+            if ksize % 2 == 0:
+                ksize += 1
+            return cv2.GaussianBlur(img, (ksize, ksize), 0)
+        heatmap = Heatmap(
+            heatmap_mask=temp_data,
+            blur_function=blur_f
+        )
+    """    
 
     class Routes:
         CLICK = "heatmap_clicked_cb"
@@ -119,6 +152,8 @@ class Heatmap(Widget):
         colormap: int = cv2.COLORMAP_JET,
         width: int = None,
         height: int = None,
+        blur_ksize: Optional[Union[tuple, None]] = (5,5),
+        blur_function: Optional[Callable[[np.ndarray], np.ndarray]] = None,
         widget_id: str = None,
     ):
         self._background_url = None
@@ -134,6 +169,9 @@ class Heatmap(Widget):
         self._opacity = 70
         self._min_value = 0
         self._max_value = 0
+        self._blur_ksize = blur_ksize
+        self._blur_function = blur_function
+
         super().__init__(widget_id, file_path=__file__)
 
         if background_image is not None:
@@ -266,6 +304,8 @@ class Heatmap(Widget):
                 vmin=self._vmin,
                 vmax=self._vmax,
                 transparent_low=self._transparent_low,
+                blur_ksize=self._blur_ksize,
+                blur_function=self._blur_function,
             )
             self._heatmap_url = np_image_to_data_url(heatmap)
             self._min_value = to_json_safe(mask.min())

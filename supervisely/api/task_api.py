@@ -816,8 +816,8 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
     ):
         """
         Update given task metadata
-        :param id: int — task id
-        :param data: dict — meta data to update
+        :param id: int - task id
+        :param data: dict - meta data to update
         """
         if type(data) == dict:
             data.update({"id": id})
