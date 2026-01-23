@@ -22,11 +22,10 @@ def las2pcd(input_path: str, output_path: str) -> None:
     from pypcd4 import Encoding  # pylint: disable=import-error
     from pypcd4 import PointCloud as pypcd4_pcd  # pylint: disable=import-error
 
-    input_file_name = get_file_name_with_ext(input_path)
-    logger.info(f"Start processing file: {input_file_name}")
-
     # Read LAS file
     try:
+        input_file_name = get_file_name_with_ext(input_path)
+        logger.info(f"Start processing file: {input_file_name}")
         las = laspy.read(input_path)
     except Exception as e:
         if "buffer size must be a multiple of element size" in str(e):
@@ -49,77 +48,86 @@ def las2pcd(input_path: str, output_path: str) -> None:
             PackedPointRecord.from_buffer = from_buffer_without_extra_bytes
             las = laspy.read(input_path)
         else:
-            raise
+            logger.error(f"Failed to read {input_file_name}: {e}")
+            return
 
-    # Use scaled coordinates (scale and offset applied)
-    x = np.asarray(las.x, dtype=np.float64)
-    y = np.asarray(las.y, dtype=np.float64)
-    z = np.asarray(las.z, dtype=np.float64)
+    try:
+        # Use scaled coordinates (scale and offset applied)
+        x = np.asarray(las.x, dtype=np.float64)
+        y = np.asarray(las.y, dtype=np.float64)
+        z = np.asarray(las.z, dtype=np.float64)
 
-    # Build Nx3 point array
-    pts = np.vstack((x, y, z)).T
+        # Build Nx3 point array
+        pts = np.vstack((x, y, z)).T
 
-    # Check for empty point cloud
-    if len(pts) == 0:
-        logger.warning(f"{input_file_name} file is empty (0 points).")
+        # Check for empty point cloud
+        if len(pts) == 0:
+            logger.warning(f"{input_file_name} file is empty (0 points).")
+            return
+
+        # Recenter point cloud to reduce floating point precision issues
+        shift = pts.mean(axis=0)
+        logger.info(
+            f"Applied coordinate shift for {input_file_name}: "
+            f"X={shift[0]}, Y={shift[1]}, Z={shift[2]}"
+        )
+        pts -= shift
+
+        # Base PCD fields
+        data = {
+            "x": pts[:, 0].astype(np.float32),
+            "y": pts[:, 1].astype(np.float32),
+            "z": pts[:, 2].astype(np.float32),
+            "intensity": las.intensity.astype(np.float32),
+        }
+
+        # Handle RGB attributes if present
+        if hasattr(las, "red") and hasattr(las, "green") and hasattr(las, "blue"):
+            # Convert LAS colors to 8-bit.
+            # Some files store 0–255 values in 16-bit fields; detect this and only shift when needed.
+            r_raw = np.asarray(las.red)
+            g_raw = np.asarray(las.green)
+            b_raw = np.asarray(las.blue)
+
+            # Determine if the values are full 16-bit range (0–65535) or already 0–255.
+            max_rgb = max(
+                r_raw.max(initial=0),
+                g_raw.max(initial=0),
+                b_raw.max(initial=0),
+            )
+
+            if max_rgb > 255:
+                # Typical LAS case: 16-bit colors; downscale to 8-bit.
+                r = (r_raw >> 8).astype(np.uint32)
+                g = (g_raw >> 8).astype(np.uint32)
+                b = (b_raw >> 8).astype(np.uint32)
+            else:
+                # Values are already in 0–255 range; use as-is.
+                r = r_raw.astype(np.uint32)
+                g = g_raw.astype(np.uint32)
+                b = b_raw.astype(np.uint32)
+
+            # Pack RGB into a single float field (PCL-compatible)
+            rgb = (r << 16) | (g << 8) | b
+            data["rgb"] = rgb.view(np.float32)
+
+        # Write PCD file
+        # Create structured array for pypcd4
+        field_names = ["x", "y", "z", "intensity"]
+        types = [np.float32, np.float32, np.float32, np.float32]
+
+        if "rgb" in data:
+            field_names.append("rgb")
+            types.append(np.float32)
+
+        arrays = [data[field] for field in field_names]
+    except Exception as e:
+        logger.error(f"Error processing {input_file_name}: {e}")
         return
 
-    # Recenter point cloud to reduce floating point precision issues
-    shift = pts.mean(axis=0)
-    logger.info(
-        f"Applied coordinate shift for {input_file_name}: "
-        f"X={shift[0]}, Y={shift[1]}, Z={shift[2]}"
-    )
-    pts -= shift
-
-    # Base PCD fields
-    data = {
-        "x": pts[:, 0].astype(np.float32),
-        "y": pts[:, 1].astype(np.float32),
-        "z": pts[:, 2].astype(np.float32),
-        "intensity": las.intensity.astype(np.float32),
-    }
-
-    # Handle RGB attributes if present
-    if hasattr(las, "red") and hasattr(las, "green") and hasattr(las, "blue"):
-        # Convert LAS colors to 8-bit.
-        # Some files store 0–255 values in 16-bit fields; detect this and only shift when needed.
-        r_raw = np.asarray(las.red)
-        g_raw = np.asarray(las.green)
-        b_raw = np.asarray(las.blue)
-
-        # Determine if the values are full 16-bit range (0–65535) or already 0–255.
-        max_rgb = max(
-            r_raw.max(initial=0),
-            g_raw.max(initial=0),
-            b_raw.max(initial=0),
-        )
-
-        if max_rgb > 255:
-            # Typical LAS case: 16-bit colors; downscale to 8-bit.
-            r = (r_raw >> 8).astype(np.uint32)
-            g = (g_raw >> 8).astype(np.uint32)
-            b = (b_raw >> 8).astype(np.uint32)
-        else:
-            # Values are already in 0–255 range; use as-is.
-            r = r_raw.astype(np.uint32)
-            g = g_raw.astype(np.uint32)
-            b = b_raw.astype(np.uint32)
-
-        # Pack RGB into a single float field (PCL-compatible)
-        rgb = (r << 16) | (g << 8) | b
-        data["rgb"] = rgb.view(np.float32)
-
-    # Write PCD file
-    # Create structured array for pypcd4
-    field_names = ["x", "y", "z", "intensity"]
-    types = [np.float32, np.float32, np.float32, np.float32]
-
-    if "rgb" in data:
-        field_names.append("rgb")
-        types.append(np.float32)
-
-    arrays = [data[field] for field in field_names]
-
-    pd = pypcd4_pcd.from_points(arrays, field_names, types)
-    pd.save(output_path, encoding=Encoding.BINARY_COMPRESSED)
+    try:
+        pd = pypcd4_pcd.from_points(arrays, field_names, types)
+        pd.save(output_path, encoding=Encoding.BINARY_COMPRESSED)
+    except Exception as e:
+        logger.error(f"Failed to write PCD file for {input_file_name}: {e}")
+        return
