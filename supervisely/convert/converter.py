@@ -64,28 +64,34 @@ class ImportManager:
         if isinstance(input_data, str):
             input_data = [input_data]
 
+        self._converter_entries = []
         self._input_data = get_data_dir()
-        for data in input_data:
-            self._prepare_input_data(data)
-        self._unpack_archives(self._input_data)
-        remove_junk_from_dir(self._input_data)
 
-        self._converter = self.get_converter()
-        if isinstance(self._converter, (HighColorDepthImageConverter, CSVConverter)):
-            self._converter.team_id = self._team_id
+        for data in input_data:
+            prepared_data = self._prepare_input_data(data)
+            if prepared_data is not None:
+                data = prepared_data
+            self._unpack_archives(os.path.dirname(data))
+            remove_junk_from_dir(data)
+
+            converter = self.get_converter(data)
+            if isinstance(converter, (HighColorDepthImageConverter, CSVConverter)):
+                converter.team_id = self._team_id
+
+            self._converter_entries.append((converter, [data]))
+
+    @property
+    def converters(self):
+        return [conv for conv, _paths in self._converter_entries]
 
     @property
     def modality(self):
         return self._modality
 
-    @property
-    def converter(self):
-        return self._converter
-
     def get_items(self):
-        return self._converter.get_items()
+        return [conv.get_items() for conv in self.converters]
 
-    def get_converter(self):
+    def get_converter(self, data_path: Optional[str] = None):
         """Return correct converter"""
         modality_converter_map = {
             ProjectType.IMAGES.value: ImageConverter,
@@ -98,7 +104,7 @@ class ImportManager:
             raise ValueError(f"Unsupported project type selected: {self._modality}")
 
         modality_converter = modality_converter_map[str(self._modality)](
-            self._input_data,
+            data_path or self._input_data,
             self._labeling_interface,
             self._upload_as_links,
             self._remote_files_map,
@@ -107,10 +113,8 @@ class ImportManager:
 
     def upload_dataset(self, dataset_id) -> Optional[int]:
         """Upload converted data to Supervisely"""
-        return self.converter.upload_dataset(self._api, dataset_id)
-
-    # def validate_format(self):
-    #     raise NotImplementedError
+        for converter in self.converters:
+            converter.upload_dataset(self._api, dataset_id)
 
     def _prepare_input_data(self, input_data):
         logger.debug(f"Preparing input data: {input_data}")
