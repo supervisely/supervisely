@@ -1,6 +1,7 @@
 import numpy as np
 
 from supervisely import logger
+from supervisely.io.fs import get_file_name_with_ext
 
 
 def las2pcd(input_path: str, output_path: str) -> None:
@@ -21,13 +22,16 @@ def las2pcd(input_path: str, output_path: str) -> None:
     from pypcd4 import Encoding  # pylint: disable=import-error
     from pypcd4 import PointCloud as pypcd4_pcd  # pylint: disable=import-error
 
+    input_file_name = get_file_name_with_ext(input_path)
+    logger.info(f"Start processing file: {input_file_name}")
+
     # Read LAS file
     try:
         las = laspy.read(input_path)
     except Exception as e:
         if "buffer size must be a multiple of element size" in str(e):
             logger.warning(
-                "LAS/LAZ file read failed due to buffer size mismatch with EXTRA_BYTES. "
+                f"{input_file_name} file read failed due to buffer size mismatch with EXTRA_BYTES. "
                 "Retrying with EXTRA_BYTES disabled as a workaround..."
             )
             from laspy.point.record import (
@@ -55,8 +59,17 @@ def las2pcd(input_path: str, output_path: str) -> None:
     # Build Nx3 point array
     pts = np.vstack((x, y, z)).T
 
+    # Check for empty point cloud
+    if len(pts) == 0:
+        logger.warning(f"{input_file_name} file is empty (0 points).")
+        return
+
     # Recenter point cloud to reduce floating point precision issues
     shift = pts.mean(axis=0)
+    logger.info(
+        f"Applied coordinate shift for {input_file_name}: "
+        f"X={shift[0]}, Y={shift[1]}, Z={shift[2]}"
+    )
     pts -= shift
 
     # Base PCD fields
@@ -69,10 +82,29 @@ def las2pcd(input_path: str, output_path: str) -> None:
 
     # Handle RGB attributes if present
     if hasattr(las, "red") and hasattr(las, "green") and hasattr(las, "blue"):
-        # Convert 16-bit LAS colors to 8-bit
-        r = (las.red >> 8).astype(np.uint32)
-        g = (las.green >> 8).astype(np.uint32)
-        b = (las.blue >> 8).astype(np.uint32)
+        # Convert LAS colors to 8-bit.
+        # Some files store 0–255 values in 16-bit fields; detect this and only shift when needed.
+        r_raw = np.asarray(las.red)
+        g_raw = np.asarray(las.green)
+        b_raw = np.asarray(las.blue)
+
+        # Determine if the values are full 16-bit range (0–65535) or already 0–255.
+        max_rgb = max(
+            r_raw.max(initial=0),
+            g_raw.max(initial=0),
+            b_raw.max(initial=0),
+        )
+
+        if max_rgb > 255:
+            # Typical LAS case: 16-bit colors; downscale to 8-bit.
+            r = (r_raw >> 8).astype(np.uint32)
+            g = (g_raw >> 8).astype(np.uint32)
+            b = (b_raw >> 8).astype(np.uint32)
+        else:
+            # Values are already in 0–255 range; use as-is.
+            r = r_raw.astype(np.uint32)
+            g = g_raw.astype(np.uint32)
+            b = b_raw.astype(np.uint32)
 
         # Pack RGB into a single float field (PCL-compatible)
         rgb = (r << 16) | (g << 8) | b
