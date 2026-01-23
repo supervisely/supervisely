@@ -14,6 +14,7 @@ from typing import (
     Optional,
     Union,
 )
+from urllib.parse import urlparse
 
 import aiofiles
 from requests import Response
@@ -602,25 +603,24 @@ class PointcloudApi(RemoveableBulkModuleApi):
     def upload_links(
         self,
         dataset_id: int,
-        links: List[str],
         names: List[str],
+        links: List[str],
         metas: Optional[List[Dict]] = None,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
-        force_metadata_for_links: Optional[bool] = True,
     ) -> List[PointcloudInfo]:
         """
         Upload point clouds from given links to Dataset.
 
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
-        :param links: Point cloud links.
-        :type links: List[str]
         :param names: Point cloud names with extension.
         :type names: List[str]
+        :param links: Point cloud links.
+        :type links: List[str]
         :param metas: Point cloud metadatas.
         :type metas: Optional[List[Dict]]
-        :param progress_cb: Function for tracking the progress of uploading.
-        :type progress_cb: tqdm or callable, optional
+        :param progress_cb: Function for tracking upload progress.
+        :type progress_cb: Progress, optional
         :param force_metadata_for_links: Force metadata retrieval for links.
         :type force_metadata_for_links: Optional[bool]
         :return: List with information about Point clouds. See :class:`info_sequence<info_sequence>`
@@ -636,13 +636,13 @@ class PointcloudApi(RemoveableBulkModuleApi):
             api = sly.Api.from_env()
 
             dataset_id = 62693
+            names = ["scan1.pcd", "scan2.pcd", "scan3.pcd"]
             links = [
                 "https://example.com/pointclouds/scan1.pcd",
                 "https://example.com/pointclouds/scan2.pcd",
                 "https://example.com/pointclouds/scan3.pcd"
             ]
-            names = ["scan1.pcd", "scan2.pcd", "scan3.pcd"]
-            pcd_infos = api.pointcloud.upload_links(dataset_id, links, names)
+            pcd_infos = api.pointcloud.upload_links(dataset_id, names, links)
             print(pcd_infos)
         """
 
@@ -697,13 +697,14 @@ class PointcloudApi(RemoveableBulkModuleApi):
         """
 
         if name is None:
-            name = rand_str(10) + get_file_ext(link)
+            url_path = urlparse(link).path
+            name = rand_str(10) + get_file_ext(url_path)
 
         name = self.get_free_name(dataset_id, name)
         pcd_infos = self.upload_links(
             dataset_id,
-            links=[link],
             names=[name],
+            links=[link],
             metas=[meta] if meta is not None else None,
             force_metadata_for_links=force_metadata_for_links,
         )
