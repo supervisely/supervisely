@@ -57,27 +57,27 @@ def las2pcd(input_path: str, output_path: str) -> None:
         y = np.asarray(las.y, dtype=np.float64)
         z = np.asarray(las.z, dtype=np.float64)
 
-        # Build Nx3 point array
-        pts = np.vstack((x, y, z)).T
-
         # Check for empty point cloud
-        if len(pts) == 0:
+        if len(x) == 0:
             logger.warning(f"{input_file_name} file is empty (0 points).")
             return
 
         # Recenter point cloud to reduce floating point precision issues
-        shift = pts.mean(axis=0)
+        # Calculate shift for each axis independently (avoids creating intermediate pts array)
+        shift_x = x.mean()
+        shift_y = y.mean()
+        shift_z = z.mean()
+
         logger.info(
             f"Applied coordinate shift for {input_file_name}: "
-            f"X={shift[0]}, Y={shift[1]}, Z={shift[2]}"
+            f"X={shift_x}, Y={shift_y}, Z={shift_z}"
         )
-        pts -= shift
 
-        # Base PCD fields
+        # Base PCD fields - apply shift and convert to float32 in one operation
         data = {
-            "x": pts[:, 0].astype(np.float32),
-            "y": pts[:, 1].astype(np.float32),
-            "z": pts[:, 2].astype(np.float32),
+            "x": (x - shift_x).astype(np.float32),
+            "y": (y - shift_y).astype(np.float32),
+            "z": (z - shift_z).astype(np.float32),
             "intensity": las.intensity.astype(np.float32),
         }
 
