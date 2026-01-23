@@ -63,17 +63,10 @@ class NuscenesConverter(NuscenesEpisodesConverter, PointcloudConverter):
 
         key_id_map = KeyIdMap()
 
-        tag_metas = [TagMeta(attr["name"], TagValueType.NONE) for attr in nuscenes.attribute]
-        obj_classes = []
-        classes_token_map = {}
-        for category in nuscenes.category:
-            color = nuscenes.colormap[category["name"]]
-            description = helpers.trim_description(category["description"])
-            obj_classes.append(ObjClass(category["name"], Cuboid3d, color, description=description))
-            classes_token_map[category["token"]] = category["name"]
+        project_meta, classes_token_map = helpers.build_project_meta(nuscenes)
         self._custom_data["classes_token_map"] = classes_token_map
 
-        self._meta = ProjectMeta(obj_classes, tag_metas)
+        self._meta = project_meta
         meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)
 
         dataset_info = api.dataset.get_info_by_id(dataset_id)
@@ -107,64 +100,14 @@ class NuscenesConverter(NuscenesEpisodesConverter, PointcloudConverter):
         for scene in nuscenes.scene:
             current_dataset_id = scene_name_to_dataset[scene["name"]].id
 
-            log = nuscenes.get("log", scene["log_token"])
-            sample_token = scene["first_sample_token"]
-
             # * Extract scene's samples
-            scene_samples: List[helpers.Sample] = []
-            frame_token_map = {}
-            for i in range(scene["nbr_samples"]):
-                sample = nuscenes.get("sample", sample_token)
-                frame_token_map[sample["token"]] = i
-                lidar_path, boxes, _ = nuscenes.get_sample_data(sample["data"]["LIDAR_TOP"])
-                if not os.path.exists(lidar_path):
-                    logger.warning(f'Scene "{scene["name"]}" has no LIDAR data.')
-                    continue
-
-                timestamp = sample["timestamp"]
-                anns = []
-                for box, name, inst_token in helpers.Sample.generate_boxes(nuscenes, boxes):
-                    current_instance_token = inst_token["token"]
-                    parent_token = inst_token["prev"]
-
-                    # get category, attributes and visibility
-                    ann = nuscenes.get("sample_annotation", current_instance_token)
-                    category = ann["category_name"]
-                    attributes = [
-                        nuscenes.get("attribute", attr)["name"] for attr in ann["attribute_tokens"]
-                    ]
-                    visibility = nuscenes.get("visibility", ann["visibility_token"])["level"]
-
-                    ann_uuid = uuid.UUID(ann["token"])
-                    ann = helpers.AnnotationObject(
-                        name=name,
-                        bbox=box,
-                        token=ann_uuid,
-                        instance_token=current_instance_token,
-                        parent_token=parent_token,
-                        category=category,
-                        attributes=attributes,
-                        visibility=visibility,
-                    )
-                    anns.append(ann)
-
-                # get camera data
-                sample_data = nuscenes.get("sample_data", sample["data"]["LIDAR_TOP"])
-                cal_sensor = nuscenes.get(
-                    "calibrated_sensor", sample_data["calibrated_sensor_token"]
-                )
-                ego_pose = nuscenes.get("ego_pose", sample_data["ego_pose_token"])
-
-                camera_data = [
-                    helpers.CamData(nuscenes, sensor, token, cal_sensor, ego_pose)
-                    for sensor, token in sample["data"].items()
-                    if sensor.startswith("CAM")
-                ]
-                scene_samples.append(helpers.Sample(timestamp, lidar_path, anns, camera_data))
-                sample_token = sample["next"]
+            parsed_samples = helpers.build_scene_samples(nuscenes, scene)
+            scene_samples: List[helpers.Sample] = list(parsed_samples.values())
+            frame_token_map = {k: i for i, k in enumerate(parsed_samples.keys())}
             self._custom_data["frame_token_map"][current_dataset_id] = frame_token_map
 
             # * Convert and upload pointclouds w/ annotations
+            log = nuscenes.get("log", scene["log_token"])
             for idx, sample in enumerate(scene_samples):
                 pcd_ann = self.to_supervisely(sample, meta, renamed_classes, renamed_tags)
 
