@@ -30,7 +30,7 @@ class LasConverter(PointcloudConverter):
         # Warning about coordinate shift
         if len(las_list) > 0:
             logger.info(
-                "⚠️ IMPORTANT: Coordinate shift will be applied to all LAS/LAZ files during conversion to PCD format. "
+                "IMPORTANT: Coordinate shift will be applied to all LAS/LAZ files during conversion to PCD format. "
                 "This is necessary to avoid floating-point precision issues and visual artifacts. "
                 "The shift values (X, Y, Z offsets) will be logged for each file. "
                 "If you need to convert annotations back to original LAS coordinates or use them with original LAS files, "
