@@ -84,6 +84,10 @@ class LiveTraining:
         # from . import live_training_instance
         # live_training_instance = self  # for access from other modules
     
+    @property
+    def ready_to_predict(self):
+        return self.iter > self.initial_iters
+
     def status(self):
         return {
             'phase': self.phase,
@@ -97,27 +101,6 @@ class LiveTraining:
             'initial_iters': self.initial_iters,
         }
     
-    def _add_shutdown_callback(self):
-        """Setup graceful shutdown: save experiment on SIGINT/SIGTERM"""
-        self._upload_in_progress = False
-        
-        def signal_handler(signum, frame):
-            if self._upload_in_progress:
-                # Already uploading - force exit on second signal
-                signal.signal(signal.SIGINT, lambda s, f: sys.exit(1))
-                signal.signal(signal.SIGTERM, lambda s, f: sys.exit(1))
-                return
-            
-            # Save checkpoint and state before upload
-            logger.info("Received shutdown signal, saving checkpoint...")
-            self.save_checkpoint(self.latest_checkpoint_path)
-            save_state_json(self.state(), self.latest_checkpoint_path)
-            self._upload_artifacts()
-            sys.exit(0)
-        
-        signal.signal(signal.SIGINT, signal_handler)
-        signal.signal(signal.SIGTERM, signal_handler)
-
     def run(self):
         self.training_start_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self._add_shutdown_callback()
@@ -317,7 +300,6 @@ class LiveTraining:
             ]
 
         return ClassMap(obj_classes)
-
     
     def _filter_annotation(self, ann_json: dict) -> dict:
         # Filter objects according to class_map
@@ -450,13 +432,12 @@ class LiveTraining:
     def _get_session_info(self) -> dict:
         """Collect training session context"""
         return {
-            'api': self.api,
             'team_id': self.team_id,
             'task_id': self.task_id,
             'project_id': self.project_id,
             'framework_name': self.framework_name,
             'task_type': self.task_type,
-            'class_map': self.class_map.obj_classes,
+            'class_map': self.class_map,
             'start_time': self.training_start_time,
             'train_size': len(self.dataset) if self.dataset else 0,
             'initial_samples': self.initial_samples
@@ -473,6 +454,7 @@ class LiveTraining:
             artifacts = self.prepare_artifacts()
 
             report_url = upload_artifacts(
+                api=self.api,
                 session_info=session_info,
                 artifacts=artifacts
             )
@@ -493,6 +475,23 @@ class LiveTraining:
         loss_plateau_detector.register_save_checkpoint_callback(self.save_checkpoint)
         return loss_plateau_detector
     
-    @property
-    def ready_to_predict(self):
-        return self.iter > self.initial_iters
+    def _add_shutdown_callback(self):
+        """Setup graceful shutdown: save experiment on SIGINT/SIGTERM"""
+        self._upload_in_progress = False
+        
+        def signal_handler(signum, frame):
+            if self._upload_in_progress:
+                # Already uploading - force exit on second signal
+                signal.signal(signal.SIGINT, lambda s, f: sys.exit(1))
+                signal.signal(signal.SIGTERM, lambda s, f: sys.exit(1))
+                return
+            
+            # Save checkpoint and state before upload
+            logger.info("Received shutdown signal, saving checkpoint...")
+            self.save_checkpoint(self.latest_checkpoint_path)
+            save_state_json(self.state(), self.latest_checkpoint_path)
+            self._upload_artifacts()
+            sys.exit(0)
+        
+        signal.signal(signal.SIGINT, signal_handler)
+        signal.signal(signal.SIGTERM, signal_handler)

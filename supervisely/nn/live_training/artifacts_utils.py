@@ -7,10 +7,12 @@ import supervisely as sly
 from supervisely import logger
 from supervisely.template.live_training.live_training_generator import LiveTrainingGenerator
 import supervisely.io.json as sly_json
+from supervisely.nn.live_training.helpers import ClassMap
 import yaml
 
 
 def upload_artifacts(
+    api: sly.Api,
     session_info: dict,
     artifacts: dict,
 ) -> str:
@@ -19,7 +21,6 @@ def upload_artifacts(
 
     Args:
         session_info: Training session context
-            - api: Supervisely API instance
             - team_id: Team ID
             - task_id: Task ID
             - project_id: Project ID
@@ -45,14 +46,13 @@ def upload_artifacts(
     logger.info("Starting artifacts upload")
 
     # Unpack session_info
-    api = session_info['api']
     team_id = session_info['team_id']
     task_id = session_info['task_id']
     project_id = session_info['project_id']
     framework_name = session_info['framework_name']
     task_type = session_info['task_type']
-    class_map = session_info['class_map']
-    model_meta = sly.ProjectMeta(obj_classes=class_map)
+    class_map: ClassMap = session_info['class_map']
+    model_meta = sly.ProjectMeta(obj_classes=class_map.obj_classes)
     start_time = session_info['start_time']
     train_size = session_info['train_size']
     initial_samples = session_info.get('initial_samples', 0)
