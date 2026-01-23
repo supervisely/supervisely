@@ -4,9 +4,7 @@ from PIL import Image
 import numpy as np
 import supervisely as sly
 import cv2
-import base64
-import zlib
-from io import BytesIO
+
 
 class IncrementalDataset:
     """
