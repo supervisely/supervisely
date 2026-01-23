@@ -131,7 +131,7 @@ class IncrementalDataset:
             class_name = label.obj_class.name
             class_id = self.class2idx.get(class_name)
             if class_id is not None:
-                label.geometry.draw(mask, color=class_id + 1)
+                label.geometry.draw(mask, color=class_id)
         
         mask_name = Path(image_name).stem + '.png' 
         mask_path = str(self.masks_dir / mask_name)
