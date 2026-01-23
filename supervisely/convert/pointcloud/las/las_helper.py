@@ -81,11 +81,13 @@ def las2pcd(input_path: str, output_path: str) -> None:
     # Write PCD file
     # Create structured array for pypcd4
     field_names = ["x", "y", "z", "intensity"]
+    types = [np.float32, np.float32, np.float32, np.float32]
+
     if "rgb" in data:
         field_names.append("rgb")
+        types.append(np.float32)
 
-    dtype_list = [(name, np.float32) for name in field_names]
-    structured_array = np.rec.fromarrays([data[field] for field in field_names], dtype=dtype_list)
+    arrays = [data[field] for field in field_names]
 
-    pd = pypcd4_pcd.from_points(structured_array)
+    pd = pypcd4_pcd.from_points(arrays, field_names, types)
     pd.save(output_path, encoding=Encoding.BINARY_COMPRESSED)
