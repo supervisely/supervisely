@@ -304,24 +304,20 @@ class LiveTraining:
         return project_meta
     
     def _init_class_map(self, project_meta: sly.ProjectMeta) -> ClassMap:
-        # Filter classes according to task_type
-        obj_classes = project_meta.obj_classes
+        obj_classes = list(project_meta.obj_classes)
+
+        if self.task_type == TaskType.SEMANTIC_SEGMENTATION:
+            obj_classes.insert(0, sly.ObjClass(name='_background_', geometry_type=sly.Bitmap))
+
         if self.filter_classes_by_task:
             allowed_geometries = self._task2geometries[self.task_type]
             obj_classes = [
                 obj_class for obj_class in obj_classes
                 if obj_class.geometry_type in allowed_geometries
             ]
-                
-        class_map = ClassMap(obj_classes)
-        if self.task_type == TaskType.SEMANTIC_SEGMENTATION:
-            class_map.class2idx = {
-                'background': 0,
-                **{name: idx + 1 for name, idx in class_map.class2idx.items()}
-            }
-            class_map.idx2class = {idx: name for name, idx in class_map.class2idx.items()}
-        
-        return class_map
+
+        return ClassMap(obj_classes)
+
     
     def _filter_annotation(self, ann_json: dict) -> dict:
         # Filter objects according to class_map
@@ -460,7 +456,7 @@ class LiveTraining:
             'project_id': self.project_id,
             'framework_name': self.framework_name,
             'task_type': self.task_type,
-            'project_meta': self.project_meta,
+            'class_map': self.class_map.obj_classes,
             'start_time': self.training_start_time,
             'train_size': len(self.dataset) if self.dataset else 0,
             'initial_samples': self.initial_samples

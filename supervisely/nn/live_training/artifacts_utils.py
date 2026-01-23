@@ -25,7 +25,7 @@ def upload_artifacts(
             - project_id: Project ID
             - framework_name: Framework name
             - task_type: Task type
-            - project_meta: Project metadata
+            - class_map: Model class map
             - start_time: Training start time string
             - train_size: Final dataset size
             - initial_samples: Number of initial samples
@@ -51,7 +51,8 @@ def upload_artifacts(
     project_id = session_info['project_id']
     framework_name = session_info['framework_name']
     task_type = session_info['task_type']
-    model_meta = session_info['project_meta']
+    class_map = session_info['class_map']
+    model_meta = sly.ProjectMeta(obj_classes=class_map)
     start_time = session_info['start_time']
     train_size = session_info['train_size']
     initial_samples = session_info.get('initial_samples', 0)

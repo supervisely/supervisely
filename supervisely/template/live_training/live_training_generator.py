@@ -174,7 +174,7 @@ class LiveTrainingGenerator(BaseGenerator):
         return {
             "name": display_name,
             "backbone": self.model_config.get("backbone", "N/A"),
-            "num_classes": self.model_config.get("num_classes", len(self.model_meta.obj_classes)),
+            "num_classes": len(self.model_meta.obj_classes),
             "classes": classes,
             "classes_short": classes[:3] + (["..."] if len(classes) > 3 else []),
             "config_file": self.model_config.get("config_file", "N/A"),
