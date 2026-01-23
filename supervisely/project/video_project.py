@@ -1702,6 +1702,13 @@ class VideoProject(Project):
             )
             new_meta = api.project.update_meta(project.id, meta.to_json())
 
+            is_multiview = False
+            try:
+                if new_meta.labeling_interface == LabelingInterface.MULTIVIEW:
+                    is_multiview = True
+            except AttributeError:
+                is_multiview = False
+
             if with_custom_data:
                 src_custom_data = project_info_json.get("custom_data") or {}
                 try:
@@ -1919,21 +1926,19 @@ class VideoProject(Project):
                     )
                 for vid_id, ann_path in zip(video_ids, ann_paths):
                     try:
-                        ann_json = load_json_file(ann_path)
-                        ann = VideoAnnotation.from_json(
-                            ann_json,
-                            new_meta,
-                            key_id_map=KeyIdMap(),
-                        )
+                        if is_multiview:
+                            api.video.annotation.upload_paths_multiview(
+                                video_ids, ann_paths, new_meta, anns_progress
+                            )
+                        else:
+                            api.video.annotation.upload_paths(
+                                video_ids, ann_paths, new_meta, anns_progress
+                            )
                     except Exception as e:
                         logger.warning(
-                            f"Failed to deserialize annotation for restored video id={vid_id}: {e}"
+                            f"Failed to upload annotation for restored video id={vid_id}: {e}"
                         )
                         continue
-
-                    api.video.annotation.append(vid_id, ann)
-                    if anns_progress is not None:
-                        anns_progress(1)
 
             return project
 
