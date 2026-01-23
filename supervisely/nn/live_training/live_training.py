@@ -312,7 +312,16 @@ class LiveTraining:
                 obj_class for obj_class in obj_classes
                 if obj_class.geometry_type in allowed_geometries
             ]
-        return ClassMap(obj_classes)
+                
+        class_map = ClassMap(obj_classes)
+        if self.task_type == TaskType.SEMANTIC_SEGMENTATION:
+            class_map.class2idx = {
+                'background': 0,
+                **{name: idx + 1 for name, idx in class_map.class2idx.items()}
+            }
+            class_map.idx2class = {idx: name for name, idx in class_map.class2idx.items()}
+        
+        return class_map
     
     def _filter_annotation(self, ann_json: dict) -> dict:
         # Filter objects according to class_map
