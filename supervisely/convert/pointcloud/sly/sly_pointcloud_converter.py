@@ -62,39 +62,15 @@ class SLYPointcloudConverter(PointcloudConverter):
         super().__init__(*args, **kwargs)
         self._effective_input_data = None
 
-    def _get_effective_input_data(self) -> str:
-        """
-        If input is an extracted archive with a single top-level folder wrapper,
-        return that folder as project root to avoid 'archive_name -> project' nesting.
-        """
-        if self._effective_input_data is not None:
-            return self._effective_input_data
-
-        root = os.path.abspath(self._input_data)
-        try:
-            entries = [e for e in os.listdir(root) if not e.startswith(".")]
-            entries = [e for e in entries if e not in {"__MACOSX"}]
-            dirs = [e for e in entries if os.path.isdir(os.path.join(root, e))]
-            files = [e for e in entries if os.path.isfile(os.path.join(root, e))]
-
-            if len(files) == 0 and len(dirs) == 1:
-                self._effective_input_data = os.path.join(root, dirs[0])
-            else:
-                self._effective_input_data = root
-        except Exception:
-            self._effective_input_data = root
-        return self._effective_input_data
-
     def _infer_dataset_name(self, pcd_path: str) -> str:
+        """
+        Turns pointcloud path into a full dataset name. Defaults to 'dataset' if no subfolder structure is found.
+        """
         p = os.path.dirname(os.path.abspath(pcd_path))
-        root = os.path.abspath(self._get_effective_input_data())
-
-        def _norm(name: str) -> str:
-            return name.strip().lower().replace("_", " ")
+        root = os.path.abspath(self._input_data)
 
         while True:
-            base = os.path.basename(p)
-            if _norm(base) in _IGNORED_DATASET_PARTS:
+            if os.path.basename(p) in _IGNORED_DATASET_PARTS:
                 parent = os.path.dirname(p)
                 if parent == p:
                     break
@@ -102,21 +78,18 @@ class SLYPointcloudConverter(PointcloudConverter):
                 continue
             break
 
-        rel_dir = os.path.relpath(p, root)
-        if rel_dir in (".", ""):
-            return "dataset"
+        rel_dir = os.path.relpath(p, root).replace(".", "")
 
-        parts = [seg for seg in rel_dir.replace("\\", "/").split("/") if seg and seg != "."]
+        dataset_names = []
+        for part in rel_dir.split(os.sep):
+            if part and part not in _IGNORED_DATASET_PARTS:
+                dataset_names.append(part)
 
-        cleaned = [seg for seg in parts if _norm(seg) not in _IGNORED_DATASET_PARTS]
-
-        return "/".join(cleaned) if cleaned else "dataset"
+        return "/".join(dataset_names) if dataset_names else "dataset"
 
     def validate_format(self) -> bool:
-        input_root = self._get_effective_input_data()
-
         pcd_list, ann_dict, rimg_dict, rimg_ann_dict = [], {}, {}, {}
-        for root, _, files in os.walk(input_root):
+        for root, _, files in os.walk(self._input_data):
             dir_name = os.path.basename(root)
             for file in files:
                 full_path = os.path.join(root, file)
