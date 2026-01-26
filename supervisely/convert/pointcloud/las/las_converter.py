@@ -26,12 +26,24 @@ class LasConverter(PointcloudConverter):
 
         # create Items
         self._items = []
+
+        # Warning about coordinate shift
+        if len(las_list) > 0:
+            logger.info(
+                "⚠️ IMPORTANT: Coordinate shift will be applied to all LAS/LAZ files during conversion to PCD format. "
+                "This is necessary to avoid floating-point precision issues and visual artifacts. "
+                "The shift values (X, Y, Z offsets) will be logged for each file. "
+                "If you need to convert annotations back to original LAS coordinates or use them with original LAS files, "
+                "you MUST add these shift values back to the PCD/annotation coordinates. "
+                "Check the logs for 'Applied coordinate shift' messages for each file."
+            )
+
         for las_path in las_list:
             ext = get_file_ext(las_path)
             pcd_path = las_path.replace(ext, ".pcd")
             las_helper.las2pcd(las_path, pcd_path)
             if not os.path.exists(pcd_path):
-                logger.warn(f"Failed to convert LAS/LAZ to PCD. Skipping: {las_path}")
+                logger.warning(f"Failed to convert LAS/LAZ to PCD. Skipping: {las_path}")
                 continue
             item = self.Item(pcd_path)
             self._items.append(item)

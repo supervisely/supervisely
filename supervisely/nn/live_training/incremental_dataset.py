@@ -4,9 +4,7 @@ from PIL import Image
 import numpy as np
 import supervisely as sly
 import cv2
-import base64
-import zlib
-from io import BytesIO
+
 
 class IncrementalDataset:
     """
@@ -124,15 +122,14 @@ class IncrementalDataset:
 
         mapping = {label.obj_class: label.obj_class for label in annotation.labels}
         ann_nonoverlap = annotation.to_nonoverlapping_masks(mapping)
-        
-        h, w = annotation.img_size.height, annotation.img_size.width
+        h, w = annotation.img_size
         mask = np.zeros((h, w), dtype=np.uint8)
         
         for label in ann_nonoverlap.labels:
             class_name = label.obj_class.name
             class_id = self.class2idx.get(class_name)
             if class_id is not None:
-                label.geometry.draw(mask, color=class_id + 1)
+                label.geometry.draw(mask, color=class_id)
         
         mask_name = Path(image_name).stem + '.png' 
         mask_path = str(self.masks_dir / mask_name)
