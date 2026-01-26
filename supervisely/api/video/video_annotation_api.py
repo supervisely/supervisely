@@ -272,9 +272,12 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         for video_id, ann in zip(video_ids, anns):
             tag_api.append_to_entity(video_id, project_id, ann.tags, key_id_map=key_id_map)
             new_objects = []
+            existing_objects = []
             for obj in ann.objects:
                 if key_id_map.get_object_id(obj.key()) is None:
                     new_objects.append(obj)
+                else:
+                    existing_objects.append(obj)
             if len(new_objects) > 0:
                 object_api._append_bulk(
                     tag_api=tag_api,
@@ -287,7 +290,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
                     is_video_multi_view=True,
                 )
             tags_to_obj = {}
-            for obj in ann.objects:
+            for obj in existing_objects:
                 obj_id = key_id_map.get_object_id(obj.key())
                 tags_to_obj[obj_id] = obj.tags
             if len(tags_to_obj) > 0:
