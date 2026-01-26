@@ -1928,7 +1928,8 @@ class VideoProject(Project):
                         leave=False,
                     )
                 key_id_map = KeyIdMap()
-                vid_ids, anns = [], []
+                multiview_key_id_map = KeyIdMap()
+
                 for vid_id, ann_path in zip(video_ids, ann_paths):
                     try:
                         ann_json = load_json_file(ann_path)
@@ -1943,31 +1944,19 @@ class VideoProject(Project):
                         )
                         continue
 
-                    if not is_multiview:
-                        try:
-                            api.video.annotation.append(vid_id, ann)
-                            if anns_progress is not None:
-                                anns_progress(1)
-                        except Exception as e:
-                            logger.warning(
-                                f"Failed to upload annotation for dataset '{ds_info.name}', "
-                                f"video id={vid_id}: {e}"
-                            )
-                            continue
-                    else:
-                        vid_ids.append(vid_id)
-                        anns.append(ann)
-                if is_multiview:
-                    key_id_map = KeyIdMap()
                     try:
-                        api.video.annotation.upload_anns_multiview(
-                            vid_ids, anns, key_id_map=key_id_map
-                        )
+                        if not is_multiview:
+                            api.video.annotation.append(vid_id, ann)
+                        else:
+                            api.video.annotation.upload_anns_multiview(
+                                [vid_id], [ann], key_id_map=multiview_key_id_map
+                            )
                         if anns_progress is not None:
-                            anns_progress(len(vid_ids))
+                            anns_progress(1)
                     except Exception as e:
                         logger.warning(
-                            f"Failed to upload multiview annotations for dataset '{ds_info.name}': {e}"
+                            f"Failed to upload annotation for dataset '{ds_info.name}', "
+                            f"video id={vid_id}: {e}"
                         )
                         continue
 
