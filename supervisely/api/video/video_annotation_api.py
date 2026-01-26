@@ -229,6 +229,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         video_ids: List[int],
         anns: List[VideoAnnotation],
         progress_cb: Optional[Union[tqdm, Callable]] = None,
+        key_id_map: Optional[KeyIdMap] = None,
     ) -> None:
         """
         Upload already constructed VideoAnnotation objects for multi-view video project.
@@ -265,7 +266,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         object_api = self._api.video.object
         figure_api = self._api.video.figure
 
-        key_id_map = KeyIdMap()
+        key_id_map = key_id_map or KeyIdMap()
         for video_id, ann in zip(video_ids, anns):
             tag_api.append_to_entity(video_id, project_id, ann.tags, key_id_map=key_id_map)
             new_objects = []
