@@ -244,6 +244,8 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         :type anns: List[VideoAnnotation]
         :param progress_cb: Function for tracking upload progress (by number of figures).
         :type progress_cb: tqdm or callable, optional
+        :param key_id_map: KeyIdMap object.
+        :type key_id_map: KeyIdMap, optional
         :return: None
         :rtype: :class:`NoneType`
         """
@@ -289,7 +291,9 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
                 obj_id = key_id_map.get_object_id(obj.key())
                 tags_to_obj[obj_id] = obj.tags
             if len(tags_to_obj) > 0:
-                tag_api.add_tags_collection_to_objects(project_id, tags_to_obj, is_video_multi_view=True, entity_id=video_id)
+                tag_api.add_tags_collection_to_objects(
+                    project_id, tags_to_obj, is_video_multi_view=True, entity_id=video_id
+                )
 
             figure_api.append_bulk(video_id, ann.figures, key_id_map)
             if progress_cb is not None and len(ann.figures) > 0:

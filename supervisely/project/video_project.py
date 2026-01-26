@@ -1680,9 +1680,7 @@ class VideoProject(Project):
             try:
                 _ = get_video_snapshot_schema(schema_version)
             except Exception:
-                raise RuntimeError(
-                    f"Unsupported video snapshot schema_version: {schema_version}"
-                )
+                raise RuntimeError(f"Unsupported video snapshot schema_version: {schema_version}")
 
             src_project_name = project_info_json.get("name")
             src_project_desc = project_info_json.get("description")
@@ -1727,7 +1725,10 @@ class VideoProject(Project):
                 ds_rows = ds_table.to_pylist()
 
                 ds_rows.sort(
-                    key=lambda r: (r["parent_src_dataset_id"] is not None, r["parent_src_dataset_id"])
+                    key=lambda r: (
+                        r["parent_src_dataset_id"] is not None,
+                        r["parent_src_dataset_id"],
+                    )
                 )
 
             dataset_mapping: Dict[int, DatasetInfo] = {}
@@ -1764,7 +1765,9 @@ class VideoProject(Project):
                     try:
                         api.dataset.update_custom_data(ds.id, custom_data)
                     except Exception:
-                        logger.warning(f"Failed to restore custom_data for dataset '{row.get('name')}'")
+                        logger.warning(
+                            f"Failed to restore custom_data for dataset '{row.get('name')}'"
+                        )
                 dataset_mapping[src_ds_id] = ds
 
             # Videos
@@ -1924,19 +1927,38 @@ class VideoProject(Project):
                         total=len(video_ids),
                         leave=False,
                     )
+                key_id_map = KeyIdMap()
+                vid_ids, anns = [], []
                 for vid_id, ann_path in zip(video_ids, ann_paths):
                     try:
-                        if is_multiview:
-                            api.video.annotation.upload_paths_multiview(
-                                video_ids, ann_paths, new_meta, anns_progress
-                            )
-                        else:
-                            api.video.annotation.upload_paths(
-                                video_ids, ann_paths, new_meta, anns_progress
-                            )
+                        ann_json = load_json_file(ann_path)
+                        ann = VideoAnnotation.from_json(
+                            ann_json,
+                            new_meta,
+                            key_id_map=key_id_map,
+                        )
                     except Exception as e:
                         logger.warning(
-                            f"Failed to upload annotation for restored video id={vid_id}: {e}"
+                            f"Failed to deserialize annotation for restored video id={vid_id}: {e}"
+                        )
+                        continue
+
+                    if not is_multiview:
+                        api.video.annotation.append(vid_id, ann)
+                        if anns_progress is not None:
+                            anns_progress(1)
+                    else:
+                        vid_ids.append(vid_id)
+                        anns.append(ann)
+                if is_multiview:
+                    key_id_map = KeyIdMap()
+                    try:
+                        api.video.annotation.upload_anns_multiview(
+                            vid_ids, anns, anns_progress, key_id_map
+                        )
+                    except Exception as e:
+                        logger.warning(
+                            f"Failed to upload multiview annotations for dataset '{ds_info.name}': {e}"
                         )
                         continue
 
@@ -2410,6 +2432,7 @@ async def download_video_project_async(
         await asyncio.gather(*tasks)
 
     project_fs.set_key_id_map(key_id_map)
+
 
 def _log_warning(
     video: VideoInfo,
