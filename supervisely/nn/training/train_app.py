@@ -1,8 +1,5 @@
 """
-TrainApp module.
-
-This module contains the `TrainApp` class and related functionality to facilitate
-training workflows in a Supervisely application.
+High-level wrapper for building Supervisely training applications.
 """
 
 import shutil
@@ -77,20 +74,51 @@ from supervisely.template.experiment.experiment_generator import ExperimentGener
 
 class TrainApp:
     """
-    A class representing the training application.
+    ``TrainApp`` is designed to be used inside a Supervisely App. It connects:
 
-    This class initializes and manages the training workflow, including
-    handling inputs, hyperparameters, project management, and output artifacts.
+    - **GUI** (model selector, hyperparameters editor, train/val split selector, class/tag selectors)
+    - **Data preparation** (project download, optional conversion, splitting, collections creation)
+    - **Training lifecycle** (prepare data → run user training code → validate & upload artifacts)
+    - **Optional extras**: export (ONNX/TensorRT), model benchmark, TensorBoard
 
-    :param framework_name: Name of the ML framework used.
+    Typical usage
+    -------------
+
+    .. code-block:: python
+
+        from supervisely.nn.training.train_app import TrainApp
+
+        train_app = TrainApp(
+            framework_name="My Framework",
+            models="models.json",
+            hyperparameters="hyperparameters.yaml",
+            app_options="app_options.yaml",
+        )
+
+        @train_app.start
+        def train():
+            # Access data via train_app.project_dir
+            # Access hyperparameters via train_app.hyperparameters (dict)
+            # Access model files via train_app.model_files (dict)
+            # Train your model, save checkpoints locally, and return experiment_info.
+            return {
+                "model_name": train_app.model_name,
+                "task_type": train_app.task_type,   # TaskType (string-like enum)
+                "checkpoints": "/path/to/checkpoints_dir",  # or list of file paths
+                "best_checkpoint": "checkpoint_best.pth",
+                # optional: return config if model requires it
+                # "model_files": {"config": "/path/to/config.yaml", ...},
+            }
+
+    :param framework_name: Name of the ML framework used (shown in UI and stored in experiment metadata).
     :type framework_name: str
-    :param models: List of model configurations.
+    :param models: Path to ``.json`` file (or a Python list) with model configurations for the model selector.
     :type models: Union[str, List[Dict[str, Any]]]
-    :param hyperparameters: Path or string content of hyperparameters in YAML format.
+    :param hyperparameters: Path to hyperparameters YAML file (``.yaml``/``.yml``). The GUI allows editing before training.
     :type hyperparameters: str
-    :param app_options: Options for the application layout and behavior.
+    :param app_options: Path to options YAML file or a dict with UI/behavior options.
     :type app_options: Optional[Union[str, Dict[str, Any]]]
-    :param work_dir: Path to the working directory for storing intermediate files.
+    :param work_dir: Local working directory used to store downloaded data, model files, logs and output artifacts.
     :type work_dir: Optional[str]
     """
 
@@ -357,10 +385,10 @@ class TrainApp:
     @property
     def project_info(self) -> ProjectInfo:
         """
-        Returns ProjectInfo object, which contains information about the project.
+        Returns :class:`supervisely.api.project_info.ProjectInfo` object, which contains information about the project.
 
-        :return: Project name.
-        :rtype: str
+        :return: ProjectInfo object.
+        :rtype: ProjectInfo
         """
         return self.gui.project_info
 
@@ -400,10 +428,10 @@ class TrainApp:
     @property
     def model_info(self) -> dict:
         """
-        Returns a selected row in dict format from the models table.
+        Returns a selected row from the models table in dict format.
 
-        :return: Model name.
-        :rtype: str
+        :return: Model configuration dict.
+        :rtype: dict
         """
         return self.gui.model_selector.get_model_info()
 
@@ -567,8 +595,27 @@ class TrainApp:
     @property
     def start(self):
         """
-        Decorator for the training function defined by user.
-        It wraps user-defined training function and prepares and finalizes the training process.
+        Decorator for the user-defined training function.
+
+        The decorated function is executed when the user clicks **Start training** in the GUI
+        (or when :meth:`start_in_thread` is used).
+
+        The function must return ``experiment_info`` dict with **required keys**:
+
+        - ``model_name``: str (name of the model used for training)
+        - ``task_type``: str (usually :class:`supervisely.nn.task_type.TaskType`)
+        - ``checkpoints``: list[str] **or** path to directory (str) containing ``.pt``/``.pth`` files
+        - ``best_checkpoint``: str (file name; must be present in ``checkpoints``)
+
+        Optional keys:
+
+        - ``model_files``: dict[str, str] mapping additional files that model requires for inference (e.g model config)
+
+        ``TrainApp`` handles data preparation and (after your function returns) validates outputs and
+        uploads artifacts to Team Files.
+
+        :return: A decorator that registers a training function.
+        :rtype: Callable
         """
 
         def decorator(func):
@@ -1829,7 +1876,16 @@ class TrainApp:
 
     def create_model_meta(self, task_type: str):
         """
-        Convert project meta according to task type.
+        Create a model meta for the trained model according to task type.
+
+        This method takes the input project's :class:`supervisely.project.project_meta.ProjectMeta`,
+        removes classes that are not selected in the GUI, and then converts meta to a CV-task-specific
+        format (detection/segmentation).
+
+        :param task_type: CV task type of the trained model.
+        :type task_type: str
+        :return: Model meta to be saved as ``model_meta.json``.
+        :rtype: ProjectMeta
         """
         names_to_delete = [
             c.name for c in self.project_meta.obj_classes if c.name not in self.classes
@@ -2804,6 +2860,15 @@ class TrainApp:
 
     # ----------------------------------------- #
     def start_in_thread(self):
+        """
+        Configure the app to start training automatically on server startup (in a background thread).
+
+        This is useful for programmatic runs (e.g. training triggered by API or workflow execution)
+        where you don't want to wait for a manual UI click.
+
+        :return: None
+        :rtype: None
+        """
         def auto_train():
             import threading
             threading.Thread(target=self._wrapped_start_training, daemon=True).start()
