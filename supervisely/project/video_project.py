@@ -1963,9 +1963,8 @@ class VideoProject(Project):
                         api.video.annotation.upload_anns_multiview(
                             vid_ids, anns, key_id_map=key_id_map
                         )
-                        for _ in vid_ids:
-                            if anns_progress is not None:
-                                anns_progress(1)
+                        if anns_progress is not None:
+                            anns_progress(len(vid_ids))
                     except Exception as e:
                         logger.warning(
                             f"Failed to upload multiview annotations for dataset '{ds_info.name}': {e}"
