@@ -4,6 +4,7 @@ from .api_server import start_api_server
 from .request_queue import RequestQueue, RequestType
 from .incremental_dataset import IncrementalDataset
 from .helpers import ClassMap
+from .evaluator import Evaluator
 import supervisely as sly
 from supervisely import logger
 from supervisely.nn import TaskType
