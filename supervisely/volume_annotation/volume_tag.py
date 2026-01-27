@@ -26,35 +26,36 @@ class VolumeTag(Tag):
     :type updated_at: str, optional
     :param created_at: Date and Time when VolumeTag was created. Date Format is the same as in "updated_at" parameter.
     :type created_at: str, optional
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
-        from supervisely.volume_annotation.volume_tag import VolumeTag
+        .. code-block:: python
 
-        meta_brain = sly.TagMeta('brain', sly.TagValueType.NONE)
-        # Now we can create a VolumeTag using our TagMeta
-        tag_brain = VolumeTag(meta_brain)
-        # When you are creating a new Tag
-        # Tag.value is automatically cross-checked against your TagMeta value type to make sure the value is valid.
-        # If we now try to add a value to our newly created Tag, we receive "ValueError", because our TagMeta value type is "NONE"
-        tag_dog = VolumeTag(meta_brain, value="Brain")
-        # Output: ValueError: Tag brain can not have value Husky
+            import supervisely as sly
+            from supervisely.volume_annotation.volume_tag import VolumeTag
 
-        # Let's create another Tag with a string value type
-        meta_heart = sly.TagMeta('heart', sly.TagValueType.ANY_STRING)
-        tag_heart = VolumeTag(meta_heart, value="Heart")
+            meta_brain = sly.TagMeta('brain', sly.TagValueType.NONE)
+            # Now we can create a VolumeTag using our TagMeta
+            tag_brain = VolumeTag(meta_brain)
+            # When you are creating a new Tag
+            # Tag.value is automatically cross-checked against your TagMeta value type to make sure the value is valid.
+            # If we now try to add a value to our newly created Tag, we receive "ValueError", because our TagMeta value type is "NONE"
+            tag_dog = VolumeTag(meta_brain, value="Brain")
+            # Output: ValueError: Tag brain can not have value Husky
 
-        # Now let's create a Tag using TagMeta with "ONEOF_STRING" value type
-        # In order to use "oneof_string value type", you must initialize a variable with possible values(see class TagMeta for more information)
-        colors = ["brown", "white", "black", "red", "chocolate", "gold", "grey"]
-        meta_lang_color = sly.TagMeta('lang color', sly.TagValueType.ONEOF_STRING, possible_values=colors)
-        tag_lang_color = VolumeTag(meta_lang_color, value="white")
+            # Let's create another Tag with a string value type
+            meta_heart = sly.TagMeta('heart', sly.TagValueType.ANY_STRING)
+            tag_heart = VolumeTag(meta_heart, value="Heart")
 
-        # If given value is not in a list of possible Tags, ValueError will be raised
-        tag_lang_color = VolumeTag(meta_lang_color, value="yellow")
-        # Output: ValueError: Tag lang color can not have value yellow
+            # Now let's create a Tag using TagMeta with "ONEOF_STRING" value type
+            # In order to use "oneof_string value type", you must initialize a variable with possible values(see class TagMeta for more information)
+            colors = ["brown", "white", "black", "red", "chocolate", "gold", "grey"]
+            meta_lang_color = sly.TagMeta('lang color', sly.TagValueType.ONEOF_STRING, possible_values=colors)
+            tag_lang_color = VolumeTag(meta_lang_color, value="white")
+
+            # If given value is not in a list of possible Tags, ValueError will be raised
+            tag_lang_color = VolumeTag(meta_lang_color, value="yellow")
+            # Output: ValueError: Tag lang color can not have value yellow
     """
 
     def __init__(
@@ -83,18 +84,19 @@ class VolumeTag(Tag):
 
         :return: Get key value.
         :rtype: str
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            from supervisely.volume_annotation.volume_tag import VolumeTag
+            .. code-block:: python
 
-            meta_heart = sly.TagMeta('heart', sly.TagValueType.NONE)
-            tag_heart = VolumeTag(meta_heart)
+                import supervisely as sly
+                from supervisely.volume_annotation.volume_tag import VolumeTag
 
-            print(tag_heart.key())
-            # Output: 2d9cd2cd-f89c-40a9-8675-1b0773fa250d
+                meta_heart = sly.TagMeta('heart', sly.TagValueType.NONE)
+                tag_heart = VolumeTag(meta_heart)
+
+                print(tag_heart.key())
+                # Output: 2d9cd2cd-f89c-40a9-8675-1b0773fa250d
         """
         return self._key
 
@@ -106,23 +108,24 @@ class VolumeTag(Tag):
         :type key_id_map: KeyIdMap, optional
         :return: Json format as a dict
         :rtype: :class:`dict`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            from supervisely.volume_annotation.volume_tag import VolumeTag
-            meta_heart = sly.TagMeta('heart', sly.TagValueType.NONE)
-            tag_heart = VolumeTag(meta_heart)
+                import supervisely as sly
 
-            tag_heart_json = tag_heart.to_json()
+                from supervisely.volume_annotation.volume_tag import VolumeTag
+                meta_heart = sly.TagMeta('heart', sly.TagValueType.NONE)
+                tag_heart = VolumeTag(meta_heart)
 
-            print(tag_heart_json)
-            # Output: {
-            #     "name": "heart",
-            #     "key": "058ad7993a534082b4d94cc52542a97d"
-            # }
+                tag_heart_json = tag_heart.to_json()
+
+                print(tag_heart_json)
+                # Output: {
+                #     "name": "heart",
+                #     "key": "058ad7993a534082b4d94cc52542a97d"
+                # }
         """
 
         data_json = super(VolumeTag, self).to_json()
@@ -151,22 +154,19 @@ class VolumeTag(Tag):
         :type key_id_map: KeyIdMap, optional
         :return: VolumeTag object
         :rtype: :class:`VolumeTag<VolumeTag>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            tag_heart_json = {
-                "name": "heart",
-                "value": "777"
-            }
+                import supervisely as sly
+                from supervisely.volumme_annotation.volume_tag import VolumeTag
 
-            from supervisely.volumme_annotation.volume_tag import VolumeTag
-            meta_heart = sly.TagMeta('heart', sly.TagValueType.ANY_STRING)
-            meta_collection = sly.TagMetaCollection([meta_heart])
+                tag_heart_json = {"name": "heart", "value": "777"}
+                meta_heart = sly.TagMeta('heart', sly.TagValueType.ANY_STRING)
+                meta_collection = sly.TagMetaCollection([meta_heart])
 
-            tag_heart = VolumeTag.from_json(tag_heart_json, meta_collection)
+                tag_heart = VolumeTag.from_json(tag_heart_json, meta_collection)
         """
 
         temp = super(VolumeTag, cls).from_json(data, tag_meta_collection)
@@ -212,27 +212,28 @@ class VolumeTag(Tag):
         :type updated_at: str, optional
         :param created_at: Date and Time when VolumeTag was created. Date Format is the same as in "updated_at" parameter.
         :type created_at: str, optional
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            from supervisely.volume_annotation.volume_tag import VolumeTag
+            .. code-block:: python
 
-            meta_heart = sly.TagMeta('heart_tag', sly.TagValueType.ANY_STRING)
-            heart_tag = VolumeTag(meta_heart, value='Heart')
+                import supervisely as sly
+                from supervisely.volume_annotation.volume_tag import VolumeTag
 
-            meta_heart_2 = sly.TagMeta('heart tag 2', sly.TagValueType.ANY_STRING)
+                meta_heart = sly.TagMeta('heart_tag', sly.TagValueType.ANY_STRING)
+                heart_tag = VolumeTag(meta_heart, value='Heart')
 
-            new_tag = car_tag.clone(meta=meta_heart_2, key=car_tag.key())
-            new_tag_json = new_tag.to_json()
+                meta_heart_2 = sly.TagMeta('heart tag 2', sly.TagValueType.ANY_STRING)
 
-            print(new_tag_json)
-            # Output: {
-            #     "name": "heart tag 2",
-            #     "value": "Heart",
-            #     "key": "360438485fd34264921ca19bd43b0b71"
-            # }
+                new_tag = car_tag.clone(meta=meta_heart_2, key=car_tag.key())
+                new_tag_json = new_tag.to_json()
+
+                print(new_tag_json)
+                # Output: {
+                #     "name": "heart tag 2",
+                #     "value": "Heart",
+                #     "key": "360438485fd34264921ca19bd43b0b71"
+                # }
         """
 
         return VolumeTag(

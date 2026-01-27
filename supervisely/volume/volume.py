@@ -33,14 +33,15 @@ def get_extension(path: str):
     :type path: str
     :return: Path extension
     :rtype: str
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        path = "src/upload/folder/CTACardio.nrrd"
-        ext = sly.volume.get_extension(path=path) # .nrrd
+            import supervisely as sly
+
+            path = "src/upload/folder/CTACardio.nrrd"
+            ext = sly.volume.get_extension(path=path) # .nrrd
     """
 
     # magic.from_file("path", mime=True)
@@ -72,14 +73,15 @@ def is_valid_ext(ext: str) -> bool:
     :type ext: str
     :return: True if extensions is in the list of supported extensions else False
     :rtype: :class:`bool`
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        sly.volume.is_valid_ext(".nrrd")  # True
-        sly.volume.is_valid_ext(".mp4") # False
+            import supervisely as sly
+
+            sly.volume.is_valid_ext(".nrrd")  # True
+            sly.volume.is_valid_ext(".mp4") # False
     """
 
     if type(ext) is not str:
@@ -96,14 +98,15 @@ def has_valid_ext(path: str) -> bool:
     :type path: str
     :return: True if Volume file has supported extension else False
     :rtype: :class:`bool`
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        volume_path = "/home/admin/work/volumes/vol_01.nrrd"
-        sly.volume.has_valid_ext(volume_path) # True
+            import supervisely as sly
+
+            volume_path = "/home/admin/work/volumes/vol_01.nrrd"
+            sly.volume.has_valid_ext(volume_path) # True
     """
 
     return is_valid_ext(get_extension(path))
@@ -118,15 +121,16 @@ def validate_format(path: str):
     :raises: :class:`UnsupportedVolumeFormat` if Volume file from given path couldn't be read or file extension is not supported.
     :return: None
     :rtype: :class:`NoneType`
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        volume_path = "/home/admin/work/volumes/vol_01.mp4"
-        sly.volume.validate_format(volume_path)
-        # File /home/admin/work/volumes/vol_01.mp4 has unsupported volume extension. Supported extensions: [".nrrd", ".dcm"].
+            import supervisely as sly
+
+            volume_path = "/home/admin/work/volumes/vol_01.mp4"
+            sly.volume.validate_format(volume_path)
+            # File /home/admin/work/volumes/vol_01.mp4 has unsupported volume extension. Supported extensions: [".nrrd", ".dcm"].
     """
 
     if not has_valid_ext(path):
@@ -138,15 +142,20 @@ def validate_format(path: str):
 def is_valid_format(path: str) -> bool:
     """
     Checks if a given file has a supported format.
+
     :param path: Path to file.
     :type path: str
     :return: True if file format in list of supported Volume formats, False - in otherwise
     :rtype: :class:`bool`
-    :Usage example:
-         .. code-block:: python
+
+    :Usage Example:
+
+        .. code-block:: python
+
             import supervisely as sly
-            sly.volume.is_valid_format('/volumes/dcm01.dcm') # True
-            sly.volume.is_valid_format('/volumes/nrrd.py') # False
+
+            sly.volume.is_valid_format("/volumes/dcm01.dcm")  # True
+            sly.volume.is_valid_format("/volumes/nrrd.py")  # False
     """
 
     try:
@@ -169,17 +178,17 @@ def rescale_slope_intercept(value: float, slope: float, intercept: float) -> flo
     :return: The rescaled intensity value.
     :rtype: float
 
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
+            import supervisely as sly
 
-        meta["intensity"]["min"] = sly.volume.volume.rescale_slope_intercept(
+            meta["intensity"]["min"] = sly.volume.volume.rescale_slope_intercept(
             meta["intensity"]["min"],
             meta["rescaleSlope"],
             meta["rescaleIntercept"],
-        )
+            )
     """
 
     return value * slope + intercept
@@ -194,29 +203,29 @@ def normalize_volume_meta(meta: dict) -> dict:
     :return: Normalized volume metadata.
     :rtype: dict
 
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
+            import supervisely as sly
 
-        normalized_meta = sly.volume.volume.volume.normalize_volume_meta(volume_meta)
+            normalized_meta = sly.volume.volume.volume.normalize_volume_meta(volume_meta)
 
-        print(normalized_meta)
-        # Output:
-        # {
-        #     'ACS': 'RAS',
-        #     'channelsCount': 1,
-        #     'dimensionsIJK': {'x': 512, 'y': 512, 'z': 139},
-        #     'directions': (1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0),
-        #     'intensity': {'max': 3071.0, 'min': -3024.0},
-        #     'origin': (-194.238403081894, -217.5384061336518, -347.7500000000001),
-        #     'rescaleIntercept': 0,
-        #     'rescaleSlope': 1,
-        #     'spacing': (0.7617189884185793, 0.7617189884185793, 2.5),
-        #     'windowCenter': 23.5,
-        #     'windowWidth': 6095.0
-        # }
+            print(normalized_meta)
+            # Output:
+            # {
+            #     'ACS': 'RAS',
+            #     'channelsCount': 1,
+            #     'dimensionsIJK': {'x': 512, 'y': 512, 'z': 139},
+            #     'directions': (1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0),
+            #     'intensity': {'max': 3071.0, 'min': -3024.0},
+            #     'origin': (-194.238403081894, -217.5384061336518, -347.7500000000001),
+            #     'rescaleIntercept': 0,
+            #     'rescaleSlope': 1,
+            #     'spacing': (0.7617189884185793, 0.7617189884185793, 2.5),
+            #     'windowCenter': 23.5,
+            #     'windowWidth': 6095.0
+            # }
     """
 
     meta["intensity"]["min"] = rescale_slope_intercept(
@@ -250,14 +259,15 @@ def read_dicom_serie_volume_np(paths: List[str], anonymize=True) -> Tuple[np.nda
     :type anonymize: bool
     :return: Volume data in NumPy array format and dictionary with metadata
     :rtype: Tuple[np.ndarray, dict]
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        volume_path = ["/home/admin/work/volumes/vol_01.nrrd"]
-        volume_np, meta = sly.volume.read_dicom_serie_volume_np(volume_path)
+            import supervisely as sly
+
+            volume_path = ["/home/admin/work/volumes/vol_01.nrrd"]
+            volume_np, meta = sly.volume.read_dicom_serie_volume_np(volume_path)
     """
 
     import SimpleITK as sitk
@@ -314,14 +324,14 @@ def read_dicom_tags(
     :return: Dictionary containing the extracted DICOM tags.
     :rtype: dict
 
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
+            import supervisely as sly
 
-        path = "src/upload/Dicom_files/nnn.dcm"
-        dicom_tags = sly.volume.read_dicom_tags(path=path)
+            path = "src/upload/Dicom_files/nnn.dcm"
+            dicom_tags = sly.volume.read_dicom_tags(path=path)
     """
 
     import SimpleITK as sitk
@@ -366,15 +376,15 @@ def encode(volume_np: np.ndarray, volume_meta: dict) -> bytes:
     :return: Encoded volume data in bytes.
     :rtype: bytes
 
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import numpy as np
-        import supervisely as sly
+            import numpy as np
+            import supervisely as sly
 
-        volume_np = np.random.rand(256, 256, 256)
-        volume_meta = {
+            volume_np = np.random.rand(256, 256, 256)
+            volume_meta = {
             "ACS": "RAS",
             "channelsCount": 1,
             "dimensionsIJK": { "x": 512, "y": 512, "z": 139 },
@@ -386,9 +396,9 @@ def encode(volume_np: np.ndarray, volume_meta: dict) -> bytes:
             "spacing": (0.7617189884185793, 0.7617189884185793, 2.5),
             "windowCenter": 23.5,
             "windowWidth": 6095.0
-        }
+            }
 
-        encoded_volume = sly.volume.encode(volume_np, volume_meta)
+            encoded_volume = sly.volume.encode(volume_np, volume_meta)
     """
 
     directions = np.array(volume_meta["directions"]).reshape(3, 3)
@@ -423,14 +433,15 @@ def inspect_dicom_series(root_dir: str, logging: bool = True) -> dict:
     :type logging: bool
     :return: Dictionary with DICOM volumes IDs and corresponding file names.
     :rtype: dict
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        path = "src/upload/Dicom_files/"
-        series_infos = sly.volume.inspect_dicom_series(root_dir=path)
+            import supervisely as sly
+
+            path = "src/upload/Dicom_files/"
+            series_infos = sly.volume.inspect_dicom_series(root_dir=path)
     """
     import SimpleITK as sitk
 
@@ -494,14 +505,15 @@ def read_dicom_serie_volume(paths: List[str], anonymize: bool = True) -> Tuple[s
     :type anonymize: bool
     :return: Volume data in SimpleITK.Image format and dictionary with metadata.
     :rtype: Tuple[SimpleITK.Image, dict]
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        paths = ["/home/admin/work/volumes/vol_01.nrrd"]
-        sitk_volume, meta = sly.volume.read_dicom_serie_volume(paths)
+            import supervisely as sly
+
+            paths = ["/home/admin/work/volumes/vol_01.nrrd"]
+            sitk_volume, meta = sly.volume.read_dicom_serie_volume(paths)
     """
 
     import SimpleITK as sitk
@@ -532,21 +544,22 @@ def compose_ijk_2_world_mat(meta: dict) -> np.ndarray:
 
     :param meta: Volume metadata.
     :type meta: dict
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        mat = sly.volume.volume.compose_ijk_2_world_mat(volume_meta)
+            import supervisely as sly
 
-        # Output:
-        # [
-        #     [   0.76171899    0.            0.         -194.23840308]
-        #     [   0.            0.76171899    0.         -217.53840613]
-        #     [   0.            0.            2.5        -347.75      ]
-        #     [   0.            0.            0.            1.        ]
-        # ]
+            mat = sly.volume.volume.compose_ijk_2_world_mat(volume_meta)
+
+            # Output:
+            # [
+            #     [   0.76171899    0.            0.         -194.23840308]
+            #     [   0.            0.76171899    0.         -217.53840613]
+            #     [   0.            0.            2.5        -347.75      ]
+            #     [   0.            0.            0.            1.        ]
+            # ]
     """
 
     try:
@@ -570,21 +583,22 @@ def world_2_ijk_mat(ijk_2_world) -> np.ndarray:
 
     :param ijk_2_world: 4x4 matrix.
     :type ijk_2_world: np.ndarray
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        mat = sly.volume.volume.world_2_ijk_mat(world_mat)
+            import supervisely as sly
 
-        # Output:
-        # [
-        #     [  1.3128201    0.           0.         255.00008013]
-        #     [  0.           1.3128201    0.         285.58879251]
-        #     [  0.           0.           0.4        139.1       ]
-        #     [  0.           0.           0.           1.        ]
-        # ]
+            mat = sly.volume.volume.world_2_ijk_mat(world_mat)
+
+            # Output:
+            # [
+            #     [  1.3128201    0.           0.         255.00008013]
+            #     [  0.           1.3128201    0.         285.58879251]
+            #     [  0.           0.           0.4        139.1       ]
+            #     [  0.           0.           0.           1.        ]
+            # ]
     """
 
     return np.linalg.inv(ijk_2_world)
@@ -619,24 +633,24 @@ def get_meta(
     :return: Dictionary containing the normalized meta-data for the volume.
     :rtype: dict
 
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import SimpleITK as sitk
-        import supervisely as sly
+            import SimpleITK as sitk
+            import supervisely as sly
 
-        path = "/home/admin/work/volumes/vol_01.nrrd"
+            path = "/home/admin/work/volumes/vol_01.nrrd"
 
-        reader = sitk.ImageSeriesReader()
-        reader.SetFileNames(path)
-        sitk_volume = reader.Execute()
-        sitk_volume = _sitk_image_orient_ras(sitk_volume)
-        dicom_tags = read_dicom_tags(paths[0], anonymize=anonymize)
+            reader = sitk.ImageSeriesReader()
+            reader.SetFileNames(path)
+            sitk_volume = reader.Execute()
+            sitk_volume = _sitk_image_orient_ras(sitk_volume)
+            dicom_tags = read_dicom_tags(paths[0], anonymize=anonymize)
 
-        f_min_max = sitk.MinimumMaximumImageFilter()
-        f_min_max.Execute(sitk_volume)
-        meta = get_meta(
+            f_min_max = sitk.MinimumMaximumImageFilter()
+            f_min_max.Execute(sitk_volume)
+            meta = get_meta(
             sitk_volume.GetSize(),
             f_min_max.GetMinimum(),
             f_min_max.GetMaximum(),
@@ -644,7 +658,7 @@ def get_meta(
             sitk_volume.GetOrigin(),
             sitk_volume.GetDirection(),
             dicom_tags,
-        )
+            )
     """
 
     # x = 1 - sagittal
@@ -685,14 +699,15 @@ def inspect_nrrd_series(root_dir: str, logging: bool = True) -> List[str]:
     :type logging: bool
     :return: List of NRRD file paths found in the given directory.
     :rtype: List[str]
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        path = "/home/admin/work/volumes/"
-        nrrd_paths = sly.volume.inspect_nrrd_series(root_dir=path)
+            import supervisely as sly
+
+            path = "/home/admin/work/volumes/"
+            nrrd_paths = sly.volume.inspect_nrrd_series(root_dir=path)
     """
 
     nrrd_paths = list_files_recursively(root_dir, [".nrrd"])
@@ -709,14 +724,15 @@ def read_nrrd_serie_volume(path: str) -> Tuple[sitk.Image, dict]:
     :type path: List[str]
     :return: Volume data in SimpleITK.Image format and dictionary with metadata.
     :rtype: Tuple[SimpleITK.Image, dict]
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        path = "/home/admin/work/volumes/vol_01.nrrd"
-        sitk_volume, meta = sly.volume.read_nrrd_serie_volume(path)
+            import supervisely as sly
+
+            path = "/home/admin/work/volumes/vol_01.nrrd"
+            sitk_volume, meta = sly.volume.read_nrrd_serie_volume(path)
     """
 
     import SimpleITK as sitk
@@ -750,14 +766,15 @@ def read_nrrd_serie_volume_np(paths: str) -> Tuple[np.ndarray, dict]:
     :type paths: str
     :return: Volume data in NumPy array format and dictionary with metadata.
     :rtype: Tuple[np.ndarray, dict]
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        path = "/home/admin/work/volumes/vol_01.nrrd"
-        np_volume, meta = sly.volume.read_nrrd_serie_volume_np(path)
+            import supervisely as sly
+
+            path = "/home/admin/work/volumes/vol_01.nrrd"
+            np_volume, meta = sly.volume.read_nrrd_serie_volume_np(path)
     """
 
     import SimpleITK as sitk
@@ -776,14 +793,15 @@ def convert_nifti_to_nrrd(path: str) -> Tuple[np.ndarray, dict]:
     :type path: str
     :return: Volume data in NumPy array format and dictionary with metadata (NRRD header).
     :rtype: Tuple[np.ndarray, dict]
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        path = "/home/admin/work/volumes/vol_01.nii"
-        data, header = sly.volume.convert_nifti_to_nrrd(path)
+            import supervisely as sly
+
+            path = "/home/admin/work/volumes/vol_01.nii"
+            data, header = sly.volume.convert_nifti_to_nrrd(path)
     """
 
     import nibabel as nib  # pylint: disable=import-error
@@ -811,14 +829,15 @@ def convert_3d_nifti_to_nrrd(path: str) -> Tuple[np.ndarray, dict]:
     :type path: str
     :return: Volume data in NumPy array format and dictionary with metadata (NRRD header).
     :rtype: Tuple[np.ndarray, dict]
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        path = "/home/admin/work/volumes/vol_01.nii"
-        data, header = sly.volume.convert_nifti_to_nrrd(path)
+            import supervisely as sly
+
+            path = "/home/admin/work/volumes/vol_01.nii"
+            data, header = sly.volume.convert_nifti_to_nrrd(path)
     """
     import SimpleITK as sitk
 
@@ -893,7 +912,7 @@ def convert_3d_geometry_to_mesh(
     :return: The resulting Trimesh mesh.
     :rtype: trimesh.Trimesh
 
-    :Usage example:
+    :Usage Example:
 
         .. code-block:: python
 
@@ -946,14 +965,14 @@ def export_3d_as_mesh(geometry: Mask3D, output_path: str, **kwargs):
         - volume_meta (dict): Metadata of the volume. Used for mesh alignment if geometry lacks specific fields. Default is None.
     :return: None
 
-    :Usage example:
+    :Usage Example:
 
         .. code-block:: python
 
-        mask3d_path = "path/to/mask3d"
-        mask3d = Mask3D.create_from_file(mask3d_path)
+            mask3d_path = "path/to/mask3d"
+            mask3d = Mask3D.create_from_file(mask3d_path)
 
-        mask3d.export_3d_as_mesh(mask3d, "output.stl", spacing=(1.0, 1.0, 1.0), level=0.7, apply_decimation=True)
+            mask3d.export_3d_as_mesh(mask3d, "output.stl", spacing=(1.0, 1.0, 1.0), level=0.7, apply_decimation=True)
     """
 
     if get_file_ext(output_path).lower() not in [".stl", ".obj"]:

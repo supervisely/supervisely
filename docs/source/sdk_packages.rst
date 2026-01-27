@@ -359,7 +359,7 @@ Neural Networks API
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
-    ModelApi 
+    ModelAPI
 
 .. currentmodule:: supervisely.nn.model.prediction
 

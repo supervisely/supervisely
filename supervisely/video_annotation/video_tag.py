@@ -40,35 +40,36 @@ class VideoTag(Tag):
     :type is_finished: bool, optional
     :param non_final_value: Video Tag value is final or not. Can be useful to create tag without value.
     :type non_final_value: bool, optional
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
-        from supervisely.video_annotation.video_tag import VideoTag
+        .. code-block:: python
 
-        meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE)
-        # Now we can create a VideoTag using our TagMeta
-        tag_dog = VideoTag(meta_dog)
-        # When you are creating a new Tag
-        # Tag.value is automatically cross-checked against your TagMeta value type to make sure the value is valid.
-        # If we now try to add a value to our newly created Tag, we receive "ValueError", because our TagMeta value type is "NONE"
-        tag_dog = VideoTag(meta_dog, value="Husky")
-        # Output: ValueError: Tag dog can not have value Husky
+            import supervisely as sly
+            from supervisely.video_annotation.video_tag import VideoTag
 
-        # Let's create another Tag with a string value type and frame range
-        meta_cat = sly.TagMeta('cat', sly.TagValueType.ANY_STRING)
-        tag_cat = VideoTag(meta_cat, value="Fluffy", frame_range=(5, 10))
+            meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE)
+            # Now we can create a VideoTag using our TagMeta
+            tag_dog = VideoTag(meta_dog)
+            # When you are creating a new Tag
+            # Tag.value is automatically cross-checked against your TagMeta value type to make sure the value is valid.
+            # If we now try to add a value to our newly created Tag, we receive "ValueError", because our TagMeta value type is "NONE"
+            tag_dog = VideoTag(meta_dog, value="Husky")
+            # Output: ValueError: Tag dog can not have value Husky
 
-        # Now let's create a Tag using TagMeta with "ONEOF_STRING" value type
-        # In order to use "oneof_string value type", you must initialize a variable with possible values(see class TagMeta for more information)
-        colors = ["brown", "white", "black", "red", "chocolate", "gold", "grey"]
-        meta_coat_color = sly.TagMeta('coat color', sly.TagValueType.ONEOF_STRING, possible_values=colors)
-        tag_coat_color = VideoTag(meta_coat_color, value="white", frame_range=(15, 20))
+            # Let's create another Tag with a string value type and frame range
+            meta_cat = sly.TagMeta('cat', sly.TagValueType.ANY_STRING)
+            tag_cat = VideoTag(meta_cat, value="Fluffy", frame_range=(5, 10))
 
-        # If given value is not in a list of possible Tags, ValueError will be raised
-        tag_coat_color = VideoTag(meta_coat_color, value="yellow")
-        # Output: ValueError: Tag coat color can not have value yellow
+            # Now let's create a Tag using TagMeta with "ONEOF_STRING" value type
+            # In order to use "oneof_string value type", you must initialize a variable with possible values(see class TagMeta for more information)
+            colors = ["brown", "white", "black", "red", "chocolate", "gold", "grey"]
+            meta_coat_color = sly.TagMeta('coat color', sly.TagValueType.ONEOF_STRING, possible_values=colors)
+            tag_coat_color = VideoTag(meta_coat_color, value="white", frame_range=(15, 20))
+
+            # If given value is not in a list of possible Tags, ValueError will be raised
+            tag_coat_color = VideoTag(meta_coat_color, value="yellow")
+            # Output: ValueError: Tag coat color can not have value yellow
     """
 
     _SUPPORT_UNFINISHED_TAGS = True
@@ -123,11 +124,12 @@ class VideoTag(Tag):
 
         :return: Range of frames for current VideoTag
         :rtype: :class:`Tuple[int, int]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            cat_range = tag_cat.frame_range # [5, 10]
+            .. code-block:: python
+
+                cat_range = tag_cat.frame_range # [5, 10]
         """
         return self._frame_range
 
@@ -138,11 +140,12 @@ class VideoTag(Tag):
 
         :return: True if VideoTag is finished, otherwise False
         :rtype: :class:`bool`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            is_finished = tag_cat.is_finished
+            .. code-block:: python
+
+                is_finished = tag_cat.is_finished
         """
         return self._is_finished
 
@@ -153,11 +156,12 @@ class VideoTag(Tag):
 
         :return: True if VideoTag value is final, otherwise False
         :rtype: :class:`bool`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            non_final_value = tag_cat.non_final_value
+            .. code-block:: python
+
+                non_final_value = tag_cat.non_final_value
         """
         return self._non_final_value
 
@@ -186,20 +190,21 @@ class VideoTag(Tag):
         :type key_id_map: KeyIdMap, optional
         :return: Json format as a dict
         :rtype: :class:`dict`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            from supervisely.video_annotation.video_tag import VideoTag
-            meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE)
-            tag_dog = VideoTag(meta_dog)
-            tag_dog_json = tag_dog.to_json()
-            print(tag_dog_json)
-            # Output: {
-            #     "name": "dog",
-            #     "key": "058ad7993a534082b4d94cc52542a97d"
-            # }
+            .. code-block:: python
+
+                import supervisely as sly
+                from supervisely.video_annotation.video_tag import VideoTag
+                meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE)
+                tag_dog = VideoTag(meta_dog)
+                tag_dog_json = tag_dog.to_json()
+                print(tag_dog_json)
+                # Output: {
+                #     "name": "dog",
+                #     "key": "058ad7993a534082b4d94cc52542a97d"
+                # }
         """
         data_json = super(VideoTag, self).to_json()
         if type(data_json) is str:
@@ -239,25 +244,23 @@ class VideoTag(Tag):
         :type key_id_map: KeyIdMap, optional
         :return: VideoTag object
         :rtype: :class:`VideoTag<VideoTag>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            tag_cat_json = {
-                "name": "cat",
-                "value": "Fluffy",
-                "frameRange": [
-                    5,
-                    10
-                ]
-            }
+                import supervisely as sly
 
-            from supervisely.video_annotation.video_tag import VideoTag
-            meta_cat = sly.TagMeta('cat', sly.TagValueType.ANY_STRING)
-            meta_collection = sly.TagMetaCollection([meta_cat])
-            tag_cat = VideoTag.from_json(tag_cat_json, meta_collection)
+                tag_cat_json = {
+                    "name": "cat",
+                    "value": "Fluffy",
+                    "frameRange": [5, 10]
+                }
+
+                from supervisely.video_annotation.video_tag import VideoTag
+                meta_cat = sly.TagMeta('cat', sly.TagValueType.ANY_STRING)
+                meta_collection = sly.TagMetaCollection([meta_cat])
+                tag_cat = VideoTag.from_json(tag_cat_json, meta_collection)
         """
         temp = super(VideoTag, cls).from_json(data, tag_meta_collection)
         frame_range = data.get(FRAME_RANGE, None)
@@ -287,16 +290,17 @@ class VideoTag(Tag):
 
         :return: Information about VideoTag object
         :rtype: :class:`str`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            from supervisely.video_annotation.video_tag import VideoTag
-            meta_cat = sly.TagMeta('cat', sly.TagValueType.ANY_STRING)
-            tag_cat = VideoTag(meta_cat, value="Fluffy", frame_range=(5, 10))
-            compact_tag_cat = tag_cat.get_compact_str()
-            print(compact_tag_cat) # cat:Fluffy[5 - 10]
+            .. code-block:: python
+
+                import supervisely as sly
+                from supervisely.video_annotation.video_tag import VideoTag
+                meta_cat = sly.TagMeta('cat', sly.TagValueType.ANY_STRING)
+                tag_cat = VideoTag(meta_cat, value="Fluffy", frame_range=(5, 10))
+                compact_tag_cat = tag_cat.get_compact_str()
+                print(compact_tag_cat) # cat:Fluffy[5 - 10]
         """
         res = super(VideoTag, self).get_compact_str()
         if self.frame_range is not None:
@@ -315,29 +319,30 @@ class VideoTag(Tag):
         :type other: VideoTag
         :return: True if comparable objects are equal, otherwise False
         :rtype: :class:`bool`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            from supervisely.video_annotation.video_tag import VideoTag
+            .. code-block:: python
 
-            # Let's create 2 identical Tags
-            meta_lemon_1 = sly.TagMeta('Lemon', sly.TagValueType.NONE)
-            tag_lemon_1 = VideoTag(meta_lemon_1)
+                import supervisely as sly
+                from supervisely.video_annotation.video_tag import VideoTag
 
-            meta_lemon_2 = sly.TagMeta('Lemon', sly.TagValueType.NONE)
-            tag_lemon_2 = VideoTag(meta_lemon_2)
+                # Let's create 2 identical Tags
+                meta_lemon_1 = sly.TagMeta('Lemon', sly.TagValueType.NONE)
+                tag_lemon_1 = VideoTag(meta_lemon_1)
 
-            # and 1 different Tag to compare them
-            meta_cucumber = sly.TagMeta('Cucumber', sly.TagValueType.ANY_STRING)
-            tag_cucumber = VideoTag(meta_cucumber, value="Fresh")
+                meta_lemon_2 = sly.TagMeta('Lemon', sly.TagValueType.NONE)
+                tag_lemon_2 = VideoTag(meta_lemon_2)
 
-            # Compare identical Tags
-            print(tag_lemon_1 == tag_lemon_2)      # True
+                # and 1 different Tag to compare them
+                meta_cucumber = sly.TagMeta('Cucumber', sly.TagValueType.ANY_STRING)
+                tag_cucumber = VideoTag(meta_cucumber, value="Fresh")
 
-            # Compare unidentical Tags
-            print(tag_lemon_1 == tag_cucumber)     # False
+                # Compare identical Tags
+                print(tag_lemon_1 == tag_lemon_2)      # True
+
+                # Compare unidentical Tags
+                print(tag_lemon_1 == tag_cucumber)     # False
         """
         unfinished_tag_comparison = True
         if self._SUPPORT_UNFINISHED_TAGS:
@@ -389,29 +394,30 @@ class VideoTag(Tag):
         :type is_finished: bool, optional
         :param non_final_value: Video Tag value is final or not (applicable for range tags).
         :type non_final_value: bool, optional
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            from supervisely.video_annotation.video_tag import VideoTag
+            .. code-block:: python
 
-            meta_car = sly.TagMeta('car_tag', sly.TagValueType.ANY_STRING)
-            car_tag = VideoTag(meta_car, value='acura', frame_range=(7, 9))
+                import supervisely as sly
+                from supervisely.video_annotation.video_tag import VideoTag
 
-            meta_bus = sly.TagMeta('bus', sly.TagValueType.ANY_STRING)
-            new_tag = car_tag.clone(meta=meta_bus, frame_range=(15, 129), key=car_tag.key())
-            new_tag_json = new_tag.to_json()
-            print(new_tag_json)
-            # Output: {
-            #     "name": "bus",
-            #     "value": "acura",
-            #     "frameRange": [
-            #         15,
-            #         129
-            #     ],
-            #     "key": "360438485fd34264921ca19bd43b0b71"
-            # }
+                meta_car = sly.TagMeta('car_tag', sly.TagValueType.ANY_STRING)
+                car_tag = VideoTag(meta_car, value='acura', frame_range=(7, 9))
+
+                meta_bus = sly.TagMeta('bus', sly.TagValueType.ANY_STRING)
+                new_tag = car_tag.clone(meta=meta_bus, frame_range=(15, 129), key=car_tag.key())
+                new_tag_json = new_tag.to_json()
+                print(new_tag_json)
+                # Output: {
+                #     "name": "bus",
+                #     "value": "acura",
+                #     "frameRange": [
+                #         15,
+                #         129
+                #     ],
+                #     "key": "360438485fd34264921ca19bd43b0b71"
+                # }
         """
         return self.__class__(
             meta=take_with_default(meta, self.meta),

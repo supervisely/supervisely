@@ -63,9 +63,9 @@ templates_path = ["_templates"]
 html_static_path = ["_static"]
 
 intersphinx_mapping = {
-    "python": ("https://docs.python.org/3.8/", None),
+    "python": ("https://docs.python.org/3.12/", None),
     "sphinx_docs": ("https://www.sphinx-doc.org/en/master", None),
-    "numpy": ("https://numpy.org/doc/stable/", ("intersphinx_inv/numpy.inv", None)),
+    "numpy": ("https://numpy.org/doc/stable/", None),
 }
 
 autosummary_generate = True

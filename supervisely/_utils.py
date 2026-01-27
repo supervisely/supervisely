@@ -287,22 +287,27 @@ def resize_image_url(
     :return: Full URL to a resized image.
     :rtype: str
 
-    :Usage example:
+    :Usage Example:
 
-    .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
-        from supervisely_utils import resize_image_url
+            import supervisely as sly
+            from supervisely_utils import resize_image_url
 
-        api = sly.Api(server_address, token)
+            api = sly.Api(server_address, token)
 
-        image_id = 376729
-        img_info = api.image.get_info_by_id(image_id)
+            image_id = 376729
+            img_info = api.image.get_info_by_id(image_id)
 
-        img_resized_url = resize_image_url(
-            img_info.full_storage_url, ext="jpeg", method="fill", width=512, height=256)
-        print(img_resized_url)
-        # Output: https://app.supervisely.com/previews/q/ext:jpeg/resize:fill:512:256:0/q:70/plain/h5un6l2bnaz1vj8a9qgms4-public/images/original/2/X/Re/<image_name>.jpg
+            img_resized_url = resize_image_url(
+                img_info.full_storage_url, 
+                ext="jpeg",
+                method="fill",
+                width=512,
+                height=256,
+            )
+            print(img_resized_url)
+            # Output: https://app.supervisely.com/previews/q/ext:jpeg/resize:fill:512:256:0/q:70/plain/h5un6l2bnaz1vj8a9qgms4-public/images/original/2/X/Re/<image_name>.jpg
     """
     # original url example: https://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/2/X/Re/<image_name>.jpg
     # resized url example:  https://app.supervisely.com/previews/q/ext:jpeg/resize:fill:300:0:0/q:70/plain/h5un6l2bnaz1vj8a9qgms4-public/images/original/2/X/Re/<image_name>.jpg
@@ -584,20 +589,20 @@ def run_coroutine(coroutine):
     :return: Result of the asynchronous function.
     :rtype: Any
 
-    :Usage example:
+    :Usage Example:
 
-    .. code-block:: python
+        .. code-block:: python
 
-            from supervisely._utils import run_coroutine
+                from supervisely._utils import run_coroutine
 
-            async def async_function():
-                await asyncio.sleep(1)
-                return "Hello, World!"
+                async def async_function():
+                    await asyncio.sleep(1)
+                    return "Hello, World!"
 
-            coroutine = async_function()
-            result = run_coroutine(coroutine)
-            print(result)
-            # Output: Hello, World!
+                coroutine = async_function()
+                result = run_coroutine(coroutine)
+                print(result)
+                # Output: Hello, World!
     """
 
     loop = get_or_create_event_loop()
@@ -650,18 +655,19 @@ def removesuffix(string, suffix):
     :return: The string without the suffix or the original string.
     :rtype: str
 
-    :Usage example:
-    .. code-block:: python
+    :Usage Example:
 
-        from supervisely._utils import removesuffix
+        .. code-block:: python
 
-        original_string = "example.txt"
-        suffix_to_remove = ".txt"
+            from supervisely._utils import removesuffix
 
-        result = removesuffix(original_string, suffix_to_remove)
-        print(result)
+            original_string = "example.txt"
+            suffix_to_remove = ".txt"
 
-        # Output: example
+            result = removesuffix(original_string, suffix_to_remove)
+            print(result)
+
+            # Output: example
 
     """
     if string.endswith(suffix):

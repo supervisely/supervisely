@@ -54,39 +54,40 @@ class VolumeFigure(VideoFigure):
     :type created_at: str, optional
     :param custom_data: Custom data associated with the VolumeFigure.
     :type custom_data: dict, optional
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        obj_class_heart = sly.ObjClass('heart', sly.Rectangle)
-        volume_obj_heart = sly.VolumeObject(obj_class_heart)
-        slice_index = 7
-        plane_name = "axial"
-        geometry = sly.Rectangle(0, 0, 100, 100)
-        volume_figure_heart = sly.VolumeFigure(volume_obj_heart, geometry, plane_name, slice_index)
-        volume_figure_heart_json = volume_figure_heart.to_json()
-        print(volume_figure_heart_json)
-        # Output: {
-        #     "geometry": {
-        #         "points": {
-        #         "exterior": [
-        #             [0, 0],
-        #             [100, 100]
-        #         ],
-        #         "interior": []
-        #         }
-        #     },
-        #     "geometryType": "rectangle",
-        #     "key": "158e6cf4f4ac4c639fc6994aad127c16",
-        #     "meta": {
-        #         "normal": { "x": 0, "y": 0, "z": 1 },
-        #         "planeName": "axial",
-        #         "sliceIndex": 7
-        #     },
-        #     "objectKey": "bf63ffe342e949899d3ddcb6b0f73f54"
-        # }
+            import supervisely as sly
+
+            obj_class_heart = sly.ObjClass('heart', sly.Rectangle)
+            volume_obj_heart = sly.VolumeObject(obj_class_heart)
+            slice_index = 7
+            plane_name = "axial"
+            geometry = sly.Rectangle(0, 0, 100, 100)
+            volume_figure_heart = sly.VolumeFigure(volume_obj_heart, geometry, plane_name, slice_index)
+            volume_figure_heart_json = volume_figure_heart.to_json()
+            print(volume_figure_heart_json)
+            # Output: {
+            #     "geometry": {
+            #         "points": {
+            #         "exterior": [
+            #             [0, 0],
+            #             [100, 100]
+            #         ],
+            #         "interior": []
+            #         }
+            #     },
+            #     "geometryType": "rectangle",
+            #     "key": "158e6cf4f4ac4c639fc6994aad127c16",
+            #     "meta": {
+            #         "normal": { "x": 0, "y": 0, "z": 1 },
+            #         "planeName": "axial",
+            #         "sliceIndex": 7
+            #     },
+            #     "objectKey": "bf63ffe342e949899d3ddcb6b0f73f54"
+            # }
     """
 
     def __init__(
@@ -140,23 +141,24 @@ class VolumeFigure(VideoFigure):
 
         :return: Parent VolumeObject object of volume figure.
         :rtype: VolumeObject
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            volume_obj_heart = sly.VolumeObject(obj_class_heart)
-            volume_figure_heart = sly.VolumeFigure(
-                volume_obj_heart,
-                geometry=sly.Rectangle(0, 0, 100, 100),
-                plane_name="axial",
-                slice_index=7
-            )
+                import supervisely as sly
 
-            print(volume_figure_heart.parent_object)
-            # Output:
-            # <supervisely.volume_annotation.volume_object.VolumeObject object at 0x7f95f0950b50>
+                volume_obj_heart = sly.VolumeObject(obj_class_heart)
+                volume_figure_heart = sly.VolumeFigure(
+                    volume_obj_heart,
+                    geometry=sly.Rectangle(0, 0, 100, 100),
+                    plane_name="axial",
+                    slice_index=7
+                )
+
+                print(volume_figure_heart.parent_object)
+                # Output:
+                # <supervisely.volume_annotation.volume_object.VolumeObject object at 0x7f95f0950b50>
         """
 
         return self._video_object
@@ -173,24 +175,25 @@ class VolumeFigure(VideoFigure):
 
         :return: VolumeObject object
         :rtype: VolumeObject
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            obj_class_heart = sly.ObjClass('heart', sly.Rectangle)
-            volume_obj_heart = sly.VolumeObject(obj_class_heart)
-            volume_figure_heart = sly.VolumeFigure(
-                volume_obj_heart,
-                geometry=sly.Rectangle(0, 0, 100, 100),
-                plane_name="axial",
-                slice_index=7
-            )
+                import supervisely as sly
 
-            print(volume_figure_heart.parent_object)
-            # Output:
-            # <supervisely.volume_annotation.volume_object.VolumeObject object at 0x7f786a3f8bd0>
+                obj_class_heart = sly.ObjClass('heart', sly.Rectangle)
+                volume_obj_heart = sly.VolumeObject(obj_class_heart)
+                volume_figure_heart = sly.VolumeFigure(
+                    volume_obj_heart,
+                    geometry=sly.Rectangle(0, 0, 100, 100),
+                    plane_name="axial",
+                    slice_index=7
+                )
+
+                print(volume_figure_heart.parent_object)
+                # Output:
+                # <supervisely.volume_annotation.volume_object.VolumeObject object at 0x7f786a3f8bd0>
         """
 
         return self.volume_object
@@ -207,23 +210,24 @@ class VolumeFigure(VideoFigure):
 
         :return: :py:class:`Slice<supervisely.volume_annotation.slice.Slice>` index of volume figure.
         :rtype: int
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            obj_class_heart = sly.ObjClass('heart', sly.Rectangle)
-            volume_obj_heart = sly.VolumeObject(obj_class_heart)
-            volume_figure_heart = sly.VolumeFigure(
-                volume_obj_heart,
-                geometry=sly.Rectangle(0, 0, 100, 100),
-                plane_name="axial",
-                slice_index=7
-            )
+                import supervisely as sly
 
-            print(volume_figure_heart.slice_index)
-            # Output: 7
+                obj_class_heart = sly.ObjClass('heart', sly.Rectangle)
+                volume_obj_heart = sly.VolumeObject(obj_class_heart)
+                volume_figure_heart = sly.VolumeFigure(
+                    volume_obj_heart,
+                    geometry=sly.Rectangle(0, 0, 100, 100),
+                    plane_name="axial",
+                    slice_index=7
+                )
+
+                print(volume_figure_heart.slice_index)
+                # Output: 7
         """
 
         return self._slice_index
@@ -235,23 +239,24 @@ class VolumeFigure(VideoFigure):
 
         :return: Plane name of volume figure.
         :rtype: str
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            obj_class_heart = sly.ObjClass('heart', sly.Rectangle)
-            volume_obj_heart = sly.VolumeObject(obj_class_heart)
-            volume_figure_heart = sly.VolumeFigure(
-                volume_obj_heart,
-                geometry=sly.Rectangle(0, 0, 100, 100),
-                plane_name="axial",
-                slice_index=7
-            )
+                import supervisely as sly
 
-            print(volume_figure_heart.plane_name)
-            # Output: axial
+                obj_class_heart = sly.ObjClass('heart', sly.Rectangle)
+                volume_obj_heart = sly.VolumeObject(obj_class_heart)
+                volume_figure_heart = sly.VolumeFigure(
+                    volume_obj_heart,
+                    geometry=sly.Rectangle(0, 0, 100, 100),
+                    plane_name="axial",
+                    slice_index=7
+                )
+
+                print(volume_figure_heart.plane_name)
+                # Output: axial
         """
 
         return self._plane_name
@@ -263,23 +268,24 @@ class VolumeFigure(VideoFigure):
 
         :return: Dictionary with normal vector associated with a plane name.
         :rtype: dict
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            obj_class_heart = sly.ObjClass('heart', sly.Rectangle)
-            volume_obj_heart = sly.VolumeObject(obj_class_heart)
-            volume_figure_heart = sly.VolumeFigure(
-                volume_obj_heart,
-                geometry=sly.Rectangle(0, 0, 100, 100),
-                plane_name="axial",
-                slice_index=7
-            )
+                import supervisely as sly
 
-            print(volume_figure_heart.normal)
-            # Output: {'x': 0, 'y': 0, 'z': 1}
+                obj_class_heart = sly.ObjClass('heart', sly.Rectangle)
+                volume_obj_heart = sly.VolumeObject(obj_class_heart)
+                volume_figure_heart = sly.VolumeFigure(
+                    volume_obj_heart,
+                    geometry=sly.Rectangle(0, 0, 100, 100),
+                    plane_name="axial",
+                    slice_index=7
+                )
+
+                print(volume_figure_heart.normal)
+                # Output: {'x': 0, 'y': 0, 'z': 1}
         """
 
         from supervisely.volume_annotation.plane import Plane
@@ -293,24 +299,25 @@ class VolumeFigure(VideoFigure):
 
         :return: Custom data associated with the VolumeFigure.
         :rtype: dict
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            obj_class_heart = sly.ObjClass('heart', sly.Rectangle)
-            volume_obj_heart = sly.VolumeObject(obj_class_heart)
-            volume_figure_heart = sly.VolumeFigure(
-                volume_obj_heart,
-                geometry=sly.Rectangle(0, 0, 100, 100),
-                plane_name="axial",
-                slice_index=7,
-                custom_data={"key": "value"}
-            )
+                import supervisely as sly
 
-            print(volume_figure_heart.custom_data)
-            # Output: {'key': 'value'}
+                obj_class_heart = sly.ObjClass('heart', sly.Rectangle)
+                volume_obj_heart = sly.VolumeObject(obj_class_heart)
+                volume_figure_heart = sly.VolumeFigure(
+                    volume_obj_heart,
+                    geometry=sly.Rectangle(0, 0, 100, 100),
+                    plane_name="axial",
+                    slice_index=7,
+                    custom_data={"key": "value"}
+                )
+
+                print(volume_figure_heart.custom_data)
+                # Output: {'key': 'value'}
         """
         return self._custom_data
 
@@ -345,20 +352,20 @@ class VolumeFigure(VideoFigure):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            obj_class_heart = sly.ObjClass('heart', sly.Rectangle)
-            volume_obj_heart = sly.VolumeObject(obj_class_heart)
-            slice_index = 7
-            plane_name = "axial"
-            geometry = sly.Rectangle(0, 0, 100, 100)
-            volume_figure_heart = sly.VolumeFigure(volume_obj_heart, geometry, plane_name, slice_index)
+                obj_class_heart = sly.ObjClass('heart', sly.Rectangle)
+                volume_obj_heart = sly.VolumeObject(obj_class_heart)
+                slice_index = 7
+                plane_name = "axial"
+                geometry = sly.Rectangle(0, 0, 100, 100)
+                volume_figure_heart = sly.VolumeFigure(volume_obj_heart, geometry, plane_name, slice_index)
 
-            im_size = (50, 200)
-            volume_figure_heart.validate_bounds(im_size)
-            # raise OutOfImageBoundsException("Figure is out of image bounds")
+                im_size = (50, 200)
+                volume_figure_heart.validate_bounds(im_size)
+                # raise OutOfImageBoundsException("Figure is out of image bounds")
         """
 
         if type(self._geometry) == ClosedSurfaceMesh:
@@ -404,46 +411,46 @@ class VolumeFigure(VideoFigure):
         :return: VolumeFigure object
         :rtype: :class:`VolumeFigure`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            obj_class_heart = sly.ObjClass('heart', sly.Rectangle)
-            volume_obj_heart = sly.VolumeObject(obj_class_heart)
-            slice_index = 7
-            plane_name = "axial"
-            geometry = sly.Rectangle(0, 0, 100, 100)
-            volume_figure_heart = sly.VolumeFigure(volume_obj_heart, geometry, plane_name, slice_index)
+                obj_class_heart = sly.ObjClass('heart', sly.Rectangle)
+                volume_obj_heart = sly.VolumeObject(obj_class_heart)
+                slice_index = 7
+                plane_name = "axial"
+                geometry = sly.Rectangle(0, 0, 100, 100)
+                volume_figure_heart = sly.VolumeFigure(volume_obj_heart, geometry, plane_name, slice_index)
 
-            obj_class_lang = sly.ObjClass('lang', sly.Rectangle)
-            volume_obj_lang = sly.VolumeObject(obj_class_lang)
-            slice_index_lang = 15
-            geometry_lang = sly.Rectangle(0, 0, 500, 600)
+                obj_class_lang = sly.ObjClass('lang', sly.Rectangle)
+                volume_obj_lang = sly.VolumeObject(obj_class_lang)
+                slice_index_lang = 15
+                geometry_lang = sly.Rectangle(0, 0, 500, 600)
 
-            # Remember that VolumeFigure object is immutable, and we need to assign new instance of VolumeFigure to a new variable
-            volume_figure_lang = volume_figure_heart.clone(volume_object=volume_obj_lang, geometry=geometry_lang, slice_index=slice_index_lang)
-            print(volume_figure_lang.to_json())
-            # Output: {
-            #     "geometry": {
-            #         "points": {
-            #         "exterior": [
-            #             [0, 0],
-            #             [600, 500]
-            #         ],
-            #         "interior": []
-            #         }
-            #     },
-            #     "geometryType": "rectangle",
-            #     "key": "2974165267224bf6b677e17ca2304b04",
-            #     "meta": {
-            #         "normal": { "x": 0, "y": 0, "z": 1 },
-            #         "planeName": "axial",
-            #         "sliceIndex": 15
-            #     },
-            #     "objectKey": "dafe3adaacad474ba5163ecebcc57cd0"
-            # }
+                # Remember that VolumeFigure object is immutable, and we need to assign new instance of VolumeFigure to a new variable
+                volume_figure_lang = volume_figure_heart.clone(volume_object=volume_obj_lang, geometry=geometry_lang, slice_index=slice_index_lang)
+                print(volume_figure_lang.to_json())
+                # Output: {
+                #     "geometry": {
+                #         "points": {
+                #         "exterior": [
+                #             [0, 0],
+                #             [600, 500]
+                #         ],
+                #         "interior": []
+                #         }
+                #     },
+                #     "geometryType": "rectangle",
+                #     "key": "2974165267224bf6b677e17ca2304b04",
+                #     "meta": {
+                #         "normal": { "x": 0, "y": 0, "z": 1 },
+                #         "planeName": "axial",
+                #         "sliceIndex": 15
+                #     },
+                #     "objectKey": "dafe3adaacad474ba5163ecebcc57cd0"
+                # }
 
         """
 
@@ -466,23 +473,24 @@ class VolumeFigure(VideoFigure):
 
         :return: Dictionary with metadata associated with volume figure.
         :rtype: dict
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            obj_class_heart = sly.ObjClass('heart', sly.Rectangle)
-            volume_obj_heart = sly.VolumeObject(obj_class_heart)
-            volume_figure_heart = sly.VolumeFigure(
-                volume_obj_heart,
-                geometry=sly.Rectangle(0, 0, 100, 100),
-                plane_name="axial",
-                slice_index=7
-            )
+                import supervisely as sly
 
-            print(volume_figure_heart.get_meta())
-            # {'sliceIndex': 7, 'planeName': 'axial', 'normal': {'x': 0, 'y': 0, 'z': 1}}
+                obj_class_heart = sly.ObjClass('heart', sly.Rectangle)
+                volume_obj_heart = sly.VolumeObject(obj_class_heart)
+                volume_figure_heart = sly.VolumeFigure(
+                    volume_obj_heart,
+                    geometry=sly.Rectangle(0, 0, 100, 100),
+                    plane_name="axial",
+                    slice_index=7
+                )
+
+                print(volume_figure_heart.get_meta())
+                # {'sliceIndex': 7, 'planeName': 'axial', 'normal': {'x': 0, 'y': 0, 'z': 1}}
         """
 
         return {
@@ -517,19 +525,19 @@ class VolumeFigure(VideoFigure):
         :return: VolumeFigure object
         :rtype: :class:`VolumeFigure`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            # Create VolumeFigure from json we use data from example to_json(see above)
-            new_volume_figure = sly.VolumeFigure.from_json(
-                data=volume_figure_json,
-                objects=sly.VolumeObjectCollection([volume_obj_heart]),
-                plane_name="axial",
-                slice_index=7
-            )
+                # Create VolumeFigure from json we use data from example to_json(see above)
+                new_volume_figure = sly.VolumeFigure.from_json(
+                    data=volume_figure_json,
+                    objects=sly.VolumeObjectCollection([volume_obj_heart]),
+                    plane_name="axial",
+                    slice_index=7
+                )
         """
 
         # @#TODO: copypaste from video figure, add base class and refactor copypaste later
@@ -604,39 +612,39 @@ class VolumeFigure(VideoFigure):
         :return: Json format as a dict
         :rtype: :class:`dict`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            obj_class_heart = sly.ObjClass('heart', sly.Rectangle)
-            volume_obj_heart = sly.VolumeObject(obj_class_heart)
-            fr_index = 7
-            geometry = sly.Rectangle(0, 0, 100, 100)
-            volume_figure_heart = sly.VolumeFigure(volume_obj_heart, geometry, fr_index)
-            volume_figure_json = volume_figure_heart.to_json(save_meta=True)
-            print(volume_figure_json)
-            # Output: {
-            #     "geometry": {
-            #         "points": {
-            #         "exterior": [
-            #             [0, 0],
-            #             [100, 100]
-            #         ],
-            #         "interior": []
-            #         }
-            #     },
-            #     "geometryType": "rectangle",
-            #     "key": "158e6cf4f4ac4c639fc6994aad127c16",
-            #     "meta": {
-            #         "normal": { "x": 0, "y": 0, "z": 1 },
-            #         "planeName": "axial",
-            #         "sliceIndex": 7
-            #     },
-            #     "objectKey": "bf63ffe342e949899d3ddcb6b0f73f54",
-            #     "custom_data": {}
-            # }
+                obj_class_heart = sly.ObjClass('heart', sly.Rectangle)
+                volume_obj_heart = sly.VolumeObject(obj_class_heart)
+                fr_index = 7
+                geometry = sly.Rectangle(0, 0, 100, 100)
+                volume_figure_heart = sly.VolumeFigure(volume_obj_heart, geometry, fr_index)
+                volume_figure_json = volume_figure_heart.to_json(save_meta=True)
+                print(volume_figure_json)
+                # Output: {
+                #     "geometry": {
+                #         "points": {
+                #         "exterior": [
+                #             [0, 0],
+                #             [100, 100]
+                #         ],
+                #         "interior": []
+                #         }
+                #     },
+                #     "geometryType": "rectangle",
+                #     "key": "158e6cf4f4ac4c639fc6994aad127c16",
+                #     "meta": {
+                #         "normal": { "x": 0, "y": 0, "z": 1 },
+                #         "planeName": "axial",
+                #         "sliceIndex": 7
+                #     },
+                #     "objectKey": "bf63ffe342e949899d3ddcb6b0f73f54",
+                #     "custom_data": {}
+                # }
         """
 
         json_data = super().to_json(key_id_map, save_meta)
