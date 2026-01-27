@@ -1680,9 +1680,7 @@ class VideoProject(Project):
             try:
                 _ = get_video_snapshot_schema(schema_version)
             except Exception:
-                raise RuntimeError(
-                    f"Unsupported video snapshot schema_version: {schema_version}"
-                )
+                raise RuntimeError(f"Unsupported video snapshot schema_version: {schema_version}")
 
             src_project_name = project_info_json.get("name")
             src_project_desc = project_info_json.get("description")
@@ -1702,6 +1700,13 @@ class VideoProject(Project):
             )
             new_meta = api.project.update_meta(project.id, meta.to_json())
 
+            is_multiview = False
+            try:
+                if new_meta.labeling_interface == LabelingInterface.MULTIVIEW:
+                    is_multiview = True
+            except AttributeError:
+                is_multiview = False
+
             if with_custom_data:
                 src_custom_data = project_info_json.get("custom_data") or {}
                 try:
@@ -1720,7 +1725,10 @@ class VideoProject(Project):
                 ds_rows = ds_table.to_pylist()
 
                 ds_rows.sort(
-                    key=lambda r: (r["parent_src_dataset_id"] is not None, r["parent_src_dataset_id"])
+                    key=lambda r: (
+                        r["parent_src_dataset_id"] is not None,
+                        r["parent_src_dataset_id"],
+                    )
                 )
 
             dataset_mapping: Dict[int, DatasetInfo] = {}
@@ -1757,7 +1765,9 @@ class VideoProject(Project):
                     try:
                         api.dataset.update_custom_data(ds.id, custom_data)
                     except Exception:
-                        logger.warning(f"Failed to restore custom_data for dataset '{row.get('name')}'")
+                        logger.warning(
+                            f"Failed to restore custom_data for dataset '{row.get('name')}'"
+                        )
                 dataset_mapping[src_ds_id] = ds
 
             # Videos
@@ -1917,13 +1927,16 @@ class VideoProject(Project):
                         total=len(video_ids),
                         leave=False,
                     )
+                key_id_map = KeyIdMap()
+                multiview_key_id_map = KeyIdMap()
+
                 for vid_id, ann_path in zip(video_ids, ann_paths):
                     try:
                         ann_json = load_json_file(ann_path)
                         ann = VideoAnnotation.from_json(
                             ann_json,
                             new_meta,
-                            key_id_map=KeyIdMap(),
+                            key_id_map=key_id_map,
                         )
                     except Exception as e:
                         logger.warning(
@@ -1931,9 +1944,21 @@ class VideoProject(Project):
                         )
                         continue
 
-                    api.video.annotation.append(vid_id, ann)
-                    if anns_progress is not None:
-                        anns_progress(1)
+                    try:
+                        if not is_multiview:
+                            api.video.annotation.append(vid_id, ann)
+                        else:
+                            api.video.annotation.upload_anns_multiview(
+                                [vid_id], [ann], key_id_map=multiview_key_id_map
+                            )
+                        if anns_progress is not None:
+                            anns_progress(1)
+                    except Exception as e:
+                        logger.warning(
+                            f"Failed to upload annotation for dataset '{ds_info.name}', "
+                            f"video id={vid_id}: {e}"
+                        )
+                        continue
 
             return project
 
@@ -2405,6 +2430,7 @@ async def download_video_project_async(
         await asyncio.gather(*tasks)
 
     project_fs.set_key_id_map(key_id_map)
+
 
 def _log_warning(
     video: VideoInfo,
