@@ -82,12 +82,7 @@ class LiveTraining:
         self.training_start_time = None
         self._upload_in_progress = False
 
-        self.evaluator = Evaluator(
-            task_type=self.task_type,
-            class2idx=self.class_map.class2idx,
-            ema_alpha=0.1,
-            ignore_index=255
-        )
+        self.evaluator = self.init_evaluator()
 
         self.ema_metric = None
 
@@ -494,6 +489,14 @@ class LiveTraining:
         loss_plateau_detector = LossPlateauDetector()
         loss_plateau_detector.register_save_checkpoint_callback(self.save_checkpoint)
         return loss_plateau_detector
+
+    def init_evaluator(self):
+        return Evaluator(
+            task_type=self.task_type,
+            class2idx=self.class_map.class2idx,
+            ema_alpha=0.1,
+            ignore_index=255,
+        )
     
     def _add_shutdown_callback(self):
         """Setup graceful shutdown: save experiment on SIGINT/SIGTERM"""

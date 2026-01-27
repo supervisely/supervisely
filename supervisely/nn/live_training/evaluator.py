@@ -5,8 +5,7 @@ import supervisely as sly
 from supervisely import logger
 from supervisely.nn import TaskType
 
-from .metrics import SegmentationMetrics
-
+from .metrics import SegmentationMetrics, DetectionMetrics
 
 class Evaluator:
     """
@@ -22,6 +21,7 @@ class Evaluator:
         class2idx: Mapping[str, int],
         ema_alpha: float = 0.1,
         ignore_index: int = 255,
+        score_thr: float | None = None,
     ):
         if not 0 < ema_alpha <= 1:
             raise ValueError(f"ema_alpha must be in (0, 1], got {ema_alpha}")
@@ -30,6 +30,7 @@ class Evaluator:
         self.class2idx: Mapping[str, int] = class2idx
         self.ema_alpha: float = ema_alpha
         self.ignore_index: int = ignore_index
+        self.score_thr: float = score_thr
 
         self._predictions: Dict[Any, Tuple[list, Tuple[int, int]]] = {}
 
@@ -69,9 +70,14 @@ class Evaluator:
         metrics = SegmentationMetrics(num_classes=len(self.class2idx), ignore_index=self.ignore_index)
         return metrics.calculate_mean_iou(pred_mask, gt_mask)
 
-    def _evaluate_detection(self, objects: list, gt_annotation: sly.Annotation, image_shape: Tuple[int,int]):
-        # TODO: implement detection
-        raise NotImplementedError("Detection support not yet implemented")
+    def _evaluate_detection(self, objects: list, gt_annotation: sly.Annotation, image_shape: Tuple[int,int]) -> float:
+        if self.score_thr is not None:
+            objects = [obj for obj in objects if obj.get('meta', {}).get('confidence') >= self.score_thr]
+        pred_boxes, pred_labels = self._pred_objects_to_bboxes(objects)
+        gt_boxes, gt_labels = self._gt_annotation_to_bboxes(gt_annotation)
+        metrics_calc = DetectionMetrics()
+        metrics = metrics_calc.all_metrics(pred_boxes, pred_labels, gt_boxes, gt_labels)
+        return metrics['assistance_score']
     
     def _pred_objects_to_mask(self, objects: list, image_shape: Tuple[int,int]) -> np.ndarray:
         """Convert predicted objects to segmentation mask."""
@@ -111,6 +117,54 @@ class Evaluator:
                 except Exception as e:
                     logger.warning(f"Failed to draw label geometry: {e}")
         return mask
+
+    def _pred_objects_to_bboxes(self, objects: list):
+        bboxes = []
+        labels = []
+
+        project_meta = self._get_project_meta_stub()
+
+        for obj in objects:
+            class_title = obj.get('classTitle')
+            if class_title is None:
+                continue
+
+            class_idx = self.class2idx.get(class_title)
+            if class_idx is None:
+                continue
+
+            try:
+                label = sly.Label.from_json(obj, project_meta)
+                geom = label.geometry
+                if not isinstance(geom, sly.Rectangle):
+                    continue  
+
+                bbox = [geom.left, geom.top, geom.right, geom.bottom]
+                bboxes.append(bbox)
+                labels.append(class_idx)
+            except Exception as e:
+                logger.warning(f"Failed to parse prediction bbox: {e}")
+
+        return (np.array(bboxes, dtype=np.float32), np.array(labels, dtype=np.int64)) 
+
+
+    def _gt_annotation_to_bboxes(self, annotation: sly.Annotation):
+        bboxes = []
+        labels = []
+
+        for label in annotation.labels:
+            class_idx = self.class2idx.get(label.obj_class.name)
+            if class_idx is None:
+                continue
+            geom = label.geometry
+            if not isinstance(geom, sly.Rectangle):
+                continue
+
+            bboxes.append([geom.left, geom.top, geom.right, geom.bottom])
+            labels.append(class_idx)
+
+        return (np.array(bboxes, dtype=np.float32), np.array(labels, dtype=np.int64))
+
     
     def _get_project_meta_stub(self) -> sly.ProjectMeta:
         obj_classes = [sly.ObjClass(class_name, sly.AnyGeometry) for class_name in self.class2idx.keys()]
