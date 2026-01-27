@@ -82,6 +82,15 @@ class LiveTraining:
         self.training_start_time = None
         self._upload_in_progress = False
 
+        self.evaluator = Evaluator(
+            task_type=self.task_type,
+            class2idx=self.class_map.class2idx,
+            ema_alpha=0.1,
+            ignore_index=255
+        )
+
+        self.ema_metric = None
+
         # from . import live_training_instance
         # live_training_instance = self  # for access from other modules
     
@@ -240,15 +249,19 @@ class LiveTraining:
 
     def _handle_predict(self, data: dict):
         image_np = data['image']
-        image_info = {'id': data['image_id']}
+        image_id = data['image_id']
+        image_info = {'id': image_id}
         model = self.model
         was_training = model.training
         model.eval()
         try:
             objects = self.predict(self.model, image_np=image_np, image_info=image_info)
+            if self.evaluator:
+                image_shape = image_np.shape[:2]
+                self.evaluator.store_prediction(image_id, objects, image_shape)
             return {
                 'objects': objects,
-                'image_id': data['image_id'],
+                'image_id': image_id,
                 'status': self.status(),
             }
         finally:
@@ -269,16 +282,22 @@ class LiveTraining:
         ann_json = data['annotation']
         ann_json = self._filter_annotation(ann_json)
         sly_ann = sly.Annotation.from_json(ann_json, self.project_meta)
+        image_id = data['image_id']
         self.add_sample(
-            image_id=data['image_id'],
+            image_id=image_id,
             image_np=data['image'],
             annotation=sly_ann,
             image_name=data['image_name']
         )
+        if self.evaluator and self.phase!=Phase.WAITING_FOR_SAMPLES:
+            result = self.evaluator.evaluate(image_id, sly_ann)
+            if result is not None:
+                self.ema_metric = result['ema_value']
+                logger.info(f"Image {image_id}: metric={result['metric_value']:.3f}, EMA={result['ema_value']:.3f}")
         if (len(self.dataset) >= self.initial_samples) and self.phase==Phase.WAITING_FOR_SAMPLES:
             self.phase = Phase.INITIAL_TRAINING
         return {
-            'image_id': data['image_id'],
+            'image_id': image_id,
             'status': self.status(),
         }
     
