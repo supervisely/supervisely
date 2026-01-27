@@ -606,8 +606,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
         names: List[str],
         links: List[str],
         metas: Optional[List[Dict]] = None,
-        progress_cb: Optional[Union[tqdm, Callable]] = None,
-        force_metadata_for_links: Optional[bool] = True,
+        progress_cb: Optional[Callable] = None,
     ) -> List[PointcloudInfo]:
         """
         Upload point clouds from given links to Dataset.
@@ -621,9 +620,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :param metas: Point cloud metadatas.
         :type metas: Optional[List[Dict]]
         :param progress_cb: Function for tracking upload progress.
-        :type progress_cb: Progress, optional
-        :param force_metadata_for_links: Force metadata retrieval for links.
-        :type force_metadata_for_links: Optional[bool]
+        :type progress_cb: Optional[Callable]
         :return: List with information about Point clouds. See :class:`info_sequence<info_sequence>`
         :rtype: List[:class:`PointcloudInfo`]
         :Usage example:
@@ -662,7 +659,6 @@ class PointcloudApi(RemoveableBulkModuleApi):
         link: str,
         name: Optional[str] = None,
         meta: Optional[Dict] = None,
-        force_metadata_for_links: Optional[bool] = True,
     ) -> PointcloudInfo:
         """
         Upload point cloud from given link to Dataset.
@@ -675,8 +671,6 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :type name: str, optional
         :param meta: Point cloud metadata.
         :type meta: Dict, optional
-        :param force_metadata_for_links: Force metadata retrieval for links.
-        :type force_metadata_for_links: Optional[bool]
         :return: Information about point cloud. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`PointcloudInfo`
         :Usage example:
@@ -707,7 +701,6 @@ class PointcloudApi(RemoveableBulkModuleApi):
             names=[name],
             links=[link],
             metas=[meta] if meta is not None else None,
-            force_metadata_for_links=force_metadata_for_links,
         )
         if len(pcd_infos) != 1:
             raise RuntimeError(
