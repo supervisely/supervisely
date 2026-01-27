@@ -607,6 +607,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
         links: List[str],
         metas: Optional[List[Dict]] = None,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
+        force_metadata_for_links: Optional[bool] = True,
     ) -> List[PointcloudInfo]:
         """
         Upload point clouds from given links to Dataset.
@@ -829,9 +830,9 @@ class PointcloudApi(RemoveableBulkModuleApi):
         camera_names: List[str] = None,
     ) -> Dict:
         """
-        Attach images to point cloud.
+        Attach images to point cloud by hash or link.
 
-        :param images_json: List of dictionaries with dataset id, image name, hash and meta.
+        :param images_json: List of dictionaries with entityId, name, and either 'hash' (for uploaded files) or 'link' (for external URLs), plus optional meta.
         :type images_json: List[Dict]
         :param camera_names: List of camera informations.
         :type camera_names: List[Dict]
@@ -847,6 +848,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
+            # Example 1: Using uploaded images (with hash)
             img_paths = ["src/input/img/000001.png", "src/input/img/000002.png"]
             cam_paths = ["src/input/cam_info/000001.json", "src/input/cam_info/000002.json"]
 
@@ -864,6 +866,24 @@ class PointcloudApi(RemoveableBulkModuleApi):
                 }
                 img_infos.append(img_info)
             api.pointcloud.add_related_images(img_infos)
+
+            # Example 2: Using external links (without uploading)
+            img_links = [
+                "https://example.com/images/cam_front.png",
+                "https://example.com/images/cam_back.png"
+            ]
+            img_infos_with_links = []
+            for i, link in enumerate(img_links):
+                with open(cam_paths[i], "r") as f:
+                    cam_info = json.load(f)
+                img_info = {
+                    "entityId": pcd_infos[i].id,
+                    "name": f"img_{i}.png",
+                    "link": link,  # Use 'link' instead of 'hash'
+                    "meta": cam_info,
+                }
+                img_infos_with_links.append(img_info)
+            api.pointcloud.add_related_images(img_infos_with_links)
         """
 
         if camera_names is not None:
