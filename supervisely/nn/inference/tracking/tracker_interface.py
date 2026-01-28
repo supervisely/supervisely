@@ -242,7 +242,7 @@ class TrackerInterface:
         # TODO: other geometries
 
     def _add_frames_indexes(self):
-        total_frames = self.api.video.get_info_by_id(self.video_id).frames_count
+        total_frames = self.video_info.frames_count
         cur_index = self.frame_index
 
         while 0 <= cur_index < total_frames and len(self.frames_indexes) < self.frames_count + 1:
