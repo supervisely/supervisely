@@ -2548,15 +2548,7 @@ async def _download_project_item_async(
             raise e
     else:
         await touch_async(video_file_path)
-
-    # Always save video meta if available (contains important data like offset for multiview)
-    if save_video_info:
-        item_info = video._asdict()
-    elif hasattr(video, "meta") and video.meta:
-        # Save only meta field even if save_video_info is False
-        item_info = {"meta": video.meta}
-    else:
-        item_info = None
+    item_info = video._asdict() if save_video_info else None
 
     try:
         video_ann = VideoAnnotation.from_json(ann_json, project_fs.meta, key_id_map)
