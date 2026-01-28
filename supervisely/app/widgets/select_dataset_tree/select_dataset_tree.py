@@ -63,9 +63,10 @@ class SelectDatasetTree(Widget):
     - `workspace_id`: The ID of the workspace selected in the widget.
     - `project_id`: The ID of the project selected in the widget.
 
-    :Usage example:
+    :Usage Example:
 
         .. code-block:: python
+
             from supervisely.app.widgets import SelectDatasetTree
 
             project_id = 123
@@ -75,7 +76,8 @@ class SelectDatasetTree(Widget):
                 default_id=dataset_id,
                 project_id=project_id,
                 multiselect=True,
-                flat=True)
+                flat=True
+            )
 
             @select_dataset_tree.value_changed
             def on_change(selected_ids):

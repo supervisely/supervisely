@@ -49,23 +49,25 @@ class VideoFigureApi(FigureApi):
         :type status: LabelingStatus, optional
         :return: New figure ID
         :rtype: :class:`int`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            video_id = 198703211
-            object_id = 152118
-            frame_idx = 0
-            geometry_json = {'points': {'exterior': [[500, 500], [1555, 1500]], 'interior': []}}
-            geometry_type = 'rectangle'
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            figure_id = api.video.figure.create(video_id, object_id, frame_idx, geometry_json, geometry_type) # 643182610
+                video_id = 198703211
+                object_id = 152118
+                frame_idx = 0
+                geometry_json = {'points': {'exterior': [[500, 500], [1555, 1500]], 'interior': []}}
+                geometry_type = 'rectangle'
+
+                figure_id = api.video.figure.create(video_id, object_id, frame_idx, geometry_json, geometry_type) # 643182610
         """
         if meta is None:
             meta = {}
@@ -93,26 +95,28 @@ class VideoFigureApi(FigureApi):
         :type key_id_map: KeyIdMap
         :return: None
         :rtype: :class:`NoneType`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            project_id = 124976
-            meta_json = api.project.get_meta(project_id)
-            meta = sly.ProjectMeta.from_json(meta_json)
-            key_id_map = KeyIdMap()
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            video_id = 198703212
-            ann_info = api.video.annotation.download(video_id)
-            ann = sly.VideoAnnotation.from_json(ann_info, meta, key_id_map)
-            figures = ann.figures[:5]
-            api.video.figure.append_bulk(video_id, figures, key_id_map)
+                project_id = 124976
+                meta_json = api.project.get_meta(project_id)
+                meta = sly.ProjectMeta.from_json(meta_json)
+                key_id_map = KeyIdMap()
+
+                video_id = 198703212
+                ann_info = api.video.annotation.download(video_id)
+                ann = sly.VideoAnnotation.from_json(ann_info, meta, key_id_map)
+                figures = ann.figures[:5]
+                api.video.figure.append_bulk(video_id, figures, key_id_map)
         """
 
         keys = []
@@ -132,24 +136,25 @@ class VideoFigureApi(FigureApi):
         :type geometry: Geometry
         :param status: Labeling status. Specifies if the VideoFigure was created by NN model, manually or created by NN and then manually corrected.
         :type status: LabelingStatus, optional
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import os
-            from dotenv import load_dotenv
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            new_geometry: sly.Rectangle(10, 10, 100, 100)
-            figure_id = 121236918
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
+                api = sly.Api.from_env()
 
-            api.video.figure.update(figure_id, new_geometry)
+                new_geometry: sly.Rectangle(10, 10, 100, 100)
+                figure_id = 121236918
+
+                api.video.figure.update(figure_id, new_geometry)
         """
         payload = {
             ApiField.ID: figure_id,

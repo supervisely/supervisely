@@ -235,28 +235,28 @@ class VideoApi(RemoveableBulkModuleApi):
 
     :param api: API connection to the server.
     :type api: Api
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        import os
-        from dotenv import load_dotenv
+            import os
+            from dotenv import load_dotenv
 
-        import supervisely as sly
+            import supervisely as sly
 
-        # Load secrets and create API object from .env file (recommended)
-        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-        if sly.is_development():
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-        api = sly.Api.from_env()
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-        # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
+            api = sly.Api.from_env()
 
-        video_id = 19371139
-        video_info = api.video.get_info_by_id(video_id) # api usage example
+            # Pass values into the API constructor (optional, not recommended)
+            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
+
+            video_id = 19371139
+            video_info = api.video.get_info_by_id(video_id) # api usage example
     """
 
     def __init__(self, api):
@@ -366,25 +366,26 @@ class VideoApi(RemoveableBulkModuleApi):
         :return: List of information about videos in given dataset.
         :rtype: :class:`List[VideoInfo]`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            dataset_id = 55846
+                dataset_id = 55846
 
-            video_infos = api.video.get_list(dataset_id)
-            print(video_infos)
-            # Output: [VideoInfo(...), VideoInfo(...)]
+                video_infos = api.video.get_list(dataset_id)
+                print(video_infos)
+                # Output: [VideoInfo(...), VideoInfo(...)]
 
-            filtered_video_infos = api.video.get_list(dataset_id, filters=[{'field': 'id', 'operator': '=', 'value': '19371139'}])
-            print(filtered_video_infos)
-            # Output: [VideoInfo(id=19371139, ...)]
+                filtered_video_infos = api.video.get_list(dataset_id, filters=[{'field': 'id', 'operator': '=', 'value': '19371139'}])
+                print(filtered_video_infos)
+                # Output: [VideoInfo(id=19371139, ...)]
         """
         data = {
             ApiField.DATASET_ID: dataset_id,
@@ -447,57 +448,57 @@ class VideoApi(RemoveableBulkModuleApi):
         :return: Information about Video. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`VideoInfo`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                import supervisely as sly
 
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
-
-            video_id = 198702499
-            video_info = api.video.get_info_by_id(video_id)
-            print(video_info)
-            # Output:
-            # VideoInfo(
-            #     id=198702499,
-            #     name='Videos_dataset_animals_sea_lion.mp4'
-            #     hash='30/TQ1BcIOn1AI4RFgRO/6psRtr3lqNPmr4uQ=',
-            #     link=None,
-            #     team_id=435,
-            #     workspace_id=684,
-            #     project_id=17208,
-            #     dataset_id=55846,
-            #     path_original='/h5s-public/videos/Z/d/HD/lfgNXrg5vz.mp4',
-            #     frames_to_timecodes=[],
-            #     frames_count=245,
-            #     frame_width=1920,
-            #     frame_height=1080,
-            #     created_at='2023-02-07T19:35:01.808Z',
-            #     updated_at='2023-02-07T19:35:01.808Z',
-            #     tags=[],
-            #     file_meta={
-            #         'codecName': 'h264',
-            #         'codecType': 'video',
-            #         'duration': 10.218542,
-            #         'formatName': 'mov,mp4,m4a,3gp,3g2,mj2',
-            #         'framesCount': 245,
-            #         'framesToTimecodes': [],
-            #         'height': 1080,
-            #         'index': 0,
-            #         'mime': 'video/mp4',
-            #         'rotation': 0,
-            #         'size': '6795452',
-            #         'startTime': 0,
-            #         'streams': [],
-            #         'width': 1920
-            #     },
-            #     custom_data={},
-            #     processing_path='1/194'
-            # )
+                video_id = 198702499
+                video_info = api.video.get_info_by_id(video_id)
+                print(video_info)
+                # Output:
+                # VideoInfo(
+                #     id=198702499,
+                #     name='Videos_dataset_animals_sea_lion.mp4'
+                #     hash='30/TQ1BcIOn1AI4RFgRO/6psRtr3lqNPmr4uQ=',
+                #     link=None,
+                #     team_id=435,
+                #     workspace_id=684,
+                #     project_id=17208,
+                #     dataset_id=55846,
+                #     path_original='/h5s-public/videos/Z/d/HD/lfgNXrg5vz.mp4',
+                #     frames_to_timecodes=[],
+                #     frames_count=245,
+                #     frame_width=1920,
+                #     frame_height=1080,
+                #     created_at='2023-02-07T19:35:01.808Z',
+                #     updated_at='2023-02-07T19:35:01.808Z',
+                #     tags=[],
+                #     file_meta={
+                #         'codecName': 'h264',
+                #         'codecType': 'video',
+                #         'duration': 10.218542,
+                #         'formatName': 'mov,mp4,m4a,3gp,3g2,mj2',
+                #         'framesCount': 245,
+                #         'framesToTimecodes': [],
+                #         'height': 1080,
+                #         'index': 0,
+                #         'mime': 'video/mp4',
+                #         'rotation': 0,
+                #         'size': '6795452',
+                #         'startTime': 0,
+                #         'streams': [],
+                #         'width': 1920
+                #     },
+                #     custom_data={},
+                #     processing_path='1/194'
+                # )
         """
 
         info = self._get_info_by_id(
@@ -526,17 +527,20 @@ class VideoApi(RemoveableBulkModuleApi):
         :type force_metadata_for_links: bool
         :return: List of information about Videos. See :class:`info_sequence<info_sequence>`.
         :rtype: List[VideoInfo]
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+            .. code-block:: python
 
-            video_ids = [376728, 376729, 376730, 376731, 376732, 376733]
+                import os
+                import supervisely as sly
 
-            video_infos = api.video.get_info_by_id_batch(video_ids)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                video_ids = [376728, 376729, 376730, 376731, 376732, 376733]
+                video_infos = api.video.get_info_by_id_batch(video_ids)
         """
         results = []
         if len(ids) == 0:
@@ -601,66 +605,66 @@ class VideoApi(RemoveableBulkModuleApi):
         :return: Information about Video. See :class:`info_sequence<info_sequence>`
         :rtype: dict
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                import supervisely as sly
 
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
-
-            video_id = 19371139
-            video_info = api.video.get_info_by_id(video_id)
-            print(video_info)
-            # Output:
-            # {
-            #     'createdAt': '2023-02-07T19:35:01.808Z',
-            #     'customData': {},
-            #     'datasetId': 55846,
-            #     'description': '',
-            #     'fileMeta': {
-            #         'codecName': 'h264',
-            #         'codecType': 'video',
-            #         'duration': 10.218542,
-            #         'formatName': 'mov,mp4,m4a,3gp,3g2,mj2',
-            #         'framesCount': 245,
-            #         'framesToTimecodes': [],
-            #         'height': 1080,
-            #         'index': 0,
-            #         'mime': 'video/mp4',
-            #         'rotation': 0,
-            #         'size': '6795452',
-            #         'startTime': 0,
-            #         'streams': [],
-            #         'width': 1920
-            #     },
-            #     'fullStorageUrl': 'https://app.supervisely.com/h..i35vz.mp4',
-            #     'hash': '30/TQ1BcIOn1ykA2psRtr3lq3HF6NPmr4uQ=',
-            #     'id': 19371139,
-            #     'link': None,
-            #     'meta': {'videoStreamIndex': 0},
-            #     'name': 'Videos_dataset_animals_sea_lion.mp4',
-            #     'pathOriginal': '/h5u1vqgms4-public/videos/Z/d/HD/lfgiplg5vz.mp4',
-            #     'processingPath': '1/194',
-            #     'projectId': 17208,
-            #     'tags': [
-            #         {
-            #             'createdAt': '2023-02-07T19:35:01.808Z',
-            #             'entityId': 19371139,
-            #             'frameRange': [244, 244],
-            #             'id': 12241539,
-            #             'labelerLogin': 'admin',
-            #             'tagId': 377141,
-            #             'updatedAt': '2023-02-07T19:35:01.808Z'
-            #         }
-            #     ],
-            #     'teamId': 435,
-            #     'updatedAt': '2023-02-07T19:35:01.808Z',
-            #     'workspaceId': 684
-            # }
+                video_id = 19371139
+                video_info = api.video.get_info_by_id(video_id)
+                print(video_info)
+                # Output:
+                # {
+                #     'createdAt': '2023-02-07T19:35:01.808Z',
+                #     'customData': {},
+                #     'datasetId': 55846,
+                #     'description': '',
+                #     'fileMeta': {
+                #         'codecName': 'h264',
+                #         'codecType': 'video',
+                #         'duration': 10.218542,
+                #         'formatName': 'mov,mp4,m4a,3gp,3g2,mj2',
+                #         'framesCount': 245,
+                #         'framesToTimecodes': [],
+                #         'height': 1080,
+                #         'index': 0,
+                #         'mime': 'video/mp4',
+                #         'rotation': 0,
+                #         'size': '6795452',
+                #         'startTime': 0,
+                #         'streams': [],
+                #         'width': 1920
+                #     },
+                #     'fullStorageUrl': 'https://app.supervisely.com/h..i35vz.mp4',
+                #     'hash': '30/TQ1BcIOn1ykA2psRtr3lq3HF6NPmr4uQ=',
+                #     'id': 19371139,
+                #     'link': None,
+                #     'meta': {'videoStreamIndex': 0},
+                #     'name': 'Videos_dataset_animals_sea_lion.mp4',
+                #     'pathOriginal': '/h5u1vqgms4-public/videos/Z/d/HD/lfgiplg5vz.mp4',
+                #     'processingPath': '1/194',
+                #     'projectId': 17208,
+                #     'tags': [
+                #         {
+                #             'createdAt': '2023-02-07T19:35:01.808Z',
+                #             'entityId': 19371139,
+                #             'frameRange': [244, 244],
+                #             'id': 12241539,
+                #             'labelerLogin': 'admin',
+                #             'tagId': 377141,
+                #             'updatedAt': '2023-02-07T19:35:01.808Z'
+                #         }
+                #     ],
+                #     'teamId': 435,
+                #     'updatedAt': '2023-02-07T19:35:01.808Z',
+                #     'workspaceId': 684
+                # }
         """
 
         data = None
@@ -685,22 +689,23 @@ class VideoApi(RemoveableBulkModuleApi):
         :type id: int
         :return: Project ID and dataset ID
         :rtype: :class:`Tuple[int, int]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
+                import os
+                import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            video_id = 198702499
-            project_id, dataset_id = api.video.get_destination_ids(video_id)
+                video_id = 198702499
+                project_id, dataset_id = api.video.get_destination_ids(video_id)
 
-            print(project_id, dataset_id)
-            # Output: 17208 55846
+                print(project_id, dataset_id)
+                # Output: 17208 55846
         """
         dataset_id = self._api.video.get_info_by_id(id).dataset_id
         project_id = self._api.dataset.get_info_by_id(dataset_id).project_id
@@ -724,61 +729,63 @@ class VideoApi(RemoveableBulkModuleApi):
         :type metadata: dict, optional
         :return: Information about Video. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`VideoInfo`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            dst_dataset_id = 55846
-            src_video_id = 186580617
-            video_info = api.video.get_info_by_id(src_video_id)
-            hash = video_info.hash
-            # It is necessary to upload video with the same extention as in src dataset
-            name = video_info.name
-            new_video_info = api.video.upload_hash(dst_dataset_id, name, hash)
-            print(new_video_info)
-            # Output:
-            # VideoInfo(
-            #     id=19371139,
-            #     name='Videos_dataset_animals_sea_lion.mp4'
-            #     hash='30/TQ1BcIOn1AI4RFgRO/6psRtr3lqNPmr4uQ=',
-            #     link=None,
-            #     team_id=435,
-            #     workspace_id=684,
-            #     project_id=17208,
-            #     dataset_id=55846,
-            #     path_original='/h5s-public/videos/Z/d/HD/lfgNXrg5vz.mp4',
-            #     frames_to_timecodes=[],
-            #     frames_count=245,
-            #     frame_width=1920,
-            #     frame_height=1080,
-            #     created_at='2023-02-07T19:35:01.808Z',
-            #     updated_at='2023-02-07T19:35:01.808Z',
-            #     tags=[],
-            #     file_meta={
-            #         'codecName': 'h264',
-            #         'codecType': 'video',
-            #         'duration': 10.218542,
-            #         'formatName': 'mov,mp4,m4a,3gp,3g2,mj2',
-            #         'framesCount': 245,
-            #         'framesToTimecodes': [],
-            #         'height': 1080,
-            #         'index': 0,
-            #         'mime': 'video/mp4',
-            #         'rotation': 0,
-            #         'size': '6795452',
-            #         'startTime': 0,
-            #         'streams': [],
-            #         'width': 1920
-            #     },
-            #     custom_data={},
-            #     processing_path='1/194'
-            # )
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                dst_dataset_id = 55846
+                src_video_id = 186580617
+                video_info = api.video.get_info_by_id(src_video_id)
+                hash = video_info.hash
+                # It is necessary to upload video with the same extention as in src dataset
+                name = video_info.name
+                new_video_info = api.video.upload_hash(dst_dataset_id, name, hash)
+                print(new_video_info)
+                # Output:
+                # VideoInfo(
+                #     id=19371139,
+                #     name='Videos_dataset_animals_sea_lion.mp4'
+                #     hash='30/TQ1BcIOn1AI4RFgRO/6psRtr3lqNPmr4uQ=',
+                #     link=None,
+                #     team_id=435,
+                #     workspace_id=684,
+                #     project_id=17208,
+                #     dataset_id=55846,
+                #     path_original='/h5s-public/videos/Z/d/HD/lfgNXrg5vz.mp4',
+                #     frames_to_timecodes=[],
+                #     frames_count=245,
+                #     frame_width=1920,
+                #     frame_height=1080,
+                #     created_at='2023-02-07T19:35:01.808Z',
+                #     updated_at='2023-02-07T19:35:01.808Z',
+                #     tags=[],
+                #     file_meta={
+                #         'codecName': 'h264',
+                #         'codecType': 'video',
+                #         'duration': 10.218542,
+                #         'formatName': 'mov,mp4,m4a,3gp,3g2,mj2',
+                #         'framesCount': 245,
+                #         'framesToTimecodes': [],
+                #         'height': 1080,
+                #         'index': 0,
+                #         'mime': 'video/mp4',
+                #         'rotation': 0,
+                #         'size': '6795452',
+                #         'startTime': 0,
+                #         'streams': [],
+                #         'width': 1920
+                #     },
+                #     custom_data={},
+                #     processing_path='1/194'
+                # )
         """
 
         if hash is None:
@@ -817,36 +824,38 @@ class VideoApi(RemoveableBulkModuleApi):
         :type progress_cb: tqdm or callable, optional
         :return: List with information about Videos. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[VideoInfo]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            src_dataset_id = 466639
-            dst_dataset_id = 468620
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            hashes = []
-            names = []
-            metas = []
-            video_infos = api.video.get_list(src_dataset_id)
-            # Create lists of hashes, videos names and meta information for each video
-            for video_info in video_infos:
-                hashes.append(video_info.hash)
-                # It is necessary to upload videos with the same names(extentions) as in src dataset
-                names.append(video_info.name)
-                metas.append({video_info.name: video_info.frame_height})
+                src_dataset_id = 466639
+                dst_dataset_id = 468620
 
-            progress = sly.Progress("Videos upload: ", len(hashes))
-            new_videos_info = api.video.upload_hashes(dst_dataset_id, names, hashes, metas, progress.iters_done_report)
+                hashes = []
+                names = []
+                metas = []
+                video_infos = api.video.get_list(src_dataset_id)
+                # Create lists of hashes, videos names and meta information for each video
+                for video_info in video_infos:
+                    hashes.append(video_info.hash)
+                    # It is necessary to upload videos with the same names(extentions) as in src dataset
+                    names.append(video_info.name)
+                    metas.append({video_info.name: video_info.frame_height})
 
-            # Output:
-            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Videos upload: ", "current": 0, "total": 2, "timestamp": "2021-03-24T10:18:57.111Z", "level": "info"}
-            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Videos upload: ", "current": 2, "total": 2, "timestamp": "2021-03-24T10:18:57.304Z", "level": "info"}
+                progress = sly.Progress("Videos upload: ", len(hashes))
+                new_videos_info = api.video.upload_hashes(dst_dataset_id, names, hashes, metas, progress.iters_done_report)
+
+                # Output:
+                # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Videos upload: ", "current": 0, "total": 2, "timestamp": "2021-03-24T10:18:57.111Z", "level": "info"}
+                # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Videos upload: ", "current": 2, "total": 2, "timestamp": "2021-03-24T10:18:57.304Z", "level": "info"}
         """
 
         no_hash_names = []
@@ -887,20 +896,22 @@ class VideoApi(RemoveableBulkModuleApi):
         :type meta: Optional[Dict]
         :return: Information about Video. See :class:`info_sequence<info_sequence>`
         :rtype: VideoInfo
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            src_video_id = 186580617
-            dst_dataset_id = 468620
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            new_video_info = api.video.upload_id(dst_dataset_id, 'new_video_name.mp4', src_video_id)
+                src_video_id = 186580617
+                dst_dataset_id = 468620
+
+                new_video_info = api.video.upload_id(dst_dataset_id, 'new_video_name.mp4', src_video_id)
         """
         metas = None if meta is None else [meta]
         return self.upload_ids(dataset_id, [name], [id], metas=metas)[0]
@@ -931,33 +942,35 @@ class VideoApi(RemoveableBulkModuleApi):
         :type infos: Optional[List[VideoInfo]]
         :return: List with information about Videos. See :class:`info_sequence<info_sequence>`
         :rtype: List[VideoInfo]
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            src_dataset_id = 466639
-            dst_dataset_id = 468620
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            ids = []
-            names = []
-            metas = []
+                src_dataset_id = 466639
+                dst_dataset_id = 468620
 
-            video_infos = api.video.get_list(src_dataset_id)
-            # Create lists of ids, videos names and meta information for each video
-            for video_info in video_infos:
-                ids.append(video_info.id)
-                # It is necessary to upload videos with the same names(extentions) as in src dataset
-                names.append(video_info.name)
-                metas.append({video_info.name: video_info.frame_height})
+                ids = []
+                names = []
+                metas = []
 
-            progress = sly.Progress("Videos upload: ", len(ids))
-            new_videos_info = api.video.upload_ids(dst_dataset_id, names, ids, metas, progress.iters_done_report)
+                video_infos = api.video.get_list(src_dataset_id)
+                # Create lists of ids, videos names and meta information for each video
+                for video_info in video_infos:
+                    ids.append(video_info.id)
+                    # It is necessary to upload videos with the same names(extentions) as in src dataset
+                    names.append(video_info.name)
+                    metas.append({video_info.name: video_info.frame_height})
+
+                progress = sly.Progress("Videos upload: ", len(ids))
+                new_videos_info = api.video.upload_ids(dst_dataset_id, names, ids, metas, progress.iters_done_report)
 
         """
         if metas is None:
@@ -1034,24 +1047,26 @@ class VideoApi(RemoveableBulkModuleApi):
         :raises: :class:`ValueError` if videos ids are from the destination Dataset
         :return: List with information about Videos. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[VideoInfo]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            dataset_id = 1780
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            video_infos = api.video.get_list(dataset_id)
+                dataset_id = 1780
 
-            video_ids = [video_info.id for video_info in video_infos]
+                video_infos = api.video.get_list(dataset_id)
 
-            destination_dataset_id = 2574
-            destination_video_infos = api.video.copy_batch(destination_dataset_id, video_ids, with_annotations=True)
+                video_ids = [video_info.id for video_info in video_infos]
+
+                destination_dataset_id = 2574
+                destination_video_infos = api.video.copy_batch(destination_dataset_id, video_ids, with_annotations=True)
         """
         if type(ids) is not list:
             raise TypeError(
@@ -1170,20 +1185,22 @@ class VideoApi(RemoveableBulkModuleApi):
         :type progress_cb: tqdm or callable, optional
         :return: None
         :rtype: :class:`NoneType`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            video_info = api.video.get_info_by_id(770918)
-            save_path = os.path.join("/home/admin/work/projects/videos/", video_info.name)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            api.video.download_path(770918, save_path)
+                video_info = api.video.get_info_by_id(770918)
+                save_path = os.path.join("/home/admin/work/projects/videos/", video_info.name)
+
+                api.video.download_path(770918, save_path)
         """
 
         response = self._download(id, is_stream=True)
@@ -1252,20 +1269,22 @@ class VideoApi(RemoveableBulkModuleApi):
         :type is_stream: bool, optional
         :return: Response object
         :rtype: :class:`Response`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            video_id = 198835945
-            start_fr = 5
-            end_fr= 35
-            response = api.video.download_range_by_id(video_id, start_fr, end_fr)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                video_id = 198835945
+                start_fr = 5
+                end_fr= 35
+                response = api.video.download_range_by_id(video_id, start_fr, end_fr)
         """
 
         raise NotImplementedError("Method is not supported")
@@ -1292,22 +1311,24 @@ class VideoApi(RemoveableBulkModuleApi):
         :type is_stream: bool, optional
         :return: Response object
         :rtype: :class:`Response`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            video_id = 198835945
-            start_fr = 5
-            end_fr= 35
-            video_info = api.video.get_info_by_id(video_id)
-            path_sl = video_info.path_original
-            response = api.video.download_range_by_path(path_sl, start_fr, end_fr)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                video_id = 198835945
+                start_fr = 5
+                end_fr= 35
+                video_info = api.video.get_info_by_id(video_id)
+                path_sl = video_info.path_original
+                response = api.video.download_range_by_path(path_sl, start_fr, end_fr)
         """
         raise NotImplementedError("Method is not supported")
         # response = self._api.get(
@@ -1334,24 +1355,26 @@ class VideoApi(RemoveableBulkModuleApi):
         :type save_path: str
         :return: Full path to saved video
         :rtype: :class:`str`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
-            video_id = 198835945
-            start_fr = 5
-            end_fr= 35
-            video_info = api.video.get_info_by_id(video_id)
-            name = video_info.name
-            save_path = os.path.join('/home/admin/work/projects/videos', name)
-            result = api.video.download_save_range(video_id, start_fr, end_fr, save_path)
-            print(result)
-            # Output: /home/admin/work/projects/videos/MOT16-03.mp4
+                import os
+                import supervisely as sly
+
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+                video_id = 198835945
+                start_fr = 5
+                end_fr= 35
+                video_info = api.video.get_info_by_id(video_id)
+                name = video_info.name
+                save_path = os.path.join('/home/admin/work/projects/videos', name)
+                result = api.video.download_save_range(video_id, start_fr, end_fr, save_path)
+                print(result)
+                # Output: /home/admin/work/projects/videos/MOT16-03.mp4
         """
         raise NotImplementedError("Method is not supported")
         # response = self.download_range_by_id(video_id, frame_start, frame_end)
@@ -1449,38 +1472,39 @@ class VideoApi(RemoveableBulkModuleApi):
         :type hashes: List[str]
         :return: List of existing hashes
         :rtype: :class:`List[str]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            # Helpful method when your uploading was interrupted
-            # You can check what videos has been successfully uploaded by their hashes and what not
-            # And continue uploading the rest of the videos from that point
+                import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                # Helpful method when your uploading was interrupted
+                # You can check what videos has been successfully uploaded by their hashes and what not
+                # And continue uploading the rest of the videos from that point
 
-            # Find project
-            project = api.project.get_info_by_id(WORKSPACE_ID, PROJECT_ID)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            # Get paths of all videos in a directory
-            videos_paths = sly.fs.list_files('videos_to_upload')
+                # Find project
+                project = api.project.get_info_by_id(WORKSPACE_ID, PROJECT_ID)
 
-            #Calculate hashes for all videos paths
-            hash_to_video = {}
-            videos_hashes = []
+                # Get paths of all videos in a directory
+                videos_paths = sly.fs.list_files('videos_to_upload')
 
-            for idx, item in enumerate(videos_paths):
-                item_hash = sly.fs.get_file_hash(item)
-                videos_hashes.append(item_hash)
-                hash_to_video[item_hash] = item
+                #Calculate hashes for all videos paths
+                hash_to_video = {}
+                videos_hashes = []
 
-            # Get hashes that are already on server
-            remote_hashes = api.video.check_existing_hashes(videos_hashes)
-            already_uploaded_videos = {hh: hash_to_video[hh] for hh in remote_hashes}
+                for idx, item in enumerate(videos_paths):
+                    item_hash = sly.fs.get_file_hash(item)
+                    videos_hashes.append(item_hash)
+                    hash_to_video[item_hash] = item
+
+                # Get hashes that are already on server
+                remote_hashes = api.video.check_existing_hashes(videos_hashes)
+                already_uploaded_videos = {hh: hash_to_video[hh] for hh in remote_hashes}
         """
 
         results = []
@@ -1520,25 +1544,27 @@ class VideoApi(RemoveableBulkModuleApi):
         :type item_progress:
         :return: List with information about Videos. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[VideoInfo]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            dataset_id=55846
-            video_names = ["7777.mp4", "8888.mp4", "9999.mp4"]
-            video_paths = ["/home/admin/Downloads/video/770918.mp4", "/home/admin/Downloads/video/770919.mp4", "/home/admin/Downloads/video/770920.mp4"]
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            video_infos = api.video.upload_paths(
-                dataset_id=dataset_id,
-                names=video_names,
-                paths=video_paths,
-            )
+                dataset_id=55846
+                video_names = ["7777.mp4", "8888.mp4", "9999.mp4"]
+                video_paths = ["/home/admin/Downloads/video/770918.mp4", "/home/admin/Downloads/video/770919.mp4", "/home/admin/Downloads/video/770920.mp4"]
+
+                video_infos = api.video.upload_paths(
+                    dataset_id=dataset_id,
+                    names=video_names,
+                    paths=video_paths,
+                )
         """
 
         for name, path in zip(names, paths):
@@ -1653,25 +1679,27 @@ class VideoApi(RemoveableBulkModuleApi):
         :type item_progress:
         :return: List with information about Videos. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`VideoInfo`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            dataset_id=55846
-            video_name = "7777.mp4"
-            video_path = "/home/admin/Downloads/video/770918.mp4"
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            video_infos = api.video.upload_path(
-                dataset_id=dataset_id,
-                name=video_name,
-                path=video_path,
-            )
+                dataset_id=55846
+                video_name = "7777.mp4"
+                video_path = "/home/admin/Downloads/video/770918.mp4"
+
+                video_infos = api.video.upload_path(
+                    dataset_id=dataset_id,
+                    name=video_name,
+                    path=video_path,
+                )
         """
         progress_cb = item_progress
         p = None
@@ -1819,24 +1847,26 @@ class VideoApi(RemoveableBulkModuleApi):
         :type info: dict
         :return: Return updating result
         :rtype: dict
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            video_id = 19388386
-            video_info = api.video.get_info_by_id(video_id)
-            video_hash = video_info.hash
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            res = api.video.upsert_info(video_hash, {"field": "value"})
-            print(res)
+                video_id = 19388386
+                video_info = api.video.get_info_by_id(video_id)
+                video_hash = video_info.hash
 
-            # Output: {'success': True}
+                res = api.video.upsert_info(video_hash, {"field": "value"})
+                print(res)
+
+                # Output: {'success': True}
         """
 
         return self.upsert_infos([hash], [info])
@@ -1853,30 +1883,32 @@ class VideoApi(RemoveableBulkModuleApi):
         :type infos: dict
         :return: Return updating result
         :rtype: dict
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
+
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
 
-            dataset_id = 56443
-            video_ids = [19388386, 19388387, 19388388]
-            video_infos = api.video.get_list(
-                dataset_id=dataset_id,
-                filters=[{'field': 'id', 'operator': 'in', 'value': video_ids}]
-            )
-            video_hashes = [video_info.hash for video_info in video_infos]
-            new_infos = [{"field1": "value1"}, {"field2": "value2"}, {"field3": "value3"}]
+                dataset_id = 56443
+                video_ids = [19388386, 19388387, 19388388]
+                video_infos = api.video.get_list(
+                    dataset_id=dataset_id,
+                    filters=[{'field': 'id', 'operator': 'in', 'value': video_ids}]
+                )
+                video_hashes = [video_info.hash for video_info in video_infos]
+                new_infos = [{"field1": "value1"}, {"field2": "value2"}, {"field3": "value3"}]
 
-            res = api.video.upsert_infos(video_hashes, new_infos)
-            print(res)
+                res = api.video.upsert_infos(video_hashes, new_infos)
+                print(res)
 
-            # Output: {'success': True}
+                # Output: {'success': True}
         """
 
         payload = []
@@ -1926,32 +1958,33 @@ class VideoApi(RemoveableBulkModuleApi):
         :type force_metadata_for_links: Optional[bool]
         :return: List with information about Videos. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[VideoInfo]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            from supervisely.video.video import get_info
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import supervisely as sly
+                from supervisely.video.video import get_info
 
-            dataset_id = 55847
-            links = [
-                "https://videos...7477606_main.mp4",
-                "https://videos...040243048_main.mp4",
-                "https://videos...065451525_main.mp4"
-            ]
-            names = ["cars.mp4", "animals.mp4", "traffic.mp4"]
-            video_infos = api.video.upload_links(dataset_id, links, names)
-            print(video_infos)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            # Output: [
-                VideoInfo(id=19593405, ...),
-                VideoInfo(id=19593406, ...),
-                VideoInfo(id=19593407, ...)
-            ]
+                dataset_id = 55847
+                links = [
+                    "https://videos...7477606_main.mp4",
+                    "https://videos...040243048_main.mp4",
+                    "https://videos...065451525_main.mp4"
+                ]
+                names = ["cars.mp4", "animals.mp4", "traffic.mp4"]
+                video_infos = api.video.upload_links(dataset_id, links, names)
+                print(video_infos)
+
+                # Output: [
+                    VideoInfo(id=19593405, ...),
+                    VideoInfo(id=19593406, ...),
+                    VideoInfo(id=19593407, ...)
+                ]
         """
 
         # This was deprecated, do not uncomment, otherwise it will break the code.
@@ -1980,25 +2013,26 @@ class VideoApi(RemoveableBulkModuleApi):
         :type metas: dict
         :return: Return updating result
         :rtype: dict
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            from supervisely.video.video import get_info
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import supervisely as sly
+                from supervisely.video.video import get_info
 
-            video_id = 19402023
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            api.video.update_custom_data(video_id, {"field": "value"})
+                video_id = 19402023
 
-            video_info = api.video.get_info_by_id(video_id)
-            print(video_info.custom_data)
+                api.video.update_custom_data(video_id, {"field": "value"})
 
-            # Output: {'field': 'value'}
+                video_info = api.video.get_info_by_id(video_id)
+                print(video_info.custom_data)
+
+                # Output: {'field': 'value'}
         """
 
         resp = self._api.post(
@@ -2244,18 +2278,20 @@ class VideoApi(RemoveableBulkModuleApi):
         :type progress_cb: tqdm or callable, optional
         :return: :class:`None<None>`
         :rtype: :class:`NoneType<NoneType>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            video_ids = [2389126, 2389127]
-            api.video.remove_batch(video_ids)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                video_ids = [2389126, 2389127]
+                api.video.remove_batch(video_ids)
         """
 
         super(VideoApi, self).remove_batch(ids, progress_cb=progress_cb, batch_size=batch_size)
@@ -2268,18 +2304,20 @@ class VideoApi(RemoveableBulkModuleApi):
         :type video_id: int
         :return: :class:`None<None>`
         :rtype: :class:`NoneType<NoneType>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            video_id = 2389126
-            api.video.remove(video_id)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                video_id = 2389126
+                api.video.remove(video_id)
         """
 
         super(VideoApi, self).remove(video_id)
@@ -2417,7 +2455,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type links: List[str]
         :return: json-encoded content of a response.
 
-        :Usage example:
+        :Usage Example:
 
             .. code-block:: python
 
@@ -2534,23 +2572,25 @@ class VideoApi(RemoveableBulkModuleApi):
         :type progress_cb_type: Literal["number", "size"], optional
         :return: None
         :rtype: :class:`NoneType`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            import asyncio
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import asyncio
+                import supervisely as sly
 
-            video_info = api.video.get_info_by_id(770918)
-            save_path = os.path.join("/path/to/save/", video_info.name)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            semaphore = asyncio.Semaphore(100)
-            loop = sly.utils.get_or_create_event_loop()
-            loop.run_until_complete(
+                video_info = api.video.get_info_by_id(770918)
+                save_path = os.path.join("/path/to/save/", video_info.name)
+
+                semaphore = asyncio.Semaphore(100)
+                loop = sly.utils.get_or_create_event_loop()
+                loop.run_until_complete(
                     api.video.download_path_async(video_info.id, save_path, semaphore)
                 )
         """
@@ -2624,21 +2664,21 @@ class VideoApi(RemoveableBulkModuleApi):
         :return: None
         :rtype: :class:`NoneType`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
-            import asyncio
+                import os
+                import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            ids = [770914, 770915]
-            paths = ["/path/to/save/video1.mp4", "/path/to/save/video2.mp4"]
-            loop = sly.utils.get_or_create_event_loop()
-            loop.run_until_complete(api.video.download_paths_async(ids, paths))
+                ids = [770914, 770915]
+                paths = ["/path/to/save/video1.mp4", "/path/to/save/video2.mp4"]
+                loop = sly.utils.get_or_create_event_loop()
+                loop.run_until_complete(api.video.download_paths_async(ids, paths))
         """
         if len(ids) == 0:
             return
@@ -2676,20 +2716,21 @@ class VideoApi(RemoveableBulkModuleApi):
         :return: Information about updated Video.
         :rtype: :class:`VideoInfo`
 
-        :Usage example:
+        :Usage Example:
 
-        .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                import supervisely as sly
 
-            api = sly.Api.from_env()
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
 
-            video_id = 123456
-            new_video_name = "VID_3333_new.mp4"
+                video_id = 123456
+                new_video_name = "VID_3333_new.mp4"
 
-            api.video.rename(id=video_id, name=new_video_name)
+                api.video.rename(id=video_id, name=new_video_name)
         """
 
         data = {

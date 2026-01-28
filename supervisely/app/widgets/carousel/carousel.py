@@ -38,21 +38,22 @@ class Carousel(Widget):
     :param widget_id: Unique widget identifier.
     :type widget_id: str
 
-    :Usage example:
-    .. code-block:: python
+    :Usage Example:
 
-        from supervisely.app.widgets import Carousel
+        .. code-block:: python
 
-        carousel_items = [
-            Carousel.Item(name="item1", label="Item 1"),
-            Carousel.Item(name="item2", label="Item 2"),
-            Carousel.Item(name="item3", label="Item 3"),
-        ]
+            from supervisely.app.widgets import Carousel
 
-        carousel = Carousel(
-            items=carousel_items, height=350, initial_index=0, trigger="click",
-            autoplay=False, interval=3000, indicator_position="none", arrow="hover", type=None
-            )
+            carousel_items = [
+                Carousel.Item(name="item1", label="Item 1"),
+                Carousel.Item(name="item2", label="Item 2"),
+                Carousel.Item(name="item3", label="Item 3"),
+            ]
+
+            carousel = Carousel(
+                items=carousel_items, height=350, initial_index=0, trigger="click",
+                autoplay=False, interval=3000, indicator_position="none", arrow="hover", type=None
+                )
     """
 
     class Routes:

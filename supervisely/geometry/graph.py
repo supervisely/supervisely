@@ -47,14 +47,15 @@ class Node(JsonSerializable):
     :param label: str
     :param row: int
     :param col: int
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
-        from supervisely.geometry.graph import Node
+        .. code-block:: python
 
-        vertex = Node(sly.PointLocation(5, 5))
+            import supervisely as sly
+            from supervisely.geometry.graph import Node
+
+            vertex = Node(sly.PointLocation(5, 5))
     """
 
     def __init__(
@@ -102,14 +103,13 @@ class Node(JsonSerializable):
         :type data: dict
         :return: Node object
         :rtype: :class:`Node<Node>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            vertex_json = {
-                "loc": [5, 5]
-            }
-            vertex = Node.from_json(vertex_json)
+            .. code-block:: python
+
+                vertex_json = {"loc": [5, 5]}
+                vertex = Node.from_json(vertex_json)
         """
         # TODO validations
         loc = data[LOC]
@@ -124,19 +124,20 @@ class Node(JsonSerializable):
 
         :return: Json format as a dict
         :rtype: :class:`dict`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            from supervisely.geometry.graph import Node
+            .. code-block:: python
 
-            vertex = Node(sly.PointLocation(5, 5))
-            vertex_json = vertex.to_json()
-            print(vertex_json)
-            # Output: {
-            #    "loc": [5, 5]
-            # }
+                import supervisely as sly
+                from supervisely.geometry.graph import Node
+
+                vertex = Node(sly.PointLocation(5, 5))
+                vertex_json = vertex.to_json()
+                print(vertex_json)
+                # Output: {
+                #    "loc": [5, 5]
+                # }
         """
         result = {LOC: [self._location.col, self._location.row]}
         if self.disabled:
@@ -179,18 +180,18 @@ class GraphNodes(Geometry):
     :param created_at: Date and Time when GraphNodes was created. Date Format is the same as in "updated_at" parameter.
     :type created_at: str, optional
 
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
-        from supervisely.geometry.graph import Node, GraphNodes
+            import supervisely as sly
+            from supervisely.geometry.graph import Node, GraphNodes
 
-        vertex_1 = Node(sly.PointLocation(5, 5))
-        vertex_2 = Node(sly.PointLocation(100, 100))
-        vertex_3 = Node(sly.PointLocation(200, 250))
-        nodes = {0: vertex_1, 1: vertex_2, 2: vertex_3}
-        figure = GraphNodes(nodes)
+            vertex_1 = Node(sly.PointLocation(5, 5))
+            vertex_2 = Node(sly.PointLocation(100, 100))
+            vertex_3 = Node(sly.PointLocation(200, 250))
+            nodes = {0: vertex_1, 1: vertex_2, 2: vertex_3}
+            figure = GraphNodes(nodes)
     """
 
     items_json_field = NODES
@@ -246,25 +247,20 @@ class GraphNodes(Geometry):
         :type data: dict
         :return: GraphNodes object
         :rtype: :class:`GraphNodes<GraphNodes>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            figure_json = {
-                "nodes": {
-                    "0": {
-                        "loc": [5, 5]
-                    },
-                    "1": {
-                        "loc": [100, 100]
-                    },
-                    "2": {
-                        "loc": [250, 200]
+            .. code-block:: python
+
+                figure_json = {
+                    "nodes": {
+                        "0": {"loc": [5, 5]},
+                        "1": {"loc": [100, 100]},
+                        "2": {"loc": [250, 200]}
                     }
                 }
-            }
-            from supervisely.geometry.graph import GraphNodes
-            figure = GraphNodes.from_json(figure_json)
+                from supervisely.geometry.graph import GraphNodes
+                figure = GraphNodes.from_json(figure_json)
         """
         nodes = {
             node_id: Node.from_json(node_json)
@@ -290,34 +286,35 @@ class GraphNodes(Geometry):
 
         :return: Json format as a dict
         :rtype: :class:`dict`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            from supervisely.geometry.graph import Node, GraphNodes
+            .. code-block:: python
 
-            vertex_1 = Node(sly.PointLocation(5, 5))
-            vertex_2 = Node(sly.PointLocation(100, 100))
-            vertex_3 = Node(sly.PointLocation(200, 250))
-            nodes = {0: vertex_1, 1: vertex_2, 2: vertex_3}
-            figure = GraphNodes(nodes)
+                import supervisely as sly
+                from supervisely.geometry.graph import Node, GraphNodes
 
-            figure_json = figure.to_json()
-            print(figure_json)
-            # Output: {
-            #    "nodes": {
-            #        "0": {
-            #            "loc": [5, 5]
-            #        },
-            #        "1": {
-            #            "loc": [100, 100]
-            #        },
-            #        "2": {
-            #            "loc": [250, 200]
-            #        }
-            #    }
-            # }
+                vertex_1 = Node(sly.PointLocation(5, 5))
+                vertex_2 = Node(sly.PointLocation(100, 100))
+                vertex_3 = Node(sly.PointLocation(200, 250))
+                nodes = {0: vertex_1, 1: vertex_2, 2: vertex_3}
+                figure = GraphNodes(nodes)
+
+                figure_json = figure.to_json()
+                print(figure_json)
+                # Output: {
+                #    "nodes": {
+                #        "0": {
+                #            "loc": [5, 5]
+                #        },
+                #        "1": {
+                #            "loc": [100, 100]
+                #        },
+                #        "2": {
+                #            "loc": [250, 200]
+                #        }
+                #    }
+                # }
         """
         res = {
             self.items_json_field: {
@@ -338,11 +335,11 @@ class GraphNodes(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            crop_figures = figure.crop(sly.Rectangle(0, 0, 300, 350))
+                crop_figures = figure.crop(sly.Rectangle(0, 0, 300, 350))
         """
         is_all_nodes_inside = all(
             rect.contains_point_location(node.location) for node in self._nodes.values()
@@ -360,11 +357,11 @@ class GraphNodes(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            rel_crop_figures = figure.relative_crop(sly.Rectangle(0, 0, 300, 350))
+                rel_crop_figures = figure.relative_crop(sly.Rectangle(0, 0, 300, 350))
         """
         return [geom.translate(drow=-rect.top, dcol=-rect.left) for geom in self.crop(rect)]
 
@@ -399,12 +396,12 @@ class GraphNodes(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            # Remember that GraphNodes class object is immutable, and we need to assign new instance of Rectangle to a new variable
-            in_height, in_width = 300, 400
-            out_height, out_width = 600, 800
-            resize_figure = figure.resize((in_height, in_width), (out_height, out_width))
+                # Remember that GraphNodes class object is immutable, and we need to assign new instance of Rectangle to a new variable
+                in_height, in_width = 300, 400
+                out_height, out_width = 600, 800
+                resize_figure = figure.resize((in_height, in_width), (out_height, out_width))
         """
         return self.transform_locations(lambda p: p.resize(in_size, out_size))
 
@@ -419,10 +416,10 @@ class GraphNodes(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            # Remember that GraphNodes class object is immutable, and we need to assign new instance of Rectangle to a new variable
-            scale_figure = figure.scale(0.75)
+                # Remember that GraphNodes class object is immutable, and we need to assign new instance of Rectangle to a new variable
+                scale_figure = figure.scale(0.75)
         """
         return self.transform_locations(lambda p: p.scale(factor))
 
@@ -439,10 +436,10 @@ class GraphNodes(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            # Remember that GraphNodes class object is immutable, and we need to assign new instance of Rectangle to a new variable
-            translate_figure = figure.translate(150, 250)
+                # Remember that GraphNodes class object is immutable, and we need to assign new instance of Rectangle to a new variable
+                translate_figure = figure.translate(150, 250)
         """
         return self.transform_locations(lambda p: p.translate(drow, dcol))
 
@@ -457,14 +454,14 @@ class GraphNodes(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            from supervisely.geometry.image_rotator import ImageRotator
+                from supervisely.geometry.image_rotator import ImageRotator
 
-            # Remember that GraphNodes class object is immutable, and we need to assign new instance of Rectangle to a new variable
-            height, width = 300, 400
-            rotator = ImageRotator((height, width), 25)
-            rotate_figure = figure.rotate(rotator)
+                # Remember that GraphNodes class object is immutable, and we need to assign new instance of Rectangle to a new variable
+                height, width = 300, 400
+                rotator = ImageRotator((height, width), 25)
+                rotate_figure = figure.rotate(rotator)
         """
         return self.transform_locations(lambda p: p.rotate(rotator))
 
@@ -479,11 +476,11 @@ class GraphNodes(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            # Remember that GraphNodes class object is immutable, and we need to assign new instance of Rectangle to a new variable
-            height, width = 300, 400
-            fliplr_figure = figure.fliplr((height, width))
+                # Remember that GraphNodes class object is immutable, and we need to assign new instance of Rectangle to a new variable
+                height, width = 300, 400
+                fliplr_figure = figure.fliplr((height, width))
         """
         return self.transform_locations(lambda p: p.fliplr(img_size))
 
@@ -498,11 +495,11 @@ class GraphNodes(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            # Remember that GraphNodes class object is immutable, and we need to assign new instance of Rectangle to a new variable
-            height, width = 300, 400
-            flipud_figure = figure.flipud((height, width))
+                # Remember that GraphNodes class object is immutable, and we need to assign new instance of Rectangle to a new variable
+                height, width = 300, 400
+                flipud_figure = figure.flipud((height, width))
         """
         return self.transform_locations(lambda p: p.flipud(img_size))
 
@@ -576,10 +573,10 @@ class GraphNodes(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            print(figure.area)
-            # Output: 0.0
+                print(figure.area)
+                # Output: 0.0
         """
         return 0.0
 
@@ -592,9 +589,9 @@ class GraphNodes(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            rectangle = figure.to_bbox()
+                rectangle = figure.to_bbox()
         """
         if self._nodes is None or len(self._nodes) == 0:
             logger.warning(
@@ -613,10 +610,10 @@ class GraphNodes(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            # Remember that GraphNodes class object is immutable, and we need to assign new instance of PointLocation to a new variable
-            new_figure = figure.clone()
+                # Remember that GraphNodes class object is immutable, and we need to assign new instance of PointLocation to a new variable
+                new_figure = figure.clone()
         """
         return self
 

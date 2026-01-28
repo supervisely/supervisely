@@ -24,15 +24,15 @@ class PointLocation(JsonSerializable):
     :param col: Position of PointLocation object on width.
     :type col: int or float
 
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
+            import supervisely as sly
 
-        row = 100
-        col = 200
-        loc = sly.PointLocation(row, col)
+            row = 100
+            col = 200
+            loc = sly.PointLocation(row, col)
     """
 
     def __init__(self, row: int, col: int):
@@ -46,12 +46,13 @@ class PointLocation(JsonSerializable):
 
         :return: Height of PointLocation
         :rtype: :class:`int`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            print(loc.row)
-            # Output: 100
+            .. code-block:: python
+
+                print(loc.row)
+                # Output: 100
         """
         return self._row
 
@@ -62,12 +63,13 @@ class PointLocation(JsonSerializable):
 
         :return: Width of PointLocation
         :rtype: :class:`int`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            print(loc.col)
-            # Output: 200
+            .. code-block:: python
+
+                print(loc.col)
+                # Output: 200
         """
         return self._col
 
@@ -77,23 +79,24 @@ class PointLocation(JsonSerializable):
 
         :return: Json format as a dict
         :rtype: :class:`dict`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            loc_json = loc.to_json()
-            print(loc_json)
-            # Output: {
-            #    "points": {
-            #        "exterior": [
-            #            [
-            #                200,
-            #                100
-            #            ]
-            #        ],
-            #        "interior": []
-            #    }
-            # }
+            .. code-block:: python
+
+                loc_json = loc.to_json()
+                print(loc_json)
+                # Output: {
+                #    "points": {
+                #        "exterior": [
+                #            [
+                #                200,
+                #                100
+                #            ]
+                #        ],
+                #        "interior": []
+                #    }
+                # }
         """
         packed_obj = {POINTS: {EXTERIOR: [[self.col, self.row]], INTERIOR: []}}
         return packed_obj
@@ -107,24 +110,25 @@ class PointLocation(JsonSerializable):
         :type data: dict
         :return: PointLocation object
         :rtype: :class:`PointLocation<PointLocation>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            loc_json = {
-                "points": {
-                    "exterior": [
-                        [
-                            200,
-                            100
-                        ]
-                    ],
-                    "interior": []
+                import supervisely as sly
+
+                loc_json = {
+                    "points": {
+                        "exterior": [
+                            [
+                                200,
+                                100
+                            ]
+                        ],
+                        "interior": []
+                    }
                 }
-            }
-            loc = sly.PointLocation.from_json(loc_json)
+                loc = sly.PointLocation.from_json(loc_json)
         """
         validation.validate_geometry_points_fields(data)
         exterior = data[POINTS][EXTERIOR]
@@ -145,10 +149,10 @@ class PointLocation(JsonSerializable):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            # Remember that PointLocation class object is immutable, and we need to assign new instance of PointLocation to a new variable
-            scale_loc = loc.scale(0.75)
+                # Remember that PointLocation class object is immutable, and we need to assign new instance of PointLocation to a new variable
+                scale_loc = loc.scale(0.75)
         """
         return self.scale_frow_fcol(factor, factor)
 
@@ -165,10 +169,10 @@ class PointLocation(JsonSerializable):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            # Remember that PointLocation class object is immutable, and we need to assign new instance of PointLocation to a new variable
-            loc_scale_rc = loc.scale_frow_fcol(0.1, 2.7)
+                # Remember that PointLocation class object is immutable, and we need to assign new instance of PointLocation to a new variable
+                loc_scale_rc = loc.scale_frow_fcol(0.1, 2.7)
         """
         return PointLocation(row=round(self.row * frow), col=round(self.col * fcol))
 
@@ -185,10 +189,10 @@ class PointLocation(JsonSerializable):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            # Remember that PointLocation class object is immutable, and we need to assign new instance of PointLocation to a new variable
-            translate_loc = loc.translate(150, 350)
+                # Remember that PointLocation class object is immutable, and we need to assign new instance of PointLocation to a new variable
+                translate_loc = loc.translate(150, 350)
         """
         return PointLocation(row=(self.row + drow), col=(self.col + dcol))
 
@@ -203,14 +207,14 @@ class PointLocation(JsonSerializable):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            from supervisely.geometry.image_rotator import ImageRotator
+                from supervisely.geometry.image_rotator import ImageRotator
 
-            # Remember that PointLocation class object is immutable, and we need to assign new instance of PointLocation to a new variable
-            height, width = 300, 400
-            rotator = ImageRotator((height, width), 25)
-            rotate_loc = loc.rotate(rotator)
+                # Remember that PointLocation class object is immutable, and we need to assign new instance of PointLocation to a new variable
+                height, width = 300, 400
+                rotator = ImageRotator((height, width), 25)
+                rotate_loc = loc.rotate(rotator)
         """
         return rotator.transform_point(self)
 
@@ -227,12 +231,12 @@ class PointLocation(JsonSerializable):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            # Remember that PointLocation class object is immutable, and we need to assign new instance of PointLocation to a new variable
-            in_height, in_width = 300, 400
-            out_height, out_width = 600, 800
-            resize_loc = loc.resize((in_height, in_width), (out_height, out_width))
+                # Remember that PointLocation class object is immutable, and we need to assign new instance of PointLocation to a new variable
+                in_height, in_width = 300, 400
+                out_height, out_width = 600, 800
+                resize_loc = loc.resize((in_height, in_width), (out_height, out_width))
         """
         new_size = sly_image.restore_proportional_size(in_size=in_size, out_size=out_size)
         frow = new_size[0] / in_size[0]
@@ -250,11 +254,11 @@ class PointLocation(JsonSerializable):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            # Remember that PointLocation class object is immutable, and we need to assign new instance of PointLocation to a new variable
-            height, width = 300, 400
-            fliplr_loc = loc.fliplr((height, width))
+                # Remember that PointLocation class object is immutable, and we need to assign new instance of PointLocation to a new variable
+                height, width = 300, 400
+                fliplr_loc = loc.fliplr((height, width))
         """
         return PointLocation(row=self.row, col=(img_size[1] - self.col))
 
@@ -269,11 +273,11 @@ class PointLocation(JsonSerializable):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            # Remember that PointLocation class object is immutable, and we need to assign new instance of PointLocation to a new variable
-            height, width = 300, 400
-            flipud_loc = loc.flipud((height, width))
+                # Remember that PointLocation class object is immutable, and we need to assign new instance of PointLocation to a new variable
+                height, width = 300, 400
+                flipud_loc = loc.flipud((height, width))
         """
         return PointLocation(row=(img_size[0] - self.row), col=self.col)
 
@@ -286,10 +290,10 @@ class PointLocation(JsonSerializable):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            # Remember that PointLocation class object is immutable, and we need to assign new instance of PointLocation to a new variable
-            new_loc = loc.clone()
+                # Remember that PointLocation class object is immutable, and we need to assign new instance of PointLocation to a new variable
+                new_loc = loc.clone()
         """
         return deepcopy(self)
 
@@ -323,15 +327,15 @@ def points_to_row_col_list(
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            loc_1 = sly.PointLocation(100, 200)
-            loc_2 = sly.PointLocation(300, 400)
-            points_row_col = points_to_row_col_list([loc_1, loc_2])
-            print(points_row_col)
-            # Output: [[100, 200], [300, 400]]
+                loc_1 = sly.PointLocation(100, 200)
+                loc_2 = sly.PointLocation(300, 400)
+                points_row_col = points_to_row_col_list([loc_1, loc_2])
+                print(points_row_col)
+                # Output: [[100, 200], [300, 400]]
     """
     return _maybe_flip_row_col_order(
         coords=[[p.row, p.col] for p in points], flip=flip_row_col_order
@@ -357,12 +361,12 @@ def row_col_list_to_points(
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            row_1, col_1 = 100, 200
-            row_2, col_2 = 300, 400
-            coords = [(row_1, col_1), (row_2, col_2)]
-            locs = row_col_list_to_points(coords)
+                row_1, col_1 = 100, 200
+                row_2, col_2 = 300, 400
+                coords = [(row_1, col_1), (row_2, col_2)]
+                locs = row_col_list_to_points(coords)
     """
 
     def _maybe_round(v):

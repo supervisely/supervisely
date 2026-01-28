@@ -70,34 +70,35 @@ class Bokeh(Widget):
     :param legend_click_policy: Click policy of the clickable legend widget.
     :type legend_click_policy: Literal["hide", "mute"]
 
-    :Usage example:
-    .. code-block:: python
+    :Usage Example:
 
-        from supervisely.app.widgets import Bokeh, IFrame
+        .. code-block:: python
 
-        data = {
-            "x": [1, 2, 3, 4, 5],
-            "y": [1, 2, 3, 4, 5],
-            "radius": [10, 20, 30, 40, 50],
-            "colors": ["red", "green", "blue", "yellow", "purple"],
-            "ids": [1, 2, 3, 4, 5],
-            "names": ["kiwi", "kiwi", "lemon", "lemon", "lemon"],
-        }
+            from supervisely.app.widgets import Bokeh, IFrame
 
-        plot_lemon = Bokeh.Circle(name="lemon")
-        plot_kiwi = Bokeh.Circle(name="kiwi")
-        bokeh = Bokeh(
-            x_axis_visible=True,
-            y_axis_visible=True,
-            grid_visible=True,
-            show_legend=True,
-        )
-        bokeh.add_data(**data)
-        bokeh.add_plots([plot_lemon, plot_kiwi])
+            data = {
+                "x": [1, 2, 3, 4, 5],
+                "y": [1, 2, 3, 4, 5],
+                "radius": [10, 20, 30, 40, 50],
+                "colors": ["red", "green", "blue", "yellow", "purple"],
+                "ids": [1, 2, 3, 4, 5],
+                "names": ["kiwi", "kiwi", "lemon", "lemon", "lemon"],
+            }
 
-        # To allow the widget to be interacted with, you need to add it to the IFrame widget.
-        iframe = IFrame()
-        iframe.set(bokeh.html_route_with_timestamp, height="650px", width="100%")
+            plot_lemon = Bokeh.Circle(name="lemon")
+            plot_kiwi = Bokeh.Circle(name="kiwi")
+            bokeh = Bokeh(
+                x_axis_visible=True,
+                y_axis_visible=True,
+                grid_visible=True,
+                show_legend=True,
+            )
+            bokeh.add_data(**data)
+            bokeh.add_plots([plot_lemon, plot_kiwi])
+
+            # To allow the widget to be interacted with, you need to add it to the IFrame widget.
+            iframe = IFrame()
+            iframe.set(bokeh.html_route_with_timestamp, height="650px", width="100%")
     """
 
     class Routes:

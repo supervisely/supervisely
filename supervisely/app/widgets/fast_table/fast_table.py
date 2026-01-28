@@ -62,28 +62,29 @@ class FastTable(Widget):
     :type search_position: Literal["left", "right"], optional
 
 
-    :Usage example:
-    .. code-block:: python
+    :Usage Example:
 
-        from supervisely.app.widgets import FastTable
+        .. code-block:: python
 
-        data = [["apple", "21"], ["banana", "15"]]
-        columns = ["Class", "Items"]
-        dataframe = pd.DataFrame(data=data, columns=columns)
-        columns_options = [
-            { "type": "class"},
-            { "maxValue": 21, "postfix": "pcs", "tooltip": "description text", "subtitle": "boxes" }
-        ]
+            from supervisely.app.widgets import FastTable
 
-        meta_path = "meta.json"  # define file path
-        with open(meta_path, "r") as json_file:
-            meta = json.load(json_file)
+            data = [["apple", "21"], ["banana", "15"]]
+            columns = ["Class", "Items"]
+            dataframe = pd.DataFrame(data=data, columns=columns)
+            columns_options = [
+                { "type": "class"},
+                { "maxValue": 21, "postfix": "pcs", "tooltip": "description text", "subtitle": "boxes" }
+            ]
 
-        fast_table = FastTable(
-            data=dataframe,
-            project_meta=meta,
-            columns_options=columns_options,
-        )
+            meta_path = "meta.json"  # define file path
+            with open(meta_path, "r") as json_file:
+                meta = json.load(json_file)
+
+            fast_table = FastTable(
+                data=dataframe,
+                project_meta=meta,
+                columns_options=columns_options,
+            )
     """
 
     class Routes:
@@ -990,14 +991,15 @@ class FastTable(Widget):
         :param reset: If True, clears sorting completely. Default is False.
         :type reset: bool
 
-        :Usage example:
+        :Usage Example:
 
-        .. code-block:: python
-            # Sorting examples
-            sort(column_idx=0, order="asc") # sort by column 0 ascending
-            sort(column_idx=1) # sort by column 1, keep current order
-            sort(order="desc") # keep current column, change order to descending
-            sort(reset=True) # clear sorting completely
+            .. code-block:: python
+
+                # Sorting examples
+                sort(column_idx=0, order="asc") # sort by column 0 ascending
+                sort(column_idx=1) # sort by column 1, keep current order
+                sort(order="desc") # keep current column, change order to descending
+                sort(reset=True) # clear sorting completely
         """
         # If reset=True, clear sorting completely
         if reset:

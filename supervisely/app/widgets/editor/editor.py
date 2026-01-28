@@ -32,20 +32,21 @@ class Editor(Widget):
     :param auto_format: If True, the editor will automatically format JSON on initialization.
     :type auto_format: bool
 
-    :Usage example:
-    .. code-block:: python
+    :Usage Example:
 
-        from supervisely.app.widgets import Editor
+        .. code-block:: python
 
-        editor = Editor(
-            initial_text="print('Hello, world!')",
-            height_px=200,
-            language_mode="python",
-            readonly=False,
-            show_line_numbers=True,
-            highlight_active_line=True,
-            restore_default_button=True,
-        )
+            from supervisely.app.widgets import Editor
+
+            editor = Editor(
+                initial_text="print('Hello, world!')",
+                height_px=200,
+                language_mode="python",
+                readonly=False,
+                show_line_numbers=True,
+                highlight_active_line=True,
+                restore_default_button=True,
+            )
 
     """
 

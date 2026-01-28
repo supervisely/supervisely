@@ -14,16 +14,16 @@ class Empty(Widget):
     :param style: CSS styles to be applied to the widget.
     :type style: str, optional
 
-    :Usage example:
-    .. code-block:: python
+    :Usage Example:
 
-        from supervisely.app.widgets import Empty, Text, Container
+        .. code-block:: python
 
-        empty = Empty()
-        text1 = Text('Text 1')
-        text2 = Text('Text 2')
+            from supervisely.app.widgets import Empty, Text, Container
 
-        container = Container([text1, empty, text2])
+            empty = Empty()
+            text1 = Text('Text 1')
+            text2 = Text('Text 2')
+            container = Container([text1, empty, text2])
     """
 
     def __init__(self, widget_id: Optional[str] = None, style: Optional[str] = ""):

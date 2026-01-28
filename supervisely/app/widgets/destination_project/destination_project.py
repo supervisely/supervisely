@@ -20,15 +20,16 @@ class DestinationProject(Widget):
     :param widget_id: An identifier of the widget.
     :type widget_id: str, optional
 
-    :Usage example:
-    .. code-block:: python
+    :Usage Example:
 
-            from supervisely.app.widgets import DestinationProject
+        .. code-block:: python
 
-            destination_project = DestinationProject(
-                workspace_id=1,
-                project_type="images",
-            )
+                from supervisely.app.widgets import DestinationProject
+
+                destination_project = DestinationProject(
+                    workspace_id=1,
+                    project_type="images",
+                )
 
     """
 

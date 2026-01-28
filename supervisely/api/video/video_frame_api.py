@@ -75,19 +75,21 @@ class VideoFrameAPI(ModuleApi):
         :type frame_index: int
         :return: Image in RGB numpy matrix format
         :rtype: :class:`np.ndarray`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            video_id = 198703211
-            frame_idx = 5
-            image_np = api.video.frame.download_np(video_id, frame_idx)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                video_id = 198703211
+                frame_idx = 5
+                image_np = api.video.frame.download_np(video_id, frame_idx)
         """
 
         response = self._download(video_id, frame_index)
@@ -112,19 +114,21 @@ class VideoFrameAPI(ModuleApi):
         :type progress_cb: tqdm or callable, optional
         :return: List of Images in RGB numpy matrix format
         :rtype: List[np.ndarray]
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            video_id = 198703211
-            frame_indexes = [1,2,3,4,5,10,11,12,13,14,15]
-            images_np = api.video.frame.download_nps(video_id, frame_indexes)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                video_id = 198703211
+                frame_indexes = [1,2,3,4,5,10,11,12,13,14,15]
+                images_np = api.video.frame.download_nps(video_id, frame_indexes)
         """
 
         downloaded_frames = []
@@ -167,20 +171,22 @@ class VideoFrameAPI(ModuleApi):
         :type path: str
         :return: None
         :rtype: :class:`NoneType`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            video_id = 198703211
-            frame_idx = 5
-            save_path = '/home/admin/Downloads/frames/result.png'
-            api.video.frame.download_path(video_id, frame_idx, save_path)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                video_id = 198703211
+                frame_idx = 5
+                save_path = '/home/admin/Downloads/frames/result.png'
+                api.video.frame.download_path(video_id, frame_idx, save_path)
         """
 
         response = self._download(video_id, frame_index)
@@ -209,20 +215,22 @@ class VideoFrameAPI(ModuleApi):
         :type progress_cb: tqdm or callable, optional
         :return: None
         :rtype: :class:`NoneType`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            video_id = 198703211
-            frame_indexes = [1,2,3,4,5,10,11,12,13,14,15]
-            save_paths = [f"/home/admin/projects/video_project/frames/{idx}.png" for idx in frame_indexes]
-            api.video.frame.download_paths(video_id, frame_indexes, save_paths)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                video_id = 198703211
+                frame_indexes = [1,2,3,4,5,10,11,12,13,14,15]
+                save_paths = [f"/home/admin/projects/video_project/frames/{idx}.png" for idx in frame_indexes]
+                api.video.frame.download_paths(video_id, frame_indexes, save_paths)
         """
 
         if len(frame_indexes) == 0:
@@ -254,21 +262,23 @@ class VideoFrameAPI(ModuleApi):
         :type progress_cb: tqdm or callable, optional
         :return: List of Images in binary format
         :rtype: :class:`List[bytes]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            video_id = 213542
-            frame_indexes = [1,2,3,4,5,10,11,12,13,14,15]
-            frames_bytes = api.video.frame.download_bytes(video_id=video_id, frame_indexes=frame_indexes)
-            print(frames_bytes)
-            # Output: [b'\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\...]
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                video_id = 213542
+                frame_indexes = [1,2,3,4,5,10,11,12,13,14,15]
+                frames_bytes = api.video.frame.download_bytes(video_id=video_id, frame_indexes=frame_indexes)
+                print(frames_bytes)
+                # Output: [b'\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\...]
         """
 
         if len(frame_indexes) == 0:

@@ -25,22 +25,23 @@ class Dropdown(Widget):
     :param widget_id: An identifier of the widget.
     :type widget_id: str, optional
 
-    :Usage example:
-    .. code-block:: python
+    :Usage Example:
 
-        from supervisely.app.widgets import Dropdown
+        .. code-block:: python
 
-        dropdown = Dropdown(
-            items=[
-                Dropdown.Item(text="Item 1", command="item1"),
-                Dropdown.Item(text="Item 2", command="item2"),
-                Dropdown.Item(text="Item 3", command="item3"),
-            ],
-            header="Dropdown List",
-            trigger="click",
-            menu_align="end",
-            hide_on_click=True,
-        )
+            from supervisely.app.widgets import Dropdown
+
+            dropdown = Dropdown(
+                items=[
+                    Dropdown.Item(text="Item 1", command="item1"),
+                    Dropdown.Item(text="Item 2", command="item2"),
+                    Dropdown.Item(text="Item 3", command="item3"),
+                ],
+                header="Dropdown List",
+                trigger="click",
+                menu_align="end",
+                hide_on_click=True,
+            )
     """
 
     class Routes:

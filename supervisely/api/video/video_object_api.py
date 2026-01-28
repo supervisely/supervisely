@@ -36,29 +36,29 @@ class VideoObjectApi(ObjectApi):
         :return: List of objects IDs
         :rtype: :class:`List[int]`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                import supervisely as sly
+                from supervisely.video_annotation.key_id_map import KeyIdMap
 
-            from supervisely.video_annotation.key_id_map import KeyIdMap
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                project_id = 17209
+                video_id = 19402023
 
-            project_id = 17209
-            video_id = 19402023
+                meta_json = api.project.get_meta(project_id)
+                project_meta = sly.ProjectMeta.from_json(meta_json)
 
-            meta_json = api.project.get_meta(project_id)
-            project_meta = sly.ProjectMeta.from_json(meta_json)
+                key_id_map = KeyIdMap()
+                ann_info = api.video.annotation.download(video_id)
+                ann = sly.VideoAnnotation.from_json(ann_info, project_meta, key_id_map)
 
-            key_id_map = KeyIdMap()
-            ann_info = api.video.annotation.download(video_id)
-            ann = sly.VideoAnnotation.from_json(ann_info, project_meta, key_id_map)
-
-            api.video.object.append_bulk(video_id, ann.objects, key_id_map)
+                api.video.object.append_bulk(video_id, ann.objects, key_id_map)
         """
 
         info = self._api.video.get_info_by_id(video_id)

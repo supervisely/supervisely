@@ -27,14 +27,14 @@ class Field(Widget):
     :param widget_id: ID of the widget
     :type widget_id: Optional[str]
 
-    :Usage example:
-    .. code-block:: python
+    :Usage Example:
 
-        from supervisely.app.widgets import Field, Text
+        .. code-block:: python
 
-        text = Text("Hello, World!")
+            from supervisely.app.widgets import Field, Text
 
-        field = Field(text, "Title", "Description", icon=Field.Icon(zmdi_class="zmdi zmdi-bike"))
+            text = Text("Hello, World!")
+            field = Field(text, "Title", "Description", icon=Field.Icon(zmdi_class="zmdi zmdi-bike"))
     """
 
     class Icon:

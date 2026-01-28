@@ -19,12 +19,13 @@ class DoneLabel(Widget):
     :param widget_id: An identifier of the widget.
     :type widget_id: str, optional
 
-    :Usage example:
-    .. code-block:: python
+    :Usage Example:
 
-        from supervisely.app.widgets import DoneLabel
+        .. code-block:: python
 
-        done_label = DoneLabel(text="Done!")
+            from supervisely.app.widgets import DoneLabel
+
+            done_label = DoneLabel(text="Done!")
     """
 
     def __init__(

@@ -27,30 +27,31 @@ class VolumeObjectApi(ObjectApi):
         :return: List of objects IDs
         :rtype: :class:`List[int]`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                import supervisely as sly
 
-            from supervisely.volume_annotation.volume_tag import VolumeTag
-            from supervisely.video_annotation.key_id_map import KeyIdMap
+                from supervisely.volume_annotation.volume_tag import VolumeTag
+                from supervisely.video_annotation.key_id_map import KeyIdMap
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            project_id = 17209
-            volume_id = 19402023
+                project_id = 17209
+                volume_id = 19402023
 
-            meta_json = api.project.get_meta(project_id)
-            project_meta = sly.ProjectMeta.from_json(meta_json)
+                meta_json = api.project.get_meta(project_id)
+                project_meta = sly.ProjectMeta.from_json(meta_json)
 
-            key_id_map = KeyIdMap()
-            ann_info = api.volume.annotation.download(volume_id)
-            ann = sly.VolumeAnnotation.from_json(ann_info, project_meta, key_id_map)
+                key_id_map = KeyIdMap()
+                ann_info = api.volume.annotation.download(volume_id)
+                ann = sly.VolumeAnnotation.from_json(ann_info, project_meta, key_id_map)
 
-            api.volume.object.append_bulk(volume_id, ann.objects, key_id_map)
+                api.volume.object.append_bulk(volume_id, ann.objects, key_id_map)
         """
 
         info = self._api.volume.get_info_by_id(volume_id)

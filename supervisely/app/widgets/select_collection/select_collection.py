@@ -60,9 +60,10 @@ class SelectCollection(Widget):
     - `workspace_id`: The ID of the workspace selected in the widget.
     - `project_id`: The ID of the project selected in the widget.
 
-    :Usage example:
+    :Usage Example:
 
         .. code-block:: python
+
             from supervisely.app.widgets import SelectCollection
 
             project_id = 123

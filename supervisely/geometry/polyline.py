@@ -49,16 +49,16 @@ class Polyline(VectorGeometry):
     :type created_at: str, optional
     :raises: :class:`ValueError`, field exterior must contain at least two points to create Polyline object
 
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
+            import supervisely as sly
 
-        exterior = [sly.PointLocation(730, 2104), sly.PointLocation(2479, 402), sly.PointLocation(1500, 780)]
-        # or exterior = [[730, 2104], [2479, 402], [1500, 780]]
-        # or exterior = [(730, 2104), (2479, 402), (1500, 780)]
-        figure = sly.Polyline(exterior)
+            exterior = [sly.PointLocation(730, 2104), sly.PointLocation(2479, 402), sly.PointLocation(1500, 780)]
+            # or exterior = [[730, 2104], [2479, 402], [1500, 780]]
+            # or exterior = [(730, 2104), (2479, 402), (1500, 780)]
+            figure = sly.Polyline(exterior)
     """
 
     @staticmethod
@@ -99,23 +99,24 @@ class Polyline(VectorGeometry):
         :type data: dict
         :return: Polyline object
         :rtype: :class:`Polyline<Polyline>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            figure_json = {
-                "points": {
-                    "exterior": [
-                        [2104, 730],
-                        [402, 2479],
-                        [780, 1500]
-                    ],
-                    "interior": []
+                import supervisely as sly
+
+                figure_json = {
+                    "points": {
+                        "exterior": [
+                            [2104, 730],
+                            [402, 2479],
+                            [780, 1500]
+                        ],
+                        "interior": []
+                    }
                 }
-            }
-            figure = sly.Polyline.from_json(figure_json)
+                figure = sly.Polyline.from_json(figure_json)
         """
         validation.validate_geometry_points_fields(data)
         labeler_login = data.get(LABELER_LOGIN, None)
@@ -143,11 +144,11 @@ class Polyline(VectorGeometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            crop_figures = figure.crop(sly.Rectangle(0, 0, 100, 200))
+                crop_figures = figure.crop(sly.Rectangle(0, 0, 100, 200))
         """
         try:
             clipping_window = [
@@ -199,10 +200,10 @@ class Polyline(VectorGeometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            print(figure.area)
-            # Output: 0.0
+                print(figure.area)
+                # Output: 0.0
         """
         return 0.0
 
@@ -217,10 +218,10 @@ class Polyline(VectorGeometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            # Remember that Polyline class object is immutable, and we need to assign new instance of Polyline to a new variable
-            approx_figure = figure.approx_dp(0.75)
+                # Remember that Polyline class object is immutable, and we need to assign new instance of Polyline to a new variable
+                approx_figure = figure.approx_dp(0.75)
         """
         exterior_np = self._approx_ring_dp(self.exterior_np, epsilon, closed=True).tolist()
         exterior = row_col_list_to_points(exterior_np, do_round=True)

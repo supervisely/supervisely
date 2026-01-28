@@ -19,21 +19,22 @@ class ElementTagsList(Widget):
     :param widget_id: An identifier of the widget.
     :type widget_id: str, optional
 
-    :Usage example:
-    .. code-block:: python
+    :Usage Example:
 
-            from supervisely.app.widgets import ElementTagsList
+        .. code-block:: python
 
-            element_tags_list = ElementTagsList(
-                tags=[
-                    ElementTagsList.Tag(
-                        text="Tag",
-                        type="primary",
-                        hit=True,
-                        color="#20a0ff",
-                    )
-                ]
-            )
+                from supervisely.app.widgets import ElementTagsList
+
+                element_tags_list = ElementTagsList(
+                    tags=[
+                        ElementTagsList.Tag(
+                            text="Tag",
+                            type="primary",
+                            hit=True,
+                            color="#20a0ff",
+                        )
+                    ]
+                )
     """
 
     class Routes:

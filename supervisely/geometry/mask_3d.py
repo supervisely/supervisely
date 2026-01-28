@@ -46,16 +46,17 @@ class PointVolume(JsonSerializable):
     :type y: int or float
     :param z: Position of PointVolume object on Z-axis.
     :type z: int or float
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        x = 100
-        y = 200
-        z = 2
-        loc = sly.PointVolume(x, y, z)
+            import supervisely as sly
+
+            x = 100
+            y = 200
+            z = 2
+            loc = sly.PointVolume(x, y, z)
     """
 
     def __init__(self, x: Union[int, float], y: Union[int, float], z: Union[int, float]):
@@ -70,12 +71,13 @@ class PointVolume(JsonSerializable):
 
         :return: X of PointVolume
         :rtype: :class:`int`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            print(loc.x)
-            # Output: 100
+            .. code-block:: python
+
+                print(loc.x)
+                # Output: 100
         """
         return self._x
 
@@ -87,12 +89,12 @@ class PointVolume(JsonSerializable):
         :return: Y of PointVolume
         :rtype: :class:`int`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            print(loc.y)
-            # Output: 200
+                print(loc.y)
+                # Output: 200
         """
         return self._y
 
@@ -103,12 +105,13 @@ class PointVolume(JsonSerializable):
 
         :return: Z of PointVolume
         :rtype: :class:`int`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            print(loc.z)
-            # Output: 2
+            .. code-block:: python
+
+                print(loc.z)
+                # Output: 2
         """
         return self._z
 
@@ -118,19 +121,20 @@ class PointVolume(JsonSerializable):
 
         :return: Json format as a dict
         :rtype: :class:`dict`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            loc_json = loc.to_json()
-            print(loc_json)
-            # Output: {
-            #           "space_origin": [
-            #                            200,
-            #                            200,
-            #                            100
-            #                           ]
-            #         }
+            .. code-block:: python
+
+                loc_json = loc.to_json()
+                print(loc_json)
+                # Output: {
+                #           "space_origin": [
+                #                            200,
+                #                            200,
+                #                            100
+                #                           ]
+                #         }
 
         """
 
@@ -146,21 +150,16 @@ class PointVolume(JsonSerializable):
         :type data: dict
         :return: PointVolume object
         :rtype: :class:`PointVolume<PointVolume>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            loc_json = {
-                "space_origin": [
-                                200,
-                                200,
-                                100,
-                                ]
-                        }
+                import supervisely as sly
 
-            loc = sly.PointVolume.from_json(loc_json)
+                loc_json = {"space_origin": [200, 200, 100]}
+
+                loc = sly.PointVolume.from_json(loc_json)
         """
         return cls(
             x=packed_obj["space_origin"][0],
@@ -190,31 +189,32 @@ class Mask3D(Geometry):
     :param convert_to_ras: If True, converts the mask to RAS orientation. Default is True.
     :type convert_to_ras: bool, optional
     :raises: :class:`ValueError`, if data is not bool or no pixels set to True in data
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        # Create simple Mask 3D
-        mask3d = np.zeros((3, 3, 3), dtype=np.bool_)
-        mask3d[0:2, 0:2, 0:2] = True
+            import supervisely as sly
 
-        shape = sly.Mask3D(mask3d)
+            # Create simple Mask 3D
+            mask3d = np.zeros((3, 3, 3), dtype=np.bool_)
+            mask3d[0:2, 0:2, 0:2] = True
 
-        print(shape.data)
-        # Output:
-        #    [[[ True  True False]
-        #      [ True  True False]
-        #      [False False False]]
+            shape = sly.Mask3D(mask3d)
 
-        #     [[ True  True False]
-        #      [ True  True False]
-        #      [False False False]]
+            print(shape.data)
+            # Output:
+            #    [[[ True  True False]
+            #      [ True  True False]
+            #      [False False False]]
 
-        #     [[False False False]
-        #      [False False False]
-        #      [False False False]]]
+            #     [[ True  True False]
+            #      [ True  True False]
+            #      [False False False]]
+
+            #     [[False False False]
+            #      [False False False]
+            #      [False False False]]]
     """
 
     def __init__(
@@ -423,32 +423,35 @@ class Mask3D(Geometry):
 
         :return: Json format as a dict
         :rtype: :class:`dict`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            mask = np.array([[[1 1 0]
-                              [1 1 0]
-                              [0 0 0]]
-                             [[1 1 0]
-                              [1 1 0]
-                              [0 0 0]]
-                             [[0 0 0]
-                              [0 0 0]
-                              [0 0 0]]], dtype=np.bool_)
+                import supervisely as sly
 
-            figure = sly.Mask3D(mask)
-            figure_json = figure.to_json()
-            print(json.dumps(figure_json, indent=4))
-            # Output: {
-            #    "mask_3d": {
-            #        "data": "eJzrDPBz5+WS4mJgYOD19HAJAtLMIMwIInOeqf8BUmwBPiGuQPr///9Lb86/C2QxlgT5BTM4PLuRBuTwebo4hlTMSa44sKHhISMDuxpTYrr03F6gDIOnq5/LOqeEJgDM5ht6",
-            #    },
-            #    "shape": "mask_3d",
-            #    "geometryType": "mask_3d"
-            # }
+                mask = np.array([[[1 1 0]
+                                [1 1 0]
+                                [0 0 0]]
+                                [[1 1 0]
+                                [1 1 0]
+                                [0 0 0]]
+                                [[0 0 0]
+                                [0 0 0]
+                                [0 0 0]]],
+                                dtype=np.bool_
+                )
+
+                figure = sly.Mask3D(mask)
+                figure_json = figure.to_json()
+                json.dumps(figure_json, indent=4)
+                # Output: {
+                #    "mask_3d": {
+                #        "data": "eJzrDPBz5+WS4mJgYOD19HAJAtLMIMwIInOeqf8BUmwBPiGuQPr///9Lb86/C2QxlgT5BTM4PLuRBuTwebo4hlTMSa44sKHhISMDuxpTYrr03F6gDIOnq5/LOqeEJgDM5ht6",
+                #    },
+                #    "shape": "mask_3d",
+                #    "geometryType": "mask_3d"
+                # }
         """
         res = {
             self._impl_json_class_name(): {
@@ -479,21 +482,21 @@ class Mask3D(Geometry):
         :type data: dict
         :return: Mask3D object
         :rtype: :class:`Mask3D<Mask3D>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            figure_json = {
-                "mask_3d": {
-                    "data": "eJzrDPBz5+WS4mJgYOD19HAJAtLMIMwIInOeqf8BUmwBPiGuQPr///9Lb86/C2QxlgT5BTM4PLuRBuTwebo4hlTMSa44sKHhISMDuxpTYrr03F6gDIOnq5/LOqeEJgDM5ht6",
-                },
-                "shape": "mask_3d",
-                "geometryType": "mask_3d"
-            }
+                import supervisely as sly
 
-            figure = sly.Mask3D.from_json(figure_json)
+                figure_json = {
+                    "mask_3d": {
+                        "data": "eJzrDPBz5+WS4mJgYOD19HAJAtLMIMwIInOeqf8BUmwBPiGuQPr///9Lb86/C2QxlgT5BTM4PLuRBuTwebo4hlTMSa44sKHhISMDuxpTYrr03F6gDIOnq5/LOqeEJgDM5ht6",
+                    },
+                    "shape": "mask_3d",
+                    "geometryType": "mask_3d"
+                }
+                figure = sly.Mask3D.from_json(figure_json)
         """
         if json_data == {}:
             return cls(data=np.zeros((3, 3, 3), dtype=np.bool_))
@@ -557,32 +560,33 @@ class Mask3D(Geometry):
         :type mask: np.ndarray
         :return: Base64 encoded string
         :rtype: :class:`str`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            import os
-            import nrrd
+            .. code-block:: python
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                import supervisely as sly
+                import os
+                import nrrd
 
-            meta_json = api.project.get_meta(PROJECT_ID)
-            meta = sly.ProjectMeta.from_json(meta_json)
+                address = 'https://app.supervisely.com/'
+                token = 'Your Supervisely API Token'
+                api = sly.Api(address, token)
 
-            ann_json = api.volume.annotation.download_bulk(DATASET_ID, [VOLUME_ID])
+                meta_json = api.project.get_meta(PROJECT_ID)
+                meta = sly.ProjectMeta.from_json(meta_json)
 
-            figure_id = ann_json[0]["spatialFigures"][0]["id"]
-            path_for_mesh = f"meshes/{figure_id}.nrrd"
-            api.volume.figure.download_stl_meshes([figure_id], [path_for_mesh])
+                ann_json = api.volume.annotation.download_bulk(DATASET_ID, [VOLUME_ID])
 
-            mask3d_data, _ = sly.volume.volume.read_nrrd_serie_volume_np(path_for_mesh)
-            encoded_string = sly.Mask3D.data_2_base64(mask3d_data)
+                figure_id = ann_json[0]["spatialFigures"][0]["id"]
+                path_for_mesh = f"meshes/{figure_id}.nrrd"
+                api.volume.figure.download_stl_meshes([figure_id], [path_for_mesh])
 
-            print(encoded_string)
-            # 'H4sIAGWoWmQC/zPWMdYxrmFkZAAiIIAz4AAAE56ciyEAAAA='
+                mask3d_data, _ = sly.volume.volume.read_nrrd_serie_volume_np(path_for_mesh)
+                encoded_string = sly.Mask3D.data_2_base64(mask3d_data)
+
+                print(encoded_string)
+                # 'H4sIAGWoWmQC/zPWMdYxrmFkZAAiIIAz4AAAE56ciyEAAAA='
         """
         shape_str = ",".join(str(dim) for dim in data.shape)
         data_str = data.tostring().decode("utf-8")
@@ -600,9 +604,10 @@ class Mask3D(Geometry):
         :type s: str
         :return: Bool numpy array
         :rtype: :class:`np.ndarray`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
+
+            .. code-block:: python
 
               import supervisely as sly
 

@@ -29,17 +29,19 @@ class VideoTagApi(TagApi):
         :type tag_id: int
         :return: None
         :rtype: :class:`NoneType`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            api.video.tag.remove_from_video(video_tag_id)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                api.video.tag.remove_from_video(video_tag_id)
 
         """
 
@@ -55,18 +57,20 @@ class VideoTagApi(TagApi):
         :type frame_range: List[int]
         :return: None
         :rtype: :class:`NoneType`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            new_frame_range = [5, 10]
-            api.video.tag.update_frame_range(video_tag_id, new_frame_range)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                new_frame_range = [5, 10]
+                api.video.tag.update_frame_range(video_tag_id, new_frame_range)
         """
 
         self._api.post(
@@ -83,17 +87,19 @@ class VideoTagApi(TagApi):
         :type tag_value: str or int
         :return: None
         :rtype: :class:`NoneType`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            api.video.tag.update_value(video_tag_id, 'new_tag_value')
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                api.video.tag.update_value(video_tag_id, 'new_tag_value')
         """
 
         self._api.post("videos.tags.update-value", {ApiField.ID: tag_id, ApiField.VALUE: tag_value})
@@ -124,18 +130,20 @@ class VideoTagApi(TagApi):
         :type non_final_value: bool
         :return: None
         :rtype: dict
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            new_frame_range = [5, 10]
-            api.video.tag.add_tag(project_meta_tag_id, video_id, 'tag_value', frame_range)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                new_frame_range = [5, 10]
+                api.video.tag.add_tag(project_meta_tag_id, video_id, 'tag_value', frame_range)
         """
 
         request_data = {ApiField.TAG_ID: project_meta_tag_id, ApiField.VIDEO_ID: video_id}
@@ -165,23 +173,25 @@ class VideoTagApi(TagApi):
         :param update_id_inplace: Specify if
         :return: VideoTag ID in Supervisely
         :rtype: int
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            video_id = 19402023
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            tag_meta = sly.TagMeta('Animal', sly.TagValueType.NONE)
-            # Tag has to exists in project.
-            tag = VideoTag(tag_meta)
+                video_id = 19402023
 
-            api.video.tag.add(video_id=video_id, tag=tag)
+                tag_meta = sly.TagMeta('Animal', sly.TagValueType.NONE)
+                # Tag has to exists in project.
+                tag = VideoTag(tag_meta)
+
+                api.video.tag.add(video_id=video_id, tag=tag)
         """
 
         from supervisely.project.project_meta import ProjectMeta
@@ -232,23 +242,25 @@ class VideoTagApi(TagApi):
         :type project_meta_tag_id: int
         :return: All tags of the video in VideoTagCollection format
         :rtype: VideoTagCollection
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            video_id = 19402023
-            project_id = 17209
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            meta_json = api.project.get_meta(project_id)
-            project_meta = sly.ProjectMeta.from_json(meta_json)
+                video_id = 19402023
+                project_id = 17209
 
-            tags_collection = api.video.tag.download_list(video_id, project_meta)
+                meta_json = api.project.get_meta(project_id)
+                project_meta = sly.ProjectMeta.from_json(meta_json)
+
+                tags_collection = api.video.tag.download_list(video_id, project_meta)
         """
 
         data = self._api.video.get_json_info_by_id(id, True)
@@ -274,17 +286,19 @@ class VideoTagApi(TagApi):
         :type tag: VideoTag
         :return: None
         :rtype: :class:`NoneType`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            api.video.tag.remove(video_tag)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                api.video.tag.remove(video_tag)
 
         """
 

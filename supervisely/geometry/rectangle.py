@@ -50,17 +50,17 @@ class Rectangle(Geometry):
     :type created_at: str, optional
     :raises: :class:`ValueError`. Rectangle top argument must have less or equal value then bottom, left argument must have less or equal value then right
 
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
+            import supervisely as sly
 
-        top = 100
-        left = 100
-        bottom = 700
-        right = 900
-        figure = sly.Rectangle(top, left, bottom, right)
+            top = 100
+            left = 100
+            bottom = 700
+            right = 900
+            figure = sly.Rectangle(top, left, bottom, right)
     """
 
     @staticmethod
@@ -110,21 +110,22 @@ class Rectangle(Geometry):
 
         :return: Json format as a dict
         :rtype: :class:`dict`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            figure_json = figure.to_json()
-            print(figure_json)
-            # Output: {
-            #    "points": {
-            #        "exterior": [
-            #            [100, 100],
-            #            [900, 700]
-            #        ],
-            #        "interior": []
-            #    }
-            # }
+            .. code-block:: python
+
+                figure_json = figure.to_json()
+                print(figure_json)
+                # Output: {
+                #    "points": {
+                #        "exterior": [
+                #            [100, 100],
+                #            [900, 700]
+                #        ],
+                #        "interior": []
+                #    }
+                # }
         """
         packed_obj = {
             POINTS: {
@@ -144,22 +145,23 @@ class Rectangle(Geometry):
         :type data: dict
         :return: Rectangle object
         :rtype: :class:`Rectangle<Rectangle>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            figure_json = {
-                "points": {
-                    "exterior": [
-                        [100, 100],
-                        [900, 700]
-                    ],
-                    "interior": []
+                import supervisely as sly
+
+                figure_json = {
+                    "points": {
+                        "exterior": [
+                            [100, 100],
+                            [900, 700]
+                        ],
+                        "interior": []
+                    }
                 }
-            }
-            figure = sly.Rectangle.from_json(figure_json)
+                figure = sly.Rectangle.from_json(figure_json)
         """
         validation.validate_geometry_points_fields(data)
         labeler_login = data.get(LABELER_LOGIN, None)
@@ -199,11 +201,11 @@ class Rectangle(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            crop_figures = figure.crop(sly.Rectangle(0, 0, 300, 350))
+                crop_figures = figure.crop(sly.Rectangle(0, 0, 300, 350))
         """
         top = max(self.top, other.top)
         left = max(self.left, other.left)
@@ -235,16 +237,16 @@ class Rectangle(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            corners = figure.corners
-            for corner in corners:
-                print(corner.row, corner.col)
-            # Output:
-            # 100 100
-            # 100 900
-            # 700 900
-            # 700 100
+                corners = figure.corners
+                for corner in corners:
+                    print(corner.row, corner.col)
+                # Output:
+                # 100 100
+                # 100 900
+                # 700 900
+                # 700 100
         """
         return [
             PointLocation(row=self.top, col=self.left),
@@ -264,14 +266,14 @@ class Rectangle(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            from supervisely.geometry.image_rotator import ImageRotator
+                from supervisely.geometry.image_rotator import ImageRotator
 
-            # Remember that Rectangle class object is immutable, and we need to assign new instance of Rectangle to a new variable
-            height, width = 300, 400
-            rotator = ImageRotator((height, width), 25)
-            rotate_figure = figure.rotate(rotator)
+                # Remember that Rectangle class object is immutable, and we need to assign new instance of Rectangle to a new variable
+                height, width = 300, 400
+                rotator = ImageRotator((height, width), 25)
+                rotate_figure = figure.rotate(rotator)
         """
         return self._transform(lambda p: rotator.transform_point(p))
 
@@ -288,12 +290,12 @@ class Rectangle(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            # Remember that Rectangle class object is immutable, and we need to assign new instance of Rectangle to a new variable
-            in_height, in_width = 300, 400
-            out_height, out_width = 600, 800
-            resize_figure = figure.resize((in_height, in_width), (out_height, out_width))
+                # Remember that Rectangle class object is immutable, and we need to assign new instance of Rectangle to a new variable
+                in_height, in_width = 300, 400
+                out_height, out_width = 600, 800
+                resize_figure = figure.resize((in_height, in_width), (out_height, out_width))
         """
         return self._transform(lambda p: p.resize(in_size, out_size))
 
@@ -308,10 +310,10 @@ class Rectangle(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            # Remember that Rectangle class object is immutable, and we need to assign new instance of Rectangle to a new variable
-            scale_figure = figure.scale(0.75)
+                # Remember that Rectangle class object is immutable, and we need to assign new instance of Rectangle to a new variable
+                scale_figure = figure.scale(0.75)
         """
         return self._transform(lambda p: p.scale(factor))
 
@@ -328,10 +330,10 @@ class Rectangle(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            # Remember that Rectangle class object is immutable, and we need to assign new instance of Rectangle to a new variable
-            translate_figure = figure.translate(150, 250)
+                # Remember that Rectangle class object is immutable, and we need to assign new instance of Rectangle to a new variable
+                translate_figure = figure.translate(150, 250)
         """
         return self._transform(lambda p: p.translate(drow, dcol))
 
@@ -346,11 +348,11 @@ class Rectangle(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            # Remember that Rectangle class object is immutable, and we need to assign new instance of Rectangle to a new variable
-            height, width = 300, 400
-            fliplr_figure = figure.fliplr((height, width))
+                # Remember that Rectangle class object is immutable, and we need to assign new instance of Rectangle to a new variable
+                height, width = 300, 400
+                fliplr_figure = figure.fliplr((height, width))
         """
         img_width = img_size[1]
         return Rectangle(
@@ -371,11 +373,11 @@ class Rectangle(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            # Remember that Rectangle class object is immutable, and we need to assign new instance of Rectangle to a new variable
-            height, width = 300, 400
-            flipud_figure = figure.flipud((height, width))
+                # Remember that Rectangle class object is immutable, and we need to assign new instance of Rectangle to a new variable
+                height, width = 300, 400
+                flipud_figure = figure.flipud((height, width))
         """
         img_height = img_size[0]
         return Rectangle(
@@ -408,10 +410,10 @@ class Rectangle(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            # Remember that Rectangle class object is immutable, and we need to assign new instance of Rectangle to a new variable
-            new_figure = figure.to_bbox()
+                # Remember that Rectangle class object is immutable, and we need to assign new instance of Rectangle to a new variable
+                new_figure = figure.to_bbox()
         """
         return self.clone()
 
@@ -425,10 +427,10 @@ class Rectangle(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            print(figure.area)
-            # Output: 7288.0
+                print(figure.area)
+                # Output: 7288.0
         """
         return float(self.width * self.height)
 
@@ -444,12 +446,12 @@ class Rectangle(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            np_array = np.zeros((300, 400))
-            figure_from_np = sly.Rectangle.from_array(np_array)
+                np_array = np.zeros((300, 400))
+                figure_from_np = sly.Rectangle.from_array(np_array)
         """
         return cls(top=0, left=0, bottom=arr.shape[0] - 1, right=arr.shape[1] - 1)
 
@@ -466,12 +468,12 @@ class Rectangle(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            size = (300, 400)
-            figure_from_size = sly.Rectangle.from_size(size)
+                size = (300, 400)
+                figure_from_size = sly.Rectangle.from_size(size)
         """
         return cls(0, 0, size[0] - 1, size[1] - 1)
 
@@ -487,12 +489,12 @@ class Rectangle(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            geom_objs = [sly.Point(100, 200), sly.Polyline([sly.PointLocation(730, 2104), sly.PointLocation(2479, 402)])]
-            figure_from_geom_objs = sly.Rectangle.from_geometries_list(geom_objs)
+                geom_objs = [sly.Point(100, 200), sly.Polyline([sly.PointLocation(730, 2104), sly.PointLocation(2479, 402)])]
+                figure_from_geom_objs = sly.Rectangle.from_geometries_list(geom_objs)
         """
         if geometries is None or len(geometries) == 0:
             raise ValueError("No geometries provided to create a Rectangle.")
@@ -513,10 +515,10 @@ class Rectangle(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            print(figure.left)
-            # Output: 100
+                print(figure.left)
+                # Output: 100
         """
         return self._points[0].col
 
@@ -530,10 +532,10 @@ class Rectangle(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            print(figure.right)
-            # Output: 900
+                print(figure.right)
+                # Output: 900
         """
         return self._points[1].col
 
@@ -547,10 +549,10 @@ class Rectangle(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            print(rectangle.top)
-            # Output: 100
+                print(rectangle.top)
+                # Output: 100
         """
         return self._points[0].row
 
@@ -564,10 +566,10 @@ class Rectangle(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            print(figure.bottom)
-            # Output: 700
+                print(figure.bottom)
+                # Output: 700
         """
         return self._points[1].row
 
@@ -581,9 +583,9 @@ class Rectangle(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            center = figure.center()
+                center = figure.center()
         """
         return PointLocation(row=(self.top + self.bottom) // 2, col=(self.left + self.right) // 2)
 
@@ -597,10 +599,10 @@ class Rectangle(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            print(figure.width)
-            # Output: 801
+                print(figure.width)
+                # Output: 801
         """
         return self.right - self.left + 1
 
@@ -614,10 +616,10 @@ class Rectangle(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            print(figure.height)
-            # Output: 601
+                print(figure.height)
+                # Output: 601
         """
         return self.bottom - self.top + 1
 
@@ -632,13 +634,13 @@ class Rectangle(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            rect = sly.Rectangle(200, 250, 400, 500))
-            print(figure.contains(rect))
-            # Output: True
+                rect = sly.Rectangle(200, 250, 400, 500))
+                print(figure.contains(rect))
+                # Output: True
         """
         return (
             self.left <= rect.left
@@ -658,13 +660,13 @@ class Rectangle(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            pt = sly.PointLocation(250, 300))
-            print(figure.contains_point_location(pt))
-            # Output: True
+                pt = sly.PointLocation(250, 300))
+                print(figure.contains_point_location(pt))
+                # Output: True
         """
         return (self.left <= pt.col <= self.right) and (self.top <= pt.row <= self.bottom)
 
@@ -677,11 +679,11 @@ class Rectangle(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            height, width = figure.to_size()
-            print(height, width)
-            # Output: 700 900
+                height, width = figure.to_size()
+                print(height, width)
+                # Output: 700 900
         """
         return self.height, self.width
 
@@ -696,12 +698,12 @@ class Rectangle(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            np_slice = np.zeros((200, 500))
-            mask_slice = figure.get_cropped_numpy_slice(np_slice)
-            print(mask_slice.shape)
-            # Output: (199, 499)
+                np_slice = np.zeros((200, 500))
+                mask_slice = figure.get_cropped_numpy_slice(np_slice)
+                print(mask_slice.shape)
+                # Output: (199, 499)
         """
         return data[self.top : (self.bottom + 1), self.left : (self.right + 1), ...]
 
@@ -716,13 +718,13 @@ class Rectangle(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            rect = sly.Rectangle(90, 90, 400, 500)
-            print(figure.intersects_with(rect))
-            # Output: True
+                rect = sly.Rectangle(90, 90, 400, 500)
+                print(figure.intersects_with(rect))
+                # Output: True
         """
         if self.left > rect.right or self.right < rect.left:
             return False

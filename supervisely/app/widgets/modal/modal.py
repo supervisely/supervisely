@@ -21,31 +21,32 @@ class Modal(Widget):
     :param widget_id: An identifier of the widget.
     :type widget_id: str, optional
 
-    :Usage example:
-    .. code-block:: python
+    :Usage Example:
 
-        from supervisely.app.widgets import Modal, Text, Button, Input, Container
+        .. code-block:: python
 
-        # Create widgets to show in modal
-        input_widget = Input("Enter value")
-        text_widget = Text("This is modal content")
+            from supervisely.app.widgets import Modal, Text, Button, Input, Container
 
-        # Create modal with multiple widgets
-        modal = Modal(
-            title="My Modal Window",
-            widgets=[text_widget, input_widget],
-            size="small"
-        )
+            # Create widgets to show in modal
+            input_widget = Input("Enter value")
+            text_widget = Text("This is modal content")
 
-        # Show modal programmatically
-        modal.show()
+            # Create modal with multiple widgets
+            modal = Modal(
+                title="My Modal Window",
+                widgets=[text_widget, input_widget],
+                size="small"
+            )
 
-        # Hide modal programmatically
-        modal.hide()
+            # Show modal programmatically
+            modal.show()
 
-        # Alternative methods
-        modal.show_modal()
-        modal.close_modal()
+            # Hide modal programmatically
+            modal.hide()
+
+            # Alternative methods
+            modal.show_modal()
+            modal.close_modal()
     """
 
     class Routes:
@@ -137,15 +138,16 @@ class Modal(Widget):
         :param func: Callback function that takes a boolean parameter
         :type func: Callable[[bool], None]
 
-        :Usage example:
-        .. code-block:: python
+        :Usage Example:
 
-            @modal.value_changed
-            def on_modal_state_changed(is_opened):
-                if is_opened:
-                    print("Modal opened")
-                else:
-                    print("Modal closed")
+            .. code-block:: python
+
+                @modal.value_changed
+                def on_modal_state_changed(is_opened):
+                    if is_opened:
+                        print("Modal opened")
+                    else:
+                        print("Modal closed")
         """
         route_path = self.get_route_path(Modal.Routes.VALUE_CHANGED)
         server = self._sly_app.get_server()

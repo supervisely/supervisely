@@ -54,33 +54,35 @@ class VolumeFigureApi(FigureApi):
         :type geometry_type: str
         :return: New figure ID
         :rtype: :class:`int`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            from supervisely.volume_annotation.plane import Plane
+                import os
+                import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                from supervisely.volume_annotation.plane import Plane
 
-            volume_id = 19581134
-            object_id = 5565016
-            slice_index = 0
-            plane_name = Plane.AXIAL
-            geometry_json = {'points': {'exterior': [[500, 500], [1555, 1500]], 'interior': []}}
-            geometry_type = 'rectangle'
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            figure_id = api.volume.figure.create(
-                volume_id,
-                object_id,
-                plane_name,
-                slice_index,
-                geometry_json,
-                geometry_type
-            ) # 87821207
+                volume_id = 19581134
+                object_id = 5565016
+                slice_index = 0
+                plane_name = Plane.AXIAL
+                geometry_json = {'points': {'exterior': [[500, 500], [1555, 1500]], 'interior': []}}
+                geometry_type = 'rectangle'
+
+                figure_id = api.volume.figure.create(
+                    volume_id,
+                    object_id,
+                    plane_name,
+                    slice_index,
+                    geometry_json,
+                    geometry_type
+                ) # 87821207
         """
 
         Plane.validate_name(plane_name)
@@ -115,39 +117,41 @@ class VolumeFigureApi(FigureApi):
         :type figures: List[VolumeFigure]
         :return: None
         :rtype: :class:`NoneType`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            from supervisely.volume_annotation.plane import Plane
+                import os
+                import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                from supervisely.volume_annotation.plane import Plane
 
-            project_id = 19370
-            volume_id = 19617444
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            key_id_map = sly.KeyIdMap()
+                project_id = 19370
+                volume_id = 19617444
 
-            project_meta_json = api.project.get_meta(project_id)
-            project_meta = sly.ProjectMeta.from_json(project_meta_json)
+                key_id_map = sly.KeyIdMap()
 
-            vol_ann_json = api.volume.annotation.download(volume_id)
-            vol_ann = sly.VolumeAnnotation.from_json(vol_ann_json, project_meta, key_id_map)
-            volume_obj_collection = vol_ann.objects.to_json()
-            vol_obj = sly.VolumeObject.from_json(volume_obj_collection[1], project_meta)
+                project_meta_json = api.project.get_meta(project_id)
+                project_meta = sly.ProjectMeta.from_json(project_meta_json)
 
-            figure = sly.VolumeFigure(
-                vol_obj,
-                sly.Rectangle(20, 20, 129, 200),
-                sly.Plane.AXIAL,
-                45,
-            )
+                vol_ann_json = api.volume.annotation.download(volume_id)
+                vol_ann = sly.VolumeAnnotation.from_json(vol_ann_json, project_meta, key_id_map)
+                volume_obj_collection = vol_ann.objects.to_json()
+                vol_obj = sly.VolumeObject.from_json(volume_obj_collection[1], project_meta)
 
-            api.volume.figure.append_bulk(volume_id, [figure], key_id_map)
+                figure = sly.VolumeFigure(
+                    vol_obj,
+                    sly.Rectangle(20, 20, 129, 200),
+                    sly.Plane.AXIAL,
+                    45,
+                )
+
+                api.volume.figure.append_bulk(volume_id, [figure], key_id_map)
         """
 
         if len(figures) == 0:
@@ -195,36 +199,39 @@ class VolumeFigureApi(FigureApi):
         :type paths: List[str]
         :return: None
         :rtype: :class:`NoneType`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            STORAGE_DIR = sly.app.get_data_dir()
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            volume_id = 19371414
-            project_id = 17215
+                STORAGE_DIR = sly.app.get_data_dir()
 
-            volume = api.volume.get_info_by_id(volume_id)
+                volume_id = 19371414
+                project_id = 17215
 
-            key_id_map = sly.KeyIdMap()
-            project_meta_json = api.project.get_meta(project_id)
-            project_meta = sly.ProjectMeta.from_json(project_meta_json)
+                volume = api.volume.get_info_by_id(volume_id)
 
-            vol_ann_json = api.volume.annotation.download(volume_id)
-            id_to_paths = {}
-            vol_ann = sly.VolumeAnnotation.from_json(vol_ann_json, project_meta, key_id_map)
+                key_id_map = sly.KeyIdMap()
+                project_meta_json = api.project.get_meta(project_id)
+                project_meta = sly.ProjectMeta.from_json(project_meta_json)
 
-            for sp_figure in vol_ann.spatial_figures:
-                figure_id = key_id_map.get_figure_id(sp_figure.key())
-                id_to_paths[figure_id] = f"{STORAGE_DIR}/{sp_figure.key().hex}.stl"
-            if id_to_paths:
-                api.volume.figure.download_stl_meshes(*zip(*id_to_paths.items()))
+                vol_ann_json = api.volume.annotation.download(volume_id)
+                id_to_paths = {}
+                vol_ann = sly.VolumeAnnotation.from_json(vol_ann_json, project_meta, key_id_map)
+
+                for sp_figure in vol_ann.spatial_figures:
+                    figure_id = key_id_map.get_figure_id(sp_figure.key())
+                    id_to_paths[figure_id] = f"{STORAGE_DIR}/{sp_figure.key().hex}.stl"
+
+                if id_to_paths:
+                    api.volume.figure.download_stl_meshes(*zip(*id_to_paths.items()))
         """
 
         if len(ids) == 0:
@@ -250,31 +257,33 @@ class VolumeFigureApi(FigureApi):
         :type key_id_map: KeyIdMap
         :return: None
         :rtype: :class:`NoneType`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            volume_id = 19371414
-            project_id = 17215
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            volume = api.volume.get_info_by_id(volume_id)
+                volume_id = 19371414
+                project_id = 17215
 
-            key_id_map = sly.KeyIdMap()
-            project_meta_json = api.project.get_meta(project_id)
-            project_meta = sly.ProjectMeta.from_json(project_meta_json)
+                volume = api.volume.get_info_by_id(volume_id)
 
-            vol_ann_json = api.volume.annotation.download(volume_id)
-            id_to_paths = {}
-            vol_ann = sly.VolumeAnnotation.from_json(vol_ann_json, project_meta, key_id_map)
+                key_id_map = sly.KeyIdMap()
+                project_meta_json = api.project.get_meta(project_id)
+                project_meta = sly.ProjectMeta.from_json(project_meta_json)
 
-            for sp_figure in vol_ann.spatial_figures:
-                res = volume_figure_api.interpolate(volume_id, sp_figure, key_id_map)
+                vol_ann_json = api.volume.annotation.download(volume_id)
+                id_to_paths = {}
+                vol_ann = sly.VolumeAnnotation.from_json(vol_ann_json, project_meta, key_id_map)
+
+                for sp_figure in vol_ann.spatial_figures:
+                    res = volume_figure_api.interpolate(volume_id, sp_figure, key_id_map)
         """
 
         if type(spatial_figure._geometry) != ClosedSurfaceMesh:
@@ -345,7 +354,6 @@ class VolumeFigureApi(FigureApi):
         :param figure2bytes: Dictionary with figures IDs and geometries.
         :type figure2bytes: dict
         :rtype: :class:`NoneType`
-        :Usage example:
         """
 
         for figure_id, figure_bytes in figure2bytes.items():
@@ -374,31 +382,33 @@ class VolumeFigureApi(FigureApi):
         :type key_id_map: KeyIdMap
         :return: None
         :rtype: :class:`NoneType`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            volume_id = 19371414
-            project_id = 17215
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            volume = api.volume.get_info_by_id(volume_id)
+                volume_id = 19371414
+                project_id = 17215
 
-            key_id_map = sly.KeyIdMap()
-            project_meta_json = api.project.get_meta(project_id)
-            project_meta = sly.ProjectMeta.from_json(project_meta_json)
+                volume = api.volume.get_info_by_id(volume_id)
 
-            vol_ann_json = api.volume.annotation.download(volume_id)
-            id_to_paths = {}
-            vol_ann = sly.VolumeAnnotation.from_json(vol_ann_json, project_meta, key_id_map)
-            sp_figures = vol_ann.spatial_figures
+                key_id_map = sly.KeyIdMap()
+                project_meta_json = api.project.get_meta(project_id)
+                project_meta = sly.ProjectMeta.from_json(project_meta_json)
 
-            res = volume_figure_api.upload_stl_meshes(volume_id, sp_figures, key_id_map)
+                vol_ann_json = api.volume.annotation.download(volume_id)
+                id_to_paths = {}
+                vol_ann = sly.VolumeAnnotation.from_json(vol_ann_json, project_meta, key_id_map)
+                sp_figures = vol_ann.spatial_figures
+
+                res = volume_figure_api.upload_stl_meshes(volume_id, sp_figures, key_id_map)
         """
 
         if len(spatial_figures) == 0:
@@ -441,7 +451,6 @@ class VolumeFigureApi(FigureApi):
         :param field_name: field name for request body
         :type field_name: str
         :rtype: :class:`NoneType`
-        :Usage example:
         """
 
         if len(figures) == 0:
@@ -494,30 +503,32 @@ class VolumeFigureApi(FigureApi):
         :return: None
         :rtype: NoneType
 
-        :Usage example:
-        .. code-block:: python
+        :Usage Example:
 
-            import numpy as np
-            import supervisely as sly
-            from supervisely.volume.nrrd_encoder import encode
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import numpy as np
+                import supervisely as sly
+                from supervisely.volume.nrrd_encoder import encode
 
-            volume_id = 23772225
-            project_id = 28159
-            geometries = {}
-            key_id_map = sly.KeyIdMap()
-            geometry_bytes = encode(np.random.randint(2, size=(20, 20, 20), dtype=np.uint8))
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            vol_ann_json = api.volume.annotation.download(volume_id)
-            project_meta = sly.ProjectMeta.from_json(api.project.get_meta(project_id))
-            ann = sly.VolumeAnnotation.from_json(vol_ann_json, project_meta, key_id_map)
-            spatial_figures = [sp_figure.key() for sp_figure in ann.spatial_figures]
-            for figure in spatial_figures:
-                geometries[figure] = geometry_bytes
-            api.volume.figure.upload_sf_geometries(spatial_figures, geometries, key_id_map)
+                volume_id = 23772225
+                project_id = 28159
+                geometries = {}
+                key_id_map = sly.KeyIdMap()
+                geometry_bytes = encode(np.random.randint(2, size=(20, 20, 20), dtype=np.uint8))
+
+                vol_ann_json = api.volume.annotation.download(volume_id)
+                project_meta = sly.ProjectMeta.from_json(api.project.get_meta(project_id))
+                ann = sly.VolumeAnnotation.from_json(vol_ann_json, project_meta, key_id_map)
+                spatial_figures = [sp_figure.key() for sp_figure in ann.spatial_figures]
+                for figure in spatial_figures:
+                    geometries[figure] = geometry_bytes
+                api.volume.figure.upload_sf_geometries(spatial_figures, geometries, key_id_map)
         """
 
         if len(spatial_figures) == 0:
@@ -544,7 +555,6 @@ class VolumeFigureApi(FigureApi):
         :param key_id_map: KeyIdMap object (dict with bidict values)
         :type key_id_map: KeyIdMap
         :rtype: :class:`NoneType`
-        :Usage example:
         """
 
         for sf, geometry_bytes in zip(spatial_figures, geometries):
@@ -567,36 +577,37 @@ class VolumeFigureApi(FigureApi):
         :return: None
         :rtype: NoneType
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            STORAGE_DIR = sly.app.get_data_dir()
+                STORAGE_DIR = sly.app.get_data_dir()
 
-            volume_id = 19371414
-            project_id = 17215
+                volume_id = 19371414
+                project_id = 17215
 
-            volume = api.volume.get_info_by_id(volume_id)
+                volume = api.volume.get_info_by_id(volume_id)
 
-            key_id_map = sly.KeyIdMap()
-            project_meta_json = api.project.get_meta(project_id)
-            project_meta = sly.ProjectMeta.from_json(project_meta_json)
+                key_id_map = sly.KeyIdMap()
+                project_meta_json = api.project.get_meta(project_id)
+                project_meta = sly.ProjectMeta.from_json(project_meta_json)
 
-            vol_ann_json = api.volume.annotation.download(volume_id)
-            id_to_paths = {}
-            vol_ann = sly.VolumeAnnotation.from_json(vol_ann_json, project_meta, key_id_map)
+                vol_ann_json = api.volume.annotation.download(volume_id)
+                id_to_paths = {}
+                vol_ann = sly.VolumeAnnotation.from_json(vol_ann_json, project_meta, key_id_map)
 
-            for sp_figure in vol_ann.spatial_figures:
-                figure_id = key_id_map.get_figure_id(sp_figure.key())
-                id_to_paths[figure_id] = f"{STORAGE_DIR}/{sp_figure.key().hex}.stl"
-            if id_to_paths:
-                api.volume.figure.download_sf_geometries(*zip(*id_to_paths.items()))
+                for sp_figure in vol_ann.spatial_figures:
+                    figure_id = key_id_map.get_figure_id(sp_figure.key())
+                    id_to_paths[figure_id] = f"{STORAGE_DIR}/{sp_figure.key().hex}.stl"
+                if id_to_paths:
+                    api.volume.figure.download_sf_geometries(*zip(*id_to_paths.items()))
         """
 
         if len(ids) == 0:

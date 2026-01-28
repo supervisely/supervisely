@@ -43,11 +43,12 @@ def resize_origin_and_bitmap(
 
     :return: PointLocation object and numpy array
     :rtype: :class:`PointLocation<supervisely.geometry.point_location.PointLocation>`, :class:`np.ndarray`
+
     :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        resize_origin, resize_bitmap = resize_origin_and_bitmap(origin, bitmap, (400, 500), (800, 1000))
+            resize_origin, resize_bitmap = resize_origin_and_bitmap(origin, bitmap, (400, 500), (800, 1000))
     """
     new_size = restore_proportional_size(in_size=in_size, out_size=out_size)
 
@@ -69,26 +70,26 @@ def resize_origin_and_bitmap(
 
 class BitmapBase(Geometry):
     """
-    BitmapBase is a base class of :class:`Bitmap<supervisely.geometry.bitmap.Bitmap>` geometry. :class:`BitmapBase<BitmapBase>` class object is immutable.
+        BitmapBase is a base class of :class:`Bitmap<supervisely.geometry.bitmap.Bitmap>` geometry. :class:`BitmapBase<BitmapBase>` class object is immutable.
+        
+        Example of creating and using see in :class:`Bitmap<supervisely.geometry.bitmap.Bitmap>`.
 
-    :param data: Bitmap mask data.
-    :type data: np.ndarray
-    :param origin: :class:`PointLocation<supervisely.geometry.point_location.PointLocation>`: top, left corner of Bitmap. Position of the Bitmap within image.
-    :type origin: PointLocation, optional
-    :param expected_data_dims: Number of dimensions of data numpy array.
-    :type expected_data_dims: int, optional
-    :param sly_id: Bitmap ID in Supervisely server.
-    :type sly_id: int, optional
-    :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which Bitmap belongs.
-    :type class_id: int, optional
-    :param labeler_login: Login of the user who created Bitmap.
-    :type labeler_login: str, optional
-    :param updated_at: Date and Time when Bitmap was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
-    :type updated_at: str, optional
-    :param created_at: Date and Time when Bitmap was created. Date Format is the same as in "updated_at" parameter.
-    :type created_at: str, optional
-
-    :Usage example: Example of creating and using see in :class:`Bitmap<supervisely.geometry.bitmap.Bitmap>`.
+        :param data: Bitmap mask data.
+        :type data: np.ndarray
+        :param origin: :class:`PointLocation<supervisely.geometry.point_location.PointLocation>`: top, left corner of Bitmap. Position of the Bitmap within image.
+        :type origin: PointLocation, optional
+        :param expected_data_dims: Number of dimensions of data numpy array.
+        :type expected_data_dims: int, optional
+        :param sly_id: Bitmap ID in Supervisely server.
+        :type sly_id: int, optional
+        :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which Bitmap belongs.
+        :type class_id: int, optional
+        :param labeler_login: Login of the user who created Bitmap.
+        :type labeler_login: str, optional
+        :param updated_at: Date and Time when Bitmap was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
+        :type updated_at: str, optional
+        :param created_at: Date and Time when Bitmap was created. Date Format is the same as in "updated_at" parameter.
+        :type created_at: str, optional
     """
 
     def __init__(
@@ -148,29 +149,30 @@ class BitmapBase(Geometry):
 
         :return: Json format as a dict
         :rtype: :class:`dict`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            mask = np.array([[0, 0, 0, 0, 0],
-                             [0, 1, 1, 1, 0],
-                             [0, 1, 0, 1, 0],
-                             [0, 1, 1, 1, 0],
-                             [0, 0, 0, 0, 0]], dtype=np.bool_)
+                import supervisely as sly
 
-            figure = sly.Bitmap(mask)
-            figure_json = figure.to_json()
-            print(json.dumps(figure_json, indent=4))
-            # Output: {
-            #    "bitmap": {
-            #        "origin": [1, 1],
-            #        "data": "eJzrDPBz5+WS4mJgYOD19HAJAtLMIMwIInOeqf8BUmwBPiGuQPr///9Lb86/C2QxlgT5BTM4PLuRBuTwebo4hlTMSa44sKHhISMDuxpTYrr03F6gDIOnq5/LOqeEJgDM5ht6"
-            #    },
-            #    "shape": "bitmap",
-            #    "geometryType": "bitmap"
-            # }
+                mask = np.array([[0, 0, 0, 0, 0],
+                                [0, 1, 1, 1, 0],
+                                [0, 1, 0, 1, 0],
+                                [0, 1, 1, 1, 0],
+                                [0, 0, 0, 0, 0]], dtype=np.bool_)
+
+                figure = sly.Bitmap(mask)
+                figure_json = figure.to_json()
+                print(json.dumps(figure_json, indent=4))
+                # Output: {
+                #    "bitmap": {
+                #        "origin": [1, 1],
+                #        "data": "eJzrDPBz5+WS4mJgYOD19HAJAtLMIMwIInOeqf8BUmwBPiGuQPr///9Lb86/C2QxlgT5BTM4PLuRBuTwebo4hlTMSa44sKHhISMDuxpTYrr03F6gDIOnq5/LOqeEJgDM5ht6"
+                #    },
+                #    "shape": "bitmap",
+                #    "geometryType": "bitmap"
+                # }
         """
         res = {
             self._impl_json_class_name(): {
@@ -192,22 +194,23 @@ class BitmapBase(Geometry):
         :type data: dict
         :return: BitmapBase object
         :rtype: :class:`BitmapBase<BitmapBase>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            figure_json = {
-                "bitmap": {
-                    "origin": [1, 1],
-                    "data": "eJzrDPBz5+WS4mJgYOD19HAJAtLMIMwIInOeqf8BUmwBPiGuQPr///9Lb86/C2QxlgT5BTM4PLuRBuTwebo4hlTMSa44sKHhISMDuxpTYrr03F6gDIOnq5/LOqeEJgDM5ht6"
-                },
-                "shape": "bitmap",
-                "geometryType": "bitmap"
-            }
+                import supervisely as sly
 
-            figure = sly.Bitmap.from_json(figure_json)
+                figure_json = {
+                    "bitmap": {
+                        "origin": [1, 1],
+                        "data": "eJzrDPBz5+WS4mJgYOD19HAJAtLMIMwIInOeqf8BUmwBPiGuQPr///9Lb86/C2QxlgT5BTM4PLuRBuTwebo4hlTMSa44sKHhISMDuxpTYrr03F6gDIOnq5/LOqeEJgDM5ht6"
+                    },
+                    "shape": "bitmap",
+                    "geometryType": "bitmap"
+                }
+
+                figure = sly.Bitmap.from_json(figure_json)
         """
         json_root_key = cls._impl_json_class_name()
         if json_root_key not in json_data:
@@ -275,10 +278,10 @@ class BitmapBase(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            # Remember that Bitmap class object is immutable, and we need to assign new instance of Bitmap to a new variable
-            translate_figure = figure.translate(150, 250)
+                # Remember that Bitmap class object is immutable, and we need to assign new instance of Bitmap to a new variable
+                translate_figure = figure.translate(150, 250)
         """
         translated_origin = self.origin.translate(drow, dcol)
         return self.__class__(data=self.data, origin=translated_origin)
@@ -294,11 +297,11 @@ class BitmapBase(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            # Remember that Bitmap class object is immutable, and we need to assign new instance of Bitmap to a new variable
-            height, width = 300, 400
-            fliplr_figure = figure.fliplr((height, width))
+                # Remember that Bitmap class object is immutable, and we need to assign new instance of Bitmap to a new variable
+                height, width = 300, 400
+                fliplr_figure = figure.fliplr((height, width))
         """
         flipped_mask = np.flip(self.data, axis=1)
         flipped_origin = PointLocation(
@@ -317,11 +320,11 @@ class BitmapBase(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            # Remember that Bitmap class object is immutable, and we need to assign new instance of Bitmap to a new variable
-            height, width = 300, 400
-            flipud_figure = figure.flipud((height, width))
+                # Remember that Bitmap class object is immutable, and we need to assign new instance of Bitmap to a new variable
+                height, width = 300, 400
+                flipud_figure = figure.flipud((height, width))
         """
         flipped_mask = np.flip(self.data, axis=0)
         flipped_origin = PointLocation(
@@ -340,10 +343,10 @@ class BitmapBase(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            # Remember that Bitmap class object is immutable, and we need to assign new instance of Bitmap to a new variable
-            scale_figure = figure.scale(0.75)
+                # Remember that Bitmap class object is immutable, and we need to assign new instance of Bitmap to a new variable
+                scale_figure = figure.scale(0.75)
         """
         new_rows = round(self._data.shape[0] * factor)
         new_cols = round(self._data.shape[1] * factor)
@@ -365,9 +368,9 @@ class BitmapBase(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            rectangle = figure.to_bbox()
+                rectangle = figure.to_bbox()
         """
         return Rectangle.from_array(self._data).translate(
             drow=self._origin.row, dcol=self._origin.col

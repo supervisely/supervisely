@@ -261,10 +261,11 @@ def enable_advanced_debug(
     :return: The task ID of the debug task or None if the debugging was not started.
     :rtype: Optional[int]
 
-    :Usage example:
+    :Usage Example:
 
         .. code-block:: python
 
+            import os
             import supervisely as sly
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'

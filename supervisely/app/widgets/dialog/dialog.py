@@ -20,13 +20,14 @@ class Dialog(Widget):
     :param widget_id: An identifier of the widget.
     :type widget_id: str, optional
 
-    :Usage example:
-    .. code-block:: python
+    :Usage Example:
 
-        from supervisely.app.widgets import Dialog, Input, Button
+        .. code-block:: python
 
-        dialog = Dialog(title="Dialog title", content=Input("Input"), size="large")
-        dialog.show()
+            from supervisely.app.widgets import Dialog, Input, Button
+
+            dialog = Dialog(title="Dialog title", content=Input("Input"), size="large")
+            dialog.show()
     """
     class Routes:
         ON_CLOSE = "close_cb"

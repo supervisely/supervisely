@@ -50,12 +50,13 @@ class ClassesTable(Widget):
     :type widget_id: str
     :raises ValueError: If both project_id and project_fs parameters are provided.
 
-    :Usage example:
-    .. code-block:: python
+    :Usage Example:
 
-        from supervisely.app.widgets import ClassesTable
+        .. code-block:: python
 
-        classes_table = ClassesTable(project_id=123, selectable=True)
+            from supervisely.app.widgets import ClassesTable
+
+            classes_table = ClassesTable(project_id=123, selectable=True)
     """
 
     class Routes:

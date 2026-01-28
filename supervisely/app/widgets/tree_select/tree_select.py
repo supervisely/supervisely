@@ -45,9 +45,10 @@ class TreeSelect(Widget):
     - `select_all()`: Select all items, including children.
     - `is_all_selected() -> bool`: Check if all items are selected.
 
-    :Usage example:
+    :Usage Example:
 
         .. code-block:: python
+
             from supervisely.app.widgets import TreeSelect
 
             items = [
@@ -80,7 +81,7 @@ class TreeSelect(Widget):
         :param children: The children of the item.
         :type children: List[TreeSelect.Item], optional
 
-        :Usage example:
+        :Usage Example:
 
             .. code-block:: python
 

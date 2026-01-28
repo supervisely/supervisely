@@ -32,31 +32,31 @@ class SelectUser(Widget):
     :param widget_id: Unique widget identifier
     :type widget_id: Optional[str]
 
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
-        from supervisely.app.widgets import SelectUser
+            import supervisely as sly
+            from supervisely.app.widgets import SelectUser
 
-        # Initialize with team_id and filter by roles
-        select_user = SelectUser(
-            team_id=123,
-            roles=['admin', 'developer'],
-            multiple=True
-        )
+            # Initialize with team_id and filter by roles
+            select_user = SelectUser(
+                team_id=123,
+                roles=['admin', 'developer'],
+                multiple=True
+            )
 
-        # Or initialize empty and set users later
-        select_user = SelectUser(roles=['annotator', 'reviewer'])
-        select_user.set_users(user_list)
+            # Or initialize empty and set users later
+            select_user = SelectUser(roles=['annotator', 'reviewer'])
+            select_user.set_users(user_list)
 
-        # Handle selection changes
-        @select_user.value_changed
-        def on_user_selected(users):
-            if isinstance(users, list):
-                print(f"Selected users: {[u.login for u in users]}")
-            else:
-                print(f"Selected user: {users.login}")
+            # Handle selection changes
+            @select_user.value_changed
+            def on_user_selected(users):
+                if isinstance(users, list):
+                    print(f"Selected users: {[u.login for u in users]}")
+                else:
+                    print(f"Selected user: {users.login}")
     """
 
     class Routes:

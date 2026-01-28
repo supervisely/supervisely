@@ -20,16 +20,17 @@ class Collapse(Widget):
     :param widget_id: An identifier of the widget.
     :type widget_id: str, optional
 
-    :Usage example:
+    :Usage Example:
+
         .. code-block:: python
 
-        from supervisely.app.widgets import Collapse
+            from supervisely.app.widgets import Collapse
 
-        items = [
-            Collapse.Item("item1", "Item 1", "Content of item 1"),
-            Collapse.Item("item2", "Item 2", "Content of item 2"),
-        ]
-        collapse = Collapse(items)
+            items = [
+                Collapse.Item("item1", "Item 1", "Content of item 1"),
+                Collapse.Item("item2", "Item 2", "Content of item 2"),
+            ]
+            collapse = Collapse(items)
 
     """
 
