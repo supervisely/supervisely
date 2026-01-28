@@ -121,7 +121,10 @@ def create_supervisely_annotation(
             keypoints = list(get_coords(keypoints))
             coco_categorie, keypoint_names = None, None
             for cat in coco_categories:
-                if cat["id"] == category_id and cat["supercategory"] == obj_class_name:
+                if (
+                    cat["id"] == category_id
+                    and cat.get("supercategory", cat["name"]) == obj_class_name
+                ):
                     coco_categorie = cat
                     break
             if coco_categorie is not None:

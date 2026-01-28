@@ -234,6 +234,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         video_ids: List[int],
         anns: List[VideoAnnotation],
         progress_cb: Optional[Union[tqdm, Callable]] = None,
+        key_id_map: Optional[KeyIdMap] = None,
     ) -> None:
         """
         Upload already constructed VideoAnnotation objects for multi-view video project.
@@ -248,6 +249,8 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         :type anns: List[VideoAnnotation]
         :param progress_cb: Function for tracking upload progress (by number of figures).
         :type progress_cb: tqdm or callable, optional
+        :param key_id_map: KeyIdMap object.
+        :type key_id_map: KeyIdMap, optional
         :return: None
         :rtype: :class:`NoneType`
         """
@@ -270,13 +273,16 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         object_api = self._api.video.object
         figure_api = self._api.video.figure
 
-        key_id_map = KeyIdMap()
+        key_id_map = key_id_map or KeyIdMap()
         for video_id, ann in zip(video_ids, anns):
             tag_api.append_to_entity(video_id, project_id, ann.tags, key_id_map=key_id_map)
             new_objects = []
+            existing_objects = []
             for obj in ann.objects:
                 if key_id_map.get_object_id(obj.key()) is None:
                     new_objects.append(obj)
+                else:
+                    existing_objects.append(obj)
             if len(new_objects) > 0:
                 object_api._append_bulk(
                     tag_api=tag_api,
@@ -289,11 +295,13 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
                     is_video_multi_view=True,
                 )
             tags_to_obj = {}
-            for obj in ann.objects:
+            for obj in existing_objects:
                 obj_id = key_id_map.get_object_id(obj.key())
                 tags_to_obj[obj_id] = obj.tags
             if len(tags_to_obj) > 0:
-                tag_api.add_tags_collection_to_objects(project_id, tags_to_obj, is_video_multi_view=True, entity_id=video_id)
+                tag_api.add_tags_collection_to_objects(
+                    project_id, tags_to_obj, is_video_multi_view=True, entity_id=video_id
+                )
 
             figure_api.append_bulk(video_id, ann.figures, key_id_map)
             if progress_cb is not None and len(ann.figures) > 0:
