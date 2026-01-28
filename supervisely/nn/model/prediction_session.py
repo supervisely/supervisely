@@ -1,19 +1,5 @@
 """
 Streaming inference sessions for deployed models.
-
-This module defines :class:`~supervisely.nn.model.prediction_session.PredictionSession` — an iterator
-that runs asynchronous inference on a deployed model and yields
-:class:`~supervisely.nn.model.prediction.Prediction` objects.
-
-It supports multiple input sources:
-
-- local images (paths / bytes / NumPy arrays),
-- local videos (path),
-- remote entities by id (image id / video id),
-- dataset id / project id (requires :class:`~supervisely.api.api.Api` to resolve entities).
-
-The session can also manage server-side inference lifecycle: start, poll status/progress, stop and
-collect final result metadata.
 """
 
 import json

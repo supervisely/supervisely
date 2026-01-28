@@ -33,30 +33,30 @@ class ModelAPI:
 
     :Task based usage:
 
-    .. code-block:: python
+        .. code-block:: python
 
-        import os
-        import supervisely as sly
-        from supervisely.nn.model.model_api import ModelAPI
+            import os
+            import supervisely as sly
+            from supervisely.nn.model.model_api import ModelAPI
 
-        os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-        os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
 
-        api = sly.Api.from_env()
-        model = ModelAPI(api=api, task_id=12345)
+            api = sly.Api.from_env()
+            model = ModelAPI(api=api, task_id=12345)
 
-        meta = model.get_model_meta()
-        classes = model.get_classes()
-        predictions = model.predict(image_id=100500, classes=classes)
+            meta = model.get_model_meta()
+            classes = model.get_classes()
+            predictions = model.predict(image_id=100500, classes=classes)
 
     :Direct URL usage:
 
-    .. code-block:: python
+        .. code-block:: python
 
-        from supervisely.nn.model.model_api import ModelAPI
+            from supervisely.nn.model.model_api import ModelAPI
 
-        model = ModelAPI(url='https://app.supervisely.com/net/<sessionToken>')
-        predictions = model.predict(input='/path/to/image.jpg')
+            model = ModelAPI(url='https://app.supervisely.com/net/<sessionToken>')
+            predictions = model.predict(input='/path/to/image.jpg')
     """
 
     def __init__(self, api: "Api" = None, task_id: int = None, url: str = None):
