@@ -36,31 +36,25 @@ class PointcloudObjectCollection(VideoObjectCollection):
         :return: PointcloudObjectCollection object
         :rtype: :class:`PointcloudObjectCollection`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
-            from supervisely.geometry.cuboid_3d import Cuboid3d
-            from supervisely.pointcloud_annotation.pointcloud_object_collection import PointcloudObjectCollection
+                import supervisely as sly
+                from supervisely.geometry.cuboid_3d import Cuboid3d
+                from supervisely.pointcloud_annotation.pointcloud_object_collection import PointcloudObjectCollection
 
-            obj_collection_json = [
-                {
-                    "classTitle": "car",
-                    "tags": []
-                },
-                {
-                    "classTitle": "bus",
-                    "tags": []
-                }
-            ]
+                obj_collection_json = [
+                    {"classTitle": "car", "tags": []},
+                    {"classTitle": "bus", "tags": []}
+                ]
 
-            class_car = sly.ObjClass('car', Cuboid3d)
-            class_bus = sly.ObjClass('bus', Cuboid3d)
-            classes = sly.ObjClassCollection([class_car, class_bus])
-            meta = sly.ProjectMeta(obj_classes=classes)
+                class_car = sly.ObjClass('car', Cuboid3d)
+                class_bus = sly.ObjClass('bus', Cuboid3d)
+                classes = sly.ObjClassCollection([class_car, class_bus])
+                meta = sly.ProjectMeta(obj_classes=classes)
 
-            pointcloud_obj_collection = sly.PointcloudObjectCollection.from_json(obj_collection_json, meta)
+                pointcloud_obj_collection = sly.PointcloudObjectCollection.from_json(obj_collection_json, meta)
         """
 
         return super().from_json(data, project_meta, key_id_map=key_id_map)

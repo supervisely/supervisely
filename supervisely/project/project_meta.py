@@ -59,74 +59,73 @@ class ProjectMeta(JsonSerializable):
     :param project_settings: Additional project properties. For example, multi-view settings.
     :type project_settings: dict or ProjectSettings, optional
 
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
+            import supervisely as sly
 
-        # Example 1: Empty ProjectMeta
-        meta = sly.ProjectMeta()
-        print(meta)
-        # Output:
-        # ProjectMeta:
-        # Object Classes
-        # +------+-------+-------+--------+
-        # | Name | Shape | Color | Hotkey |
-        # +------+-------+-------+--------+
-        # +------+-------+-------+--------+
-        # Tags
-        # +------+------------+-----------------+--------+---------------+--------------------+
-        # | Name | Value type | Possible values | Hotkey | Applicable to | Applicable classes |
-        # +------+------------+-----------------+--------+---------------+--------------------+
-        # +------+------------+-----------------+--------+---------------+--------------------+
+            # Example 1: Empty ProjectMeta
+            meta = sly.ProjectMeta()
+            print(meta)
+            # Output:
+            # ProjectMeta:
+            # Object Classes
+            # +------+-------+-------+--------+
+            # | Name | Shape | Color | Hotkey |
+            # +------+-------+-------+--------+
+            # +------+-------+-------+--------+
+            # Tags
+            # +------+------------+-----------------+--------+---------------+--------------------+
+            # | Name | Value type | Possible values | Hotkey | Applicable to | Applicable classes |
+            # +------+------------+-----------------+--------+---------------+--------------------+
+            # +------+------------+-----------------+--------+---------------+--------------------+
 
-        # Example 2: Complex ProjectMeta
-        lemon = sly.ObjClass('lemon', sly.Rectangle)
-        kiwi = sly.ObjClass('kiwi', sly.Polygon)
-        tag_fruit = sly.TagMeta('fruit', sly.TagValueType.ANY_STRING)
-        objects = sly.ObjClassCollection([lemon, kiwi])
-        # or objects = [lemon, kiwi]
-        tags = sly.TagMetaCollection([tag_fruit])
-        # or tags = [tag_fruit]
-        meta = sly.ProjectMeta(obj_classes=objects, tag_metas=tags, project_type=sly.ProjectType.IMAGES)
-        print(meta)
-        # Output:
-        # +-------+-----------+----------------+--------+
-        # |  Name |   Shape   |     Color      | Hotkey |
-        # +-------+-----------+----------------+--------+
-        # | lemon | Rectangle | [108, 15, 138] |        |
-        # |  kiwi |  Polygon  | [15, 98, 138]  |        |
-        # +-------+-----------+----------------+--------+
-        # Tags
-        # +-------+------------+-----------------+--------+---------------+--------------------+
-        # |  Name | Value type | Possible values | Hotkey | Applicable to | Applicable classes |
-        # +-------+------------+-----------------+--------+---------------+--------------------+
-        # | fruit | any_string |       None      |        |      all      |         []         |
-        # +-------+------------+-----------------+--------+---------------+--------------------+
+            # Example 2: Complex ProjectMeta
+            lemon = sly.ObjClass('lemon', sly.Rectangle)
+            kiwi = sly.ObjClass('kiwi', sly.Polygon)
+            tag_fruit = sly.TagMeta('fruit', sly.TagValueType.ANY_STRING)
+            objects = sly.ObjClassCollection([lemon, kiwi])
+            # or objects = [lemon, kiwi]
+            tags = sly.TagMetaCollection([tag_fruit])
+            # or tags = [tag_fruit]
+            meta = sly.ProjectMeta(obj_classes=objects, tag_metas=tags, project_type=sly.ProjectType.IMAGES)
+            print(meta)
+            # Output:
+            # +-------+-----------+----------------+--------+
+            # |  Name |   Shape   |     Color      | Hotkey |
+            # +-------+-----------+----------------+--------+
+            # | lemon | Rectangle | [108, 15, 138] |        |
+            # |  kiwi |  Polygon  | [15, 98, 138]  |        |
+            # +-------+-----------+----------------+--------+
+            # Tags
+            # +-------+------------+-----------------+--------+---------------+--------------------+
+            # |  Name | Value type | Possible values | Hotkey | Applicable to | Applicable classes |
+            # +-------+------------+-----------------+--------+---------------+--------------------+
+            # | fruit | any_string |       None      |        |      all      |         []         |
+            # +-------+------------+-----------------+--------+---------------+--------------------+
 
-        # Example 3: Add multi-view to the project
+            # Example 3: Add multi-view to the project
+            lemon = sly.ObjClass('lemon', sly.Rectangle)
+            kiwi = sly.ObjClass('kiwi', sly.Polygon)
+            tag_fruit = sly.TagMeta('fruit', sly.TagValueType.ANY_STRING)
 
-        lemon = sly.ObjClass('lemon', sly.Rectangle)
-        kiwi = sly.ObjClass('kiwi', sly.Polygon)
-        tag_fruit = sly.TagMeta('fruit', sly.TagValueType.ANY_STRING)
+            settings = sly.ProjectSettings(
+                multiview_enabled=True,
+                multiview_tag_name=tag_fruit.name,
+                multiview_is_synced=False,
+            )
+            meta = sly.ProjectMeta(
+                obj_classes=[lemon, kiwi],
+                tag_metas=tag_fruit,
+                project_type=sly.ProjectType.IMAGES,
+                project_settings=settings
+            )
 
-        settings = sly.ProjectSettings(
-            multiview_enabled=True,
-            multiview_tag_name=tag_fruit.name,
-            multiview_is_synced=False,
-        )
-        meta = sly.ProjectMeta(
-            obj_classes=[lemon, kiwi],
-            tag_metas=tag_fruit,
-            project_type=sly.ProjectType.IMAGES,
-            project_settings=settings
-        )
-
-        # Example 4: Custom color
-        cat_class = sly.ObjClass("cat", sly.Rectangle, color=[0, 255, 0])
-        scene_tag = sly.TagMeta("scene", sly.TagValueType.ANY_STRING)
-        meta = sly.ProjectMeta(obj_classes=[cat_class], tag_metas=[scene_tag])
+            # Example 4: Custom color
+            cat_class = sly.ObjClass("cat", sly.Rectangle, color=[0, 255, 0])
+            scene_tag = sly.TagMeta("scene", sly.TagValueType.ANY_STRING)
+            meta = sly.ProjectMeta(obj_classes=[cat_class], tag_metas=[scene_tag])
     """
 
     def __init__(
@@ -172,41 +171,42 @@ class ProjectMeta(JsonSerializable):
 
         :return: ObjClassCollection object
         :rtype: :class:`ObjClassCollection<supervisely.annotation.obj_class_collection.ObjClassCollection>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            lemon = sly.ObjClass('lemon', sly.Rectangle)
-            kiwi = sly.ObjClass('kiwi', sly.Polygon)
-            objects = sly.ObjClassCollection([lemon, kiwi])
-            # or objects = [lemon, kiwi]
+                import supervisely as sly
 
-            meta = sly.ProjectMeta(obj_classes=objects, project_type=sly.ProjectType.IMAGES)
+                lemon = sly.ObjClass('lemon', sly.Rectangle)
+                kiwi = sly.ObjClass('kiwi', sly.Polygon)
+                objects = sly.ObjClassCollection([lemon, kiwi])
+                # or objects = [lemon, kiwi]
 
-            meta_classes = meta.obj_classes
-            print(meta_classes.to_json())
-            # Output: [
-            #     {
-            #         "title":"lemon",
-            #         "shape":"rectangle",
-            #         "color":"#6C0F8A",
-            #         "geometry_config":{
-            #
-            #         },
-            #         "hotkey":""
-            #     },
-            #     {
-            #         "title":"kiwi",
-            #         "shape":"polygon",
-            #         "color":"#0F628A",
-            #         "geometry_config":{
-            #
-            #         },
-            #         "hotkey":""
-            #     }
-            # ]
+                meta = sly.ProjectMeta(obj_classes=objects, project_type=sly.ProjectType.IMAGES)
+
+                meta_classes = meta.obj_classes
+                print(meta_classes.to_json())
+                # Output: [
+                #     {
+                #         "title":"lemon",
+                #         "shape":"rectangle",
+                #         "color":"#6C0F8A",
+                #         "geometry_config":{
+                #
+                #         },
+                #         "hotkey":""
+                #     },
+                #     {
+                #         "title":"kiwi",
+                #         "shape":"polygon",
+                #         "color":"#0F628A",
+                #         "geometry_config":{
+                #
+                #         },
+                #         "hotkey":""
+                #     }
+                # ]
         """
         return self._obj_classes
 
@@ -217,30 +217,31 @@ class ProjectMeta(JsonSerializable):
 
         :return: TagMetaCollection object
         :rtype: :class:`TagMetaCollection<supervisely.annotation.tag_meta_collection.TagMetaCollection>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            tag_fruit = sly.TagMeta('fruit', sly.TagValueType.ANY_STRING)
-            tags = sly.TagMetaCollection([tag_fruit])
-            # or tags = [tag_fruit]
+                import supervisely as sly
 
-            meta = sly.ProjectMeta(tag_metas=tags)
+                tag_fruit = sly.TagMeta('fruit', sly.TagValueType.ANY_STRING)
+                tags = sly.TagMetaCollection([tag_fruit])
+                # or tags = [tag_fruit]
 
-            meta_tags = meta.tag_metas
-            print(meta_tags.to_json())
-            # Output: [
-            #     {
-            #         "name":"fruit",
-            #         "value_type":"any_string",
-            #         "color":"#818A0F",
-            #         "hotkey":"",
-            #         "applicable_type":"all",
-            #         "classes":[]
-            #     }
-            # ]
+                meta = sly.ProjectMeta(tag_metas=tags)
+
+                meta_tags = meta.tag_metas
+                print(meta_tags.to_json())
+                # Output: [
+                #     {
+                #         "name":"fruit",
+                #         "value_type":"any_string",
+                #         "color":"#818A0F",
+                #         "hotkey":"",
+                #         "applicable_type":"all",
+                #         "classes":[]
+                #     }
+                # ]
         """
         return self._tag_metas
 
@@ -251,16 +252,17 @@ class ProjectMeta(JsonSerializable):
 
         :return: Project type
         :rtype: :class:`str`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            meta = sly.ProjectMeta(project_type=sly.ProjectType.IMAGES)
+                import supervisely as sly
 
-            print(meta.project_type)
-            # Output: 'images'
+                meta = sly.ProjectMeta(project_type=sly.ProjectType.IMAGES)
+
+                print(meta.project_type)
+                # Output: 'images'
         """
         return self._project_type
 
@@ -271,24 +273,25 @@ class ProjectMeta(JsonSerializable):
 
         :return: Project settings
         :rtype: :class: `Dict[str, str]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            s = sly.ProjectSettings(
-                multiview_enabled=True,
-                multiview_tag_name='multi_tag',
-                multiview_is_synced=False,
-            )
-            meta = sly.ProjectMeta(project_settings=s)
+                import supervisely as sly
 
-            print(meta.project_settings)
-            # Output: <class 'supervisely.project.project_settings.ProjectSettings'>
+                s = sly.ProjectSettings(
+                    multiview_enabled=True,
+                    multiview_tag_name='multi_tag',
+                    multiview_is_synced=False,
+                )
+                meta = sly.ProjectMeta(project_settings=s)
+
+                print(meta.project_settings)
+                # Output: <class 'supervisely.project.project_settings.ProjectSettings'>
         """
         return self._project_settings
-    
+
     @property
     def labeling_interface(self) -> Optional[LabelingInterface]:
         """
@@ -296,22 +299,23 @@ class ProjectMeta(JsonSerializable):
 
         :return: Labeling interface settings
         :rtype: :class: `LabelingInterface` or None
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            s = sly.ProjectSettings(
-                multiview_enabled=True,
-                multiview_tag_name='multi_tag',
-                multiview_is_synced=False,
-            )
-            meta = sly.ProjectMeta(project_settings=s)
+                import supervisely as sly
 
-            labeling_interface = meta.labeling_interface
-            print(labeling_interface)
-            # Output: None
+                s = sly.ProjectSettings(
+                    multiview_enabled=True,
+                    multiview_tag_name='multi_tag',
+                    multiview_is_synced=False,
+                )
+                meta = sly.ProjectMeta(project_settings=s)
+
+                labeling_interface = meta.labeling_interface
+                print(labeling_interface)
+                # Output: None
         """
         return self._project_settings.labeling_interface if self._project_settings else None
 
@@ -322,40 +326,40 @@ class ProjectMeta(JsonSerializable):
         :return: Json format as a dict
         :rtype: :class:`dict`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            meta_json = meta.to_json()
-            print(meta_json)
-            # Output: {
-            #     "classes": [
-            #         {
-            #             "title": "lemon",
-            #             "shape": "rectangle",
-            #             "color": "#720F8A",
-            #             "geometry_config": {},
-            #             "hotkey": ""
-            #         },
-            #         {
-            #             "title": "kiwi",
-            #             "shape": "polygon",
-            #             "color": "#8A0F6F",
-            #             "geometry_config": {},
-            #             "hotkey": ""
-            #         }
-            #     ],
-            #     "tags": [
-            #         {
-            #             "name": "fruit",
-            #             "value_type": "any_string",
-            #             "color": "#788A0F",
-            #             "hotkey": "",
-            #             "applicable_type": "all",
-            #             "classes": []
-            #         }
-            #     ]
-            # }
+                meta_json = meta.to_json()
+                print(meta_json)
+                # Output: {
+                #     "classes": [
+                #         {
+                #             "title": "lemon",
+                #             "shape": "rectangle",
+                #             "color": "#720F8A",
+                #             "geometry_config": {},
+                #             "hotkey": ""
+                #         },
+                #         {
+                #             "title": "kiwi",
+                #             "shape": "polygon",
+                #             "color": "#8A0F6F",
+                #             "geometry_config": {},
+                #             "hotkey": ""
+                #         }
+                #     ],
+                #     "tags": [
+                #         {
+                #             "name": "fruit",
+                #             "value_type": "any_string",
+                #             "color": "#788A0F",
+                #             "hotkey": "",
+                #             "applicable_type": "all",
+                #             "classes": []
+                #         }
+                #     ]
+                # }
         """
         res = {
             ProjectMetaJsonFields.OBJ_CLASSES: self._obj_classes.to_json(),
@@ -376,34 +380,35 @@ class ProjectMeta(JsonSerializable):
         :type data: dict
         :return: ProjectMeta object
         :rtype: :class:`ProjectMeta<ProjectMeta>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            meta_json = {
-                "classes": [
-                    {
-                        "title": "lemon",
-                        "shape": "rectangle",
-                        "color": "#8A0F7B"
-                    },
-                    {
-                        "title": "kiwi",
-                        "shape": "polygon",
-                        "color": "#8A0F50"
-                    }
-                ],
-                "tags": [
-                    {
-                        "name": "fruit",
-                        "value_type": "any_string",
-                        "color": "#0F6F8A"
-                    }
-                ]
-            }
-            meta = sly.ProjectMeta.from_json(meta_json)
+                import supervisely as sly
+
+                meta_json = {
+                    "classes": [
+                        {
+                            "title": "lemon",
+                            "shape": "rectangle",
+                            "color": "#8A0F7B"
+                        },
+                        {
+                            "title": "kiwi",
+                            "shape": "polygon",
+                            "color": "#8A0F50"
+                        }
+                    ],
+                    "tags": [
+                        {
+                            "name": "fruit",
+                            "value_type": "any_string",
+                            "color": "#0F6F8A"
+                        }
+                    ]
+                }
+                meta = sly.ProjectMeta.from_json(meta_json)
         """
         tag_metas_json = data.get(ProjectMetaJsonFields.TAGS, [])
         img_tag_metas_json = data.get(ProjectMetaJsonFields.IMG_TAGS, [])
@@ -474,63 +479,64 @@ class ProjectMeta(JsonSerializable):
         :return: New instance of ProjectMeta object
         :rtype: :class:`ProjectMeta<ProjectMeta>`
         :raises: :class:`ValueError` Upon attempt to merge metas which contain the same obj class or tag meta
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            meta_1 = sly.ProjectMeta()
-            class_cat = sly.ObjClass('cat', sly.Rectangle)
-            tag_cat = sly.TagMeta('cat_tag', sly.TagValueType.ANY_STRING)
-            meta_1 = meta_1.add_obj_class(class_cat)
-            meta_1 = meta_1.add_tag_meta(tag_cat)
+                import supervisely as sly
 
-            meta_2 = sly.ProjectMeta()
-            class_dog = sly.ObjClass('dog', sly.Rectangle)
-            tag_dog = sly.TagMeta('dog_tag', sly.TagValueType.ANY_STRING)
-            meta_2 = meta_2.add_obj_class(class_dog)
-            meta_2 = meta_2.add_tag_meta(tag_dog)
+                meta_1 = sly.ProjectMeta()
+                class_cat = sly.ObjClass('cat', sly.Rectangle)
+                tag_cat = sly.TagMeta('cat_tag', sly.TagValueType.ANY_STRING)
+                meta_1 = meta_1.add_obj_class(class_cat)
+                meta_1 = meta_1.add_tag_meta(tag_cat)
 
-            merge_meta = meta_1.merge(meta_2)
-            merge_meta_json = merge_meta.to_json()
-            print(json.dumps(merge_meta_json, indent=4))
-            # Output: {
-            #     "classes": [
-            #         {
-            #             "title": "dog",
-            #             "shape": "rectangle",
-            #             "color": "#0F8A62",
-            #             "geometry_config": {},
-            #             "hotkey": ""
-            #         },
-            #         {
-            #             "title": "cat",
-            #             "shape": "rectangle",
-            #             "color": "#340F8A",
-            #             "geometry_config": {},
-            #             "hotkey": ""
-            #         }
-            #     ],
-            #     "tags": [
-            #         {
-            #             "name": "dog_tag",
-            #             "value_type": "any_string",
-            #             "color": "#380F8A",
-            #             "hotkey": "",
-            #             "applicable_type": "all",
-            #             "classes": []
-            #         },
-            #         {
-            #             "name": "cat_tag",
-            #             "value_type": "any_string",
-            #             "color": "#8A0F82",
-            #             "hotkey": "",
-            #             "applicable_type": "all",
-            #             "classes": []
-            #         }
-            #     ]
-            # }
+                meta_2 = sly.ProjectMeta()
+                class_dog = sly.ObjClass('dog', sly.Rectangle)
+                tag_dog = sly.TagMeta('dog_tag', sly.TagValueType.ANY_STRING)
+                meta_2 = meta_2.add_obj_class(class_dog)
+                meta_2 = meta_2.add_tag_meta(tag_dog)
+
+                merge_meta = meta_1.merge(meta_2)
+                merge_meta_json = merge_meta.to_json()
+                print(json.dumps(merge_meta_json, indent=4))
+                # Output: {
+                #     "classes": [
+                #         {
+                #             "title": "dog",
+                #             "shape": "rectangle",
+                #             "color": "#0F8A62",
+                #             "geometry_config": {},
+                #             "hotkey": ""
+                #         },
+                #         {
+                #             "title": "cat",
+                #             "shape": "rectangle",
+                #             "color": "#340F8A",
+                #             "geometry_config": {},
+                #             "hotkey": ""
+                #         }
+                #     ],
+                #     "tags": [
+                #         {
+                #             "name": "dog_tag",
+                #             "value_type": "any_string",
+                #             "color": "#380F8A",
+                #             "hotkey": "",
+                #             "applicable_type": "all",
+                #             "classes": []
+                #         },
+                #         {
+                #             "name": "cat_tag",
+                #             "value_type": "any_string",
+                #             "color": "#8A0F82",
+                #             "hotkey": "",
+                #             "applicable_type": "all",
+                #             "classes": []
+                #         }
+                #     ]
+                # }
         """
         return self.clone(
             obj_classes=self._obj_classes.merge(other.obj_classes),
@@ -558,44 +564,45 @@ class ProjectMeta(JsonSerializable):
 
         :return: New instance of ProjectMeta object
         :rtype: :class:`ProjectMeta<ProjectMeta>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            meta = sly.ProjectMeta()
-            class_cat = sly.ObjClass('cat', sly.Rectangle)
-            collection_cat = sly.ObjClassCollection([class_cat])
-            # or collection_cat = [class_cat]
-            tag_cat = sly.TagMeta('cat_tag', sly.TagValueType.ANY_STRING)
-            collection_tag_cat = sly.TagMetaCollection([tag_cat])
-            # or collection_tag_cat = [tag_cat]
-            # Remember that ProjectMeta object is immutable, and we need to assign new instance of ProjectMeta to a new variable
-            new_meta = meta.clone(obj_classes=collection_cat, tag_metas=collection_tag_cat)
-            new_meta_json = new_meta.to_json()
-            print(json.dumps(new_meta_json, indent=4))
-            # Output: {
-            #     "classes": [
-            #         {
-            #             "title": "cat",
-            #             "shape": "rectangle",
-            #             "color": "#190F8A",
-            #             "geometry_config": {},
-            #             "hotkey": ""
-            #         }
-            #     ],
-            #     "tags": [
-            #         {
-            #             "name": "cat_tag",
-            #             "value_type": "any_string",
-            #             "color": "#8A6D0F",
-            #             "hotkey": "",
-            #             "applicable_type": "all",
-            #             "classes": []
-            #         }
-            #     ]
-            # }
+                import supervisely as sly
+
+                meta = sly.ProjectMeta()
+                class_cat = sly.ObjClass('cat', sly.Rectangle)
+                collection_cat = sly.ObjClassCollection([class_cat])
+                # or collection_cat = [class_cat]
+                tag_cat = sly.TagMeta('cat_tag', sly.TagValueType.ANY_STRING)
+                collection_tag_cat = sly.TagMetaCollection([tag_cat])
+                # or collection_tag_cat = [tag_cat]
+                # Remember that ProjectMeta object is immutable, and we need to assign new instance of ProjectMeta to a new variable
+                new_meta = meta.clone(obj_classes=collection_cat, tag_metas=collection_tag_cat)
+                new_meta_json = new_meta.to_json()
+                print(json.dumps(new_meta_json, indent=4))
+                # Output: {
+                #     "classes": [
+                #         {
+                #             "title": "cat",
+                #             "shape": "rectangle",
+                #             "color": "#190F8A",
+                #             "geometry_config": {},
+                #             "hotkey": ""
+                #         }
+                #     ],
+                #     "tags": [
+                #         {
+                #             "name": "cat_tag",
+                #             "value_type": "any_string",
+                #             "color": "#8A6D0F",
+                #             "hotkey": "",
+                #             "applicable_type": "all",
+                #             "classes": []
+                #         }
+                #     ]
+                # }
         """
         return ProjectMeta(
             obj_classes=take_with_default(obj_classes, self.obj_classes),
@@ -612,30 +619,31 @@ class ProjectMeta(JsonSerializable):
         :type new_obj_class: ObjClass
         :return: New instance of ProjectMeta object
         :rtype: :class:`ProjectMeta<ProjectMeta>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            meta = sly.ProjectMeta()
-            class_cat = sly.ObjClass('cat', sly.Rectangle)
-            # Remember that ProjectMeta object is immutable, and we need to assign new instance of ProjectMeta to a new variable
-            meta = meta.add_obj_class(class_cat)
-            meta_json = meta.to_json()
-            print(json.dumps(meta_json, indent=4))
-            # Output: {
-            #     "classes": [
-            #         {
-            #             "title": "cat",
-            #             "shape": "rectangle",
-            #             "color": "#178A0F",
-            #             "geometry_config": {},
-            #             "hotkey": ""
-            #         }
-            #     ],
-            #     "tags": []
-            # }
+                import supervisely as sly
+
+                meta = sly.ProjectMeta()
+                class_cat = sly.ObjClass('cat', sly.Rectangle)
+                # Remember that ProjectMeta object is immutable, and we need to assign new instance of ProjectMeta to a new variable
+                meta = meta.add_obj_class(class_cat)
+                meta_json = meta.to_json()
+                print(json.dumps(meta_json, indent=4))
+                # Output: {
+                #     "classes": [
+                #         {
+                #             "title": "cat",
+                #             "shape": "rectangle",
+                #             "color": "#178A0F",
+                #             "geometry_config": {},
+                #             "hotkey": ""
+                #         }
+                #     ],
+                #     "tags": []
+                # }
         """
         return self.add_obj_classes([new_obj_class])
 
@@ -649,38 +657,39 @@ class ProjectMeta(JsonSerializable):
         :type new_obj_classes: ObjClassCollection or List[ObjClass]
         :return: New instance of ProjectMeta object
         :rtype: :class:`ProjectMeta<ProjectMeta>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            meta = sly.ProjectMeta()
-            class_cat = sly.ObjClass('cat', sly.Rectangle)
-            class_dog = sly.ObjClass('dog', sly.Bitmap)
-            # Remember that ProjectMeta object is immutable, and we need to assign new instance of ProjectMeta to a new variable
-            meta = meta.add_obj_classes([class_cat, class_dog])
-            meta_json = meta.to_json()
-            print(json.dumps(meta_json, indent=4))
-            # Output: {
-            #     "classes": [
-            #         {
-            #             "title": "cat",
-            #             "shape": "rectangle",
-            #             "color": "#8A0F3F",
-            #             "geometry_config": {},
-            #             "hotkey": ""
-            #         },
-            #         {
-            #             "title": "dog",
-            #             "shape": "bitmap",
-            #             "color": "#8A0F56",
-            #             "geometry_config": {},
-            #             "hotkey": ""
-            #         }
-            #     ],
-            #     "tags": []
-            # }
+                import supervisely as sly
+
+                meta = sly.ProjectMeta()
+                class_cat = sly.ObjClass('cat', sly.Rectangle)
+                class_dog = sly.ObjClass('dog', sly.Bitmap)
+                # Remember that ProjectMeta object is immutable, and we need to assign new instance of ProjectMeta to a new variable
+                meta = meta.add_obj_classes([class_cat, class_dog])
+                meta_json = meta.to_json()
+                print(json.dumps(meta_json, indent=4))
+                # Output: {
+                #     "classes": [
+                #         {
+                #             "title": "cat",
+                #             "shape": "rectangle",
+                #             "color": "#8A0F3F",
+                #             "geometry_config": {},
+                #             "hotkey": ""
+                #         },
+                #         {
+                #             "title": "dog",
+                #             "shape": "bitmap",
+                #             "color": "#8A0F56",
+                #             "geometry_config": {},
+                #             "hotkey": ""
+                #         }
+                #     ],
+                #     "tags": []
+                # }
         """
         return self.clone(obj_classes=self.obj_classes.add_items(new_obj_classes))
 
@@ -692,31 +701,32 @@ class ProjectMeta(JsonSerializable):
         :type new_tag_meta: TagMeta
         :return: New instance of ProjectMeta object
         :rtype: :class:`ProjectMeta<ProjectMeta>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            meta = sly.ProjectMeta()
-            tag_cat = sly.TagMeta('cat_tag', sly.TagValueType.ANY_STRING)
-            # Remember that ProjectMeta object is immutable, and we need to assign new instance of ProjectMeta to a new variable
-            meta = meta.add_tag_meta(tag_cat)
-            meta_json = meta.to_json()
-            print(json.dumps(meta_json, indent=4))
-            # Output: {
-            #     "classes": [],
-            #     "tags": [
-            #         {
-            #             "name": "cat_tag",
-            #             "value_type": "any_string",
-            #             "color": "#178A0F",
-            #             "hotkey": "",
-            #             "applicable_type": "all",
-            #             "classes": []
-            #         }
-            #     ]
-            # }
+                import supervisely as sly
+
+                meta = sly.ProjectMeta()
+                tag_cat = sly.TagMeta('cat_tag', sly.TagValueType.ANY_STRING)
+                # Remember that ProjectMeta object is immutable, and we need to assign new instance of ProjectMeta to a new variable
+                meta = meta.add_tag_meta(tag_cat)
+                meta_json = meta.to_json()
+                print(json.dumps(meta_json, indent=4))
+                # Output: {
+                #     "classes": [],
+                #     "tags": [
+                #         {
+                #             "name": "cat_tag",
+                #             "value_type": "any_string",
+                #             "color": "#178A0F",
+                #             "hotkey": "",
+                #             "applicable_type": "all",
+                #             "classes": []
+                #         }
+                #     ]
+                # }
         """
         return self.add_tag_metas([new_tag_meta])
 
@@ -728,40 +738,41 @@ class ProjectMeta(JsonSerializable):
         :type new_tag_metas: List[TagMeta]
         :return: New instance of ProjectMeta object
         :rtype: :class:`ProjectMeta<ProjectMeta>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            meta = sly.ProjectMeta()
-            tag_cat = sly.TagMeta('cat_tag', sly.TagValueType.ANY_STRING)
-            tag_dog = sly.TagMeta('dog_tag', sly.TagValueType.ANY_STRING)
-            # Remember that ProjectMeta object is immutable, and we need to assign new instance of ProjectMeta to a new variable
-            meta = meta.add_tag_metas([tag_cat, tag_dog])
-            meta_json = meta.to_json()
-            print(json.dumps(meta_json, indent=4))
-            # Output: {
-            #     "classes": [],
-            #     "tags": [
-            #         {
-            #             "name": "cat_tag",
-            #             "value_type": "any_string",
-            #             "color": "#0F248A",
-            #             "hotkey": "",
-            #             "applicable_type": "all",
-            #             "classes": []
-            #         },
-            #         {
-            #             "name": "dog_tag",
-            #             "value_type": "any_string",
-            #             "color": "#8A5C0F",
-            #             "hotkey": "",
-            #             "applicable_type": "all",
-            #             "classes": []
-            #         }
-            #     ]
-            # }
+                import supervisely as sly
+
+                meta = sly.ProjectMeta()
+                tag_cat = sly.TagMeta('cat_tag', sly.TagValueType.ANY_STRING)
+                tag_dog = sly.TagMeta('dog_tag', sly.TagValueType.ANY_STRING)
+                # Remember that ProjectMeta object is immutable, and we need to assign new instance of ProjectMeta to a new variable
+                meta = meta.add_tag_metas([tag_cat, tag_dog])
+                meta_json = meta.to_json()
+                print(json.dumps(meta_json, indent=4))
+                # Output: {
+                #     "classes": [],
+                #     "tags": [
+                #         {
+                #             "name": "cat_tag",
+                #             "value_type": "any_string",
+                #             "color": "#0F248A",
+                #             "hotkey": "",
+                #             "applicable_type": "all",
+                #             "classes": []
+                #         },
+                #         {
+                #             "name": "dog_tag",
+                #             "value_type": "any_string",
+                #             "color": "#8A5C0F",
+                #             "hotkey": "",
+                #             "applicable_type": "all",
+                #             "classes": []
+                #         }
+                #     ]
+                # }
         """
         return self.clone(tag_metas=self.tag_metas.add_items(new_tag_metas))
 
@@ -787,39 +798,40 @@ class ProjectMeta(JsonSerializable):
         :type obj_class_name: str
         :return: New instance of ProjectMeta object
         :rtype: :class:`ProjectMeta<ProjectMeta>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            meta = sly.ProjectMeta()
-            class_cat = sly.ObjClass('cat', sly.Rectangle)
-            # Remember that ProjectMeta object is immutable, and we need to assign new instance of ProjectMeta to a new variable
-            meta = meta.add_obj_class(class_cat)
-            meta_json = meta.to_json()
-            print(json.dumps(meta_json, indent=4))
-            # Output: {
-            #     "classes": [
-            #         {
-            #             "title": "cat",
-            #             "shape": "rectangle",
-            #             "color": "#268A0F",
-            #             "geometry_config": {},
-            #             "hotkey": ""
-            #         }
-            #     ],
-            #     "tags": []
-            # }
+                import supervisely as sly
 
-            # Remember that ProjectMeta object is immutable, and we need to assign new instance of ProjectMeta to a new variable
-            meta = meta.delete_obj_class('cat')
-            meta_json = meta.to_json()
-            print(json.dumps(meta_json, indent=4))
-            # Output: {
-            #     "classes": [],
-            #     "tags": []
-            # }
+                meta = sly.ProjectMeta()
+                class_cat = sly.ObjClass('cat', sly.Rectangle)
+                # Remember that ProjectMeta object is immutable, and we need to assign new instance of ProjectMeta to a new variable
+                meta = meta.add_obj_class(class_cat)
+                meta_json = meta.to_json()
+                print(json.dumps(meta_json, indent=4))
+                # Output: {
+                #     "classes": [
+                #         {
+                #             "title": "cat",
+                #             "shape": "rectangle",
+                #             "color": "#268A0F",
+                #             "geometry_config": {},
+                #             "hotkey": ""
+                #         }
+                #     ],
+                #     "tags": []
+                # }
+
+                # Remember that ProjectMeta object is immutable, and we need to assign new instance of ProjectMeta to a new variable
+                meta = meta.delete_obj_class('cat')
+                meta_json = meta.to_json()
+                print(json.dumps(meta_json, indent=4))
+                # Output: {
+                #     "classes": [],
+                #     "tags": []
+                # }
         """
         return self.delete_obj_classes([obj_class_name])
 
@@ -831,47 +843,48 @@ class ProjectMeta(JsonSerializable):
         :type obj_class_names: List[str]
         :return: New instance of ProjectMeta object
         :rtype: :class:`ProjectMeta<ProjectMeta>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            meta = sly.ProjectMeta()
-            class_cat = sly.ObjClass('cat', sly.Rectangle)
-            class_dog = sly.ObjClass('dog', sly.Bitmap)
-            # Remember that ProjectMeta object is immutable, and we need to assign new instance of ProjectMeta to a new variable
-            meta = meta.add_obj_classes([class_cat, class_dog])
-            meta_json = meta.to_json()
-            print(json.dumps(meta_json, indent=4))
-            # Output: {
-            #     "classes": [
-            #         {
-            #             "title": "cat",
-            #             "shape": "rectangle",
-            #             "color": "#8A0F18",
-            #             "geometry_config": {},
-            #             "hotkey": ""
-            #         },
-            #         {
-            #             "title": "dog",
-            #             "shape": "bitmap",
-            #             "color": "#0F8A7F",
-            #             "geometry_config": {},
-            #             "hotkey": ""
-            #         }
-            #     ],
-            #     "tags": []
-            # }
+                import supervisely as sly
 
-            # Remember that ProjectMeta object is immutable, and we need to assign new instance of ProjectMeta to a new variable
-            meta = meta.delete_obj_classes(['cat', 'dog'])
-            meta_json = meta.to_json()
-            print(json.dumps(meta_json, indent=4))
-            # Output: {
-            #     "classes": [],
-            #     "tags": []
-            # }
+                meta = sly.ProjectMeta()
+                class_cat = sly.ObjClass('cat', sly.Rectangle)
+                class_dog = sly.ObjClass('dog', sly.Bitmap)
+                # Remember that ProjectMeta object is immutable, and we need to assign new instance of ProjectMeta to a new variable
+                meta = meta.add_obj_classes([class_cat, class_dog])
+                meta_json = meta.to_json()
+                print(json.dumps(meta_json, indent=4))
+                # Output: {
+                #     "classes": [
+                #         {
+                #             "title": "cat",
+                #             "shape": "rectangle",
+                #             "color": "#8A0F18",
+                #             "geometry_config": {},
+                #             "hotkey": ""
+                #         },
+                #         {
+                #             "title": "dog",
+                #             "shape": "bitmap",
+                #             "color": "#0F8A7F",
+                #             "geometry_config": {},
+                #             "hotkey": ""
+                #         }
+                #     ],
+                #     "tags": []
+                # }
+
+                # Remember that ProjectMeta object is immutable, and we need to assign new instance of ProjectMeta to a new variable
+                meta = meta.delete_obj_classes(['cat', 'dog'])
+                meta_json = meta.to_json()
+                print(json.dumps(meta_json, indent=4))
+                # Output: {
+                #     "classes": [],
+                #     "tags": []
+                # }
         """
         res_items = self._delete_items(self._obj_classes, obj_class_names)
         return self.clone(obj_classes=ObjClassCollection(res_items))
@@ -884,40 +897,41 @@ class ProjectMeta(JsonSerializable):
         :type tag_name: str
         :return: New instance of ProjectMeta object
         :rtype: :class:`ProjectMeta<ProjectMeta>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            meta = sly.ProjectMeta()
-            tag_cat = sly.TagMeta('cat_tag', sly.TagValueType.ANY_STRING)
-            # Remember that ProjectMeta object is immutable, and we need to assign new instance of ProjectMeta to a new variable
-            meta = meta.add_tag_meta(tag_cat)
-            meta_json = meta.to_json()
-            print(json.dumps(meta_json, indent=4))
-            # Output: {
-            #     "classes": [],
-            #     "tags": [
-            #         {
-            #             "name": "cat_tag",
-            #             "value_type": "any_string",
-            #             "color": "#8A540F",
-            #             "hotkey": "",
-            #             "applicable_type": "all",
-            #             "classes": []
-            #         }
-            #     ]
-            # }
+                import supervisely as sly
 
-            # Remember that ProjectMeta object is immutable, and we need to assign new instance of ProjectMeta to a new variable
-            meta = meta.delete_tag_meta('cat_tag')
-            meta_json = meta.to_json()
-            print(json.dumps(meta_json, indent=4))
-            # Output: {
-            #     "classes": [],
-            #     "tags": []
-            # }
+                meta = sly.ProjectMeta()
+                tag_cat = sly.TagMeta('cat_tag', sly.TagValueType.ANY_STRING)
+                # Remember that ProjectMeta object is immutable, and we need to assign new instance of ProjectMeta to a new variable
+                meta = meta.add_tag_meta(tag_cat)
+                meta_json = meta.to_json()
+                print(json.dumps(meta_json, indent=4))
+                # Output: {
+                #     "classes": [],
+                #     "tags": [
+                #         {
+                #             "name": "cat_tag",
+                #             "value_type": "any_string",
+                #             "color": "#8A540F",
+                #             "hotkey": "",
+                #             "applicable_type": "all",
+                #             "classes": []
+                #         }
+                #     ]
+                # }
+
+                # Remember that ProjectMeta object is immutable, and we need to assign new instance of ProjectMeta to a new variable
+                meta = meta.delete_tag_meta('cat_tag')
+                meta_json = meta.to_json()
+                print(json.dumps(meta_json, indent=4))
+                # Output: {
+                #     "classes": [],
+                #     "tags": []
+                # }
         """
         return self.delete_tag_metas([tag_name])
 
@@ -929,49 +943,51 @@ class ProjectMeta(JsonSerializable):
         :type tag_names: List[TagMeta]
         :return: New instance of ProjectMeta object
         :rtype: :class:`ProjectMeta<ProjectMeta>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            meta = sly.ProjectMeta()
-            tag_cat = sly.TagMeta('cat_tag', sly.TagValueType.ANY_STRING)
-            tag_dog = sly.TagMeta('dog_tag', sly.TagValueType.ANY_STRING)
-            # Remember that ProjectMeta object is immutable, and we need to assign new instance of ProjectMeta to a new variable
-            meta = meta.add_tag_metas([tag_cat, tag_dog])
-            meta_json = meta.to_json()
-            print(json.dumps(meta_json, indent=4))
-            # Output: {
-            #     "classes": [],
-            #     "tags": [
-            #         {
-            #             "name": "cat_tag",
-            #             "value_type": "any_string",
-            #             "color": "#0F298A",
-            #             "hotkey": "",
-            #             "applicable_type": "all",
-            #             "classes": []
-            #         },
-            #         {
-            #             "name": "dog_tag",
-            #             "value_type": "any_string",
-            #             "color": "#8A410F",
-            #             "hotkey": "",
-            #             "applicable_type": "all",
-            #             "classes": []
-            #         }
-            #     ]
-            # }
+                import supervisely as sly
 
-            # Remember that ProjectMeta object is immutable, and we need to assign new instance of ProjectMeta to a new variable
-            meta = meta.delete_tag_metas(['cat_tag', 'dog_tag'])
-            meta_json = meta.to_json()
-            print(json.dumps(meta_json, indent=4))
-            # Output: {
-            #     "classes": [],
-            #     "tags": []
-            # }
+                meta = sly.ProjectMeta()
+                tag_cat = sly.TagMeta('cat_tag', sly.TagValueType.ANY_STRING)
+                tag_dog = sly.TagMeta('dog_tag', sly.TagValueType.ANY_STRING)
+
+                # Remember that ProjectMeta object is immutable, and we need to assign new instance of ProjectMeta to a new variable
+                meta = meta.add_tag_metas([tag_cat, tag_dog])
+                meta_json = meta.to_json()
+                print(json.dumps(meta_json, indent=4))
+                # Output: {
+                #     "classes": [],
+                #     "tags": [
+                #         {
+                #             "name": "cat_tag",
+                #             "value_type": "any_string",
+                #             "color": "#0F298A",
+                #             "hotkey": "",
+                #             "applicable_type": "all",
+                #             "classes": []
+                #         },
+                #         {
+                #             "name": "dog_tag",
+                #             "value_type": "any_string",
+                #             "color": "#8A410F",
+                #             "hotkey": "",
+                #             "applicable_type": "all",
+                #             "classes": []
+                #         }
+                #     ]
+                # }
+
+                # Remember that ProjectMeta object is immutable, and we need to assign new instance of ProjectMeta to a new variable
+                meta = meta.delete_tag_metas(['cat_tag', 'dog_tag'])
+                meta_json = meta.to_json()
+                print(json.dumps(meta_json, indent=4))
+                # Output: {
+                #     "classes": [],
+                #     "tags": []
+                # }
         """
         res_items = self._delete_items(self._tag_metas, tag_names)
         return self.clone(tag_metas=TagMetaCollection(res_items))
@@ -984,48 +1000,49 @@ class ProjectMeta(JsonSerializable):
         :type obj_class_name: str
         :return: ObjClass object
         :rtype: :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            meta = sly.ProjectMeta()
-            class_cat = sly.ObjClass('cat', sly.Rectangle)
-            class_dog = sly.ObjClass('dog', sly.Bitmap)
-            # Remember that ProjectMeta object is immutable, and we need to assign new instance of ProjectMeta to a new variable
-            meta = meta.add_obj_classes([class_cat, class_dog])
-            meta_json = meta.to_json()
-            print(json.dumps(meta_json, indent=4))
-            # Output: {
-            #     "classes": [
-            #         {
-            #             "title": "cat",
-            #             "shape": "rectangle",
-            #             "color": "#8A140F",
-            #             "geometry_config": {},
-            #             "hotkey": ""
-            #         },
-            #         {
-            #             "title": "dog",
-            #             "shape": "bitmap",
-            #             "color": "#0F8A35",
-            #             "geometry_config": {},
-            #             "hotkey": ""
-            #         }
-            #     ],
-            #     "tags": []
-            # }
+                import supervisely as sly
 
-            class_cat = meta.get_obj_class('cat')
-            print(class_cat)
-            # Output:
-            # Name:  cat       Shape: Rectangle    Color: [138, 20, 15]  Geom. settings: {}              Hotkey
+                meta = sly.ProjectMeta()
+                class_cat = sly.ObjClass('cat', sly.Rectangle)
+                class_dog = sly.ObjClass('dog', sly.Bitmap)
+                # Remember that ProjectMeta object is immutable, and we need to assign new instance of ProjectMeta to a new variable
+                meta = meta.add_obj_classes([class_cat, class_dog])
+                meta_json = meta.to_json()
+                print(json.dumps(meta_json, indent=4))
+                # Output: {
+                #     "classes": [
+                #         {
+                #             "title": "cat",
+                #             "shape": "rectangle",
+                #             "color": "#8A140F",
+                #             "geometry_config": {},
+                #             "hotkey": ""
+                #         },
+                #         {
+                #             "title": "dog",
+                #             "shape": "bitmap",
+                #             "color": "#0F8A35",
+                #             "geometry_config": {},
+                #             "hotkey": ""
+                #         }
+                #     ],
+                #     "tags": []
+                # }
 
-            class_elephant = meta.get_obj_class('elephant')
-            print(class_elephant)
-            # Output:
-            # None
+                class_cat = meta.get_obj_class('cat')
+                print(class_cat)
+                # Output:
+                # Name:  cat       Shape: Rectangle    Color: [138, 20, 15]  Geom. settings: {}              Hotkey
+
+                class_elephant = meta.get_obj_class('elephant')
+                print(class_elephant)
+                # Output:
+                # None
         """
         return self._obj_classes.get(obj_class_name)
 
@@ -1037,15 +1054,20 @@ class ProjectMeta(JsonSerializable):
         :type obj_class_id: int
         :return: ObjClass object or None
         :rtype: :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            meta = sly.ProjectMeta.from_json(api.project.get_meta(project_id))
+                import supervisely as sly
 
-            obj_class_id = 123
+                address = 'https://app.supervisely.com/'
+                token = 'Your Supervisely API Token'
+                api = sly.Api(address, token)
+
+                project_id = 555
+                meta = sly.ProjectMeta.from_json(api.project.get_meta(project_id))
+                obj_class_id = 123
         """
         for obj_class in self.obj_classes:
             if obj_class.sly_id == obj_class_id:
@@ -1059,50 +1081,51 @@ class ProjectMeta(JsonSerializable):
         :type tag_name: str
         :return: TagMeta object or None.
         :rtype: :class:`TagMeta<supervisely.annotation.tag_meta.TagMeta>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            meta = sly.ProjectMeta()
-            tag_cat = sly.TagMeta('cat_tag', sly.TagValueType.ANY_STRING)
-            tag_dog = sly.TagMeta('dog_tag', sly.TagValueType.ANY_STRING)
-            # Remember that ProjectMeta object is immutable, and we need to assign new instance of ProjectMeta to a new variable
-            meta = meta.add_tag_metas([tag_cat, tag_dog])
-            meta_json = meta.to_json()
-            print(json.dumps(meta_json, indent=4))
-            # Output: {
-            #     "classes": [],
-            #     "tags": [
-            #         {
-            #             "name": "cat_tag",
-            #             "value_type": "any_string",
-            #             "color": "#590F8A",
-            #             "hotkey": "",
-            #             "applicable_type": "all",
-            #             "classes": []
-            #         },
-            #         {
-            #             "name": "dog_tag",
-            #             "value_type": "any_string",
-            #             "color": "#0F8A88",
-            #             "hotkey": "",
-            #             "applicable_type": "all",
-            #             "classes": []
-            #         }
-            #     ]
-            # }
+                import supervisely as sly
 
-            tag_cat = meta.get_tag_meta('cat_tag')
-            print(tag_cat)
-            # Output:
-            # Name:  cat_tag                  Value type:any_string    Possible values:None       Hotkey                  Applicable toall        Applicable classes[]
+                meta = sly.ProjectMeta()
+                tag_cat = sly.TagMeta('cat_tag', sly.TagValueType.ANY_STRING)
+                tag_dog = sly.TagMeta('dog_tag', sly.TagValueType.ANY_STRING)
+                # Remember that ProjectMeta object is immutable, and we need to assign new instance of ProjectMeta to a new variable
+                meta = meta.add_tag_metas([tag_cat, tag_dog])
+                meta_json = meta.to_json()
+                print(json.dumps(meta_json, indent=4))
+                # Output: {
+                #     "classes": [],
+                #     "tags": [
+                #         {
+                #             "name": "cat_tag",
+                #             "value_type": "any_string",
+                #             "color": "#590F8A",
+                #             "hotkey": "",
+                #             "applicable_type": "all",
+                #             "classes": []
+                #         },
+                #         {
+                #             "name": "dog_tag",
+                #             "value_type": "any_string",
+                #             "color": "#0F8A88",
+                #             "hotkey": "",
+                #             "applicable_type": "all",
+                #             "classes": []
+                #         }
+                #     ]
+                # }
 
-            tag_elephant = meta.get_tag_meta('elephant_tag')
-            print(tag_elephant)
-            # Output:
-            # None
+                tag_cat = meta.get_tag_meta('cat_tag')
+                print(tag_cat)
+                # Output:
+                # Name:  cat_tag                  Value type:any_string    Possible values:None       Hotkey                  Applicable toall        Applicable classes[]
+
+                tag_elephant = meta.get_tag_meta('elephant_tag')
+                print(tag_elephant)
+                # Output:
+                # None
         """
         return self._tag_metas.get(tag_name)
 
@@ -1135,47 +1158,48 @@ class ProjectMeta(JsonSerializable):
         :type metas: List[ProjectMeta]
         :return: New instance of ProjectMeta object
         :rtype: :class:`ProjectMeta<ProjectMeta>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            meta = sly.ProjectMeta()
+                import supervisely as sly
 
-            meta_1 = sly.ProjectMeta()
-            class_cat = sly.ObjClass('cat', sly.Rectangle)
-            meta_1 = meta_1.add_obj_class(class_cat)
+                meta = sly.ProjectMeta()
 
-            meta_2 = sly.ProjectMeta()
-            tag_dog = sly.TagMeta('dog_tag', sly.TagValueType.ANY_STRING)
-            meta_2 = meta_2.add_tag_meta(tag_dog)
+                meta_1 = sly.ProjectMeta()
+                class_cat = sly.ObjClass('cat', sly.Rectangle)
+                meta_1 = meta_1.add_obj_class(class_cat)
 
-            # Remember that ProjectMeta object is immutable, and we need to assign new instance of ProjectMeta to a new variable
-            meta = meta.merge_list([meta_1, meta_2])
-            meta_json = meta.to_json()
-            print(json.dumps(meta_json, indent=4))
-            # Output: {
-            #     "classes": [
-            #         {
-            #             "title": "cat",
-            #             "shape": "rectangle",
-            #             "color": "#0F8A45",
-            #             "geometry_config": {},
-            #             "hotkey": ""
-            #         }
-            #     ],
-            #     "tags": [
-            #         {
-            #             "name": "dog_tag",
-            #             "value_type": "any_string",
-            #             "color": "#320F8A",
-            #             "hotkey": "",
-            #             "applicable_type": "all",
-            #             "classes": []
-            #         }
-            #     ]
-            # }
+                meta_2 = sly.ProjectMeta()
+                tag_dog = sly.TagMeta('dog_tag', sly.TagValueType.ANY_STRING)
+                meta_2 = meta_2.add_tag_meta(tag_dog)
+
+                # Remember that ProjectMeta object is immutable, and we need to assign new instance of ProjectMeta to a new variable
+                meta = meta.merge_list([meta_1, meta_2])
+                meta_json = meta.to_json()
+                print(json.dumps(meta_json, indent=4))
+                # Output: {
+                #     "classes": [
+                #         {
+                #             "title": "cat",
+                #             "shape": "rectangle",
+                #             "color": "#0F8A45",
+                #             "geometry_config": {},
+                #             "hotkey": ""
+                #         }
+                #     ],
+                #     "tags": [
+                #         {
+                #             "name": "dog_tag",
+                #             "value_type": "any_string",
+                #             "color": "#320F8A",
+                #             "hotkey": "",
+                #             "applicable_type": "all",
+                #             "classes": []
+                #         }
+                #     ]
+                # }
         """
         res_meta = ProjectMeta()
         for meta in metas:
@@ -1206,60 +1230,61 @@ class ProjectMeta(JsonSerializable):
         :type keep_geometries: List, optional
         :return: New project meta and dict correspondences of old classes to new
         :rtype: :class:`Tuple[ProjectMeta, Dict[ObjClass, ObjClass]]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            meta = sly.ProjectMeta()
-            class_cat = sly.ObjClass('cat', sly.Polygon)
-            class_dog = sly.ObjClass('dog', sly.Bitmap)
-            meta = meta.add_obj_classes([class_cat, class_dog])
-            meta_json = meta.to_json()
-            print(json.dumps(meta_json, indent=4))
-            # Output: {
-            #     "classes": [
-            #         {
-            #             "title": "cat",
-            #             "shape": "polygon",
-            #             "color": "#208A0F",
-            #             "geometry_config": {},
-            #             "hotkey": ""
-            #         },
-            #         {
-            #             "title": "dog",
-            #             "shape": "bitmap",
-            #             "color": "#8A570F",
-            #             "geometry_config": {},
-            #             "hotkey": ""
-            #         }
-            #     ],
-            #     "tags": []
-            # }
+                import supervisely as sly
 
-            res_meta, mapping = meta.to_segmentation_task()
-            res_meta_json = res_meta.to_json()
-            print(json.dumps(res_meta_json, indent=4))
-            # Output: {
-            #     "classes": [
-            #         {
-            #             "title": "cat",
-            #             "shape": "bitmap",
-            #             "color": "#208A0F",
-            #             "geometry_config": {},
-            #             "hotkey": ""
-            #         },
-            #         {
-            #             "title": "dog",
-            #             "shape": "bitmap",
-            #             "color": "#8A570F",
-            #             "geometry_config": {},
-            #             "hotkey": ""
-            #         }
-            #     ],
-            #     "tags": []
-            # }
+                meta = sly.ProjectMeta()
+                class_cat = sly.ObjClass('cat', sly.Polygon)
+                class_dog = sly.ObjClass('dog', sly.Bitmap)
+                meta = meta.add_obj_classes([class_cat, class_dog])
+                meta_json = meta.to_json()
+                print(json.dumps(meta_json, indent=4))
+                # Output: {
+                #     "classes": [
+                #         {
+                #             "title": "cat",
+                #             "shape": "polygon",
+                #             "color": "#208A0F",
+                #             "geometry_config": {},
+                #             "hotkey": ""
+                #         },
+                #         {
+                #             "title": "dog",
+                #             "shape": "bitmap",
+                #             "color": "#8A570F",
+                #             "geometry_config": {},
+                #             "hotkey": ""
+                #         }
+                #     ],
+                #     "tags": []
+                # }
+
+                res_meta, mapping = meta.to_segmentation_task()
+                res_meta_json = res_meta.to_json()
+                print(json.dumps(res_meta_json, indent=4))
+                # Output: {
+                #     "classes": [
+                #         {
+                #             "title": "cat",
+                #             "shape": "bitmap",
+                #             "color": "#208A0F",
+                #             "geometry_config": {},
+                #             "hotkey": ""
+                #         },
+                #         {
+                #             "title": "dog",
+                #             "shape": "bitmap",
+                #             "color": "#8A570F",
+                #             "geometry_config": {},
+                #             "hotkey": ""
+                #         }
+                #     ],
+                #     "tags": []
+                # }
         """
         mapping = {}
         res_classes = []
@@ -1293,60 +1318,61 @@ class ProjectMeta(JsonSerializable):
         :type convert_classes: bool, optional
         :return: New project meta and dict correspondences of old classes to new
         :rtype: :class:`Tuple[ProjectMeta, Dict[ObjClass, ObjClass]]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            meta = sly.ProjectMeta()
-            class_cat = sly.ObjClass('cat', sly.Polygon)
-            class_dog = sly.ObjClass('dog', sly.Bitmap)
-            meta = meta.add_obj_classes([class_cat, class_dog])
-            meta_json = meta.to_json()
-            print(json.dumps(meta_json, indent=4))
-            # Output: {
-            #     "classes": [
-            #         {
-            #             "title": "cat",
-            #             "shape": "polygon",
-            #             "color": "#208A0F",
-            #             "geometry_config": {},
-            #             "hotkey": ""
-            #         },
-            #         {
-            #             "title": "dog",
-            #             "shape": "bitmap",
-            #             "color": "#8A570F",
-            #             "geometry_config": {},
-            #             "hotkey": ""
-            #         }
-            #     ],
-            #     "tags": []
-            # }
+                import supervisely as sly
 
-            res_meta, mapping = meta.to_detection_task(convert_classes=True)
-            res_meta_json = res_meta.to_json()
-            print(json.dumps(res_meta_json, indent=4))
-            # Output: {
-            #     "classes": [
-            #         {
-            #             "title": "cat",
-            #             "shape": "rectangle",
-            #             "color": "#3A0F8A",
-            #             "geometry_config": {},
-            #             "hotkey": ""
-            #         },
-            #         {
-            #             "title": "dog",
-            #             "shape": "rectangle",
-            #             "color": "#8A310F",
-            #             "geometry_config": {},
-            #             "hotkey": ""
-            #         }
-            #     ],
-            #     "tags": []
-            # }
+                meta = sly.ProjectMeta()
+                class_cat = sly.ObjClass('cat', sly.Polygon)
+                class_dog = sly.ObjClass('dog', sly.Bitmap)
+                meta = meta.add_obj_classes([class_cat, class_dog])
+                meta_json = meta.to_json()
+                print(json.dumps(meta_json, indent=4))
+                # Output: {
+                #     "classes": [
+                #         {
+                #             "title": "cat",
+                #             "shape": "polygon",
+                #             "color": "#208A0F",
+                #             "geometry_config": {},
+                #             "hotkey": ""
+                #         },
+                #         {
+                #             "title": "dog",
+                #             "shape": "bitmap",
+                #             "color": "#8A570F",
+                #             "geometry_config": {},
+                #             "hotkey": ""
+                #         }
+                #     ],
+                #     "tags": []
+                # }
+
+                res_meta, mapping = meta.to_detection_task(convert_classes=True)
+                res_meta_json = res_meta.to_json()
+                print(json.dumps(res_meta_json, indent=4))
+                # Output: {
+                #     "classes": [
+                #         {
+                #             "title": "cat",
+                #             "shape": "rectangle",
+                #             "color": "#3A0F8A",
+                #             "geometry_config": {},
+                #             "hotkey": ""
+                #         },
+                #         {
+                #             "title": "dog",
+                #             "shape": "rectangle",
+                #             "color": "#8A310F",
+                #             "geometry_config": {},
+                #             "hotkey": ""
+                #         }
+                #     ],
+                #     "tags": []
+                # }
         """
         mapping = {}
         res_classes = []

@@ -42,33 +42,33 @@ class PointcloudFigure(VideoFigure):
     :type updated_at: str, optional
     :param created_at: Date and Time when PointcloudFigure was created. Date Format is the same as in "updated_at" parameter.
     :type created_at: str, optional
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        from supervisely.geometry.cuboid_3d import Cuboid3d, Vector3d
+            import supervisely as sly
+            from supervisely.geometry.cuboid_3d import Cuboid3d, Vector3d
 
-        obj_class_car = sly.ObjClass('car', Cuboid3d)
-        pointcloud_obj_car = sly.PointcloudObject(obj_class_car)
+            obj_class_car = sly.ObjClass('car', Cuboid3d)
+            pointcloud_obj_car = sly.PointcloudObject(obj_class_car)
 
-        position, rotation, dimension = Vector3d(-3.4, 28.9, -0.7), Vector3d(0., 0, -0.03), Vector3d(1.8, 3.9, 1.6)
-        cuboid = Cuboid3d(position, rotation, dimension)
-        frame_index = 10
-        figure = sly.PointcloudFigure(pointcloud_obj_car, cuboid, frame_index=frame_index)
+            position, rotation, dimension = Vector3d(-3.4, 28.9, -0.7), Vector3d(0., 0, -0.03), Vector3d(1.8, 3.9, 1.6)
+            cuboid = Cuboid3d(position, rotation, dimension)
+            frame_index = 10
+            figure = sly.PointcloudFigure(pointcloud_obj_car, cuboid, frame_index=frame_index)
 
-        print(figure.to_json())
-        # Output: {
-        #     "geometry": {
-        #         "dimensions": { "x": 1.8, "y": 3.9, "z": 1.6 },
-        #         "position": { "x": -3.4, "y": 28.9, "z": -0.7 },
-        #         "rotation": { "x": 0.0, "y": 0, "z": -0.03 }
-        #     },
-        #     "geometryType": "cuboid_3d",
-        #     "key": "4beae1be12624b70ad533c8be7477605",
-        #     "objectKey": "c1e1965efc0d4ae9b0b39367b04d637a"
-        # }
+            print(figure.to_json())
+            # Output: {
+            #     "geometry": {
+            #         "dimensions": { "x": 1.8, "y": 3.9, "z": 1.6 },
+            #         "position": { "x": -3.4, "y": 28.9, "z": -0.7 },
+            #         "rotation": { "x": 0.0, "y": 0, "z": -0.03 }
+            #     },
+            #     "geometryType": "cuboid_3d",
+            #     "key": "4beae1be12624b70ad533c8be7477605",
+            #     "objectKey": "c1e1965efc0d4ae9b0b39367b04d637a"
+            # }
     """
 
     def __init__(
@@ -102,17 +102,19 @@ class PointcloudFigure(VideoFigure):
 
         :return: PointcloudObject ot PointcloudEpisodeObject object
         :rtype: :class:`PointcloudObject<PointcloudObject>` or :class:`PointcloudEpisodeObject<PointcloudEpisodeObject>`
-        :Usage example:
-         .. code-block:: python
 
-            pointcloud_obj_car = pointcloud_figure_car.parent_object
+        :Usage Example:
 
-            print(pointcloud_obj_car.to_json())
-            # Output: {
-            #     "key": "d573c6f081544e3da20022d932b259c1",
-            #     "classTitle": "car",
-            #     "tags": []
-            # }
+            .. code-block:: python
+
+                pointcloud_obj_car = pointcloud_figure_car.parent_object
+
+                print(pointcloud_obj_car.to_json())
+                # Output: {
+                #     "key": "d573c6f081544e3da20022d932b259c1",
+                #     "classTitle": "car",
+                #     "tags": []
+                # }
         """
 
         return super().parent_object
@@ -151,27 +153,27 @@ class PointcloudFigure(VideoFigure):
         :return: PointcloudFigure object
         :rtype: :class:`PointcloudFigure`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
-            from supervisely.geometry.cuboid_3d import Cuboid3d, Vector3d
+                import supervisely as sly
+                from supervisely.geometry.cuboid_3d import Cuboid3d, Vector3d
 
-            obj_class_car = sly.ObjClass('car', Cuboid3d)
-            pointcloud_obj_car = sly.PointcloudObject(obj_class_car)
+                obj_class_car = sly.ObjClass('car', Cuboid3d)
+                pointcloud_obj_car = sly.PointcloudObject(obj_class_car)
 
-            position, rotation, dimension = Vector3d(-3.4, 28.9, -0.7), Vector3d(0., 0, -0.03), Vector3d(1.8, 3.9, 1.6)
-            cuboid = Cuboid3d(position, rotation, dimension)
-            frame_index = 10
-            figure = sly.PointcloudFigure(pointcloud_obj_car, cuboid, frame_index=frame_index)
-            pointcloud_figure_json = figure.to_json(save_meta=True)
+                position, rotation, dimension = Vector3d(-3.4, 28.9, -0.7), Vector3d(0., 0, -0.03), Vector3d(1.8, 3.9, 1.6)
+                cuboid = Cuboid3d(position, rotation, dimension)
+                frame_index = 10
+                figure = sly.PointcloudFigure(pointcloud_obj_car, cuboid, frame_index=frame_index)
+                pointcloud_figure_json = figure.to_json(save_meta=True)
 
-            new_pointcloud_figure = sly.PointcloudFigure.from_json(
-                pointcloud_figure_json,
-                sly.PointcloudObjectCollection([pointcloud_obj_car]),
-                frame_index
-            )
+                new_pointcloud_figure = sly.PointcloudFigure.from_json(
+                    pointcloud_figure_json,
+                    sly.PointcloudObjectCollection([pointcloud_obj_car]),
+                    frame_index
+                )
         """
 
         return super().from_json(data, objects, frame_index, key_id_map)
@@ -209,36 +211,36 @@ class PointcloudFigure(VideoFigure):
         :return: PointcloudFigure object
         :rtype: :class:`PointcloudFigure`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            from supervisely.geometry.cuboid_3d import Cuboid3d, Vector3d
+                from supervisely.geometry.cuboid_3d import Cuboid3d, Vector3d
 
-            obj_class_car = sly.ObjClass('car', Cuboid3d)
-            pointcloud_obj_car = sly.PointcloudObject(obj_class_car)
+                obj_class_car = sly.ObjClass('car', Cuboid3d)
+                pointcloud_obj_car = sly.PointcloudObject(obj_class_car)
 
-            position, rotation, dimension = Vector3d(-3.4, 28.9, -0.7), Vector3d(0., 0, -0.03), Vector3d(1.8, 3.9, 1.6)
-            cuboid = Cuboid3d(position, rotation, dimension)
-            frame_index = 10
-            figure = sly.PointcloudFigure(pointcloud_obj_car, cuboid, frame_index=frame_index)
+                position, rotation, dimension = Vector3d(-3.4, 28.9, -0.7), Vector3d(0., 0, -0.03), Vector3d(1.8, 3.9, 1.6)
+                cuboid = Cuboid3d(position, rotation, dimension)
+                frame_index = 10
+                figure = sly.PointcloudFigure(pointcloud_obj_car, cuboid, frame_index=frame_index)
 
-            # Remember that PointcloudFigure object is immutable, and we need to assign new instance of PointcloudFigure to a new variable
-            pointcloud_figure_clone = figure.clone(parent_object=pointcloud_obj_car, frame_index=11)
+                # Remember that PointcloudFigure object is immutable, and we need to assign new instance of PointcloudFigure to a new variable
+                pointcloud_figure_clone = figure.clone(parent_object=pointcloud_obj_car, frame_index=11)
 
-            print(pointcloud_figure_clone.to_json())
-            # Output: {
-            #     "geometry": {
-            #         "dimensions": { "x": 1.8, "y": 3.9, "z": 1.6 },
-            #         "position": { "x": -3.4, "y": 28.9, "z": -0.7 },
-            #         "rotation": { "x": 0.0, "y": 0, "z": -0.03 }
-            #     },
-            #     "geometryType": "cuboid_3d",
-            #     "key": "4beae1be12624b70ad533c8be7477605",
-            #     "objectKey": "c1e1965efc0d4ae9b0b39367b04d637a"
-            # }
+                print(pointcloud_figure_clone.to_json())
+                # Output: {
+                #     "geometry": {
+                #         "dimensions": { "x": 1.8, "y": 3.9, "z": 1.6 },
+                #         "position": { "x": -3.4, "y": 28.9, "z": -0.7 },
+                #         "rotation": { "x": 0.0, "y": 0, "z": -0.03 }
+                #     },
+                #     "geometryType": "cuboid_3d",
+                #     "key": "4beae1be12624b70ad533c8be7477605",
+                #     "objectKey": "c1e1965efc0d4ae9b0b39367b04d637a"
+                # }
         """
 
         return self.__class__(

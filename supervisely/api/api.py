@@ -104,9 +104,9 @@ class ApiContext:
     :type project_meta: :class:`ProjectMeta`, optional
     :raises: :class:`RuntimeError`, if api is None.
 
-    :Usage example:
+    :Usage Example:
 
-         .. code-block:: python
+        .. code-block:: python
 
             import os
             from dotenv import load_dotenv
@@ -276,23 +276,25 @@ class Api:
         If set to False, will skip the check.
     :type check_instance_version: bool or str, optional
     :raises: :class:`ValueError`, if token is None or it length != 128
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import os
-        from dotenv import load_dotenv
+        .. code-block:: python
 
-        import supervisely as sly
+            import os
+            from dotenv import load_dotenv
 
-        # Load secrets and create API object from .env file (recommended)
-        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-        if sly.is_development():
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-        api = sly.Api.from_env()
+            import supervisely as sly
 
-        # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+            api = sly.Api.from_env()
+
+            # Pass values into the API constructor (optional, not recommended)
+            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
     """
 
     _checked_servers = set()
@@ -436,22 +438,22 @@ class Api:
         :return: Api object
         :rtype: :class:`Api<supervisely.api.api.Api>`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            api = sly.Api.from_env()
+                # alternatively you can store SERVER_ADDRESS and API_TOKEN
+                # in "~/supervisely.env" .env file
+                # Learn more here: https://developer.supervisely.com/app-development/basics/add-private-app#create-.env-file-supervisely.env-with-the-following-content-learn-more-here
 
-            # alternatively you can store SERVER_ADDRESS and API_TOKEN
-            # in "~/supervisely.env" .env file
-            # Learn more here: https://developer.supervisely.com/app-development/basics/add-private-app#create-.env-file-supervisely.env-with-the-following-content-learn-more-here
-
-            api = sly.Api.from_env()
+                api = sly.Api.from_env()
         """
 
         server_address = sly_env.server_address(raise_not_found=False)
@@ -527,16 +529,17 @@ class Api:
         :return: Supervisely instance version or "unknown" if the version cannot be determined.
         :rtype: str
 
-        :Usage example:
+        :Usage Example:
 
-        .. code-block:: python
+            .. code-block:: python
 
-                import supervisely as sly
+                    import os
+                    import supervisely as sly
 
-                api = sly.Api(server_address='https://app.supervisely.com', token='4r47N...xaTatb')
-                print(api.instance_version)
-                # Output:
-                # '6.9.13'
+                    api = sly.Api(server_address='https://app.supervisely.com', token='4r47N...xaTatb')
+                    print(api.instance_version)
+                    # Output:
+                    # '6.9.13'
         """
         try:
             if self._instance_version is None:
@@ -560,17 +563,16 @@ class Api:
             instance version, otherwise False.
         :rtype: bool
 
-        :Usage example:
+        :Usage Example:
 
-        .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            api = sly.Api(server_address='https://app.supervisely.com', token='4r47N...xaTatb')
-            version_to_check = "6.9.13"
-            print(api.is_version_supported(version_to_check))
-            # Output:
-            # True
+                api = sly.Api(server_address='https://app.supervisely.com', token='4r47N...xaTatb')
+                version_to_check = "6.9.13"
+                print(api.is_version_supported(version_to_check))
+                # Output: True
         """
         instance_version = self.instance_version
         if instance_version == "unknown":
@@ -987,9 +989,9 @@ class Api:
         :type check_instance_version: bool or str, optional
         :return: Api object
 
-        :Usage example:
+        :Usage Example:
 
-             .. code-block:: python
+            .. code-block:: python
 
                 import supervisely as sly
 
@@ -1041,16 +1043,16 @@ class Api:
 
         :return: API server address.
         :rtype: :class:`str`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            api = sly.Api(server_address='https://app.supervisely.com', token='4r47N...xaTatb')
-            print(api.api_server_address)
-            # Output:
-            # 'https://app.supervisely.com/public/api'
+                import supervisely as sly
+
+                api = sly.Api(server_address='https://app.supervisely.com', token='4r47N...xaTatb')
+                print(api.api_server_address)
+                # Output: 'https://app.supervisely.com/public/api'
         """
 
         if self._api_server_address is not None:

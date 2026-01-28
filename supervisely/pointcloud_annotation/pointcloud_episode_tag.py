@@ -35,34 +35,36 @@ class PointcloudEpisodeTag(VideoTag):
     :type is_finished: bool, optional
     :param non_final_value: Pointcloud Episode Tag value is final or not. Can be useful to create tag without value.
     :type non_final_value: bool, optional
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        meta_car = sly.TagMeta('car', sly.TagValueType.NONE)
-        # Now we can create a PointcloudEpisodeTag using our TagMeta
-        tag_car = sly.PointcloudEpisodeTag(meta_car)
-        # When you are creating a new Tag
-        # Tag.value is automatically cross-checked against your TagMeta value type to make sure the value is valid.
-        # If we now try to add a value to our newly created Tag, we receive "ValueError", because our TagMeta value type is "NONE"
-        tag_car = sly.PointcloudEpisodeTag(meta_car, value="Bus")
-        # Output: ValueError: Tag car can not have value Bus
+            import supervisely as sly
 
-        # Let's create another Tag with a string value type and frame range
-        meta_car = sly.TagMeta('cat', sly.TagValueType.ANY_STRING)
-        tag_car = sly.PointcloudEpisodeTag(meta_car, value="red", frame_range=(5, 10))
+            meta_car = sly.TagMeta('car', sly.TagValueType.NONE)
+            # Now we can create a PointcloudEpisodeTag using our TagMeta
+            tag_car = sly.PointcloudEpisodeTag(meta_car)
 
-        # Now let's create a Tag using TagMeta with "ONEOF_STRING" value type
-        # In order to use "oneof_string value type", you must initialize a variable with possible values(see class TagMeta for more information)
-        colors = ["brown", "white", "black", "red", "chocolate", "gold", "grey"]
-        meta_car_color = sly.TagMeta('car color', sly.TagValueType.ONEOF_STRING, possible_values=colors)
-        tag_car_color = sly.PointcloudEpisodeTag(meta_car_color, value="white", frame_range=(15, 20))
+            # When you are creating a new Tag
+            # Tag.value is automatically cross-checked against your TagMeta value type to make sure the value is valid.
+            # If we now try to add a value to our newly created Tag, we receive "ValueError", because our TagMeta value type is "NONE"
+            tag_car = sly.PointcloudEpisodeTag(meta_car, value="Bus")
+            # Output: ValueError: Tag car can not have value Bus
 
-        # If given value is not in a list of possible Tags, ValueError will be raised
-        tag_car_color = sly.PointcloudEpisodeTag(meta_car_color, value="yellow")
-        # Output: ValueError: Tag car color can not have value yellow
+            # Let's create another Tag with a string value type and frame range
+            meta_car = sly.TagMeta('cat', sly.TagValueType.ANY_STRING)
+            tag_car = sly.PointcloudEpisodeTag(meta_car, value="red", frame_range=(5, 10))
+
+            # Now let's create a Tag using TagMeta with "ONEOF_STRING" value type
+            # In order to use "oneof_string value type", you must initialize a variable with possible values(see class TagMeta for more information)
+            colors = ["brown", "white", "black", "red", "chocolate", "gold", "grey"]
+            meta_car_color = sly.TagMeta('car color', sly.TagValueType.ONEOF_STRING, possible_values=colors)
+            tag_car_color = sly.PointcloudEpisodeTag(meta_car_color, value="white", frame_range=(15, 20))
+
+            # If given value is not in a list of possible Tags, ValueError will be raised
+            tag_car_color = sly.PointcloudEpisodeTag(meta_car_color, value="yellow")
+            # Output: ValueError: Tag car color can not have value yellow
     """
 
     _SUPPORT_UNFINISHED_TAGS = True
@@ -111,24 +113,25 @@ class PointcloudEpisodeTag(VideoTag):
         :type key_id_map: KeyIdMap, optional
         :return: PointcloudEpisodeTag object
         :rtype: :class:`PointcloudEpisodeTag<PointcloudEpisodeTag>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            tag_car_color_json = {
-                "frameRange": [15, 20],
-                "key": "da9ca75e97744fc5aaf24d6be2eb2832",
-                "name": "car color",
-                "value": "white"
-            }
+                import supervisely as sly
 
-            colors = ["brown", "white", "black", "red", "chocolate", "gold", "grey"]
-            meta_car_color = sly.TagMeta('car color', sly.TagValueType.ONEOF_STRING, possible_values=colors)
-            meta_car_collection = sly.TagMetaCollection([meta_car_color])
+                tag_car_color_json = {
+                    "frameRange": [15, 20],
+                    "key": "da9ca75e97744fc5aaf24d6be2eb2832",
+                    "name": "car color",
+                    "value": "white"
+                }
 
-            tag_car_color = sly.PointcloudEpisodeTag.from_json(tag_car_color_json, meta_car_collection)
+                colors = ["brown", "white", "black", "red", "chocolate", "gold", "grey"]
+                meta_car_color = sly.TagMeta('car color', sly.TagValueType.ONEOF_STRING, possible_values=colors)
+                meta_car_collection = sly.TagMetaCollection([meta_car_color])
+
+                tag_car_color = sly.PointcloudEpisodeTag.from_json(tag_car_color_json, meta_car_collection)
         """
         is_finished = data.get(ApiField.IS_FINISHED, True)
         non_final_value = data.get(ApiField.NON_FINAL_VALUE, False)
@@ -186,28 +189,26 @@ class PointcloudEpisodeTag(VideoTag):
         :type is_finished: bool, optional
         :param non_final_value: Pointcloud Episode Tag value is final or not. Can be useful to create tag without value.
         :type non_final_value: bool, optional
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            colors = ["brown", "white", "black", "red", "chocolate", "gold", "grey"]
-            meta_car_color = sly.TagMeta('car color', sly.TagValueType.ONEOF_STRING, possible_values=colors)
+                import supervisely as sly
 
-            tag_car_color = sly.PointcloudEpisodeTag(meta_car_color, value="white", frame_range=(15, 20))
+                colors = ["brown", "white", "black", "red", "chocolate", "gold", "grey"]
+                meta_car_color = sly.TagMeta('car color', sly.TagValueType.ONEOF_STRING, possible_values=colors)
+                tag_car_color = sly.PointcloudEpisodeTag(meta_car_color, value="white", frame_range=(15, 20))
+                meta_bus = sly.TagMeta('bus', sly.TagValueType.ANY_STRING)
 
-
-            meta_bus = sly.TagMeta('bus', sly.TagValueType.ANY_STRING)
-
-            new_tag = tag_car_color.clone(meta=meta_bus, frame_range=(15, 30), key=tag_car_color.key())
-            print(new_tag.to_json())
-            # Output: {
-            #     "frameRange": [15, 30],
-            #     "key": "4360b25778144141aa4f1a0d775a0a7a",
-            #     "name": "bus",
-            #     "value": "white"
-            # }
+                new_tag = tag_car_color.clone(meta=meta_bus, frame_range=(15, 30), key=tag_car_color.key())
+                print(new_tag.to_json())
+                # Output: {
+                #     "frameRange": [15, 30],
+                #     "key": "4360b25778144141aa4f1a0d775a0a7a",
+                #     "name": "bus",
+                #     "value": "white"
+                # }
         """
 
         return self.__class__(

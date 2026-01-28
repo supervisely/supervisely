@@ -47,37 +47,37 @@ class PointcloudEpisodeAnnotation:
     :param key: uuid class object
     :type key: uuid.UUID, optional
 
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
+            import supervisely as sly
+            from supervisely.video_annotation.key_id_map import KeyIdMap
 
-        from supervisely.video_annotation.key_id_map import KeyIdMap
+            # PointcloudEpisodeAnnotation example 1
+            pointcloud_episodes_ann = sly.PointcloudEpisodeAnnotation()
+            print(pointcloud_episodes_ann.to_json())
+            # Output: {
+            #     "description": "",
+            #     "frames": [],
+            #     "framesCount": None,
+            #     "key": "494f67984d714c1eaf7a65e5df289ac6",
+            #     "objects": [],
+            #     "tags": []
+            # }
 
-        # PointcloudEpisodeAnnotation example 1
-        pointcloud_episodes_ann = sly.PointcloudEpisodeAnnotation()
-        print(pointcloud_episodes_ann.to_json())
-        # Output: {
-        #     "description": "",
-        #     "frames": [],
-        #     "framesCount": None,
-        #     "key": "494f67984d714c1eaf7a65e5df289ac6",
-        #     "objects": [],
-        #     "tags": []
-        # }
-
-
-        # PointcloudEpisodeAnnotation example 2
-        pointcloud_id = 19481098
-        key_id_map = KeyIdMap()
-        pcd_info = api.pointcloud_episode.get_info_by_id(pointcloud_id)
-        project_meta_json = api.project.get_meta(pcd_info.project_id)
-        project_meta = sly.ProjectMeta.from_json(project_meta_json)
-        ann_json = api.pointcloud_episode.annotation.download(pcd_info.dataset_id)
-        ann = sly.PointcloudEpisodeAnnotation.from_json(
-            data=ann_json, project_meta=project_meta, key_id_map=key_id_map
-        )
+            # PointcloudEpisodeAnnotation example 2
+            pointcloud_id = 19481098
+            key_id_map = KeyIdMap()
+            pcd_info = api.pointcloud_episode.get_info_by_id(pointcloud_id)
+            project_meta_json = api.project.get_meta(pcd_info.project_id)
+            project_meta = sly.ProjectMeta.from_json(project_meta_json)
+            ann_json = api.pointcloud_episode.annotation.download(pcd_info.dataset_id)
+            ann = sly.PointcloudEpisodeAnnotation.from_json(
+                data=ann_json,
+                project_meta=project_meta,
+                key_id_map=key_id_map
+            )
     """
 
     def __init__(
@@ -105,33 +105,36 @@ class PointcloudEpisodeAnnotation:
         :return: PointcloudEpisodeTagCollection containing the retrieved tags associated with the specified frame.
         :rtype: PointcloudEpisodeTagCollection
         :raises ValueError: If no frame with the given frame_index exists in the annotation.
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            from supervisely.video_annotation.key_id_map import KeyIdMap
+            .. code-block:: python
 
-            key_id_map = KeyIdMap()
-            pointcloud_id = 19481098
-            pcd_info = api.pointcloud_episode.get_info_by_id(pointcloud_id)
-            project_meta_json = api.project.get_meta(pcd_info.project_id)
-            project_meta = sly.ProjectMeta.from_json(project_meta_json)
-            ann_json = api.pointcloud_episode.annotation.download(pcd_info.dataset_id)
-            ann = sly.PointcloudEpisodeAnnotation.from_json(
-                data=ann_json, project_meta=project_meta, key_id_map=key_id_map
-            )
-            frame_index = 0
-            tags_on_frame = ann.get_tags_on_frame(frame_index)
+                import supervisely as sly
+                from supervisely.video_annotation.key_id_map import KeyIdMap
 
-            print(tags_on_frame)
-            # Output:
-            Tags:
-            +-------+------------+-------+-------------+
-            |  Name | Value type | Value | Frame range |
-            +-------+------------+-------+-------------+
-            | color | any_string |  red  |   [0, 0]   |
-            +-------+------------+-------+-------------+
+                key_id_map = KeyIdMap()
+                pointcloud_id = 19481098
+                pcd_info = api.pointcloud_episode.get_info_by_id(pointcloud_id)
+                project_meta_json = api.project.get_meta(pcd_info.project_id)
+                project_meta = sly.ProjectMeta.from_json(project_meta_json)
+                ann_json = api.pointcloud_episode.annotation.download(pcd_info.dataset_id)
+                ann = sly.PointcloudEpisodeAnnotation.from_json(
+                    data=ann_json,
+                    project_meta=project_meta,
+                    key_id_map=key_id_map
+                )
+                frame_index = 0
+                tags_on_frame = ann.get_tags_on_frame(frame_index)
+
+                print(tags_on_frame)
+                # Output:
+                Tags:
+                +-------+------------+-------+-------------+
+                |  Name | Value type | Value | Frame range |
+                +-------+------------+-------+-------------+
+                | color | any_string |  red  |   [0, 0]   |
+                +-------+------------+-------+-------------+
         """
 
         frame = self._frames.get(frame_index, None)
@@ -158,45 +161,48 @@ class PointcloudEpisodeAnnotation:
         :return: PointcloudEpisodeObjectCollection containing the retrieved objects associated with the specified frame.
         :rtype:
         :raises ValueError: If no frame with the given frame_index exists in the annotation.
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            from supervisely.video_annotation.key_id_map import KeyIdMap
+            .. code-block:: python
 
-            key_id_map = KeyIdMap()
-            pointcloud_id = 19481098
-            pcd_info = api.pointcloud_episode.get_info_by_id(pointcloud_id)
-            project_meta_json = api.project.get_meta(pcd_info.project_id)
-            project_meta = sly.ProjectMeta.from_json(project_meta_json)
-            ann_json = api.pointcloud_episode.annotation.download(pcd_info.dataset_id)
-            ann = sly.PointcloudEpisodeAnnotation.from_json(
-                data=ann_json, project_meta=project_meta, key_id_map=key_id_map
-            )
-            frame_index = 0
-            objects_on_frame = ann.get_objects_on_frame(frame_index)
+                import supervisely as sly
+                from supervisely.video_annotation.key_id_map import KeyIdMap
 
-            print(objects_on_frame.to_json())
-            # Output:
-            # [
-            #     {
-            #         "key": "687784c3d4d64ec4811948fec245514a",
-            #         "classTitle": "Tram",
-            #         "tags": [],
-            #         "labelerLogin": "almaz",
-            #         "updatedAt": "2023-03-16T06:38:44.934Z",
-            #         "createdAt": "2023-03-16T06:38:44.934Z"
-            #     },
-            #     {
-            #         "key": "b8b23b6712444f0fbfb320b0b4acd09a",
-            #         "classTitle": "Car",
-            #         "tags": [],
-            #         "labelerLogin": "almaz",
-            #         "updatedAt": "2023-03-16T06:38:44.934Z",
-            #         "createdAt": "2023-03-16T06:38:44.934Z"
-            #     }
-            # ]
+                key_id_map = KeyIdMap()
+                pointcloud_id = 19481098
+                pcd_info = api.pointcloud_episode.get_info_by_id(pointcloud_id)
+                project_meta_json = api.project.get_meta(pcd_info.project_id)
+                project_meta = sly.ProjectMeta.from_json(project_meta_json)
+                ann_json = api.pointcloud_episode.annotation.download(pcd_info.dataset_id)
+                ann = sly.PointcloudEpisodeAnnotation.from_json(
+                    data=ann_json,
+                    project_meta=project_meta,
+                    key_id_map=key_id_map
+                )
+
+                frame_index = 0
+                objects_on_frame = ann.get_objects_on_frame(frame_index)
+                print(objects_on_frame.to_json())
+                # Output:
+                # [
+                #     {
+                #         "key": "687784c3d4d64ec4811948fec245514a",
+                #         "classTitle": "Tram",
+                #         "tags": [],
+                #         "labelerLogin": "almaz",
+                #         "updatedAt": "2023-03-16T06:38:44.934Z",
+                #         "createdAt": "2023-03-16T06:38:44.934Z"
+                #     },
+                #     {
+                #         "key": "b8b23b6712444f0fbfb320b0b4acd09a",
+                #         "classTitle": "Car",
+                #         "tags": [],
+                #         "labelerLogin": "almaz",
+                #         "updatedAt": "2023-03-16T06:38:44.934Z",
+                #         "createdAt": "2023-03-16T06:38:44.934Z"
+                #     }
+                # ]
 
         """
 
@@ -223,30 +229,33 @@ class PointcloudEpisodeAnnotation:
         :type frame_index: int
         :return: List of PointcloudFigure objects containing the retrieved figures associated with the specified frame.
         :rtype: List[PointcloudFigure]
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            from supervisely.video_annotation.key_id_map import KeyIdMap
+            .. code-block:: python
 
-            key_id_map = KeyIdMap()
-            pointcloud_id = 19481098
-            pcd_info = api.pointcloud_episode.get_info_by_id(pointcloud_id)
-            project_meta_json = api.project.get_meta(pcd_info.project_id)
-            project_meta = sly.ProjectMeta.from_json(project_meta_json)
-            ann_json = api.pointcloud_episode.annotation.download(pcd_info.dataset_id)
-            ann = sly.PointcloudEpisodeAnnotation.from_json(
-                data=ann_json, project_meta=project_meta, key_id_map=key_id_map
-            )
-            frame_index = 0
-            figures_on_frame = ann.get_figures_on_frame(frame_index)
+                import supervisely as sly
+                from supervisely.video_annotation.key_id_map import KeyIdMap
 
-            print(figures_on_frame)
-            # Output:
-            # [<supervisely.pointcloud_annotation.pointcloud_figure.PointcloudFigure object at 0x7fc83895a4d0>,
-            # <supervisely.pointcloud_annotation.pointcloud_figure.PointcloudFigure object at 0x7fc83895a810>,
-            # <supervisely.pointcloud_annotation.pointcloud_figure.PointcloudFigure object at 0x7fc8389410d0>]
+                key_id_map = KeyIdMap()
+                pointcloud_id = 19481098
+                pcd_info = api.pointcloud_episode.get_info_by_id(pointcloud_id)
+                project_meta_json = api.project.get_meta(pcd_info.project_id)
+                project_meta = sly.ProjectMeta.from_json(project_meta_json)
+                ann_json = api.pointcloud_episode.annotation.download(pcd_info.dataset_id)
+                ann = sly.PointcloudEpisodeAnnotation.from_json(
+                    data=ann_json,
+                    project_meta=project_meta,
+                    key_id_map=key_id_map
+                )
+                
+                frame_index = 0
+                figures_on_frame = ann.get_figures_on_frame(frame_index)
+                print(figures_on_frame)
+                # Output:
+                # [<supervisely.pointcloud_annotation.pointcloud_figure.PointcloudFigure object at 0x7fc83895a4d0>,
+                # <supervisely.pointcloud_annotation.pointcloud_figure.PointcloudFigure object at 0x7fc83895a810>,
+                # <supervisely.pointcloud_annotation.pointcloud_figure.PointcloudFigure object at 0x7fc8389410d0>]
         """
 
         frame = self._frames.get(frame_index, None)
@@ -268,66 +277,68 @@ class PointcloudEpisodeAnnotation:
         :type key_id_map: KeyIdMap, optional
         :return: PointcloudEpisodeAnnotation in JSON format.
         :rtype: Dict
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            pointcloud_id = 19481098
-            pcd_info = api.pointcloud_episode.get_info_by_id(pointcloud_id)
-            project_path = "Downloads/pointcloud_api/project"
-            sly.PointcloudEpisodeProject.download(
-                api=api,
-                project_id=pcd_info.project_id,
-                dest_dir=project_path,
-                dataset_ids=[pcd_info.dataset_id],
-                download_pointclouds=True,
-            )
-            project_fs = sly.PointcloudEpisodeProject(project_path, sly.OpenMode.READ)
-            project_meta_json = api.project.get_meta(pcd_info.project_id)
-            project_meta = sly.ProjectMeta.from_json(project_meta_json)
-            ds = project_fs.datasets.items()[0]:
-            ann = ds.get_ann(project_meta)
+            .. code-block:: python
 
-            print(ann.to_json())
-            # Output:
-            # {
-            #     'datasetId': 60988,
-            #     'description': '',
-            #     'frames': [{'figures': [{'classId': None,
-            #                             'createdAt': '2023-03-16T06:38:45.004Z',
-            #                             'description': '',
-            #                             'geometry': {'dimensions': {'x': 2.3652234,
-            #                                                         'y': 23.291742,
-            #                                                         'z': 3.326648},
-            #                                         'position': {'x': 86.29707472161449,
-            #                                                         'y': -14.472597682830635,
-            #                                                         'z': 0.8842007608554671},
-            #                                         'rotation': {'x': 0,
-            #                                                         'y': 0,
-            #                                                         'z': -1.6962800995995606}},
-            #                             'geometryType': 'cuboid_3d',
-            #                             'id': 87536496,
-            #                             'labelerLogin': 'almaz',
-            #                             'objectId': 5531328,
-            #                             'updatedAt': '2023-03-16T06:38:45.004Z'}],
-            #                 'index': 0,
-            #                 'pointCloudId': 19481098}],
-            #                 'index': 1,
-            #                 'pointCloudId': 19481100},
-            #                 ...],
-            #     'framesCount': 54,
-            #     'objects': [{'classId': 666944,
-            #                 'classTitle': 'Car',
-            #                 'createdAt': '2023-03-16T06:38:44.934Z',
-            #                 'datasetId': 60988,
-            #                 'entityId': None,
-            #                 'id': 5531324,
-            #                 'labelerLogin': 'almaz',
-            #                 'tags': [],
-            #                 'updatedAt': '2023-03-16T06:38:44.934Z'}],
-            #     'tags': []
-            # }
+                import supervisely as sly
+
+                pointcloud_id = 19481098
+                pcd_info = api.pointcloud_episode.get_info_by_id(pointcloud_id)
+                project_path = "Downloads/pointcloud_api/project"
+                sly.PointcloudEpisodeProject.download(
+                    api=api,
+                    project_id=pcd_info.project_id,
+                    dest_dir=project_path,
+                    dataset_ids=[pcd_info.dataset_id],
+                    download_pointclouds=True,
+                )
+                project_fs = sly.PointcloudEpisodeProject(project_path, sly.OpenMode.READ)
+                project_meta_json = api.project.get_meta(pcd_info.project_id)
+                project_meta = sly.ProjectMeta.from_json(project_meta_json)
+                ds = project_fs.datasets.items()[0]:
+                ann = ds.get_ann(project_meta)
+
+                print(ann.to_json())
+                # Output:
+                # {
+                #     'datasetId': 60988,
+                #     'description': '',
+                #     'frames': [{'figures': [{'classId': None,
+                #                             'createdAt': '2023-03-16T06:38:45.004Z',
+                #                             'description': '',
+                #                             'geometry': {'dimensions': {'x': 2.3652234,
+                #                                                         'y': 23.291742,
+                #                                                         'z': 3.326648},
+                #                                         'position': {'x': 86.29707472161449,
+                #                                                         'y': -14.472597682830635,
+                #                                                         'z': 0.8842007608554671},
+                #                                         'rotation': {'x': 0,
+                #                                                         'y': 0,
+                #                                                         'z': -1.6962800995995606}},
+                #                             'geometryType': 'cuboid_3d',
+                #                             'id': 87536496,
+                #                             'labelerLogin': 'almaz',
+                #                             'objectId': 5531328,
+                #                             'updatedAt': '2023-03-16T06:38:45.004Z'}],
+                #                 'index': 0,
+                #                 'pointCloudId': 19481098}],
+                #                 'index': 1,
+                #                 'pointCloudId': 19481100},
+                #                 ...],
+                #     'framesCount': 54,
+                #     'objects': [{'classId': 666944,
+                #                 'classTitle': 'Car',
+                #                 'createdAt': '2023-03-16T06:38:44.934Z',
+                #                 'datasetId': 60988,
+                #                 'entityId': None,
+                #                 'id': 5531324,
+                #                 'labelerLogin': 'almaz',
+                #                 'tags': [],
+                #                 'updatedAt': '2023-03-16T06:38:44.934Z'}],
+                #     'tags': []
+                # }
         """
 
         res_json = {
@@ -359,23 +370,26 @@ class PointcloudEpisodeAnnotation:
         :type project_meta: ProjectMeta
         :return: PointcloudEpisodeAnnotation object
         :rtype: :class:`PointcloudEpisodeAnnotation<PointcloudEpisodeAnnotation>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            from supervisely.video_annotation.key_id_map import KeyIdMap
+            .. code-block:: python
 
-            key_id_map = KeyIdMap()
-            pointcloud_id = 19481098
-            pcd_info = api.pointcloud_episode.get_info_by_id(pointcloud_id)
-            project_meta_json = api.project.get_meta(pcd_info.project_id)
-            project_meta = sly.ProjectMeta.from_json(project_meta_json)
-            ann_json = api.pointcloud_episode.annotation.download(pcd_info.dataset_id)
+                import supervisely as sly
+                from supervisely.video_annotation.key_id_map import KeyIdMap
 
-            ann = sly.PointcloudEpisodeAnnotation.from_json(
-                data=ann_json, project_meta=project_meta, key_id_map=key_id_map
-            )
+                key_id_map = KeyIdMap()
+                pointcloud_id = 19481098
+                pcd_info = api.pointcloud_episode.get_info_by_id(pointcloud_id)
+                project_meta_json = api.project.get_meta(pcd_info.project_id)
+                project_meta = sly.ProjectMeta.from_json(project_meta_json)
+                ann_json = api.pointcloud_episode.annotation.download(pcd_info.dataset_id)
+
+                ann = sly.PointcloudEpisodeAnnotation.from_json(
+                    data=ann_json,
+                    project_meta=project_meta,
+                    key_id_map=key_id_map
+                )
         """
 
         item_key = uuid.UUID(data[KEY]) if KEY in data else uuid.uuid4()
@@ -413,27 +427,28 @@ class PointcloudEpisodeAnnotation:
         :type key_id_map: KeyIdMap, optional
         :return: PointcloudEpisodeAnnotation object
         :rtype: :class:`PointcloudEpisodeAnnotation<PointcloudEpisodeAnnotation>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                import supervisely as sly
 
-            team_name = 'Vehicle Detection'
-            workspace_name = 'Cities'
-            project_name =  'London'
+                address = 'https://app.supervisely.com/'
+                token = 'Your Supervisely API Token'
+                api = sly.Api(address, token)
 
-            project_id = 19441
-            project_meta_json = api.project.get_meta(project_id)
-            project_meta = sly.ProjectMeta.from_json(project_meta_json)
+                team_name = 'Vehicle Detection'
+                workspace_name = 'Cities'
+                project_name =  'London'
 
-            # Load json file
-            path = "/home/admin/work/docs/my_dataset/ann/annotation.json"
-            ann = sly.PointcloudEpisodeAnnotation.load_json_file(path, project_meta)
+                project_id = 19441
+                project_meta_json = api.project.get_meta(project_id)
+                project_meta = sly.ProjectMeta.from_json(project_meta_json)
+
+                # Load json file
+                path = "/home/admin/work/docs/my_dataset/ann/annotation.json"
+                ann = sly.PointcloudEpisodeAnnotation.load_json_file(path, project_meta)
         """
         with open(path) as fin:
             data = json.load(fin)
@@ -462,110 +477,111 @@ class PointcloudEpisodeAnnotation:
         :type description: str, optional
         :return: PointcloudAnnotation class object
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
-            from supervisely.video_annotation.key_id_map import KeyIdMap
+                import supervisely as sly
+                from supervisely.video_annotation.key_id_map import KeyIdMap
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                address = 'https://app.supervisely.com/'
+                token = 'Your Supervisely API Token'
+                api = sly.Api(address, token)
 
-            key_id_map = KeyIdMap()
-            pointcloud_id = 19481098
-            pcd_info = api.pointcloud_episode.get_info_by_id(pointcloud_id)
-            project_meta_json = api.project.get_meta(pcd_info.project_id)
-            project_meta = sly.ProjectMeta.from_json(project_meta_json)
-            ann_json = api.pointcloud_episode.annotation.download(pcd_info.dataset_id)
-            ann = sly.PointcloudAnnotation.from_json(
-                data=ann_json, project_meta=project_meta, key_id_map=key_id_map
-            )
+                key_id_map = KeyIdMap()
+                pointcloud_id = 19481098
+                pcd_info = api.pointcloud_episode.get_info_by_id(pointcloud_id)
+                project_meta_json = api.project.get_meta(pcd_info.project_id)
+                project_meta = sly.ProjectMeta.from_json(project_meta_json)
+                ann_json = api.pointcloud_episode.annotation.download(pcd_info.dataset_id)
+                ann = sly.PointcloudAnnotation.from_json(
+                    data=ann_json,
+                    project_meta=project_meta,
+                    key_id_map=key_id_map
+                )
 
-            obj_class_car = sly.ObjClass('car', sly.Cuboid)
-            pointcloud_obj_car = sly.PointcloudEpisodeObject(obj_class_car)
-            new_objects = ann.objects.add(pointcloud_obj_car)
+                obj_class_car = sly.ObjClass('car', sly.Cuboid)
+                pointcloud_obj_car = sly.PointcloudEpisodeObject(obj_class_car)
+                new_objects = ann.objects.add(pointcloud_obj_car)
 
-            new_ann = ann.clone(objects=new_objects)
-
-            print(new_ann.to_json())
-            # Output:
-            # {
-            #     'datasetId': 60988,
-            #     'description': '',
-            #     'frames': [{'figures': [{'classId': None,
-            #                             'createdAt': '2023-03-16T06:38:45.004Z',
-            #                             'description': '',
-            #                             'geometry': {'dimensions': {'x': 2.3652234,
-            #                                                         'y': 23.291742,
-            #                                                         'z': 3.326648},
-            #                                         'position': {'x': 86.29707472161449,
-            #                                                         'y': -14.472597682830635,
-            #                                                         'z': 0.8842007608554671},
-            #                                         'rotation': {'x': 0,
-            #                                                         'y': 0,
-            #                                                         'z': -1.6962800995995606}},
-            #                             'geometryType': 'cuboid_3d',
-            #                             'id': 87536496,
-            #                             'labelerLogin': 'almaz',
-            #                             'objectId': 5531328,
-            #                             'updatedAt': '2023-03-16T06:38:45.004Z'}],
-            #                 'index': 0,
-            #                 'pointCloudId': 19481098}],
-            #                 'index': 1,
-            #                 'pointCloudId': 19481100},
-            #                 ...],
-            #     'framesCount': 54,
-            #     'objects': [{
-            #                     'classId': 666944,
-            #                     'classTitle': 'Car',
-            #                     'createdAt': '2023-03-16T06:38:44.934Z',
-            #                     'datasetId': 60988,
-            #                     'entityId': None,
-            #                     'id': 5531324,
-            #                     'labelerLogin': 'almaz',
-            #                     'tags': [],
-            #                     'updatedAt': '2023-03-16T06:38:44.934Z'}
-            #                 {
-            #                     'classTitle': 'Car',
-            #                     'createdAt': '2023-03-16T06:38:44.934Z',
-            #                     'key': 'fc149a8f3e3a413c807a6b4ba474645c',
-            #                     'labelerLogin': 'almaz',
-            #                     'tags': [],
-            #                     'updatedAt': '2023-03-16T06:38:44.934Z
-            #                 }],
-            #     'tags': []
-            # }
-            # Output: {
-            #     "description": "",
-            #     "figures": [],
-            #     "key": "2cc443272aca4cfa9c4f404614938aa7",
-            #     "objects": [
-            #         {
-            #         "classTitle": "Pole",
-            #         "createdAt": "2023-03-16T06:38:44.934Z",
-            #         "key": "eff2ec5e3cda47968f45bc51b36a0dc1",
-            #         "labelerLogin": "almaz",
-            #         "tags": [],
-            #         "updatedAt": "2023-03-16T06:38:44.934Z"
-            #         },
-            #         {
-            #         "classTitle": "Tram",
-            #         "createdAt": "2023-03-16T06:38:44.934Z",
-            #         "key": "6baa92e09ceb413ba8fbfcfae74be1c7",
-            #         "labelerLogin": "almaz",
-            #         "tags": [],
-            #         "updatedAt": "2023-03-16T06:38:44.934Z"
-            #         },
-            #         {
-            #         "classTitle": "car",
-            #         "key": "6b1bced23061437b8ddbcdd267548c96",
-            #         "tags": []
-            #         }
-            #     ],
-            #     "tags": []
-            # }
+                new_ann = ann.clone(objects=new_objects)
+                print(new_ann.to_json())
+                # Output:
+                # {
+                #     'datasetId': 60988,
+                #     'description': '',
+                #     'frames': [{'figures': [{'classId': None,
+                #                             'createdAt': '2023-03-16T06:38:45.004Z',
+                #                             'description': '',
+                #                             'geometry': {'dimensions': {'x': 2.3652234,
+                #                                                         'y': 23.291742,
+                #                                                         'z': 3.326648},
+                #                                         'position': {'x': 86.29707472161449,
+                #                                                         'y': -14.472597682830635,
+                #                                                         'z': 0.8842007608554671},
+                #                                         'rotation': {'x': 0,
+                #                                                         'y': 0,
+                #                                                         'z': -1.6962800995995606}},
+                #                             'geometryType': 'cuboid_3d',
+                #                             'id': 87536496,
+                #                             'labelerLogin': 'almaz',
+                #                             'objectId': 5531328,
+                #                             'updatedAt': '2023-03-16T06:38:45.004Z'}],
+                #                 'index': 0,
+                #                 'pointCloudId': 19481098}],
+                #                 'index': 1,
+                #                 'pointCloudId': 19481100},
+                #                 ...],
+                #     'framesCount': 54,
+                #     'objects': [{
+                #                     'classId': 666944,
+                #                     'classTitle': 'Car',
+                #                     'createdAt': '2023-03-16T06:38:44.934Z',
+                #                     'datasetId': 60988,
+                #                     'entityId': None,
+                #                     'id': 5531324,
+                #                     'labelerLogin': 'almaz',
+                #                     'tags': [],
+                #                     'updatedAt': '2023-03-16T06:38:44.934Z'}
+                #                 {
+                #                     'classTitle': 'Car',
+                #                     'createdAt': '2023-03-16T06:38:44.934Z',
+                #                     'key': 'fc149a8f3e3a413c807a6b4ba474645c',
+                #                     'labelerLogin': 'almaz',
+                #                     'tags': [],
+                #                     'updatedAt': '2023-03-16T06:38:44.934Z
+                #                 }],
+                #     'tags': []
+                # }
+                # Output: {
+                #     "description": "",
+                #     "figures": [],
+                #     "key": "2cc443272aca4cfa9c4f404614938aa7",
+                #     "objects": [
+                #         {
+                #         "classTitle": "Pole",
+                #         "createdAt": "2023-03-16T06:38:44.934Z",
+                #         "key": "eff2ec5e3cda47968f45bc51b36a0dc1",
+                #         "labelerLogin": "almaz",
+                #         "tags": [],
+                #         "updatedAt": "2023-03-16T06:38:44.934Z"
+                #         },
+                #         {
+                #         "classTitle": "Tram",
+                #         "createdAt": "2023-03-16T06:38:44.934Z",
+                #         "key": "6baa92e09ceb413ba8fbfcfae74be1c7",
+                #         "labelerLogin": "almaz",
+                #         "tags": [],
+                #         "updatedAt": "2023-03-16T06:38:44.934Z"
+                #         },
+                #         {
+                #         "classTitle": "car",
+                #         "key": "6b1bced23061437b8ddbcdd267548c96",
+                #         "tags": []
+                #         }
+                #     ],
+                #     "tags": []
+                # }
         """
 
         return PointcloudEpisodeAnnotation(
@@ -583,16 +599,17 @@ class PointcloudEpisodeAnnotation:
 
         :return: Frames count
         :rtype: :class:`int`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            frames_count = 15
-            video_ann = sly.PointcloudEpisodeAnnotation(frames_count=frames_count)
-            print(video_ann.frames_count)
-            # Output: 15
+                import supervisely as sly
+
+                frames_count = 15
+                video_ann = sly.PointcloudEpisodeAnnotation(frames_count=frames_count)
+                print(video_ann.frames_count)
+                # Output: 15
         """
 
         return self._frames_count
@@ -605,25 +622,25 @@ class PointcloudEpisodeAnnotation:
         :returns: PointcloudEpisodeObjectCollection object.
         :rtype: PointcloudEpisodeObjectCollection
 
-        :Usage example:
+        :Usage Example:
 
-        .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                address = 'https://app.supervisely.com/'
+                token = 'Your Supervisely API Token'
+                api = sly.Api(address, token)
 
-            project_id = 19441
-            project_meta_json = api.project.get_meta(project_id)
-            project_meta = sly.ProjectMeta.from_json(project_meta_json)
+                project_id = 19441
+                project_meta_json = api.project.get_meta(project_id)
+                project_meta = sly.ProjectMeta.from_json(project_meta_json)
 
-            # Load json file
-            path = "/home/admin/work/docs/my_dataset/ann/annotation.json"
-            ann = sly.PointcloudEpisodeAnnotation.load_json_file(path, project_meta)
+                # Load json file
+                path = "/home/admin/work/docs/my_dataset/ann/annotation.json"
+                ann = sly.PointcloudEpisodeAnnotation.load_json_file(path, project_meta)
 
-            objects = ann.objects
+                objects = ann.objects
         """
 
         return self._objects
@@ -635,45 +652,46 @@ class PointcloudEpisodeAnnotation:
 
         :return: PointcloudEpisodeFrameCollection object
         :rtype: :class:`PointcloudEpisodeFrameCollection<supervisely.pointcloud_episodes.pointcloud_episode_frame_collection.PointcloudEpisodeFrameCollection>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            from supervisely.geometry.cuboid_3d import Cuboid3d, Vector3d
-            from supervisely.pointcloud_annotation.pointcloud_episode_object_collection import PointcloudEpisodeObjectCollection
+            .. code-block:: python
 
-            obj_class_car = sly.ObjClass('car', Cuboid3d)
-            pointcloud_obj_car = sly.PointcloudEpisodeObject(obj_class_car)
-            objects = sly.PointcloudEpisodeObjectCollection([pointcloud_obj_car])
+                import supervisely as sly
+                from supervisely.geometry.cuboid_3d import Cuboid3d, Vector3d
+                from supervisely.pointcloud_annotation.pointcloud_episode_object_collection import PointcloudEpisodeObjectCollection
 
-            position, rotation, dimension = Vector3d(-3.4, 28.9, -0.7), Vector3d(0., 0, -0.03), Vector3d(1.8, 3.9, 1.6)
-            cuboid = Cuboid3d(position, rotation, dimension)
-            frame_index = 10
-            figure = sly.PointcloudFigure(pointcloud_obj_car, cuboid, frame_index=frame_index)
-            frame = sly.PointcloudEpisodeFrame(frame_index, figures=[figure])
-            frames = sly.PointcloudEpisodeFrameCollection([frame])
+                obj_class_car = sly.ObjClass('car', Cuboid3d)
+                pointcloud_obj_car = sly.PointcloudEpisodeObject(obj_class_car)
+                objects = sly.PointcloudEpisodeObjectCollection([pointcloud_obj_car])
 
-            pointcloud_episodes_ann = sly.PointcloudEpisodeAnnotation(frames_count, objects, frames)
-            print(pointcloud_episodes_ann.frames.to_json())
-            # Output:
-            # [
-            #     {
-            #         "figures": [
-            #         {
-            #             "geometry": {
-            #             "dimensions": { "x": 1.8, "y": 3.9, "z": 1.6 },
-            #             "position": { "x": -3.4, "y": 28.9, "z": -0.7 },
-            #             "rotation": { "x": 0.0, "y": 0, "z": -0.03 }
-            #             },
-            #             "geometryType": "cuboid_3d",
-            #             "key": "030b9aafa97642e887e2be544ef7a7ee",
-            #             "objectKey": "95c473a6cff44afda127ffb40d2bac5b"
-            #         }
-            #         ],
-            #         "index": 0
-            #     }
-            # ]
+                position, rotation, dimension = Vector3d(-3.4, 28.9, -0.7), Vector3d(0., 0, -0.03), Vector3d(1.8, 3.9, 1.6)
+                cuboid = Cuboid3d(position, rotation, dimension)
+                frame_index = 10
+                figure = sly.PointcloudFigure(pointcloud_obj_car, cuboid, frame_index=frame_index)
+                frame = sly.PointcloudEpisodeFrame(frame_index, figures=[figure])
+                frames = sly.PointcloudEpisodeFrameCollection([frame])
+
+                pointcloud_episodes_ann = sly.PointcloudEpisodeAnnotation(frames_count, objects, frames)
+                print(pointcloud_episodes_ann.frames.to_json())
+                # Output:
+                # [
+                #     {
+                #         "figures": [
+                #         {
+                #             "geometry": {
+                #             "dimensions": { "x": 1.8, "y": 3.9, "z": 1.6 },
+                #             "position": { "x": -3.4, "y": 28.9, "z": -0.7 },
+                #             "rotation": { "x": 0.0, "y": 0, "z": -0.03 }
+                #             },
+                #             "geometryType": "cuboid_3d",
+                #             "key": "030b9aafa97642e887e2be544ef7a7ee",
+                #             "objectKey": "95c473a6cff44afda127ffb40d2bac5b"
+                #         }
+                #         ],
+                #         "index": 0
+                #     }
+                # ]
         """
 
         return self._frames
@@ -686,38 +704,38 @@ class PointcloudEpisodeAnnotation:
         :returns: List of PointcloudFigure objects from PointcloudEpisodeAnnotation object.
         :rtype: list
 
-        :Usage example:
+        :Usage Example:
 
-        .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                address = 'https://app.supervisely.com/'
+                token = 'Your Supervisely API Token'
+                api = sly.Api(address, token)
 
-            project_id = 19441
-            project_meta_json = api.project.get_meta(project_id)
-            project_meta = sly.ProjectMeta.from_json(project_meta_json)
+                project_id = 19441
+                project_meta_json = api.project.get_meta(project_id)
+                project_meta = sly.ProjectMeta.from_json(project_meta_json)
 
-            # Load json file
-            path = "/home/admin/work/docs/my_dataset/ann/annotation.json"
-            ann = sly.PointcloudEpisodeAnnotation.load_json_file(path, project_meta)
+                # Load json file
+                path = "/home/admin/work/docs/my_dataset/ann/annotation.json"
+                ann = sly.PointcloudEpisodeAnnotation.load_json_file(path, project_meta)
 
-            for figure in ann.figures:
-                print(figure.to_json())
+                for figure in ann.figures:
+                    print(figure.to_json())
 
-            # Output:
-            # {
-            #     "geometry": {
-            #         "dimensions": { "x": 1.8, "y": 3.9, "z": 1.6 },
-            #         "position": { "x": -3.4, "y": 28.9, "z": -0.7 },
-            #         "rotation": { "x": 0.0, "y": 0, "z": -0.03 }
-            #     },
-            #     "geometryType": "cuboid_3d",
-            #     "key": "01836c294c514250a11889f56cf210e9",
-            #     "objectKey": "737c4df19c0c4cccbc48cf69b72abe36"
-            # }
+                # Output:
+                # {
+                #     "geometry": {
+                #         "dimensions": { "x": 1.8, "y": 3.9, "z": 1.6 },
+                #         "position": { "x": -3.4, "y": 28.9, "z": -0.7 },
+                #         "rotation": { "x": 0.0, "y": 0, "z": -0.03 }
+                #     },
+                #     "geometryType": "cuboid_3d",
+                #     "key": "01836c294c514250a11889f56cf210e9",
+                #     "objectKey": "737c4df19c0c4cccbc48cf69b72abe36"
+                # }
         """
 
         return self.frames.figures
@@ -730,25 +748,25 @@ class PointcloudEpisodeAnnotation:
         :returns: PointcloudEpisodeTagCollection object.
         :rtype: PointcloudEpisodeTagCollection
 
-        :Usage example:
+        :Usage Example:
 
-        .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                address = 'https://app.supervisely.com/'
+                token = 'Your Supervisely API Token'
+                api = sly.Api(address, token)
 
-            project_id = 19441
-            project_meta_json = api.project.get_meta(project_id)
-            project_meta = sly.ProjectMeta.from_json(project_meta_json)
+                project_id = 19441
+                project_meta_json = api.project.get_meta(project_id)
+                project_meta = sly.ProjectMeta.from_json(project_meta_json)
 
-            # Load json file
-            path = "/home/admin/work/docs/my_dataset/ann/annotation.json"
-            ann = sly.PointcloudEpisodeAnnotation.load_json_file(path, project_meta)
+                # Load json file
+                path = "/home/admin/work/docs/my_dataset/ann/annotation.json"
+                ann = sly.PointcloudEpisodeAnnotation.load_json_file(path, project_meta)
 
-            tags = ann.tags
+                tags = ann.tags
         """
 
         return self._tags
@@ -760,16 +778,15 @@ class PointcloudEpisodeAnnotation:
         :returns: Key value of point cloud episodes annotation object.
         :rtype: str
 
-        :Usage example:
+        :Usage Example:
 
-        .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            ann = sly.PointcloudEpisodeAnnotation()
-
-            print(ann.key())
-            # Output: 93ab6292-c661-4a53-b407-85ed34f5b68a'
+                ann = sly.PointcloudEpisodeAnnotation()
+                print(ann.key())
+                # Output: 93ab6292-c661-4a53-b407-85ed34f5b68a'
         """
 
         return self._key
@@ -781,15 +798,16 @@ class PointcloudEpisodeAnnotation:
 
         :return: PointcloudEpisodeAnnotation description
         :rtype: :class:`str`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            descr = 'example'
-            ann = sly.PointcloudEpisodeAnnotation(description=descr)
-            print(ann.description) # example
+                import supervisely as sly
+
+                descr = 'example'
+                ann = sly.PointcloudEpisodeAnnotation(description=descr)
+                print(ann.description) # example
         """
 
         return self._description
@@ -800,27 +818,28 @@ class PointcloudEpisodeAnnotation:
 
         :returns: True if point cloud episodes annotation  is empty, False otherwise.
         :rtype: :class:`bool`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            from supervisely.video_annotation.key_id_map import KeyIdMap
+            .. code-block:: python
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                import supervisely as sly
+                from supervisely.video_annotation.key_id_map import KeyIdMap
 
-            project_id = 18428
-            dataset_id = 60988
-            key_id_map = KeyIdMap()
-            meta_json = api.project.get_meta(project_id)
-            meta = sly.ProjectMeta.from_json(meta_json)
+                address = 'https://app.supervisely.com/'
+                token = 'Your Supervisely API Token'
+                api = sly.Api(address, token)
 
-            ann_json = api.pointcloud_episode.annotation.download(dataset_id)
-            ann = sly.PointcloudEpisodeAnnotation.from_json(ann_json, meta, key_id_map)
+                project_id = 18428
+                dataset_id = 60988
+                key_id_map = KeyIdMap()
+                meta_json = api.project.get_meta(project_id)
+                meta = sly.ProjectMeta.from_json(meta_json)
 
-            print(ann.is_empty()) # False
+                ann_json = api.pointcloud_episode.annotation.download(dataset_id)
+                ann = sly.PointcloudEpisodeAnnotation.from_json(ann_json, meta, key_id_map)
+
+                print(ann.is_empty()) # False
         """
 
         if len(self.objects) == 0 and len(self.tags) == 0:

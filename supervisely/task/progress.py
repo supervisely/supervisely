@@ -34,41 +34,42 @@ class Progress:
     :type need_info_log: bool, optional
     :param min_report_percent: Minimum report percent of total items in progress to log.
     :type min_report_percent: int, optional
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
-        from supervisely.sly_logger import logger
+        .. code-block:: python
 
-        address = 'https://app.supervisely.com/'
-        token = 'Your Supervisely API Token'
-        api = sly.Api(address, token)
+            import supervisely as sly
+            from supervisely.sly_logger import logger
 
-        progress = sly.Progress("Images downloaded: ", len(img_infos), ext_logger=logger, is_size=True, need_info_log=True)
-        api.image.download_paths(ds_id, image_ids, save_paths, progress_cb=progress.iters_done_report)
+            address = 'https://app.supervisely.com/'
+            token = 'Your Supervisely API Token'
+            api = sly.Api(address, token)
 
-        # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 0,
-        #  "total": 6, "current_label": "0.0 B", "total_label": "6.0 B", "timestamp": "2021-03-17T13:57:45.659Z", "level": "info"}
-        # {"message": "Images downloaded:  [0.0 B / 6.0 B]", "timestamp": "2021-03-17T13:57:45.660Z", "level": "info"}
-        # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 1,
-        #  "total": 6, "current_label": "1.0 B", "total_label": "6.0 B", "timestamp": "2021-03-17T13:57:46.134Z", "level": "info"}
-        # {"message": "Images downloaded:  [1.0 B / 6.0 B]", "timestamp": "2021-03-17T13:57:46.134Z", "level": "info"}
-        # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 2,
-        #  "total": 6, "current_label": "2.0 B", "total_label": "6.0 B", "timestamp": "2021-03-17T13:57:46.135Z", "level": "info"}
-        # {"message": "Images downloaded:  [2.0 B / 6.0 B]", "timestamp": "2021-03-17T13:57:46.135Z", "level": "info"}
-        # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 3,
-        #  "total": 6, "current_label": "3.0 B", "total_label": "6.0 B", "timestamp": "2021-03-17T13:57:46.135Z", "level": "info"}
-        # {"message": "Images downloaded:  [3.0 B / 6.0 B]", "timestamp": "2021-03-17T13:57:46.135Z", "level": "info"}
-        # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 4,
-        #  "total": 6, "current_label": "4.0 B", "total_label": "6.0 B", "timestamp": "2021-03-17T13:57:46.135Z", "level": "info"}
-        # {"message": "Images downloaded:  [4.0 B / 6.0 B]", "timestamp": "2021-03-17T13:57:46.135Z", "level": "info"}
-        # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 5,
-        #  "total": 6, "current_label": "5.0 B", "total_label": "6.0 B", "timestamp": "2021-03-17T13:57:46.136Z", "level": "info"}
-        # {"message": "Images downloaded:  [5.0 B / 6.0 B]", "timestamp": "2021-03-17T13:57:46.136Z", "level": "info"}
-        # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 6,
-        #  "total": 6, "current_label": "6.0 B", "total_label": "6.0 B", "timestamp": "2021-03-17T13:57:46.136Z", "level": "info"}
-        # {"message": "Images downloaded:  [6.0 B / 6.0 B]", "timestamp": "2021-03-17T13:57:46.136Z", "level": "info"}
+            progress = sly.Progress("Images downloaded: ", len(img_infos), ext_logger=logger, is_size=True, need_info_log=True)
+            api.image.download_paths(ds_id, image_ids, save_paths, progress_cb=progress.iters_done_report)
+
+            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 0,
+            #  "total": 6, "current_label": "0.0 B", "total_label": "6.0 B", "timestamp": "2021-03-17T13:57:45.659Z", "level": "info"}
+            # {"message": "Images downloaded:  [0.0 B / 6.0 B]", "timestamp": "2021-03-17T13:57:45.660Z", "level": "info"}
+            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 1,
+            #  "total": 6, "current_label": "1.0 B", "total_label": "6.0 B", "timestamp": "2021-03-17T13:57:46.134Z", "level": "info"}
+            # {"message": "Images downloaded:  [1.0 B / 6.0 B]", "timestamp": "2021-03-17T13:57:46.134Z", "level": "info"}
+            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 2,
+            #  "total": 6, "current_label": "2.0 B", "total_label": "6.0 B", "timestamp": "2021-03-17T13:57:46.135Z", "level": "info"}
+            # {"message": "Images downloaded:  [2.0 B / 6.0 B]", "timestamp": "2021-03-17T13:57:46.135Z", "level": "info"}
+            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 3,
+            #  "total": 6, "current_label": "3.0 B", "total_label": "6.0 B", "timestamp": "2021-03-17T13:57:46.135Z", "level": "info"}
+            # {"message": "Images downloaded:  [3.0 B / 6.0 B]", "timestamp": "2021-03-17T13:57:46.135Z", "level": "info"}
+            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 4,
+            #  "total": 6, "current_label": "4.0 B", "total_label": "6.0 B", "timestamp": "2021-03-17T13:57:46.135Z", "level": "info"}
+            # {"message": "Images downloaded:  [4.0 B / 6.0 B]", "timestamp": "2021-03-17T13:57:46.135Z", "level": "info"}
+            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 5,
+            #  "total": 6, "current_label": "5.0 B", "total_label": "6.0 B", "timestamp": "2021-03-17T13:57:46.136Z", "level": "info"}
+            # {"message": "Images downloaded:  [5.0 B / 6.0 B]", "timestamp": "2021-03-17T13:57:46.136Z", "level": "info"}
+            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 6,
+            #  "total": 6, "current_label": "6.0 B", "total_label": "6.0 B", "timestamp": "2021-03-17T13:57:46.136Z", "level": "info"}
+            # {"message": "Images downloaded:  [6.0 B / 6.0 B]", "timestamp": "2021-03-17T13:57:46.136Z", "level": "info"}
     """
 
     def __init__(
@@ -206,31 +207,32 @@ class Progress:
 
         :return: None
         :rtype: :class:`NoneType`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            progress = sly.Progress("Processing:", len(img_infos))
-            for img_info in img_infos:
-                img_names.append(img_info.name)
-                progress.iter_done_report()
+                import supervisely as sly
 
-            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
-            #  "current": 0, "total": 6, "timestamp": "2021-03-17T14:29:33.207Z", "level": "info"}
-            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
-            #  "current": 1, "total": 6, "timestamp": "2021-03-17T14:29:33.207Z", "level": "info"}
-            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
-            #  "current": 2, "total": 6, "timestamp": "2021-03-17T14:29:33.207Z", "level": "info"}
-            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
-            #  "current": 3, "total": 6, "timestamp": "2021-03-17T14:29:33.207Z", "level": "info"}
-            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
-            #  "current": 4, "total": 6, "timestamp": "2021-03-17T14:29:33.207Z", "level": "info"}
-            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
-            #  "current": 5, "total": 6, "timestamp": "2021-03-17T14:29:33.207Z", "level": "info"}
-            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
-            #  "current": 6, "total": 6, "timestamp": "2021-03-17T14:29:33.207Z", "level": "info"}
+                progress = sly.Progress("Processing:", len(img_infos))
+                for img_info in img_infos:
+                    img_names.append(img_info.name)
+                    progress.iter_done_report()
+
+                # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
+                #  "current": 0, "total": 6, "timestamp": "2021-03-17T14:29:33.207Z", "level": "info"}
+                # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
+                #  "current": 1, "total": 6, "timestamp": "2021-03-17T14:29:33.207Z", "level": "info"}
+                # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
+                #  "current": 2, "total": 6, "timestamp": "2021-03-17T14:29:33.207Z", "level": "info"}
+                # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
+                #  "current": 3, "total": 6, "timestamp": "2021-03-17T14:29:33.207Z", "level": "info"}
+                # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
+                #  "current": 4, "total": 6, "timestamp": "2021-03-17T14:29:33.207Z", "level": "info"}
+                # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
+                #  "current": 5, "total": 6, "timestamp": "2021-03-17T14:29:33.207Z", "level": "info"}
+                # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
+                #  "current": 6, "total": 6, "timestamp": "2021-03-17T14:29:33.207Z", "level": "info"}
         """
         self.iter_done()
         self.report_if_needed()
@@ -243,31 +245,32 @@ class Progress:
         :type count: int
         :return: None
         :rtype: :class:`NoneType`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            progress = sly.Progress("Processing:", len(img_infos))
-            for img_info in img_infos:
-                img_names.append(img_info.name)
-                progress.iters_done_report(1)
+                import supervisely as sly
 
-            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
-            #  "current": 0, "total": 6, "timestamp": "2021-03-17T14:31:21.655Z", "level": "info"}
-            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
-            #  "current": 1, "total": 6, "timestamp": "2021-03-17T14:31:21.655Z", "level": "info"}
-            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
-            #  "current": 2, "total": 6, "timestamp": "2021-03-17T14:31:21.655Z", "level": "info"}
-            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
-            #  "current": 3, "total": 6, "timestamp": "2021-03-17T14:31:21.655Z", "level": "info"}
-            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
-            #  "current": 4, "total": 6, "timestamp": "2021-03-17T14:31:21.655Z", "level": "info"}
-            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
-            #  "current": 5, "total": 6, "timestamp": "2021-03-17T14:31:21.655Z", "level": "info"}
-            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
-            #  "current": 6, "total": 6, "timestamp": "2021-03-17T14:31:21.655Z", "level": "info"}
+                progress = sly.Progress("Processing:", len(img_infos))
+                for img_info in img_infos:
+                    img_names.append(img_info.name)
+                    progress.iters_done_report(1)
+
+                # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
+                #  "current": 0, "total": 6, "timestamp": "2021-03-17T14:31:21.655Z", "level": "info"}
+                # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
+                #  "current": 1, "total": 6, "timestamp": "2021-03-17T14:31:21.655Z", "level": "info"}
+                # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
+                #  "current": 2, "total": 6, "timestamp": "2021-03-17T14:31:21.655Z", "level": "info"}
+                # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
+                #  "current": 3, "total": 6, "timestamp": "2021-03-17T14:31:21.655Z", "level": "info"}
+                # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
+                #  "current": 4, "total": 6, "timestamp": "2021-03-17T14:31:21.655Z", "level": "info"}
+                # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
+                #  "current": 5, "total": 6, "timestamp": "2021-03-17T14:31:21.655Z", "level": "info"}
+                # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Processing:",
+                #  "current": 6, "total": 6, "timestamp": "2021-03-17T14:31:21.655Z", "level": "info"}
         """
         self.iters_done(count)
         self.report_if_needed()

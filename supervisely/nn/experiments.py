@@ -105,16 +105,17 @@ def get_experiment_infos(api: Api, team_id: int, framework_name: str) -> List[Ex
     :type framework_name: str
     :return: List of ExperimentInfo objects
     :rtype: List[ExperimentInfo]
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        api = sly.Api.from_env()
-        team_id = sly.env.team_id()
-        framework_name = "RT-DETRv2"
-        experiment_infos = sly.nn.training.experiments.get_experiment_infos(api, team_id, framework_name)
+            import supervisely as sly
+
+            api = sly.Api.from_env()
+            team_id = sly.env.team_id()
+            framework_name = "RT-DETRv2"
+            experiment_infos = sly.nn.training.experiments.get_experiment_infos(api, team_id, framework_name)
     """
     metadata_name = "experiment_info.json"
     experiments_folder = "/experiments"
@@ -245,16 +246,17 @@ def get_experiment_info_by_artifacts_dir(
     :type artifacts_dir: str
     :return: ExperimentInfo object
     :rtype: Optional[ExperimentInfo]
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        api = sly.Api.from_env()
-        team_id = sly.env.team_id()
-        artifacts_dir = "/experiments/27_Lemons (Rectangle)/265_RT-DETRv2/"
-        experiment_info = sly.nn.training.experiments.get_experiment_info_by_artifacts_dir(api, team_id, artifacts_dir)
+            import supervisely as sly
+
+            api = sly.Api.from_env()
+            team_id = sly.env.team_id()
+            artifacts_dir = "/experiments/27_Lemons (Rectangle)/265_RT-DETRv2/"
+            experiment_info = sly.nn.training.experiments.get_experiment_info_by_artifacts_dir(api, team_id, artifacts_dir)
     """
     if not artifacts_dir.startswith("/experiments"):
         raise ValueError("Artifacts directory should start with '/experiments'")

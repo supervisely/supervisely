@@ -180,19 +180,21 @@ class PointcloudDataset(VideoDataset):
         :return: Path to the given pointcloud
         :rtype: :class:`str`
         :raises: :class:`RuntimeError` if item not found in the project
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            dataset_path = "/home/admin/work/supervisely/projects/ptc_project/ds0"
-            ds = sly.PointcloudDataset(dataset_path, sly.OpenMode.READ)
+            .. code-block:: python
 
-            ds.get_pointcloud_path("PTC_0748")
-            # Output: RuntimeError: Item IMG_0748 not found in the project.
+                import supervisely as sly
 
-            ds.get_pointcloud_path("PTC_0748.pcd")
-            # Output: '/home/admin/work/supervisely/projects/ptc_project/ds0/pointcloud/PTC_0748.pcd'
+                dataset_path = "/home/admin/work/supervisely/projects/ptc_project/ds0"
+                ds = sly.PointcloudDataset(dataset_path, sly.OpenMode.READ)
+
+                ds.get_pointcloud_path("PTC_0748")
+                # Output: RuntimeError: Item PTC_0748 not found in the project.
+
+                ds.get_pointcloud_path("PTC_0748.pcd")
+                # Output: '/home/admin/work/supervisely/projects/ptc_project/ds0/pointcloud/PTC_0748.pcd'
         """
         return super().get_item_path(item_name)
 
@@ -204,15 +206,16 @@ class PointcloudDataset(VideoDataset):
         :type item_name: str
         :return: Pointcloud with information for the given Dataset
         :rtype: :class:`NamedTuple`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            dataset_path = "/home/admin/work/supervisely/projects/ptc_project/ds0"
-            ds = sly.PointcloudDataset(dataset_path, sly.OpenMode.READ)
+            .. code-block:: python
 
-            info = ds.get_pointcloud_info("IMG_0748.pcd")
+                import supervisely as sly
+
+                dataset_path = "/home/admin/work/supervisely/projects/ptc_project/ds0"
+                ds = sly.PointcloudDataset(dataset_path, sly.OpenMode.READ)
+                info = ds.get_pointcloud_info("IMG_0748.pcd")
         """
         return self.get_item_info(item_name)
 
@@ -225,19 +228,21 @@ class PointcloudDataset(VideoDataset):
         :return: Path to the given annotation
         :rtype: :class:`str`
         :raises: :class:`RuntimeError` if item not found in the project
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            dataset_path = "/home/admin/work/supervisely/projects/ptc_project/ds0"
-            ds = sly.PointcloudDataset(dataset_path, sly.OpenMode.READ)
+            .. code-block:: python
 
-            ds.get_ann_path("PTC_0748")
-            # Output: RuntimeError: Item PTC_0748 not found in the project.
+                import supervisely as sly
 
-            ds.get_ann_path("PTC_0748.pcd")
-            # Output: '/home/admin/work/supervisely/projects/ptc_project/ds0/ann/IMG_0748.pcd.json'
+                dataset_path = "/home/admin/work/supervisely/projects/ptc_project/ds0"
+                ds = sly.PointcloudDataset(dataset_path, sly.OpenMode.READ)
+
+                ds.get_ann_path("PTC_0748")
+                # Output: RuntimeError: Item PTC_0748 not found in the project.
+
+                ds.get_ann_path("PTC_0748.pcd")
+                # Output: '/home/admin/work/supervisely/projects/ptc_project/ds0/ann/IMG_0748.pcd.json'
         """
         return super().get_ann_path(item_name)
 
@@ -249,16 +254,17 @@ class PointcloudDataset(VideoDataset):
         :type item_name: :class:`str`
         :return: True if successful, otherwise False
         :rtype: :class:`bool`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            dataset_path = "/home/admin/work/supervisely/projects/ptc_project/ds0"
-            ds = sly.PointcloudDataset(dataset_path, sly.OpenMode.READ)
+            .. code-block:: python
 
-            result = dataset.delete_item("PTC_0748.pcd")
-            # Output: True
+                import supervisely as sly
+
+                dataset_path = "/home/admin/work/supervisely/projects/ptc_project/ds0"
+                ds = sly.PointcloudDataset(dataset_path, sly.OpenMode.READ)
+                result = dataset.delete_item("PTC_0748.pcd")
+                # Output: True
         """
         if self.item_exists(item_name):
             data_path, rel_images_dir, ann_path = self.get_item_paths(item_name)
@@ -299,18 +305,20 @@ class PointcloudDataset(VideoDataset):
         :return: None
         :rtype: NoneType
         :raises: :class:`RuntimeError` if item_name already exists in dataset or item name has unsupported extension.
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            dataset_path = "/home/admin/work/supervisely/projects/ptc_project/ds0"
-            ds = sly.PointcloudDataset(dataset_path, sly.OpenMode.READ)
+            .. code-block:: python
 
-            ann = "/home/admin/work/supervisely/projects/ptc_project/ds0/ann/PTC_8888.pcd.json"
-            ds.add_item_file("PTC_8888.pcd", "/home/admin/work/supervisely/projects/ptc_project/ds0/pointcloud/PTC_8888.pcd", ann=ann)
-            print(ds.item_exists("PTC_8888.pcd"))
-            # Output: True
+                import supervisely as sly
+
+                dataset_path = "/home/admin/work/supervisely/projects/ptc_project/ds0"
+                ds = sly.PointcloudDataset(dataset_path, sly.OpenMode.READ)
+
+                ann = "/home/admin/work/supervisely/projects/ptc_project/ds0/ann/PTC_8888.pcd.json"
+                ds.add_item_file("PTC_8888.pcd", "/home/admin/work/supervisely/projects/ptc_project/ds0/pointcloud/PTC_8888.pcd", ann=ann)
+                print(ds.item_exists("PTC_8888.pcd"))
+                # Output: True
         """
         return super().add_item_file(
             item_name=item_name,
@@ -342,17 +350,19 @@ class PointcloudDataset(VideoDataset):
         :return: None
         :rtype: :class:`NoneType`
         :raises: :class:`Exception` if item_name already exists in dataset or item name has unsupported extension
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            dataset_path = "/home/admin/work/supervisely/projects/ptc_project/ds0"
-            ds = sly.PointcloudDataset(dataset_path, sly.OpenMode.READ)
+            .. code-block:: python
 
-            pointcloud_path = "/home/admin/Pointclouds/ptc0.pcd"
-            img_np = sly.image.read(img_path)
-            ds.add_item_np("IMG_050.jpeg", img_np)
+                import supervisely as sly
+
+                dataset_path = "/home/admin/work/supervisely/projects/ptc_project/ds0"
+                ds = sly.PointcloudDataset(dataset_path, sly.OpenMode.READ)
+
+                pointcloud_path = "/home/admin/Pointclouds/ptc0.pcd"
+                img_np = sly.image.read(img_path)
+                ds.add_item_np("IMG_050.jpeg", img_np)
         """
         # TODO: is it ok that names of params differs from base function?
         # TODO: check this function
@@ -463,23 +473,24 @@ class PointcloudDataset(VideoDataset):
         :return: PointcloudAnnotation object
         :rtype: :class:`PointcloudAnnotation<supervisely.PointcloudAnnotation>`
         :raises: :class:`RuntimeError` if item not found in the project
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            project_path = "/home/admin/work/supervisely/projects/pointcloud_project"
-            project = sly.PointcloudProject(project_path, sly.OpenMode.READ)
+                import supervisely as sly
 
-            ds = project.datasets.get('ds1')
+                project_path = "/home/admin/work/supervisely/projects/pointcloud_project"
+                project = sly.PointcloudProject(project_path, sly.OpenMode.READ)
 
-            annotation = ds.get_ann("PTC_0056")
-            # Output: RuntimeError: Item PTC_0056 not found in the project.
+                ds = project.datasets.get('ds1')
 
-            annotation = ds.get_ann("PTC_0056.pcd")
-            print(type(annotation).__name__)
-            # Output: PointcloudAnnotation
+                annotation = ds.get_ann("PTC_0056")
+                # Output: RuntimeError: Item PTC_0056 not found in the project.
+
+                annotation = ds.get_ann("PTC_0056.pcd")
+                print(type(annotation).__name__)
+                # Output: PointcloudAnnotation
         """
         ann_path = self.get_ann_path(item_name)
         return PointcloudAnnotation.load_json_file(ann_path, project_meta, key_id_map)
@@ -536,13 +547,15 @@ class PointcloudProject(VideoProject):
     :type directory: :class:`str`
     :param mode: Determines working mode for the given project.
     :type mode: :class:`OpenMode<supervisely.project.project.OpenMode>`
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
-        project_path = "/home/admin/work/supervisely/projects/ptc_project"
-        project = sly.PointcloudProject(project_path, sly.OpenMode.READ)
+        .. code-block:: python
+
+            import supervisely as sly
+
+            project_path = "/home/admin/work/supervisely/projects/ptc_project"
+            project = sly.PointcloudProject(project_path, sly.OpenMode.READ)
     """
 
     dataset_class = PointcloudDataset
@@ -572,14 +585,16 @@ class PointcloudProject(VideoProject):
 
         :return: Project type.
         :rtype: :class:`str`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            project = sly.PointcloudProject("/home/admin/work/supervisely/projects/pointclouds", sly.OpenMode.READ)
-            print(project.type)
-            # Output: 'point_clouds'
+            .. code-block:: python
+
+                import supervisely as sly
+
+                project = sly.PointcloudProject("/home/admin/work/supervisely/projects/pointclouds", sly.OpenMode.READ)
+                print(project.type)
+                # Output: 'point_clouds'
         """
         return ProjectType.POINT_CLOUDS.value
 
@@ -599,16 +614,18 @@ class PointcloudProject(VideoProject):
         :raises: :class:`ValueError` if total_count != train_count + val_count
         :return: Tuple with lists of train items information and val items information
         :rtype: :class:`Tuple[List[PointcloudItemInfo], List[PointcloudItemInfo]]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            from supervisely.project.pointcloud_project import PointcloudProject
-            project_path = "/home/admin/work/supervisely/projects/pointcloud_project"
-            project = PointcloudProject(project_path, sly.OpenMode.READ)
-            train_count = 4
-            val_count = 2
-            train_items, val_items = project.get_train_val_splits_by_count(project_path, train_count, val_count)
+            .. code-block:: python
+
+                from supervisely.project.pointcloud_project import PointcloudProject
+
+                project_path = "/home/admin/work/supervisely/projects/pointcloud_project"
+                project = PointcloudProject(project_path, sly.OpenMode.READ)
+                train_count = 4
+                val_count = 2
+                train_items, val_items = project.get_train_val_splits_by_count(project_path, train_count, val_count)
         """
 
         def _list_items_for_splits(project) -> List[PointcloudItemInfo]:
@@ -656,16 +673,18 @@ class PointcloudProject(VideoProject):
         :raises: :class:`ValueError` if untagged not in ["ignore", "train", "val"]
         :return: Tuple with lists of train items information and val items information
         :rtype: :class:`Tuple[List[PointcloudItemInfo], List[PointcloudItemInfo]]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            project_path = "/home/admin/work/supervisely/projects/pointcloud_project"
-            project = sly.PointcloudProject(project_path, sly.OpenMode.READ)
-            train_tag_name = 'train'
-            val_tag_name = 'val'
-            train_items, val_items = project.get_train_val_splits_by_tag(project_path, train_tag_name, val_tag_name)
+            .. code-block:: python
+
+                import supervisely as sly
+
+                project_path = "/home/admin/work/supervisely/projects/pointcloud_project"
+                project = sly.PointcloudProject(project_path, sly.OpenMode.READ)
+                train_tag_name = 'train'
+                val_tag_name = 'val'
+                train_items, val_items = project.get_train_val_splits_by_tag(project_path, train_tag_name, val_tag_name)
         """
         untagged_actions = ["ignore", "train", "val"]
         if untagged not in untagged_actions:
@@ -717,16 +736,18 @@ class PointcloudProject(VideoProject):
         :raises: :class:`KeyError` if dataset name not found in project
         :return: Tuple with lists of train items information and val items information
         :rtype: :class:`Tuple[List[PointcloudItemInfo], List[PointcloudItemInfo]]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            project_path = "/home/admin/work/supervisely/projects/pointcloud_project"
-            project = sly.PointcloudProject(project_path, sly.OpenMode.READ)
-            train_datasets = ['ds1', 'ds2']
-            val_datasets = ['ds3', 'ds4']
-            train_items, val_items = project.get_train_val_splits_by_dataset(project_path, train_datasets, val_datasets)
+            .. code-block:: python
+
+                import supervisely as sly
+
+                project_path = "/home/admin/work/supervisely/projects/pointcloud_project"
+                project = sly.PointcloudProject(project_path, sly.OpenMode.READ)
+                train_datasets = ['ds1', 'ds2']
+                val_datasets = ['ds3', 'ds4']
+                train_items, val_items = project.get_train_val_splits_by_dataset(project_path, train_datasets, val_datasets)
         """
 
         def _add_items_to_list(project, datasets_names, items_list):
@@ -807,27 +828,29 @@ class PointcloudProject(VideoProject):
         :type progress_cb: tqdm or callable, optional
         :return: None
         :rtype: NoneType
-        :Usage example:
 
-        .. code-block:: python
+        :Usage Example:
 
-                import supervisely as sly
+            .. code-block:: python
 
-                # Local destination Pointcloud Project folder
-                save_directory = "/home/admin/work/supervisely/source/ptc_project"
+                    import os
+                    import supervisely as sly
 
-                # Obtain server address and your api_token from environment variables
-                # Edit those values if you run this notebook on your own PC
-                address = os.environ['SERVER_ADDRESS']
-                token = os.environ['API_TOKEN']
+                    # Local destination Pointcloud Project folder
+                    save_directory = "/home/admin/work/supervisely/source/ptc_project"
 
-                # Initialize API object
-                api = sly.Api(address, token)
-                project_id = 8888
+                    # Obtain server address and your api_token from environment variables
+                    # Edit those values if you run this notebook on your own PC
+                    address = os.environ['SERVER_ADDRESS']
+                    token = os.environ['API_TOKEN']
 
-                # Download Project
-                sly.PointcloudProject.download(api, project_id, save_directory)
-                project_fs = sly.PointcloudProject(save_directory, sly.OpenMode.READ)
+                    # Initialize API object
+                    api = sly.Api(address, token)
+                    project_id = 8888
+
+                    # Download Project
+                    sly.PointcloudProject.download(api, project_id, save_directory)
+                    project_fs = sly.PointcloudProject(save_directory, sly.OpenMode.READ)
         """
         download_pointcloud_project(
             api=api,
@@ -868,30 +891,32 @@ class PointcloudProject(VideoProject):
         :type progress_cb: tqdm or callable, optional
         :return: Project ID and name. It is recommended to check that returned project name coincides with provided project name.
         :rtype: int, str
-        :Usage example:
 
-        .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            # Local folder with Pointcloud Project
-            project_directory = "/home/admin/work/supervisely/source/ptc_project"
+                import os
+                import supervisely as sly
 
-            # Obtain server address and your api_token from environment variables
-            # Edit those values if you run this notebook on your own PC
-            address = os.environ['SERVER_ADDRESS']
-            token = os.environ['API_TOKEN']
+                # Local folder with Pointcloud Project
+                project_directory = "/home/admin/work/supervisely/source/ptc_project"
 
-            # Initialize API object
-            api = sly.Api(address, token)
+                # Obtain server address and your api_token from environment variables
+                # Edit those values if you run this notebook on your own PC
+                address = os.environ['SERVER_ADDRESS']
+                token = os.environ['API_TOKEN']
 
-            # Upload Pointcloud Project
-            project_id, project_name = sly.PointcloudProject.upload(
-                project_directory,
-                api,
-                workspace_id=45,
-                project_name="My Pointcloud Project"
-            )
+                # Initialize API object
+                api = sly.Api(address, token)
+
+                # Upload Pointcloud Project
+                project_id, project_name = sly.PointcloudProject.upload(
+                    project_directory,
+                    api,
+                    workspace_id=45,
+                    project_name="My Pointcloud Project"
+                )
         """
         return upload_pointcloud_project(
             directory=directory,
@@ -966,42 +991,42 @@ def download_pointcloud_project(
 
     :return: None.
     :rtype: NoneType
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import os
-        from dotenv import load_dotenv
+        .. code-block:: python
 
-        from tqdm import tqdm
-        import supervisely as sly
+            import os
+            from tqdm import tqdm
+            from dotenv import load_dotenv
+            import supervisely as sly
 
-        # Load secrets and create API object from .env file (recommended)
-        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-        if sly.is_development():
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-        api = sly.Api.from_env()
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
+            api = sly.Api.from_env()
 
-        # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
+            # Pass values into the API constructor (optional, not recommended)
+            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
-        dest_dir = 'your/local/dest/dir'
+            dest_dir = 'your/local/dest/dir'
 
-        # Download pointcloud project
-        project_id = 19542
-        project_info = api.project.get_info_by_id(project_id)
-        num_pointclouds = project_info.items_count
+            # Download pointcloud project
+            project_id = 19542
+            project_info = api.project.get_info_by_id(project_id)
+            num_pointclouds = project_info.items_count
 
-        p = tqdm(
-            desc="Downloading pointcloud project",
-            total=num_pointclouds,
-        )
-        sly.download_pointcloud_project(
-            api,
-            project_id,
-            dest_dir,
-            progress_cb=p,
-        )
+            p = tqdm(
+                desc="Downloading pointcloud project",
+                total=num_pointclouds,
+            )
+            sly.download_pointcloud_project(
+                api,
+                project_id,
+                dest_dir,
+                progress_cb=p,
+            )
     """
     key_id_map = KeyIdMap()
 

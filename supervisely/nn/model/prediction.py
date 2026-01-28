@@ -1,5 +1,7 @@
 # coding: utf-8
-"""single prediction object"""
+"""
+Single prediction returned by deployed model.
+"""
 
 from __future__ import annotations
 
@@ -37,6 +39,40 @@ from supervisely.video.video import VideoFrameReader
 
 
 class Prediction:
+    """
+    A single prediction result.
+
+    The prediction is primarily represented by ``annotation_json`` (Supervisely annotation format).
+    If you provide ``model_meta`` (a :class:`~supervisely.project.project_meta.ProjectMeta` or its JSON),
+    you can access the parsed :class:`~supervisely.annotation.annotation.Annotation` via
+    :attr:`~supervisely.nn.model.prediction.Prediction.annotation`.
+
+    :param annotation_json: Prediction in Supervisely annotation JSON format.
+    :type annotation_json: dict or :class:`~supervisely.annotation.annotation.Annotation`
+    :param source: Optional source descriptor (path, id, etc.), used as a hint for loading/visualization.
+    :type source: str or int, optional
+    :param model_meta: Output meta of the model, required to construct an :class:`~supervisely.annotation.annotation.Annotation`.
+    :type model_meta: :class:`~supervisely.project.project_meta.ProjectMeta` or dict, optional
+    :param name: Optional name for this prediction (used in visualization filenames).
+    :type name: str, optional
+    :param path: Local path to the source image/video.
+    :type path: str, optional
+    :param url: URL to the source image/video.
+    :type url: str, optional
+    :param project_id: Project id associated with the source.
+    :type project_id: int, optional
+    :param dataset_id: Dataset id associated with the source.
+    :type dataset_id: int, optional
+    :param image_id: Image id associated with the source.
+    :type image_id: int, optional
+    :param video_id: Video id associated with the source (for frame predictions).
+    :type video_id: int, optional
+    :param frame_index: Frame index for video predictions.
+    :type frame_index: int, optional
+    :param api: API client used to download image/frame by id.
+    :type api: :class:`~supervisely.api.api.Api`, optional
+    """
+
     _temp_dir = os.path.join(tempfile.gettempdir(), "prediction_files")
     __cleanup_registered = False
 
@@ -127,7 +163,7 @@ class Prediction:
             )
         self._boxes = np.array(self._boxes)
         self._masks = np.array(self._masks)
-        
+
         custom_data = self.annotation.custom_data
         if custom_data and isinstance(custom_data, list) and len(custom_data) == len(self.annotation.labels):
             self._track_ids = np.array(custom_data)
@@ -193,6 +229,21 @@ class Prediction:
 
     @classmethod
     def from_json(cls, json_data: Dict, **kwargs) -> "Prediction":
+        """
+        Create :class:`~supervisely.nn.model.prediction.Prediction` from a JSON dict.
+
+        This helper accepts both styles of keys coming from different backends:
+        ``annotation_json`` or ``annotation``.
+
+        :param json_data: Source JSON.
+        :type json_data: dict
+        :param kwargs: Additional fields to override/extend JSON (e.g. ``api``, ``model_meta``).
+        :type kwargs: dict
+        :return: Prediction instance.
+        :rtype: :class:`~supervisely.nn.model.prediction.Prediction`
+        :raises ValueError: If annotation payload is missing.
+        """
+
         kwargs = {**json_data, **kwargs}
         if "annotation_json" in kwargs:
             annotation_json = kwargs.pop("annotation_json")
@@ -208,6 +259,13 @@ class Prediction:
         return cls(annotation_json, **kwargs)
 
     def to_json(self):
+        """
+        Serialize prediction to a JSON-compatible dict.
+
+        :return: JSON dict.
+        :rtype: dict
+        """
+
         return {
             "source": self.source,
             "annotation": self.annotation_json,
@@ -227,6 +285,17 @@ class Prediction:
             clean_dir(self._temp_dir)
 
     def load_image(self) -> np.ndarray:
+        """
+        Load the source image (or video frame) into a NumPy array.
+
+        The loader uses the first available source in the following order:
+        ``path`` → ``url`` → ``image_id`` (requires ``api`` or environment config) →
+        ``video_id`` + ``frame_index`` → video ``path``/``url`` + ``frame_index``.
+
+        :return: Image (or frame) as ``H×W×C`` NumPy array.
+        :rtype: numpy.ndarray
+        """
+
         api = self.api
         if self.frame_index is None:
             if self.path is not None:
@@ -282,6 +351,30 @@ class Prediction:
         draw_tags: Optional[bool] = False,
         fill_rectangles: Optional[bool] = True,
     ) -> np.ndarray:
+        """
+        Render prediction on top of the source image/frame.
+
+        If ``save_path`` (file or directory) or ``save_dir`` is provided, the visualization is saved.
+        Otherwise the rendered image is returned.
+
+        :param save_path: Output file path or directory.
+        :type save_path: str, optional
+        :param save_dir: Output directory (alias for directory ``save_path``).
+        :type save_dir: str, optional
+        :param color: Optional RGB color for drawing.
+        :type color: List[int], optional
+        :param thickness: Optional line thickness.
+        :type thickness: int, optional
+        :param opacity: Bitmap opacity.
+        :type opacity: float, optional
+        :param draw_tags: If True, draws tags on objects.
+        :type draw_tags: bool, optional
+        :param fill_rectangles: If True, fills rectangles.
+        :type fill_rectangles: bool, optional
+        :return: Rendered image.
+        :rtype: numpy.ndarray
+        """
+
         if save_dir is not None and save_path is not None:
             raise ValueError("Only one of save_path or save_dir can be provided.")
 

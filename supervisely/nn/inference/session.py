@@ -48,18 +48,17 @@ class SessionJSON:
         :type inference_settings: Union[dict, str], optional
 
 
-        :Usage example:
-         .. code-block:: python
-            task_id = 27001
-            session = sly.nn.inference.SessionJSON(
-                api,
-                task_id=task_id,
-            )
-            print(session.get_session_info())
+        :Usage Example:
 
-            image_id = 17551748
-            pred = session.inference_image_id(image_id)
-            predicted_annotation = sly.Annotation.from_json(pred["annotation"], model_meta)
+            .. code-block:: python
+
+                task_id = 27001
+                session = sly.nn.inference.SessionJSON(api, task_id=task_id)
+                print(session.get_session_info())
+
+                image_id = 17551748
+                pred = session.inference_image_id(image_id)
+                predicted_annotation = sly.Annotation.from_json(pred["annotation"], model_meta)
 
         """
         assert not (
@@ -730,17 +729,16 @@ class Session(SessionJSON):
         :type inference_settings: Union[dict, str], optional
 
 
-        :Usage example:
-         .. code-block:: python
-            task_id = 27001
-            session = sly.nn.inference.Session(
-                api,
-                task_id=task_id,
-            )
-            print(session.get_session_info())
+        :Usage Example:
 
-            image_id = 17551748
-            predicted_annotation = session.inference_image_id(image_id)
+            .. code-block:: python
+
+                task_id = 27001
+                session = sly.nn.inference.Session(api, task_id=task_id)
+                print(session.get_session_info())
+
+                image_id = 17551748
+                predicted_annotation = session.inference_image_id(image_id)
 
         """
         super().__init__(api, task_id, session_url, inference_settings)

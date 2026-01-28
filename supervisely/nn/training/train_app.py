@@ -74,7 +74,10 @@ from supervisely.template.experiment.experiment_generator import ExperimentGener
 
 class TrainApp:
     """
-    ``TrainApp`` is designed to be used inside a Supervisely App. It connects:
+    High-level wrapper for building Supervisely training applications.
+
+    ``TrainApp`` is designed to be used inside a Supervisely App.
+    **It connects:**
 
     - **GUI** (model selector, hyperparameters editor, train/val split selector, class/tag selectors)
     - **Data preparation** (project download, optional conversion, splitting, collections creation)
@@ -89,7 +92,7 @@ class TrainApp:
         from supervisely.nn.training.train_app import TrainApp
 
         train_app = TrainApp(
-            framework_name="My Framework",
+            framework_name="My Framework", # e.g "YOLO"
             models="models.json",
             hyperparameters="hyperparameters.yaml",
             app_options="app_options.yaml",
@@ -110,7 +113,7 @@ class TrainApp:
                 # "model_files": {"config": "/path/to/config.yaml", ...},
             }
 
-    :param framework_name: Name of the ML framework used (shown in UI and stored in experiment metadata).
+    :param framework_name: Name of the ML framework used (stored in experiment metadata).
     :type framework_name: str
     :param models: Path to ``.json`` file (or a Python list) with model configurations for the model selector.
     :type models: Union[str, List[Dict[str, Any]]]
@@ -385,10 +388,10 @@ class TrainApp:
     @property
     def project_info(self) -> ProjectInfo:
         """
-        Returns :class:`supervisely.api.project_info.ProjectInfo` object, which contains information about the project.
+        Returns :class:`~supervisely.api.project_api.ProjectInfo` object, which contains information about the project.
 
         :return: ProjectInfo object.
-        :rtype: ProjectInfo
+        :rtype: :class:`~supervisely.api.project_api.ProjectInfo`
         """
         return self.gui.project_info
 
@@ -398,7 +401,7 @@ class TrainApp:
         Returns the project metadata.
 
         :return: Project metadata.
-        :rtype: ProjectMeta
+        :rtype: :class:`~supervisely.project.project_meta.ProjectMeta`
         """
         return self.gui.project_meta
 
@@ -441,7 +444,7 @@ class TrainApp:
         Returns the task type of the model.
 
         :return: Task type.
-        :rtype: TaskType
+        :rtype: :class:`~supervisely.nn.task_type.TaskType`
         """
         return self.gui.model_selector.get_selected_task_type()
 
@@ -543,7 +546,7 @@ class TrainApp:
         Returns the main progress bar widget.
 
         :return: Main progress bar widget.
-        :rtype: Progress
+        :rtype: :class:`~supervisely.app.widgets.Progress`
         """
         return self.gui.training_logs.progress_bar_main
 
@@ -553,7 +556,7 @@ class TrainApp:
         Returns the secondary progress bar widget.
 
         :return: Secondary progress bar widget.
-        :rtype: Progress
+        :rtype: :class:`~supervisely.app.widgets.Progress`
         """
         return self.gui.training_logs.progress_bar_secondary
 
@@ -812,7 +815,7 @@ class TrainApp:
         :param remote_dir: Remote directory.
         :type remote_dir: str
         :return: Best checkpoint info.
-        :rtype: FileInfo
+        :rtype: :class:`~supervisely.api.file_api.FileInfo`
         """
         best_checkpoint_name = experiment_info.get("best_checkpoint")
         remote_best_checkpoint_path = join(remote_dir, "checkpoints", best_checkpoint_name)
@@ -827,8 +830,8 @@ class TrainApp:
         """
         Registers an inference class for the training application to do model benchmarking.
 
-        :param inference_class: Inference class to be registered inherited from `supervisely.nn.inference.Inference`.
-        :type inference_class: Any
+        :param inference_class: Inference class to be registered (must be inherited from :class:`~supervisely.nn.inference.inference.Inference`).
+        :type inference_class: :class:`~supervisely.nn.inference.inference.Inference`
         :param inference_settings: Settings for the inference class.
         :type inference_settings: dict
         """
@@ -892,39 +895,24 @@ class TrainApp:
         :param app_state: The state dictionary or path to the state file.
         :type app_state: Union[str, dict]
 
-        app_state example:
+        Example::
 
             app_state = {
-                "train_val_split": {
-                    "method": "random",
-                    "split": "train",
-                    "percent": 90
-                },
+                "train_val_split": {"method": "random", "split": "train", "percent": 90},
                 "classes": ["apple"],
-                # Pretrained model
+                # For Pretrained model
                 "model": {
                     "source": "Pretrained models",
-                    "model_name": "rtdetr_r50vd_coco_objects365"
+                    "model_name": "rtdetr_r50vd_coco_objects365",
                 },
-                # Custom model
-                # "model": {
-                #     "source": "Custom models",
-                #     "task_id": 555,
-                #     "checkpoint": "checkpoint_10.pth"
-                # },
-                "hyperparameters": hyperparameters, # yaml string
+                # For Custom model
+                # "model": {"source": "Custom models", "task_id": 555, "checkpoint": "checkpoint_10.pth"},
+                "hyperparameters": hyperparameters,  # yaml string
                 "options": {
                     "convert_class_shapes": True,
-                    "model_benchmark": {
-                        "enable": True,
-                        "speed_test": True
-                    },
+                    "model_benchmark": {"enable": True, "speed_test": True},
                     "cache_project": True,
-                    "export": {
-                        "enable": True,
-                        "ONNXRuntime": True,
-                        "TensorRT": True
-                    },
+                    "export": {"enable": True, "ONNXRuntime": True, "TensorRT": True},
                 },
                 "experiment_name": "My Experiment",
             }
@@ -1878,14 +1866,14 @@ class TrainApp:
         """
         Create a model meta for the trained model according to task type.
 
-        This method takes the input project's :class:`supervisely.project.project_meta.ProjectMeta`,
+        This method takes the input project's :class:`~supervisely.project.project_meta.ProjectMeta`,
         removes classes that are not selected in the GUI, and then converts meta to a CV-task-specific
         format (detection/segmentation).
 
         :param task_type: CV task type of the trained model.
         :type task_type: str
         :return: Model meta to be saved as ``model_meta.json``.
-        :rtype: ProjectMeta
+        :rtype: :class:`~supervisely.project.project_meta.ProjectMeta`
         """
         names_to_delete = [
             c.name for c in self.project_meta.obj_classes if c.name not in self.classes

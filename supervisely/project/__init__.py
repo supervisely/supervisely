@@ -40,16 +40,17 @@ def read_project(
 
     :param dir: Path to directory, which contains project folder.
     :type dir: :class: str
-
     :return: Project class object of specific modality
     :rtype: :class: Project or VideoProject or VolumeProject or PointcloudProject or PointcloudEpisodeProject
 
-    :Usage example:
-     .. code-block:: python
-        import supervisely as sly
+    :Usage Example:
 
-        proj_dir = "/path/to/your/source/project"
-        project_fs = sly.read_project(proj_dir)
+        .. code-block:: python
+
+            import supervisely as sly
+
+            proj_dir = "/path/to/your/source/project"
+            project_fs = sly.read_project(proj_dir)
     """
     paths = list_files(dir)
 

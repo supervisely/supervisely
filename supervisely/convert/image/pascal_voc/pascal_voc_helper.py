@@ -314,7 +314,7 @@ def update_meta_from_xml(
 
 def sly_ann_to_pascal_voc(ann: Annotation, image_name: str) -> Tuple[dict]:
     """
-    Convert Supervisely annotation to Pascal VOC format annotation.
+    Converts Supervisely annotation to Pascal VOC format annotation.
 
     :param ann: Supervisely annotation.
     :type ann: :class:`Annotation<supervisely.annotation.annotation.Annotation>`
@@ -323,15 +323,15 @@ def sly_ann_to_pascal_voc(ann: Annotation, image_name: str) -> Tuple[dict]:
     :return: Tuple with xml tree and instance and class masks in PIL.Image format.
     :rtype: :class:`Tuple`
 
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
-        from supervisely.convert.image.pascal_voc.pascal_voc_helper import sly_ann_to_pascal_voc
+            import supervisely as sly
+            from supervisely.convert.image.pascal_voc.pascal_voc_helper import sly_ann_to_pascal_voc
 
-        ann = sly.Annotation.from_json(ann_json, meta)
-        xml_tree, instance_mask, class_mask = sly_ann_to_pascal_voc(ann, image_name)
+            ann = sly.Annotation.from_json(ann_json, meta)
+            xml_tree, instance_mask, class_mask = sly_ann_to_pascal_voc(ann, image_name)
     """
 
     def from_ann_to_instance_mask(ann: Annotation, contour_thickness: int = 3):
@@ -428,7 +428,7 @@ def sly_ds_to_pascal_voc(
     progress_cb: Optional[Union[tqdm, Callable]] = None,
 ) -> None:
     """
-    Convert Supervisely dataset to Pascal VOC format.
+    Converts Supervisely dataset to Pascal VOC format.
 
     :param meta: Project meta information.
     :type meta: :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`
@@ -443,17 +443,17 @@ def sly_ds_to_pascal_voc(
     :return: None
     :rtype: NoneType
 
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
-        from supervisely.convert.image.pascal_voc.pascal_voc_helper import sly_ds_to_pascal_voc
+            import supervisely as sly
+            from supervisely.convert.image.pascal_voc.pascal_voc_helper import sly_ds_to_pascal_voc
 
-        project_path = "/home/admin/work/supervisely/projects/lemons_annotated"
-        project = sly.Project(project_path, sly.OpenMode.READ)
+            project_path = "/home/admin/work/supervisely/projects/lemons_annotated"
+            project = sly.Project(project_path, sly.OpenMode.READ)
 
-        for ds in project.datasets:
+            for ds in project.datasets:
             dest_dir = "/home/admin/work/supervisely/projects/lemons_annotated_pascal_voc"
             sly_ds_to_pascal_voc(ds, project.meta, dest_dir=dest_dir)
     """
@@ -639,7 +639,7 @@ def sly_project_to_pascal_voc(
     progress_cb: Optional[Union[tqdm, Callable]] = None,
 ) -> None:
     """
-    Convert Supervisely project to Pascal VOC format.
+    Converts Supervisely project to Pascal VOC format.
 
     :param dest_dir: Destination directory.
     :type dest_dir: :class:`str`, optional
@@ -652,17 +652,17 @@ def sly_project_to_pascal_voc(
     :return: None
     :rtype: NoneType
 
-    :Usage example:
+    :Usage Example:
 
-    .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
+            import supervisely as sly
 
-        # Local folder with Project
-        project_directory = "/home/admin/work/supervisely/source/project"
+            # Local folder with Project
+            project_directory = "/home/admin/work/supervisely/source/project"
 
-        # Convert Project to Pascal VOC format
-        sly.Project(project_directory).to_pascal_voc(log_progress=True)
+            # Convert Project to Pascal VOC format
+            sly.Project(project_directory).to_pascal_voc(log_progress=True)
     """
     if isinstance(project, str):
         project = Project(project, mode=OpenMode.READ)
@@ -728,24 +728,24 @@ def to_pascal_voc(
     :return: None
     :rtype: NoneType
 
-    :Usage example:
+    :Usage Example:
 
-    .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
+            import supervisely as sly
 
-        # Local folder with Project
-        project_directory = "/home/admin/work/supervisely/source/project"
-        project_fs = sly.Project(project_directory, sly.OpenMode.READ)
+            # Local folder with Project
+            project_directory = "/home/admin/work/supervisely/source/project"
+            project_fs = sly.Project(project_directory, sly.OpenMode.READ)
 
-        # Convert Project to Pascal VOC format
-        sly.convert.to_pascal_voc(project_directory, dest_dir="./pascal_voc")
-        # or
-        sly.convert.to_pascal_voc(project_fs, dest_dir="./pascal_voc")
+            # Convert Project to Pascal VOC format
+            sly.convert.to_pascal_voc(project_directory, dest_dir="./pascal_voc")
+            # or
+            sly.convert.to_pascal_voc(project_fs, dest_dir="./pascal_voc")
 
-        # Convert Dataset to Pascal VOC format
-        dataset: sly.Dataset = project_fs.datasets.get("dataset_name")
-        sly.convert.to_pascal_voc(dataset, dest_dir="./pascal_voc")
+            # Convert Dataset to Pascal VOC format
+            dataset: sly.Dataset = project_fs.datasets.get("dataset_name")
+            sly.convert.to_pascal_voc(dataset, dest_dir="./pascal_voc")
     """
     if isinstance(input_data, str):
         try:
