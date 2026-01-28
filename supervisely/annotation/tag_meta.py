@@ -120,26 +120,27 @@ class TagMeta(KeyObject, JsonSerializable):
     :param target_type: Defines Tag target type (scope) - entities, frames or both.
     :type target_type: str, optional
     :raises: :class:`ValueError`, if color is not list, or doesn't have exactly 3 values
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        # TagMeta
-        meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE)
+            import supervisely as sly
 
-        # TagMeta applicable only to Images example
-        meta_cat = sly.TagMeta('cat', sly.TagValueType.NONE, applicable_to=sly.TagApplicableTo.IMAGES_ONLY)
+            # TagMeta
+            meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE)
 
-        # TagMeta with string value applicable only to Objects example
-        meta_breed = sly.TagMeta('breed', sly.TagValueType.ANY_STRING, applicable_to=sly.TagApplicableTo.OBJECTS_ONLY)
+            # TagMeta applicable only to Images example
+            meta_cat = sly.TagMeta('cat', sly.TagValueType.NONE, applicable_to=sly.TagApplicableTo.IMAGES_ONLY)
 
-        # More complex TagMeta example
-        # Create a list with possible values in order to use "ONEOF_STRING" value type
-        coat_colors = ["brown", "white", "black", "red", "chocolate", "gold", "grey"]
-        # Note that "ONEOF_STRING" value type requires possible values, otherwise ValueError will be raised
-        meta_coat_color = sly.TagMeta('coat color', sly.TagValueType.ONEOF_STRING, coat_colors, [255,120,0], hotkey="M", applicable_to=sly.TagApplicableTo.OBJECTS_ONLY, applicable_classes=["dog", "cat"])
+            # TagMeta with string value applicable only to Objects example
+            meta_breed = sly.TagMeta('breed', sly.TagValueType.ANY_STRING, applicable_to=sly.TagApplicableTo.OBJECTS_ONLY)
+
+            # More complex TagMeta example
+            # Create a list with possible values in order to use "ONEOF_STRING" value type
+            coat_colors = ["brown", "white", "black", "red", "chocolate", "gold", "grey"]
+            # Note that "ONEOF_STRING" value type requires possible values, otherwise ValueError will be raised
+            meta_coat_color = sly.TagMeta('coat color', sly.TagValueType.ONEOF_STRING, coat_colors, [255,120,0], hotkey="M", applicable_to=sly.TagApplicableTo.OBJECTS_ONLY, applicable_classes=["dog", "cat"])
     """
 
     def __init__(
@@ -209,13 +210,14 @@ class TagMeta(KeyObject, JsonSerializable):
 
         :return: Name
         :rtype: :class:`str`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            meta_dog = sly.TagMeta('dog', sly.TagValueType.ANY_STRING)
-            print(meta_dog.name)
-            # Output: 'dog'
+            .. code-block:: python
+
+                meta_dog = sly.TagMeta('dog', sly.TagValueType.ANY_STRING)
+                print(meta_dog.name)
+                # Output: 'dog'
         """
         return self._name
 
@@ -229,15 +231,16 @@ class TagMeta(KeyObject, JsonSerializable):
 
         :return: Value type
         :rtype: :class:`str`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            meta_dog = sly.TagMeta('dog', sly.TagValueType.ANY_STRING)
-            meta_dog.value_type == sly.TagValueType.ANY_STRING # True
+            .. code-block:: python
 
-            print(meta_dog.value_type)
-            # Output: 'any_string'
+                meta_dog = sly.TagMeta('dog', sly.TagValueType.ANY_STRING)
+                meta_dog.value_type == sly.TagValueType.ANY_STRING # True
+
+                print(meta_dog.value_type)
+                # Output: 'any_string'
         """
         return self._value_type
 
@@ -249,22 +252,23 @@ class TagMeta(KeyObject, JsonSerializable):
         :raise: :class:`ValueError` if list of possible values is not defined or TagMeta value_type is not "oneof_string".
         :return: List of possible values
         :rtype: :class:`List[str]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            # List of possible values
-            coat_colors = ["brown", "white", "black", "red", "chocolate", "gold", "grey"]
+            .. code-block:: python
 
-            # TagMeta
-            meta_coat_color = sly.TagMeta('coat color', sly.TagValueType.ONEOF_STRING, possible_values=coat_colors)
+                # List of possible values
+                coat_colors = ["brown", "white", "black", "red", "chocolate", "gold", "grey"]
 
-            print(meta_coat_color.possible_values)
-            # Output: ['brown', 'white', 'black', 'red', 'chocolate', 'gold', 'grey']
+                # TagMeta
+                meta_coat_color = sly.TagMeta('coat color', sly.TagValueType.ONEOF_STRING, possible_values=coat_colors)
 
-            # Note that this is a required field if object has "oneof_string" value type.
-            meta_coat_color = sly.TagMeta('coat color', sly.TagValueType.ONEOF_STRING)
-            # Output: ValueError: TagValueType is ONEOF_STRING. List of possible values have to be defined.
+                print(meta_coat_color.possible_values)
+                # Output: ['brown', 'white', 'black', 'red', 'chocolate', 'gold', 'grey']
+
+                # Note that this is a required field if object has "oneof_string" value type.
+                meta_coat_color = sly.TagMeta('coat color', sly.TagValueType.ONEOF_STRING)
+                # Output: ValueError: TagValueType is ONEOF_STRING. List of possible values have to be defined.
         """
         return self._possible_values.copy() if self._possible_values is not None else None
 
@@ -275,14 +279,15 @@ class TagMeta(KeyObject, JsonSerializable):
 
         :return: Color
         :rtype: :class:`List[int, int, int]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE, color=[255,120,0])
+            .. code-block:: python
 
-            print(meta_dog.color)
-            # Output: [255,120,0]
+                meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE, color=[255,120,0])
+
+                print(meta_dog.color)
+                # Output: [255,120,0]
         """
         return self._color.copy()
 
@@ -293,14 +298,15 @@ class TagMeta(KeyObject, JsonSerializable):
 
         :return: ID
         :rtype: :class:`int`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE, sly_id=38584)
+            .. code-block:: python
 
-            print(meta_dog.sly_id)
-            # Output: 38584
+                meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE, sly_id=38584)
+
+                print(meta_dog.sly_id)
+                # Output: 38584
         """
         return self._sly_id
 
@@ -311,14 +317,15 @@ class TagMeta(KeyObject, JsonSerializable):
 
         :return: Hotkey
         :rtype: :class:`str`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE, hotkey='M')
+            .. code-block:: python
 
-            print(meta_dog.hotkey)
-            # Output: 'M'
+                meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE, hotkey='M')
+
+                print(meta_dog.hotkey)
+                # Output: 'M'
         """
         return self._hotkey
 
@@ -329,14 +336,15 @@ class TagMeta(KeyObject, JsonSerializable):
 
         :return: Applicability
         :rtype: :class:`str`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE, applicable_to=IMAGES_ONLY)
+            .. code-block:: python
 
-            print(meta_dog.applicable_to)
-            # Output: 'imagesOnly'
+                meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE, applicable_to=IMAGES_ONLY)
+
+                print(meta_dog.applicable_to)
+                # Output: 'imagesOnly'
         """
         return self._applicable_to
 
@@ -347,19 +355,20 @@ class TagMeta(KeyObject, JsonSerializable):
 
         :returns: List of applicable classes
         :rtype: :class:`List[str]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            # Imagine we have 2 ObjClasses in our Project
-            class_car = sly.ObjClass(name='car', geometry_type='rectangle')
-            class_bicycle = sly.ObjClass(name='bicycle', geometry_type='rectangle')
+            .. code-block:: python
 
-            # You can put a "string" with ObjClass name or use ObjClass.name
-            meta_vehicle = sly.TagMeta('vehicle', sly.TagValueType.NONE, applicable_classes=["car", class_bicycle.name])
+                # Imagine we have 2 ObjClasses in our Project
+                class_car = sly.ObjClass(name='car', geometry_type='rectangle')
+                class_bicycle = sly.ObjClass(name='bicycle', geometry_type='rectangle')
 
-            print(meta_vehicle.applicable_classes)
-            # Output: ['car', 'bicycle']
+                # You can put a "string" with ObjClass name or use ObjClass.name
+                meta_vehicle = sly.TagMeta('vehicle', sly.TagValueType.NONE, applicable_classes=["car", class_bicycle.name])
+
+                print(meta_vehicle.applicable_classes)
+                # Output: ['car', 'bicycle']
         """
         return self._applicable_classes
 
@@ -370,14 +379,15 @@ class TagMeta(KeyObject, JsonSerializable):
 
         :return: Target type
         :rtype: :class:`str`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE, target_type=TagTargetType.FRAME_BASED)
+            .. code-block:: python
 
-            print(meta_dog.target_type)
-            # Output: 'framesOnly'
+                meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE, target_type=TagTargetType.FRAME_BASED)
+
+                print(meta_dog.target_type)
+                # Output: 'framesOnly'
         """
         return self._target_type
 
@@ -387,43 +397,46 @@ class TagMeta(KeyObject, JsonSerializable):
 
         :return: Json format as a dict
         :rtype: :class:`dict`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            colors = ["brown", "white", "black", "red", "blue", "yellow", "grey"]
-            meta_color = sly.TagMeta('Color',
-                                    sly.TagValueType.ONEOF_STRING,
-                                    possible_values=colors,
-                                    color=[255, 120, 0],
-                                    hotkey="M",
-                                    applicable_classes=["car", "bicycle"])
+                import supervisely as sly
+
+                colors = ["brown", "white", "black", "red", "blue", "yellow", "grey"]
+                meta_color = sly.TagMeta(
+                    'Color',
+                    sly.TagValueType.ONEOF_STRING,
+                    possible_values=colors,
+                    color=[255, 120, 0],
+                    hotkey="M",
+                    applicable_classes=["car", "bicycle"]
+                )
 
 
-            meta_color_json = meta_color.to_json()
-            print(meta_color_json)
-            # Output: {
-            #     "name":"Color",
-            #     "value_type":"oneof_string",
-            #     "color":"#FF7800",
-            #     "values":[
-            #         "brown",
-            #         "white",
-            #         "black",
-            #         "red",
-            #         "blue",
-            #         "yellow",
-            #         "grey"
-            #     ],
-            #     "hotkey":"M",
-            #     "applicable_type":"all",
-            #     "classes":[
-            #         "car",
-            #         "bicycle"
-            #     ]
-            # }
+                meta_color_json = meta_color.to_json()
+                print(meta_color_json)
+                # Output: {
+                #     "name":"Color",
+                #     "value_type":"oneof_string",
+                #     "color":"#FF7800",
+                #     "values":[
+                #         "brown",
+                #         "white",
+                #         "black",
+                #         "red",
+                #         "blue",
+                #         "yellow",
+                #         "grey"
+                #     ],
+                #     "hotkey":"M",
+                #     "applicable_type":"all",
+                #     "classes":[
+                #         "car",
+                #         "bicycle"
+                #     ]
+                # }
         """
         jdict = {
             TagMetaJsonFields.NAME: self.name,
@@ -461,34 +474,35 @@ class TagMeta(KeyObject, JsonSerializable):
         :type data: dict
         :return: TagMeta object
         :rtype: :class:`TagMeta<TagMeta>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            data = {
-                "name":"Color",
-                "value_type":"oneof_string",
-                "color":"#FF7800",
-                "values":[
-                    "brown",
-                    "white",
-                    "black",
-                    "red",
-                    "blue",
-                    "yellow",
-                    "grey"
-                ],
-                "hotkey":"M",
-                "applicable_type":"all",
-                "classes":[
-                    "car",
-                    "bicycle"
-                ]
-            }
+                import supervisely as sly
 
-            meta_colors = sly.TagMeta.from_json(data)
+                data = {
+                    "name":"Color",
+                    "value_type":"oneof_string",
+                    "color":"#FF7800",
+                    "values":[
+                        "brown",
+                        "white",
+                        "black",
+                        "red",
+                        "blue",
+                        "yellow",
+                        "grey"
+                    ],
+                    "hotkey":"M",
+                    "applicable_type":"all",
+                    "classes":[
+                        "car",
+                        "bicycle"
+                    ]
+                }
+
+                meta_colors = sly.TagMeta.from_json(data)
         """
         if isinstance(data, str):
             return cls(name=data, value_type=TagValueType.NONE)
@@ -529,25 +543,26 @@ class TagMeta(KeyObject, JsonSerializable):
         :raises: :class:`ValueError`, if object's value type is not "oneof_string" or already exists in a list
         :return: New instance of TagMeta
         :rtype: :class:`TagMeta<TagMeta>`
+
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            #In order to add possible values, you must first initialize a variable where all possible values will be stored if it doesnt exist already
-            colors = ["brown", "white", "black", "red", "chocolate", "gold", "grey"]
-            meta_coat_color = sly.TagMeta('coat color', sly.TagValueType.ONEOF_STRING, possible_values=colors, applicable_classes=["dog", "cat"])
+                #In order to add possible values, you must first initialize a variable where all possible values will be stored if it doesnt exist already
+                colors = ["brown", "white", "black", "red", "chocolate", "gold", "grey"]
+                meta_coat_color = sly.TagMeta('coat color', sly.TagValueType.ONEOF_STRING, possible_values=colors, applicable_classes=["dog", "cat"])
 
-            print(meta_coat_color.possible_values)
-            # Output: ['brown', 'white', 'black', 'red', 'chocolate', 'gold', 'grey']
+                print(meta_coat_color.possible_values)
+                # Output: ['brown', 'white', 'black', 'red', 'chocolate', 'gold', 'grey']
 
-            #Now we can add new possible value to our TagMeta
-            # Remember that TagMeta object is immutable, and we need to assign new instance of TagMeta to a new variable
-            meta_coat_color = meta_coat_color.add_possible_value("bald (no coat)")
+                #Now we can add new possible value to our TagMeta
+                # Remember that TagMeta object is immutable, and we need to assign new instance of TagMeta to a new variable
+                meta_coat_color = meta_coat_color.add_possible_value("bald (no coat)")
 
-            print(meta_coat_color.possible_values)
-            # Output: ['brown', 'white', 'black', 'red', 'chocolate', 'gold', 'grey', 'bald (no coat)']
+                print(meta_coat_color.possible_values)
+                # Output: ['brown', 'white', 'black', 'red', 'chocolate', 'gold', 'grey', 'bald (no coat)']
         """
         if self.value_type == TagValueType.ONEOF_STRING:
             if value in self._possible_values:
@@ -569,30 +584,31 @@ class TagMeta(KeyObject, JsonSerializable):
         :type value: str
         :return: True if value is supported, otherwise False
         :rtype: :class:`bool`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            # Initialize TagMeta
-            meta_dog = sly.TagMeta('dog', sly.TagValueType.ANY_STRING)
+                import supervisely as sly
 
-            # Check what value type is in our Tagmeta
-            print(meta_dog.value_type)
-            # Output: 'any_string'
+                # Initialize TagMeta
+                meta_dog = sly.TagMeta('dog', sly.TagValueType.ANY_STRING)
 
-            # Our TagMeta has 'any_string' value type, it means only 'string' values will work with it
-            # Let's check if value is valid for our TagMeta
-            meta_dog.is_valid_value('Woof!')            # True
-            meta_dog.is_valid_value(555)                # False
+                # Check what value type is in our Tagmeta
+                print(meta_dog.value_type)
+                # Output: 'any_string'
 
-            # TagMetas with 'any_number' value type are compatible with 'int' and 'float' values
-            meta_quantity = sly.TagMeta('quantity', sly.TagValueType.ANY_NUMBER)
+                # Our TagMeta has 'any_string' value type, it means only 'string' values will work with it
+                # Let's check if value is valid for our TagMeta
+                meta_dog.is_valid_value('Woof!')            # True
+                meta_dog.is_valid_value(555)                # False
 
-            meta_quantity.is_valid_value('new string value') # False
-            meta_quantity.is_valid_value(555)                # True
-            meta_quantity.is_valid_value(3.14159265359)      # True
+                # TagMetas with 'any_number' value type are compatible with 'int' and 'float' values
+                meta_quantity = sly.TagMeta('quantity', sly.TagValueType.ANY_NUMBER)
+
+                meta_quantity.is_valid_value('new string value') # False
+                meta_quantity.is_valid_value(555)                # True
+                meta_quantity.is_valid_value(3.14159265359)      # True
         """
         if self.value_type == TagValueType.NONE:
             return value is None
@@ -613,24 +629,25 @@ class TagMeta(KeyObject, JsonSerializable):
         :type other: TagMeta
         :return: True if comparable objects are equal, otherwise False
         :rtype: :class:`bool`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            # Let's create 2 identical TagMetas
-            meta_lemon_1 = sly.TagMeta('Lemon', sly.TagValueType.NONE)
-            meta_lemon_2 = sly.TagMeta('Lemon', sly.TagValueType.NONE)
+                import supervisely as sly
 
-            # and 1 different TagMeta and compare them to each other
-            meta_cucumber = sly.TagMeta('Cucumber', sly.TagValueType.ANY_STRING)
+                # Let's create 2 identical TagMetas
+                meta_lemon_1 = sly.TagMeta('Lemon', sly.TagValueType.NONE)
+                meta_lemon_2 = sly.TagMeta('Lemon', sly.TagValueType.NONE)
 
-            # Compare identical TagMetas
-            meta_lemon_1 == meta_lemon_2      # True
+                # and 1 different TagMeta and compare them to each other
+                meta_cucumber = sly.TagMeta('Cucumber', sly.TagValueType.ANY_STRING)
 
-            # Compare unidentical TagMetas
-            meta_lemon_1 == meta_cucumber     # False
+                # Compare identical TagMetas
+                meta_lemon_1 == meta_lemon_2      # True
+
+                # Compare unidentical TagMetas
+                meta_lemon_1 == meta_cucumber     # False
         """
         # TODO compare colors also here (need to check the usages and replace with is_compatible() where appropriate).
         return (
@@ -648,24 +665,25 @@ class TagMeta(KeyObject, JsonSerializable):
         :type other: TagMeta
         :return: True if comparable objects are not equal, otherwise False
         :rtype: :class:`bool`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            # Let's create 2 identical TagMetas
-            meta_lemon_1 = sly.TagMeta('Lemon', sly.TagValueType.NONE)
-            meta_lemon_2 = sly.TagMeta('Lemon', sly.TagValueType.NONE)
+                import supervisely as sly
 
-            # and 1 different TagMeta and compare them to each other
-            meta_cucumber = sly.TagMeta('Cucumber', sly.TagValueType.ANY_STRING)
+                # Let's create 2 identical TagMetas
+                meta_lemon_1 = sly.TagMeta('Lemon', sly.TagValueType.NONE)
+                meta_lemon_2 = sly.TagMeta('Lemon', sly.TagValueType.NONE)
 
-            # Compare identical TagMetas
-            meta_lemon_1 != meta_lemon_2      # False
+                # and 1 different TagMeta and compare them to each other
+                meta_cucumber = sly.TagMeta('Cucumber', sly.TagValueType.ANY_STRING)
 
-            # Compare unidentical TagMetas
-            meta_lemon_1 != meta_cucumber     # True
+                # Compare identical TagMetas
+                meta_lemon_1 != meta_lemon_2      # False
+
+                # Compare unidentical TagMetas
+                meta_lemon_1 != meta_cucumber     # True
         """
         return not self == other
 
@@ -716,25 +734,26 @@ class TagMeta(KeyObject, JsonSerializable):
         :type applicable_classes: List[str], optional
         :return: New instance of TagMeta
         :rtype: :class:`TagMeta<TagMeta>`
+
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            #Original TagMeta
-            meta_dog_breed = sly.TagMeta('breed', sly.TagValueType.NONE)
+                #Original TagMeta
+                meta_dog_breed = sly.TagMeta('breed', sly.TagValueType.NONE)
 
-            # TagMetas made of original TagMeta
-            # Remember that TagMeta class object is immutable, and we need to assign new instance of TagMeta to a new variable
-            A_breeds = ["Affenpinscher", "Afghan Hound", "Aidi", "Airedale Terrier", "Akbash Dog", "Akita"]
-            meta_A_breed = meta_dog_breed.clone(value_type=sly.TagValueType.ONEOF_STRING, possible_values=A_breeds, hotkey='A')
+                # TagMetas made of original TagMeta
+                # Remember that TagMeta class object is immutable, and we need to assign new instance of TagMeta to a new variable
+                A_breeds = ["Affenpinscher", "Afghan Hound", "Aidi", "Airedale Terrier", "Akbash Dog", "Akita"]
+                meta_A_breed = meta_dog_breed.clone(value_type=sly.TagValueType.ONEOF_STRING, possible_values=A_breeds, hotkey='A')
 
-            B_breeds = ["Basset Fauve de Bretagne", "Basset Hound", "Bavarian Mountain Hound", "Beagle", "Beagle-Harrier", "Bearded Collie"]
-            meta_B_breed = meta_A_breed.clone(possible_values=B_breeds, hotkey='B')
+                B_breeds = ["Basset Fauve de Bretagne", "Basset Hound", "Bavarian Mountain Hound", "Beagle", "Beagle-Harrier", "Bearded Collie"]
+                meta_B_breed = meta_A_breed.clone(possible_values=B_breeds, hotkey='B')
 
-            C_breeds = ["Cairn Terrier", "Canaan Dog", "Canadian Eskimo Dog", "Cane Corso", "Cardigan Welsh Corgi", "Carolina Dog"]
-            meta_C_breed = meta_B_breed.clone(possible_values=C_breeds, hotkey='C')
+                C_breeds = ["Cairn Terrier", "Canaan Dog", "Canadian Eskimo Dog", "Cane Corso", "Cardigan Welsh Corgi", "Carolina Dog"]
+                meta_C_breed = meta_B_breed.clone(possible_values=C_breeds, hotkey='C')
         """
         return TagMeta(
             name=take_with_default(name, self.name),

@@ -271,28 +271,31 @@ class ModuleInfo(NamedTuple):
         :raises KeyError: if more than one target was passed
         :raises KeyError: if invalid target was passed
         :raises ValueError: if invalid type of target value was passed
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import os
-            from dotenv import load_dotenv
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            module_id = 81
-            module_info = api.app.get_ecosystem_module_info(module_id)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            project_id = 12345
-            params = module_info.get_arguments(images_project=project_id)
+                api = sly.Api.from_env()
 
-            # Now we can use params to start the application:
-            session = api.app.start(
+                module_id = 81
+                module_info = api.app.get_ecosystem_module_info(module_id)
+
+                project_id = 12345
+                params = module_info.get_arguments(images_project=project_id)
+
+                # Now we can use params to start the application:
+                session = api.app.start(
                 agent_id=agent_id,
                 module_id=module_id,
                 workspace_id=workspace_id,
@@ -300,7 +303,7 @@ class ModuleInfo(NamedTuple):
                 params=params,
                 app_version="dninja",
                 is_branch=True,
-            )
+                )
         """
         params = self.config.get("modalTemplateState", {})
         targets = self.get_context_menu_targets()
@@ -1238,10 +1241,16 @@ class AppApi(TaskApi):
         :type repository_key: Optional[str]
         :param show_disabled: show disabled applications
         :type show_disabled: bool
-        :param integrated_into: destination of the application.
-                    Available values: "panel", "files", "standalone", "data_commander",
-                                    "image_annotation_tool", "video_annotation_tool",
-                                    "dicom_annotation_tool", "pointcloud_annotation_tool"
+        :param integrated_into: Destination(s) of the application. Available values:
+
+            - ``panel``
+            - ``files``
+            - ``standalone``
+            - ``data_commander``
+            - ``image_annotation_tool``
+            - ``video_annotation_tool``
+            - ``dicom_annotation_tool``
+            - ``pointcloud_annotation_tool``
         :type integrated_into: Optional[List[str]]
         :param session_tags: list of session tags
         :type session_tags: Optional[List[str]]
@@ -1258,30 +1267,33 @@ class AppApi(TaskApi):
         :rtype: List[AppInfo]
 
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
+                import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            team_id = 447
+                api = sly.Api.from_env()
 
-            # Get list of all applications (including all tasks in `tasks` field)
-            apps = api.app.get_list(team_id=team_id)
+                team_id = 447
 
-            # Get list of all applications (only running tasks included in `tasks` field)
-            apps = api.app.get_list(team_id=team_id, force_all_sessions=False)
+                # Get list of all applications (including all tasks in `tasks` field)
+                apps = api.app.get_list(team_id=team_id)
 
-            # Get list of only running applications
-            apps = api.app.get_list(team_id=team_id, only_running=True)
+                # Get list of all applications (only running tasks included in `tasks` field)
+                apps = api.app.get_list(team_id=team_id, force_all_sessions=False)
 
-            # Get list of applications with specific filters
-            filter = [{"field": "moduleId", "operator": "=", "value": 428}]
-            apps = api.app.get_list(team_id=team_id, filter=filter)
+                # Get list of only running applications
+                apps = api.app.get_list(team_id=team_id, only_running=True)
+
+                # Get list of applications with specific filters
+                filter = [{"field": "moduleId", "operator": "=", "value": 428}]
+                apps = api.app.get_list(team_id=team_id, filter=filter)
         """
 
         if only_running is True:
@@ -1529,22 +1541,23 @@ class AppApi(TaskApi):
         :raises ValueError: if both module_id and slug are provided
         :return: ModuleInfo object
         :rtype: ModuleInfo
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import os
-            from dotenv import load_dotenv
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            module_id = 81
-            module_info = api.app.get_ecosystem_module_info(module_id)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
+                api = sly.Api.from_env()
+
+                module_id = 81
+                module_info = api.app.get_ecosystem_module_info(module_id)
         """
         if module_id is None and slug is None:
             raise ValueError("Either module_id or slug must be provided")
@@ -1569,24 +1582,25 @@ class AppApi(TaskApi):
         :rtype: int
         :raises KeyError: if module with given slug not found
         :raises KeyError: if there are multiple modules with the same slug
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import os
-            from dotenv import load_dotenv
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            slug = "supervisely-ecosystem/export-to-supervisely-format"
-            module_id = api.app.get_ecosystem_module_id(slug)
-            print(f"Module {slug} has id {module_id}")
-            # Module supervisely-ecosystem/export-to-supervisely-format has id 81
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
+                api = sly.Api.from_env()
+
+                slug = "supervisely-ecosystem/export-to-supervisely-format"
+                module_id = api.app.get_ecosystem_module_id(slug)
+                print(f"Module {slug} has id {module_id}")
+                # Module supervisely-ecosystem/export-to-supervisely-format has id 81
         """
         modules = self.get_list_all_pages(
             method="ecosystem.list",
@@ -1659,27 +1673,28 @@ class AppApi(TaskApi):
         :return: list of sessions
         :rtype: List[SessionInfo]
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            team_id = 447
-            module_id = 428
+                team_id = 447
+                module_id = 428
 
-            # Get list of all sessions for the specified team and module ID
-            sessions = api.app.get_sessions(team_id, module_id)
+                # Get list of all sessions for the specified team and module ID
+                sessions = api.app.get_sessions(team_id, module_id)
 
-            # Get list of sessions with specific statuses
-            from supervisely.api.task_api import TaskApi
+                # Get list of sessions with specific statuses
+                from supervisely.api.task_api import TaskApi
 
-            statuses = [TaskApi.Status.STARTED]
-            sessions = api.app.get_sessions(team_id, module_id, statuses=statuses)
+                statuses = [TaskApi.Status.STARTED]
+                sessions = api.app.get_sessions(team_id, module_id, statuses=statuses)
         """
 
         infos_json = self.get_list(

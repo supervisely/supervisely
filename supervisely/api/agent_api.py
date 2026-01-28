@@ -48,26 +48,28 @@ class AgentApi(ModuleApi, ModuleWithStatus):
 
     :param api: API connection to the server
     :type api: Api
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import os
-        from dotenv import load_dotenv
+        .. code-block:: python
 
-        import supervisely as sly
+            import os
+            from dotenv import load_dotenv
 
-        # Load secrets and create API object from .env file (recommended)
-        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-        if sly.is_development():
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-        api = sly.Api.from_env()
+            import supervisely as sly
 
-        # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-        team_id = 8
-        agents = api.agent.get_list(team_id)
+            api = sly.Api.from_env()
+
+            # Pass values into the API constructor (optional, not recommended)
+            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
+
+            team_id = 8
+            agents = api.agent.get_list(team_id)
     """
 
     class Status(Enum):
@@ -129,20 +131,22 @@ class AgentApi(ModuleApi, ModuleWithStatus):
         :type filters: List[dict], optional
         :return: List of Agents with information. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[NamedTuple]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            team_id = 16087
-            agents = api.agent.get_list(team_id)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            filter_agents = api.agent.get_list(team_id, filters=[{ 'field': 'name', 'operator': '=', 'value': 'Gorgeous Chicken' }])
+                team_id = 16087
+                agents = api.agent.get_list(team_id)
+
+                filter_agents = api.agent.get_list(team_id, filters=[{ 'field': 'name', 'operator': '=', 'value': 'Gorgeous Chicken' }])
         """
         return self.get_list_all_pages("agents.list", {"teamId": team_id, "filter": filters or []})
 
@@ -195,28 +199,29 @@ class AgentApi(ModuleApi, ModuleWithStatus):
         :return: List of Agents with information. See :class:`AgentInfo`
         :rtype: :class:`List[AgentInfo]`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            team_id = 350
-            available_agents = api.agent.get_list_available(
-                team_id=team_id,
-                show_public=True,
-                show_only_running=False,
-                has_gpu=False,
-                type="app",
-                plugin_version_id=1,
-                version="6.7.39",
-                envs=[{"field": "DOCKER_NET"}],
-                min_nvidia_driver_version="546.33"
-            )
+                team_id = 350
+                available_agents = api.agent.get_list_available(
+                    team_id=team_id,
+                    show_public=True,
+                    show_only_running=False,
+                    has_gpu=False,
+                    type="app",
+                    plugin_version_id=1,
+                    version="6.7.39",
+                    envs=[{"field": "DOCKER_NET"}],
+                    min_nvidia_driver_version="546.33"
+                )
         """
         data = {
             "teamId": team_id,
@@ -250,17 +255,19 @@ class AgentApi(ModuleApi, ModuleWithStatus):
         :type id: int
         :return: Information about Agent. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`NamedTuple`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            agent = api.agent.get_info_by_id(7)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                agent = api.agent.get_info_by_id(7)
         """
         return self._get_info_by_id(id, "agents.info")
 
@@ -272,17 +279,19 @@ class AgentApi(ModuleApi, ModuleWithStatus):
         :type id: int
         :return: Agent Status
         :rtype: :class:`Status<supervisely.api.agent_api.AgentApi.Status>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            agent = api.agent.get_status(7)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                agent = api.agent.get_status(7)
         """
         status_str = self.get_info_by_id(id).status
         return self.Status(status_str)
