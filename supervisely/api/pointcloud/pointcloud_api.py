@@ -133,26 +133,28 @@ class PointcloudApi(RemoveableBulkModuleApi):
 
     :param api: API connection to the server.
     :type api: Api
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import os
-        from dotenv import load_dotenv
+        .. code-block:: python
 
-        import supervisely as sly
+            import os
+            from dotenv import load_dotenv
 
-        # Load secrets and create API object from .env file (recommended)
-        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-        if sly.is_development():
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-        api = sly.Api.from_env()
+            import supervisely as sly
 
-        # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-        pcd_id = 19618654
-        pcd_info = api.pointcloud.get_info_by_id(pcd_id) # api usage example
+            api = sly.Api.from_env()
+
+            # Or pass values into the API constructor (optional, not recommended)
+            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
+
+            pcd_id = 19618654
+            pcd_info = api.pointcloud.get_info_by_id(pcd_id) # api usage example
     """
 
     def __init__(self, api):
@@ -203,18 +205,20 @@ class PointcloudApi(RemoveableBulkModuleApi):
 
         :return: NamedTuple name.
         :rtype: :class:`str`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            tuple_name = api.pointcloud.info_tuple_name()
-            print(tuple_name) # PointCloudInfo
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                tuple_name = api.pointcloud.info_tuple_name()
+                print(tuple_name) # PointCloudInfo
         """
 
         return "PointCloudInfo"
@@ -238,26 +242,27 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :return: List of the point clouds objects from the dataset with given id.
         :rtype: :class:`List[PointcloudInfo]`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            dataset_id = 62664
-            pcd_infos = api.pointcloud_episode.get_list(dataset_id)
-            print(pcd_infos)
-            # Output: [PointcloudInfo(...), PointcloudInfo(...)]
+                dataset_id = 62664
+                pcd_infos = api.pointcloud_episode.get_list(dataset_id)
+                print(pcd_infos)
+                # Output: [PointcloudInfo(...), PointcloudInfo(...)]
 
-            id_list = [19618654, 19618657, 19618660]
-            filtered_pointcloud_infos = api.pointcloud.get_list(dataset_id, filters=[{'field': 'id', 'operator': 'in', 'value': id_list}])
-            print(filtered_pointcloud_infos)
-            # Output:
-            # [PointcloudInfo(id=19618654, ...), PointcloudInfo(id=19618657, ...), PointcloudInfo(id=19618660, ...)]
+                id_list = [19618654, 19618657, 19618660]
+                filtered_pointcloud_infos = api.pointcloud.get_list(dataset_id, filters=[{'field': 'id', 'operator': 'in', 'value': id_list}])
+                print(filtered_pointcloud_infos)
+                # Output:
+                # [PointcloudInfo(id=19618654, ...), PointcloudInfo(id=19618657, ...), PointcloudInfo(id=19618660, ...)]
         """
 
         return self.get_list_all_pages(
@@ -279,42 +284,42 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :return: Information about point cloud. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`PointcloudInfo`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                import supervisely as sly
 
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                pcd_id = 19373403
+                pcd_info = api.pointcloud.get_info_by_id(pcd_id)
+                print(pcd_info)
 
-            pcd_id = 19373403
-            pcd_info = api.pointcloud.get_info_by_id(pcd_id)
-            print(pcd_info)
-
-            # Output:
-            # PointcloudInfo(
-            #     id=19373403,
-            #     frame=None,
-            #     description='',
-            #     name='000063.pcd',
-            #     team_id=435,
-            #     workspace_id=687,
-            #     project_id=17231,
-            #     dataset_id=55875,
-            #     link=None,
-            #     hash='7EcJCyhq15V4NnZ8oiPrKQckmXXypO4saqFN7kgH08Y=',
-            #     path_original='/h5unms4-public/point_clouds/Z/h/bc/roHZP5nP2.pcd',
-            #     cloud_mime='image/pcd',
-            #     figures_count=4,
-            #     objects_count=4,
-            #     tags=[],
-            #     meta={},
-            #     created_at='2023-02-07T19:36:44.897Z',
-            #     updated_at='2023-02-07T19:36:44.897Z'
-            # )
+                # Output:
+                # PointcloudInfo(
+                #     id=19373403,
+                #     frame=None,
+                #     description='',
+                #     name='000063.pcd',
+                #     team_id=435,
+                #     workspace_id=687,
+                #     project_id=17231,
+                #     dataset_id=55875,
+                #     link=None,
+                #     hash='7EcJCyhq15V4NnZ8oiPrKQckmXXypO4saqFN7kgH08Y=',
+                #     path_original='/h5unms4-public/point_clouds/Z/h/bc/roHZP5nP2.pcd',
+                #     cloud_mime='image/pcd',
+                #     figures_count=4,
+                #     objects_count=4,
+                #     tags=[],
+                #     meta={},
+                #     created_at='2023-02-07T19:36:44.897Z',
+                #     updated_at='2023-02-07T19:36:44.897Z'
+                # )
         """
         return self._get_info_by_id(id, "point-clouds.info")
 
@@ -341,25 +346,27 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :type path: str
         :return: None
         :rtype: :class:`NoneType`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            storage_dir = sly.app.get_data_dir()
-            pcd_id = 19373403
-            pcd_info = api.pointcloud.get_info_by_id(pcd_id)
-            save_path = os.path.join(storage_dir, pcd_info.name)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            api.pointcloud.download_path(pcd_id, save_path)
-            print(os.listdir(storage_dir))
+                storage_dir = sly.app.get_data_dir()
+                pcd_id = 19373403
+                pcd_info = api.pointcloud.get_info_by_id(pcd_id)
+                save_path = os.path.join(storage_dir, pcd_info.name)
 
-            # Output: ['000063.pcd']
+                api.pointcloud.download_path(pcd_id, save_path)
+                print(os.listdir(storage_dir))
+
+                # Output: ['000063.pcd']
         """
 
         response = self._download(id, is_stream=True)
@@ -376,41 +383,43 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :type id: int
         :return: List of dictionaries with informations about related images
         :rtype: List
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            pcd_id = 19373403
-            img_infos = api.pointcloud.get_list_related_images(pcd_id)
-            img_info = img_infos[0]
-            print(img_info)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            # Output:
-            # {
-            #     'pathOriginal': '/h5un6qgms4-public/images/original/S/j/hJ/PwMg.png',
-            #     'id': 473302,
-            #     'entityId': 19373403,
-            #     'createdAt': '2023-01-09T08:50:33.225Z',
-            #     'updatedAt': '2023-01-09T08:50:33.225Z',
-            #     'meta': {
-            #         'deviceId': 'cam_2'},
-            #         'fileMeta': {'mime': 'image/png',
-            #         'size': 893783,
-            #         'width': 1224,
-            #         'height': 370
-            #     },
-            #     'hash': 'vxA+emfDNUkFP9P6oitMB5Q0rMlnskmV2jvcf47OjGU=',
-            #     'link': None,
-            #     'preview': '/previews/q/ext:jpeg/resize:fill:50:0:0/q:50/plain/h5ad-public/images/original/S/j/hJ/PwMg.png',
-            #     'fullStorageUrl': 'https://app.supervisely.com/hs4-public/images/original/S/j/hJ/PwMg.png',
-            #     'name': 'img00'
-            # }
+                pcd_id = 19373403
+                img_infos = api.pointcloud.get_list_related_images(pcd_id)
+                img_info = img_infos[0]
+                print(img_info)
+
+                # Output:
+                # {
+                #     'pathOriginal': '/h5un6qgms4-public/images/original/S/j/hJ/PwMg.png',
+                #     'id': 473302,
+                #     'entityId': 19373403,
+                #     'createdAt': '2023-01-09T08:50:33.225Z',
+                #     'updatedAt': '2023-01-09T08:50:33.225Z',
+                #     'meta': {
+                #         'deviceId': 'cam_2'},
+                #         'fileMeta': {'mime': 'image/png',
+                #         'size': 893783,
+                #         'width': 1224,
+                #         'height': 370
+                #     },
+                #     'hash': 'vxA+emfDNUkFP9P6oitMB5Q0rMlnskmV2jvcf47OjGU=',
+                #     'link': None,
+                #     'preview': '/previews/q/ext:jpeg/resize:fill:50:0:0/q:50/plain/h5ad-public/images/original/S/j/hJ/PwMg.png',
+                #     'fullStorageUrl': 'https://app.supervisely.com/hs4-public/images/original/S/j/hJ/PwMg.png',
+                #     'name': 'img00'
+                # }
         """
 
         dataset_id = self.get_info_by_id(id).dataset_id
@@ -439,23 +448,25 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :type path: str
         :return: List of dictionaries with informations about related images
         :rtype: List
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            save_path = "src/output/img_0.png"
-            img_info = api.pointcloud.get_list_related_images(pcd_info.id)[0]
-            api.pointcloud.download_related_image(img_info["id"], save_path)
-            print(f"Context image has been successfully downloaded to '{save_path}'")
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-        # Output:
-        # Context image has been successfully downloaded to 'src/output/img_0.png'
+                save_path = "src/output/img_0.png"
+                img_info = api.pointcloud.get_list_related_images(pcd_info.id)[0]
+                api.pointcloud.download_related_image(img_info["id"], save_path)
+                print(f"Context image has been successfully downloaded to '{save_path}'")
+
+                # Output:
+                # Context image has been successfully downloaded to 'src/output/img_0.png'
         """
 
         response = self._api.post(
@@ -495,46 +506,48 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :type meta: dict, optional
         :return: Information about point cloud. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`PointcloudInfo`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            dst_dataset_id = 62693
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            src_pointcloud_id = 19618685
-            pcd_info = api.pointcloud.get_info_by_id(src_pointcloud_id)
-            hash, name, meta = pcd_info.hash, pcd_info.name, pcd_info.meta
+                dst_dataset_id = 62693
 
-            new_pcd_info = api.pointcloud.upload_hash(dst_dataset_id.id, name, hash, meta)
-            print(new_pcd_info)
+                src_pointcloud_id = 19618685
+                pcd_info = api.pointcloud.get_info_by_id(src_pointcloud_id)
+                hash, name, meta = pcd_info.hash, pcd_info.name, pcd_info.meta
 
-            # Output:
-            # PointcloudInfo(
-            #     id=19619507,
-            #     frame=None,
-            #     description='',
-            #     name='0000000031.pcd',
-            #     team_id=None,
-            #     workspace_id=None,
-            #     project_id=None,
-            #     dataset_id=62694,
-            #     link=None,
-            #     hash='5w69Vv1i6JrqhU0Lw1UJAJFGPVWUzDG7O3f4QSwRfmE=',
-            #     path_original='/j8a9qgms4-public/point_clouds/I/3/6U/L7YBY.pcd',
-            #     cloud_mime='image/pcd',
-            #     figures_count=None,
-            #     objects_count=None,
-            #     tags=None,
-            #     meta={'frame': 31},
-            #     created_at='2023-04-05T10:59:44.656Z',
-            #     updated_at='2023-04-05T10:59:44.656Z'
-            # )
+                new_pcd_info = api.pointcloud.upload_hash(dst_dataset_id.id, name, hash, meta)
+                print(new_pcd_info)
+
+                # Output:
+                # PointcloudInfo(
+                #     id=19619507,
+                #     frame=None,
+                #     description='',
+                #     name='0000000031.pcd',
+                #     team_id=None,
+                #     workspace_id=None,
+                #     project_id=None,
+                #     dataset_id=62694,
+                #     link=None,
+                #     hash='5w69Vv1i6JrqhU0Lw1UJAJFGPVWUzDG7O3f4QSwRfmE=',
+                #     path_original='/j8a9qgms4-public/point_clouds/I/3/6U/L7YBY.pcd',
+                #     cloud_mime='image/pcd',
+                #     figures_count=None,
+                #     objects_count=None,
+                #     tags=None,
+                #     meta={'frame': 31},
+                #     created_at='2023-04-05T10:59:44.656Z',
+                #     updated_at='2023-04-05T10:59:44.656Z'
+                # )
         """
 
         meta = {} if meta is None else meta
@@ -564,34 +577,36 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :type progress_cb: Progress, optional
         :return: List of informations about Pointclouds. See :class:`info_sequence<info_sequence>`
         :rtype: List[:class:`PointcloudInfo`]
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            src_dataset_id = 62664
-            dst_dataset_id = 62690
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            src_pcd_infos = api.pointcloud.get_list(src_dataset_id)
+                src_dataset_id = 62664
+                dst_dataset_id = 62690
 
-            names = [pcd.name for pcd in src_pcd_infos[:4]]
-            hashes = [pcd.hash for pcd in src_pcd_infos[:4]]
-            metas = [pcd.meta for pcd in src_pcd_infos[:4]]
+                src_pcd_infos = api.pointcloud.get_list(src_dataset_id)
 
-            dst_pcd_infos = api.pointcloud.get_list(dst_dataset_id)
-            print(f"{len(dst_pcd_infos)} pointcloud before upload.")
-            # Output:
-            # 0 pointcloud before upload.
+                names = [pcd.name for pcd in src_pcd_infos[:4]]
+                hashes = [pcd.hash for pcd in src_pcd_infos[:4]]
+                metas = [pcd.meta for pcd in src_pcd_infos[:4]]
 
-            new_pcd_infos = api.pointcloud.upload_hashes(dst_dataset_id, names, hashes, metas)
-            print(f"{len(new_pcd_infos)} pointcloud after upload.")
-            # Output:
-            # 4 pointcloud after upload.
+                dst_pcd_infos = api.pointcloud.get_list(dst_dataset_id)
+                print(f"{len(dst_pcd_infos)} pointcloud before upload.")
+                # Output:
+                # 0 pointcloud before upload.
+
+                new_pcd_infos = api.pointcloud.upload_hashes(dst_dataset_id, names, hashes, metas)
+                print(f"{len(new_pcd_infos)} pointcloud after upload.")
+                # Output:
+                # 4 pointcloud after upload.
         """
 
         return self._upload_bulk_add(
@@ -649,22 +664,24 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :type path: str
         :return: Hash for image. See :class:`info_sequence<info_sequence>`
         :rtype: str
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            img_file = src/input/img/000000.png"
-            img_hash = api.pointcloud.upload_related_image(img_file)
-            print(img_hash)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            # Output:
-            # +R6dFy8nMEq6k82vHLxuakpqVBmyTTPj5hXdPfjAv/c=
+                img_file = src/input/img/000000.png"
+                img_hash = api.pointcloud.upload_related_image(img_file)
+                print(img_hash)
+
+                # Output:
+                # +R6dFy8nMEq6k82vHLxuakpqVBmyTTPj5hXdPfjAv/c=
         """
 
         return self.upload_related_images([path])[0]
@@ -681,21 +698,23 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :type paths: List[str]
         :return: List of hashes for images. See :class:`info_sequence<info_sequence>`
         :rtype: List[str]
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            img_paths = ["src/input/img/000001.png", "src/input/img/000002.png"]
-            img_hashes = api.pointcloud.upload_related_images(img_paths)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            # Output:
-            # [+R6dFy8nMEq6k82vHLxuakpqVBmyTTPjdfGdPfjAv/c=, +hfjbufnbkLhJb32vHLxuakpqVBmyTTPj5hXdPfhhj1c]
+                img_paths = ["src/input/img/000001.png", "src/input/img/000002.png"]
+                img_hashes = api.pointcloud.upload_related_images(img_paths)
+
+                # Output:
+                # [+R6dFy8nMEq6k82vHLxuakpqVBmyTTPjdfGdPfjAv/c=, +hfjbufnbkLhJb32vHLxuakpqVBmyTTPj5hXdPfhhj1c]
         """
 
         def path_to_bytes_stream(path):
@@ -717,33 +736,35 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :type camera_names: List[Dict]
         :return: Response object
         :rtype: Dict
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            img_paths = ["src/input/img/000001.png", "src/input/img/000002.png"]
-            cam_paths = ["src/input/cam_info/000001.json", "src/input/cam_info/000002.json"]
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            img_hashes = api.pointcloud.upload_related_images(img_paths)
-            img_infos = []
-            for i, cam_info_file in enumerate(cam_paths):
-                # reading cam_info
-                with open(cam_info_file, "r") as f:
-                    cam_info = json.load(f)
-                img_info = {
-                    "entityId": pcd_infos[i].id,
-                    "name": f"img_{i}.png",
-                    "hash": img_hashes[i],
-                    "meta": cam_info,
-                }
-                img_infos.append(img_info)
-            api.pointcloud.add_related_images(img_infos)
+                img_paths = ["src/input/img/000001.png", "src/input/img/000002.png"]
+                cam_paths = ["src/input/cam_info/000001.json", "src/input/cam_info/000002.json"]
+
+                img_hashes = api.pointcloud.upload_related_images(img_paths)
+                img_infos = []
+                for i, cam_info_file in enumerate(cam_paths):
+                    # reading cam_info
+                    with open(cam_info_file, "r") as f:
+                        cam_info = json.load(f)
+                    img_info = {
+                        "entityId": pcd_infos[i].id,
+                        "name": f"img_{i}.png",
+                        "hash": img_hashes[i],
+                        "meta": cam_info,
+                    }
+                    img_infos.append(img_info)
+                api.pointcloud.add_related_images(img_infos)
         """
 
         if camera_names is not None:
@@ -774,22 +795,24 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :type meta: Optional[Dict]
         :return: Information about point cloud
         :rtype: PointcloudInfo
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            pcd_file = "src/input/pcd/000000.pcd"
-            pcd_info = api.pointcloud.upload_path(dataset.id, name="pcd_0.pcd", path=pcd_file)
-            print(f'Point cloud "{pcd_info.name}" uploaded to Supervisely with ID:{pcd_info.id}')
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            # Output:
-            # Point cloud "pcd_0.pcd" uploaded to Supervisely with ID:19618685
+                pcd_file = "src/input/pcd/000000.pcd"
+                pcd_info = api.pointcloud.upload_path(dataset.id, name="pcd_0.pcd", path=pcd_file)
+                print(f'Point cloud "{pcd_info.name}" uploaded to Supervisely with ID:{pcd_info.id}')
+
+                # Output:
+                # Point cloud "pcd_0.pcd" uploaded to Supervisely with ID:19618685
         """
 
         metas = None if meta is None else [meta]
@@ -818,22 +841,24 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :type metas: Optional[List[Dict]]
         :return: List of informations about point clouds
         :rtype: List[PointcloudInfo]
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            paths = ["src/input/pcd/000001.pcd", "src/input/pcd/000002.pcd"]
-            pcd_infos = api.pointcloud.upload_paths(dataset.id, names=["pcd_1.pcd", "pcd_2.pcd"], paths=paths)
-            print(f'Point clouds uploaded to Supervisely with IDs: {[pcd_info.id for pcd_info in pcd_infos]}')
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            # Output:
-            # Point clouds uploaded to Supervisely with IDs: [19618685, 19618686]
+                paths = ["src/input/pcd/000001.pcd", "src/input/pcd/000002.pcd"]
+                pcd_infos = api.pointcloud.upload_paths(dataset.id, names=["pcd_1.pcd", "pcd_2.pcd"], paths=paths)
+                print(f'Point clouds uploaded to Supervisely with IDs: {[pcd_info.id for pcd_info in pcd_infos]}')
+
+                # Output:
+                # Point clouds uploaded to Supervisely with IDs: [19618685, 19618686]
         """
 
         def path_to_bytes_stream(path):
@@ -850,23 +875,25 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :type paths: List[str]
         :return: List of point clouds hashes that are exist.
         :rtype: List[str]
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            pointcloud_id = 19618685
-            pcd_info = api.pointcloud.get_info_by_id(pointcloud_id)
-            hash = api.pointcloud.check_existing_hashes([pcd_info.hash])
-            print(hash)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            # Output:
-            # ['5w69Vv1i6JrqhU0Lw1UJAJFGPhgkIhs7O3f4QSwRfmE=']
+                pointcloud_id = 19618685
+                pcd_info = api.pointcloud.get_info_by_id(pointcloud_id)
+                hash = api.pointcloud.check_existing_hashes([pcd_info.hash])
+                print(hash)
+
+                # Output:
+                # ['5w69Vv1i6JrqhU0Lw1UJAJFGPhgkIhs7O3f4QSwRfmE=']
         """
 
         results = []
@@ -1148,25 +1175,27 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :type progress_cb_type: Literal["number", "size"], optional
         :return: None
         :rtype: :class:`NoneType`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            import asyncio
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import asyncio
+                import supervisely as sly
 
-            pcd_info = api.pointcloud.get_info_by_id(19373403)
-            save_path = os.path.join("/path/to/save/", pcd_info.name)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            semaphore = asyncio.Semaphore(100)
-            loop = sly.utils.get_or_create_event_loop()
-            loop.run_until_complete(
-                        api.pointcloud.download_path_async(pcd_info.id, save_path, semaphore)
-                    )
+                pcd_info = api.pointcloud.get_info_by_id(19373403)
+                save_path = os.path.join("/path/to/save/", pcd_info.name)
+
+                semaphore = asyncio.Semaphore(100)
+                loop = sly.utils.get_or_create_event_loop()
+                loop.run_until_complete(
+                    api.pointcloud.download_path_async(pcd_info.id, save_path, semaphore)
+                )
         """
 
         if range_start is not None or range_end is not None:
@@ -1241,21 +1270,21 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :return: None
         :rtype: :class:`NoneType`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
-            import asyncio
+                import os
+                import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            ids = [19373403, 19373404]
-            paths = ["/path/to/save/000063.pcd", "/path/to/save/000064.pcd"]
-            loop = sly.utils.get_or_create_event_loop()
-            loop.run_until_complete(api.pointcloud.download_paths_async(ids, paths))
+                ids = [19373403, 19373404]
+                paths = ["/path/to/save/000063.pcd", "/path/to/save/000064.pcd"]
+                loop = sly.utils.get_or_create_event_loop()
+                loop.run_until_complete(api.pointcloud.download_paths_async(ids, paths))
         """
         if len(ids) == 0:
             return
@@ -1310,23 +1339,25 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :type progress_cb_type: Literal["number", "size"], optional
         :return: None
         :rtype: :class:`NoneType`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            import asyncio
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import asyncio
+                import supervisely as sly
 
-            img_info = api.pointcloud.get_list_related_images(19373403)[0]
-            save_path = os.path.join("/path/to/save/", img_info.name)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            semaphore = asyncio.Semaphore(100)
-            loop = sly.utils.get_or_create_event_loop()
-            loop.run_until_complete(
+                img_info = api.pointcloud.get_list_related_images(19373403)[0]
+                save_path = os.path.join("/path/to/save/", img_info.name)
+
+                semaphore = asyncio.Semaphore(100)
+                loop = sly.utils.get_or_create_event_loop()
+                loop.run_until_complete(
                     api.pointcloud.download_related_image_async(19373403, save_path, semaphore)
                 )
         """
@@ -1390,12 +1421,13 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :return: None
         :rtype: :class:`NoneType`
 
-        :Usage example:
+        :Usage Example:
 
             .. code-block:: python
 
-                import supervisely as sly
+                import os
                 import asyncio
+                import supervisely as sly
 
                 os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
                 os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -1408,8 +1440,8 @@ class PointcloudApi(RemoveableBulkModuleApi):
                 semaphore = asyncio.Semaphore(100)
                 loop = sly.utils.get_or_create_event_loop()
                 loop.run_until_complete(
-                        api.pointcloud.download_related_images_async(ids, save_paths, semaphore)
-                    )
+                    api.pointcloud.download_related_images_async(ids, save_paths, semaphore)
+                )
         """
 
         if len(ids) == 0:
@@ -1446,20 +1478,21 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :return: Information about updated Pointcloud.
         :rtype: :class:`PointcloudInfo`
 
-        :Usage example:
+        :Usage Example:
 
-        .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                import supervisely as sly
 
-            api = sly.Api.from_env()
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
 
-            pointcloud_id = 123456
-            new_pointcloud_name = "3333_new.pcd"
+                pointcloud_id = 123456
+                new_pointcloud_name = "3333_new.pcd"
 
-            api.pointcloud.rename(id=pointcloud_id, name=new_pointcloud_name)
+                api.pointcloud.rename(id=pointcloud_id, name=new_pointcloud_name)
         """
 
         data = {

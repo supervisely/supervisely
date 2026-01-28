@@ -1055,33 +1055,30 @@ class ModuleApiBase(_JsonConvertibleModule):
         :type method: str
         :param data: Data to pass to the API method.
         :type data: dict
-        :param pages_count: Preferred number of pages to retrieve if used with a `per_page` limit.
-                            Will be automatically adjusted if the `pagesCount` differs from the requested number.
+        :param pages_count: Preferred number of pages to retrieve if used with a ``per_page`` limit.
+                            Will be automatically adjusted if the ``pagesCount`` differs from the requested number.
         :type pages_count: int, optional
         :param semaphore: Semaphore for limiting the number of simultaneous requests.
         :type semaphore: :class:`asyncio.Semaphore`, optional
-        :param kwargs: Additional arguments.
         :return: List of images in dataset.
         :rtype: AsyncGenerator[List[ImageInfo]]
 
-        :Usage example:
+        :Usage Example:
 
             .. code-block:: python
 
-                    import supervisely as sly
-                    import asyncio
+                import os
+                import supervisely as sly
 
-                    os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                    os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-                    api = sly.Api.from_env()
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-                    method = 'images.list'
-                    data = {
-                        'datasetId': 123456
-                    }
+                method = 'images.list'
+                data = {'datasetId': 123456}
 
-                    loop = sly.utils.get_or_create_event_loop()
-                    images = loop.run_until_complete(api.image.get_list_generator_async(method, data))
+                loop = sly.utils.get_or_create_event_loop()
+                images = loop.run_until_complete(api.image.get_list_generator_async(method, data))
         """
 
         if semaphore is None:
@@ -1131,28 +1128,29 @@ class ModuleApi(ModuleApiBase):
         :param fields: The list of api fields which will be returned with the response.
         :type fields: List[str]
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                import supervisely as sly
 
-            # You can connect to API directly
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                # You can connect to API directly
+                address = 'https://app.supervisely.com/'
+                token = 'Your Supervisely API Token'
+                api = sly.Api(address, token)
 
-            # Or you can use API from environment
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                # Or you can use API from environment
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
 
-            dataset_id = 55832
-            name = "IMG_0315.jpeg"
-            info = api.image.get_info_by_name(dataset_id, name)
-            print(info)
-            # Output: ImageInfo(id=19369643, name='IMG_0315.jpeg', ...)
+                dataset_id = 55832
+                name = "IMG_0315.jpeg"
+                info = api.image.get_info_by_name(dataset_id, name)
+                print(info)
+                # Output: ImageInfo(id=19369643, name='IMG_0315.jpeg', ...)
         """
 
         return self._get_info_by_name(
@@ -1181,31 +1179,32 @@ class ModuleApi(ModuleApiBase):
         :type parent_id: int
         :param filters: List of parameters to sort output entities.
         :type filters: List[Dict[str, str]], optional
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            # You can connect to API directly
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                import os
+                import supervisely as sly
 
-            # Or you can use API from environment
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                # You can connect to API directly
+                address = 'https://app.supervisely.com/'
+                token = 'Your Supervisely API Token'
+                api = sly.Api(address, token)
 
+                # Or you can use API from environment
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            dataset_id = 55832
-            images = api.image.get_list(dataset_id)
-            print(images)
-            # Output: [
-                ImageInfo(id=19369642, ...)
-                ImageInfo(id=19369643, ...)
-                ImageInfo(id=19369644, ...)
-            ]
+                dataset_id = 55832
+                images = api.image.get_list(dataset_id)
+                print(images)
+                # Output: [
+                    ImageInfo(id=19369642, ...)
+                    ImageInfo(id=19369643, ...)
+                    ImageInfo(id=19369644, ...)
+                ]
         """
 
         raise NotImplementedError()
@@ -1220,27 +1219,28 @@ class ModuleApi(ModuleApiBase):
         :type name: str
         :return: Returns True if entity exists, and False if not
         :rtype: bool
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            # You can connect to API directly
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                import os
+                import supervisely as sly
 
-            # Or you can use API from environment
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                # You can connect to API directly
+                address = 'https://app.supervisely.com/'
+                token = 'Your Supervisely API Token'
+                api = sly.Api(address, token)
 
+                # Or you can use API from environment
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            name = "IMG_0315.jpeg"
-            dataset_id = 55832
-            exists = api.image.exists(dataset_id, name)
-            print(exists) # True
+                name = "IMG_0315.jpeg"
+                dataset_id = 55832
+                exists = api.image.exists(dataset_id, name)
+                print(exists) # True
         """
 
         return self.get_info_by_name(parent_id, name) is not None
@@ -1256,27 +1256,28 @@ class ModuleApi(ModuleApiBase):
         :type name: str
         :return: Returns free name.
         :rtype: str
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            # You can connect to API directly
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                import os
+                import supervisely as sly
 
-            # Or you can use API from environment
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                # You can connect to API directly
+                address = 'https://app.supervisely.com/'
+                token = 'Your Supervisely API Token'
+                api = sly.Api(address, token)
 
+                # Or you can use API from environment
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            name = "IMG_0315.jpeg"
-            dataset_id = 55832
-            free_name = api.image.get_free_name(dataset_id, name)
-            print(free_name) # IMG_0315_001.jpeg
+                name = "IMG_0315.jpeg"
+                dataset_id = 55832
+                free_name = api.image.get_free_name(dataset_id, name)
+                print(free_name) # IMG_0315_001.jpeg
         """
 
         return self._get_free_name(
@@ -1358,39 +1359,40 @@ class CloneableModuleApi(ModuleApi):
         :type dst_name: str
         :return: Returns the ID of the task that is created to perform the cloning operation.
         :rtype: int
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import os
-            from dotenv import load_dotenv
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                import supervisely as sly
 
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-            api = sly.Api.from_env()
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
 
-            # ID of the entity to clone
-            project_id = 123456
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
+                api = sly.Api.from_env()
 
-            # ID of the destination workspace
-            workspace_id = 123456
+                # ID of the entity to clone
+                project_id = 123456
 
-            # Create a task to clone the project
-            task_id = api.project.clone(project_id, workspace_id, "my_cloned_project")
+                # ID of the destination workspace
+                workspace_id = 123456
 
-            # Wait until the task is finished
-            api.task.wait(task_id, api.task.Status.FINISHED)
+                # Create a task to clone the project
+                task_id = api.project.clone(project_id, workspace_id, "my_cloned_project")
 
-            task_info = api.task.get_info_by_id(task_id)
+                # Wait until the task is finished
+                api.task.wait(task_id, api.task.Status.FINISHED)
 
-            dst_project_id = task_info["meta"]["output"]["project"]["id"]
-            print(f"Cloned project ID: {dst_project_id}")
+                task_info = api.task.get_info_by_id(task_id)
+
+                dst_project_id = task_info["meta"]["output"]["project"]["id"]
+                print(f"Cloned project ID: {dst_project_id}")
         """
 
         return self._clone({ApiField.ID: id}, dst_workspace_id, dst_name)
@@ -1541,25 +1543,26 @@ class RemoveableBulkModuleApi(ModuleApi):
         :type ids: List[int]
         :param progress_cb: Function for control remove progress.
         :type progress_cb: Callable
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            # You can connect to API directly
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                import os
+                import supervisely as sly
 
-            # Or you can use API from environment
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                # You can connect to API directly
+                address = 'https://app.supervisely.com/'
+                token = 'Your Supervisely API Token'
+                api = sly.Api(address, token)
 
+                # Or you can use API from environment
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            image_ids = [19369645, 19369646, 19369647]
-            api.image.remove_batch(image_ids)
+                image_ids = [19369645, 19369646, 19369647]
+                api.image.remove_batch(image_ids)
         """
         for ids_batch in batched(ids, batch_size=batch_size):
             self._api.post(
@@ -1575,24 +1578,25 @@ class RemoveableBulkModuleApi(ModuleApi):
 
         :param id: Entity ID in Supervisely.
         :type id: int
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            # You can connect to API directly
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                import os
+                import supervisely as sly
 
-            # Or you can use API from environment
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                # You can connect to API directly
+                address = 'https://app.supervisely.com/'
+                token = 'Your Supervisely API Token'
+                api = sly.Api(address, token)
 
+                # Or you can use API from environment
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            image_id = 19369643
-            api.image.remove(image_id)
+                image_id = 19369643
+                api.image.remove(image_id)
         """
         self.remove_batch([id])

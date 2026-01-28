@@ -40,32 +40,32 @@ class PointcloudObjectApi(ObjectApi):
         :return: List of objects IDs
         :rtype: :class:`List[int]`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                import supervisely as sly
+                from supervisely.video_annotation.key_id_map import KeyIdMap
 
-            from supervisely.video_annotation.key_id_map import KeyIdMap
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                project_id = 19442
+                pointcloud_id = 19618685
 
-            project_id = 19442
-            pointcloud_id = 19618685
+                meta_json = api.project.get_meta(project_id)
+                project_meta = sly.ProjectMeta.from_json(meta_json)
 
-            meta_json = api.project.get_meta(project_id)
-            project_meta = sly.ProjectMeta.from_json(meta_json)
+                key_id_map = KeyIdMap()
+                ann_info = api.pointcloud.annotation.download(pointcloud_id)
+                ann = sly.PointcloudAnnotation.from_json(ann_info, project_meta, key_id_map)
 
-            key_id_map = KeyIdMap()
-            ann_info = api.pointcloud.annotation.download(pointcloud_id)
-            ann = sly.PointcloudAnnotation.from_json(ann_info, project_meta, key_id_map)
+                res = api.pointcloud.object.append_bulk(pointcloud_id, ann.objects, key_id_map)
+                print(res)
 
-            res = api.pointcloud.object.append_bulk(pointcloud_id, ann.objects, key_id_map)
-            print(res)
-
-            # Output: [5565915, 5565916, 5565917, 5565918, 5565919]
+                # Output: [5565915, 5565916, 5565917, 5565918, 5565919]
         """
 
         info = self._api.pointcloud.get_info_by_id(pointcloud_id)
@@ -97,43 +97,43 @@ class PointcloudObjectApi(ObjectApi):
         :return: List of objects IDs
         :rtype: :class:`List[int]`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                import supervisely as sly
+                from supervisely.pointcloud_annotation.pointcloud_annotation import PointcloudObjectCollection
+                from supervisely.video_annotation.key_id_map import KeyIdMap
 
-            from supervisely.pointcloud_annotation.pointcloud_annotation import PointcloudObjectCollection
-            from supervisely.video_annotation.key_id_map import KeyIdMap
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                project_id = 19442
+                project = api.project.get_info_by_id(project_id)
+                dataset = api.dataset.create(project.id, "demo_dataset", change_name_if_conflict=True)
 
-            project_id = 19442
-            project = api.project.get_info_by_id(project_id)
-            dataset = api.dataset.create(project.id, "demo_dataset", change_name_if_conflict=True)
+                class_car = sly.ObjClass('car', sly.Cuboid)
+                class_pedestrian = sly.ObjClass('pedestrian', sly.Cuboid)
+                classes = sly.ObjClassCollection([class_car, class_pedestrian])
+                project_meta = sly.ProjectMeta(classes)
+                updated_meta = api.project.update_meta(project.id, project_meta.to_json())
 
-            class_car = sly.ObjClass('car', sly.Cuboid)
-            class_pedestrian = sly.ObjClass('pedestrian', sly.Cuboid)
-            classes = sly.ObjClassCollection([class_car, class_pedestrian])
-            project_meta = sly.ProjectMeta(classes)
-            updated_meta = api.project.update_meta(project.id, project_meta.to_json())
+                key_id_map = KeyIdMap()
 
-            key_id_map = KeyIdMap()
+                pedestrian_object = sly.PointcloudObject(class_pedestrian)
+                car_object = sly.PointcloudObject(class_car)
+                objects_collection = PointcloudObjectCollection([pedestrian_object, car_object])
 
-            pedestrian_object = sly.PointcloudObject(class_pedestrian)
-            car_object = sly.PointcloudObject(class_car)
-            objects_collection = PointcloudObjectCollection([pedestrian_object, car_object])
+                uploaded_objects_ids = api.pointcloud_episode.object.append_to_dataset(
+                    dataset.id,
+                    objects_collection,
+                    key_id_map,
+                )
+                print(uploaded_objects_ids)
 
-            uploaded_objects_ids = api.pointcloud_episode.object.append_to_dataset(
-                dataset.id,
-                objects_collection,
-                key_id_map,
-            )
-            print(uploaded_objects_ids)
-
-            # Output: [5565920, 5565921, 5565922]
+                # Output: [5565920, 5565921, 5565922]
         """
 
         project_id = self._api.dataset.get_info_by_id(dataset_id).project_id

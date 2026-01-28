@@ -1,5 +1,7 @@
 # coding: utf-8
-"""deploy pretrained and custom models"""
+"""
+Deploy and manage model serving applications.
+"""
 
 from __future__ import annotations
 
@@ -19,6 +21,15 @@ from supervisely.sly_logger import logger
 
 
 def get_runtime(runtime: Optional[str] = None):
+    """
+    Normalize runtime name/alias to :class:`~supervisely.nn.utils.RuntimeType`.
+
+    :param runtime: Runtime string or alias (e.g. ``'onnx'``, ``'onnxruntime'``, ``'tensorrt'``).
+    :type runtime: str, optional
+    :return: Runtime enum value or None.
+    :rtype: :class:`~supervisely.nn.utils.RuntimeType` or None
+    :raises ValueError: If runtime is not supported.
+    """
     from supervisely.nn.utils import RuntimeType
 
     if runtime is None:
@@ -47,9 +58,27 @@ def get_runtime(runtime: Optional[str] = None):
 
 
 class DeployApi:
-    """ """
+    """
+    API for deploying models and controlling serving apps.
+
+    This class is used internally by :class:`~supervisely.api.nn.neural_network_api.NeuralNetworkApi`,
+    but it can also be used directly for advanced deployment workflows.
+
+    Key capabilities:
+
+    - deploy a pretrained model into a new serving task,
+    - deploy a custom checkpoint (from team files or experiment artifacts),
+    - load/replace model inside an existing serving task.
+
+    :param api: API client.
+    :type api: :class:`~supervisely.api.api.Api`
+    """
 
     def __init__(self, api: "Api"):
+        """
+        :param api: API client.
+        :type api: :class:`~supervisely.api.api.Api`
+        """
         self._api = api
 
     def load_pretrained_model(

@@ -15,26 +15,28 @@ class ObjectClassApi(ModuleApi):
 
     :param api: API connection to the server.
     :type api: Api
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import os
-        from dotenv import load_dotenv
+        .. code-block:: python
 
-        import supervisely as sly
+            import os
+            from dotenv import load_dotenv
 
-        # Load secrets and create API object from .env file (recommended)
-        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-        if sly.is_development():
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-        api = sly.Api.from_env()
+            import supervisely as sly
 
-        # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-        project_id = 1951
-        obj_class_infos = api.object_class.get_list(project_id)
+            api = sly.Api.from_env()
+
+            # Pass values into the API constructor (optional, not recommended)
+            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
+
+            project_id = 1951
+            obj_class_infos = api.object_class.get_list(project_id)
     """
 
     @staticmethod
@@ -85,51 +87,53 @@ class ObjectClassApi(ModuleApi):
         :type filters: List[dict], optional
         :return: List of ObjClasses with information from the given Project. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[NamedTuple]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            project_id = 1951
-            obj_class_infos = api.object_class.get_list(project_id)
-            print(obj_class_infos)
-            # Output: [ObjectClassInfo(id=22309,
-            #                          name='lemon',
-            #                          description='',
-            #                          shape='bitmap',
-            #                          color='#51C6AA',
-            #                          settings={},
-            #                          created_at='2021-03-02T10:04:33.973Z',
-            #                          updated_at='2021-03-11T09:37:07.111Z'),
-            #  ObjectClassInfo(id=22310,
-            #                  name='kiwi',
-            #                  description='',
-            #                  shape='bitmap',
-            #                  color='#FF0000',
-            #                  settings={},
-            #                  created_at='2021-03-02T10:04:33.973Z',
-            #                  updated_at='2021-03-11T09:37:07.111Z')
-            # ]
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            obj_class_list = api.object_class.get_list(1951, filters=[{'field': 'name', 'operator': '=', 'value': 'lemon' }])
-            print(obj_class_list)
-            # Output: [
-            #     [
-            #         22309,
-            #         "lemon",
-            #         "",
-            #         "bitmap",
-            #         "#51C6AA",
-            #         {},
-            #         "2021-03-02T10:04:33.973Z",
-            #         "2021-03-11T09:37:07.111Z"
-            #     ]
-            # ]
+                project_id = 1951
+                obj_class_infos = api.object_class.get_list(project_id)
+                print(obj_class_infos)
+                # Output: [ObjectClassInfo(id=22309,
+                #                          name='lemon',
+                #                          description='',
+                #                          shape='bitmap',
+                #                          color='#51C6AA',
+                #                          settings={},
+                #                          created_at='2021-03-02T10:04:33.973Z',
+                #                          updated_at='2021-03-11T09:37:07.111Z'),
+                #  ObjectClassInfo(id=22310,
+                #                  name='kiwi',
+                #                  description='',
+                #                  shape='bitmap',
+                #                  color='#FF0000',
+                #                  settings={},
+                #                  created_at='2021-03-02T10:04:33.973Z',
+                #                  updated_at='2021-03-11T09:37:07.111Z')
+                # ]
+
+                obj_class_list = api.object_class.get_list(1951, filters=[{'field': 'name', 'operator': '=', 'value': 'lemon' }])
+                print(obj_class_list)
+                # Output: [
+                #     [
+                #         22309,
+                #         "lemon",
+                #         "",
+                #         "bitmap",
+                #         "#51C6AA",
+                #         {},
+                #         "2021-03-02T10:04:33.973Z",
+                #         "2021-03-11T09:37:07.111Z"
+                #     ]
+                # ]
         """
         return self.get_list_all_pages(
             "advanced.object_classes.list",
@@ -142,19 +146,21 @@ class ObjectClassApi(ModuleApi):
         :type project_id: int
         :return: Dictionary Key ID Map {'key': id}
         :rtype: :class:`KeyIdMap<supervisely.video_annotation.key_id_map.KeyIdMap>`
-        :Usage example:
 
-        .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            obj_class_map = api.object_class.get_name_to_id_map(1951)
-            print(obj_class_map)
-            # Output: {'lemon': 22309, 'kiwi': 22310, 'cucumber': 22379}
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                obj_class_map = api.object_class.get_name_to_id_map(1951)
+                print(obj_class_map)
+                # Output: {'lemon': 22309, 'kiwi': 22310, 'cucumber': 22379}
         """
         objects_infos = self.get_list(project_id)
         return {object_info.name: object_info.id for object_info in objects_infos}
@@ -236,24 +242,27 @@ class ObjectClassApi(ModuleApi):
         :return: Updated class information
         :rtype: :class:`ObjectClassInfo<ObjectClassInfo>`
 
-        :Usage example:
+        :Usage Example:
 
-        .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                import supervisely as sly
 
-            api = sly.Api.from_env()
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            obj_class_info = api.object_class.update(
-                id=22309,
-                shape='any',
-                settings={
-                    "availableShapes": [
-                        "bitmap",
-                        "polygon",
-                    ],
-                },
-            )
+                obj_class_info = api.object_class.update(
+                    id=22309,
+                    shape='any',
+                    settings={
+                        "availableShapes": [
+                            "bitmap",
+                            "polygon",
+                        ],
+                    },
+                )
         """
         if all(arg is None for arg in [name, description, hotkey, shape, color, settings]):
             raise ValueError(

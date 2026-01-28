@@ -420,25 +420,27 @@ class ImageApi(RemoveableBulkModuleApi):
 
     :param api: API connection to the server
     :type api: Api
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import os
-        from dotenv import load_dotenv
+        .. code-block:: python
 
-        import supervisely as sly
+            import os
+            from dotenv import load_dotenv
 
-        # Load secrets and create API object from .env file (recommended)
-        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-        if sly.is_development():
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-        api = sly.Api.from_env()
+            import supervisely as sly
 
-        # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-        image_info = api.image.get_info_by_id(image_id) # api usage example
+            api = sly.Api.from_env()
+
+            # Pass values into the API constructor (optional, not recommended)
+            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
+
+            image_info = api.image.get_info_by_id(image_id) # api usage example
     """
 
     def __init__(self, api):
@@ -574,18 +576,19 @@ class ImageApi(RemoveableBulkModuleApi):
         :type project_id: :class:`int`
         :return: Generator that yields lists of images in the given :class:`Dataset<supervisely.project.project.Dataset>` or :class:`Project<supervisely.project.project.Project>`.
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            for images_batch in api.image.get_list_generator(dataset_id):
-                print(images_batch)
+                for images_batch in api.image.get_list_generator(dataset_id):
+                    print(images_batch)
         """
 
         self._validate_project_and_dataset_id(project_id, dataset_id)
@@ -668,54 +671,56 @@ class ImageApi(RemoveableBulkModuleApi):
         :type extra_fields: List[str], optional
         :return: Objects with image information from Supervisely.
         :rtype: :class:`List[ImageInfo]<ImageInfo>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            # Get list of Images with width = 1067
-            img_infos = api.image.get_list(dataset_id, filters=[{ 'field': 'width', 'operator': '=', 'value': '1067' }])
-            print(img_infos)
-            # Output: [ImageInfo(id=770915,
-            #                    name='IMG_3861.jpeg',
-            #                    link=None,
-            #                    hash='ZdpMD+ZMJx0R8BgsCzJcqM7qP4M8f1AEtoYc87xZmyQ=',
-            #                    mime='image/jpeg',
-            #                    ext='jpeg',
-            #                    size=148388,
-            #                    width=1067,
-            #                    height=800,
-            #                    labels_count=4,
-            #                    dataset_id=2532,
-            #                    created_at='2021-03-02T10:04:33.973Z',
-            #                    updated_at='2021-03-02T10:04:33.973Z',
-            #                    meta={},
-            #                    path_original='/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpg',
-            #                    full_storage_url='http://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpg'),
-            #                    tags=[],
-            # ImageInfo(id=770916,
-            #           name='IMG_1836.jpeg',
-            #           link=None,
-            #           hash='YZKQrZH5C0rBvGGA3p7hjWahz3/pV09u5m30Bz8GeYs=',
-            #           mime='image/jpeg',
-            #           ext='jpeg',
-            #           size=140222,
-            #           width=1067,
-            #           height=800,
-            #           labels_count=3,
-            #           dataset_id=2532,
-            #           created_at='2021-03-02T10:04:33.973Z',
-            #           updated_at='2021-03-02T10:04:33.973Z',
-            #           meta={},
-            #           path_original='/h5un6l2bnaz1vj8a9qgms4-public/images/original/C/Y/Hq/...jpg',
-            #           full_storage_url='http://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/C/Y/Hq/...jpg'),
-            #           tags=[]
-            # ]
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                # Get list of Images with width = 1067
+                img_infos = api.image.get_list(dataset_id, filters=[{ 'field': 'width', 'operator': '=', 'value': '1067' }])
+                print(img_infos)
+                # Output: [ImageInfo(id=770915,
+                #                    name='IMG_3861.jpeg',
+                #                    link=None,
+                #                    hash='ZdpMD+ZMJx0R8BgsCzJcqM7qP4M8f1AEtoYc87xZmyQ=',
+                #                    mime='image/jpeg',
+                #                    ext='jpeg',
+                #                    size=148388,
+                #                    width=1067,
+                #                    height=800,
+                #                    labels_count=4,
+                #                    dataset_id=2532,
+                #                    created_at='2021-03-02T10:04:33.973Z',
+                #                    updated_at='2021-03-02T10:04:33.973Z',
+                #                    meta={},
+                #                    path_original='/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpg',
+                #                    full_storage_url='http://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpg'),
+                #                    tags=[],
+                # ImageInfo(id=770916,
+                #           name='IMG_1836.jpeg',
+                #           link=None,
+                #           hash='YZKQrZH5C0rBvGGA3p7hjWahz3/pV09u5m30Bz8GeYs=',
+                #           mime='image/jpeg',
+                #           ext='jpeg',
+                #           size=140222,
+                #           width=1067,
+                #           height=800,
+                #           labels_count=3,
+                #           dataset_id=2532,
+                #           created_at='2021-03-02T10:04:33.973Z',
+                #           updated_at='2021-03-02T10:04:33.973Z',
+                #           meta={},
+                #           path_original='/h5un6l2bnaz1vj8a9qgms4-public/images/original/C/Y/Hq/...jpg',
+                #           full_storage_url='http://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/C/Y/Hq/...jpg'),
+                #           tags=[]
+                # ]
         """
         self._validate_project_and_dataset_id(project_id, dataset_id)
         data = {
@@ -812,18 +817,19 @@ class ImageApi(RemoveableBulkModuleApi):
         :return: Objects with image information from Supervisely.
         :rtype: :class:`List[ImageInfo]<ImageInfo>`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            # Get list of Images with names containing subsequence '2008'
-            img_infos = api.image.get_filtered_list(dataset_id, filters=[{ 'type': 'images_filename', 'data': { 'value': '2008' } }])
+                # Get list of Images with names containing subsequence '2008'
+                img_infos = api.image.get_filtered_list(dataset_id, filters=[{ 'type': 'images_filename', 'data': { 'value': '2008' } }])
         """
         self._validate_project_and_dataset_id(project_id, dataset_id)
         if filters is None or not filters:
@@ -879,19 +885,21 @@ class ImageApi(RemoveableBulkModuleApi):
         :type id: int
         :return: Object with image information from Supervisely.
         :rtype: :class:`ImageInfo<ImageInfo>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            # You can get Image ID by listing all images in the Dataset as shown in get_list
-            # Or you can open certain image in Supervisely Annotation Tool UI and get last digits of the URL
-            img_info = api.image.get_info_by_id(770918)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                # You can get Image ID by listing all images in the Dataset as shown in get_list
+                # Or you can open certain image in Supervisely Annotation Tool UI and get last digits of the URL
+                img_info = api.image.get_info_by_id(770918)
         """
         return self._get_info_by_id(
             id,
@@ -945,18 +953,20 @@ class ImageApi(RemoveableBulkModuleApi):
         :type progress_cb: tqdm or callable, optional
         :return: Objects with image information from Supervisely.
         :rtype: :class:`List[ImageInfo]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            img_ids = [376728, 376729, 376730, 376731, 376732, 376733]
-            img_infos = image.get_info_by_id_batch(img_ids)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                img_ids = [376728, 376729, 376730, 376731, 376732, 376733]
+                img_infos = image.get_info_by_id_batch(img_ids)
         """
         results = []
         if len(ids) == 0:
@@ -1012,17 +1022,19 @@ class ImageApi(RemoveableBulkModuleApi):
         :type keep_alpha: bool, optional
         :return: Image in RGB numpy matrix format
         :rtype: :class:`np.ndarray`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            image_np = api.image.download_np(770918)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                image_np = api.image.download_np(770918)
         """
         response = self._download(id)
         img = sly_image.read_bytes(response.content, keep_alpha)
@@ -1038,20 +1050,22 @@ class ImageApi(RemoveableBulkModuleApi):
         :type path: str
         :return: None
         :rtype: :class:`NoneType`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            img_info = api.image.get_info_by_id(770918)
-            save_path = os.path.join("/home/admin/work/projects/lemons_annotated/ds1/test_imgs/", img_info.name)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            api.image.download_path(770918, save_path)
+                img_info = api.image.get_info_by_id(770918)
+                save_path = os.path.join("/home/admin/work/projects/lemons_annotated/ds1/test_imgs/", img_info.name)
+
+                api.image.download_path(770918, save_path)
         """
         response = self._download(id, is_stream=True)
         ensure_base_path(path)
@@ -1069,20 +1083,22 @@ class ImageApi(RemoveableBulkModuleApi):
         :type path: str
         :return: None
         :rtype: :class:`NoneType`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            img_info = api.image.get_info_by_id(770918)
-            save_path = os.path.join("/home/admin/work/projects/lemons_annotated/ds1/test_imgs/", img_info.name)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            api.image.download_path(770918, save_path)
+                img_info = api.image.get_info_by_id(770918)
+                save_path = os.path.join("/home/admin/work/projects/lemons_annotated/ds1/test_imgs/", img_info.name)
+
+                api.image.download_path(770918, save_path)
         """
         self.download_path(id=id, path=path)
 
@@ -1140,34 +1156,35 @@ class ImageApi(RemoveableBulkModuleApi):
         :return: None
         :rtype: :class:`NoneType`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            local_save_dir = "/home/admin/work/projects/lemons_annotated/ds1/test_imgs"
-            save_paths = []
-            image_ids = [771755, 771756, 771757, 771758, 771759, 771760]
-            img_infos = api.image.get_info_by_id_batch(image_ids)
+                local_save_dir = "/home/admin/work/projects/lemons_annotated/ds1/test_imgs"
+                save_paths = []
+                image_ids = [771755, 771756, 771757, 771758, 771759, 771760]
+                img_infos = api.image.get_info_by_id_batch(image_ids)
 
-            p = tqdm(desc="Images downloaded: ", total=len(img_infos))
-            for img_info in img_infos:
-                save_paths.append(os.path.join(local_save_dir, img_info.name))
+                p = tqdm(desc="Images downloaded: ", total=len(img_infos))
+                for img_info in img_infos:
+                    save_paths.append(os.path.join(local_save_dir, img_info.name))
 
-            api.image.download_paths(2573, image_ids, save_paths, progress_cb=p)
-            # Progress:
-            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 0, "total": 6, "timestamp": "2021-03-15T19:47:15.406Z", "level": "info"}
-            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 1, "total": 6, "timestamp": "2021-03-15T19:47:16.366Z", "level": "info"}
-            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 2, "total": 6, "timestamp": "2021-03-15T19:47:16.367Z", "level": "info"}
-            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 3, "total": 6, "timestamp": "2021-03-15T19:47:16.367Z", "level": "info"}
-            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 4, "total": 6, "timestamp": "2021-03-15T19:47:16.367Z", "level": "info"}
-            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 5, "total": 6, "timestamp": "2021-03-15T19:47:16.368Z", "level": "info"}
-            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 6, "total": 6, "timestamp": "2021-03-15T19:47:16.368Z", "level": "info"}
+                api.image.download_paths(2573, image_ids, save_paths, progress_cb=p)
+                # Progress:
+                # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 0, "total": 6, "timestamp": "2021-03-15T19:47:15.406Z", "level": "info"}
+                # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 1, "total": 6, "timestamp": "2021-03-15T19:47:16.366Z", "level": "info"}
+                # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 2, "total": 6, "timestamp": "2021-03-15T19:47:16.367Z", "level": "info"}
+                # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 3, "total": 6, "timestamp": "2021-03-15T19:47:16.367Z", "level": "info"}
+                # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 4, "total": 6, "timestamp": "2021-03-15T19:47:16.367Z", "level": "info"}
+                # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 5, "total": 6, "timestamp": "2021-03-15T19:47:16.368Z", "level": "info"}
+                # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 6, "total": 6, "timestamp": "2021-03-15T19:47:16.368Z", "level": "info"}
         """
         if len(ids) == 0:
             return
@@ -1196,19 +1213,21 @@ class ImageApi(RemoveableBulkModuleApi):
         :type progress_cb: tqdm or callable, optional
         :return: List of Images in binary format
         :rtype: :class:`List[bytes]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            img_bytes = api.image.download_bytes(dataset_id, [770918])
-            print(img_bytes)
-            # Output: [b'\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\ ...']
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                img_bytes = api.image.download_bytes(dataset_id, [770918])
+                print(img_bytes)
+                # Output: [b'\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\ ...']
         """
         if len(ids) == 0:
             return []
@@ -1239,18 +1258,20 @@ class ImageApi(RemoveableBulkModuleApi):
         :type keep_alpha: bool, optional
         :return: List of Images in RGB numpy matrix format
         :rtype: :class:`List[np.ndarray]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            image_ids = [770918, 770919, 770920]
-            image_nps = api.image.download_nps(dataset_id, image_ids)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                image_ids = [770918, 770919, 770920]
+                image_nps = api.image.download_nps(dataset_id, image_ids)
         """
         return [
             sly_image.read_bytes(img_bytes, keep_alpha)
@@ -1282,7 +1303,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type progress_cb: tqdm or callable, optional
         :return: List of existing hashes
         :rtype: :class:`List[str]`
-        :Usage example: Checkout detailed example `here <https://app.supervisely.com/explore/notebooks/guide-10-check-existing-images-and-upload-only-the-new-ones-1545/overview>`_ (you must be logged into your Supervisely account)
+        :Usage Example: Checkout detailed example `here <https://app.supervisely.com/explore/notebooks/guide-10-check-existing-images-and-upload-only-the-new-ones-1545/overview>`_ (you must be logged into your Supervisely account)
 
          .. code-block:: python
 
@@ -1376,19 +1397,21 @@ class ImageApi(RemoveableBulkModuleApi):
         :type hash: str
         :return: True if Image with given hash exist, otherwise False
         :rtype: :class:`bool`
-        :Usage example:
 
-         .. code-block::
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block::
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            image_check_uploaded = api.image.check_image_uploaded("YZKQrZH5C0rBvGGA3p7hjWahz3/pV09u5m30Bz8GeYs=")
-            print(image_check_uploaded)
-            # Output: True
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                image_check_uploaded = api.image.check_image_uploaded("YZKQrZH5C0rBvGGA3p7hjWahz3/pV09u5m30Bz8GeYs=")
+                print(image_check_uploaded)
+                # Output: True
         """
         response = self._api.post("images.internal.hashes.list", [hash])
         results = response.json()
@@ -1543,22 +1566,24 @@ class ImageApi(RemoveableBulkModuleApi):
         :type use_caching_for_validation: bool, optional
         :return: Information about Image. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`ImageInfo`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            img_info = api.image.upload_path(dataset_id, name="7777.jpeg", path="/home/admin/Downloads/7777.jpeg")
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            # Add custom sort parameter for image
-            img_meta = {'my-key':'a'}
-            with api.image.add_custom_sort(key="my-key"):
-                img_info = api.image.upload_path(dataset_id, name="7777.jpeg", path="/home/admin/Downloads/7777.jpeg", meta=img_meta)
+                img_info = api.image.upload_path(dataset_id, name="7777.jpeg", path="/home/admin/Downloads/7777.jpeg")
+
+                # Add custom sort parameter for image
+                img_meta = {'my-key':'a'}
+                with api.image.add_custom_sort(key="my-key"):
+                    img_info = api.image.upload_path(dataset_id, name="7777.jpeg", path="/home/admin/Downloads/7777.jpeg", meta=img_meta)
 
         """
         metas = None if meta is None else [meta]
@@ -1612,23 +1637,27 @@ class ImageApi(RemoveableBulkModuleApi):
         :raises: :class:`ValueError` if len(names) != len(paths)
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+            .. code-block:: python
 
-            img_names = ["7777.jpeg", "8888.jpeg", "9999.jpeg"]
-            image_paths = ["/home/admin/Downloads/img/770918.jpeg", "/home/admin/Downloads/img/770919.jpeg", "/home/admin/Downloads/img/770920.jpeg"]
+                import os
+                import supervisely as sly
 
-            img_infos = api.image.upload_paths(dataset_id, names=img_names, paths=img_paths)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            # Add custom sort parameter for images
-            img_metas = [{'my-key':'a'}, {'my-key':'b'}, {'my-key':'c'}]
-            with api.image.add_custom_sort(key="my-key"):
-                img_infos = api.image.upload_paths(dataset_id, names=img_names, paths=img_paths, metas=img_metas)
+                img_names = ["7777.jpeg", "8888.jpeg", "9999.jpeg"]
+                image_paths = ["/home/admin/Downloads/img/770918.jpeg", "/home/admin/Downloads/img/770919.jpeg", "/home/admin/Downloads/img/770920.jpeg"]
+
+                img_infos = api.image.upload_paths(dataset_id, names=img_names, paths=img_paths)
+
+                # Add custom sort parameter for images
+                img_metas = [{'my-key':'a'}, {'my-key':'b'}, {'my-key':'c'}]
+                with api.image.add_custom_sort(key="my-key"):
+                    img_infos = api.image.upload_paths(dataset_id, names=img_names, paths=img_paths, metas=img_metas)
         """
 
         def path_to_bytes_stream(path):
@@ -1669,23 +1698,25 @@ class ImageApi(RemoveableBulkModuleApi):
         :type meta: dict, optional
         :return: Information about Image. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`ImageInfo`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            img_np = sly.image.read("/home/admin/Downloads/7777.jpeg")
-            img_info = api.image.upload_np(dataset_id, name="7777.jpeg", img=img_np)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            # Add custom sort parameter for image
-            img_meta = {'my-key':'a'}
-            with api.image.add_custom_sort(key="my-key"):
-                img_info = api.image.upload_np(dataset_id, name="7777.jpeg", img=img_np, meta=img_meta)
+                img_np = sly.image.read("/home/admin/Downloads/7777.jpeg")
+                img_info = api.image.upload_np(dataset_id, name="7777.jpeg", img=img_np)
+
+                # Add custom sort parameter for image
+                img_meta = {'my-key':'a'}
+                with api.image.add_custom_sort(key="my-key"):
+                    img_info = api.image.upload_np(dataset_id, name="7777.jpeg", img=img_np, meta=img_meta)
         """
         metas = None if meta is None else [meta]
         return self.upload_nps(dataset_id, [name], [img], metas=metas)[0]
@@ -1720,29 +1751,31 @@ class ImageApi(RemoveableBulkModuleApi):
         :type conflict_resolution: Optional[Literal["rename", "skip", "replace"]]
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            img_np_1 = sly.image.read("/home/admin/Downloads/7777.jpeg")
-            img_np_2 = sly.image.read("/home/admin/Downloads/8888.jpeg")
-            img_np_3 = sly.image.read("/home/admin/Downloads/9999.jpeg")
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            img_names = ["7777.jpeg", "8888.jpeg", "9999.jpeg"]
-            img_nps = [img_np_1, img_np_2, img_np_3]
+                img_np_1 = sly.image.read("/home/admin/Downloads/7777.jpeg")
+                img_np_2 = sly.image.read("/home/admin/Downloads/8888.jpeg")
+                img_np_3 = sly.image.read("/home/admin/Downloads/9999.jpeg")
 
-            img_infos = api.image.upload_nps(dataset_id, names=img_names, imgs=img_nps)
+                img_names = ["7777.jpeg", "8888.jpeg", "9999.jpeg"]
+                img_nps = [img_np_1, img_np_2, img_np_3]
 
-            # Add custom sort parameter for images
-            img_metas = [{'my-key':'a'}, {'my-key':'b'}, {'my-key':'c'}]
-            with api.image.add_custom_sort(key="my-key"):
-                img_infos = api.image.upload_nps(dataset_id, names=img_names, imgs=img_nps, metas=img_metas)
+                img_infos = api.image.upload_nps(dataset_id, names=img_names, imgs=img_nps)
+
+                # Add custom sort parameter for images
+                img_metas = [{'my-key':'a'}, {'my-key':'b'}, {'my-key':'c'}]
+                with api.image.add_custom_sort(key="my-key"):
+                    img_infos = api.image.upload_nps(dataset_id, names=img_names, imgs=img_nps, metas=img_metas)
         """
 
         def img_to_bytes_stream(item):
@@ -1791,25 +1824,27 @@ class ImageApi(RemoveableBulkModuleApi):
         :type force_metadata_for_links: bool, optional
         :return: Information about Image. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`ImageInfo`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            img_name = 'Avatar.jpg'
-            img_link = 'https://m.media-amazon.com/images/M/MV5BMTYwOTEwNjAzMl5BMl5BanBnXkFtZTcwODc5MTUwMw@@._V1_.jpg'
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            img_info = api.image.upload_link(dataset_id, img_name, img_link)
+                img_name = 'Avatar.jpg'
+                img_link = 'https://m.media-amazon.com/images/M/MV5BMTYwOTEwNjAzMl5BMl5BanBnXkFtZTcwODc5MTUwMw@@._V1_.jpg'
 
-            # Add custom sort parameter for image
-            img_meta = {"my-key": "a"}
-            with api.image.add_custom_sort(key="my-key"):
-                img_info = api.image.upload_link(dataset_id, img_name, img_link, meta=img_meta)
+                img_info = api.image.upload_link(dataset_id, img_name, img_link)
+
+                # Add custom sort parameter for image
+                img_meta = {"my-key": "a"}
+                with api.image.add_custom_sort(key="my-key"):
+                    img_info = api.image.upload_link(dataset_id, img_name, img_link, meta=img_meta)
         """
         metas = None if meta is None else [meta]
         return self.upload_links(
@@ -1857,27 +1892,29 @@ class ImageApi(RemoveableBulkModuleApi):
         :type conflict_resolution: Optional[Literal["rename", "skip", "replace"]]
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            img_names = ['Avatar.jpg', 'Harry Potter.jpg', 'Avengers.jpg']
-            img_links = ['https://m.media-amazon.com/images/M/MV5BMTYwOTEwNjAzMl5BMl5BanBnXkFtZTcwODc5MTUwMw@@._V1_.jpg',
-                         'https://m.media-amazon.com/images/M/MV5BNDYxNjQyMjAtNTdiOS00NGYwLWFmNTAtNThmYjU5ZGI2YTI1XkEyXkFqcGdeQXVyMTMxODk2OTU@._V1_.jpg',
-                         'https://m.media-amazon.com/images/M/MV5BNjQ3NWNlNmQtMTE5ZS00MDdmLTlkZjUtZTBlM2UxMGFiMTU3XkEyXkFqcGdeQXVyNjUwNzk3NDc@._V1_.jpg']
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            img_infos = api.image.upload_links(dataset_id, img_names, img_links)
+                img_names = ['Avatar.jpg', 'Harry Potter.jpg', 'Avengers.jpg']
+                img_links = ['https://m.media-amazon.com/images/M/MV5BMTYwOTEwNjAzMl5BMl5BanBnXkFtZTcwODc5MTUwMw@@._V1_.jpg',
+                            'https://m.media-amazon.com/images/M/MV5BNDYxNjQyMjAtNTdiOS00NGYwLWFmNTAtNThmYjU5ZGI2YTI1XkEyXkFqcGdeQXVyMTMxODk2OTU@._V1_.jpg',
+                            'https://m.media-amazon.com/images/M/MV5BNjQ3NWNlNmQtMTE5ZS00MDdmLTlkZjUtZTBlM2UxMGFiMTU3XkEyXkFqcGdeQXVyNjUwNzk3NDc@._V1_.jpg']
 
-            # Add custom sort parameter for images
-            img_metas = [{'my-key':'a'}, {'my-key':'b'}, {'my-key':'c'}]
-            with api.image.add_custom_sort(key="my-key"):
-                img_infos = api.image.upload_links(dataset_id, names=img_names, links=img_links, metas=img_metas)
+                img_infos = api.image.upload_links(dataset_id, img_names, img_links)
+
+                # Add custom sort parameter for images
+                img_metas = [{'my-key':'a'}, {'my-key':'b'}, {'my-key':'c'}]
+                with api.image.add_custom_sort(key="my-key"):
+                    img_infos = api.image.upload_links(dataset_id, names=img_names, links=img_links, metas=img_metas)
         """
         return self._upload_bulk_add(
             lambda item: (ApiField.LINK, item),
@@ -1912,52 +1949,54 @@ class ImageApi(RemoveableBulkModuleApi):
         :type meta: dict, optional
         :return: Information about Image. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`ImageInfo`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            dst_dataset_id = 452984
-            im_info = api.image.get_info_by_id(193940090)
-            hash = im_info.hash
-            # It is necessary to upload image with the same name(extention) as in src dataset
-            name = im_info.name
-            meta = {1: 'meta_example'}
-            new_in_info = api.image.upload_hash(dst_dataset_id, name, hash, meta)
-            print(json.dumps(new_in_info, indent=4))
-            # Output: [
-            #     196793586,
-            #     "IMG_0748.jpeg",
-            #     null,
-            #     "NEjmnmdd7DOzaFAKK/nCIl5CtcwZeMkhW3CHe875p9g=",
-            #     "image/jpeg",
-            #     "jpeg",
-            #     66885,
-            #     600,
-            #     500,
-            #     0,
-            #     452984,
-            #     "2021-03-16T09:09:45.587Z",
-            #     "2021-03-16T09:09:45.587Z",
-            #     {
-            #         "1": "meta_example"
-            #     },
-            #     "/h5un6l2bnaz1vj8a9qgms4-public/images/original/P/a/kn/W2mzMQg435d6wG0.jpg",
-            #     "https://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/P/a/kn/W2mzMQg435hiHJAPgMU.jpg"
-            # ]
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            # Add custom sort parameter for image
-            new_dataset_id = 452985
-            im_info = api.image.get_info_by_id(193940090)
-            print(im_info.meta)
-            # Output: {'my-key':'a'}
-            with api.image.add_custom_sort(key="my-key"):
-                img_info = api.image.upload_hash(new_dataset_id, name=im_info.name, hash=im_info.hash, meta=im_info.meta)
+                dst_dataset_id = 452984
+                im_info = api.image.get_info_by_id(193940090)
+                hash = im_info.hash
+                # It is necessary to upload image with the same name(extention) as in src dataset
+                name = im_info.name
+                meta = {1: 'meta_example'}
+                new_in_info = api.image.upload_hash(dst_dataset_id, name, hash, meta)
+                print(json.dumps(new_in_info, indent=4))
+                # Output: [
+                #     196793586,
+                #     "IMG_0748.jpeg",
+                #     null,
+                #     "NEjmnmdd7DOzaFAKK/nCIl5CtcwZeMkhW3CHe875p9g=",
+                #     "image/jpeg",
+                #     "jpeg",
+                #     66885,
+                #     600,
+                #     500,
+                #     0,
+                #     452984,
+                #     "2021-03-16T09:09:45.587Z",
+                #     "2021-03-16T09:09:45.587Z",
+                #     {
+                #         "1": "meta_example"
+                #     },
+                #     "/h5un6l2bnaz1vj8a9qgms4-public/images/original/P/a/kn/W2mzMQg435d6wG0.jpg",
+                #     "https://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/P/a/kn/W2mzMQg435hiHJAPgMU.jpg"
+                # ]
+
+                # Add custom sort parameter for image
+                new_dataset_id = 452985
+                im_info = api.image.get_info_by_id(193940090)
+                print(im_info.meta)
+                # Output: {'my-key':'a'}
+                with api.image.add_custom_sort(key="my-key"):
+                    img_info = api.image.upload_hash(new_dataset_id, name=im_info.name, hash=im_info.hash, meta=im_info.meta)
         """
         metas = None if meta is None else [meta]
         return self.upload_hashes(dataset_id, [name], [hash], metas=metas)[0]
@@ -2007,40 +2046,42 @@ class ImageApi(RemoveableBulkModuleApi):
         :type use_caching_for_validation: bool, optional
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            src_dataset_id = 447130
-            hashes = []
-            names = []
-            metas = []
-            imgs_info = api.image.get_list(src_dataset_id)
-            # Create lists of hashes, images names and meta information for each image
-            for im_info in imgs_info:
-                hashes.append(im_info.hash)
-                # It is necessary to upload images with the same names(extentions) as in src dataset
-                names.append(im_info.name)
-                metas.append({im_info.name: im_info.size})
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            dst_dataset_id = 452984
-            progress = sly.Progress("Images upload: ", len(hashes))
-            new_imgs_info = api.image.upload_hashes(dst_dataset_id, names, hashes, progress.iters_done_report, metas)
-            # Output:
-            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 0, "total": 10, "timestamp": "2021-03-16T11:59:07.444Z", "level": "info"}
-            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 10, "total": 10, "timestamp": "2021-03-16T11:59:07.644Z", "level": "info"}
+                src_dataset_id = 447130
+                hashes = []
+                names = []
+                metas = []
+                imgs_info = api.image.get_list(src_dataset_id)
+                # Create lists of hashes, images names and meta information for each image
+                for im_info in imgs_info:
+                    hashes.append(im_info.hash)
+                    # It is necessary to upload images with the same names(extentions) as in src dataset
+                    names.append(im_info.name)
+                    metas.append({im_info.name: im_info.size})
 
-            # Add custom sort parameter for images
-            new_dataset_id = 452985
-            new_metas = [{'my-key':'a'}, {'my-key':'b'}, {'my-key':'c'}]
-            with api.image.add_custom_sort(key="my-key"):
-                img_infos = api.image.upload_hashes(new_dataset_id, names=names, hashes=hashes, metas=new_metas)
+                dst_dataset_id = 452984
+                progress = sly.Progress("Images upload: ", len(hashes))
+                new_imgs_info = api.image.upload_hashes(dst_dataset_id, names, hashes, progress.iters_done_report, metas)
+                # Output:
+                # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 0, "total": 10, "timestamp": "2021-03-16T11:59:07.444Z", "level": "info"}
+                # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 10, "total": 10, "timestamp": "2021-03-16T11:59:07.644Z", "level": "info"}
+
+                # Add custom sort parameter for images
+                new_dataset_id = 452985
+                new_metas = [{'my-key':'a'}, {'my-key':'b'}, {'my-key':'c'}]
+                with api.image.add_custom_sort(key="my-key"):
+                    img_infos = api.image.upload_hashes(new_dataset_id, names=names, hashes=hashes, metas=new_metas)
         """
         return self._upload_bulk_add(
             lambda item: (ApiField.HASH, item),
@@ -2077,52 +2118,54 @@ class ImageApi(RemoveableBulkModuleApi):
         :type meta: dict, optional
         :return: Information about Image. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`ImageInfo`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            dst_dataset_id = 452984
-            im_info = api.image.get_info_by_id(193940090)
-            id = im_info.id
-            # It is necessary to upload image with the same name(extention) as in src dataset
-            name = im_info.name
-            meta = {1: 'meta_example'}
-            new_in_info = api.image.upload_id(dst_dataset_id, name, id, meta)
-            print(json.dumps(new_in_info, indent=4))
-            # Output: [
-            #     196793605,
-            #     "IMG_0748.jpeg",
-            #     null,
-            #     "NEjmnmdd7DOzaFAKK/nCIl5CtcwZeMkhW3CHe875p9g=",
-            #     "image/jpeg",
-            #     "jpeg",
-            #     66885,
-            #     600,
-            #     500,
-            #     0,
-            #     452984,
-            #     "2021-03-16T09:27:12.620Z",
-            #     "2021-03-16T09:27:12.620Z",
-            #     {
-            #         "1": "meta_example"
-            #     },
-            #     "/h5un6l2bnaz1vj8a9qgms4-public/images/original/P/a/kn/W2mzMQg435d6wG0AJGJTOsL1FqMUNOPqu4VdzFAN36LqtGwBIE4AmLOQ1BAxuIyB0bHJAPgMU.jpg",
-            #     "https://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/P/a/kn/iEaDEkejnfnb1Tz56ka0hiHJAPgMU.jpg"
-            # ]
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            # Add custom sort parameter for image
-            new_dataset_id = 452985
-            im_info = api.image.get_info_by_id(193940090)
-            print(im_info.meta)
-            # Output: {"my-key": "a"}
-            with api.image.add_custom_sort(key="my-key"):
-                img_info = api.image.upload_id(new_dataset_id, name=im_info.name, id=im_info.id, meta=im_info.meta)
+                dst_dataset_id = 452984
+                im_info = api.image.get_info_by_id(193940090)
+                id = im_info.id
+                # It is necessary to upload image with the same name(extention) as in src dataset
+                name = im_info.name
+                meta = {1: 'meta_example'}
+                new_in_info = api.image.upload_id(dst_dataset_id, name, id, meta)
+                print(json.dumps(new_in_info, indent=4))
+                # Output: [
+                #     196793605,
+                #     "IMG_0748.jpeg",
+                #     null,
+                #     "NEjmnmdd7DOzaFAKK/nCIl5CtcwZeMkhW3CHe875p9g=",
+                #     "image/jpeg",
+                #     "jpeg",
+                #     66885,
+                #     600,
+                #     500,
+                #     0,
+                #     452984,
+                #     "2021-03-16T09:27:12.620Z",
+                #     "2021-03-16T09:27:12.620Z",
+                #     {
+                #         "1": "meta_example"
+                #     },
+                #     "/h5un6l2bnaz1vj8a9qgms4-public/images/original/P/a/kn/W2mzMQg435d6wG0AJGJTOsL1FqMUNOPqu4VdzFAN36LqtGwBIE4AmLOQ1BAxuIyB0bHJAPgMU.jpg",
+                #     "https://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/P/a/kn/iEaDEkejnfnb1Tz56ka0hiHJAPgMU.jpg"
+                # ]
+
+                # Add custom sort parameter for image
+                new_dataset_id = 452985
+                im_info = api.image.get_info_by_id(193940090)
+                print(im_info.meta)
+                # Output: {"my-key": "a"}
+                with api.image.add_custom_sort(key="my-key"):
+                    img_info = api.image.upload_id(new_dataset_id, name=im_info.name, id=im_info.id, meta=im_info.meta)
         """
         metas = None if meta is None else [meta]
         return self.upload_ids(dataset_id, [name], [id], metas=metas)[0]
@@ -2169,41 +2212,43 @@ class ImageApi(RemoveableBulkModuleApi):
         :type conflict_resolution: Optional[Literal["rename", "skip", "replace"]]
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            src_dataset_id = 447130
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            ids = []
-            names = []
-            metas = []
-            imgs_info = api.image.get_list(src_dataset_id)
-            # Create lists of ids, images names and meta information for each image
-            for im_info in imgs_info:
-                ids.append(im_info.id)
-                # It is necessary to upload images with the same names(extentions) as in src dataset
-                names.append(im_info.name)
-                metas.append({im_info.name: im_info.size})
+                src_dataset_id = 447130
 
-            dst_dataset_id = 452984
-            progress = sly.Progress("Images upload: ", len(ids))
-            new_imgs_info = api.image.upload_ids(dst_dataset_id, names, ids, progress.iters_done_report, metas)
-            # Output:
-            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 0, "total": 10, "timestamp": "2021-03-16T12:31:36.550Z", "level": "info"}
-            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 10, "total": 10, "timestamp": "2021-03-16T12:31:37.119Z", "level": "info"}
+                ids = []
+                names = []
+                metas = []
+                imgs_info = api.image.get_list(src_dataset_id)
+                # Create lists of ids, images names and meta information for each image
+                for im_info in imgs_info:
+                    ids.append(im_info.id)
+                    # It is necessary to upload images with the same names(extentions) as in src dataset
+                    names.append(im_info.name)
+                    metas.append({im_info.name: im_info.size})
 
-            # Add custom sort parameter for images
-            new_dataset_id = 452985
-            new_metas = [{'my-key':'a'}, {'my-key':'b'}, {'my-key':'c'}]
-            with api.image.add_custom_sort(key="my-key"):
-                img_infos = api.image.upload_ids(new_dataset_id, names=names, ids=ids, metas=new_metas)
+                dst_dataset_id = 452984
+                progress = sly.Progress("Images upload: ", len(ids))
+                new_imgs_info = api.image.upload_ids(dst_dataset_id, names, ids, progress.iters_done_report, metas)
+                # Output:
+                # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 0, "total": 10, "timestamp": "2021-03-16T12:31:36.550Z", "level": "info"}
+                # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 10, "total": 10, "timestamp": "2021-03-16T12:31:37.119Z", "level": "info"}
+
+                # Add custom sort parameter for images
+                new_dataset_id = 452985
+                new_metas = [{'my-key':'a'}, {'my-key':'b'}, {'my-key':'c'}]
+                with api.image.add_custom_sort(key="my-key"):
+                    img_infos = api.image.upload_ids(new_dataset_id, names=names, ids=ids, metas=new_metas)
         """
         if metas is None:
             metas = [{}] * len(names)
@@ -2278,47 +2323,48 @@ class ImageApi(RemoveableBulkModuleApi):
         :type use_caching_for_validation: bool, optional
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            from supervisely.api.module_api import ApiField
+            .. code-block:: python
+
+                import supervisely as sly
+                from supervisely.api.module_api import ApiField
 
 
-            server_address = 'https://app.supervisely.com'
-            api_token = 'Your Supervisely API Token'
-            api = sly.Api(server_address, api_token)
+                server_address = 'https://app.supervisely.com'
+                api_token = 'Your Supervisely API Token'
+                api = sly.Api(server_address, api_token)
 
-            dataset_id = 452984
-            names = ['lemon_1.jpg', 'lemon_1.jpg']
-            offsets = [
-                {ApiField.OFFSET_START: 0, ApiField.OFFSET_END: 100},
-                {ApiField.OFFSET_START: 101, ApiField.OFFSET_END: 200}
-            ]
-            team_file_id = 123456
-            new_imgs_info = api.image.upload_by_offsets(dataset_id, team_file_id, names, offsets,  metas)
+                dataset_id = 452984
+                names = ['lemon_1.jpg', 'lemon_1.jpg']
+                offsets = [
+                    {ApiField.OFFSET_START: 0, ApiField.OFFSET_END: 100},
+                    {ApiField.OFFSET_START: 101, ApiField.OFFSET_END: 200}
+                ]
+                team_file_id = 123456
+                new_imgs_info = api.image.upload_by_offsets(dataset_id, team_file_id, names, offsets,  metas)
 
-            # Output example:
-            #   ImageInfo(id=136281,
-            #             name='lemon_1.jpg',
-            #             link=None,
-            #             hash=None,
-            #             mime=None,
-            #             ext=None,
-            #             size=100,
-            #             width=None,
-            #             height=None,
-            #             labels_count=0,
-            #             dataset_id=452984,
-            #             created_at='2025-03-21T18:30:08.551Z',
-            #             updated_at='2025-03-21T18:30:08.551Z',
-            #             meta={},
-            #             path_original='/h5un6l2.../eyJ0eXBlIjoic291cmNlX2Jsb2I...',
-            #             full_storage_url='http://storage:port/h5un6l2...,
-            #             tags=[],
-            #             created_by_id=user),
-            #   ImageInfo(...)
+                # Output example:
+                #   ImageInfo(id=136281,
+                #             name='lemon_1.jpg',
+                #             link=None,
+                #             hash=None,
+                #             mime=None,
+                #             ext=None,
+                #             size=100,
+                #             width=None,
+                #             height=None,
+                #             labels_count=0,
+                #             dataset_id=452984,
+                #             created_at='2025-03-21T18:30:08.551Z',
+                #             updated_at='2025-03-21T18:30:08.551Z',
+                #             meta={},
+                #             path_original='/h5un6l2.../eyJ0eXBlIjoic291cmNlX2Jsb2I...',
+                #             full_storage_url='http://storage:port/h5un6l2...,
+                #             tags=[],
+                #             created_by_id=user),
+                #   ImageInfo(...)
         """
 
         if isinstance(dataset, int):
@@ -2408,24 +2454,25 @@ class ImageApi(RemoveableBulkModuleApi):
         :type use_caching_for_validation: bool, optional
         :return: Generator with information about Images. See :class:`ImageInfo`
         :rtype: :class:`Generator[ImageInfo, None, None]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            from supervisely.api.module_api import ApiField
+            .. code-block:: python
 
+                import os
+                import supervisely as sly
+                from supervisely.api.module_api import ApiField
 
-            server_address = 'https://app.supervisely.com'
-            api_token = 'Your Supervisely API Token'
-            api = sly.Api(server_address, api_token)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            dataset_id = 452984
-            team_file_id = 123456
-            img_infos = []
-            new_imgs_info_generator = api.image.upload_by_offsets_generator(dataset_id, team_file_id)
-            for img_infos_batch in new_imgs_info_generator:
-                img_infos.extend(img_infos_batch)
+                dataset_id = 452984
+                team_file_id = 123456
+                img_infos = []
+                new_imgs_info_generator = api.image.upload_by_offsets_generator(dataset_id, team_file_id)
+                for img_infos_batch in new_imgs_info_generator:
+                    img_infos.extend(img_infos_batch)
         """
 
         if isinstance(dataset, int):
@@ -2765,24 +2812,24 @@ class ImageApi(RemoveableBulkModuleApi):
         :raises: :class:`ValueError` if images ids are from the destination Dataset
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            ds_lemon_id = 1780
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            ds_lemon_img_infos = api.image.get_list(ds_lemon_id)
+                ds_lemon_id = 1780
+                ds_lemon_img_infos = api.image.get_list(ds_lemon_id)
+                lemons_img_ids = [lemon_img_info.id for lemon_img_info in ds_lemon_img_infos]
 
-            lemons_img_ids = [lemon_img_info.id for lemon_img_info in ds_lemon_img_infos]
-
-            ds_fruit_id = 2574
-            ds_fruit_img_infos = api.image.copy_batch(ds_fruit_id, lemons_img_ids, with_annotations=True)
+                ds_fruit_id = 2574
+                ds_fruit_img_infos = api.image.copy_batch(ds_fruit_id, lemons_img_ids, with_annotations=True)
         """
         if type(ids) is not list:
             raise TypeError(
@@ -2866,21 +2913,23 @@ class ImageApi(RemoveableBulkModuleApi):
         :raises: :class:`TypeError` if type of src_image_infos is not list
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            src_ds_id = 2231
-            img_infos = api.image.get_list(src_ds_id)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            dest_ds_id = 2574
-            dest_img_infos = api.image.copy_batch_optimized(src_ds_id, img_infos, dest_ds_id)
+                src_ds_id = 2231
+                img_infos = api.image.get_list(src_ds_id)
+
+                dest_ds_id = 2574
+                dest_img_infos = api.image.copy_batch_optimized(src_ds_id, img_infos, dest_ds_id)
         """
         if type(src_image_infos) is not list:
             raise TypeError(
@@ -2957,29 +3006,31 @@ class ImageApi(RemoveableBulkModuleApi):
         :raises: :class:`ValueError` if images ids are from the destination Dataset
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            ds_lemon_id = 1780
-            ds_kiwi_id = 1233
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            ds_lemon_img_infos = api.image.get_list(ds_lemon_id)
-            ds_kiwi_img_infos = api.image.get_list(ds_kiwi_id)
+                ds_lemon_id = 1780
+                ds_kiwi_id = 1233
 
-            fruit_img_ids = []
-            for lemon_img_info, kiwi_img_info in zip(ds_lemon_img_infos, ds_kiwi_img_infos):
-                fruit_img_ids.append(lemon_img_info.id)
-                fruit_img_ids.append(kiwi_img_info.id)
+                ds_lemon_img_infos = api.image.get_list(ds_lemon_id)
+                ds_kiwi_img_infos = api.image.get_list(ds_kiwi_id)
 
-            ds_fruit_id = 2574
-            ds_fruit_img_infos = api.image.move_batch(ds_fruit_id, fruit_img_ids, with_annotations=True)
+                fruit_img_ids = []
+                for lemon_img_info, kiwi_img_info in zip(ds_lemon_img_infos, ds_kiwi_img_infos):
+                    fruit_img_ids.append(lemon_img_info.id)
+                    fruit_img_ids.append(kiwi_img_info.id)
+
+                ds_fruit_id = 2574
+                ds_fruit_img_infos = api.image.move_batch(ds_fruit_id, fruit_img_ids, with_annotations=True)
         """
         new_images = self.copy_batch(
             dst_dataset_id, ids, change_name_if_conflict, with_annotations, progress_cb
@@ -3023,21 +3074,23 @@ class ImageApi(RemoveableBulkModuleApi):
         :raises: :class:`TypeError` if type of src_image_infos is not list
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            src_ds_id = 2231
-            img_infos = api.image.get_list(src_ds_id)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            dest_ds_id = 2574
-            dest_img_infos = api.image.move_batch_optimized(src_ds_id, img_infos, dest_ds_id)
+                src_ds_id = 2231
+                img_infos = api.image.get_list(src_ds_id)
+
+                dest_ds_id = 2574
+                dest_img_infos = api.image.move_batch_optimized(src_ds_id, img_infos, dest_ds_id)
         """
         new_images = self.copy_batch_optimized(
             src_dataset_id,
@@ -3074,20 +3127,22 @@ class ImageApi(RemoveableBulkModuleApi):
         :type with_annotations: bool, optional
         :return: Information about Image. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`ImageInfo`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            dst_ds_id = 365184
-            img_id = 121236920
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            img_info = api.image.copy(dst_ds_id, img_id, with_annotations=True)
+                dst_ds_id = 365184
+                img_id = 121236920
+
+                img_info = api.image.copy(dst_ds_id, img_id, with_annotations=True)
         """
         return self.copy_batch(dst_dataset_id, [id], change_name_if_conflict, with_annotations)[0]
 
@@ -3111,20 +3166,22 @@ class ImageApi(RemoveableBulkModuleApi):
         :type with_annotations: bool, optional
         :return: Information about Image. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`ImageInfo`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            dst_ds_id = 365484
-            img_id = 533336920
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            img_info = api.image.copy(dst_ds_id, img_id, with_annotations=True)
+                dst_ds_id = 365484
+                img_id = 533336920
+
+                img_info = api.image.copy(dst_ds_id, img_id, with_annotations=True)
         """
         return self.move_batch(dst_dataset_id, [id], change_name_if_conflict, with_annotations)[0]
 
@@ -3151,25 +3208,27 @@ class ImageApi(RemoveableBulkModuleApi):
         :type image_id: int
         :return: Image URL
         :rtype: :class:`str`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            team_id = 16087
-            workspace_id = 23821
-            project_id = 53939
-            dataset_id = 254737
-            image_id = 121236920
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            img_url = api.image.url(team_id, workspace_id, project_id, dataset_id, image_id)
-            print(url)
-            # Output: https://app.supervisely.com/app/images/16087/23821/53939/254737#image-121236920
+                team_id = 16087
+                workspace_id = 23821
+                project_id = 53939
+                dataset_id = 254737
+                image_id = 121236920
+
+                img_url = api.image.url(team_id, workspace_id, project_id, dataset_id, image_id)
+                print(url)
+                # Output: https://app.supervisely.com/app/images/16087/23821/53939/254737#image-121236920
         """
         result = urllib.parse.urljoin(
             self._api.server_address,
@@ -3252,26 +3311,28 @@ class ImageApi(RemoveableBulkModuleApi):
         :raises: :class:`ValueError` if len(hashes) != len(paths)
         :return: None
         :rtype: :class:`NoneType`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            dataset_id = 447130
-            dir_for_save = '/home/admin/Downloads/img'
-            hashes = []
-            paths = []
-            imgs_info = api.image.get_list(dataset_id)
-            for im_info in imgs_info:
-                hashes.append(im_info.hash)
-                # It is necessary to save images with the same names(extentions) as on the server
-                paths.append(os.path.join(dir_for_save, im_info.name))
-            api.image.download_paths_by_hashes(hashes, paths)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                dataset_id = 447130
+                dir_for_save = '/home/admin/Downloads/img'
+                hashes = []
+                paths = []
+                imgs_info = api.image.get_list(dataset_id)
+                for im_info in imgs_info:
+                    hashes.append(im_info.hash)
+                    # It is necessary to save images with the same names(extentions) as on the server
+                    paths.append(os.path.join(dir_for_save, im_info.name))
+                api.image.download_paths_by_hashes(hashes, paths)
         """
         if len(hashes) == 0:
             return
@@ -3320,24 +3381,26 @@ class ImageApi(RemoveableBulkModuleApi):
         :type progress_cb: tqdm or callable, optional
         :return: List of images
         :rtype: :class: List[np.ndarray]
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            image_ids = [770918, 770919, 770920]
-            image_hashes = []
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            for img_id in image_ids:
-                img_info = api.image.get_info_by_id(image_id)
-                image_hashes.append(img_info.hash)
+                image_ids = [770918, 770919, 770920]
+                image_hashes = []
 
-            image_nps = api.image.download_nps_by_hashes(image_hashes)
+                for img_id in image_ids:
+                    img_info = api.image.get_info_by_id(image_id)
+                    image_hashes.append(img_info.hash)
+
+                image_nps = api.image.download_nps_by_hashes(image_hashes)
         """
         return [
             img
@@ -3356,20 +3419,22 @@ class ImageApi(RemoveableBulkModuleApi):
         :type image_id: int
         :return: Project ID where Image is located.
         :rtype: :class:`int`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            img_id = 121236920
-            img_project_id = api.image.get_project_id(img_id)
-            print(img_project_id)
-            # Output: 53939
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                img_id = 121236920
+                img_project_id = api.image.get_project_id(img_id)
+                print(img_project_id)
+                # Output: 53939
         """
         dataset_id = self.get_info_by_id(image_id, force_metadata_for_links=False).dataset_id
         project_id = self._api.dataset.get_info_by_id(dataset_id).project_id
@@ -3397,19 +3462,21 @@ class ImageApi(RemoveableBulkModuleApi):
         :type path_original: str
         :return: Full Image URL link in Supervisely server
         :rtype: :class:`str`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            image_id = 376729
-            img_info = api.image.get_info_by_id(image_id)
-            img_storage_url = api.image.storage_url(img_info.path_original)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                image_id = 376729
+                img_info = api.image.get_info_by_id(image_id)
+                img_storage_url = api.image.storage_url(img_info.path_original)
         """
 
         return path_original
@@ -3441,19 +3508,21 @@ class ImageApi(RemoveableBulkModuleApi):
         :type method: str, optional
         :return: New URL with resized Image
         :rtype: :class:`str`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            image_id = 376729
-            img_info = api.image.get_info_by_id(image_id)
-            img_preview_url = api.image.preview_url(img_info.full_storage_url, width=512, height=256)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                image_id = 376729
+                img_info = api.image.get_info_by_id(image_id)
+                img_preview_url = api.image.preview_url(img_info.full_storage_url, width=512, height=256)
         """
         return resize_image_url(url, ext, method, width, height, quality)
 
@@ -3470,32 +3539,33 @@ class ImageApi(RemoveableBulkModuleApi):
         :raises: :class:`TypeError` if meta type is not dict
         :return: Image information in dict format with new meta
         :rtype: :class:`dict`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import os
-            import json
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import json
+                import supervisely as sly
 
-            image_info = api.image.get_info_by_id(id=3212008)
-            print(image_info.meta)
-            # Output: {}
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            new_meta = {'Camera Make': 'Canon', 'Color Space': 'sRGB', 'Focal Length': '16 mm'}
-            new_image_info = api.image.update_meta(id=3212008, meta=new_meta)
+                image_info = api.image.get_info_by_id(id=3212008)
+                print(image_info.meta)
+                # Output: {}
 
-            image_info = api.image.get_info_by_id(id=3212008)
-            print(json.dumps(obj=image_info.meta, indent=4))
-            # Output: {
-            #     "Camera Make": "Canon",
-            #     "Color Space": "sRGB",
-            #     "Focal Length": "16 mm"
-            # }
+                new_meta = {'Camera Make': 'Canon', 'Color Space': 'sRGB', 'Focal Length': '16 mm'}
+                new_image_info = api.image.update_meta(id=3212008, meta=new_meta)
+
+                image_info = api.image.get_info_by_id(id=3212008)
+                print(json.dumps(obj=image_info.meta, indent=4))
+                # Output: {
+                #     "Camera Make": "Canon",
+                #     "Color Space": "sRGB",
+                #     "Focal Length": "16 mm"
+                # }
         """
         return self.edit(id=id, meta=meta, return_json=True)
 
@@ -3527,18 +3597,21 @@ class ImageApi(RemoveableBulkModuleApi):
         :return: Information about updated image as ImageInfo object or as dict if return_json is True
         :rtype: :class:`ImageInfo` or :class:`dict`
 
-        :Usage example:
+        :Usage Example:
 
-        .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                import supervisely as sly
 
-            api = sly.Api.from_env()
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            image_id = 123456
-            new_image_name = "IMG_3333_new.jpg"
+                image_id = 123456
+                new_image_name = "IMG_3333_new.jpg"
 
-            api.image.edit(id=image_id, name=new_image_name)
+                api.image.edit(id=image_id, name=new_image_name)
         """
         if name is None and description is None and meta is None:
             raise ValueError("At least one parameter must be set")
@@ -3569,19 +3642,21 @@ class ImageApi(RemoveableBulkModuleApi):
         :type name: str
         :return: Information about updated Image.
         :rtype: :class:`ImageInfo`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            image_id = 376729
-            new_image_name = 'new_image_name.jpg'
-            img_info = api.image.rename(image_id, new_image_name)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                image_id = 376729
+                new_image_name = 'new_image_name.jpg'
+                img_info = api.image.rename(image_id, new_image_name)
         """
         return self.edit(id=id, name=name)
 
@@ -3597,19 +3672,21 @@ class ImageApi(RemoveableBulkModuleApi):
         :type value: int or str or None, optional
         :return: :class:`None<None>`
         :rtype: :class:`NoneType<NoneType>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            image_id = 2389126
-            tag_id = 277083
-            api.image.add_tag(image_id, tag_id)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                image_id = 2389126
+                tag_id = 277083
+                api.image.add_tag(image_id, tag_id)
         """
 
         self.add_tag_batch([image_id], tag_id, value)
@@ -3640,19 +3717,21 @@ class ImageApi(RemoveableBulkModuleApi):
         :type tag_meta: TagMeta, optional
         :return: :class:`None<None>`
         :rtype: :class:`NoneType<NoneType>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            image_ids = [2389126, 2389127]
-            tag_id = 277083
-            api.image.add_tag_batch(image_ids, tag_id)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                image_ids = [2389126, 2389127]
+                tag_id = 277083
+                api.image.add_tag_batch(image_ids, tag_id)
         """
         if tag_meta:
             if not (tag_meta.sly_id == tag_id):
@@ -3697,19 +3776,22 @@ class ImageApi(RemoveableBulkModuleApi):
         :type tag_metas: TagMeta or List[TagMeta], optional
         :return: List of tags IDs.
         :rtype: List[int]
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
-            image_ids = [2389126, 2389127]
-            tag_ids = 277083
-            values = ['value1', 'value2']
-            api.image.add_tags_batch(image_ids, tag_ids, values)
+                import os
+                import supervisely as sly
+
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                image_ids = [2389126, 2389127]
+                tag_ids = 277083
+                values = ['value1', 'value2']
+                api.image.add_tags_batch(image_ids, tag_ids, values)
         """
         if len(image_ids) == 0:
             return []
@@ -3761,19 +3843,21 @@ class ImageApi(RemoveableBulkModuleApi):
         :type project_meta: ProjectMeta
         :return: Information about updated tag.
         :rtype: :class:`dict`
-        :Usage example:
+
+        :Usage Example:
 
             .. code-block:: python
 
-            import supervisely as sly
+                import os
+                import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            tag_id = 277083
-            new_value = 'new_value'
-            api.image.update_tag_value(tag_id, new_value)
+                tag_id = 277083
+                new_value = 'new_value'
+                api.image.update_tag_value(tag_id, new_value)
 
         """
         data = {ApiField.ID: tag_id, ApiField.VALUE: value}
@@ -3796,18 +3880,20 @@ class ImageApi(RemoveableBulkModuleApi):
         :type progress_cb: tqdm or callable, optional
         :return: :class:`None<None>`
         :rtype: :class:`NoneType<NoneType>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            image_ids = [2389126, 2389127]
-            api.image.remove_batch(image_ids)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                image_ids = [2389126, 2389127]
+                api.image.remove_batch(image_ids)
         """
         super(ImageApi, self).remove_batch(ids, progress_cb=progress_cb, batch_size=batch_size)
 
@@ -3821,18 +3907,20 @@ class ImageApi(RemoveableBulkModuleApi):
         :type image_id: int
         :return: :class:`None<None>`
         :rtype: :class:`NoneType<NoneType>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            image_id = 2389126
-            api.image.remove(image_id)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                image_id = 2389126
+                api.image.remove(image_id)
         """
         super(ImageApi, self).remove(image_id)
 
@@ -3871,29 +3959,29 @@ class ImageApi(RemoveableBulkModuleApi):
         :type progress_cb: tqdm or callable, optional
         :return: list of uploaded images infos
         :rtype: List[ImageInfo]
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import os
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                import os
+                from dotenv import load_dotenv
+                import supervisely as sly
 
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            api = sly.Api.from_env()
+                api = sly.Api.from_env()
 
-            image_name = "demo1.png"
-            image = cv2.imread(f"demo_data/{image_name}")
+                image_name = "demo1.png"
+                image = cv2.imread(f"demo_data/{image_name}")
 
-            # Extract channels as 2d numpy arrays: channels = [a, b, c]
-            channels = [image[:, :, i] for i in range(image.shape[2])]
+                # Extract channels as 2d numpy arrays: channels = [a, b, c]
+                channels = [image[:, :, i] for i in range(image.shape[2])]
 
-            image_infos = api.image.upload_multispectral(api, dataset.id, image_name, channels)
+                image_infos = api.image.upload_multispectral(api, dataset.id, image_name, channels)
         """
         group_tag_meta = TagMeta(_MULTISPECTRAL_TAG_NAME, TagValueType.ANY_STRING)
         group_tag = Tag(meta=group_tag_meta, value=image_name)
@@ -3943,10 +4031,6 @@ class ImageApi(RemoveableBulkModuleApi):
 
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
-        :param tag_name: Tag name in Supervisely.
-                         If tag does not exist in project, create it first.
-                         Tag must be of type ANY_STRING.
-        :type tag_name: str
         :param group_name: Group name. All images will be assigned by tag with this group name.
         :type group_name: str
         :param paths: List of paths to images.
@@ -3959,9 +4043,10 @@ class ImageApi(RemoveableBulkModuleApi):
         :type links: Optional[List[str]]
         :param conflict_resolution: The strategy to resolve upload conflicts.
             Options:
-                - 'replace': Replaces the existing images in the dataset with the new ones if there is a conflict and logs the deletion of existing images.
-                - 'skip': Ignores uploading the new images if there is a conflict; the original image's ImageInfo list will be returned instead.
-                - 'rename': (default) Renames the new images to prevent name conflicts.
+
+            - ``"replace"``: Replace existing images in the dataset and log deletions.
+            - ``"skip"``: Skip uploading conflicting images and return existing `ImageInfo`.
+            - ``"rename"``: (default) Rename new images to prevent conflicts.
         :type conflict_resolution: Optional[Literal["rename", "skip", "replace"]]
         :param force_metadata_for_links: Specifies whether to force retrieving metadata for images from links.
                                          If False, metadata fields in the response can be empty (if metadata has not been retrieved yet).
@@ -3970,34 +4055,34 @@ class ImageApi(RemoveableBulkModuleApi):
         :rtype: List[ImageInfo]
         :raises Exception: if tag does not exist in project or tag is not of type ANY_STRING
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import os
-            from dotenv import load_dotenv
+                import os
+                from dotenv import load_dotenv
 
-            import supervisely as sly
+                import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
 
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            api = sly.Api.from_env()
+                api = sly.Api.from_env()
 
-            dataset_id = 123456
-            paths = ['path/to/audi_01.png', 'path/to/audi_02.png']
-            group_name = 'audi'
+                dataset_id = 123456
+                paths = ['path/to/audi_01.png', 'path/to/audi_02.png']
+                group_name = 'audi'
 
-            image_infos = api.image.upload_multiview_images(dataset_id, group_name, paths)
+                image_infos = api.image.upload_multiview_images(dataset_id, group_name, paths)
 
-            # Add custom sort parameter for images
-            metas = [{'my-key':'a'}, {'my-key':'b'}]
-            with api.image.add_custom_sort(key="my-key"):
-                image_infos = api.image.upload_multiview_images(dataset_id, group_name, paths, metas)
+                # Add custom sort parameter for images
+                metas = [{'my-key':'a'}, {'my-key':'b'}]
+                with api.image.add_custom_sort(key="my-key"):
+                    image_infos = api.image.upload_multiview_images(dataset_id, group_name, paths, metas)
         """
 
         if paths is None and links is None:
@@ -4080,51 +4165,54 @@ class ImageApi(RemoveableBulkModuleApi):
         :rtype: :class:`NoneType<NoneType>`
         :raises ValueError: if tag is not of type ANY_STRING or not applicable to images
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            # ? option 1
-            import supervisely as sly
+                # Option 1
+                import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            BATCH_SIZE = 6
-            image_ids = [2389126, 2389127, 2389128, 2389129, 2389130, 2389131, ...]
+                BATCH_SIZE = 6
+                image_ids = [2389126, 2389127, 2389128, 2389129, 2389130, 2389131, ...]
 
-            # group images for multiview
-            for group_name, ids in enumerate(sly.batched(image_ids, batch_size=BATCH_SIZE)):
-                api.image.group_images_for_multiview(ids, group_name)
-
-
-            # ? option 2 (with sly.ApiContext)
-            import supervisely as sly
-
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
-
-            BATCH_SIZE = 6
-            image_ids = [2389126, 2389127, 2389128, 2389129, 2389130, 2389131, ...]
-            project_id = 111111 # change to your project id
-
-
-            # * make sure that `with_settings=True` is set to get project settings from server
-            project_meta_json = api.project.get_meta(project_id, with_settings=True)
-            project_meta = sly.ProjectMeta.from_json(project_meta_json)
-
-            # create custom tag meta (optional)
-            multiview_tag_name = 'cars'
-            tag_meta = sly.TagMeta(multiview_tag_name, sly.TagValueType.ANY_STRING)
-            project_meta = project_meta.add_tag_meta(tag_meta)
-            project_meta = api.project.update_meta(project_id, project_meta) # update meta on server
-
-            # group images for multiview
-            with sly.ApiContext(api, project_id=project_id, project_meta=project_meta):
+                # group images for multiview
                 for group_name, ids in enumerate(sly.batched(image_ids, batch_size=BATCH_SIZE)):
-                    api.image.group_images_for_multiview(ids, group_name, multiview_tag_name)
+                    api.image.group_images_for_multiview(ids, group_name)
+
+                # Option 2 (with sly.ApiContext)
+                import os
+                from dotenv import load_dotenv
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                BATCH_SIZE = 6
+                image_ids = [2389126, 2389127, 2389128, 2389129, 2389130, 2389131, ...]
+                project_id = 111111 # change to your project id
+
+                # Make sure that `with_settings=True` is set to get project settings from server
+                project_meta_json = api.project.get_meta(project_id, with_settings=True)
+                project_meta = sly.ProjectMeta.from_json(project_meta_json)
+
+                # create custom tag meta (optional)
+                multiview_tag_name = 'cars'
+                tag_meta = sly.TagMeta(multiview_tag_name, sly.TagValueType.ANY_STRING)
+                project_meta = project_meta.add_tag_meta(tag_meta)
+                project_meta = api.project.update_meta(project_id, project_meta) # update meta on server
+
+                # group images for multiview
+                with sly.ApiContext(api, project_id=project_id, project_meta=project_meta):
+                    for group_name, ids in enumerate(sly.batched(image_ids, batch_size=BATCH_SIZE)):
+                        api.image.group_images_for_multiview(ids, group_name, multiview_tag_name)
 
         """
 
@@ -4218,35 +4306,35 @@ class ImageApi(RemoveableBulkModuleApi):
         :raises Exception: If tag does not exist in project or tag is not of type ANY_STRING
         :raises Exception: If length of `metas` is not equal to the length of `paths`.
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import os
-            from dotenv import load_dotenv
-            from tqdm import tqdm
+                import os
+                from dotenv import load_dotenv
+                from tqdm import tqdm
 
-            import supervisely as sly
+                import supervisely as sly
 
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            if sly.is_development():
-               load_dotenv(os.path.expanduser("~/supervisely.env"))
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            api = sly.Api.from_env()
+                api = sly.Api.from_env()
 
-            dataset_id = 123456
-            paths = ['path/to/medical_01.dcm', 'path/to/medical_02.dcm']
-            metas = [{'meta':'01'}, {'meta':'02'}]
-            group_tag_name = 'StudyInstanceUID'
+                dataset_id = 123456
+                paths = ['path/to/medical_01.dcm', 'path/to/medical_02.dcm']
+                metas = [{'meta':'01'}, {'meta':'02'}]
+                group_tag_name = 'StudyInstanceUID'
 
-            pbar = tqdm(desc="Uploading images", total=len(paths))
-            image_infos = api.image.upload_medical_images(dataset_id, paths, group_tag_name, metas)
-
-            # Add custom sort parameter for images
-            metas = [{'my-key':'a'}, {'my-key':'b'}]
-            with api.image.add_custom_sort(key="my-key"):
+                pbar = tqdm(desc="Uploading images", total=len(paths))
                 image_infos = api.image.upload_medical_images(dataset_id, paths, group_tag_name, metas)
+
+                # Add custom sort parameter for images
+                metas = [{'my-key':'a'}, {'my-key':'b'}]
+                with api.image.add_custom_sort(key="my-key"):
+                    image_infos = api.image.upload_medical_images(dataset_id, paths, group_tag_name, metas)
         """
 
         if metas is None:
@@ -4491,11 +4579,18 @@ class ImageApi(RemoveableBulkModuleApi):
         :type links: List[str]
         :return: json-encoded content of a response.
 
-        :Usage example:
+        :Usage Example:
 
             .. code-block:: python
 
+                import os
+                from dotenv import load_dotenv
                 import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
                 api = sly.Api.from_env()
 
@@ -4642,27 +4737,28 @@ class ImageApi(RemoveableBulkModuleApi):
         :return: Image in RGB numpy matrix format
         :rtype: :class:`np.ndarray`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
-            import asyncio
-            from tqdm.asyncio import tqdm
+                import os
+                import asyncio
+                from tqdm.asyncio import tqdm
+                import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            DATASET_ID = 98357
-            semaphore = asyncio.Semaphore(100)
-            images = api.image.get_list(DATASET_ID)
-            tasks = []
-            pbar = tqdm(total=len(images), desc="Downloading images", unit="image")
-            for image in images:
-                task = api.image.download_np_async(image.id, semaphore, progress_cb=pbar)
-                tasks.append(task)
-            results = await asyncio.gather(*tasks)
+                DATASET_ID = 98357
+                semaphore = asyncio.Semaphore(100)
+                images = api.image.get_list(DATASET_ID)
+                tasks = []
+                pbar = tqdm(total=len(images), desc="Downloading images", unit="image")
+                for image in images:
+                    task = api.image.download_np_async(image.id, semaphore, progress_cb=pbar)
+                    tasks.append(task)
+                results = await asyncio.gather(*tasks)
         """
         if semaphore is None:
             semaphore = self._api.get_default_semaphore()
@@ -4701,7 +4797,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :return: List of Images in RGB numpy matrix format
         :rtype: :class:`List[np.ndarray]`
 
-        :Usage example:
+        :Usage Example:
 
             .. code-block:: python
 
@@ -4767,23 +4863,25 @@ class ImageApi(RemoveableBulkModuleApi):
         :type progress_cb_type: Literal["number", "size"], optional
         :return: None
         :rtype: :class:`NoneType`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            import asyncio
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import asyncio
+                import supervisely as sly
 
-            img_info = api.image.get_info_by_id(770918)
-            save_path = os.path.join("/path/to/save/", img_info.name)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            semaphore = asyncio.Semaphore(100)
-            loop = sly.utils.get_or_create_event_loop()
-            loop.run_until_complete(
+                img_info = api.image.get_info_by_id(770918)
+                save_path = os.path.join("/path/to/save/", img_info.name)
+
+                semaphore = asyncio.Semaphore(100)
+                loop = sly.utils.get_or_create_event_loop()
+                loop.run_until_complete(
                     api.image.download_path_async(img_info.id, save_path, semaphore)
                 )
         """
@@ -4853,21 +4951,21 @@ class ImageApi(RemoveableBulkModuleApi):
         :return: None
         :rtype: :class:`NoneType`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
-            import asyncio
+                import os
+                import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            ids = [770918, 770919]
-            paths = ["/path/to/save/image1.png", "/path/to/save/image2.png"]
-            loop = sly.utils.get_or_create_event_loop()
-            loop.run_until_complete(api.image.download_paths_async(ids, paths))
+                ids = [770918, 770919]
+                paths = ["/path/to/save/image1.png", "/path/to/save/image2.png"]
+                loop = sly.utils.get_or_create_event_loop()
+                loop.run_until_complete(api.image.download_paths_async(ids, paths))
         """
         if len(ids) == 0:
             return
@@ -4925,20 +5023,21 @@ class ImageApi(RemoveableBulkModuleApi):
         :type progress_cb_type: Literal["number", "size"], optional
         :return: Bytes of downloaded image.
         :rtype: :class:`bytes`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            import asyncio
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            img_id = 770918
-            loop = sly.utils.get_or_create_event_loop()
-            img_bytes = loop.run_until_complete(api.image.download_bytes_async(img_id))
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                img_id = 770918
+                loop = sly.utils.get_or_create_event_loop()
+                img_bytes = loop.run_until_complete(api.image.download_bytes_async(img_id))
 
         """
         if range_start is not None or range_end is not None:
@@ -5003,12 +5102,13 @@ class ImageApi(RemoveableBulkModuleApi):
         :return: List of bytes of downloaded images.
         :rtype: :class:`List[bytes]`
 
-        :Usage example:
+        :Usage Example:
 
             .. code-block:: python
 
-                import supervisely as sly
+                import os
                 import asyncio
+                import supervisely as sly
 
                 os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
                 os.environ['API_TOKEN
@@ -5066,24 +5166,25 @@ class ImageApi(RemoveableBulkModuleApi):
         :return: Tuple of Image ID and bytes of downloaded image.
         :rtype: :class:`Tuple[int, bytes]`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
-            import asyncio
+                import os
+                import asyncio
+                import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            dataset_id = 123456
-            img_ids = [770918, 770919, 770920, 770921, ... , 770992]
-            tasks = []
-            for batch in batched(img_ids, 50):
-                task = api.image.download_bytes_batch_async(dataset_id, batch)
-                tasks.append(task)
-            results = await asyncio.gather(*tasks)
+                dataset_id = 123456
+                img_ids = [770918, 770919, 770920, 770921, ... , 770992]
+                tasks = []
+                for batch in batched(img_ids, 50):
+                    task = api.image.download_bytes_batch_async(dataset_id, batch)
+                    tasks.append(task)
+                results = await asyncio.gather(*tasks)
         """
         api_method_name = "images.bulk.download"
         json_body = {
@@ -5158,12 +5259,12 @@ class ImageApi(RemoveableBulkModuleApi):
         :return: List of images in dataset.
         :rtype: AsyncGenerator[List[ImageInfo]]
 
-        :Usage example:
+        :Usage Example:
 
             .. code-block:: python
 
+                    import os
                     import supervisely as sly
-                    import asyncio
 
                     os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
                     os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -5268,23 +5369,26 @@ class ImageApi(RemoveableBulkModuleApi):
         :return: Blob file content if path is None, otherwise None.
         :rtype: bytes or None
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
+                import os
+                import supervisely as sly
 
-            api = sly.Api.from_env()
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
+                image_id = 6789
+                image_info = api.image.get_info_by_id(image_id)
+                project_id = api.dataset.get_info_by_id(image_info.dataset_id).project_id
 
-            image_id = 6789
-            image_info = api.image.get_info_by_id(image_id)
-            project_id = api.dataset.get_info_by_id(image_info.dataset_id).project_id
+                # Download and save to file
+                api.image.download_blob_file(project_id, image_info.download_id, "/path/to/save/archive.tar")
 
-            # Download and save to file
-            api.image.download_blob_file(project_id, image_info.download_id, "/path/to/save/archive.tar")
-
-            # Get archive as bytes
-            archive_bytes = api.image.download_blob_file(project_id, image_info.download_id)
+                # Get archive as bytes
+                archive_bytes = api.image.download_blob_file(project_id, image_info.download_id)
         """
         if chunk_size is None:
             chunk_size = 8 * 1024 * 1024
@@ -5352,8 +5456,6 @@ class ImageApi(RemoveableBulkModuleApi):
 
         :return: Generator of ImageInfo objects if return_image_infos_generator is True, otherwise None.
         :rtype: Union[Generator[ImageInfo, None], None]
-
-
         """
         if isinstance(dataset, int):
             dataset_id = dataset
@@ -5495,20 +5597,22 @@ class ImageApi(RemoveableBulkModuleApi):
         :type timestamps: List[str], optional
         :return: None
         :rtype: NoneType
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            import datetime
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import datetime
+                import supervisely as sly
 
-            image_ids = [123, 456, 789]
-            timestamps = [datetime.datetime.now().isoformat() for _ in image_ids]
-            api.image.set_embeddings_updated_at(image_ids, timestamps)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                image_ids = [123, 456, 789]
+                timestamps = [datetime.datetime.now().isoformat() for _ in image_ids]
+                api.image.set_embeddings_updated_at(image_ids, timestamps)
         """
         method = "images.embeddings-updated-at.update"
 

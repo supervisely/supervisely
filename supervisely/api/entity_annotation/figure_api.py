@@ -147,18 +147,20 @@ class FigureApi(RemoveableBulkModuleApi):
 
         :return: NamedTuple name.
         :rtype: :class:`str`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            tuple_name = api.video.figure.info_tuple_name()
-            print(tuple_name) # FigureInfo
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                tuple_name = api.video.figure.info_tuple_name()
+                print(tuple_name) # FigureInfo
         """
 
         return "FigureInfo"
@@ -171,40 +173,42 @@ class FigureApi(RemoveableBulkModuleApi):
         :type id: int
         :return: Information about Figure. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`NamedTuple`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            figure_id = 588801373
+                import os
+                import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                figure_id = 588801373
 
-            figure_info = api.video.figure.get_info_by_id(figure_id)
-            print(figure_info)
-            # Output: [
-            #     588801373,
-            #     "2020-12-22T06:37:13.183Z",
-            #     "2020-12-22T06:37:13.183Z",
-            #     186648101,
-            #     112482,
-            #     110366,
-            #     419886,
-            #     0,
-            #     "bitmap",
-            #     {
-            #         "bitmap": {
-            #             "data": "eJw...Cgj4=",
-            #             "origin": [
-            #                 335,
-            #                 205
-            #             ]
-            #         }
-            #     }
-            # ]
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                figure_info = api.video.figure.get_info_by_id(figure_id)
+                print(figure_info)
+                # Output: [
+                #     588801373,
+                #     "2020-12-22T06:37:13.183Z",
+                #     "2020-12-22T06:37:13.183Z",
+                #     186648101,
+                #     112482,
+                #     110366,
+                #     419886,
+                #     0,
+                #     "bitmap",
+                #     {
+                #         "bitmap": {
+                #             "data": "eJw...Cgj4=",
+                #             "origin": [
+                #                 335,
+                #                 205
+                #             ]
+                #         }
+                #     }
+                # ]
         """
         fields = [
             "id",
@@ -274,100 +278,102 @@ class FigureApi(RemoveableBulkModuleApi):
         :type ids: List[int]
         :return: List of information about Figures. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[NamedTuple]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            dataset_id = 466642
-            figures_ids = [642155547, 642155548, 642155549]
-            figures_infos = api.video.figure.get_by_ids(dataset_id, figures_ids)
-            print(figures_infos)
-            # Output: [
-            #     [
-            #         642155547,
-            #         "2021-03-23T13:25:34.705Z",
-            #         "2021-03-23T13:25:34.705Z",
-            #         198703211,
-            #         152118,
-            #         124976,
-            #         466642,
-            #         0,
-            #         "rectangle",
-            #         {
-            #             "points": {
-            #                 "exterior": [
-            #                     [
-            #                         2240,
-            #                         1041
-            #                     ],
-            #                     [
-            #                         2463,
-            #                         1187
-            #                     ]
-            #                 ],
-            #                 "interior": []
-            #             }
-            #         }
-            #     ],
-            #     [
-            #         642155548,
-            #         "2021-03-23T13:25:34.705Z",
-            #         "2021-03-23T13:25:34.705Z",
-            #         198703211,
-            #         152118,
-            #         124976,
-            #         466642,
-            #         1,
-            #         "rectangle",
-            #         {
-            #             "points": {
-            #                 "exterior": [
-            #                     [
-            #                         2248,
-            #                         1048
-            #                     ],
-            #                     [
-            #                         2455,
-            #                         1176
-            #                     ]
-            #                 ],
-            #                 "interior": []
-            #             }
-            #         }
-            #     ],
-            #     [
-            #         642155549,
-            #         "2021-03-23T13:25:34.705Z",
-            #         "2021-03-23T13:25:34.705Z",
-            #         198703211,
-            #         152118,
-            #         124976,
-            #         466642,
-            #         2,
-            #         "rectangle",
-            #         {
-            #             "points": {
-            #                 "exterior": [
-            #                     [
-            #                         2237,
-            #                         1046
-            #                     ],
-            #                     [
-            #                         2464,
-            #                         1179
-            #                     ]
-            #                 ],
-            #                 "interior": []
-            #             }
-            #         }
-            #     ]
-            # ]
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                dataset_id = 466642
+                figures_ids = [642155547, 642155548, 642155549]
+                figures_infos = api.video.figure.get_by_ids(dataset_id, figures_ids)
+                print(figures_infos)
+                # Output: [
+                #     [
+                #         642155547,
+                #         "2021-03-23T13:25:34.705Z",
+                #         "2021-03-23T13:25:34.705Z",
+                #         198703211,
+                #         152118,
+                #         124976,
+                #         466642,
+                #         0,
+                #         "rectangle",
+                #         {
+                #             "points": {
+                #                 "exterior": [
+                #                     [
+                #                         2240,
+                #                         1041
+                #                     ],
+                #                     [
+                #                         2463,
+                #                         1187
+                #                     ]
+                #                 ],
+                #                 "interior": []
+                #             }
+                #         }
+                #     ],
+                #     [
+                #         642155548,
+                #         "2021-03-23T13:25:34.705Z",
+                #         "2021-03-23T13:25:34.705Z",
+                #         198703211,
+                #         152118,
+                #         124976,
+                #         466642,
+                #         1,
+                #         "rectangle",
+                #         {
+                #             "points": {
+                #                 "exterior": [
+                #                     [
+                #                         2248,
+                #                         1048
+                #                     ],
+                #                     [
+                #                         2455,
+                #                         1176
+                #                     ]
+                #                 ],
+                #                 "interior": []
+                #             }
+                #         }
+                #     ],
+                #     [
+                #         642155549,
+                #         "2021-03-23T13:25:34.705Z",
+                #         "2021-03-23T13:25:34.705Z",
+                #         198703211,
+                #         152118,
+                #         124976,
+                #         466642,
+                #         2,
+                #         "rectangle",
+                #         {
+                #             "points": {
+                #                 "exterior": [
+                #                     [
+                #                         2237,
+                #                         1046
+                #                     ],
+                #                     [
+                #                         2464,
+                #                         1179
+                #                     ]
+                #                 ],
+                #                 "interior": []
+                #             }
+                #         }
+                #     ]
+                # ]
         """
         filters = [{"field": "id", "operator": "in", "value": ids}]
         fields = [
@@ -694,10 +700,11 @@ class FigureApi(RemoveableBulkModuleApi):
         :return: List of figure geometries in Supervisely JSON format.
         :rtype: List[dict]
 
-        :Usage example:
+        :Usage Example:
 
             .. code-block:: python
 
+                import os
                 import asyncio
                 import supervisely as sly
 
@@ -748,10 +755,11 @@ class FigureApi(RemoveableBulkModuleApi):
         :return: None
         :rtype: None
 
-        :Usage example:
+        :Usage Example:
 
             .. code-block:: python
 
+                impport os
                 import asyncio
                 import supervisely as sly
 
@@ -841,19 +849,20 @@ class FigureApi(RemoveableBulkModuleApi):
         :return: A dictionary where keys are image IDs and values are lists of figures.
         :rtype: Dict[int, List[FigureInfo]]
 
-        :Usage example:
+        :Usage Example:
 
-        .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            dataset_id = 12345
-            download_coroutine = api.image.figure.download_async(dataset_id)
-            figures = sly.run_coroutine(download_coroutine)
+                dataset_id = 12345
+                download_coroutine = api.image.figure.download_async(dataset_id)
+                figures = sly.run_coroutine(download_coroutine)
         """
         fields = [
             ApiField.ID,
@@ -1012,18 +1021,19 @@ class FigureApi(RemoveableBulkModuleApi):
         :return: A dictionary where keys are image IDs and values are lists of figures.
         :rtype: Dict[int, List[FigureInfo]]
 
-        :Usage example:
+        :Usage Example:
 
-        .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            dataset_id = 12345
-            figures = api.image.figure.download_fast(dataset_id)
+                dataset_id = 12345
+                figures = api.image.figure.download_fast(dataset_id)
         """
         try:
             return run_coroutine(

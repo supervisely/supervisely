@@ -197,18 +197,26 @@ class RemoteStorageApi(ModuleApiBase):
         :type remote_path: str
         :param team_id: Team ID (to get cloud storages connected to the team)
         :type team_id: int
-        :Usage example:
 
-        .. code-block:: python
+        :Usage Example:
 
-            provider = "s3" # can be one of ["s3", "google", "azure"]
-            bucket = "bucket-test-export"
-            path_in_bucket = "/demo/image.jpg"
-            remote_path = api.remote_storage.get_remote_path(provider, bucket, path_in_bucket)
-            team_id = 123
-            # or alternatively use this:
-            # remote_path = f"{provider}://{bucket}{path_in_bucket}"
-            api.remote_storage.upload_path("images/my-cats.jpg", remote_path, team_id)
+            .. code-block:: python
+
+                import os
+                import supervisely as sly
+
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                provider = "s3" # can be one of ["s3", "google", "azure"]
+                bucket = "bucket-test-export"
+                path_in_bucket = "/demo/image.jpg"
+                remote_path = api.remote_storage.get_remote_path(provider, bucket, path_in_bucket)
+                team_id = 123
+                # or alternatively use this:
+                # remote_path = f"{provider}://{bucket}{path_in_bucket}"
+                api.remote_storage.upload_path("images/my-cats.jpg", remote_path, team_id)
         """
         Provider.validate_path(remote_path)
         return self._upload_paths_batch([local_path], [remote_path], team_id)
@@ -256,15 +264,23 @@ class RemoteStorageApi(ModuleApiBase):
         :type bucket: str
         :param path_in_bucket: Path to item in bucket.
         :type path_in_bucket: str
-        :Usage example:
 
-        .. code-block:: python
+        :Usage Example:
 
-            provider = "s3"
-            bucket = "bucket-test-export"
-            path_in_bucket = "/demo/image.jpg"
-            remote_path = api.remote_storage.get_remote_path(provider, bucket, path_in_bucket)
-            # Output: s3://bucket-test-export/demo/image.jpg
+            .. code-block:: python
+
+                import os
+                import supervisely as sly
+
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                provider = "s3"
+                bucket = "bucket-test-export"
+                path_in_bucket = "/demo/image.jpg"
+                remote_path = api.remote_storage.get_remote_path(provider, bucket, path_in_bucket)
+                # Output: s3://bucket-test-export/demo/image.jpg
         """
         res_path = f"{provider}://{bucket}/{path_in_bucket.lstrip('/')}"
         Provider.validate_path(res_path)
@@ -281,44 +297,44 @@ class RemoteStorageApi(ModuleApiBase):
         :type team_id: int
         :return: List of available providers
         :rtype: List[dict]
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import os
-            from dotenv import load_dotenv
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
+                import supervisely as sly
 
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            if sly.is_development():
-               load_dotenv(os.path.expanduser("~/supervisely.env"))
-            api = sly.Api.from_env()
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            # Pass values into the API constructor (optional, not recommended)
-            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
+                api = sly.Api.from_env()
 
-            team_id = 123
-            available_providers = api.remote_storage.get_list_available_providers(team_id)
+                # Or pass values into the API constructor (optional, not recommended)
+                # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
-            # Output example
+                team_id = 123
+                available_providers = api.remote_storage.get_list_available_providers(team_id)
 
-            #    [
-            #        {
-            #            "id": "minio",
-            #            "name": "Amazon S3",
-            #            "defaultProtocol": "s3:",
-            #            "protocols": [
-            #                "s3:",
-            #                "minio:"
-            #            ],
-            #            "buckets": [
-            #                "bucket-test",
-            #                "remote-img"
-            #            ]
-            #        }
-            #    ]
+                # Output example
+                #    [
+                #        {
+                #            "id": "minio",
+                #            "name": "Amazon S3",
+                #            "defaultProtocol": "s3:",
+                #            "protocols": [
+                #                "s3:",
+                #                "minio:"
+                #            ],
+                #            "buckets": [
+                #                "bucket-test",
+                #                "remote-img"
+                #            ]
+                #        }
+                #    ]
 
         """
         team_id = team_id or env.team_id(raise_not_found=False)
@@ -341,40 +357,41 @@ class RemoteStorageApi(ModuleApiBase):
         :type team_id: int
         :return: List of supported providers
         :rtype: List[dict]
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import os
-            from dotenv import load_dotenv
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            if sly.is_development():
-               load_dotenv(os.path.expanduser("~/supervisely.env"))
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            # Pass values into the API constructor (optional, not recommended)
-            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            team_id = 123
-            supported_providers = api.remote_storage.get_list_supported_providers(team_id)
+                api = sly.Api.from_env()
 
-            # Output example
+                # Or pass values into the API constructor (optional, not recommended)
+                # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
-            #    [
-            #        {
-            #            "id": "google",
-            #            "name": "Google Cloud Storage",
-            #            "defaultProtocol": "google:",
-            #            "protocols": [
-            #                "google:",
-            #                "gcs:"
-            #            ]
-            #        }
-            #    ]
+                team_id = 123
+                supported_providers = api.remote_storage.get_list_supported_providers(team_id)
+
+                # Output example
+                #    [
+                #        {
+                #            "id": "google",
+                #            "name": "Google Cloud Storage",
+                #            "defaultProtocol": "google:",
+                #            "protocols": [
+                #                "google:",
+                #                "gcs:"
+                #            ]
+                #        }
+                #    ]
 
         """
         team_id = team_id or env.team_id(raise_not_found=False)
@@ -400,26 +417,28 @@ class RemoteStorageApi(ModuleApiBase):
         :type team_id: int
         :return: True if the file exists, False otherwise
         :rtype: bool
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import os
-            from dotenv import load_dotenv
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            if sly.is_development():
-               load_dotenv(os.path.expanduser("~/supervisely.env"))
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            # Pass values into the API constructor (optional, not recommended)
-            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            path = "s3://bucket/lemons/ds1/img/IMG_444.jpeg"
-            is_exist = api.remote_storage.is_path_exist(path)
+                api = sly.Api.from_env()
+
+                # Pass values into the API constructor (optional, not recommended)
+                # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
+
+                path = "s3://bucket/lemons/ds1/img/IMG_444.jpeg"
+                is_exist = api.remote_storage.is_path_exist(path)
 
         """
         team_id = team_id or env.team_id(raise_not_found=False)
@@ -454,34 +473,36 @@ class RemoteStorageApi(ModuleApiBase):
         :type team_id: int
         :return: File 'size' in bytes and 'lastModified' date if file exists, otherwise None
         :rtype: Optional[dict]
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import os
-            from dotenv import load_dotenv
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            if sly.is_development():
-               load_dotenv(os.path.expanduser("~/supervisely.env"))
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            # Pass values into the API constructor (optional, not recommended)
-            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            path = "s3://bucket/lemons/ds1/img/IMG_444.jpeg"
-            team_id = 123
-            stats = api.remote_storage.get_path_stats(path, team_id)
+                api = sly.Api.from_env()
 
-            # Output example
+                # Or pass values into the API constructor (optional, not recommended)
+                # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
-            #   {
-            #       "size": 155790,
-            #       "lastModified": "2023-01-26T09:20:27.000Z"
-            #   }
+                path = "s3://bucket/lemons/ds1/img/IMG_444.jpeg"
+                team_id = 123
+                stats = api.remote_storage.get_path_stats(path, team_id)
+
+                # Output example
+
+                #   {
+                #       "size": 155790,
+                #       "lastModified": "2023-01-26T09:20:27.000Z"
+                #   }
 
         """
         team_id = team_id or env.team_id(raise_not_found=False)
@@ -512,14 +533,14 @@ class RemoteStorageApi(ModuleApiBase):
         :return: True if URL is a bucket URL, False otherwise
         :rtype: bool
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            from supervisely.api.remote_storage_api import RemoteStorageApi
+                from supervisely.api.remote_storage_api import RemoteStorageApi
 
-            url = "s3://bucket/lemons/ds1/img/IMG_444.jpeg"
-            RemoteStorageApi.is_bucket_url(url)
+                url = "s3://bucket/lemons/ds1/img/IMG_444.jpeg"
+                RemoteStorageApi.is_bucket_url(url)
 
         """
         provider_protocols = [

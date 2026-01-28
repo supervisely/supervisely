@@ -1,5 +1,7 @@
 # coding: utf-8
-"""deploy and connect to running serving apps"""
+"""
+High-level Neural Networks API.
+"""
 
 from __future__ import annotations
 
@@ -40,11 +42,13 @@ class NeuralNetworkApi:
     ) -> ModelAPI:
         """
         Deploy a pretrained model or a custom model checkpoint in Supervisely platform.
-        This method will start a new Serving App in Supervisely, deploy a given model, and return a `ModelAPI` object for running predictions and managing the model.
-        - To deploy a pretrained model, pass the model name in the format `framework/model_name` (e.g., "RT-DETRv2/RT-DETRv2-M").
+        This method will start a new Serving App in Supervisely, deploy a given model, and return a
+        :class:`~supervisely.nn.model.model_api.ModelAPI` object for running predictions and managing the model.
+        - To deploy a pretrained model, pass the model name in the format ``framework/model_name`` (e.g., "RT-DETRv2/RT-DETRv2-M").
         - To deploy a custom model, pass the path to the model checkpoint in team files (e.g., "/experiments/1089_RT-DETRv2/checkpoints/best.pt").
 
-        :param model: Either a path to a model checkpoint in team files or model name in format `framework/model_name` (e.g., "RT-DETRv2/RT-DETRv2-M").
+        :param model: Either a path to a model checkpoint in team files or model name in format
+            ``framework/model_name`` (e.g., "RT-DETRv2/RT-DETRv2-M").
         :type model: str
         :param device: Device to run the model on (e.g., "cuda:0" or "cpu"). If not specified, will automatically use GPU device if available, otherwise CPU will be used.
         :type device: Optional[str]
@@ -57,7 +61,9 @@ class NeuralNetworkApi:
         :param kwargs: Additional parameters for deployment.
         :return: A :class:`ModelAPI` object for the deployed model.
         :rtype: ModelAPI
-        :Usage example:
+
+        :Usage Example:
+
             .. code-block:: python
 
                 import supervisely as sly
@@ -147,7 +153,9 @@ class NeuralNetworkApi:
         :type workspace_id: Optional[int]
         :return: A list of dictionaries containing information about the deployed models.
         :rtype: List[Dict]
-        :Usage example:
+
+        :Usage Example:
+
             .. code-block:: python
 
                 import supervisely as sly
@@ -253,11 +261,13 @@ class NeuralNetworkApi:
         task_id: int,
     ) -> ModelAPI:
         """
-        Connect to a running Serving App by its `task_id`. This allows you to make predictions and control the model state via API.
+        Connect to a running Serving App by its ``task_id``.
+
+        This allows you to make predictions and control the model state via API.
 
         :param task_id: the task_id of a running Serving App session in the Supervisely platform.
         :type task_id: int
-        :return: a :class:`ModelAPI` object
+        :return: a :class:`~supervisely.nn.model.model_api.ModelAPI` object
         :rtype: ModelAPI
         """
         from supervisely.nn.model.model_api import ModelAPI

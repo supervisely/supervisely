@@ -15,27 +15,29 @@ class PointcloudEpisodeAnnotationAPI(EntityAnnotationAPI):
 
     :param api: API connection to the server.
     :type api: Api
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import os
-        from dotenv import load_dotenv
+        .. code-block:: python
 
-        import supervisely as sly
+            import os
+            from dotenv import load_dotenv
 
-        # Load secrets and create API object from .env file (recommended)
-        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-        if sly.is_development():
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-        api = sly.Api.from_env()
+            import supervisely as sly
 
-        # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-        dataset_id = 62664
-        ann_info = api.pointcloud_episode.annotation.download(dataset_id)
-        print(ann_info)
+            api = sly.Api.from_env()
+
+            # Or pass values into the API constructor (optional, not recommended)
+            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
+
+            dataset_id = 62664
+            ann_info = api.pointcloud_episode.annotation.download(dataset_id)
+            print(ann_info)
     """
 
     _method_download = "point-clouds.episodes.annotations.info"
@@ -49,61 +51,61 @@ class PointcloudEpisodeAnnotationAPI(EntityAnnotationAPI):
         :type dataset_id: int
         :return: Dictionary woth information about PointcloudEpisodeAnnotation in json format
         :rtype: :class:`dict`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            from pprint import pprint
+                import os
+                import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            dataset_id = 62664
-            ann_info = api.pointcloud_episode.annotation.download(dataset_id)
-            pprint(ann_info)
+                dataset_id = 62664
+                ann_info = api.pointcloud_episode.annotation.download(dataset_id)
+                print(ann_info)
 
-            # Output: {
-            #     'datasetId': 62664,
-            #     'description': '',
-            #     'frames': [
-            #         {'figures': [{'classId': None,
-            #                     'createdAt': '2023-04-05T08:55:52.445Z',
-            #                     'description': '',
-            #                     'geometry': {'dimensions': {'x': 2.3652234,
-            #                                                 'y': 23.291742,
-            #                                                 'z': 3.326648},
-            #                                 'position': {'x': 86.29707472161449,
-            #                                             'y': -14.472597682830635,
-            #                                             'z': 0.8842007608554671},
-            #                                 'rotation': {'x': 0,
-            #                                             'y': 0,
-            #                                             'z': -1.6962800995995606}},
-            #                     'geometryType': 'cuboid_3d',
-            #                     'id': 87830452,
-            #                     'labelerLogin': 'almaz',
-            #                     'objectId': 5565741,
-            #                     'updatedAt': '2023-04-05T08:55:52.445Z'},
-            #                     {'classId': None,
-            #                     'createdAt': '2023-04-05T08:55:52.445Z',
-            #                     'description': '',
-            #                     'geometry': {'indices': [783,
-            #                                             784,
-            #                                             ...
-            #                                             28326,
-            #                                             30294]},
-            #                     'geometryType': 'point_cloud',
-            #                     'id': 87830456,
-            #                     'labelerLogin': 'almaz',
-            #                     'objectId': 5565740,
-            #                     'updatedAt': '2023-04-05T08:55:52.445Z'}],
-            #         'index': 0,
-            #         'pointCloudId': 19618654},...
-            #     ],
-            #     'tags': []
-            # }
+                # Output: {
+                #     'datasetId': 62664,
+                #     'description': '',
+                #     'frames': [
+                #         {'figures': [{'classId': None,
+                #                     'createdAt': '2023-04-05T08:55:52.445Z',
+                #                     'description': '',
+                #                     'geometry': {'dimensions': {'x': 2.3652234,
+                #                                                 'y': 23.291742,
+                #                                                 'z': 3.326648},
+                #                                 'position': {'x': 86.29707472161449,
+                #                                             'y': -14.472597682830635,
+                #                                             'z': 0.8842007608554671},
+                #                                 'rotation': {'x': 0,
+                #                                             'y': 0,
+                #                                             'z': -1.6962800995995606}},
+                #                     'geometryType': 'cuboid_3d',
+                #                     'id': 87830452,
+                #                     'labelerLogin': 'almaz',
+                #                     'objectId': 5565741,
+                #                     'updatedAt': '2023-04-05T08:55:52.445Z'},
+                #                     {'classId': None,
+                #                     'createdAt': '2023-04-05T08:55:52.445Z',
+                #                     'description': '',
+                #                     'geometry': {'indices': [783,
+                #                                             784,
+                #                                             ...
+                #                                             28326,
+                #                                             30294]},
+                #                     'geometryType': 'point_cloud',
+                #                     'id': 87830456,
+                #                     'labelerLogin': 'almaz',
+                #                     'objectId': 5565740,
+                #                     'updatedAt': '2023-04-05T08:55:52.445Z'}],
+                #         'index': 0,
+                #         'pointCloudId': 19618654},...
+                #     ],
+                #     'tags': []
+                # }
         """
 
         response = self._api.post(self._method_download, {ApiField.DATASET_ID: dataset_id})
@@ -137,18 +139,19 @@ class PointcloudEpisodeAnnotationAPI(EntityAnnotationAPI):
         :return: None
         :rtype: :class:`NoneType`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            pcd_episodes_id = 198704259
-            api.pointcloud_episode.annotation.append(pcd_episodes_id, pointcloud_ann)
+                pcd_episodes_id = 198704259
+                api.pointcloud_episode.annotation.append(pcd_episodes_id, pointcloud_ann)
         """
 
         if key_id_map is None:
