@@ -143,6 +143,25 @@ class VideoDataset(Dataset):
         return super().directory
 
     @property
+    def metadata_directory(self) -> str:
+        """
+        Path to the video dataset metadata directory.
+
+        :return: Path to the video dataset metadata directory.
+        :rtype: :class:`str`
+        :Usage example:
+         .. code-block:: python
+
+            import supervisely as sly
+            dataset_path = "/home/admin/work/supervisely/projects/videos_example/ds0"
+            ds = sly.VideoDataset(dataset_path, sly.OpenMode.READ)
+
+            print(ds.metadata_directory)
+            # Output: '/home/admin/work/supervisely/projects/videos_example/ds0/metadata'
+        """
+        return os.path.join(self.directory, self.metadata_dir_name)
+
+    @property
     def item_dir(self) -> str:
         """
         Path to the video dataset items directory.
@@ -2229,12 +2248,22 @@ def upload_video_project(
         dataset = api.dataset.create(project.id, dataset_fs.short_name, parent_id=parent_id)
         dataset_map[os.path.join(parent, dataset.name)] = dataset.id
 
-        names, item_paths, ann_paths = [], [], []
+        names, item_paths, ann_paths, metas = [], [], [], []
         for item_name in dataset_fs:
             video_path, ann_path = dataset_fs.get_item_paths(item_name)
             names.append(item_name)
             item_paths.append(video_path)
             ann_paths.append(ann_path)
+
+            # Read video metadata from metadata folder (includes offset for multiview)
+            meta = None
+            metadata_path = os.path.join(dataset_fs.metadata_directory, f"{item_name}.meta.json")
+            if os.path.exists(metadata_path):
+                try:
+                    meta = load_json_file(metadata_path)
+                except Exception:
+                    pass
+            metas.append(meta)
 
         if len(item_paths) == 0:
             continue
@@ -2247,7 +2276,9 @@ def upload_video_project(
                 position=0,
             )
         try:
-            item_infos = api.video.upload_paths(dataset.id, names, item_paths, ds_progress)
+            item_infos = api.video.upload_paths(
+                dataset.id, names, item_paths, ds_progress, metas=metas
+            )
             video_ids = [item_info.id for item_info in item_infos]
             if include_custom_data:
                 for item_info in item_infos:
@@ -2517,7 +2548,16 @@ async def _download_project_item_async(
             raise e
     else:
         await touch_async(video_file_path)
-    item_info = video._asdict() if save_video_info else None
+
+    # Always save video meta if available (contains important data like offset for multiview)
+    if save_video_info:
+        item_info = video._asdict()
+    elif hasattr(video, "meta") and video.meta:
+        # Save only meta field even if save_video_info is False
+        item_info = {"meta": video.meta}
+    else:
+        item_info = None
+
     try:
         video_ann = VideoAnnotation.from_json(ann_json, project_fs.meta, key_id_map)
     except Exception as e:
