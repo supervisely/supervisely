@@ -22,11 +22,13 @@ class Badge(Widget):
     :param widget_id: Unique widget identifier.
     :type widget_id: Optional[str]
 
-    :Usage example:
-    .. code-block:: python
-        from supervisely.app.widgets import Badge
+    :Usage Example:
 
-        badge = Badge(value=5, max=10)
+        .. code-block:: python
+
+            from supervisely.app.widgets import Badge
+
+            badge = Badge(value=5, max=10)
     """
 
     def __init__(

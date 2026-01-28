@@ -42,11 +42,12 @@ class CuboidFace:
     :type c: int
     :param d: Node of the CuboidFace.
     :type d: int
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        edge = CuboidFace(0, 1, 2, 3)
+        .. code-block:: python
+
+            edge = CuboidFace(0, 1, 2, 3)
     """
 
     def __init__(self, a: int, b: int, c: int, d: int):
@@ -61,14 +62,15 @@ class CuboidFace:
 
         :return: List of integers
         :rtype: :class:`List[int, int, int, int]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            edge = CuboidFace(0, 1, 2, 3)
-            edge_json = edge.to_json()
-            print(edge_json)
-            # Output: [0, 1, 2, 3]
+            .. code-block:: python
+
+                edge = CuboidFace(0, 1, 2, 3)
+                edge_json = edge.to_json()
+                print(edge_json)
+                # Output: [0, 1, 2, 3]
         """
         return [self.a, self.b, self.c, self.d]
 
@@ -82,11 +84,12 @@ class CuboidFace:
         :return: CuboidFace object
         :rtype: :class:`CuboidFace<CuboidFace>`
         :raises: :class:`ValueError` if data have not 4 indices
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            new_edge = CuboidFace.from_json([0, 1, 2, 3])
+            .. code-block:: python
+
+                new_edge = CuboidFace.from_json([0, 1, 2, 3])
         """
         if len(data) != 4:
             raise ValueError(
@@ -120,13 +123,14 @@ class CuboidFace:
 
         :return: List of integers.
         :rtype: :class:`List[int, int, int, int]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            edge = CuboidFace(0, 1, 2, 3)
-            print(edge.tolist())
-            # Output: [0, 1, 2, 3]
+            .. code-block:: python
+
+                edge = CuboidFace(0, 1, 2, 3)
+                print(edge.tolist())
+                # Output: [0, 1, 2, 3]
         """
         return [self.a, self.b, self.c, self.d]
 
@@ -151,17 +155,17 @@ class Cuboid(Geometry):
     :type created_at: str, optional
     :raises: :class:`ValueError`, if len(:class:`faces<faces>`) != 3
 
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
-        from supervisely.geometry.cuboid import CuboidFace
+            import supervisely as sly
+            from supervisely.geometry.cuboid import CuboidFace
 
-        nodes = [[277, 273], [840, 273], [840, 690], [277, 690], [688, 168], [1200, 168], [1200, 522]]
-        edges = [CuboidFace(0, 1, 2, 3), CuboidFace(0, 4, 5, 1), CuboidFace(1, 5, 6, 2)]
-        pl_nodes = (sly.PointLocation(node[0], node[1]) for node in nodes)
-        figure = sly.Cuboid(pl_nodes, edges)
+            nodes = [[277, 273], [840, 273], [840, 690], [277, 690], [688, 168], [1200, 168], [1200, 522]]
+            edges = [CuboidFace(0, 1, 2, 3), CuboidFace(0, 4, 5, 1), CuboidFace(1, 5, 6, 2)]
+            pl_nodes = (sly.PointLocation(node[0], node[1]) for node in nodes)
+            figure = sly.Cuboid(pl_nodes, edges)
     """
 
     @staticmethod
@@ -231,36 +235,37 @@ class Cuboid(Geometry):
 
         :return: Json format as a dict
         :rtype: :class:`dict`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            from supervisely.geometry.cuboid import CuboidFace
+            .. code-block:: python
 
-            nodes = [[277, 273], [840, 273], [840, 690], [277, 690], [688, 168], [1200, 168], [1200, 522]]
-            edges = [CuboidFace(0, 1, 2, 3), CuboidFace(0, 4, 5, 1), CuboidFace(1, 5, 6, 2)]
-            pl_nodes = (sly.PointLocation(node[0], node[1]) for node in nodes)
-            figure = sly.Cuboid(pl_nodes, edges)
+                import supervisely as sly
+                from supervisely.geometry.cuboid import CuboidFace
 
-            figure_json = figure.to_json()
-            print(figure_json)
-            # Output: {
-            #    "faces": [
-            #        [0, 1, 2, 3],
-            #        [0, 4, 5, 1],
-            #        [1, 5, 6, 2]
-            #    ],
-            #    "points": [
-            #        [273, 277],
-            #        [273, 840],
-            #        [690, 840],
-            #        [690, 277],
-            #        [168, 688],
-            #        [168, 1200],
-            #        [522, 1200]
-            #    ]
-            # }
+                nodes = [[277, 273], [840, 273], [840, 690], [277, 690], [688, 168], [1200, 168], [1200, 522]]
+                edges = [CuboidFace(0, 1, 2, 3), CuboidFace(0, 4, 5, 1), CuboidFace(1, 5, 6, 2)]
+                pl_nodes = (sly.PointLocation(node[0], node[1]) for node in nodes)
+                figure = sly.Cuboid(pl_nodes, edges)
+
+                figure_json = figure.to_json()
+                print(figure_json)
+                # Output: {
+                #    "faces": [
+                #        [0, 1, 2, 3],
+                #        [0, 4, 5, 1],
+                #        [1, 5, 6, 2]
+                #    ],
+                #    "points": [
+                #        [273, 277],
+                #        [273, 840],
+                #        [690, 840],
+                #        [690, 277],
+                #        [168, 688],
+                #        [168, 1200],
+                #        [522, 1200]
+                #    ]
+                # }
         """
         packed_obj = {
             POINTS: points_to_row_col_list(self._points, flip_row_col_order=True),
@@ -279,30 +284,31 @@ class Cuboid(Geometry):
         :return: Cuboid object
         :rtype: :class:`Cuboid<Cuboid>`
         :raises: :class:`ValueError` if json format is not correct
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            data = {
-                "faces": [
-                            [0, 1, 2, 3],
-                            [0, 4, 5, 1],
-                            [1, 5, 6, 2]
-                ],
-                "points": [
-                            [273, 277],
-                            [273, 840],
-                            [690, 840],
-                            [690, 277],
-                            [168, 688],
-                            [168, 1200],
-                            [522, 1200]
-                ]
-            }
+                import supervisely as sly
 
-            figure = sly.Cuboid.from_json(data)
+                data = {
+                    "faces": [
+                                [0, 1, 2, 3],
+                                [0, 4, 5, 1],
+                                [1, 5, 6, 2]
+                    ],
+                    "points": [
+                                [273, 277],
+                                [273, 840],
+                                [690, 840],
+                                [690, 277],
+                                [168, 688],
+                                [168, 1200],
+                                [522, 1200]
+                    ]
+                }
+
+                figure = sly.Cuboid.from_json(data)
         """
         for k in [POINTS, FACES]:
             if k not in data:
@@ -337,16 +343,16 @@ class Cuboid(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
-            from supervisely.geometry.cuboid import CuboidFace
+                import supervisely as sly
+                from supervisely.geometry.cuboid import CuboidFace
 
-            nodes = [[277, 273], [840, 273], [840, 690], [277, 690], [688, 168], [1200, 168], [1200, 522]]
-            edges = [CuboidFace(0, 1, 2, 3), CuboidFace(0, 4, 5, 1), CuboidFace(1, 5, 6, 2)]
-            pl_nodes = (sly.PointLocation(node[0], node[1]) for node in nodes)
-            figure = sly.Cuboid(pl_nodes, edges)
-            crop_figures = figure.crop(sly.Rectangle(1, 1, 1500, 1550))
+                nodes = [[277, 273], [840, 273], [840, 690], [277, 690], [688, 168], [1200, 168], [1200, 522]]
+                edges = [CuboidFace(0, 1, 2, 3), CuboidFace(0, 4, 5, 1), CuboidFace(1, 5, 6, 2)]
+                pl_nodes = (sly.PointLocation(node[0], node[1]) for node in nodes)
+                figure = sly.Cuboid(pl_nodes, edges)
+                crop_figures = figure.crop(sly.Rectangle(1, 1, 1500, 1550))
         """
         is_all_nodes_inside = all(
             rect.contains_point_location(self._points[p])
@@ -370,20 +376,20 @@ class Cuboid(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
-            from supervisely.geometry.cuboid import CuboidFace
-            from supervisely.geometry.image_rotator import ImageRotator
+                import supervisely as sly
+                from supervisely.geometry.cuboid import CuboidFace
+                from supervisely.geometry.image_rotator import ImageRotator
 
-            nodes = [[277, 273], [840, 273], [840, 690], [277, 690], [688, 168], [1200, 168], [1200, 522]]
-            edges = [CuboidFace(0, 1, 2, 3), CuboidFace(0, 4, 5, 1), CuboidFace(1, 5, 6, 2)]
-            pl_nodes = (sly.PointLocation(node[0], node[1]) for node in nodes)
-            figure = sly.Cuboid(pl_nodes, edges)
+                nodes = [[277, 273], [840, 273], [840, 690], [277, 690], [688, 168], [1200, 168], [1200, 522]]
+                edges = [CuboidFace(0, 1, 2, 3), CuboidFace(0, 4, 5, 1), CuboidFace(1, 5, 6, 2)]
+                pl_nodes = (sly.PointLocation(node[0], node[1]) for node in nodes)
+                figure = sly.Cuboid(pl_nodes, edges)
 
-            # Remember that Cuboid class object is immutable, and we need to assign new instance of Cuboid to a new variable
-            rotator = ImageRotator((300, 400), 25)
-            rotate_fugure= figure.rotate(rotator)
+                # Remember that Cuboid class object is immutable, and we need to assign new instance of Cuboid to a new variable
+                rotator = ImageRotator((300, 400), 25)
+                rotate_fugure= figure.rotate(rotator)
         """
         return self._transform(lambda p: rotator.transform_point(p))
 
@@ -400,20 +406,20 @@ class Cuboid(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
-            from supervisely.geometry.cuboid import CuboidFace
+                import supervisely as sly
+                from supervisely.geometry.cuboid import CuboidFace
 
-            nodes = [[277, 273], [840, 273], [840, 690], [277, 690], [688, 168], [1200, 168], [1200, 522]]
-            edges = [CuboidFace(0, 1, 2, 3), CuboidFace(0, 4, 5, 1), CuboidFace(1, 5, 6, 2)]
-            pl_nodes = (sly.PointLocation(node[0], node[1]) for node in nodes)
-            figure = sly.Cuboid(pl_nodes, edges)
+                nodes = [[277, 273], [840, 273], [840, 690], [277, 690], [688, 168], [1200, 168], [1200, 522]]
+                edges = [CuboidFace(0, 1, 2, 3), CuboidFace(0, 4, 5, 1), CuboidFace(1, 5, 6, 2)]
+                pl_nodes = (sly.PointLocation(node[0], node[1]) for node in nodes)
+                figure = sly.Cuboid(pl_nodes, edges)
 
-            # Remember that Cuboid class object is immutable, and we need to assign new instance of Cuboid to a new variable
-            in_height, in_width = 1250, 1400
-            out_height, out_width = 600, 800
-            resize_figure = figure.resize((in_height, in_width), (out_height, out_width))
+                # Remember that Cuboid class object is immutable, and we need to assign new instance of Cuboid to a new variable
+                in_height, in_width = 1250, 1400
+                out_height, out_width = 600, 800
+                resize_figure = figure.resize((in_height, in_width), (out_height, out_width))
         """
         return self._transform(lambda p: p.resize(in_size, out_size))
 
@@ -428,18 +434,18 @@ class Cuboid(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
-            from supervisely.geometry.cuboid import CuboidFace
+                import supervisely as sly
+                from supervisely.geometry.cuboid import CuboidFace
 
-            nodes = [[277, 273], [840, 273], [840, 690], [277, 690], [688, 168], [1200, 168], [1200, 522]]
-            edges = [CuboidFace(0, 1, 2, 3), CuboidFace(0, 4, 5, 1), CuboidFace(1, 5, 6, 2)]
-            pl_nodes = (sly.PointLocation(node[0], node[1]) for node in nodes)
-            figure = sly.Cuboid(pl_nodes, edges)
+                nodes = [[277, 273], [840, 273], [840, 690], [277, 690], [688, 168], [1200, 168], [1200, 522]]
+                edges = [CuboidFace(0, 1, 2, 3), CuboidFace(0, 4, 5, 1), CuboidFace(1, 5, 6, 2)]
+                pl_nodes = (sly.PointLocation(node[0], node[1]) for node in nodes)
+                figure = sly.Cuboid(pl_nodes, edges)
 
-            # Remember that Cuboid class object is immutable, and we need to assign new instance of Cuboid to a new variable
-            scale_figure = figure.scale(1.75)
+                # Remember that Cuboid class object is immutable, and we need to assign new instance of Cuboid to a new variable
+                scale_figure = figure.scale(1.75)
         """
         return self._transform(lambda p: p.scale(factor))
 
@@ -456,18 +462,18 @@ class Cuboid(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
-            from supervisely.geometry.cuboid import CuboidFace
+                import supervisely as sly
+                from supervisely.geometry.cuboid import CuboidFace
 
-            nodes = [[277, 273], [840, 273], [840, 690], [277, 690], [688, 168], [1200, 168], [1200, 522]]
-            edges = [CuboidFace(0, 1, 2, 3), CuboidFace(0, 4, 5, 1), CuboidFace(1, 5, 6, 2)]
-            pl_nodes = (sly.PointLocation(node[0], node[1]) for node in nodes)
-            figure = sly.Cuboid(pl_nodes, edges)
+                nodes = [[277, 273], [840, 273], [840, 690], [277, 690], [688, 168], [1200, 168], [1200, 522]]
+                edges = [CuboidFace(0, 1, 2, 3), CuboidFace(0, 4, 5, 1), CuboidFace(1, 5, 6, 2)]
+                pl_nodes = (sly.PointLocation(node[0], node[1]) for node in nodes)
+                figure = sly.Cuboid(pl_nodes, edges)
 
-            # Remember that Cuboid class object is immutable, and we need to assign new instance of Cuboid to a new variable
-            translate_figure = figure.translate(150, 350)
+                # Remember that Cuboid class object is immutable, and we need to assign new instance of Cuboid to a new variable
+                translate_figure = figure.translate(150, 350)
         """
         return self._transform(lambda p: p.translate(drow, dcol))
 
@@ -482,19 +488,19 @@ class Cuboid(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
-            from supervisely.geometry.cuboid import CuboidFace
+                import supervisely as sly
+                from supervisely.geometry.cuboid import CuboidFace
 
-            nodes = [[277, 273], [840, 273], [840, 690], [277, 690], [688, 168], [1200, 168], [1200, 522]]
-            edges = [CuboidFace(0, 1, 2, 3), CuboidFace(0, 4, 5, 1), CuboidFace(1, 5, 6, 2)]
-            pl_nodes = (sly.PointLocation(node[0], node[1]) for node in nodes)
-            figure = sly.Cuboid(pl_nodes, edges)
+                nodes = [[277, 273], [840, 273], [840, 690], [277, 690], [688, 168], [1200, 168], [1200, 522]]
+                edges = [CuboidFace(0, 1, 2, 3), CuboidFace(0, 4, 5, 1), CuboidFace(1, 5, 6, 2)]
+                pl_nodes = (sly.PointLocation(node[0], node[1]) for node in nodes)
+                figure = sly.Cuboid(pl_nodes, edges)
 
-            # Remember that Cuboid class object is immutable, and we need to assign new instance of Cuboid to a new variable
-            height, width = 1250, 1400
-            fliplr_figure = figure.fliplr((height, width))
+                # Remember that Cuboid class object is immutable, and we need to assign new instance of Cuboid to a new variable
+                height, width = 1250, 1400
+                fliplr_figure = figure.fliplr((height, width))
         """
         return self._transform(lambda p: p.fliplr(img_size))
 
@@ -509,19 +515,19 @@ class Cuboid(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
-            from supervisely.geometry.cuboid import CuboidFace
+                import supervisely as sly
+                from supervisely.geometry.cuboid import CuboidFace
 
-            nodes = [[277, 273], [840, 273], [840, 690], [277, 690], [688, 168], [1200, 168], [1200, 522]]
-            edges = [CuboidFace(0, 1, 2, 3), CuboidFace(0, 4, 5, 1), CuboidFace(1, 5, 6, 2)]
-            pl_nodes = (sly.PointLocation(node[0], node[1]) for node in nodes)
-            figure = sly.Cuboid(pl_nodes, edges)
+                nodes = [[277, 273], [840, 273], [840, 690], [277, 690], [688, 168], [1200, 168], [1200, 522]]
+                edges = [CuboidFace(0, 1, 2, 3), CuboidFace(0, 4, 5, 1), CuboidFace(1, 5, 6, 2)]
+                pl_nodes = (sly.PointLocation(node[0], node[1]) for node in nodes)
+                figure = sly.Cuboid(pl_nodes, edges)
 
-            # Remember that Cuboid class object is immutable, and we need to assign new instance of Cuboid to a new variable
-            height, width = 1250, 1400
-            flipud_figure = figure.flipud((height, width))
+                # Remember that Cuboid class object is immutable, and we need to assign new instance of Cuboid to a new variable
+                height, width = 1250, 1400
+                flipud_figure = figure.flipud((height, width))
         """
         return self._transform(lambda p: p.flipud(img_size))
 
@@ -556,17 +562,17 @@ class Cuboid(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
-            from supervisely.geometry.cuboid import CuboidFace
+                import supervisely as sly
+                from supervisely.geometry.cuboid import CuboidFace
 
-            nodes = [[277, 273], [840, 273], [840, 690], [277, 690], [688, 168], [1200, 168], [1200, 522]]
-            edges = [CuboidFace(0, 1, 2, 3), CuboidFace(0, 4, 5, 1), CuboidFace(1, 5, 6, 2)]
-            pl_nodes = (sly.PointLocation(node[0], node[1]) for node in nodes)
-            figure = sly.Cuboid(pl_nodes, edges)
+                nodes = [[277, 273], [840, 273], [840, 690], [277, 690], [688, 168], [1200, 168], [1200, 522]]
+                edges = [CuboidFace(0, 1, 2, 3), CuboidFace(0, 4, 5, 1), CuboidFace(1, 5, 6, 2)]
+                pl_nodes = (sly.PointLocation(node[0], node[1]) for node in nodes)
+                figure = sly.Cuboid(pl_nodes, edges)
 
-            rectangle = figure.to_bbox()
+                rectangle = figure.to_bbox()
         """
         points_np = np.array(
             [
@@ -593,18 +599,18 @@ class Cuboid(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
-            from supervisely.geometry.cuboid import CuboidFace
+                import supervisely as sly
+                from supervisely.geometry.cuboid import CuboidFace
 
-            nodes = [[277, 273], [840, 273], [840, 690], [277, 690], [688, 168], [1200, 168], [1200, 522]]
-            edges = [CuboidFace(0, 1, 2, 3), CuboidFace(0, 4, 5, 1), CuboidFace(1, 5, 6, 2)]
-            pl_nodes = (sly.PointLocation(node[0], node[1]) for node in nodes)
-            figure = sly.Cuboid(pl_nodes, edges)
+                nodes = [[277, 273], [840, 273], [840, 690], [277, 690], [688, 168], [1200, 168], [1200, 522]]
+                edges = [CuboidFace(0, 1, 2, 3), CuboidFace(0, 4, 5, 1), CuboidFace(1, 5, 6, 2)]
+                pl_nodes = (sly.PointLocation(node[0], node[1]) for node in nodes)
+                figure = sly.Cuboid(pl_nodes, edges)
 
-            print(figure.area)
-            # Output: 5146.0
+                print(figure.area)
+                # Output: 5146.0
         """
         bbox = self.to_bbox()
         canvas = np.zeros([bbox.bottom + 1, bbox.right + 1], dtype=np.bool)

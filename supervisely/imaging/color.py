@@ -30,15 +30,16 @@ def random_rgb(fix_satlight=True) -> List[int, int, int]:
 
     :return: RGB integer values
     :rtype: :class:`List[int, int, int]`
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        color = sly.color.random_rgb()
-        print(color)
-        # Output: [138, 15, 123]
+            import supervisely as sly
+
+            color = sly.color.random_rgb()
+            print(color)
+            # Output: [138, 15, 123]
     """
     saturation = 0.3
     lightness = 0.8
@@ -82,16 +83,17 @@ def generate_rgb(exist_colors: List[List[int, int, int]]) -> List[int, int, int]
     :type exist_colors: list
     :return: RGB integer values
     :rtype: :class:`List[int, int, int]`
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        exist_colors = [[0, 0, 0], [128, 64, 255]]
-        color = sly.color.generate_rgb(exist_colors)
-        print(color)
-        # Output: [15, 138, 39]
+            import supervisely as sly
+
+            exist_colors = [[0, 0, 0], [128, 64, 255]]
+            color = sly.color.generate_rgb(exist_colors)
+            print(color)
+            # Output: [15, 138, 39]
     """
     largest_min_distance = 0
     best_color = random_rgb()
@@ -114,15 +116,16 @@ def rgb2hex(color: List[int, int, int]) -> str:
     :type color: List[int, int, int]
     :return: HEX RGB string
     :rtype: :class:`str`
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        hex_color = sly.color.rgb2hex([128, 64, 255])
-        print(hex_color)
-        # Output: #8040FF
+            import supervisely as sly
+
+            hex_color = sly.color.rgb2hex([128, 64, 255])
+            print(hex_color)
+            # Output: #8040FF
     """
     _validate_color(color)
     return "#" + "".join("{:02X}".format(component) for component in color)
@@ -146,16 +149,17 @@ def hex2rgb(hex_value: str) -> List[int, int, int]:
     :type hex_value: str
     :return: RGB integer values
     :rtype: :class:`List[int, int, int]`
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        hex_color = '#8040FF'
-        color = sly.color.hex2rgb(hex_color)
-        print(color)
-        # Output: [128, 64, 255]
+            import supervisely as sly
+
+            hex_color = '#8040FF'
+            color = sly.color.hex2rgb(hex_color)
+            print(color)
+            # Output: [128, 64, 255]
     """
     if not _validate_hex_color(hex_value):
         raise ValueError("Supported only HEX RGB string format!")

@@ -25,22 +25,23 @@ class PointcloudEpisodeObject(PointcloudObject):
     :type updated_at: str, optional
     :param created_at: Date and Time when PointcloudEpisodeObject was created. Date Format is the same as in "updated_at" parameter.
     :type created_at: str, optional
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
-        from supervisely.geometry.cuboid_3d import Cuboid3d
+        .. code-block:: python
 
-        obj_class_car = sly.ObjClass('car', Cuboid3d)
-        pointcloud_episode_obj_car = sly.PointcloudEpisodeObject(obj_class_car)
-        pointcloud_episode_obj_car_json = pointcloud_episode_obj_car.to_json()
-        print(pointcloud_episode_obj_car_json)
-        # Output: {
-        #     "key": "6b819f1840f84d669b32cdec225385f0",
-        #     "classTitle": "car",
-        #     "tags": []
-        # }
+            import supervisely as sly
+            from supervisely.geometry.cuboid_3d import Cuboid3d
+
+            obj_class_car = sly.ObjClass('car', Cuboid3d)
+            pointcloud_episode_obj_car = sly.PointcloudEpisodeObject(obj_class_car)
+            pointcloud_episode_obj_car_json = pointcloud_episode_obj_car.to_json()
+            print(pointcloud_episode_obj_car_json)
+            # Output: {
+            #     "key": "6b819f1840f84d669b32cdec225385f0",
+            #     "classTitle": "car",
+            #     "tags": []
+            # }
     """
 
     tag_collection_type = PointcloudEpisodeTagCollection

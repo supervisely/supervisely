@@ -96,48 +96,48 @@ class Heatmap(Widget):
     or a custom blurring function (specified by `blur_function`). If both are provided, the custom function takes precedence.
     Blurring only affects the visual representation of the heatmap and does not modify the underlying data.
 
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import numpy as np
-        from supervisely.app.widgets import Heatmap
+            import numpy as np
+            from supervisely.app.widgets import Heatmap
 
-        # Create temperature heatmap
-        temp_data = np.random.uniform(-20, 40, size=(100, 100))
-        heatmap = Heatmap(
-            background_image="/path/to/background.jpg",
-            heatmap_mask=temp_data,
-            vmin=-20,
-            vmax=40,
-            colormap=cv2.COLORMAP_JET
-        )
+            # Create temperature heatmap
+            temp_data = np.random.uniform(-20, 40, size=(100, 100))
+            heatmap = Heatmap(
+                background_image="/path/to/background.jpg",
+                heatmap_mask=temp_data,
+                vmin=-20,
+                vmax=40,
+                colormap=cv2.COLORMAP_JET
+            )
 
-        @heatmap.click
-        def handle_click(y: int, x: int, value: float):
+            @heatmap.click
+            def handle_click(y: int, x: int, value: float):
             print(f"Temperature at ({x}, {y}): {value:.1f}°C")
 
 
     :Custom blur function example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        from functools import partial
-        import cv2
+            from functools import partial
+            import cv2
 
-        # Using a predefined OpenCV function with fixed kernel size
-        blur_f = partial(cv2.medianBlur, ksize=5)
-        # Or define a custom blur function
-        def blur_f(img):
-            ksize = img.shape[0] // 20
-            if ksize % 2 == 0:
-                ksize += 1
-            return cv2.GaussianBlur(img, (ksize, ksize), 0)
-        heatmap = Heatmap(
-            heatmap_mask=temp_data,
-            blur_function=blur_f
-        )
-    """    
+            # Using a predefined OpenCV function with fixed kernel size
+            blur_f = partial(cv2.medianBlur, ksize=5)
+            # Or define a custom blur function
+            def blur_f(img):
+                ksize = img.shape[0] // 20
+                if ksize % 2 == 0:
+                    ksize += 1
+                return cv2.GaussianBlur(img, (ksize, ksize), 0)
+            heatmap = Heatmap(
+                heatmap_mask=temp_data,
+                blur_function=blur_f
+            )
+    """
 
     class Routes:
         CLICK = "heatmap_clicked_cb"
@@ -223,23 +223,23 @@ class Heatmap(Widget):
 
         All images are converted to data URLs for efficient in-memory serving.
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            from supervisely.app.widgets.heatmap import Heatmap
-            import numpy as np
-            heatmap = Heatmap()
+                from supervisely.app.widgets.heatmap import Heatmap
+                import numpy as np
+                heatmap = Heatmap()
 
-            # Using a local file path
-            heatmap.set_background("/path/to/image.jpg")
+                # Using a local file path
+                heatmap.set_background("/path/to/image.jpg")
 
-            # Using a NumPy array (RGB image)
-            bg_array = np.random.randint(0, 255, size=(480, 640, 3), dtype=np.uint8)
-            heatmap.set_background(bg_array)
+                # Using a NumPy array (RGB image)
+                bg_array = np.random.randint(0, 255, size=(480, 640, 3), dtype=np.uint8)
+                heatmap.set_background(bg_array)
 
-            # Using a remote URL
-            heatmap.set_background("https://example.com/background.png")
+                # Using a remote URL
+                heatmap.set_background("https://example.com/background.png")
         """
         try:
             if isinstance(background_image, np.ndarray):
@@ -280,22 +280,22 @@ class Heatmap(Widget):
 
         The heatmap is converted to a data URL for efficient in-memory serving.
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            from supervisely.app.widgets.heatmap import Heatmap
-            import numpy as np
+                from supervisely.app.widgets.heatmap import Heatmap
+                import numpy as np
 
-            heatmap = Heatmap()
+                heatmap = Heatmap()
 
-            # Create probability heatmap (0.0 to 1.0)
-            probability_mask = np.random.uniform(0.0, 1.0, size=(100, 100))
-            heatmap.set_heatmap(probability_mask)
+                # Create probability heatmap (0.0 to 1.0)
+                probability_mask = np.random.uniform(0.0, 1.0, size=(100, 100))
+                heatmap.set_heatmap(probability_mask)
 
-            # Create temperature heatmap (-50 to 150)
-            temp_mask = np.random.uniform(-50, 150, size=(200, 300))
-            heatmap.set_heatmap(temp_mask)
+                # Create temperature heatmap (-50 to 150)
+                temp_mask = np.random.uniform(-50, 150, size=(200, 300))
+                heatmap.set_heatmap(temp_mask)
         """
         try:
             heatmap = mask_to_heatmap(
@@ -355,17 +355,17 @@ class Heatmap(Widget):
             4. Areas with overlapping objects will have higher values (brighter in heatmap)
             5. Setting the resulting density mask as the heatmap
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            from supervisely.annotation.annotation import Annotation
+                from supervisely.annotation.annotation import Annotation
 
-            ann1 = Annotation.load_json_file("/path/to/ann1.json")
-            ann2 = Annotation.load_json_file("/path/to/ann2.json")
-            ann3 = Annotation.load_json_file("/path/to/ann3.json")
-            annotations = [ann1, ann2, ann3]
-            heatmap.set_heatmap_from_annotations(annotations, object_name="person")
+                ann1 = Annotation.load_json_file("/path/to/ann1.json")
+                ann2 = Annotation.load_json_file("/path/to/ann2.json")
+                ann3 = Annotation.load_json_file("/path/to/ann3.json")
+                annotations = [ann1, ann2, ann3]
+                heatmap.set_heatmap_from_annotations(annotations, object_name="person")
 
         """
         if len(anns) == 0:
@@ -551,13 +551,13 @@ class Heatmap(Widget):
             - x: column index (width axis)
             - value: clicked pixel value (fetched from server-side mask)
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            @heatmap.click
-            def handle_click(y: int, x: int, value: float):
-                print(f"Clicked at row {y}, col {x}, value: {value}")
+                @heatmap.click
+                def handle_click(y: int, x: int, value: float):
+                    print(f"Clicked at row {y}, col {x}, value: {value}")
 
         """
         self._click_callback = func

@@ -34,23 +34,24 @@ class DatePicker(Widget):
     :param widget_id: An identifier of the widget.
     :type widget_id: str, optional
 
-    :Usage example:
-    .. code-block:: python
+    :Usage Example:
 
-        from supervisely.app.widgets import DatePicker
+        .. code-block:: python
 
-        date_picker = DatePicker(
-            value=datetime.now(),
-            placeholder="Select date",
-            picker_type="date",
-            size="small",
-            readonly=False,
-            disabled=False,
-            editable=False,
-            clearable=True,
-            format="yyyy-MM-dd",
-            first_day_of_week=1,
-        )
+            from supervisely.app.widgets import DatePicker
+
+            date_picker = DatePicker(
+                value=datetime.now(),
+                placeholder="Select date",
+                picker_type="date",
+                size="small",
+                readonly=False,
+                disabled=False,
+                editable=False,
+                clearable=True,
+                format="yyyy-MM-dd",
+                first_day_of_week=1,
+            )
     """
 
     class Routes:

@@ -91,40 +91,41 @@ class Annotation:
     :type image_id: int, optional
 
     :raises: :class:`TypeError`, if image size is not tuple or list
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        # Simple Annotation example
-        import supervisely as sly
+        .. code-block:: python
 
-        height, width = 500, 700
-        ann = sly.Annotation((height, width))
+            # Simple Annotation example
+            import supervisely as sly
 
-        # More complex Annotation example
-        # TagCollection
-        meta_lemon = sly.TagMeta('lemon_tag', sly.TagValueType.ANY_STRING)
-        tag_lemon = sly.Tag(meta_lemon, 'Hello')
-        tags = sly.TagCollection([tag_lemon])
-        # or tags = [tag_lemon]
+            height, width = 500, 700
+            ann = sly.Annotation((height, width))
 
-        # ObjClass
-        class_lemon = sly.ObjClass('lemon', sly.Rectangle)
+            # More complex Annotation example
+            # TagCollection
+            meta_lemon = sly.TagMeta('lemon_tag', sly.TagValueType.ANY_STRING)
+            tag_lemon = sly.Tag(meta_lemon, 'Hello')
+            tags = sly.TagCollection([tag_lemon])
+            # or tags = [tag_lemon]
 
-        # Label
-        label_lemon = sly.Label(sly.Rectangle(100, 100, 200, 200), class_lemon)
+            # ObjClass
+            class_lemon = sly.ObjClass('lemon', sly.Rectangle)
 
-        # Annotation
-        height, width = 300, 400
-        ann = sly.Annotation((height, width), [label_lemon], tags, 'example annotaion')
-        # 'points': {'exterior': [[100, 100], [200, 200]], 'interior': []}
+            # Label
+            label_lemon = sly.Label(sly.Rectangle(100, 100, 200, 200), class_lemon)
 
-        # If Label geometry is out of image size bounds, it will be cropped
-        label_lemon = sly.Label(sly.Rectangle(100, 100, 700, 900), class_lemon)
-        height, width = 300, 400
+            # Annotation
+            height, width = 300, 400
+            ann = sly.Annotation((height, width), [label_lemon], tags, 'example annotaion')
+            # 'points': {'exterior': [[100, 100], [200, 200]], 'interior': []}
 
-        ann = sly.Annotation((height, width), [label_lemon], tags, 'example annotaion')
-        # 'points': {'exterior': [[100, 100], [399, 299]], 'interior': []}
+            # If Label geometry is out of image size bounds, it will be cropped
+            label_lemon = sly.Label(sly.Rectangle(100, 100, 700, 900), class_lemon)
+            height, width = 300, 400
+
+            ann = sly.Annotation((height, width), [label_lemon], tags, 'example annotaion')
+            # 'points': {'exterior': [[100, 100], [399, 299]], 'interior': []}
     """
 
     def __init__(
@@ -175,14 +176,15 @@ class Annotation:
 
         :return: Image size
         :rtype: :class:`Tuple[int, int]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            height, width = 300, 400
-            ann = sly.Annotation((height, width))
-            print(ann.img_size)
-            # Output: (300, 400)
+            .. code-block:: python
+
+                height, width = 300, 400
+                ann = sly.Annotation((height, width))
+                print(ann.img_size)
+                # Output: (300, 400)
         """
         return deepcopy(self._img_size)
 
@@ -193,15 +195,16 @@ class Annotation:
 
         :return: Image id
         :rtype: :class:`int`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            height, width = 300, 400
-            image_id = 12345
-            ann = sly.Annotation((height, width), image_id=image_id)
-            print(ann.image_id)
-            # Output: 12345
+            .. code-block:: python
+
+                height, width = 300, 400
+                image_id = 12345
+                ann = sly.Annotation((height, width), image_id=image_id)
+                print(ann.image_id)
+                # Output: 12345
         """
         return self._image_id
 
@@ -212,34 +215,35 @@ class Annotation:
 
         :return: Copy of list with image labels
         :rtype: :class:`List[Label]<supervisely.annotation.label.Label>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            # Create Labels and add them to Annotation
-            class_kiwi = sly.ObjClass('kiwi', sly.Rectangle)
-            label_kiwi = sly.Label(sly.Rectangle(0, 0, 300, 300), class_kiwi)
+            .. code-block:: python
 
-            class_lemon = sly.ObjClass('lemon', sly.Rectangle)
-            label_lemon = sly.Label(sly.Rectangle(0, 0, 500, 600), class_lemon)
+                # Create Labels and add them to Annotation
+                class_kiwi = sly.ObjClass('kiwi', sly.Rectangle)
+                label_kiwi = sly.Label(sly.Rectangle(0, 0, 300, 300), class_kiwi)
 
-            labels_arr = [label_kiwi, label_lemon]
+                class_lemon = sly.ObjClass('lemon', sly.Rectangle)
+                label_lemon = sly.Label(sly.Rectangle(0, 0, 500, 600), class_lemon)
 
-            height, width = 300, 400
-            ann = sly.Annotation((height, width), labels_arr)
+                labels_arr = [label_kiwi, label_lemon]
 
-            # Note that ann.labels return a COPY of list with image labels
-            class_potato = sly.ObjClass('potato', sly.Rectangle)
-            label_potato = sly.Label(sly.Rectangle(0, 0, 200, 400), class_potato)
+                height, width = 300, 400
+                ann = sly.Annotation((height, width), labels_arr)
 
-            ann.labels.append(label_potato)
-            print(len(ann.labels))
-            # Output: 2
+                # Note that ann.labels return a COPY of list with image labels
+                class_potato = sly.ObjClass('potato', sly.Rectangle)
+                label_potato = sly.Label(sly.Rectangle(0, 0, 200, 400), class_potato)
 
-            ann_arr = ann.labels
-            ann_arr.append(label_potato)
-            print(len(ann_arr))
-            # Output: 3
+                ann.labels.append(label_potato)
+                print(len(ann.labels))
+                # Output: 2
+
+                ann_arr = ann.labels
+                ann_arr.append(label_potato)
+                print(len(ann_arr))
+                # Output: 3
         """
         return self._labels.copy()
 
@@ -255,13 +259,14 @@ class Annotation:
 
         :return: Image description
         :rtype: :class:`str`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            ann = sly.Annotation((500, 700), img_description='Annotation for this image is empty')
-            print(ann.img_description)
-            # Output: Annotation for this image is empty
+            .. code-block:: python
+
+                ann = sly.Annotation((500, 700), img_description='Annotation for this image is empty')
+                print(ann.img_description)
+                # Output: Annotation for this image is empty
         """
         return self._img_description
 
@@ -272,24 +277,25 @@ class Annotation:
 
         :return: TagCollection object
         :rtype: :class:`TagCollection<supervisely.annotation.tag_collection.TagCollection>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            # Create TagCollection
-            meta_weather = sly.TagMeta('weather', sly.TagValueType.ANY_STRING)
-            tag_weather = sly.Tag(meta_weather, 'cloudy')
-            tags = sly.TagCollection([tag_weather])
+            .. code-block:: python
 
-            ann = sly.Annotation((300, 400), img_tags=tags)
-            print(ann.img_tags)
-            # Output:
-            #   Tags:
-            #   +----------------+------------+--------+
-            #   |      Name      | Value type | Value  |
-            #   +----------------+------------+--------+
-            #   |     weather    | any_string | cloudy |
-            #   +----------------+------------+--------+
+                # Create TagCollection
+                meta_weather = sly.TagMeta('weather', sly.TagValueType.ANY_STRING)
+                tag_weather = sly.Tag(meta_weather, 'cloudy')
+                tags = sly.TagCollection([tag_weather])
+
+                ann = sly.Annotation((300, 400), img_tags=tags)
+                print(ann.img_tags)
+                # Output:
+                #   Tags:
+                #   +----------------+------------+--------+
+                #   |      Name      | Value type | Value  |
+                #   +----------------+------------+--------+
+                #   |     weather    | any_string | cloudy |
+                #   +----------------+------------+--------+
         """
         return self._img_tags
 
@@ -299,26 +305,27 @@ class Annotation:
 
         :return: Json format as a dict
         :rtype: :class:`dict`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            ann = sly.Annotation((500, 700))
-            ann_json = ann.to_json()
+                import supervisely as sly
 
-            print(ann_json)
-            # Output: {
-            #     "description": "",
-            #     "size": {
-            #         "height": 500,
-            #         "width": 700
-            #     },
-            #     "tags": [],
-            #     "objects": [],
-            #     "customBigData": {}
-            # }
+                ann = sly.Annotation((500, 700))
+                ann_json = ann.to_json()
+
+                print(ann_json)
+                # Output: {
+                #     "description": "",
+                #     "size": {
+                #         "height": 500,
+                #         "width": 700
+                #     },
+                #     "tags": [],
+                #     "objects": [],
+                #     "customBigData": {}
+                # }
         """
         height = self.img_size[0]
         if height is not None:
@@ -372,24 +379,22 @@ class Annotation:
         :return: Annotation object
         :rtype: :class:`Annotation<Annotation>`
         :raises: :class:`Exception`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            meta = sly.ProjectMeta()
+                import supervisely as sly
 
-            ann_json = {
-                 "size": {
-                     "height": 500,
-                     "width": 700
-                 },
-                 "tags": [],
-                 "objects": []
-            }
+                meta = sly.ProjectMeta()
 
-            ann = sly.Annotation.from_json(ann_json, meta)
+                ann_json = {
+                    "size": {"height": 500, "width": 700},
+                    "tags": [],
+                    "objects": []
+                }
+
+                ann = sly.Annotation.from_json(ann_json, meta)
         """
         img_size_dict = data[AnnotationJsonFields.IMG_SIZE]
         img_height = img_size_dict[AnnotationJsonFields.IMG_SIZE_HEIGHT]
@@ -450,29 +455,30 @@ class Annotation:
         :type project_meta: ProjectMeta
         :return: Annotation object
         :rtype: :class:`Annotation<Annotation>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                import supervisely as sly
 
-            team_name = 'Vehicle Detection'
-            workspace_name = 'Cities'
-            project_name =  'London'
+                address = 'https://app.supervisely.com/'
+                token = 'Your Supervisely API Token'
+                api = sly.Api(address, token)
 
-            team = api.team.get_info_by_name(team_name)
-            workspace = api.workspace.get_info_by_name(team.id, workspace_name)
-            project = api.project.get_info_by_name(workspace.id, project_name)
+                team_name = 'Vehicle Detection'
+                workspace_name = 'Cities'
+                project_name =  'London'
 
-            meta = api.project.get_meta(project.id)
+                team = api.team.get_info_by_name(team_name)
+                workspace = api.workspace.get_info_by_name(team.id, workspace_name)
+                project = api.project.get_info_by_name(workspace.id, project_name)
 
-            # Load json file
-            path = "/home/admin/work/docs/my_dataset/ann/annotation.json"
-            ann = sly.Annotation.load_json_file(path, meta)
+                meta = api.project.get_meta(project.id)
+
+                # Load json file
+                path = "/home/admin/work/docs/my_dataset/ann/annotation.json"
+                ann = sly.Annotation.load_json_file(path, meta)
         """
         with open(path) as fin:
             data = json.load(fin)
@@ -508,28 +514,29 @@ class Annotation:
 
         :return: New instance of Annotation
         :rtype: :class:`Annotation<Annotation>`
+
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            ann = sly.Annotation((300, 400))
+                ann = sly.Annotation((300, 400))
 
-            # Let's clone our Annotation with Label
-            class_kiwi = sly.ObjClass('kiwi', sly.Rectangle)
-            label_kiwi = sly.Label(sly.Rectangle(0, 0, 300, 300), class_kiwi)
+                # Let's clone our Annotation with Label
+                class_kiwi = sly.ObjClass('kiwi', sly.Rectangle)
+                label_kiwi = sly.Label(sly.Rectangle(0, 0, 300, 300), class_kiwi)
 
-            # Assign cloned annotation to a new variable
-            ann_clone_1 = ann.clone(labels=[label_kiwi])
+                # Assign cloned annotation to a new variable
+                ann_clone_1 = ann.clone(labels=[label_kiwi])
 
-            # Let's clone our Annotation with Label, TagCollection and description
-            meta_lemon = sly.TagMeta('lemon', sly.TagValueType.ANY_STRING)
-            tag_lemon = sly.Tag(meta_lemon, 'juicy')
-            tags = sly.TagCollection([tag_lemon])
+                # Let's clone our Annotation with Label, TagCollection and description
+                meta_lemon = sly.TagMeta('lemon', sly.TagValueType.ANY_STRING)
+                tag_lemon = sly.Tag(meta_lemon, 'juicy')
+                tags = sly.TagCollection([tag_lemon])
 
-            # Assign cloned annotation to a new variable
-            ann_clone_2 = ann.clone(labels=[label_kiwi], img_tags=tags, img_description='Juicy')
+                # Assign cloned annotation to a new variable
+                ann_clone_2 = ann.clone(labels=[label_kiwi], img_tags=tags, img_description='Juicy')
 
         """
         return Annotation(
@@ -578,21 +585,22 @@ class Annotation:
         :type label: Label
         :return: New instance of Annotation
         :rtype: :class:`Annotation<Annotation>`
+
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            ann = sly.Annotation((300, 600))
+                ann = sly.Annotation((300, 600))
 
-            # Create Label
-            class_kiwi = sly.ObjClass('kiwi', sly.Rectangle)
-            label_kiwi = sly.Label(sly.Rectangle(0, 0, 300, 300), class_kiwi)
+                # Create Label
+                class_kiwi = sly.ObjClass('kiwi', sly.Rectangle)
+                label_kiwi = sly.Label(sly.Rectangle(0, 0, 300, 300), class_kiwi)
 
-            # Add label to Annotation
-            # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
-            new_ann = ann.add_label(label_kiwi)
+                # Add label to Annotation
+                # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
+                new_ann = ann.add_label(label_kiwi)
         """
         return self.add_labels([label])
 
@@ -604,24 +612,25 @@ class Annotation:
         :type labels: List[Label]
         :return: New instance of Annotation
         :rtype: :class:`Annotation<Annotation>`
+
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            ann = sly.Annotation((300, 600))
+                ann = sly.Annotation((300, 600))
 
-            # Create Labels
-            class_kiwi = sly.ObjClass('kiwi', sly.Rectangle)
-            label_kiwi = sly.Label(sly.Rectangle(0, 0, 300, 300), class_kiwi)
+                # Create Labels
+                class_kiwi = sly.ObjClass('kiwi', sly.Rectangle)
+                label_kiwi = sly.Label(sly.Rectangle(0, 0, 300, 300), class_kiwi)
 
-            class_lemon = sly.ObjClass('lemon', sly.Rectangle)
-            label_lemon = sly.Label(sly.Rectangle(0, 0, 500, 600), class_lemon)
+                class_lemon = sly.ObjClass('lemon', sly.Rectangle)
+                label_lemon = sly.Label(sly.Rectangle(0, 0, 500, 600), class_lemon)
 
-            # Add labels to Annotation
-            # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
-            new_ann = ann.add_labels([label_kiwi, label_lemon])
+                # Add labels to Annotation
+                # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
+                new_ann = ann.add_labels([label_kiwi, label_lemon])
         """
         new_labels = []
         self._add_labels_impl(new_labels, labels)
@@ -636,34 +645,35 @@ class Annotation:
         :raises: :class:`KeyError`, if there is no deleted Label in current Annotation object
         :return: New instance of Annotation
         :rtype: :class:`Annotation<Annotation>`
+
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            ann = sly.Annotation((300, 600))
+                ann = sly.Annotation((300, 600))
 
-            # Create Labels
-            class_kiwi = sly.ObjClass('kiwi', sly.Rectangle)
-            label_kiwi = sly.Label(sly.Rectangle(0, 0, 300, 300), class_kiwi)
+                # Create Labels
+                class_kiwi = sly.ObjClass('kiwi', sly.Rectangle)
+                label_kiwi = sly.Label(sly.Rectangle(0, 0, 300, 300), class_kiwi)
 
-            class_lemon = sly.ObjClass('lemon', sly.Rectangle)
-            label_lemon = sly.Label(sly.Rectangle(0, 0, 500, 600), class_lemon)
+                class_lemon = sly.ObjClass('lemon', sly.Rectangle)
+                label_lemon = sly.Label(sly.Rectangle(0, 0, 500, 600), class_lemon)
 
-            # Add labels to Annotation
-            ann = ann.add_labels([label_kiwi, label_lemon])
-            print(len(ann.labels))
-            # Output: 2
+                # Add labels to Annotation
+                ann = ann.add_labels([label_kiwi, label_lemon])
+                print(len(ann.labels))
+                # Output: 2
 
-            # Run through all labels in Annotation objects
-            for label in ann.labels:
-                if label.obj_class.name == 'lemon': # label obj_class name we want to delete
-                    # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
-                    new_ann = ann.delete_label(label)
+                # Run through all labels in Annotation objects
+                for label in ann.labels:
+                    if label.obj_class.name == 'lemon': # label obj_class name we want to delete
+                        # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
+                        new_ann = ann.delete_label(label)
 
-            print(len(new_ann.labels))
-            # Output: 1
+                print(len(new_ann.labels))
+                # Output: 1
         """
         retained_labels = [_label for _label in self._labels if _label != label]
         if len(retained_labels) == len(self._labels):
@@ -702,19 +712,19 @@ class Annotation:
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            ann = sly.Annotation((300, 600))
+                ann = sly.Annotation((300, 600))
 
-            # Create Tag
-            meta_message = sly.TagMeta('Message', sly.TagValueType.ANY_STRING)
-            tag_message = sly.Tag(meta_message, 'Hello')
+                # Create Tag
+                meta_message = sly.TagMeta('Message', sly.TagValueType.ANY_STRING)
+                tag_message = sly.Tag(meta_message, 'Hello')
 
-            # Add Tag to Annotation
-            # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
-            new_ann = ann.add_tag(tag_message)
+                # Add Tag to Annotation
+                # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
+                new_ann = ann.add_tag(tag_message)
         """
         return self.clone(img_tags=self._img_tags.add(tag))
 
@@ -729,22 +739,22 @@ class Annotation:
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            ann = sly.Annotation((300, 600))
+                ann = sly.Annotation((300, 600))
 
-            # Create Tags
-            meta_message = sly.TagMeta('Message', sly.TagValueType.ANY_STRING)
-            meta_alert = sly.TagMeta('Alert', sly.TagValueType.NONE)
+                # Create Tags
+                meta_message = sly.TagMeta('Message', sly.TagValueType.ANY_STRING)
+                meta_alert = sly.TagMeta('Alert', sly.TagValueType.NONE)
 
-            tag_message = sly.Tag(meta_message, 'Hello')
-            tag_alert = sly.Tag(meta_alert)
+                tag_message = sly.Tag(meta_message, 'Hello')
+                tag_alert = sly.Tag(meta_alert)
 
-            # Add Tags to Annotation
-            # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
-            new_ann = ann.add_tags([tag_message, tag_alert])
+                # Add Tags to Annotation
+                # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
+                new_ann = ann.add_tags([tag_message, tag_alert])
         """
         return self.clone(img_tags=self._img_tags.add_items(tags))
 
@@ -759,25 +769,25 @@ class Annotation:
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            ann = sly.Annotation((300, 600))
+                ann = sly.Annotation((300, 600))
 
-            # Create Tags
-            meta_message = sly.TagMeta('Message', sly.TagValueType.ANY_STRING)
-            meta_alert = sly.TagMeta('Alert', sly.TagValueType.NONE)
+                # Create Tags
+                meta_message = sly.TagMeta('Message', sly.TagValueType.ANY_STRING)
+                meta_alert = sly.TagMeta('Alert', sly.TagValueType.NONE)
 
-            tag_message = sly.Tag(meta_message, 'Hello')
-            tag_alert = sly.Tag(meta_alert)
+                tag_message = sly.Tag(meta_message, 'Hello')
+                tag_alert = sly.Tag(meta_alert)
 
-            # Add Tags to Annotation
-            tags_ann = ann.add_tags([tag_message, tag_alert])
+                # Add Tags to Annotation
+                tags_ann = ann.add_tags([tag_message, tag_alert])
 
-            # Delete Tags from Annotation
-            # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
-            new_ann = tags_ann.delete_tags_by_name(['Message', 'Alert'])
+                # Delete Tags from Annotation
+                # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
+                new_ann = tags_ann.delete_tags_by_name(['Message', 'Alert'])
         """
         retained_tags = [tag for tag in self._img_tags.items() if tag.meta.name not in tag_names]
         return self.clone(img_tags=TagCollection(items=retained_tags))
@@ -793,21 +803,21 @@ class Annotation:
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            ann = sly.Annotation((300, 600))
+                ann = sly.Annotation((300, 600))
 
-            # Create Tag
-            meta_alert = sly.TagMeta('Alert', sly.TagValueType.ANY_STRING)
-            tag_alert = sly.Tag(meta_alert, 'Hello')
+                # Create Tag
+                meta_alert = sly.TagMeta('Alert', sly.TagValueType.ANY_STRING)
+                tag_alert = sly.Tag(meta_alert, 'Hello')
 
-            tag_ann = ann.add_tag(tag_alert)
+                tag_ann = ann.add_tag(tag_alert)
 
-            # Delete Tag from Annotation
-            # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
-            new_ann = tag_ann.delete_tag_by_name('Alert')
+                # Delete Tag from Annotation
+                # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
+                new_ann = tag_ann.delete_tag_by_name('Alert')
         """
         return self.delete_tags_by_name([tag_name])
 
@@ -822,25 +832,25 @@ class Annotation:
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            ann = sly.Annotation((300, 600))
+                ann = sly.Annotation((300, 600))
 
-            meta_message = sly.TagMeta('Message', sly.TagValueType.ANY_STRING)
-            meta_alert = sly.TagMeta('Alert', sly.TagValueType.NONE)
+                meta_message = sly.TagMeta('Message', sly.TagValueType.ANY_STRING)
+                meta_alert = sly.TagMeta('Alert', sly.TagValueType.NONE)
 
-            tag_message = sly.Tag(meta_message, 'Hello')
-            tag_alert = sly.Tag(meta_alert)
+                tag_message = sly.Tag(meta_message, 'Hello')
+                tag_alert = sly.Tag(meta_alert)
 
-            ann = ann.add_tags([tag_message, tag_alert])
-            print(len(ann.img_tags))
-            # Output: 2
+                ann = ann.add_tags([tag_message, tag_alert])
+                print(len(ann.img_tags))
+                # Output: 2
 
-            new_ann = ann.delete_tags([tag_message, tag_alert])
-            print(len(new_ann.img_tags))
-            # Output: 0
+                new_ann = ann.delete_tags([tag_message, tag_alert])
+                print(len(new_ann.img_tags))
+                # Output: 0
         """
         return self.delete_tags_by_name([tag.meta.name for tag in tags])
 
@@ -855,25 +865,25 @@ class Annotation:
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            ann = sly.Annotation((300, 600))
+                ann = sly.Annotation((300, 600))
 
-            meta_dog = sly.TagMeta('dog', sly.TagValueType.ANY_STRING)
-            meta_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
+                meta_dog = sly.TagMeta('dog', sly.TagValueType.ANY_STRING)
+                meta_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
 
-            tag_dog = sly.Tag(meta_dog, 'Woof!')
-            tag_cat = sly.Tag(meta_cat)
+                tag_dog = sly.Tag(meta_dog, 'Woof!')
+                tag_cat = sly.Tag(meta_cat)
 
-            ann = ann.add_tags([tag_dog, tag_cat])
-            print(len(ann.img_tags))
-            # Output: 2
+                ann = ann.add_tags([tag_dog, tag_cat])
+                print(len(ann.img_tags))
+                # Output: 2
 
-            new_ann = ann.delete_tag(tag_dog)
-            print(len(new_ann.img_tags))
-            # Output: 1
+                new_ann = ann.delete_tag(tag_dog)
+                print(len(new_ann.img_tags))
+                # Output: 1
         """
         return self.delete_tags_by_name([tag.meta.name])
 
@@ -919,46 +929,46 @@ class Annotation:
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                address = 'https://app.supervisely.com/'
+                token = 'Your Supervisely API Token'
+                api = sly.Api(address, token)
 
-            # Get image and annotation from API
-            project_id = 888
-            image_id = 555555
+                # Get image and annotation from API
+                project_id = 888
+                image_id = 555555
 
-            meta_json = api.project.get_meta(project_id)
-            meta = sly.ProjectMeta.from_json(meta_json)
+                meta_json = api.project.get_meta(project_id)
+                meta = sly.ProjectMeta.from_json(meta_json)
 
-            ann_info = api.annotation.download(image_id)
-            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+                ann_info = api.annotation.download(image_id)
+                ann = sly.Annotation.from_json(ann_info.annotation, meta)
 
-            img = api.image.download_np(image_id)
-            new_img = copy.deepcopy(img)
+                img = api.image.download_np(image_id)
+                new_img = copy.deepcopy(img)
 
-            # Draw Annotation on image before crop
-            ann.draw_pretty(img, thickness=3)
+                # Draw Annotation on image before crop
+                ann.draw_pretty(img, thickness=3)
 
-            # Crop Labels for current Annotation
-            # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
-            cropped_ann = ann.crop_labels(sly.Rectangle(0, 0, 600, 700))
+                # Crop Labels for current Annotation
+                # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
+                cropped_ann = ann.crop_labels(sly.Rectangle(0, 0, 600, 700))
 
-            # Draw Annotation on image after crop
-            cropped_ann.draw_pretty(new_img, thickness=3)
+                # Draw Annotation on image after crop
+                cropped_ann.draw_pretty(new_img, thickness=3)
 
-        .. list-table::
+                .. list-table::
 
-            * - .. figure:: https://i.imgur.com/6huO1se.jpg
+                * - .. figure:: https://i.imgur.com/6huO1se.jpg
 
-                   Before
+                  Before
 
-              - .. figure:: https://i.imgur.com/w2wR4h8.jpg
+                  - .. figure:: https://i.imgur.com/w2wR4h8.jpg
 
-                   After
+                  After
         """
 
         def _crop_label(label):
@@ -977,47 +987,47 @@ class Annotation:
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                address = 'https://app.supervisely.com/'
+                token = 'Your Supervisely API Token'
+                api = sly.Api(address, token)
 
-            # Get image and annotation from API
-            project_id = 888
-            image_id = 555555
+                # Get image and annotation from API
+                project_id = 888
+                image_id = 555555
 
-            meta_json = api.project.get_meta(project_id)
-            meta = sly.ProjectMeta.from_json(meta_json)
+                meta_json = api.project.get_meta(project_id)
+                meta = sly.ProjectMeta.from_json(meta_json)
 
-            ann_info = api.annotation.download(image_id)
-            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+                ann_info = api.annotation.download(image_id)
+                ann = sly.Annotation.from_json(ann_info.annotation, meta)
 
-            img = api.image.download_np(image_id)
-            new_img = copy.deepcopy(img)
-            new_img = sly.imaging.image.crop(new_img, sly.Rectangle(200, 300, 600, 700))
+                img = api.image.download_np(image_id)
+                new_img = copy.deepcopy(img)
+                new_img = sly.imaging.image.crop(new_img, sly.Rectangle(200, 300, 600, 700))
 
-            # Draw Annotation on image before relative crop
-            ann.draw_pretty(img, thickness=3)
+                # Draw Annotation on image before relative crop
+                ann.draw_pretty(img, thickness=3)
 
-            # Relative Crop Labels for current Annotation
-            # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
-            r_cropped_ann = ann.relative_crop(sly.Rectangle(200, 300, 600, 700))
+                # Relative Crop Labels for current Annotation
+                # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
+                r_cropped_ann = ann.relative_crop(sly.Rectangle(200, 300, 600, 700))
 
-            # Draw Annotation on image after relative crop
-            r_cropped_ann.draw_pretty(new_img, thickness=3)
+                # Draw Annotation on image after relative crop
+                r_cropped_ann.draw_pretty(new_img, thickness=3)
 
-        .. list-table::
+                .. list-table::
 
-            * - .. figure:: https://i.imgur.com/23UuNdJ.png
+                * - .. figure:: https://i.imgur.com/23UuNdJ.png
 
-                   Before
+                  Before
 
-              - .. figure:: https://i.imgur.com/8Z7xVxB.jpg
+                  - .. figure:: https://i.imgur.com/8Z7xVxB.jpg
 
-                   After
+                  After
         """
 
         def _crop_label(label):
@@ -1036,49 +1046,49 @@ class Annotation:
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
-            from supervisely.geometry.image_rotator import ImageRotator
+                import supervisely as sly
+                from supervisely.geometry.image_rotator import ImageRotator
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                address = 'https://app.supervisely.com/'
+                token = 'Your Supervisely API Token'
+                api = sly.Api(address, token)
 
-            # Get image and annotation from API
-            project_id = 888
-            image_id = 555555
+                # Get image and annotation from API
+                project_id = 888
+                image_id = 555555
 
-            meta_json = api.project.get_meta(project_id)
-            meta = sly.ProjectMeta.from_json(meta_json)
+                meta_json = api.project.get_meta(project_id)
+                meta = sly.ProjectMeta.from_json(meta_json)
 
-            ann_info = api.annotation.download(image_id)
-            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+                ann_info = api.annotation.download(image_id)
+                ann = sly.Annotation.from_json(ann_info.annotation, meta)
 
-            img = api.image.download_np(image_id)
-            new_img = copy.deepcopy(img)
-            new_img = sly.imaging.image.rotate(new_img, 10)
+                img = api.image.download_np(image_id)
+                new_img = copy.deepcopy(img)
+                new_img = sly.imaging.image.rotate(new_img, 10)
 
-            # Draw Annotation on image before rotation
-            ann.draw_pretty(img, thickness=3)
+                # Draw Annotation on image before rotation
+                ann.draw_pretty(img, thickness=3)
 
-            # Rotate Labels for current Annotation
-            # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
-            rotator = ImageRotator(annotation.img_size, 10)
-            rotated_ann = ann.rotate(rotator)
+                # Rotate Labels for current Annotation
+                # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
+                rotator = ImageRotator(annotation.img_size, 10)
+                rotated_ann = ann.rotate(rotator)
 
-            # Draw Annotation on image after rotation
-            rotated_ann.draw_pretty(new_img, thickness=3)
+                # Draw Annotation on image after rotation
+                rotated_ann.draw_pretty(new_img, thickness=3)
 
-        .. list-table::
+                .. list-table::
 
-            * - .. figure:: https://i.imgur.com/6huO1se.jpg
+                * - .. figure:: https://i.imgur.com/6huO1se.jpg
 
-                   Before
+                  Before
 
-              - .. figure:: https://i.imgur.com/ZQ47cXN.jpg
+                  - .. figure:: https://i.imgur.com/ZQ47cXN.jpg
 
-                   After
+                  After
         """
 
         def _rotate_label(label):
@@ -1100,47 +1110,47 @@ class Annotation:
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                address = 'https://app.supervisely.com/'
+                token = 'Your Supervisely API Token'
+                api = sly.Api(address, token)
 
-            # Get image and annotation from API
-            project_id = 888
-            image_id = 555555
+                # Get image and annotation from API
+                project_id = 888
+                image_id = 555555
 
-            meta_json = api.project.get_meta(project_id)
-            meta = sly.ProjectMeta.from_json(meta_json)
+                meta_json = api.project.get_meta(project_id)
+                meta = sly.ProjectMeta.from_json(meta_json)
 
-            ann_info = api.annotation.download(image_id)
-            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+                ann_info = api.annotation.download(image_id)
+                ann = sly.Annotation.from_json(ann_info.annotation, meta)
 
-            img = api.image.download_np(image_id)
-            new_img = copy.deepcopy(img)
-            new_img = sly.imaging.image.resize(new_img, (100, 200))
+                img = api.image.download_np(image_id)
+                new_img = copy.deepcopy(img)
+                new_img = sly.imaging.image.resize(new_img, (100, 200))
 
-            # Draw Annotation on image before resize
-            ann.draw_pretty(img, thickness=3)
+                # Draw Annotation on image before resize
+                ann.draw_pretty(img, thickness=3)
 
-            # Resize
-            # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
-            resized_ann = ann.resize((100, 200))
+                # Resize
+                # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
+                resized_ann = ann.resize((100, 200))
 
-            # Draw Annotation on image after resize
-            resized_ann.draw_pretty(new_img, thickness=3)
+                # Draw Annotation on image after resize
+                resized_ann.draw_pretty(new_img, thickness=3)
 
-        .. list-table::
+                .. list-table::
 
-            * - .. figure:: https://i.imgur.com/6huO1se.jpg
+                * - .. figure:: https://i.imgur.com/6huO1se.jpg
 
-                   Before
+                  Before
 
-              - .. figure:: https://i.imgur.com/RrvNMoV.jpg
+                  - .. figure:: https://i.imgur.com/RrvNMoV.jpg
 
-                   After
+                  After
         """
 
         def _resize_label(label):
@@ -1165,47 +1175,47 @@ class Annotation:
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                address = 'https://app.supervisely.com/'
+                token = 'Your Supervisely API Token'
+                api = sly.Api(address, token)
 
-            # Get image and annotation from API
-            project_id = 888
-            image_id = 555555
+                # Get image and annotation from API
+                project_id = 888
+                image_id = 555555
 
-            meta_json = api.project.get_meta(project_id)
-            meta = sly.ProjectMeta.from_json(meta_json)
+                meta_json = api.project.get_meta(project_id)
+                meta = sly.ProjectMeta.from_json(meta_json)
 
-            ann_info = api.annotation.download(image_id)
-            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+                ann_info = api.annotation.download(image_id)
+                ann = sly.Annotation.from_json(ann_info.annotation, meta)
 
-            img = api.image.download_np(image_id)
-            new_img = copy.deepcopy(img)
-            new_img = sly.imaging.image.scale(new_img, 0.55)
+                img = api.image.download_np(image_id)
+                new_img = copy.deepcopy(img)
+                new_img = sly.imaging.image.scale(new_img, 0.55)
 
-            # Draw Annotation on image before rescale
-            ann.draw_pretty(img, thickness=3)
+                # Draw Annotation on image before rescale
+                ann.draw_pretty(img, thickness=3)
 
-            # Scale
-            # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
-            rescaled_ann = ann.scale(0.55)
+                # Scale
+                # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
+                rescaled_ann = ann.scale(0.55)
 
-            # Draw Annotation on image after rescale
-            rescaled_ann.draw_pretty(new_img, thickness=3)
+                # Draw Annotation on image after rescale
+                rescaled_ann.draw_pretty(new_img, thickness=3)
 
-        .. list-table::
+                .. list-table::
 
-            * - .. figure:: https://i.imgur.com/6huO1se.jpg
+                * - .. figure:: https://i.imgur.com/6huO1se.jpg
 
-                   Before
+                  Before
 
-              - .. figure:: https://i.imgur.com/Ze6uqZ8.jpg
+                  - .. figure:: https://i.imgur.com/Ze6uqZ8.jpg
 
-                   After
+                  After
         """
 
         def _scale_label(label):
@@ -1226,47 +1236,47 @@ class Annotation:
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                address = 'https://app.supervisely.com/'
+                token = 'Your Supervisely API Token'
+                api = sly.Api(address, token)
 
-            # Get image and annotation from API
-            project_id = 888
-            image_id = 555555
+                # Get image and annotation from API
+                project_id = 888
+                image_id = 555555
 
-            meta_json = api.project.get_meta(project_id)
-            meta = sly.ProjectMeta.from_json(meta_json)
+                meta_json = api.project.get_meta(project_id)
+                meta = sly.ProjectMeta.from_json(meta_json)
 
-            ann_info = api.annotation.download(image_id)
-            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+                ann_info = api.annotation.download(image_id)
+                ann = sly.Annotation.from_json(ann_info.annotation, meta)
 
-            img = api.image.download_np(image_id)
-            new_img = copy.deepcopy(img)
-            new_img = sly.imaging.image.fliplr(new_img)
+                img = api.image.download_np(image_id)
+                new_img = copy.deepcopy(img)
+                new_img = sly.imaging.image.fliplr(new_img)
 
-            # Draw Annotation on image before horizontal flip
-            ann.draw_pretty(img, thickness=3)
+                # Draw Annotation on image before horizontal flip
+                ann.draw_pretty(img, thickness=3)
 
-            # Flip
-            # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
-            fliplr_ann = ann.fliplr()
+                # Flip
+                # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
+                fliplr_ann = ann.fliplr()
 
-            # Draw Annotation on image after horizontal flip
-            fliplr_ann.draw_pretty(new_img, thickness=3)
+                # Draw Annotation on image after horizontal flip
+                fliplr_ann.draw_pretty(new_img, thickness=3)
 
-        .. list-table::
+                .. list-table::
 
-            * - .. figure:: https://i.imgur.com/6huO1se.jpg
+                * - .. figure:: https://i.imgur.com/6huO1se.jpg
 
-                   Before
+                  Before
 
-              - .. figure:: https://i.imgur.com/AQSuqIN.jpg
+                  - .. figure:: https://i.imgur.com/AQSuqIN.jpg
 
-                   After
+                  After
         """
 
         def _fliplr_label(label):
@@ -1283,47 +1293,47 @@ class Annotation:
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                address = 'https://app.supervisely.com/'
+                token = 'Your Supervisely API Token'
+                api = sly.Api(address, token)
 
-            # Get image and annotation from API
-            project_id = 888
-            image_id = 555555
+                # Get image and annotation from API
+                project_id = 888
+                image_id = 555555
 
-            meta_json = api.project.get_meta(project_id)
-            meta = sly.ProjectMeta.from_json(meta_json)
+                meta_json = api.project.get_meta(project_id)
+                meta = sly.ProjectMeta.from_json(meta_json)
 
-            ann_info = api.annotation.download(image_id)
-            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+                ann_info = api.annotation.download(image_id)
+                ann = sly.Annotation.from_json(ann_info.annotation, meta)
 
-            img = api.image.download_np(image_id)
-            new_img = copy.deepcopy(img)
-            new_img = sly.imaging.image.flipud(new_img)
+                img = api.image.download_np(image_id)
+                new_img = copy.deepcopy(img)
+                new_img = sly.imaging.image.flipud(new_img)
 
-            # Draw Annotation on image before vertical flip
-            ann.draw_pretty(img, thickness=3)
+                # Draw Annotation on image before vertical flip
+                ann.draw_pretty(img, thickness=3)
 
-            # Flip
-            # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
-            flipud_ann = ann.flipud()
+                # Flip
+                # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
+                flipud_ann = ann.flipud()
 
-            # Draw Annotation on image after vertical flip
-            flipud_ann.draw_pretty(new_img, thickness=3)
+                # Draw Annotation on image after vertical flip
+                flipud_ann.draw_pretty(new_img, thickness=3)
 
-        .. list-table::
+                .. list-table::
 
-            * - .. figure:: https://i.imgur.com/6huO1se.jpg
+                * - .. figure:: https://i.imgur.com/6huO1se.jpg
 
-                   Before
+                  Before
 
-              - .. figure:: https://i.imgur.com/NVhvPDb.jpg
+                  - .. figure:: https://i.imgur.com/NVhvPDb.jpg
 
-                   After
+                  After
         """
 
         def _flipud_label(label):
@@ -1388,32 +1398,32 @@ class Annotation:
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                address = 'https://app.supervisely.com/'
+                token = 'Your Supervisely API Token'
+                api = sly.Api(address, token)
 
-            # Get image and annotation from API
-            project_id = 888
-            image_id = 555555
+                # Get image and annotation from API
+                project_id = 888
+                image_id = 555555
 
-            meta_json = api.project.get_meta(project_id)
-            meta = sly.ProjectMeta.from_json(meta_json)
+                meta_json = api.project.get_meta(project_id)
+                meta = sly.ProjectMeta.from_json(meta_json)
 
-            ann_info = api.annotation.download(image_id)
-            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+                ann_info = api.annotation.download(image_id)
+                ann = sly.Annotation.from_json(ann_info.annotation, meta)
 
-            img = api.image.download_np(image_id)
+                img = api.image.download_np(image_id)
 
-            # Draw Annotation on image
-            ann.draw(img)
+                # Draw Annotation on image
+                ann.draw(img)
 
-        .. image:: https://i.imgur.com/1W1Nfl1.jpg
-            :width: 600
-            :height: 500
+                .. image:: https://i.imgur.com/1W1Nfl1.jpg
+                :width: 600
+                :height: 500
         """
         tags_font = None
         if draw_tags is True:
@@ -1465,32 +1475,32 @@ class Annotation:
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                address = 'https://app.supervisely.com/'
+                token = 'Your Supervisely API Token'
+                api = sly.Api(address, token)
 
-            # Get image and annotation from API
-            project_id = 888
-            image_id = 555555
+                # Get image and annotation from API
+                project_id = 888
+                image_id = 555555
 
-            meta_json = api.project.get_meta(project_id)
-            meta = sly.ProjectMeta.from_json(meta_json)
+                meta_json = api.project.get_meta(project_id)
+                meta = sly.ProjectMeta.from_json(meta_json)
 
-            ann_info = api.annotation.download(image_id)
-            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+                ann_info = api.annotation.download(image_id)
+                ann = sly.Annotation.from_json(ann_info.annotation, meta)
 
-            img = api.image.download_np(image_id)
+                img = api.image.download_np(image_id)
 
-            # Draw Annotation contour on image
-            ann.draw_contour(img)
+                # Draw Annotation contour on image
+                ann.draw_contour(img)
 
-        .. image:: https://i.imgur.com/F8KGZS4.jpg
-            :width: 600
-            :height: 500
+                .. image:: https://i.imgur.com/F8KGZS4.jpg
+                :width: 600
+                :height: 500
         """
         tags_font = None
         if draw_tags is True:
@@ -1518,12 +1528,12 @@ class Annotation:
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            img_path = "/home/admin/work/docs/my_dataset/img/example.jpeg"
-            ann = sly.Annotation.from_img_path(img_path)
+                img_path = "/home/admin/work/docs/my_dataset/img/example.jpeg"
+                ann = sly.Annotation.from_img_path(img_path)
         """
         img = sly_image.read(img_path)
         img_size = img.shape[:2]
@@ -1548,46 +1558,46 @@ class Annotation:
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                address = 'https://app.supervisely.com/'
+                token = 'Your Supervisely API Token'
+                api = sly.Api(address, token)
 
-            # Get image and annotation from API
-            project_id = 888
-            image_id = 555555
+                # Get image and annotation from API
+                project_id = 888
+                image_id = 555555
 
-            meta_json = api.project.get_meta(project_id)
-            meta = sly.ProjectMeta.from_json(meta_json)
+                meta_json = api.project.get_meta(project_id)
+                meta = sly.ProjectMeta.from_json(meta_json)
 
-            ann_info = api.annotation.download(image_id)
-            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+                ann_info = api.annotation.download(image_id)
+                ann = sly.Annotation.from_json(ann_info.annotation, meta)
 
-            img = api.image.download_np(image_id)
+                img = api.image.download_np(image_id)
 
-            class_names = []
-            class_colors = []
-            for label in ann.labels:
-                class_names.append(label.obj_class.name)
-                class_colors.append(label.obj_class.color)
+                class_names = []
+                class_colors = []
+                for label in ann.labels:
+                    class_names.append(label.obj_class.name)
+                    class_colors.append(label.obj_class.color)
 
-            ann.draw_pretty(img, thickness=3)
+                ann.draw_pretty(img, thickness=3)
 
-            ann_stats = ann.stat_area(img, class_names, class_colors)
-            print(ann_stats)
-            # Output: {
-            #     "lemon":0.45548266166822865,
-            #     "kiwi":0.5697047797563262,
-            #     "unlabeled":98.97481255857544,
-            #     "height":800,
-            #     "width":1067,
-            #     "channels":3
-            # }
+                ann_stats = ann.stat_area(img, class_names, class_colors)
+                print(ann_stats)
+                # Output: {
+                #     "lemon":0.45548266166822865,
+                #     "kiwi":0.5697047797563262,
+                #     "unlabeled":98.97481255857544,
+                #     "height":800,
+                #     "width":1067,
+                #     "channels":3
+                # }
 
-            print(stat_area)
+                print(stat_area)
         """
         if len(names) != len(colors):
             raise RuntimeError(
@@ -1639,26 +1649,26 @@ class Annotation:
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            # Create object classes
-            class_kiwi = sly.ObjClass('kiwi', sly.Rectangle)
-            class_lemon = sly.ObjClass('lemon', sly.Rectangle)
+                # Create object classes
+                class_kiwi = sly.ObjClass('kiwi', sly.Rectangle)
+                class_lemon = sly.ObjClass('lemon', sly.Rectangle)
 
-            # Create labels
-            label_kiwi = sly.Label(sly.Rectangle(100, 100, 700, 900), class_kiwi)
-            label_lemon = sly.Label(sly.Rectangle(200, 200, 500, 600), class_lemon)
-            labels_arr = [label_kiwi, label_lemon]
+                # Create labels
+                label_kiwi = sly.Label(sly.Rectangle(100, 100, 700, 900), class_kiwi)
+                label_lemon = sly.Label(sly.Rectangle(200, 200, 500, 600), class_lemon)
+                labels_arr = [label_kiwi, label_lemon]
 
-            # Create annotation
-            height, width = 300, 400
-            ann = sly.Annotation((height, width), labels_arr)
+                # Create annotation
+                height, width = 300, 400
+                ann = sly.Annotation((height, width), labels_arr)
 
-            stat_class = ann.stat_class_count(['lemon', 'kiwi'])
+                stat_class = ann.stat_class_count(['lemon', 'kiwi'])
 
-            # Output: defaultdict(<class 'int'>, {'lemon': 1, 'kiwi': 1, 'total': 2})
+                # Output: defaultdict(<class 'int'>, {'lemon': 1, 'kiwi': 1, 'total': 2})
         """
         total = 0
         stat = {name: 0 for name in class_names}
@@ -1682,33 +1692,33 @@ class Annotation:
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                address = 'https://app.supervisely.com/'
+                token = 'Your Supervisely API Token'
+                api = sly.Api(address, token)
 
-            # Get image and annotation from API
-            project_id = 888
-            image_id = 555555
+                # Get image and annotation from API
+                project_id = 888
+                image_id = 555555
 
-            meta_json = api.project.get_meta(project_id)
-            meta = sly.ProjectMeta.from_json(meta_json)
+                meta_json = api.project.get_meta(project_id)
+                meta = sly.ProjectMeta.from_json(meta_json)
 
-            ann_info = api.annotation.download(image_id)
-            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+                ann_info = api.annotation.download(image_id)
+                ann = sly.Annotation.from_json(ann_info.annotation, meta)
 
-            img = api.image.download_np(image_id)
+                img = api.image.download_np(image_id)
 
-            # Draw Annotation on image
-            name_to_index = {'lemon': 90, 'kiwi': 195}
-            ann.draw_class_idx_rgb(img, name_to_index)
+                # Draw Annotation on image
+                name_to_index = {'lemon': 90, 'kiwi': 195}
+                ann.draw_class_idx_rgb(img, name_to_index)
 
-        .. image:: https://i.imgur.com/ACSaBgw.jpg
-            :width: 600
-            :height: 500
+                .. image:: https://i.imgur.com/ACSaBgw.jpg
+                :width: 600
+                :height: 500
         """
         for label in self._labels:
             class_idx = name_to_index[label.obj_class.name]
@@ -1740,42 +1750,42 @@ class Annotation:
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                address = 'https://app.supervisely.com/'
+                token = 'Your Supervisely API Token'
+                api = sly.Api(address, token)
 
-            # Get image and annotation from API
-            project_id = 888
-            image_id = 555555
+                # Get image and annotation from API
+                project_id = 888
+                image_id = 555555
 
-            meta_json = api.project.get_meta(project_id)
-            meta = sly.ProjectMeta.from_json(meta_json)
+                meta_json = api.project.get_meta(project_id)
+                meta = sly.ProjectMeta.from_json(meta_json)
 
-            ann_info = api.annotation.download(image_id)
-            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+                ann_info = api.annotation.download(image_id)
+                ann = sly.Annotation.from_json(ann_info.annotation, meta)
 
-            img = api.image.download_np(image_id)
+                img = api.image.download_np(image_id)
 
-            # Filter Labels
-            # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
-            filtered_ann = ann.filter_labels_by_min_side(200)
+                # Filter Labels
+                # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
+                filtered_ann = ann.filter_labels_by_min_side(200)
 
-            # Draw filtered Annotation on image
-            filtered_ann.draw(img)
+                # Draw filtered Annotation on image
+                filtered_ann.draw(img)
 
-        .. list-table::
+                .. list-table::
 
-            * - .. figure:: https://i.imgur.com/6huO1se.jpg
+                * - .. figure:: https://i.imgur.com/6huO1se.jpg
 
-                   Before
+                  Before
 
-              - .. figure:: https://i.imgur.com/uunTbPR.jpg
+                  - .. figure:: https://i.imgur.com/uunTbPR.jpg
 
-                   After
+                  After
         """
 
         def filter(label):
@@ -1800,52 +1810,52 @@ class Annotation:
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                address = 'https://app.supervisely.com/'
+                token = 'Your Supervisely API Token'
+                api = sly.Api(address, token)
 
-            # To get Label ID you must first access ProjectMeta
-            PROJECT_ID = 999
+                # To get Label ID you must first access ProjectMeta
+                PROJECT_ID = 999
 
-            meta_json = api.project.get_meta(PROJECT_ID)
-            meta = sly.ProjectMeta.from_json(meta_json)
+                meta_json = api.project.get_meta(PROJECT_ID)
+                meta = sly.ProjectMeta.from_json(meta_json)
 
-            # Get desired image id to which label belongs to download annotation
-            image_id = 376728
-            ann_info = api.annotation.download(image_id)
-            ann_json = ann_info.annotation
-            ann = sly.Annotation.from_json(ann_json, meta)
+                # Get desired image id to which label belongs to download annotation
+                image_id = 376728
+                ann_info = api.annotation.download(image_id)
+                ann_json = ann_info.annotation
+                ann = sly.Annotation.from_json(ann_json, meta)
 
-            # Get Label by it's ID
-            label_by_id = ann.get_label_by_id(sly_id=2263842)
-            print(label_by_id.to_json())
-            # Output: {
-            #     "classTitle":"kiwi",
-            #     "description":"",
-            #     "tags":[],
-            #     "points":{
-            #         "exterior":[
-            #             [481, 549],
-            #             [641, 703]
-            #         ],
-            #         "interior":[]
-            #     },
-            #     "labelerLogin":"cxnt",
-            #     "updatedAt":"2020-12-11T08:11:43.249Z",
-            #     "createdAt":"2020-12-10T09:38:57.969Z",
-            #     "id":2263842,
-            #     "classId":7370,
-            #     "geometryType":"rectangle",
-            #     "shape":"rectangle"
-            # }
+                # Get Label by it's ID
+                label_by_id = ann.get_label_by_id(sly_id=2263842)
+                print(label_by_id.to_json())
+                # Output: {
+                #     "classTitle":"kiwi",
+                #     "description":"",
+                #     "tags":[],
+                #     "points":{
+                #         "exterior":[
+                #             [481, 549],
+                #             [641, 703]
+                #         ],
+                #         "interior":[]
+                #     },
+                #     "labelerLogin":"cxnt",
+                #     "updatedAt":"2020-12-11T08:11:43.249Z",
+                #     "createdAt":"2020-12-10T09:38:57.969Z",
+                #     "id":2263842,
+                #     "classId":7370,
+                #     "geometryType":"rectangle",
+                #     "shape":"rectangle"
+                # }
 
-            # Returns None if Label ID doesn't exist on the given image ID
-            label_by_id = ann.get_label_by_id(sly_id=9999999)
-            # Output: None
+                # Returns None if Label ID doesn't exist on the given image ID
+                label_by_id = ann.get_label_by_id(sly_id=9999999)
+                # Output: None
         """
         for label in self._labels:
             if label.geometry.sly_id == sly_id:
@@ -3042,41 +3052,39 @@ class Annotation:
         :return: Tuple with list of COCO objects and list of COCO captions.
         :rtype: :class:`tuple`
 
+        :Usage Example:
 
-        :Usage example:
+            .. code-block:: python
 
-         .. code-block:: python
+                import supervisely as sly
 
-            import supervisely as sly
+                coco_instances = dict(
+                    info=dict(
+                        description="COCO dataset converted from Supervisely",
+                        url="None",
+                        version=str(1.0),
+                        year=2025,
+                        contributor="Supervisely",
+                        date_created="2025-01-01 00:00:00",
+                    ),
+                    licenses=[dict(url="None", id=0, name="None")],
+                    images=[],
+                    annotations=[],
+                    categories=get_categories_from_meta(meta),  # [{"supercategory": "lemon", "id": 1, "name": "lemon"}, ...]
+                )
 
+                ann = sly.Annotation.from_json(ann_json, meta)
+                image_id = 11
+                label_id = 222
+                class_mapping = {obj_cls.name: idx for idx, obj_cls in enumerate(meta.obj_classes)}
 
-            coco_instances = dict(
-                info=dict(
-                    description="COCO dataset converted from Supervisely",
-                    url="None",
-                    version=str(1.0),
-                    year=2025,
-                    contributor="Supervisely",
-                    date_created="2025-01-01 00:00:00",
-                ),
-                licenses=[dict(url="None", id=0, name="None")],
-                images=[],
-                annotations=[],
-                categories=get_categories_from_meta(meta),  # [{"supercategory": "lemon", "id": 1, "name": "lemon"}, ...]
-            )
+                curr_coco_ann, _ = ann.to_coco(image_id, class_mapping, coco_instances, label_id)
+                # or
+                # curr_coco_ann, _ = ann.to_coco(image_id, class_mapping, label_id=label_id)
+                # coco_instances["annotations"].extend(curr_coco_ann)
 
-            ann = sly.Annotation.from_json(ann_json, meta)
-            image_id = 11
-            label_id = 222
-            class_mapping = {obj_cls.name: idx for idx, obj_cls in enumerate(meta.obj_classes)}
-
-            curr_coco_ann, _ = ann.to_coco(image_id, class_mapping, coco_instances, label_id)
-            # or
-            # curr_coco_ann, _ = ann.to_coco(image_id, class_mapping, label_id=label_id)
-            # coco_instances["annotations"].extend(curr_coco_ann)
-
-            label_id += len(curr_coco_ann)
-            image_id += 1
+                label_id += len(curr_coco_ann)
+                image_id += 1
         """
 
         from supervisely.convert.image.coco.coco_helper import sly_ann_to_coco
@@ -3107,16 +3115,15 @@ class Annotation:
         :return: List of objects in YOLO format.
         :rtype: :class:`list`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            ann = sly.Annotation.from_json(ann_json, meta)
-            class_names = [obj_cls.name for obj_cls in meta.obj_classes]
-
-            yolo_lines = ann.to_yolo(class_names, task_type="segmentation")
+                ann = sly.Annotation.from_json(ann_json, meta)
+                class_names = [obj_cls.name for obj_cls in meta.obj_classes]
+                yolo_lines = ann.to_yolo(class_names, task_type="segmentation")
         """
 
         from supervisely.convert.image.yolo.yolo_helper import sly_ann_to_yolo
@@ -3137,15 +3144,15 @@ class Annotation:
         :return: Tuple with xml tree and instance and class masks in PIL.Image format.
         :rtype: :class:`Tuple`
 
-        :Usage example:
+        :Usage Example:
 
-        .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
-            from supervisely.convert.image.pascal_voc.pascal_voc_helper import sly_ann_to_pascal_voc
+                import supervisely as sly
+                from supervisely.convert.image.pascal_voc.pascal_voc_helper import sly_ann_to_pascal_voc
 
-            ann = sly.Annotation.from_json(ann_json, meta)
-            xml_tree, instance_mask, class_mask = sly_ann_to_pascal_voc(ann, image_name)
+                ann = sly.Annotation.from_json(ann_json, meta)
+                xml_tree, instance_mask, class_mask = sly_ann_to_pascal_voc(ann, image_name)
         """
 
         from supervisely.convert.image.pascal_voc.pascal_voc_helper import (

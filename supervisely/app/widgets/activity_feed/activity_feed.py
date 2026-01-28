@@ -26,41 +26,42 @@ class ActivityFeed(Widget):
     :param widget_id: An identifier of the widget.
     :type widget_id: str, optional
 
-    :Usage example:
-    .. code-block:: python
+    :Usage Example:
 
-        from supervisely.app.widgets import ActivityFeed, Text
+        .. code-block:: python
 
-        # Create items with custom content
-        item1 = ActivityFeed.Item(
-            content=Text("Processing dataset"),
-            status="completed"
-        )
-        item2 = ActivityFeed.Item(
-            content=Text("Training model"),
-            status="in_progress",
-            number=2
-        )
-        item3 = ActivityFeed.Item(
-            content=Text("Generating report"),
-            status="pending"
-        )
+            from supervisely.app.widgets import ActivityFeed, Text
 
-        # Create activity feed
-        feed = ActivityFeed(items=[item1, item2, item3])
+            # Create items with custom content
+            item1 = ActivityFeed.Item(
+                content=Text("Processing dataset"),
+                status="completed"
+            )
+            item2 = ActivityFeed.Item(
+                content=Text("Training model"),
+                status="in_progress",
+                number=2
+            )
+            item3 = ActivityFeed.Item(
+                content=Text("Generating report"),
+                status="pending"
+            )
 
-        # Add item during runtime
-        new_item = ActivityFeed.Item(
-            content=Text("Deploy model"),
-            status="pending"
-        )
-        feed.add_item(new_item)
+            # Create activity feed
+            feed = ActivityFeed(items=[item1, item2, item3])
 
-        # Update status by item number
-        feed.set_status(2, "completed")
+            # Add item during runtime
+            new_item = ActivityFeed.Item(
+                content=Text("Deploy model"),
+                status="pending"
+            )
+            feed.add_item(new_item)
 
-        # Get item status
-        status = feed.get_status(2)
+            # Update status by item number
+            feed.set_status(2, "completed")
+
+            # Get item status
+            status = feed.get_status(2)
     """
 
     class Item:

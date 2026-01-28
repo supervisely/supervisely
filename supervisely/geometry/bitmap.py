@@ -77,47 +77,49 @@ class Bitmap(BitmapBase):
     :param extra_validation: If True, additional validation is performed. Throws a ValueError if values of the data are not one of [0, 1], [0, 255], [True, False]. This option affects performance. If False, the mask is converted to dtype np.bool.
     :type extra_validation: bool, optional
     :raises: :class:`ValueError`, if data is not bool or no pixels set to True in data
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        # Create simple bitmap
-        mask = np.array([[0, 0, 0, 0, 0],
-                         [0, 1, 1, 1, 0],
-                         [0, 1, 0, 1, 0],
-                         [0, 1, 1, 1, 0],
-                         [0, 0, 0, 0, 0]], dtype=np.bool_)
+            import supervisely as sly
 
-        figure = sly.Bitmap(mask)
+            # Create simple bitmap
+            mask = np.array([[0, 0, 0, 0, 0],
+                            [0, 1, 1, 1, 0],
+                            [0, 1, 0, 1, 0],
+                            [0, 1, 1, 1, 0],
+                            [0, 0, 0, 0, 0]],
+                            dtype=np.bool_)
 
-        # Note, when creating a bitmap, the specified mask is cut off by positive values, based on this, a origin is formed:
-        print(figure.data)
-        # Output:
-        #    [[ True  True  True]
-        #     [ True False  True]
-        #     [ True  True  True]]
+            figure = sly.Bitmap(mask)
 
-        origin = figure.origin.to_json()
-        print(json.dumps(origin, indent=4))
-        # Output: {
-        #     "points": {
-        #         "exterior": [
-        #             [
-        #                 1,
-        #                 1
-        #             ]
-        #         ],
-        #         "interior": []
-        #     }
+            # Note, when creating a bitmap, the specified mask is cut off by positive values, based on this, a origin is formed:
+            print(figure.data)
+            # Output:
+            #    [[ True  True  True]
+            #     [ True False  True]
+            #     [ True  True  True]]
 
-        # Create bitmap from black and white image:
-        img = sly.imaging.image.read(os.path.join(os.getcwd(), 'black_white.jpeg'))
-        mask = img[:, :, 0].astype(bool) # Get 2-dimensional bool numpy array
-        figure = sly.Bitmap(mask)
+            origin = figure.origin.to_json()
+            print(json.dumps(origin, indent=4))
+            # Output: {
+            #     "points": {
+            #         "exterior": [
+            #             [
+            #                 1,
+            #                 1
+            #             ]
+            #         ],
+            #         "interior": []
+            #     }
 
-     .. image:: https://i.imgur.com/2L3HRPs.jpg
+            # Create bitmap from black and white image:
+            img = sly.imaging.image.read(os.path.join(os.getcwd(), 'black_white.jpeg'))
+            mask = img[:, :, 0].astype(bool) # Get 2-dimensional bool numpy array
+            figure = sly.Bitmap(mask)
+
+            .. image:: https://i.imgur.com/2L3HRPs.jpg
     """
 
     @staticmethod
@@ -192,15 +194,15 @@ class Bitmap(BitmapBase):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
-            from supervisely.geometry.image_rotator import ImageRotator
+                import supervisely as sly
+                from supervisely.geometry.image_rotator import ImageRotator
 
-            height, width = ann.img_size
-            rotator = ImageRotator((height, width), 25)
-            # Remember that Bitmap class object is immutable, and we need to assign new instance of Bitmap to a new variable
-            rotate_figure = figure.rotate(rotator)
+                height, width = ann.img_size
+                rotator = ImageRotator((height, width), 25)
+                # Remember that Bitmap class object is immutable, and we need to assign new instance of Bitmap to a new variable
+                rotate_figure = figure.rotate(rotator)
         """
         full_img_mask = np.zeros(rotator.src_imsize, dtype=np.uint8)
         self.draw(full_img_mask, 1)
@@ -220,9 +222,9 @@ class Bitmap(BitmapBase):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            crop_figures = figure.crop(sly.Rectangle(1, 1, 300, 350))
+                crop_figures = figure.crop(sly.Rectangle(1, 1, 300, 350))
         """
         maybe_cropped_bbox = self.to_bbox().crop(rect)
         if len(maybe_cropped_bbox) == 0:
@@ -255,12 +257,12 @@ class Bitmap(BitmapBase):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            in_height, in_width = 800, 1067
-            out_height, out_width = 600, 800
-            # Remember that Bitmap class object is immutable, and we need to assign new instance of Bitmap to a new variable
-            resize_figure = figure.resize((in_height, in_width), (out_height, out_width))
+                in_height, in_width = 800, 1067
+                out_height, out_width = 600, 800
+                # Remember that Bitmap class object is immutable, and we need to assign new instance of Bitmap to a new variable
+                resize_figure = figure.resize((in_height, in_width), (out_height, out_width))
         """
         scaled_origin, scaled_data = resize_origin_and_bitmap(
             self._origin, self._data.astype(np.uint8), in_size, out_size
@@ -304,12 +306,13 @@ class Bitmap(BitmapBase):
 
         :return: Area of current Bitmap
         :rtype: :class:`float`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            print(figure.area)
-            # Output: 88101.0
+            .. code-block:: python
+
+                print(figure.area)
+                # Output: 88101.0
         """
         return float(self._data.sum())
 
@@ -322,25 +325,26 @@ class Bitmap(BitmapBase):
         :type s: str
         :return: Bool numpy array
         :rtype: :class:`np.ndarray`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-              import supervisely as sly
+            .. code-block:: python
 
-              encoded_string = 'eJzrDPBz5+WS4mJgYOD19HAJAtLMIMwIInOeqf8BUmwBPiGuQPr///9Lb86/C2QxlgT5BTM4PLuRBuTwebo4hlTMSa44sKHhISMDuxpTYrr03F6gDIOnq5/LOqeEJgDM5ht6'
-              figure_data = sly.Bitmap.base64_2_data(encoded_string)
-              print(figure_data)
-              #  [[ True  True  True]
-              #   [ True False  True]
-              #   [ True  True  True]]
+                import supervisely as sly
 
-              uncompressed_string = 'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA'
-              boolean_mask = sly.Bitmap.base64_2_data(uncompressed_string)
-              print(boolean_mask)
-              #  [[ True  True  True]
-              #   [ True False  True]
-              #   [ True  True  True]]
+                encoded_string = 'eJzrDPBz5+WS4mJgYOD19HAJAtLMIMwIInOeqf8BUmwBPiGuQPr///9Lb86/C2QxlgT5BTM4PLuRBuTwebo4hlTMSa44sKHhISMDuxpTYrr03F6gDIOnq5/LOqeEJgDM5ht6'
+                figure_data = sly.Bitmap.base64_2_data(encoded_string)
+                print(figure_data)
+                #  [[ True  True  True]
+                #   [ True False  True]
+                #   [ True  True  True]]
+
+                uncompressed_string = 'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA'
+                boolean_mask = sly.Bitmap.base64_2_data(uncompressed_string)
+                print(boolean_mask)
+                #  [[ True  True  True]
+                #   [ True False  True]
+                #   [ True  True  True]]
         """
         try:
             z = zlib.decompress(base64.b64decode(s))
@@ -372,30 +376,31 @@ class Bitmap(BitmapBase):
         :type mask: np.ndarray
         :return: Base64 encoded string
         :rtype: :class:`str`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                import supervisely as sly
 
-            # Get annotation from API
-            meta_json = api.project.get_meta(PROJECT_ID)
-            meta = sly.ProjectMeta.from_json(meta_json)
-            ann_info = api.annotation.download(IMAGE_ID)
-            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+                address = 'https://app.supervisely.com/'
+                token = 'Your Supervisely API Token'
+                api = sly.Api(address, token)
 
-            # Get Bitmap from annotation
-            for label in ann.labels:
-                if type(label.geometry) == sly.Bitmap:
-                    figure = label.geometry
+                # Get annotation from API
+                meta_json = api.project.get_meta(PROJECT_ID)
+                meta = sly.ProjectMeta.from_json(meta_json)
+                ann_info = api.annotation.download(IMAGE_ID)
+                ann = sly.Annotation.from_json(ann_info.annotation, meta)
 
-            encoded_string = sly.Bitmap.data_2_base64(figure.data)
-            print(encoded_string)
-            # 'eJzrDPBz5+WS4mJgYOD19HAJAtLMIMwIInOeqf8BUmwBPiGuQPr///9Lb86/C2QxlgT5BTM4PLuRBuTwebo4hlTMSa44sKHhISMDuxpTYrr03F6gDIOnq5/LOqeEJgDM5ht6'
+                # Get Bitmap from annotation
+                for label in ann.labels:
+                    if type(label.geometry) == sly.Bitmap:
+                        figure = label.geometry
+
+                encoded_string = sly.Bitmap.data_2_base64(figure.data)
+                print(encoded_string)
+                # 'eJzrDPBz5+WS4mJgYOD19HAJAtLMIMwIInOeqf8BUmwBPiGuQPr///9Lb86/C2QxlgT5BTM4PLuRBuTwebo4hlTMSa44sKHhISMDuxpTYrr03F6gDIOnq5/LOqeEJgDM5ht6'
         """
         img_pil = Image.fromarray(np.array(mask, dtype=np.uint8))
         img_pil.putpalette([0, 0, 0, 255, 255, 255])
@@ -412,14 +417,15 @@ class Bitmap(BitmapBase):
         :type method_id: SkeletonizeMethod
         :return: Bitmap object
         :rtype: :class:`Bitmap<Bitmap>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            # Remember that Bitmap class object is immutable, and we need to assign new instance of Bitmap to a new variable
-            skeleton_figure = figure.skeletonize(SkeletonizeMethod.SKELETONIZE)
-            med_ax_figure = figure.skeletonize(SkeletonizeMethod.MEDIAL_AXIS)
-            thin_figure = figure.skeletonize(SkeletonizeMethod.THINNING)
+            .. code-block:: python
+
+                # Remember that Bitmap class object is immutable, and we need to assign new instance of Bitmap to a new variable
+                skeleton_figure = figure.skeletonize(SkeletonizeMethod.SKELETONIZE)
+                med_ax_figure = figure.skeletonize(SkeletonizeMethod.MEDIAL_AXIS)
+                thin_figure = figure.skeletonize(SkeletonizeMethod.THINNING)
         """
         from skimage import morphology as skimage_morphology
 
@@ -445,11 +451,12 @@ class Bitmap(BitmapBase):
 
         :return: List of Polygon objects
         :rtype: :class:`List[Polygon]<supervisely.geometry.polygon.Polygon>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            figure_contours = figure.to_contours()
+            .. code-block:: python
+
+                figure_contours = figure.to_contours()
         """
         origin, mask = self.origin, self.data
         # pylint: disable=(no-member, unpacking-non-sequence)
@@ -501,32 +508,33 @@ class Bitmap(BitmapBase):
         :type bit_op: `Numpy logical operation <https://numpy.org/doc/stable/reference/routines.logic.html#logical-operations>`_
         :return: Bitmap object or empty list
         :rtype: :class:`Bitmap<Bitmap>` or :class:`list`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            mask = np.array([[0, 0, 0, 0, 0],
-                            [0, 1, 1, 1, 0],
-                            [0, 1, 0, 1, 0],
-                            [0, 1, 1, 1, 0],
-                            [0, 0, 0, 0, 0]], dtype=np.bool_)
+                import supervisely as sly
 
-            figure = sly.Bitmap(mask)
+                mask = np.array([[0, 0, 0, 0, 0],
+                                [0, 1, 1, 1, 0],
+                                [0, 1, 0, 1, 0],
+                                [0, 1, 1, 1, 0],
+                                [0, 0, 0, 0, 0]], dtype=np.bool_)
 
-            array = np.array([[0, 0, 0, 0, 0],
-                             [0, 1, 1, 1, 0],
-                             [0, 0, 1, 0, 0],
-                             [0, 0, 1, 0, 0],
-                             [0, 0, 0, 0, 0]], dtype=np.bool_)
+                figure = sly.Bitmap(mask)
 
-            bitwise_figure = figure.bitwise_mask(array, np.logical_and)
-            print(bitwise_figure.data)
-            # Output:
-            # [[ True  True  True]
-            #  [False False False]
-            #  [False  True False]]
+                array = np.array([[0, 0, 0, 0, 0],
+                                [0, 1, 1, 1, 0],
+                                [0, 0, 1, 0, 0],
+                                [0, 0, 1, 0, 0],
+                                [0, 0, 0, 0, 0]], dtype=np.bool_)
+
+                bitwise_figure = figure.bitwise_mask(array, np.logical_and)
+                print(bitwise_figure.data)
+                # Output:
+                # [[ True  True  True]
+                #  [False False False]
+                #  [False  True False]]
         """
         full_size = full_target_mask.shape[:2]
         origin, mask = self.origin, self.data

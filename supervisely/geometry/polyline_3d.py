@@ -21,14 +21,14 @@ class Polyline3D(Geometry):
     :param created_at: Date and Time when Polyline was created. Date Format is the same as in "updated_at" parameter.
     :type created_at: str, optional
 
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
+            import supervisely as sly
 
-        points = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
-        figure = sly.Polyline(points)
+            points = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
+            figure = sly.Polyline(points)
     """
 
     @staticmethod
@@ -75,22 +75,23 @@ class Polyline3D(Geometry):
         :type data: dict
         :return: Polyline3D object
         :rtype: :class:`Polyline3D<Polyline3D>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            figure_json = {
-                "points": {
-                    [
-                        [1, 2, 3],
-                        [4, 5, 6],
-                        [7, 8, 9]
-                    ],
+                import supervisely as sly
+
+                figure_json = {
+                    "points": {
+                        [
+                            [1, 2, 3],
+                            [4, 5, 6],
+                            [7, 8, 9]
+                        ],
+                    }
                 }
-            }
-            figure = sly.Polyline3D.from_json(figure_json)
+                figure = sly.Polyline3D.from_json(figure_json)
         """
         if not data.get("points"):
             raise ValueError("Data dict must contain 'points' field!")

@@ -42,34 +42,35 @@ class PointcloudAnnotation(VideoAnnotation):
     :param key: uuid class object
     :type key: uuid.UUID, optional
 
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
+            import supervisely as sly
 
-        from supervisely.video_annotation.key_id_map import KeyIdMap
+            from supervisely.video_annotation.key_id_map import KeyIdMap
 
-        # PointcloudAnnotation example 1
-        pointcloud_ann = sly.PointcloudAnnotation()
-        print(pointcloud_ann.to_json())
-        # Output: {
-        #     "description": "",
-        #     "key": "ad97e8a4a8524b8a992d1f083c5e6b00",
-        #     "tags": [],
-        #     "objects": [],
-        #     "figures": []
-        # }
+            # PointcloudAnnotation example 1
+            pointcloud_ann = sly.PointcloudAnnotation()
+            print(pointcloud_ann.to_json())
+            # Output: {
+            #     "description": "",
+            #     "key": "ad97e8a4a8524b8a992d1f083c5e6b00",
+            #     "tags": [],
+            #     "objects": [],
+            #     "figures": []
+            # }
 
-
-        # PointcloudAnnotation example 2
-        key_id_map = KeyIdMap()
-        project_meta_json = api.project.get_meta(pcd_info.project_id)
-        project_meta = sly.ProjectMeta.from_json(project_meta_json)
-        ann_json = api.pointcloud.annotation.download(pointcloud_id)
-        ann = sly.PointcloudAnnotation.from_json(
-            data=ann_json, project_meta=project_meta, key_id_map=key_id_map
-        )
+            # PointcloudAnnotation example 2
+            key_id_map = KeyIdMap()
+            project_meta_json = api.project.get_meta(pcd_info.project_id)
+            project_meta = sly.ProjectMeta.from_json(project_meta_json)
+            ann_json = api.pointcloud.annotation.download(pointcloud_id)
+            ann = sly.PointcloudAnnotation.from_json(
+                data=ann_json,
+                project_meta=project_meta,
+                key_id_map=key_id_map
+            )
     """
 
     def __init__(
@@ -113,25 +114,25 @@ class PointcloudAnnotation(VideoAnnotation):
         :returns: PointcloudTagCollection object.
         :rtype: PointcloudTagCollection
 
-        :Usage example:
+        :Usage Example:
 
-        .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                address = 'https://app.supervisely.com/'
+                token = 'Your Supervisely API Token'
+                api = sly.Api(address, token)
 
-            project_id = 19441
-            project_meta_json = api.project.get_meta(project_id)
-            project_meta = sly.ProjectMeta.from_json(project_meta_json)
+                project_id = 19441
+                project_meta_json = api.project.get_meta(project_id)
+                project_meta = sly.ProjectMeta.from_json(project_meta_json)
 
-            # Load json file
-            path = "/home/admin/work/docs/my_dataset/ann/annotation.json"
-            ann = sly.PointcloudAnnotation.load_json_file(path, project_meta)
+                # Load json file
+                path = "/home/admin/work/docs/my_dataset/ann/annotation.json"
+                ann = sly.PointcloudAnnotation.load_json_file(path, project_meta)
 
-            tags = ann.tags
+                tags = ann.tags
         """
 
         return super().tags
@@ -144,25 +145,25 @@ class PointcloudAnnotation(VideoAnnotation):
         :returns: PointcloudObjectCollection object.
         :rtype: PointcloudObjectCollection
 
-        :Usage example:
+        :Usage Example:
 
-        .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                address = 'https://app.supervisely.com/'
+                token = 'Your Supervisely API Token'
+                api = sly.Api(address, token)
 
-            project_id = 19441
-            project_meta_json = api.project.get_meta(project_id)
-            project_meta = sly.ProjectMeta.from_json(project_meta_json)
+                project_id = 19441
+                project_meta_json = api.project.get_meta(project_id)
+                project_meta = sly.ProjectMeta.from_json(project_meta_json)
 
-            # Load json file
-            path = "/home/admin/work/docs/my_dataset/ann/annotation.json"
-            ann = sly.PointcloudAnnotation.load_json_file(path, project_meta)
+                # Load json file
+                path = "/home/admin/work/docs/my_dataset/ann/annotation.json"
+                ann = sly.PointcloudAnnotation.load_json_file(path, project_meta)
 
-            objects = ann.objects
+                objects = ann.objects
         """
 
         return super().objects
@@ -175,25 +176,25 @@ class PointcloudAnnotation(VideoAnnotation):
         :returns: List of PointcloudFigure objects from PointcloudAnnotation object.
         :rtype: list
 
-        :Usage example:
+        :Usage Example:
 
-        .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                address = 'https://app.supervisely.com/'
+                token = 'Your Supervisely API Token'
+                api = sly.Api(address, token)
 
-            project_id = 19441
-            project_meta_json = api.project.get_meta(project_id)
-            project_meta = sly.ProjectMeta.from_json(project_meta_json)
+                project_id = 19441
+                project_meta_json = api.project.get_meta(project_id)
+                project_meta = sly.ProjectMeta.from_json(project_meta_json)
 
-            # Load json file
-            path = "/home/admin/work/docs/my_dataset/ann/annotation.json"
-            ann = sly.PointcloudAnnotation.load_json_file(path, project_meta)
+                # Load json file
+                path = "/home/admin/work/docs/my_dataset/ann/annotation.json"
+                ann = sly.PointcloudAnnotation.load_json_file(path, project_meta)
 
-            figures = ann.figures
+                figures = ann.figures
         """
 
         return deepcopy(self._figures)
@@ -210,22 +211,25 @@ class PointcloudAnnotation(VideoAnnotation):
 
         :return: PointcloudObjectCollection object from annotation figures.
         :rtype: PointcloudObjectCollection
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            key_id_map = KeyIdMap()
-            project_id = 19441
-            project_meta_json = api.project.get_meta(project_id)
-            project_meta = sly.ProjectMeta.from_json(project_meta_json)
-            ann_json = api.pointcloud.annotation.download(pointcloud_id)
-            ann = sly.PointcloudAnnotation.from_json(
-                data=ann_json, project_meta=project_meta, key_id_map=key_id_map
-            )
+                import supervisely as sly
 
-            objects = ann.get_objects_from_figures()
+                key_id_map = KeyIdMap()
+                project_id = 19441
+                project_meta_json = api.project.get_meta(project_id)
+                project_meta = sly.ProjectMeta.from_json(project_meta_json)
+                ann_json = api.pointcloud.annotation.download(pointcloud_id)
+                ann = sly.PointcloudAnnotation.from_json(
+                    data=ann_json,
+                    project_meta=project_meta,
+                    key_id_map=key_id_map
+                )
+
+                objects = ann.get_objects_from_figures()
         """
 
         ann_objects = {}
@@ -246,22 +250,22 @@ class PointcloudAnnotation(VideoAnnotation):
 
         :return: PointcloudAnnotation in json format
         :rtype: Dict
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            pointcloud_ann = sly.PointcloudAnnotation()
+                import supervisely as sly
 
-            print(pointcloud_ann.to_json())
-            # Output: {
-            #     "description": "",
-            #     "key": "ad97e8a4a8524b8a992d1f083c5e6b00",
-            #     "tags": [],
-            #     "objects": [],
-            #     "figures": []
-            # }
+                pointcloud_ann = sly.PointcloudAnnotation()
+                print(pointcloud_ann.to_json())
+                # Output: {
+                #     "description": "",
+                #     "key": "ad97e8a4a8524b8a992d1f083c5e6b00",
+                #     "tags": [],
+                #     "objects": [],
+                #     "figures": []
+                # }
         """
 
         res_json = {
@@ -292,27 +296,30 @@ class PointcloudAnnotation(VideoAnnotation):
         :type project_meta: ProjectMeta
         :return: PointcloudAnnotation object.
         :rtype: PointcloudAnnotation
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            from supervisely.video_annotation.key_id_map import KeyIdMap
+            .. code-block:: python
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                import supervisely as sly
+                from supervisely.video_annotation.key_id_map import KeyIdMap
 
-            key_id_map = KeyIdMap()
-            pointcloud_id = pointcloud_id
-            project_id = 19441
-            project_meta_json = api.project.get_meta(project_id)
-            project_meta = sly.ProjectMeta.from_json(project_meta_json)
-            ann_json = api.pointcloud.annotation.download(pointcloud_id)
+                address = 'https://app.supervisely.com/'
+                token = 'Your Supervisely API Token'
+                api = sly.Api(address, token)
 
-            ann = sly.PointcloudAnnotation.from_json(
-                data=ann_json, project_meta=project_meta, key_id_map=key_id_map
-            )
+                key_id_map = KeyIdMap()
+                pointcloud_id = pointcloud_id
+                project_id = 19441
+                project_meta_json = api.project.get_meta(project_id)
+                project_meta = sly.ProjectMeta.from_json(project_meta_json)
+                ann_json = api.pointcloud.annotation.download(pointcloud_id)
+
+                ann = sly.PointcloudAnnotation.from_json(
+                    data=ann_json,
+                    project_meta=project_meta,
+                    key_id_map=key_id_map
+                )
         """
 
         try:
@@ -350,30 +357,31 @@ class PointcloudAnnotation(VideoAnnotation):
         :type key_id_map: KeyIdMap, optional
         :return: PointcloudAnnotation object
         :rtype: :class:`PointcloudAnnotation<PointcloudAnnotation>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                import supervisely as sly
 
-            team_name = 'Vehicle Detection'
-            workspace_name = 'Cities'
-            project_name =  'London'
+                address = 'https://app.supervisely.com/'
+                token = 'Your Supervisely API Token'
+                api = sly.Api(address, token)
 
-            team = api.team.get_info_by_name(team_name)
-            workspace = api.workspace.get_info_by_name(team.id, workspace_name)
-            project = api.project.get_info_by_name(workspace.id, project_name)
+                team_name = 'Vehicle Detection'
+                workspace_name = 'Cities'
+                project_name =  'London'
 
-            project_meta_json = api.project.get_meta(project_id)
-            project_meta = sly.ProjectMeta.from_json(project_meta_json)
+                team = api.team.get_info_by_name(team_name)
+                workspace = api.workspace.get_info_by_name(team.id, workspace_name)
+                project = api.project.get_info_by_name(workspace.id, project_name)
 
-            # Load json file
-            path = "/home/admin/work/docs/my_dataset/ann/annotation.json"
-            ann = sly.PointcloudAnnotation.load_json_file(path, project_meta)
+                project_meta_json = api.project.get_meta(project_id)
+                project_meta = sly.ProjectMeta.from_json(project_meta_json)
+
+                # Load json file
+                path = "/home/admin/work/docs/my_dataset/ann/annotation.json"
+                ann = sly.PointcloudAnnotation.load_json_file(path, project_meta)
         """
 
         with open(path) as fin:
@@ -400,63 +408,65 @@ class PointcloudAnnotation(VideoAnnotation):
         :type description: str
         :return: PointcloudAnnotation class object
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
-            from supervisely.video_annotation.key_id_map import KeyIdMap
+                import supervisely as sly
+                from supervisely.video_annotation.key_id_map import KeyIdMap
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                address = 'https://app.supervisely.com/'
+                token = 'Your Supervisely API Token'
+                api = sly.Api(address, token)
 
-            key_id_map = KeyIdMap()
-            pointcloud_id = 19481098
-            project_id = 19441
-            project_meta_json = api.project.get_meta(project_id)
-            project_meta = sly.ProjectMeta.from_json(project_meta_json)
-            ann_json = api.pointcloud.annotation.download(pointcloud_id)
-            ann = sly.PointcloudAnnotation.from_json(
-                data=ann_json, project_meta=project_meta, key_id_map=key_id_map
-            )
+                key_id_map = KeyIdMap()
+                pointcloud_id = 19481098
+                project_id = 19441
+                project_meta_json = api.project.get_meta(project_id)
+                project_meta = sly.ProjectMeta.from_json(project_meta_json)
+                ann_json = api.pointcloud.annotation.download(pointcloud_id)
+                ann = sly.PointcloudAnnotation.from_json(
+                    data=ann_json,
+                    project_meta=project_meta,
+                    key_id_map=key_id_map
+                )
 
-            obj_class_car = sly.ObjClass('car', sly.Cuboid)
-            pointcloud_obj_car = sly.PointcloudObject(obj_class_car)
-            new_objects = sly.PointcloudObjectCollection([pointcloud_obj_car])
+                obj_class_car = sly.ObjClass('car', sly.Cuboid)
+                pointcloud_obj_car = sly.PointcloudObject(obj_class_car)
+                new_objects = sly.PointcloudObjectCollection([pointcloud_obj_car])
 
-            new_ann = ann.clone(objects=new_objects)
+                new_ann = ann.clone(objects=new_objects)
 
-            print(new_ann.to_json())
-            # Output: {
-            #     "description": "",
-            #     "figures": [],
-            #     "key": "2cc443272aca4cfa9c4f404614938aa7",
-            #     "objects": [
-            #         {
-            #         "classTitle": "Pole",
-            #         "createdAt": "2023-03-16T06:38:44.934Z",
-            #         "key": "eff2ec5e3cda47968f45bc51b36a0dc1",
-            #         "labelerLogin": "almaz",
-            #         "tags": [],
-            #         "updatedAt": "2023-03-16T06:38:44.934Z"
-            #         },
-            #         {
-            #         "classTitle": "Tram",
-            #         "createdAt": "2023-03-16T06:38:44.934Z",
-            #         "key": "6baa92e09ceb413ba8fbfcfae74be1c7",
-            #         "labelerLogin": "almaz",
-            #         "tags": [],
-            #         "updatedAt": "2023-03-16T06:38:44.934Z"
-            #         },
-            #         {
-            #         "classTitle": "car",
-            #         "key": "6b1bced23061437b8ddbcdd267548c96",
-            #         "tags": []
-            #         }
-            #     ],
-            #     "tags": []
-            # }
+                print(new_ann.to_json())
+                # Output: {
+                #     "description": "",
+                #     "figures": [],
+                #     "key": "2cc443272aca4cfa9c4f404614938aa7",
+                #     "objects": [
+                #         {
+                #         "classTitle": "Pole",
+                #         "createdAt": "2023-03-16T06:38:44.934Z",
+                #         "key": "eff2ec5e3cda47968f45bc51b36a0dc1",
+                #         "labelerLogin": "almaz",
+                #         "tags": [],
+                #         "updatedAt": "2023-03-16T06:38:44.934Z"
+                #         },
+                #         {
+                #         "classTitle": "Tram",
+                #         "createdAt": "2023-03-16T06:38:44.934Z",
+                #         "key": "6baa92e09ceb413ba8fbfcfae74be1c7",
+                #         "labelerLogin": "almaz",
+                #         "tags": [],
+                #         "updatedAt": "2023-03-16T06:38:44.934Z"
+                #         },
+                #         {
+                #         "classTitle": "car",
+                #         "key": "6b1bced23061437b8ddbcdd267548c96",
+                #         "tags": []
+                #         }
+                #     ],
+                #     "tags": []
+                # }
         """
 
         return PointcloudAnnotation(

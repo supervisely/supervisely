@@ -38,27 +38,28 @@ class Cascader(Widget):
     :param widget_id: Unique widget identifier.
     :type widget_id: str
 
-    :Usage example:
-    .. code-block:: python
+    :Usage Example:
 
-        from supervisely.app.widgets import Cascader
+        .. code-block:: python
 
-        cascader_items = [
-            Cascader.Item(value="cat", label="Cat", children=[
-                Cascader.Item(value="black cat", label="Black Cat"),
-                Cascader.Item(value="fluffy cat", label="Fluffy Cat"),
-            ]),
-            Cascader.Item(value="dog", label="Dog", children=[
-                Cascader.Item(value="black dog", label="Black Dog"),
-                Cascader.Item(value="fluffy dog", label="Fluffy Dog"),
-            ]),
-        ]
+            from supervisely.app.widgets import Cascader
 
-        cascader = Cascader(
-            items=cascader_items, selected_items=[], filterable=True, placeholder="select",
-            size="small", expand_trigger="click", clearable=True, show_all_levels=True,
-            parent_selectable=False
-            )
+            cascader_items = [
+                Cascader.Item(value="cat", label="Cat", children=[
+                    Cascader.Item(value="black cat", label="Black Cat"),
+                    Cascader.Item(value="fluffy cat", label="Fluffy Cat"),
+                ]),
+                Cascader.Item(value="dog", label="Dog", children=[
+                    Cascader.Item(value="black dog", label="Black Dog"),
+                    Cascader.Item(value="fluffy dog", label="Fluffy Dog"),
+                ]),
+            ]
+
+            cascader = Cascader(
+                items=cascader_items, selected_items=[], filterable=True, placeholder="select",
+                size="small", expand_trigger="click", clearable=True, show_all_levels=True,
+                parent_selectable=False
+                )
     """
 
     class Routes:
@@ -205,14 +206,15 @@ class Cascader(Widget):
         :param values: List of values of items to be selected.
         :type values: List[Union[str, Cascader.Item]]]
 
-        :Usage example:
-        .. code-block:: python
+        :Usage Example:
+
+            .. code-block:: python
 
 
-            # Selects item by string value
-            cascader.select_item(["cat", "black cat", "fluffy cat"])
-            # Selects item by Cascader.Item object
-            cascader.select_item([Cascader.Item("cat"), Cascader.Item("black cat"), Cascader.Item("fluffy cat")])
+                # Selects item by string value
+                cascader.select_item(["cat", "black cat", "fluffy cat"])
+                # Selects item by Cascader.Item object
+                cascader.select_item([Cascader.Item("cat"), Cascader.Item("black cat"), Cascader.Item("fluffy cat")])
         """
 
         str_values = []

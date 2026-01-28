@@ -33,21 +33,22 @@ class VolumeObject(VideoObject):
     :type mask_3d: Union[str, ndarray, Mask3D], optional
     :param custom_data: Custom data associated with the VolumeObject.
     :type custom_data: dict, optional
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        obj_class_heart = sly.ObjClass('heart', sly.Rectangle)
-        volume_obj_heart = sly.VolumeObject(obj_class_heart)
-        volume_obj_heart_json = volume_obj_heart.to_json()
-        print(volume_obj_heart_json)
-        # Output: {
-        #     "key": "6b819f1840f84d669b32cdec225385f0",
-        #     "classTitle": "heart",
-        #     "tags": []
-        # }
+            import supervisely as sly
+
+            obj_class_heart = sly.ObjClass('heart', sly.Rectangle)
+            volume_obj_heart = sly.VolumeObject(obj_class_heart)
+            volume_obj_heart_json = volume_obj_heart.to_json()
+            print(volume_obj_heart_json)
+            # Output: {
+            #     "key": "6b819f1840f84d669b32cdec225385f0",
+            #     "classTitle": "heart",
+            #     "tags": []
+            # }
     """
 
     def __init__(

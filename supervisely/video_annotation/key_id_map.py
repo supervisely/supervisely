@@ -22,18 +22,18 @@ class KeyIdMap:
     """
     KeyIdMap object for :class:`VideoAnnotation<supervisely.video_annotation.video_annotation.VideoAnnotation>`. It consist from dict with bidict values.
 
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        key_id_map = KeyIdMap()
-        print(key_id_map.to_dict())
-        # Output: {
-        #     "tags": {},
-        #     "objects": {},
-        #     "figures": {},
-        #     "videos": {}
-        # }
+            key_id_map = KeyIdMap()
+            print(key_id_map.to_dict())
+            # Output: {
+            #     "tags": {},
+            #     "objects": {},
+            #     "figures": {},
+            #     "videos": {}
+            # }
     """
 
     def __init__(self):
@@ -101,22 +101,22 @@ class KeyIdMap:
         :return: :class:`None<None>`
         :rtype: :class:`NoneType<NoneType>`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            key_id_map = KeyIdMap()
-            new_uuid = uuid.uuid4() # "0c0033c5b4834d4cbabece4317295f07"
-            key_id_map.add_object(new_uuid, 1)
-            print(key_id_map.to_dict())
-            # Output: {
-            #     "tags": {},
-            #     "objects": {
-            #         "0c0033c5b4834d4cbabece4317295f07": 1
-            #     },
-            #     "figures": {},
-            #     "videos": {}
-            # }
+                key_id_map = KeyIdMap()
+                new_uuid = uuid.uuid4() # "0c0033c5b4834d4cbabece4317295f07"
+                key_id_map.add_object(new_uuid, 1)
+                print(key_id_map.to_dict())
+                # Output: {
+                #     "tags": {},
+                #     "objects": {
+                #         "0c0033c5b4834d4cbabece4317295f07": 1
+                #     },
+                #     "figures": {},
+                #     "videos": {}
+                # }
         """
         self._add(OBJECTS, key, id)
 
@@ -131,22 +131,22 @@ class KeyIdMap:
         :return: :class:`None<None>`
         :rtype: :class:`NoneType<NoneType>`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            key_id_map = KeyIdMap()
-            new_uuid = uuid.uuid4() # "697d005df2a94bb386188c78a61b0a86"
-            key_id_map.add_tag(new_uuid, 34)
-            print(key_id_map.to_dict())
-            # Output: {
-            #     "tags": {
-            #         "697d005df2a94bb386188c78a61b0a86": 34
-            #     },
-            #     "objects": {},
-            #     "figures": {},
-            #     "videos": {}
-            # }
+                key_id_map = KeyIdMap()
+                new_uuid = uuid.uuid4() # "697d005df2a94bb386188c78a61b0a86"
+                key_id_map.add_tag(new_uuid, 34)
+                print(key_id_map.to_dict())
+                # Output: {
+                #     "tags": {
+                #         "697d005df2a94bb386188c78a61b0a86": 34
+                #     },
+                #     "objects": {},
+                #     "figures": {},
+                #     "videos": {}
+                # }
         """
         self._add(TAGS, key, id)
 
@@ -161,22 +161,22 @@ class KeyIdMap:
         :return: :class:`None<None>`
         :rtype: :class:`NoneType<NoneType>`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            key_id_map = KeyIdMap()
-            new_uuid = uuid.uuid4() # "ac1018e6673d405590086063af8184ca"
-            key_id_map.add_figure(new_uuid, 55)
-            print(key_id_map.to_dict())
-            # Output: {
-            #     "tags": {},
-            #     "objects": {},
-            #     "figures": {
-            #         "ac1018e6673d405590086063af8184ca": 55
-            #     },
-            #     "videos": {}
-            # }
+                key_id_map = KeyIdMap()
+                new_uuid = uuid.uuid4() # "ac1018e6673d405590086063af8184ca"
+                key_id_map.add_figure(new_uuid, 55)
+                print(key_id_map.to_dict())
+                # Output: {
+                #     "tags": {},
+                #     "objects": {},
+                #     "figures": {
+                #         "ac1018e6673d405590086063af8184ca": 55
+                #     },
+                #     "videos": {}
+                # }
         """
         self._add(FIGURES, key, id)
 
@@ -191,22 +191,22 @@ class KeyIdMap:
         :return: :class:`None<None>`
         :rtype: :class:`NoneType<NoneType>`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            key_id_map = KeyIdMap()
-            new_uuid = uuid.uuid4() # "775f2c581cec44ca8c10419c20c52fcc"
-            key_id_map.add_video(new_uuid, 77)
-            print(key_id_map.to_dict())
-            # Output: {
-            #     "tags": {},
-            #     "objects": {},
-            #     "figures": {},
-            #     "videos": {
-            #         "775f2c581cec44ca8c10419c20c52fcc": 77
-            #     }
-            # }
+                key_id_map = KeyIdMap()
+                new_uuid = uuid.uuid4() # "775f2c581cec44ca8c10419c20c52fcc"
+                key_id_map.add_video(new_uuid, 77)
+                print(key_id_map.to_dict())
+                # Output: {
+                #     "tags": {},
+                #     "objects": {},
+                #     "figures": {},
+                #     "videos": {
+                #         "775f2c581cec44ca8c10419c20c52fcc": 77
+                #     }
+                # }
         """
         self._add(VIDEOS, key, id)
 
@@ -221,21 +221,21 @@ class KeyIdMap:
         :return: :class:`None<None>`
         :rtype: :class:`NoneType<NoneType>`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            key_id_map = KeyIdMap()
-            new_uuid = uuid.uuid4() # "0c0033c5b4834d4cbabece4317295f07"
-            key_id_map.add_object(new_uuid, 1)
-            key_id_map.remove_object(new_uuid)
-            print(key_id_map.to_dict())
-            # Output: {
-            #     "tags": {},
-            #     "objects": {},
-            #     "figures": {},
-            #     "videos": {}
-            # }
+                key_id_map = KeyIdMap()
+                new_uuid = uuid.uuid4() # "0c0033c5b4834d4cbabece4317295f07"
+                key_id_map.add_object(new_uuid, 1)
+                key_id_map.remove_object(new_uuid)
+                print(key_id_map.to_dict())
+                # Output: {
+                #     "tags": {},
+                #     "objects": {},
+                #     "figures": {},
+                #     "videos": {}
+                # }
         """
         self._remove(OBJECTS, key, id)
 
@@ -250,21 +250,21 @@ class KeyIdMap:
         :return: :class:`None<None>`
         :rtype: :class:`NoneType<NoneType>`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            key_id_map = KeyIdMap()
-            new_uuid = uuid.uuid4() # "697d005df2a94bb386188c78a61b0a86"
-            key_id_map.add_tag(new_uuid, 34)
-            key_id_map.remove_tag(new_uuid)
-            print(key_id_map.to_dict())
-            # Output: {
-            #     "tags": {},
-            #     "objects": {},
-            #     "figures": {},
-            #     "videos": {}
-            # }
+                key_id_map = KeyIdMap()
+                new_uuid = uuid.uuid4() # "697d005df2a94bb386188c78a61b0a86"
+                key_id_map.add_tag(new_uuid, 34)
+                key_id_map.remove_tag(new_uuid)
+                print(key_id_map.to_dict())
+                # Output: {
+                #     "tags": {},
+                #     "objects": {},
+                #     "figures": {},
+                #     "videos": {}
+                # }
         """
         self._remove(TAGS, key, id)
 
@@ -279,21 +279,21 @@ class KeyIdMap:
         :return: :class:`None<None>`
         :rtype: :class:`NoneType<NoneType>`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            key_id_map = KeyIdMap()
-            new_uuid = uuid.uuid4() # "ac1018e6673d405590086063af8184ca"
-            key_id_map.add_figure(new_uuid, 55)
-            key_id_map.remove_figure(new_uuid)
-            print(key_id_map.to_dict())
-            # Output: {
-            #     "tags": {},
-            #     "objects": {},
-            #     "figures": {},
-            #     "videos": {}
-            # }
+                key_id_map = KeyIdMap()
+                new_uuid = uuid.uuid4() # "ac1018e6673d405590086063af8184ca"
+                key_id_map.add_figure(new_uuid, 55)
+                key_id_map.remove_figure(new_uuid)
+                print(key_id_map.to_dict())
+                # Output: {
+                #     "tags": {},
+                #     "objects": {},
+                #     "figures": {},
+                #     "videos": {}
+                # }
         """
         self._remove(FIGURES, key, id)
 
@@ -308,21 +308,21 @@ class KeyIdMap:
         :return: :class:`None<None>`
         :rtype: :class:`NoneType<NoneType>`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            key_id_map = KeyIdMap()
-            new_uuid = uuid.uuid4() # "775f2c581cec44ca8c10419c20c52fcc"
-            key_id_map.add_video(new_uuid, 77)
-            key_id_map.remove_video(new_uuid)
-            print(key_id_map.to_dict())
-            # Output: {
-            #     "tags": {},
-            #     "objects": {},
-            #     "figures": {},
-            #     "videos": {}
-            # }
+                key_id_map = KeyIdMap()
+                new_uuid = uuid.uuid4() # "775f2c581cec44ca8c10419c20c52fcc"
+                key_id_map.add_video(new_uuid, 77)
+                key_id_map.remove_video(new_uuid)
+                print(key_id_map.to_dict())
+                # Output: {
+                #     "tags": {},
+                #     "objects": {},
+                #     "figures": {},
+                #     "videos": {}
+                # }
         """
         self._remove(VIDEOS, key, id)
 
@@ -361,12 +361,12 @@ class KeyIdMap:
         :return: :class:`VideoObject<supervisely.video_annotation.video_object.VideoObject>` ID
         :rtype: :class:`int`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            obj_uuid = '0c0033c5b4834d4cbabece4317295f07'
-            obj_id = key_id_map.get_object_id(obj_uuid) # 1
+                obj_uuid = '0c0033c5b4834d4cbabece4317295f07'
+                obj_id = key_id_map.get_object_id(obj_uuid) # 1
         """
         return self._get_id_by_key(OBJECTS, key)
 
@@ -379,12 +379,12 @@ class KeyIdMap:
         :return: :class:`VideoTag<supervisely.video_annotation.video_tag.VideoTag>` ID
         :rtype: :class:`int`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            tag_uuid = '697d005df2a94bb386188c78a61b0a86'
-            tag_id = key_id_map.get_tag_id(tag_uuid) # 34
+                tag_uuid = '697d005df2a94bb386188c78a61b0a86'
+                tag_id = key_id_map.get_tag_id(tag_uuid) # 34
         """
         return self._get_id_by_key(TAGS, key)
 
@@ -397,12 +397,12 @@ class KeyIdMap:
         :return: :class:`VideoFigure<supervisely.video_annotation.video_figure.VideoFigure>` ID
         :rtype: :class:`int`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            figure_uuid = 'ac1018e6673d405590086063af8184ca'
-            figure_id = key_id_map.get_figure_id(figure_uuid) # 55
+                figure_uuid = 'ac1018e6673d405590086063af8184ca'
+                figure_id = key_id_map.get_figure_id(figure_uuid) # 55
         """
         return self._get_id_by_key(FIGURES, key)
 
@@ -415,12 +415,12 @@ class KeyIdMap:
         :return: :class:`VideoAnnotation<supervisely.video_annotation.video_annotation.VideoAnnotation>` ID
         :rtype: :class:`int`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            video_uuid = '775f2c581cec44ca8c10419c20c52fcc'
-            video_id = key_id_map.get_video_id(video_uuid) # 77
+                video_uuid = '775f2c581cec44ca8c10419c20c52fcc'
+                video_id = key_id_map.get_video_id(video_uuid) # 77
         """
         return self._get_id_by_key(VIDEOS, key)
 
@@ -433,12 +433,12 @@ class KeyIdMap:
         :return: :class:`UUID` object
         :rtype: :class:`UUID`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            obj_id = 1
-            obj_uuid = key_id_map.get_object_id(obj_id) # '0c0033c5b4834d4cbabece4317295f07'
+                obj_id = 1
+                obj_uuid = key_id_map.get_object_id(obj_id) # '0c0033c5b4834d4cbabece4317295f07'
         """
         return self._get_key_by_id(OBJECTS, id)
 
@@ -451,12 +451,12 @@ class KeyIdMap:
         :return: :class:`UUID` object
         :rtype: :class:`UUID`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            tag_id = 34
-            tag_uuid = key_id_map.get_tag_key(tag_id) # '697d005df2a94bb386188c78a61b0a86'
+                tag_id = 34
+                tag_uuid = key_id_map.get_tag_key(tag_id) # '697d005df2a94bb386188c78a61b0a86'
         """
         return self._get_key_by_id(TAGS, id)
 
@@ -469,12 +469,12 @@ class KeyIdMap:
         :return: :class:`UUID` object
         :rtype: :class:`UUID`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            figure_id = 55
-            figure_uuid = key_id_map.get_figure_key(figure_id) # 'ac1018e6673d405590086063af8184ca'
+                figure_id = 55
+                figure_uuid = key_id_map.get_figure_key(figure_id) # 'ac1018e6673d405590086063af8184ca'
         """
         return self._get_key_by_id(FIGURES, id)
 
@@ -487,12 +487,12 @@ class KeyIdMap:
         :return: :class:`UUID` object
         :rtype: :class:`UUID`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            video_id = 77
-            video_uuid = key_id_map.get_video_key(video_id) # '775f2c581cec44ca8c10419c20c52fcc'
+                video_id = 77
+                video_uuid = key_id_map.get_video_key(video_id) # '775f2c581cec44ca8c10419c20c52fcc'
         """
         return self._get_key_by_id(VIDEOS, id)
 
@@ -503,18 +503,18 @@ class KeyIdMap:
         :return: Json format as a dict
         :rtype: :class:`dict`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            key_id_map = KeyIdMap()
-            print(key_id_map.to_dict())
-            # Output: {
-            #     "tags": {},
-            #     "objects": {},
-            #     "figures": {},
-            #     "videos": {}
-            # }
+                key_id_map = KeyIdMap()
+                print(key_id_map.to_dict())
+                # Output: {
+                #     "tags": {},
+                #     "objects": {},
+                #     "figures": {},
+                #     "videos": {}
+                # }
         """
         simple_dict = {}
         for type_str, value_bidict in self._data.items():
@@ -532,17 +532,17 @@ class KeyIdMap:
         :return: KeyIdMap object
         :rtype: :class:`KeyIdMap`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            dict = {
+                dict = {
                   "tags": {},
                   "objects": {},
                   "figures": {},
                   "videos": {}
-              }
-            key_id_map = KeyIdMap.from_dict(dict)
+                }
+                key_id_map = KeyIdMap.from_dict(dict)
         """
         result = cls()
         for key_type, value_dict in dict.items():
@@ -559,11 +559,11 @@ class KeyIdMap:
         :return: :class:`None`
         :rtype: :class:`NoneType`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            key_id_map.dump_json('/home/admin/work/projects/key_id.json')
+                key_id_map.dump_json('/home/admin/work/projects/key_id.json')
         """
         simple_dict = self.to_dict()
         dump_json_file(simple_dict, path, indent=4)
@@ -578,11 +578,11 @@ class KeyIdMap:
         :return: KeyIdMap object
         :rtype: :class:`KeyIdMap`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            new_key_id = KeyIdMap.load_json('/home/admin/work/projects/key_id.json')
+                new_key_id = KeyIdMap.load_json('/home/admin/work/projects/key_id.json')
         """
         simple_dict = load_json_file(path)
         result = cls()
@@ -620,16 +620,16 @@ class KeyIdMap:
         :return: :class:`None`
         :rtype: :class:`NoneType`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            key_id_map = KeyIdMap()
-            uuid_1 = uuid.uuid4()
-            tag_id_1 = 1213
-            uuid_2 = uuid.uuid4()
-            tag_id_2 = 3686
-            KeyIdMap.add_tags_to(key_id_map, [uuid_1, uuid_2], [tag_id_1, tag_id_2])
+                key_id_map = KeyIdMap()
+                uuid_1 = uuid.uuid4()
+                tag_id_1 = 1213
+                uuid_2 = uuid.uuid4()
+                tag_id_2 = 3686
+                KeyIdMap.add_tags_to(key_id_map, [uuid_1, uuid_2], [tag_id_1, tag_id_2])
         """
         cls._add_to(key_id_map, TAGS, keys, ids)
 
@@ -647,14 +647,14 @@ class KeyIdMap:
         :return: :class:`None`
         :rtype: :class:`NoneType`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            key_id_map = KeyIdMap()
-            new_uuid = uuid.uuid4()
-            new_tag_id = 1213
-            KeyIdMap.add_tag_to(key_id_map, new_uuid, new_tag_id)
+                key_id_map = KeyIdMap()
+                new_uuid = uuid.uuid4()
+                new_tag_id = 1213
+                KeyIdMap.add_tag_to(key_id_map, new_uuid, new_tag_id)
         """
         cls.add_tags_to(key_id_map, [key], [id])
 
@@ -672,16 +672,16 @@ class KeyIdMap:
         :return: :class:`None`
         :rtype: :class:`NoneType`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            key_id_map = KeyIdMap()
-            uuid_1 = uuid.uuid4()
-            object_id_1 = 23
-            uuid_2 = uuid.uuid4()
-            object_id_2 = 57
-            KeyIdMap.add_objects_to(key_id_map, [uuid_1, uuid_2], [object_id_1, object_id_2])
+                key_id_map = KeyIdMap()
+                uuid_1 = uuid.uuid4()
+                object_id_1 = 23
+                uuid_2 = uuid.uuid4()
+                object_id_2 = 57
+                KeyIdMap.add_objects_to(key_id_map, [uuid_1, uuid_2], [object_id_1, object_id_2])
         """
         cls._add_to(key_id_map, OBJECTS, keys, ids)
 
@@ -699,14 +699,14 @@ class KeyIdMap:
         :return: :class:`None`
         :rtype: :class:`NoneType`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            key_id_map = KeyIdMap()
-            new_uuid = uuid.uuid4()
-            new_object_id = 76
-            KeyIdMap.add_object_to(key_id_map, new_uuid, new_object_id)
+                key_id_map = KeyIdMap()
+                new_uuid = uuid.uuid4()
+                new_object_id = 76
+                KeyIdMap.add_object_to(key_id_map, new_uuid, new_object_id)
         """
         cls.add_objects_to(key_id_map, [key], [id])
 
@@ -724,16 +724,16 @@ class KeyIdMap:
         :return: :class:`None`
         :rtype: :class:`NoneType`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            key_id_map = KeyIdMap()
-            uuid_1 = uuid.uuid4()
-            figure_id_1 = 23
-            uuid_2 = uuid.uuid4()
-            figure_id_2 = 57
-            KeyIdMap.add_figures_to(key_id_map, [uuid_1, uuid_2], [figure_id_1, figure_id_2])
+                key_id_map = KeyIdMap()
+                uuid_1 = uuid.uuid4()
+                figure_id_1 = 23
+                uuid_2 = uuid.uuid4()
+                figure_id_2 = 57
+                KeyIdMap.add_figures_to(key_id_map, [uuid_1, uuid_2], [figure_id_1, figure_id_2])
         """
         cls._add_to(key_id_map, FIGURES, keys, ids)
 
@@ -751,14 +751,14 @@ class KeyIdMap:
         :return: :class:`None`
         :rtype: :class:`NoneType`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            key_id_map = KeyIdMap()
-            new_uuid = uuid.uuid4()
-            new_figure_id = 3834
-            KeyIdMap.add_figure_to(key_id_map, new_uuid, new_figure_id)
+                key_id_map = KeyIdMap()
+                new_uuid = uuid.uuid4()
+                new_figure_id = 3834
+                KeyIdMap.add_figure_to(key_id_map, new_uuid, new_figure_id)
         """
         cls.add_figures_to(key_id_map, [key], [id])
 
@@ -776,16 +776,16 @@ class KeyIdMap:
         :return: :class:`None`
         :rtype: :class:`NoneType`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            key_id_map = KeyIdMap()
-            uuid_1 = uuid.uuid4()
-            video_id_1 = 567
-            uuid_2 = uuid.uuid4()
-            video_id_2 = 5200
-            KeyIdMap.add_videos_to(key_id_map, [uuid_1, uuid_2], [video_id_1, video_id_2])
+                key_id_map = KeyIdMap()
+                uuid_1 = uuid.uuid4()
+                video_id_1 = 567
+                uuid_2 = uuid.uuid4()
+                video_id_2 = 5200
+                KeyIdMap.add_videos_to(key_id_map, [uuid_1, uuid_2], [video_id_1, video_id_2])
         """
         cls._add_to(key_id_map, VIDEOS, keys, ids)
 
@@ -803,14 +803,14 @@ class KeyIdMap:
         :return: :class:`None`
         :rtype: :class:`NoneType`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            key_id_map = KeyIdMap()
-            new_uuid = uuid.uuid4()
-            new_video_id = 3834
-            KeyIdMap.add_video_to(key_id_map, new_uuid, new_video_id)
+                key_id_map = KeyIdMap()
+                new_uuid = uuid.uuid4()
+                new_video_id = 3834
+                KeyIdMap.add_video_to(key_id_map, new_uuid, new_video_id)
         """
         cls.add_videos_to(key_id_map, [key], [id])
 
@@ -833,14 +833,14 @@ class KeyIdMap:
         :return: :class:`None`
         :rtype: :class:`NoneType`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            key_id_map = KeyIdMap()
-            uuid_1 = uuid.uuid4()
-            uuid_2 = uuid.uuid4()
-            KeyIdMap.remove_tags_from(key_id_map, [uuid_1, uuid_2])
+                key_id_map = KeyIdMap()
+                uuid_1 = uuid.uuid4()
+                uuid_2 = uuid.uuid4()
+                KeyIdMap.remove_tags_from(key_id_map, [uuid_1, uuid_2])
         """
         if keys == ids == None:
             raise RuntimeError("At least one of keys or ids should be provided")
@@ -868,13 +868,13 @@ class KeyIdMap:
         :return: :class:`None`
         :rtype: :class:`NoneType`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            key_id_map = KeyIdMap()
-            new_uuid = uuid.uuid4()
-            KeyIdMap.remove_tag_from(key_id_map, new_uuid)
+                key_id_map = KeyIdMap()
+                new_uuid = uuid.uuid4()
+                KeyIdMap.remove_tag_from(key_id_map, new_uuid)
         """
         if key == id == None:
             raise RuntimeError("At least one of key or id should be provided")
@@ -900,14 +900,14 @@ class KeyIdMap:
         :return: :class:`None`
         :rtype: :class:`NoneType`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            key_id_map = KeyIdMap()
-            uuid_1 = uuid.uuid4()
-            uuid_2 = uuid.uuid4()
-            KeyIdMap.remove_objects_from(key_id_map, [uuid_1, uuid_2])
+                key_id_map = KeyIdMap()
+                uuid_1 = uuid.uuid4()
+                uuid_2 = uuid.uuid4()
+                KeyIdMap.remove_objects_from(key_id_map, [uuid_1, uuid_2])
         """
         if keys == ids == None:
             raise RuntimeError("At least one of keys or ids should be provided")
@@ -935,13 +935,13 @@ class KeyIdMap:
         :return: :class:`None`
         :rtype: :class:`NoneType`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            key_id_map = KeyIdMap()
-            new_uuid = uuid.uuid4()
-            KeyIdMap.remove_object_from(key_id_map, new_uuid)
+                key_id_map = KeyIdMap()
+                new_uuid = uuid.uuid4()
+                KeyIdMap.remove_object_from(key_id_map, new_uuid)
         """
         if key == id == None:
             raise RuntimeError("At least one of key or id should be provided")
@@ -967,14 +967,14 @@ class KeyIdMap:
         :return: :class:`None`
         :rtype: :class:`NoneType`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            key_id_map = KeyIdMap()
-            uuid_1 = uuid.uuid4()
-            uuid_2 = uuid.uuid4()
-            KeyIdMap.remove_figures_from(key_id_map, [uuid_1, uuid_2])
+                key_id_map = KeyIdMap()
+                uuid_1 = uuid.uuid4()
+                uuid_2 = uuid.uuid4()
+                KeyIdMap.remove_figures_from(key_id_map, [uuid_1, uuid_2])
         """
         if keys == ids == None:
             raise RuntimeError("At least one of keys or ids should be provided")
@@ -1002,13 +1002,13 @@ class KeyIdMap:
         :return: :class:`None`
         :rtype: :class:`NoneType`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            key_id_map = KeyIdMap()
-            new_uuid = uuid.uuid4()
-            KeyIdMap.remove_figure_from(key_id_map, new_uuid)
+                key_id_map = KeyIdMap()
+                new_uuid = uuid.uuid4()
+                KeyIdMap.remove_figure_from(key_id_map, new_uuid)
         """
         if key == id == None:
             raise RuntimeError("At least one of key or id should be provided")
@@ -1034,14 +1034,14 @@ class KeyIdMap:
         :return: :class:`None`
         :rtype: :class:`NoneType`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            key_id_map = KeyIdMap()
-            uuid_1 = uuid.uuid4()
-            uuid_2 = uuid.uuid4()
-            KeyIdMap.remove_videos_from(key_id_map, [uuid_1, uuid_2])
+                key_id_map = KeyIdMap()
+                uuid_1 = uuid.uuid4()
+                uuid_2 = uuid.uuid4()
+                KeyIdMap.remove_videos_from(key_id_map, [uuid_1, uuid_2])
         """
         if keys == ids == None:
             raise RuntimeError("At least one of keys or ids should be provided")
@@ -1069,13 +1069,13 @@ class KeyIdMap:
         :return: :class:`None`
         :rtype: :class:`NoneType`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            key_id_map = KeyIdMap()
-            new_uuid = uuid.uuid4()
-            KeyIdMap.remove_video_from(key_id_map, new_uuid)
+                key_id_map = KeyIdMap()
+                new_uuid = uuid.uuid4()
+                KeyIdMap.remove_video_from(key_id_map, new_uuid)
         """
         if key == id == None:
             raise RuntimeError("At least one of key or id should be provided")
@@ -1097,18 +1097,19 @@ class KeyIdMap:
         :type priority: int[1, 2]
         :return: Merged KeyIdMap
         :rtype: KeyIdMap
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            key_id_map_1, key_id_map_2 = KeyIdMap(), KeyIdMap()
-            new_uuid_1, new_uuid_2 = uuid.uuid4(), uuid.uuid4()
-            new_video_id_1, new_video_id_2 = 3834, 4945
+            .. code-block:: python
 
-            KeyIdMap.add_video_to(key_id_map_1, new_uuid_1, new_video_id_1)
-            KeyIdMap.add_video_to(key_id_map_2, new_uuid_2, new_video_id_2)
+                key_id_map_1, key_id_map_2 = KeyIdMap(), KeyIdMap()
+                new_uuid_1, new_uuid_2 = uuid.uuid4(), uuid.uuid4()
+                new_video_id_1, new_video_id_2 = 3834, 4945
 
-            merged_key_id_map = KeyIdMap.merge_key_id_maps(key_id_map_1, key_id_map_2)
+                KeyIdMap.add_video_to(key_id_map_1, new_uuid_1, new_video_id_1)
+                KeyIdMap.add_video_to(key_id_map_2, new_uuid_2, new_video_id_2)
+
+                merged_key_id_map = KeyIdMap.merge_key_id_maps(key_id_map_1, key_id_map_2)
         """
         inverted_dicts = []
         for map in [key_id_map_1, key_id_map_2]:

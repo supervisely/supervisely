@@ -651,17 +651,17 @@ def sly_project_to_yolo(
     :return: Path to the destination directory.
     :rtype: :class:`str`
 
-    :Usage example:
+    :Usage Example:
 
-    .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
+            import supervisely as sly
 
-        # Local folder with Project
-        project_directory = "/home/admin/work/supervisely/source/project"
+            # Local folder with Project
+            project_directory = "/home/admin/work/supervisely/source/project"
 
-        # Convert Project to YOLO format
-        sly.Project(project_directory).to_yolo(log_progress=True)
+            # Convert Project to YOLO format
+            sly.Project(project_directory).to_yolo(log_progress=True)
     """
     task_type = validate_task_type(task_type)
     if isinstance(project, str):
@@ -749,24 +749,24 @@ def to_yolo(
     :return: None, list of YOLO lines, or path to the destination directory.
     :rtype: NoneType, list, str
 
-    :Usage example:
+    :Usage Example:
 
-    .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
+            import supervisely as sly
 
-        # Local folder with Project
-        project_directory = "/home/admin/work/supervisely/source/project"
-        project_fs = sly.Project(project_directory, sly.OpenMode.READ)
+            # Local folder with Project
+            project_directory = "/home/admin/work/supervisely/source/project"
+            project_fs = sly.Project(project_directory, sly.OpenMode.READ)
 
-        # Convert Project to YOLO format
-        sly.convert.to_yolo(project_directory, dest_dir="./yolo")
-        # or
-        sly.convert.to_yolo(project_fs, dest_dir="./yolo")
+            # Convert Project to YOLO format
+            sly.convert.to_yolo(project_directory, dest_dir="./yolo")
+            # or
+            sly.convert.to_yolo(project_fs, dest_dir="./yolo")
 
-        # Convert Dataset to YOLO format
-        dataset: sly.Dataset = project_fs.datasets.get("dataset_name")
-        sly.convert.to_yolo(dataset, dest_dir="./yolo", meta=project_fs.meta, is_val=True)
+            # Convert Dataset to YOLO format
+            dataset: sly.Dataset = project_fs.datasets.get("dataset_name")
+            sly.convert.to_yolo(dataset, dest_dir="./yolo", meta=project_fs.meta, is_val=True)
     """
     if isinstance(input_data, str):
         try:

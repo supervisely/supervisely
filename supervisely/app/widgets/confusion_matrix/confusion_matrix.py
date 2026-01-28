@@ -115,37 +115,37 @@ class ConfusionMatrix(Widget):
     :param widget_id: An unique identifier of the widget.
     :type widget_id: str, optional
 
-    :Usage example:
-    .. code-block:: python
+    :Usage Example:
 
-        from supervisely.app.widgets import ConfusionMatrix
+        .. code-block:: python
 
-        # Option 1: Python dict
-        confusion_matrix = ConfusionMatrix(
-            data={
-                "columns": ["class_1", "class_2", "class_3"],
-                "data": [
-                    ["1", "2", "3"],
-                    ["4", "5", "6"],
-                    ["7", "8", "9"],
-                ],
-            },
-            x_label="Predicted Values",
-            y_label="Actual Values",
-        )
+            from supervisely.app.widgets import ConfusionMatrix
 
-        # Option 2: Pandas DataFrame
+            # Option 1: Python dict
+            confusion_matrix = ConfusionMatrix(
+                data={
+                    "columns": ["class_1", "class_2", "class_3"],
+                    "data": [
+                        ["1", "2", "3"],
+                        ["4", "5", "6"],
+                        ["7", "8", "9"],
+                    ],
+                },
+                x_label="Predicted Values",
+                y_label="Actual Values",
+            )
 
-        data = []
-        for row in b:
-            temp = [round(row * number, 1) for number in a]
-            data.append(temp)
+            # Option 2: Pandas DataFrame
+            data = []
+            for row in b:
+                temp = [round(row * number, 1) for number in a]
+                data.append(temp)
 
-        a = [str(i) for i in a]
-        b = [str(i) for i in b]
+            a = [str(i) for i in a]
+            b = [str(i) for i in b]
 
-        data = pd.DataFrame(data=data, index=b, columns=a)
-        confusion_matrix = ConfusionMatrix(data=data)
+            data = pd.DataFrame(data=data, index=b, columns=a)
+            confusion_matrix = ConfusionMatrix(data=data)
 
     """
 

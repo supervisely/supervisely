@@ -41,38 +41,38 @@ class SelectTag(Widget):
     :param widget_id: Unique widget identifier
     :type widget_id: Optional[str]
 
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
-        from supervisely.app.widgets import SelectTag
+            import supervisely as sly
+            from supervisely.app.widgets import SelectTag
 
-        # Create some initial tags
-        tag_weather = sly.TagMeta('weather', sly.TagValueType.ANY_STRING)
-        tag_count = sly.TagMeta('count', sly.TagValueType.ANY_NUMBER)
+            # Create some initial tags
+            tag_weather = sly.TagMeta('weather', sly.TagValueType.ANY_STRING)
+            tag_count = sly.TagMeta('count', sly.TagValueType.ANY_NUMBER)
 
-        colors = ["red", "green", "blue"]
-        tag_color = sly.TagMeta('color', sly.TagValueType.ONEOF_STRING, possible_values=colors)
+            colors = ["red", "green", "blue"]
+            tag_color = sly.TagMeta('color', sly.TagValueType.ONEOF_STRING, possible_values=colors)
 
-        # Create SelectTag widget
-        select_tag = SelectTag(
-            tags=[tag_weather, tag_count, tag_color],
-            filterable=True,
-            show_add_new_tag=True
-        )
+            # Create SelectTag widget
+            select_tag = SelectTag(
+                tags=[tag_weather, tag_count, tag_color],
+                filterable=True,
+                show_add_new_tag=True
+            )
 
-        # Handle selection changes
-        @select_tag.value_changed
-        def on_tag_selected(tag_name):
-            print(f"Selected tag: {tag_name}")
-            selected_tag = select_tag.get_selected_tag()
-            print(f"Tag object: {selected_tag}")
+            # Handle selection changes
+            @select_tag.value_changed
+            def on_tag_selected(tag_name):
+                print(f"Selected tag: {tag_name}")
+                selected_tag = select_tag.get_selected_tag()
+                print(f"Tag object: {selected_tag}")
 
-        # Handle new tag creation
-        @select_tag.tag_created
-        def on_tag_created(new_tag: sly.TagMeta):
-            print(f"New tag created: {new_tag.name}")
+            # Handle new tag creation
+            @select_tag.tag_created
+            def on_tag_created(new_tag: sly.TagMeta):
+                print(f"New tag created: {new_tag.name}")
     """
 
     class Routes:

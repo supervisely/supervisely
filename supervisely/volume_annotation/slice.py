@@ -18,44 +18,45 @@ class Slice(Frame):
     :type index: int
     :param figures: List of :class:`VolumeFigures<supervisely.volume_annotation.volume_figure.VolumeFigure>`.
     :type figures: Optional[List[VolumeFigure]]
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        frame_index = 7
-        geometry = sly.Rectangle(0, 0, 100, 100)
-        class_car = sly.ObjClass('car', sly.Rectangle)
-        object_car = sly.VolumeObject(class_car)
-        figure_car = sly.VolumeFigure(object_car, geometry, frame_index)
+            import supervisely as sly
 
-        frame = sly.Slice(frame_index, figures=[figure_car])
-        print(frame.to_json())
-        # Output: {
-        #     "figures": [
-        #         {
-        #         "geometry": {
-        #             "points": {
-        #             "exterior": [
-        #                 [0, 0],
-        #                 [100, 100]
-        #             ],
-        #             "interior": []
-        #             }
-        #         },
-        #         "geometryType": "rectangle",
-        #         "key": "eb0ab5f772054f70b6a9f5b583a47287",
-        #         "meta": {
-        #             "normal": { "x": 0, "y": 0, "z": 1 },
-        #             "planeName": "axial",
-        #             "sliceIndex": 7
-        #         },
-        #         "objectKey": "dbd236a6a6f440139fd0299905fcc46e"
-        #         }
-        #     ],
-        #     "index": 7
-        # }
+            frame_index = 7
+            geometry = sly.Rectangle(0, 0, 100, 100)
+            class_car = sly.ObjClass('car', sly.Rectangle)
+            object_car = sly.VolumeObject(class_car)
+            figure_car = sly.VolumeFigure(object_car, geometry, frame_index)
+
+            frame = sly.Slice(frame_index, figures=[figure_car])
+            print(frame.to_json())
+            # Output: {
+            #     "figures": [
+            #         {
+            #         "geometry": {
+            #             "points": {
+            #             "exterior": [
+            #                 [0, 0],
+            #                 [100, 100]
+            #             ],
+            #             "interior": []
+            #             }
+            #         },
+            #         "geometryType": "rectangle",
+            #         "key": "eb0ab5f772054f70b6a9f5b583a47287",
+            #         "meta": {
+            #             "normal": { "x": 0, "y": 0, "z": 1 },
+            #             "planeName": "axial",
+            #             "sliceIndex": 7
+            #         },
+            #         "objectKey": "dbd236a6a6f440139fd0299905fcc46e"
+            #         }
+            #     ],
+            #     "index": 7
+            # }
 
     """
 
@@ -93,22 +94,22 @@ class Slice(Frame):
         :rtype: Slice
         :raises ValueError: If the slice index is negative or greater than the total number of slices.
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
-            slice_index = 7
-            geometry = sly.Rectangle(0, 0, 100, 100)
-            class_car = sly.ObjClass('car', sly.Rectangle)
-            object_car = sly.VolumeObject(class_car)
-            objects = sly.VolumeObjectCollection([object_car])
-            figure_car = sly.VolumeFigure(object_car, geometry, sly.Plane.AXIAL, slice_index)
+                import supervisely as sly
+                slice_index = 7
+                geometry = sly.Rectangle(0, 0, 100, 100)
+                class_car = sly.ObjClass('car', sly.Rectangle)
+                object_car = sly.VolumeObject(class_car)
+                objects = sly.VolumeObjectCollection([object_car])
+                figure_car = sly.VolumeFigure(object_car, geometry, sly.Plane.AXIAL, slice_index)
 
-            slice = sly.Slice(slice_index, figures=[figure_car])
-            slice_json = slice.to_json()
+                slice = sly.Slice(slice_index, figures=[figure_car])
+                slice_json = slice.to_json()
 
-            new_slice = sly.Slice.from_json(slice_json, objects, sly.Plane.AXIAL)
+                new_slice = sly.Slice.from_json(slice_json, objects, sly.Plane.AXIAL)
         """
 
         index = data[INDEX]

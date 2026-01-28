@@ -31,22 +31,23 @@ class PointcloudObject(VideoObject):
     :type updated_at: str, optional
     :param created_at: Date and Time when PointcloudObject was created. Date Format is the same as in "updated_at" parameter.
     :type created_at: str, optional
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
-        from supervisely.geometry.cuboid_3d import Cuboid3d
+        .. code-block:: python
 
-        obj_class_car = sly.ObjClass('car', Cuboid3d)
-        pointcloud_obj_car = sly.PointcloudObject(obj_class_car)
-        pointcloud_obj_car_json = pointcloud_obj_car.to_json()
-        print(pointcloud_obj_car_json)
-        # Output: {
-        #     "key": "6b819f1840f84d669b32cdec225385f0",
-        #     "classTitle": "car",
-        #     "tags": []
-        # }
+            import supervisely as sly
+            from supervisely.geometry.cuboid_3d import Cuboid3d
+
+            obj_class_car = sly.ObjClass('car', Cuboid3d)
+            pointcloud_obj_car = sly.PointcloudObject(obj_class_car)
+            pointcloud_obj_car_json = pointcloud_obj_car.to_json()
+            print(pointcloud_obj_car_json)
+            # Output: {
+            #     "key": "6b819f1840f84d669b32cdec225385f0",
+            #     "classTitle": "car",
+            #     "tags": []
+            # }
     """
 
     tag_collection_type = PointcloudTagCollection
@@ -64,27 +65,28 @@ class PointcloudObject(VideoObject):
         :type key_id_map: KeyIdMap, optional
         :return: PointcloudObject object.
         :rtype: PointcloudObject
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            from supervisely.geometry.cuboid_3d import Cuboid3d, Vector3d
+            .. code-block:: python
 
-            key_id_map = KeyIdMap()
-            project_id = 19441
-            obj_class_car = sly.ObjClass('car', Cuboid3d)
-            project_meta = sly.ProjectMeta([obj_class_car])
-            api.project.update_meta(id=project_id, meta=project_meta)
-            pointcloud_obj_car = sly.PointcloudObject(obj_class_car)
-            pointcloud_obj_car_json = pointcloud_obj_car.to_json()
-            new_pointcloud_obj_car = sly.PointcloudObject.from_json(
-                data=pointcloud_obj_car_json,
-                project_meta=project_meta,
-                key_id_map=key_id_map
-            )
-            pprint(new_pointcloud_obj_car)
-            # <supervisely.pointcloud_annotation.pointcloud_object.PointcloudObject object at 0x7f97e0ba8ed0>
+                import supervisely as sly
+                from supervisely.geometry.cuboid_3d import Cuboid3d, Vector3d
+
+                key_id_map = KeyIdMap()
+                project_id = 19441
+                obj_class_car = sly.ObjClass('car', Cuboid3d)
+                project_meta = sly.ProjectMeta([obj_class_car])
+                api.project.update_meta(id=project_id, meta=project_meta)
+                pointcloud_obj_car = sly.PointcloudObject(obj_class_car)
+                pointcloud_obj_car_json = pointcloud_obj_car.to_json()
+                new_pointcloud_obj_car = sly.PointcloudObject.from_json(
+                    data=pointcloud_obj_car_json,
+                    project_meta=project_meta,
+                    key_id_map=key_id_map
+                )
+                print(new_pointcloud_obj_car)
+                # <supervisely.pointcloud_annotation.pointcloud_object.PointcloudObject object at 0x7f97e0ba8ed0>
         """
 
         obj_class_name = data[LabelJsonFields.OBJ_CLASS_NAME]

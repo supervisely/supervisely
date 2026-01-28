@@ -97,19 +97,20 @@ class ProjectSettings(JsonSerializable):
     :type labeling_interface: str, optional
 
     :raises: :class:`ValidationError`, if settings schema is corrupted, the exception arises.
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        Example 1: multiView Tag is known (by id or name)
-        settings_json = {"multiView": {"enabled": True, "tagName": 'group_tag', "tagId": None, "areSynced": False}}
+            import supervisely as sly
 
-        Example 2: multiView Tag is unknown, but multiView is enabled. In this case, the tag will be chosen automatically.
-        settings_json = {"multiView": {"enabled": True, "tagName": None, "tagId": None, "areSynced": False}}
+            Example 1: multiView Tag is known (by id or name)
+            settings_json = {"multiView": {"enabled": True, "tagName": 'group_tag', "tagId": None, "areSynced": False}}
 
-        settings = sly.ProjectSettings.from_json(settings_json)
+            Example 2: multiView Tag is unknown, but multiView is enabled. In this case, the tag will be chosen automatically.
+            settings_json = {"multiView": {"enabled": True, "tagName": None, "tagId": None, "areSynced": False}}
+
+            settings = sly.ProjectSettings.from_json(settings_json)
     """
 
     def __init__(

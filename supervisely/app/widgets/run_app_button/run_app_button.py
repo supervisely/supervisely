@@ -62,25 +62,27 @@ class RunAppButton(Widget):
         :param widget_id: Widget ID.
         :type widget_id: str, optional
 
-        :Usage example:
-        .. code-block:: python
-            from supervisely.app.widgets import RunAppButton
+        :Usage Example:
 
-            workspace_id = 123
-            project_id = 555
-            app_module_id = 777
+            .. code-block:: python
 
-            run_app_button = RunAppButton(
-                workspace_id=workspace_id,
-                module_id=app_module_id,
-                payload={"state": {"slyProjectId": project_id}},
-                text="Run App",
-                button_type="info",
-                plain=True,
-                icon="zmdi zmdi-chart",
-                available_in_offline=True,
-                visible_by_vue_field="isStaticVersion",
-            )
+                from supervisely.app.widgets import RunAppButton
+
+                workspace_id = 123
+                project_id = 555
+                app_module_id = 777
+
+                run_app_button = RunAppButton(
+                    workspace_id=workspace_id,
+                    module_id=app_module_id,
+                    payload={"state": {"slyProjectId": project_id}},
+                    text="Run App",
+                    button_type="info",
+                    plain=True,
+                    icon="zmdi zmdi-chart",
+                    available_in_offline=True,
+                    visible_by_vue_field="isStaticVersion",
+                )
         """
         self._text = text
         self._button_type = button_type

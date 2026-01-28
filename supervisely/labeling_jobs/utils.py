@@ -275,20 +275,24 @@ def get_job_url(server_address: str, job: NamedTuple) -> str:
     :type job: NamedTuple
     :return: Labeling job url
     :rtype: :class:`str`
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        address = 'https://app.supervisely.com'
-        os.environ['SERVER_ADDRESS'] = address
-        os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-        api = sly.Api.from_env()
-        job_info = api.labeling_job.get_info_by_id(2)
+        .. code-block:: python
 
-        from supervisely.labeling_jobs.utils import get_job_url
-        job_url = get_job_url(address, job_info)
-        print(job_url)
-        # Output: https://app.supervisely.com/app/images/4/8/58/54?jobId=2
+            import os
+            import supervisely as sly
+
+            address = 'https://app.supervisely.com'
+            os.environ['SERVER_ADDRESS'] = address
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+            job_info = api.labeling_job.get_info_by_id(2)
+
+            from supervisely.labeling_jobs.utils import get_job_url
+            job_url = get_job_url(address, job_info)
+            print(job_url)
+            # Output: https://app.supervisely.com/app/images/4/8/58/54?jobId=2
     """
     result = urllib.parse.urljoin(
         server_address,
@@ -312,25 +316,29 @@ def jobs_stats(server_address: str, jobs: List[NamedTuple], stats: List) -> Data
     :type stats: list
     :return: Statistics about Labeling Jobs items as `pd.DataFrame <https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.html>`_
     :rtype: :class:`pd.DataFrame`
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-        os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-        api = sly.Api.from_env()
+        .. code-block:: python
 
-        job_info1 = api.labeling_job.get_info_by_id(2)
-        job_info2 = api.labeling_job.get_info_by_id(3)
-        address = https://app.supervisely.com
+            import os
+            import supervisely as sly
 
-        from supervisely.labeling_jobs.utils import jobs_stats
-        result = jobs_stats(address, [job_info1, job_info2], [1, 2])
-        print(result)
-        # Output:
-        #    ID                                               NAME     STATUS  TOTAL  LABELED  REVIEWED  ACCEPTED  REJECTED        CREATED_AT
-        # 0   2  <a href="https://app.supervisely.com/app/images/...  completed      3        3         3         2         1  08/04/2020 15:10
-        # 1   3  <a href="https://app.supervisely.com/app/images/...  completed      2        2         2         2         0  08/04/2020 15:10
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            job_info1 = api.labeling_job.get_info_by_id(2)
+            job_info2 = api.labeling_job.get_info_by_id(3)
+            address = https://app.supervisely.com
+
+            from supervisely.labeling_jobs.utils import jobs_stats
+            result = jobs_stats(address, [job_info1, job_info2], [1, 2])
+            print(result)
+            # Output:
+            #    ID                                               NAME     STATUS  TOTAL  LABELED  REVIEWED  ACCEPTED  REJECTED        CREATED_AT
+            # 0   2  <a href="https://app.supervisely.com/app/images/...  completed      3        3         3         2         1  08/04/2020 15:10
+            # 1   3  <a href="https://app.supervisely.com/app/images/...  completed      2        2         2         2         0  08/04/2020 15:10
     """
     import pandas as pd
 
@@ -398,32 +406,36 @@ def jobs_summary(jobs: List[NamedTuple]) -> DataFrame:
     :type jobs: List[NamedTuple]
     :return: Statistics about Labeling Jobs as `pd.DataFrame <https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.html>`_
     :rtype: :class:`pd.DataFrame`
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-        os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-        api = sly.Api.from_env()
+        .. code-block:: python
 
-        job_info1 = api.labeling_job.get_info_by_id(2)
-        job_info2 = api.labeling_job.get_info_by_id(3)
+            import os
+            import supervisely as sly
 
-        from supervisely.labeling_jobs.utils import jobs_summary
-        result = jobs_summary([job_info1, job_info2])
-        print(result)
-        # Output:
-        #                 JOB STATUS  QUANTITY PERCENTAGE                                        DESCRIPTION
-        # 0  0                 TOTAL         2   100.00 %           the total number of jobs in current team
-        # 1  1             COMPLETED         2   100.00 %                       the number of completed jobs
-        # 2  2               STOPPED         0     0.00 %                         the number of stopped jobs
-        # 3  3               PENDING         0     0.00 %  the number of jobs labeler haven't even opened...
-        # 4  4  LABELING IN PROGRESS         0     0.00 %         the number of jobs with status IN_PROGRESS
-        # 5  5      LABELING STARTED         0     0.00 %  the number of jobs that are started by labeler...
-        # 6  6          ZERO LABELED         0     0.00 %  the number of jobs with status "IN PROGRESS" w...
-        # 7  7             ON REVIEW         0     0.00 %           the number of jobs with status ON_REVIEW
-        # 8  8        REVIEW STARTED         0     0.00 %  the number of jobs that are started by reviewe...
-        # 9  9         ZERO REVIEWED         0     0.00 %  the number of jobs with status "ON REVIEW" wit...
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            job_info1 = api.labeling_job.get_info_by_id(2)
+            job_info2 = api.labeling_job.get_info_by_id(3)
+
+            from supervisely.labeling_jobs.utils import jobs_summary
+            result = jobs_summary([job_info1, job_info2])
+            print(result)
+            # Output:
+            #                 JOB STATUS  QUANTITY PERCENTAGE                                        DESCRIPTION
+            # 0  0                 TOTAL         2   100.00 %           the total number of jobs in current team
+            # 1  1             COMPLETED         2   100.00 %                       the number of completed jobs
+            # 2  2               STOPPED         0     0.00 %                         the number of stopped jobs
+            # 3  3               PENDING         0     0.00 %  the number of jobs labeler haven't even opened...
+            # 4  4  LABELING IN PROGRESS         0     0.00 %         the number of jobs with status IN_PROGRESS
+            # 5  5      LABELING STARTED         0     0.00 %  the number of jobs that are started by labeler...
+            # 6  6          ZERO LABELED         0     0.00 %  the number of jobs with status "IN PROGRESS" w...
+            # 7  7             ON REVIEW         0     0.00 %           the number of jobs with status ON_REVIEW
+            # 8  8        REVIEW STARTED         0     0.00 %  the number of jobs that are started by reviewe...
+            # 9  9         ZERO REVIEWED         0     0.00 %  the number of jobs with status "ON REVIEW" wit...
     """
     import pandas as pd
 
@@ -514,27 +526,31 @@ def images_summary(jobs: List[NamedTuple]) -> DataFrame:
     :type jobs: List[NamedTuple]
     :return: Statistics about Labeling Jobs images
     :rtype: :class:`pd.DataFrame`
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-        os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-        api = sly.Api.from_env()
+        .. code-block:: python
 
-        job_info1 = api.labeling_job.get_info_by_id(2)
-        job_info2 = api.labeling_job.get_info_by_id(3)
+            import os
+            import supervisely as sly
 
-        from supervisely.labeling_jobs.utils import images_summary
-        result = images_summary([job_info1, job_info2])
-        print(result)
-        # Output:
-        #    # ITEM STATUS  QUANTITY PERCENTAGE                                        DESCRIPTION
-        # 0  0       TOTAL         5   100.00 %     the total number of items in all labeling jobs
-        # 1  1     LABELED         5   100.00 %  the total number of labeled items (labelers ma...
-        # 2  2    REVIEWED         5   100.00 %  the total number of reviewed items (reviewers ...
-        # 3  3    ACCEPTED         4    80.00 %  the total number of accepted items (reviewers ...
-        # 4  4    REJECTED         1    20.00 %  the total number of rejected items (reviewers ...
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            job_info1 = api.labeling_job.get_info_by_id(2)
+            job_info2 = api.labeling_job.get_info_by_id(3)
+
+            from supervisely.labeling_jobs.utils import images_summary
+            result = images_summary([job_info1, job_info2])
+            print(result)
+            # Output:
+            #    # ITEM STATUS  QUANTITY PERCENTAGE                                        DESCRIPTION
+            # 0  0       TOTAL         5   100.00 %     the total number of items in all labeling jobs
+            # 1  1     LABELED         5   100.00 %  the total number of labeled items (labelers ma...
+            # 2  2    REVIEWED         5   100.00 %  the total number of reviewed items (reviewers ...
+            # 3  3    ACCEPTED         4    80.00 %  the total number of accepted items (reviewers ...
+            # 4  4    REJECTED         1    20.00 %  the total number of rejected items (reviewers ...
     """
     import pandas as pd
 

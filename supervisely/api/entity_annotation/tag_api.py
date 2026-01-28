@@ -24,17 +24,18 @@ class TagApi(ModuleApi):
         """
         NamedTuple TagInfo information about Tag.
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            info_sequence = api.video.tag.info_sequence()
+                info_sequence = api.video.tag.info_sequence()
         """
 
         return [
@@ -54,18 +55,20 @@ class TagApi(ModuleApi):
 
         :return: NamedTuple name.
         :rtype: :class:`str`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            tuple_name = api.video.tag.info_tuple_name()
-            print(tuple_name) # TagInfo
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                tuple_name = api.video.tag.info_tuple_name()
+                print(tuple_name) # TagInfo
         """
 
         return "TagInfo"
@@ -181,18 +184,20 @@ class TagApi(ModuleApi):
         :type is_video_multi_view: bool
         :return: List of tags IDs
         :rtype: list
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            img_id = 19373170
-            img_info = api.
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                img_id = 19373170
+                img_info = api.
         """
 
         tag_name_id_map = self.get_name_to_id_map(project_id)
@@ -245,9 +250,9 @@ class TagApi(ModuleApi):
         :return: List of tags IDs
         :rtype: list
 
-        :Usage example:
+        :Usage Example:
 
-             .. code-block:: python
+            .. code-block:: python
 
                 import supervisely as sly
 
@@ -307,17 +312,14 @@ class TagApi(ModuleApi):
         entity_id: Optional[int] = None,
     ) -> List[Dict[str, Union[str, int, None]]]:
         """
-        For images project:
-            Add Tags to existing Annotation Figures (labels).
-            The `tags_list` example:
-                [{"tagId": 12345, "figureId": 54321, "value": "tag_value"}, ...].
-        For video, pointcloud, volume and pointcloud episodes projects:
-            Add Tags to existing Annotation Objects.
-            The `frameRange` field is optional and is supported only for video and pointcloud episodes projects.
-            The `tags_list`` example:
-                [{"tagId": 12345, "objectId": 54321, "value": "tag_value"}, ...].
-            or with frameRange:
-                [{"tagId": 12345, "objectId": 54321, "value": "tag_value", "frameRange": [1, 10]}, ...].
+        Add tags to existing figures/objects.
+
+        - **Images projects**: tags are added to existing *figures* (labels).
+          Example element of ``tags_list``: ``{"tagId": 12345, "figureId": 54321, "value": "tag_value"}``.
+        - **Video / pointcloud / volume / pointcloud episodes projects**: tags are added to existing *objects*.
+          ``frameRange`` is optional and is supported only for video and pointcloud episodes projects.
+          Example element of ``tags_list``: ``{"tagId": 12345, "objectId": 54321, "value": "tag_value"}``,
+          or ``{"tagId": 12345, "objectId": 54321, "value": "tag_value", "frameRange": [1, 10]}``.
 
         All objects must belong to entities of the same project.
 
@@ -339,55 +341,56 @@ class TagApi(ModuleApi):
         :return: List of tags infos as dictionaries.
         :rtype: List[Dict[str, Union[str, int, None]]]
 
-        Usage example:
-        .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            api = sly.Api(server_address, token)
+                import supervisely as sly
 
-            tag_list = [
-                {
-                    "tagId": 25926,
-                    "figureId": 652959,
-                    "value": None # optional for tag with type 'None'
-                    "frameRange": [1, 10] # optional (supported only for video and pointcloud episodes projects)
-                },
-                {
-                    "tagId": 25927,
-                    "figureId": 652959,
-                    "value": "v1"
-                },
-                {
-                    "tagId": 25927,
-                    "figureId": 652958,
-                    "value": "v2",
-                }
-            ]
-            response = api.image.tag.add_to_figures(12345, tag_list)
+                api = sly.Api(server_address, token)
 
-            print(response)
-            # Output:
-            #    [
-            #        {
-            #            "id": 80421101,
-            #            "tagId": 25926,
-            #            "figureId": 652959,
-            #            "value": None
-            #        },
-            #        {
-            #            "id": 80421102,
-            #            "tagId": 25927,
-            #            "figureId": 652959,
-            #            "value": "v1"
-            #        },
-            #        {
-            #            "id": 80421103,
-            #            "tagId": 25927,
-            #            "figureId": 652958,
-            #            "value": "v2"
-            #        }
-            #    ]
+                tags_list = [
+                    {
+                        "tagId": 25926,
+                        "figureId": 652959,
+                        "value": None,  # optional for tag with type 'None'
+                        "frameRange": [1, 10],  # optional (only for video / pointcloud episodes)
+                    },
+                    {
+                        "tagId": 25927,
+                        "figureId": 652959,
+                        "value": "v1"
+                    },
+                    {
+                        "tagId": 25927,
+                        "figureId": 652958,
+                        "value": "v2",
+                    }
+                ]
+                response = api.image.tag.add_to_figures(12345, tag_list)
+
+                print(response)
+                # Output:
+                #    [
+                #        {
+                #            "id": 80421101,
+                #            "tagId": 25926,
+                #            "figureId": 652959,
+                #            "value": None
+                #        },
+                #        {
+                #            "id": 80421102,
+                #            "tagId": 25927,
+                #            "figureId": 652959,
+                #            "value": "v1"
+                #        },
+                #        {
+                #            "id": 80421103,
+                #            "tagId": 25927,
+                #            "figureId": 652958,
+                #            "value": "v2"
+                #        }
+                #    ]
         """
 
         if progress is not None:
@@ -453,32 +456,33 @@ class TagApi(ModuleApi):
         :return: List of tags IDs.
         :rtype: List[int]
 
-        Usage example:
-        .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            api = sly.Api(server_address, token)
+                import supervisely as sly
 
-            tag_list = [
-                {
-                    "tagId": 25926,
-                    "entityId": 652959,
-                    "value": None # optional for tag with type 'None'
-                    "frameRange": [1, 10] # optional (supported only for video projects)
-                },
-                {
-                    "tagId": 25927,
-                    "entityId": 652959,
-                    "value": "v1"
-                },
-                {
-                    "tagId": 25927,
-                    "entityId": 652958,
-                    "value": "v2"
-                }
-            ]
-            api.image.tag.add_to_entities_json(project_id=12345, tag_list=tag_list)
+                api = sly.Api(server_address, token)
+
+                tags_list = [
+                    {
+                        "tagId": 25926,
+                        "entityId": 652959,
+                        "value": None,  # optional for tag with type 'None'
+                        "frameRange": [1, 10],  # optional (only for video)
+                    },
+                    {
+                        "tagId": 25927,
+                        "entityId": 652959,
+                        "value": "v1"
+                    },
+                    {
+                        "tagId": 25927,
+                        "entityId": 652958,
+                        "value": "v2"
+                    }
+                ]
+                api.image.tag.add_to_entities_json(project_id=12345, tags_list=tags_list)
         """
 
         result = []
@@ -508,13 +512,10 @@ class TagApi(ModuleApi):
         entity_id: Optional[int] = None,
     ) -> List[Dict[str, Union[str, int, None]]]:
         """
-        For images project:
-            Add Tags to existing Annotation Figures (labels).
-            The `tags_map` example: {figure_id_1: TagCollection, ...}.
-        For video, pointcloud, volume and pointcloud episodes projects:
-            Add Tags to existing Annotation Objects.
-            The `frameRange` field is optional and is supported only for video and pointcloud episodes projects.
-            The `tags_map` example: {object_id_1: TagCollection, ...}.
+        Add a :class:`~supervisely.annotation.tag_collection.TagCollection` to each figure/object.
+
+        - **Images projects**: mapping is ``{figure_id: TagCollection, ...}``
+        - **Video / pointcloud / volume / pointcloud episodes projects**: mapping is ``{object_id: TagCollection, ...}``
 
         All objects must belong to entities of the same project.
 
@@ -534,35 +535,36 @@ class TagApi(ModuleApi):
         :return: List of tags infos as dictionaries.
         :rtype: List[Dict[str, Union[str, int, None]]]
 
-        Usage example:
-        .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            api = sly.Api(server_address, token)
+                import supervisely as sly
 
-            project_id = 12345
+                api = sly.Api(server_address, token)
 
-            tag_meta = sly.TagMeta("tag_name", sly.TagValueType.ANY_STRING)
-            meta = sly.ProjectMeta(tag_metas=[tag_meta])
-            meta = sly.ProjectMeta.from_json(api.project.update_meta(project_id, meta))
-            tag_meta = meta.get_tag_meta("tag_name")
+                project_id = 12345
 
-            # for images project:
-            tag_map = {
-                652959: sly.TagCollection([sly.Tag(tag_meta, value="v1"), sly.Tag(tag_meta, value="v2"), ...]),
-                652958: sly.TagCollection([sly.Tag(tag_meta, value="v3"), sly.Tag(tag_meta, value="v4"), ...]),
-                ...
-            }
-            api.image.tag.add_tags_to_objects(project_id, tag_map)
+                tag_meta = sly.TagMeta("tag_name", sly.TagValueType.ANY_STRING)
+                meta = sly.ProjectMeta(tag_metas=[tag_meta])
+                meta = sly.ProjectMeta.from_json(api.project.update_meta(project_id, meta))
+                tag_meta = meta.get_tag_meta("tag_name")
 
-            # for videos projects (frameRange is optional):
-            tag_map = {
-                652959: sly.VideoTagCollection([sly.VideoTag(tag_meta, value="v1", frameRange=[1, 10]), ...]),
-                652958: sly.VideoTagCollection([sly.VideoTag(tag_meta, value="v2", frameRange=[4, 12]), ...]),
-                ...
-            }
-            api.video.tag.add_to_objects_json_batch(project_id, tag_map)
+                # for images project:
+                tag_map = {
+                    652959: sly.TagCollection([sly.Tag(tag_meta, value="v1"), sly.Tag(tag_meta, value="v2"), ...]),
+                    652958: sly.TagCollection([sly.Tag(tag_meta, value="v3"), sly.Tag(tag_meta, value="v4"), ...]),
+                    ...
+                }
+                api.image.tag.add_tags_to_objects(project_id, tag_map)
+
+                # for videos projects (frameRange is optional):
+                tag_map = {
+                    652959: sly.VideoTagCollection([sly.VideoTag(tag_meta, value="v1", frameRange=[1, 10]), ...]),
+                    652958: sly.VideoTagCollection([sly.VideoTag(tag_meta, value="v2", frameRange=[4, 12]), ...]),
+                    ...
+                }
+                api.video.tag.add_to_objects_json_batch(project_id, tag_map)
         """
 
         OBJ_ID_FIELD = ApiField.FIGURE_ID if type(self) is TagApi else ApiField.OBJECT_ID

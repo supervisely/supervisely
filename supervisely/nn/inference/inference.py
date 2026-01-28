@@ -1197,15 +1197,15 @@ class Inference:
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            model_files = {
-                "checkpoint": "supervisely_integration/serve/best.pth",
-                "config": "supervisely_integration/serve/model_config.yml",
-            }
-            model_meta = sly.json.load_json_file("model_meta.json")
+                model_files = {
+                    "checkpoint": "supervisely_integration/serve/best.pth",
+                    "config": "supervisely_integration/serve/model_config.yml",
+                }
+                model_meta = sly.json.load_json_file("model_meta.json")
 
-            model.load_custom_checkpoint(model_files, model_meta)
+                model.load_custom_checkpoint(model_files, model_meta)
         """
 
         checkpoint = model_files.get("checkpoint")
@@ -1660,8 +1660,8 @@ class Inference:
 
             .. code-block:: python
 
-            image_path = "/root/projects/demo/img/sample.jpg"
-            ann = model.inference(image_path)
+                image_path = "/root/projects/demo/img/sample.jpg"
+                ann = model.inference(image_path)
         """
         input_is_list = True
         if not isinstance(source, list):
@@ -4897,16 +4897,17 @@ def _create_notify_after_complete_decorator(
         If an argument can be both positional and keyword,
         it is preferable to declare both 'arg_pos' and 'arg_key'
     :type arg_key: Optional[str]
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        @_create_notify_after_complete_decorator("Print arg1: %s", arg_pos=0)
-        def wrapped_function(arg1, kwarg1)
-            return
+        .. code-block:: python
 
-        wrapped_function("pos_arg", kwarg1="key_arg")
-        # Info    2023.07.04 11:37:59     Print arg1: pos_arg
+            @_create_notify_after_complete_decorator("Print arg1: %s", arg_pos=0)
+            def wrapped_function(arg1, kwarg1)
+                return
+
+            wrapped_function("pos_arg", kwarg1="key_arg")
+            # Info    2023.07.04 11:37:59     Print arg1: pos_arg
     """
 
     def decorator(func):

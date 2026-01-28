@@ -21,145 +21,146 @@ class ObjClassCollection(KeyIndexedCollection, JsonSerializable):
     Collection with :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` instances. :class:`ObjClassCollection<ObjClassCollection>` object is immutable.
 
     :raises: :class:`DuplicateKeyError` if instance with given name already exist
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        # Create ObjClass (see class ObjClass for more information)
-        class_lemon = sly.ObjClass('lemon', sly.Rectangle)
-        class_kiwi = sly.ObjClass('kiwi', sly.Bitmap)
+            import supervisely as sly
 
-        class_arr = [class_lemon, class_kiwi]
+            # Create ObjClass (see class ObjClass for more information)
+            class_lemon = sly.ObjClass('lemon', sly.Rectangle)
+            class_kiwi = sly.ObjClass('kiwi', sly.Bitmap)
 
-        # Create ObjClassCollection from ObjClasses
-        classes = sly.ObjClassCollection(class_arr)
+            class_arr = [class_lemon, class_kiwi]
 
-        # Add items to ObjClassCollection
-        class_potato = sly.ObjClass('potato', sly.Bitmap)
+            # Create ObjClassCollection from ObjClasses
+            classes = sly.ObjClassCollection(class_arr)
 
-        # Remember that ObjClassCollection is immutable, and we need to assign new instance of ObjClassCollection to a new variable
-        classes = classes.add(class_potato)
+            # Add items to ObjClassCollection
+            class_potato = sly.ObjClass('potato', sly.Bitmap)
 
-        # You can also add multiple items to collection
-        class_cabbage = sly.ObjClass('cabbage', sly.Rectangle)
-        class_carrot = sly.ObjClass('carrot', sly.Bitmap)
-        class_turnip = sly.ObjClass('turnip', sly.Polygon)
+            # Remember that ObjClassCollection is immutable, and we need to assign new instance of ObjClassCollection to a new variable
+            classes = classes.add(class_potato)
 
-        classes = classes.add_items([class_cabbage, class_carrot, class_turnip])
+            # You can also add multiple items to collection
+            class_cabbage = sly.ObjClass('cabbage', sly.Rectangle)
+            class_carrot = sly.ObjClass('carrot', sly.Bitmap)
+            class_turnip = sly.ObjClass('turnip', sly.Polygon)
 
-        # Has key, checks if given key exist in collection
-        classes.has_key("cabbage")
-        # Output: True
+            classes = classes.add_items([class_cabbage, class_carrot, class_turnip])
 
-        # Intersection, finds intersection of given list of instances with collection items
-        class_dog = sly.ObjClass('dog', sly.Rectangle)
-        class_cat = sly.ObjClass('cat', sly.Rectangle)
-        class_turtle = sly.ObjClass('turtle', sly.Rectangle)
+            # Has key, checks if given key exist in collection
+            classes.has_key("cabbage")
+            # Output: True
 
-        classes_animals = sly.ObjClassCollection([class_dog, class_cat, class_turtle])
+            # Intersection, finds intersection of given list of instances with collection items
+            class_dog = sly.ObjClass('dog', sly.Rectangle)
+            class_cat = sly.ObjClass('cat', sly.Rectangle)
+            class_turtle = sly.ObjClass('turtle', sly.Rectangle)
 
-        classes_intersections = classes.intersection(classes_animals)
-        print(classes_intersections.to_json())
-        # Output: []
+            classes_animals = sly.ObjClassCollection([class_dog, class_cat, class_turtle])
 
-        # Let's add the potato ObjClass from another collection and compare them again
-        classes_animals = classes_animals.add(class_potato)
+            classes_intersections = classes.intersection(classes_animals)
+            print(classes_intersections.to_json())
+            # Output: []
 
-        classes_intersections = classes.intersection(classes_animals)
-        print(classes_intersections.to_json())
-        # Output: [
-        #     {
-        #         "title":"potato",
-        #         "shape":"bitmap",
-        #         "color":"#8A570F",
-        #         "geometry_config":{},
-        #         "hotkey":""
-        #     }
-        # ]
+            # Let's add the potato ObjClass from another collection and compare them again
+            classes_animals = classes_animals.add(class_potato)
 
-        # Difference, finds difference between collection and given list of ObjClass or ObjClassCollection
-        class_car = sly.ObjClass('car', sly.Rectangle)
-        class_bicycle = sly.ObjClass('bicycle', sly.Rectangle)
+            classes_intersections = classes.intersection(classes_animals)
+            print(classes_intersections.to_json())
+            # Output: [
+            #     {
+            #         "title":"potato",
+            #         "shape":"bitmap",
+            #         "color":"#8A570F",
+            #         "geometry_config":{},
+            #         "hotkey":""
+            #     }
+            # ]
 
-        classes_vehicles = sly.ObjClassCollection([class_car, class_bicycle])
+            # Difference, finds difference between collection and given list of ObjClass or ObjClassCollection
+            class_car = sly.ObjClass('car', sly.Rectangle)
+            class_bicycle = sly.ObjClass('bicycle', sly.Rectangle)
 
-        class_pedestrian = sly.ObjClass('pedestrian', sly.Rectangle)
-        class_road = sly.ObjClass('road', sly.Rectangle)
+            classes_vehicles = sly.ObjClassCollection([class_car, class_bicycle])
 
-        difference = classes_vehicles.difference([class_pedestrian, class_road])
-        print(difference.to_json())
-        # Output: [
-        #     {
-        #         "title":"car",
-        #         "shape":"rectangle",
-        #         "color":"#8A0F3B",
-        #         "geometry_config":{},
-        #         "hotkey":""
-        #     },
-        #     {
-        #         "title":"bicycle",
-        #         "shape":"rectangle",
-        #         "color":"#0F8A1F",
-        #         "geometry_config":{},
-        #         "hotkey":""
-        #     }
-        # ]
+            class_pedestrian = sly.ObjClass('pedestrian', sly.Rectangle)
+            class_road = sly.ObjClass('road', sly.Rectangle)
 
-        # Merge, merges collection and given list of ObjClasses
-        c_1 = sly.ObjClassCollection([class_car, class_bicycle])
-        c_2 = sly.ObjClassCollection([class_pedestrian, class_road])
+            difference = classes_vehicles.difference([class_pedestrian, class_road])
+            print(difference.to_json())
+            # Output: [
+            #     {
+            #         "title":"car",
+            #         "shape":"rectangle",
+            #         "color":"#8A0F3B",
+            #         "geometry_config":{},
+            #         "hotkey":""
+            #     },
+            #     {
+            #         "title":"bicycle",
+            #         "shape":"rectangle",
+            #         "color":"#0F8A1F",
+            #         "geometry_config":{},
+            #         "hotkey":""
+            #     }
+            # ]
 
-        c_3 = c_1.merge(c_2)
-        print(c_3.to_json())
-        # Output: [
-        #     {
-        #         "title":"pedestrian",
-        #         "shape":"rectangle",
-        #         "color":"#8A0F27",
-        #         "geometry_config":{},
-        #         "hotkey":""
-        #     },
-        #     {
-        #         "title":"road",
-        #         "shape":"rectangle",
-        #         "color":"#8A620F",
-        #         "geometry_config":{},
-        #         "hotkey":""
-        #     },
-        #     {
-        #         "title":"car",
-        #         "shape":"rectangle",
-        #         "color":"#8A0F3B",
-        #         "geometry_config":{},
-        #         "hotkey":""
-        #     },
-        #     {
-        #         "title":"bicycle",
-        #         "shape":"rectangle",
-        #         "color":"#0F8A1F",
-        #         "geometry_config":{},
-        #         "hotkey":""
-        #     }
-        # ]
+            # Merge, merges collection and given list of ObjClasses
+            c_1 = sly.ObjClassCollection([class_car, class_bicycle])
+            c_2 = sly.ObjClassCollection([class_pedestrian, class_road])
 
-        # Merge will raise ValueError if item name from given list is in collection but items in both are different
-        class_bicycle_1 = sly.ObjClass('bicycle', sly.Rectangle)
-        class_bicycle_2 = sly.ObjClass('bicycle', sly.Bitmap)
+            c_3 = c_1.merge(c_2)
+            print(c_3.to_json())
+            # Output: [
+            #     {
+            #         "title":"pedestrian",
+            #         "shape":"rectangle",
+            #         "color":"#8A0F27",
+            #         "geometry_config":{},
+            #         "hotkey":""
+            #     },
+            #     {
+            #         "title":"road",
+            #         "shape":"rectangle",
+            #         "color":"#8A620F",
+            #         "geometry_config":{},
+            #         "hotkey":""
+            #     },
+            #     {
+            #         "title":"car",
+            #         "shape":"rectangle",
+            #         "color":"#8A0F3B",
+            #         "geometry_config":{},
+            #         "hotkey":""
+            #     },
+            #     {
+            #         "title":"bicycle",
+            #         "shape":"rectangle",
+            #         "color":"#0F8A1F",
+            #         "geometry_config":{},
+            #         "hotkey":""
+            #     }
+            # ]
 
-        classes_1 = sly.ObjClassCollection([class_bicycle_1])
-        classes_2 = sly.ObjClassCollection([class_bicycle_2])
+            # Merge will raise ValueError if item name from given list is in collection but items in both are different
+            class_bicycle_1 = sly.ObjClass('bicycle', sly.Rectangle)
+            class_bicycle_2 = sly.ObjClass('bicycle', sly.Bitmap)
 
-        test_merge = classes_1.merge(classes_2)
-        # Output: ValueError: Error during merge for key 'bicycle': values are different
+            classes_1 = sly.ObjClassCollection([class_bicycle_1])
+            classes_2 = sly.ObjClassCollection([class_bicycle_2])
 
-        # Let's try to create now a collection where ObjClasses have identical names
-        class_cow = sly.ObjClass('cow', sly.Rectangle)
-        class_chicken = sly.ObjClass('cow', sly.Rectangle)
+            test_merge = classes_1.merge(classes_2)
+            # Output: ValueError: Error during merge for key 'bicycle': values are different
 
-        test_classes = sly.ObjClassCollection([class_cow, class_chicken])
-        # Output: DuplicateKeyError: "Key 'cow' already exists"
+            # Let's try to create now a collection where ObjClasses have identical names
+            class_cow = sly.ObjClass('cow', sly.Rectangle)
+            class_chicken = sly.ObjClass('cow', sly.Rectangle)
+
+            test_classes = sly.ObjClassCollection([class_cow, class_chicken])
+            # Output: DuplicateKeyError: "Key 'cow' already exists"
     """
 
     item_type = ObjClass
@@ -170,36 +171,37 @@ class ObjClassCollection(KeyIndexedCollection, JsonSerializable):
 
         :return: List of dicts in json format
         :rtype: :class:`List[dict]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            class_lemon = sly.ObjClass('lemon', sly.Rectangle)
-            class_kiwi = sly.ObjClass('kiwi', sly.Bitmap)
+                import supervisely as sly
 
-            # Add ObjClasses to ObjClassCollection
-            classes = sly.ObjClassCollection([class_lemon, class_kiwi])
+                class_lemon = sly.ObjClass('lemon', sly.Rectangle)
+                class_kiwi = sly.ObjClass('kiwi', sly.Bitmap)
 
-            classes_json = classes.to_json()
-            print(classes_json)
-            # Output: [
-            #      {
-            #           "title": "lemon",
-            #           "shape": "rectangle",
-            #           "color": "#300F8A",
-            #           "geometry_config": {},
-            #           "hotkey": ""
-            #      },
-            #      {
-            #           "title": "kiwi",
-            #           "shape": "bitmap",
-            #           "color": "#7C0F8A",
-            #           "geometry_config": {},
-            #           "hotkey": ""
-            #      }
-            # ]
+                # Add ObjClasses to ObjClassCollection
+                classes = sly.ObjClassCollection([class_lemon, class_kiwi])
+
+                classes_json = classes.to_json()
+                print(classes_json)
+                # Output: [
+                #      {
+                #           "title": "lemon",
+                #           "shape": "rectangle",
+                #           "color": "#300F8A",
+                #           "geometry_config": {},
+                #           "hotkey": ""
+                #      },
+                #      {
+                #           "title": "kiwi",
+                #           "shape": "bitmap",
+                #           "color": "#7C0F8A",
+                #           "geometry_config": {},
+                #           "hotkey": ""
+                #      }
+                # ]
         """
         return [obj_class.to_json() for obj_class in self]
 
@@ -212,28 +214,29 @@ class ObjClassCollection(KeyIndexedCollection, JsonSerializable):
         :type data: List[dict]
         :return: ObjClassCollection object
         :rtype: :class:`ObjClassCollection<ObjClassCollection>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            data = [
-                 {
-                      "title": "lemon",
-                      "shape": "rectangle",
-                      "color": "#300F8A",
-                      "hotkey": ""
-                 },
-                 {
-                      "title": "kiwi",
-                      "shape": "bitmap",
-                      "color": "#7C0F8A",
-                      "hotkey": ""
-                 }
-            ]
+                import supervisely as sly
 
-            classes = sly.ObjClassCollection.from_json(data)
+                data = [
+                    {
+                        "title": "lemon",
+                        "shape": "rectangle",
+                        "color": "#300F8A",
+                        "hotkey": ""
+                    },
+                    {
+                        "title": "kiwi",
+                        "shape": "bitmap",
+                        "color": "#7C0F8A",
+                        "hotkey": ""
+                    }
+                ]
+
+                classes = sly.ObjClassCollection.from_json(data)
         """
         obj_classes = [ObjClass.from_json(obj_class_json) for obj_class_json in data]
         return cls(obj_classes)
@@ -246,30 +249,31 @@ class ObjClassCollection(KeyIndexedCollection, JsonSerializable):
         :type logger: logger, optional
         :return: Notification if there are objects with the same colors, otherwise :class:`None`
         :rtype: :class:`str` or :class:`NoneType`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            # Let's create 2 ObjClasses with the same color
-            class_lemon = sly.ObjClass('lemon', sly.Rectangle, [0, 0, 0])
-            class_kiwi = sly.ObjClass('kiwi', sly.Bitmap, [0, 0, 0])
+                import supervisely as sly
 
-            # Add them to ObjClassCollection
-            classes = sly.ObjClassCollection([class_lemon, class_kiwi])
+                # Let's create 2 ObjClasses with the same color
+                class_lemon = sly.ObjClass('lemon', sly.Rectangle, [0, 0, 0])
+                class_kiwi = sly.ObjClass('kiwi', sly.Bitmap, [0, 0, 0])
 
-            print(classes.validate_classes_colors())
-            # Output: Classes ['lemon', 'kiwi'] have the same RGB color = [0, 0, 0]
+                # Add them to ObjClassCollection
+                classes = sly.ObjClassCollection([class_lemon, class_kiwi])
 
-            # Now let's change colors of our ObjClasses
-            class_lemon = sly.ObjClass('lemon', sly.Rectangle, [255, 0, 0])
-            class_kiwi = sly.ObjClass('kiwi', sly.Bitmap, [0, 0, 255])
+                print(classes.validate_classes_colors())
+                # Output: Classes ['lemon', 'kiwi'] have the same RGB color = [0, 0, 0]
 
-            classes = sly.ObjClassCollection([class_lemon, class_kiwi])
+                # Now let's change colors of our ObjClasses
+                class_lemon = sly.ObjClass('lemon', sly.Rectangle, [255, 0, 0])
+                class_kiwi = sly.ObjClass('kiwi', sly.Bitmap, [0, 0, 255])
 
-            print(classes.validate_classes_colors())
-            # Output: None
+                classes = sly.ObjClassCollection([class_lemon, class_kiwi])
+
+                print(classes.validate_classes_colors())
+                # Output: None
         """
         color_names = defaultdict(list)
         for obj_class in self:

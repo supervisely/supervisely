@@ -63,30 +63,31 @@ class Transfer(Widget):
     remove(): removes items from the widget by their keys.
     get_items_keys(): returns the list of keys of the items, which are currently displayed in the widget.
 
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
-        from supervisely.app.widgets import Transfer
+        .. code-block:: python
 
-        # Creating widget items with Transfer.Item objects.
-        item1 = Transfer.Item(key="cat", label="Cat", disabled=True)
-        item2 = Transfer.Item(key="dog", label="Dog")
+            from supervisely.app.widgets import Transfer
 
-        # Creating Transfer widget with the list of Transfer.Item objects. The item "dog" will be displayed
-        # in the right (target) list at widget initialization.
-        transfer = Transfer(items=[item1, item2], transferred_items=["dog"])
+            # Creating widget items with Transfer.Item objects.
+            item1 = Transfer.Item(key="cat", label="Cat", disabled=True)
+            item2 = Transfer.Item(key="dog", label="Dog")
 
-        # Setting new transferred items. The item "cat" will be displayed in the right (target) list.
-        # Note: items that was in transferred_items list before, but not in the new list, will be moved
-        # to untransferred items list (left).
-        transfer.set_transferred_items(["cat"])
-        print(transfer.get_transferred_items()) # ["cat"]
-        print(transfer.get_untransferred_items()) # ["dog"]
+            # Creating Transfer widget with the list of Transfer.Item objects. The item "dog" will be displayed
+            # in the right (target) list at widget initialization.
+            transfer = Transfer(items=[item1, item2], transferred_items=["dog"])
 
-        # Creating empty Transfer widget.
-        transfer = Transfer()
-        # Adding items (as strings) to the widget. The item "dog" will be displayed in the right (target) list.
-        transfer.set(["cat", "dog", "mouse"], transferred_items=["dog"])
+            # Setting new transferred items. The item "cat" will be displayed in the right (target) list.
+            # Note: items that was in transferred_items list before, but not in the new list, will be moved
+            # to untransferred items list (left).
+            transfer.set_transferred_items(["cat"])
+            print(transfer.get_transferred_items()) # ["cat"]
+            print(transfer.get_untransferred_items()) # ["dog"]
+
+            # Creating empty Transfer widget.
+            transfer = Transfer()
+            # Adding items (as strings) to the widget. The item "dog" will be displayed in the right (target) list.
+            transfer.set(["cat", "dog", "mouse"], transferred_items=["dog"])
     """
     class Routes:
         VALUE_CHANGED = "value_changed"
@@ -108,13 +109,13 @@ class Transfer(Widget):
         :param disabled: If True, the item will be disabled and won't be transferable. Defaults to False.
         :type disabled: Optional[bool]
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            disabled_item = Transfer.Item(key="dog", label="Dog", disabled=True)
-            item_with_label = Transfer.Item(key="cat", label="Cat")
-            simple_item = Transfer.Item(key="mouse")
+                disabled_item = Transfer.Item(key="dog", label="Dog", disabled=True)
+                item_with_label = Transfer.Item(key="cat", label="Cat")
+                simple_item = Transfer.Item(key="mouse")
         """
 
         def __init__(self, key: str, label: Optional[str] = None, disabled: Optional[bool] = False):
@@ -295,18 +296,18 @@ class Transfer(Widget):
 
         :return: Wrapped function.
         :rtype: Callable
-        
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            tr = Transfer(items=["item1", "item2", "item3"], transferred_items=["item1"])
+            .. code-block:: python
 
-            # Move "item2" from the left list to the right list. 
-            @tr.value_changed
-            def func(items):        
-                print(items.transferred_items) # ["item1", "item2"]
-                print(items.untransferred_items) # ["item3"]
+                tr = Transfer(items=["item1", "item2", "item3"], transferred_items=["item1"])
+
+                # Move "item2" from the left list to the right list.
+                @tr.value_changed
+                def func(items):
+                    print(items.transferred_items) # ["item1", "item2"]
+                    print(items.untransferred_items) # ["item3"]
         """
 
         route_path = self.get_route_path(Transfer.Routes.VALUE_CHANGED)
@@ -336,17 +337,17 @@ class Transfer(Widget):
             objects or as strings of the item keys.
         :type items: Union[List[Transfer.Item], List[str]]
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            tr = Transfer(items=["cat", "dog"])
-            print(tr.get_untransferred_items()) # ["cat", "dog"]
-                
-            tr.set(items=["bird", "mouse"])
-            print(tr.get_untransferred_items()) # ["bird", "mouse"]
+                tr = Transfer(items=["cat", "dog"])
+                print(tr.get_untransferred_items()) # ["cat", "dog"]
 
-            # As you can see, the list of items was replaced with the new one.
+                tr.set(items=["bird", "mouse"])
+                print(tr.get_untransferred_items()) # ["bird", "mouse"]
+
+                # As you can see, the list of items was replaced with the new one.
         """
 
         if items:
@@ -373,7 +374,7 @@ class Transfer(Widget):
         """
         Adds new items to the current list of items.
 
-        If the list of items is specified as strings, Transfer.Item objects will be created from them. If the list of adding 
+        If the list of items is specified as strings, Transfer.Item objects will be created from them. If the list of adding
         items contains any items with the same key as the items in the current list, an error will be raised.
 
         :param items: List of items to be added to the current list of items. Can be specified as Transfer.Item objects or
@@ -382,15 +383,15 @@ class Transfer(Widget):
 
         :raises ValueError: If the list of adding items contains any items with the same key as the items in the current list.
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            tr = Transfer(items=["cat", "dog"])
-            print(tr.get_untransferred_items()) # ["cat", "dog"]
-                
-            tr.add(items=["bird", "mouse"])
-            print(tr.get_untransferred_items()) # ["cat", "dog", "bird", "mouse"]
+                tr = Transfer(items=["cat", "dog"])
+                print(tr.get_untransferred_items()) # ["cat", "dog"]
+
+                tr.add(items=["bird", "mouse"])
+                print(tr.get_untransferred_items()) # ["cat", "dog", "bird", "mouse"]
         """
 
         items = self.__checked_items(items)

@@ -23,26 +23,28 @@ class PointcloudEpisodeApi(PointcloudApi):
 
     :param api: API connection to the server.
     :type api: Api
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import os
-        from dotenv import load_dotenv
+        .. code-block:: python
 
-        import supervisely as sly
+            import os
+            from dotenv import load_dotenv
 
-        # Load secrets and create API object from .env file (recommended)
-        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-        if sly.is_development():
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-        api = sly.Api.from_env()
+            import supervisely as sly
 
-        # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-        pcd_epsodes_id = 19373295
-        pcd_epsodes_info = api.pointcloud_episode.get_info_by_id(pcd_epsodes_id) # api usage example
+            api = sly.Api.from_env()
+
+            # Pass values into the API constructor (optional, not recommended)
+            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
+
+            pcd_epsodes_id = 19373295
+            pcd_epsodes_info = api.pointcloud_episode.get_info_by_id(pcd_epsodes_id) # api usage example
     """
 
     def __init__(self, api):
@@ -69,22 +71,23 @@ class PointcloudEpisodeApi(PointcloudApi):
         :return: Dict with frame_id and name of pointcloud.
         :rtype: Dict
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            dataset_id = 62664
-            frame_to_name_map = api.pointcloud_episode.get_frame_name_map(dataset_id)
-            print(frame_to_name_map)
+                dataset_id = 62664
+                frame_to_name_map = api.pointcloud_episode.get_frame_name_map(dataset_id)
+                print(frame_to_name_map)
 
-            # Output:
-            # {0: '001', 1: '002'}
+                # Output:
+                # {0: '001', 1: '002'}
         """
 
         pointclouds = self.get_list(dataset_id)
@@ -143,22 +146,22 @@ class PointcloudEpisodeApi(PointcloudApi):
         :return: Max frame index.
         :rtype: int
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            dataset_id = 62664
-            max_frame = api.pointcloud_episode.get_max_frame(dataset_id)
-            print(max_frame)
+                dataset_id = 62664
+                max_frame = api.pointcloud_episode.get_max_frame(dataset_id)
+                print(max_frame)
 
-            # Output:
-            # 1
+                # Output: 1
         """
 
         pointclouds = self.get_list(dataset_id)

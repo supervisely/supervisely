@@ -1181,18 +1181,18 @@ class Application(metaclass=Singleton):
         :return: decorator
         :rtype: Callable
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            app = sly.Application(layout=layout)
+                app = sly.Application(layout=layout)
 
-            @app.event(sly.Event.Brush.LeftMouseReleased)
-            def some_function(api: sly.Api, event: sly.Event.Brush.LeftMouseReleased):
-                # do something
-                pass
+                @app.event(sly.Event.Brush.LeftMouseReleased)
+                def some_function(api: sly.Api, event: sly.Event.Brush.LeftMouseReleased):
+                    # do something
+                    pass
         """
 
         def inner(func: Callable) -> Callable:

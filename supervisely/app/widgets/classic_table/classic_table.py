@@ -88,35 +88,36 @@ class ClassicTable(Widget):
     :param widget_id: The ID of the widget.
     :type widget_id: Optional[str]
 
-    :Usage example:
-    :Usage example:
-    .. code-block:: python
+    :Usage Example:
 
-        from supervisely.app.widgets import ClassicTable
+        .. code-block:: python
 
-        # Usage example 1: Pandas DataFrame
-        table_data = pd.DataFrame(
-            data=[
-                ["row_1_column_1", "row_1_column_2", "row_1_column_3"],
-                ["row_2_column_1", "row_2_column_2", "row_2_column_3"],
-                ["row_3_column_1", "row_3_column_2", "row_3_column_3"],
-            ], columns=["col_name_1", "col_name_2", "col_name_3"]
-        )
+            from supervisely.app.widgets import ClassicTable
 
-        classic_table = ClassicTable(data=table_data)
+            # Usage example 1: Pandas DataFrame
+            table_data = pd.DataFrame(
+                data=[
+                    ["row_1_column_1", "row_1_column_2", "row_1_column_3"],
+                    ["row_2_column_1", "row_2_column_2", "row_2_column_3"],
+                    ["row_3_column_1", "row_3_column_2", "row_3_column_3"],
+                ], 
+                columns=["col_name_1", "col_name_2", "col_name_3"]
+            )
 
-        # Usage example 2: Python dict
-        table_data =  {
-            "columns_names": ["col_name_1", "col_name_2"],
-            "values_by_rows": [
-        ["row_1_column_1", "row_1_column_2"],
-        ["row_2_column_1", "row_2_column_2"],
-            ]
-        }
+            classic_table = ClassicTable(data=table_data)
 
-        columns = ["col_name_1", "col_name_2"]
+            # Usage example 2: Python dict
+            table_data =  {
+                "columns_names": ["col_name_1", "col_name_2"],
+                "values_by_rows": [
+                    ["row_1_column_1", "row_1_column_2"],
+                    ["row_2_column_1", "row_2_column_2"],
+                ]
+            }
 
-        classic_table = ClassicTable(data=table_data, columns=columns)
+            columns = ["col_name_1", "col_name_2"]
+
+            classic_table = ClassicTable(data=table_data, columns=columns)
 
     """
 

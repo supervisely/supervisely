@@ -43,11 +43,13 @@ class Button(Widget):
     :param icon_color: Color of the icon.
     :type icon_color: Optional[str]
 
-    :Usage example:
-    .. code-block:: python
-        from supervisely.app.widgets import Button
+    :Usage Example:
 
-        button = Button(text="Button", button_type="primary", button_size="large")
+        .. code-block:: python
+
+            from supervisely.app.widgets import Button
+
+            button = Button(text="Button", button_type="primary", button_size="large")
     """
 
     class Routes:
@@ -270,7 +272,7 @@ class Button(Widget):
         :rtype: bool
         """
         return self._disabled
-    
+
     @property
     def style(self) -> Optional[str]:
         """Returns the CSS style applied to the button.
@@ -279,7 +281,7 @@ class Button(Widget):
         :rtype: Optional[str]
         """
         return self._style
-    
+
     @style.setter
     def style(self, value: Optional[str]) -> None:
         """Sets the CSS style to be applied to the button.

@@ -41,15 +41,15 @@ class Point(Geometry):
     :param created_at: Date and Time when Point was created. Date Format is the same as in "updated_at" parameter.
     :type created_at: str, optional
 
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
+            import supervisely as sly
 
-        row = 100
-        col = 200
-        figure = sly.Point(row, col)
+            row = 100
+            col = 200
+            figure = sly.Point(row, col)
     """
 
     def __init__(
@@ -79,12 +79,13 @@ class Point(Geometry):
 
         :return: Height of Point
         :rtype: :class:`int`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            print(figure.row)
-            # Output: 100
+            .. code-block:: python
+
+                print(figure.row)
+                # Output: 100
         """
         return self._row
 
@@ -95,12 +96,13 @@ class Point(Geometry):
 
         :return: Width of Point
         :rtype: :class:`int`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            print(figure.col)
-            # Output: 200
+            .. code-block:: python
+
+                print(figure.col)
+                # Output: 200
         """
         return self._col
 
@@ -131,14 +133,15 @@ class Point(Geometry):
         :type created_at: str, optional
         :return: Point object
         :rtype: :class:`Point<Point>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            figure_loc = sly.PointLocation(100, 200)
-            figure = sly.Point.from_point_location(figure_loc)
+                import supervisely as sly
+
+                figure_loc = sly.PointLocation(100, 200)
+                figure = sly.Point.from_point_location(figure_loc)
         """
         return cls(
             row=pt.row,
@@ -157,11 +160,12 @@ class Point(Geometry):
 
         :return: PointLocation object
         :rtype: :class:`PointLocation<supervisely.geometry.point_location.PointLocation>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            figure_loc = figure.point_location
+            .. code-block:: python
+
+                figure_loc = figure.point_location
         """
         return PointLocation(row=self.row, col=self.col)
 
@@ -181,11 +185,11 @@ class Point(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            crop_figures = figure.crop(sly.Rectangle(1, 1, 300, 350))
+                crop_figures = figure.crop(sly.Rectangle(1, 1, 300, 350))
         """
         return [self.clone()] if rect.contains_point_location(self.point_location) else []
 
@@ -200,15 +204,15 @@ class Point(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
-            from supervisely.geometry.image_rotator import ImageRotator
+                import supervisely as sly
+                from supervisely.geometry.image_rotator import ImageRotator
 
-            # Remember that Point class object is immutable, and we need to assign new instance of Point to a new variable
-            height, width = 300, 400
-            rotator = ImageRotator((height, width), 25)
-            rotate_figure = figure.rotate(rotator)
+                # Remember that Point class object is immutable, and we need to assign new instance of Point to a new variable
+                height, width = 300, 400
+                rotator = ImageRotator((height, width), 25)
+                rotate_figure = figure.rotate(rotator)
         """
         return self.from_point_location(self.point_location.rotate(rotator))
 
@@ -225,12 +229,12 @@ class Point(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            # Remember that Point class object is immutable, and we need to assign new instance of Point to a new variable
-            in_height, in_width = 300, 400
-            out_height, out_width = 600, 800
-            resize_figure = figure.resize((in_height, in_width), (out_height, out_width))
+                # Remember that Point class object is immutable, and we need to assign new instance of Point to a new variable
+                in_height, in_width = 300, 400
+                out_height, out_width = 600, 800
+                resize_figure = figure.resize((in_height, in_width), (out_height, out_width))
         """
         return self.from_point_location(self.point_location.resize(in_size, out_size))
 
@@ -245,11 +249,11 @@ class Point(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            # Remember that Point class object is immutable, and we need to assign new instance of Point to a new variable
-            height, width = 300, 400
-            fliplr_figure = figure.fliplr((height, width))
+                # Remember that Point class object is immutable, and we need to assign new instance of Point to a new variable
+                height, width = 300, 400
+                fliplr_figure = figure.fliplr((height, width))
         """
         return self.from_point_location(self.point_location.fliplr(img_size))
 
@@ -264,11 +268,11 @@ class Point(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            # Remember that Point class object is immutable, and we need to assign new instance of Point to a new variable
-            height, width = 300, 400
-            flipud_figure = figure.flipud((height, width))
+                # Remember that Point class object is immutable, and we need to assign new instance of Point to a new variable
+                height, width = 300, 400
+                flipud_figure = figure.flipud((height, width))
         """
         return self.from_point_location(self.point_location.flipud(img_size))
 
@@ -283,10 +287,10 @@ class Point(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            # Remember that Point class object is immutable, and we need to assign new instance of Point to a new variable
-            scale_figure = figure.scale(0.75)
+                # Remember that Point class object is immutable, and we need to assign new instance of Point to a new variable
+                scale_figure = figure.scale(0.75)
         """
         return self.from_point_location(self.point_location.scale(factor))
 
@@ -303,10 +307,10 @@ class Point(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            # Remember that Point class object is immutable, and we need to assign new instance of Point to a new variable
-            translate_figure = figure.translate(150, 350)
+                # Remember that Point class object is immutable, and we need to assign new instance of Point to a new variable
+                translate_figure = figure.translate(150, 350)
         """
         return self.from_point_location(self.point_location.translate(drow, dcol))
 
@@ -329,10 +333,10 @@ class Point(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            print(figure.area)
-            # Output: 0.0
+                print(figure.area)
+                # Output: 0.0
         """
         return 0.0
 
@@ -345,9 +349,9 @@ class Point(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            rectangle = figure.to_bbox()
+                rectangle = figure.to_bbox()
         """
         return Rectangle(top=self.row, left=self.col, bottom=self.row, right=self.col)
 
@@ -357,20 +361,21 @@ class Point(Geometry):
 
         :return: Json format as a dict
         :rtype: :class:`dict`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            figure_json = figure.to_json()
-            print(figure_json)
-            # Output: {
-            #    "points": {
-            #        "exterior": [
-            #            [200, 100]
-            #        ],
-            #        "interior": []
-            #    }
-            # }
+            .. code-block:: python
+
+                figure_json = figure.to_json()
+                print(figure_json)
+                # Output: {
+                #    "points": {
+                #        "exterior": [
+                #            [200, 100]
+                #        ],
+                #        "interior": []
+                #    }
+                # }
         """
         res = self.point_location.to_json()
         self._add_creation_info(res)
@@ -385,21 +390,20 @@ class Point(Geometry):
         :type data: dict
         :return: Point object
         :rtype: :class:`Point<Point>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            figure_json = {
-                "points": {
-                    "exterior": [
-                        [200, 100]
-                    ],
-                    "interior": []
+                import supervisely as sly
+
+                figure_json = {
+                    "points": {
+                        "exterior": [[200, 100]],
+                        "interior": []
+                    }
                 }
-            }
-            figure = sly.Point.from_json(figure_json)
+                figure = sly.Point.from_json(figure_json)
         """
         labeler_login = data.get(LABELER_LOGIN, None)
         updated_at = data.get(UPDATED_AT, None)

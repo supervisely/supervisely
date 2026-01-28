@@ -58,18 +58,18 @@ class Cuboid2d(GraphNodes):
     :param created_at: Date and Time when Cuboid2d was created. Date Format is the same as in "updated_at" parameter.
     :type created_at: str, optional
 
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
-        from supervisely.geometry.graph import Node, Cuboid2d
+            import supervisely as sly
+            from supervisely.geometry.graph import Node, Cuboid2d
 
-        vertex_1 = Node(sly.PointLocation(5, 5))
-        vertex_2 = Node(sly.PointLocation(100, 100))
-        vertex_3 = Node(sly.PointLocation(200, 250))
-        nodes = {0: vertex_1, 1: vertex_2, 2: vertex_3}
-        figure = Cuboid2d(nodes)
+            vertex_1 = Node(sly.PointLocation(5, 5))
+            vertex_2 = Node(sly.PointLocation(100, 100))
+            vertex_3 = Node(sly.PointLocation(200, 250))
+            nodes = {0: vertex_1, 1: vertex_2, 2: vertex_3}
+            figure = Cuboid2d(nodes)
     """
 
     items_json_field = VERTICES
@@ -170,42 +170,37 @@ class Cuboid2d(GraphNodes):
         :type data: Dict[str, Dict]
         :return: Cuboid2d object
         :rtype: :class:`Cuboid2d<Cuboid2d>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            figure_json = {
-                "vertices": {
-                    "0": {
-                        "loc": [5, 5]
-                    },
-                    "1": {
-                        "loc": [100, 100]
-                    },
-                    "2": {
-                        "loc": [250, 200]
-                    },
-                    "position": {
-                        "x": 0.0657651107620552,
-                        "y": -0.05634319555373257,
-                        "z": 0.7267282757573887
-                    },
-                    "rotation": { "x": 0, "y": 0, "z": 0 },
-                    "dimensions": {
-                        "x": 0.1425456564648202,
-                        "y": 0.1,
-                        "z": 0.36738880874660756
-                    },
-                    "face": [
-                        "face2-topleft",
-                        "face2-topright",
-                        "face2-bottomright",
-                        "face2-bottomleft"
-                    ]
+            .. code-block:: python
+
+                figure_json = {
+                    "vertices": {
+                        "0": {"loc": [5, 5]},
+                        "1": {"loc": [100, 100]},
+                        "2": {"loc": [250, 200]},
+                        "position": {
+                            "x": 0.0657651107620552,
+                            "y": -0.05634319555373257,
+                            "z": 0.7267282757573887
+                        },
+                        "rotation": { "x": 0, "y": 0, "z": 0 },
+                        "dimensions": {
+                            "x": 0.1425456564648202,
+                            "y": 0.1,
+                            "z": 0.36738880874660756
+                        },
+                        "face": [
+                            "face2-topleft",
+                            "face2-topright",
+                            "face2-bottomright",
+                            "face2-bottomleft"
+                        ]
+                    }
                 }
-            }
-            from supervisely.geometry.graph import Cuboid2d
-            figure = Cuboid2d.from_json(figure_json)
+                from supervisely.geometry.graph import Cuboid2d
+                figure = Cuboid2d.from_json(figure_json)
         """
         nodes = {
             node_id: Node.from_json(node_json)
@@ -239,51 +234,52 @@ class Cuboid2d(GraphNodes):
 
         :return: Json format as a dict
         :rtype: Dict[str, Dict]
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            from supervisely.geometry.graph import Node, Cuboid2d
+            .. code-block:: python
 
-            vertex_1 = Node(sly.PointLocation(5, 5))
-            vertex_2 = Node(sly.PointLocation(100, 100))
-            vertex_3 = Node(sly.PointLocation(200, 250))
-            nodes = {0: vertex_1, 1: vertex_2, 2: vertex_3}
-            figure = Cuboid2d(nodes)
+                import supervisely as sly
+                from supervisely.geometry.graph import Node, Cuboid2d
 
-            figure_json = figure.to_json()
-            print(figure_json)
-            # Output: {
-            #    "nodes": {
-            #        "0": {
-            #            "loc": [5, 5]
-            #        },
-            #        "1": {
-            #            "loc": [100, 100]
-            #        },
-            #        "2": {
-            #            "loc": [250, 200]
-            #        }
-            #    },
-            #    "position": {
-            #         "x": 0.0657651107620552,
-            #         "y": -0.05634319555373257,
-            #         "z": 0.7267282757573887
-            #     },
-            #     "rotation": { "x": 0, "y": 0, "z": 0 },
-            #     "dimensions": {
-            #         "x": 0.1425456564648202,
-            #         "y": 0.1,
-            #         "z": 0.36738880874660756
-            #     },
-            #     "face": [
-            #         "face2-topleft",
-            #         "face2-topright",
-            #         "face2-bottomright",
-            #         "face2-bottomleft"
-            #     ],
-            # }
+                vertex_1 = Node(sly.PointLocation(5, 5))
+                vertex_2 = Node(sly.PointLocation(100, 100))
+                vertex_3 = Node(sly.PointLocation(200, 250))
+                nodes = {0: vertex_1, 1: vertex_2, 2: vertex_3}
+                figure = Cuboid2d(nodes)
+
+                figure_json = figure.to_json()
+                print(figure_json)
+                # Output: {
+                #    "nodes": {
+                #        "0": {
+                #            "loc": [5, 5]
+                #        },
+                #        "1": {
+                #            "loc": [100, 100]
+                #        },
+                #        "2": {
+                #            "loc": [250, 200]
+                #        }
+                #    },
+                #    "position": {
+                #         "x": 0.0657651107620552,
+                #         "y": -0.05634319555373257,
+                #         "z": 0.7267282757573887
+                #     },
+                #     "rotation": { "x": 0, "y": 0, "z": 0 },
+                #     "dimensions": {
+                #         "x": 0.1425456564648202,
+                #         "y": 0.1,
+                #         "z": 0.36738880874660756
+                #     },
+                #     "face": [
+                #         "face2-topleft",
+                #         "face2-topright",
+                #         "face2-bottomright",
+                #         "face2-bottomleft"
+                #     ],
+                # }
         """
         res = {
             self.items_json_field: {

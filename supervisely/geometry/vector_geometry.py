@@ -42,20 +42,20 @@ class VectorGeometry(Geometry):
     :type created_at: str, optional
     :raises: :class:`TypeError`, if exterior or interior parameters are not a list of PointLocation objects
 
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
+            import supervisely as sly
 
-        exterior = [sly.PointLocation(730, 2104), sly.PointLocation(2479, 402), sly.PointLocation(3746, 1646)]
-        # or exterior = [[730, 2104], [2479, 402], [3746, 1646]]
-        # or exterior = [(730, 2104), (2479, 402), (3746, 1646)]
-        interior = [[sly.PointLocation(1907, 1255), sly.PointLocation(2468, 875), sly.PointLocation(2679, 1577)]]
-        # or interior = [[[730, 2104], [2479, 402], [3746, 1646]]]
-        # or interior = [[(730, 2104), (2479, 402), (3746, 1646)]]
+            exterior = [sly.PointLocation(730, 2104), sly.PointLocation(2479, 402), sly.PointLocation(3746, 1646)]
+            # or exterior = [[730, 2104], [2479, 402], [3746, 1646]]
+            # or exterior = [(730, 2104), (2479, 402), (3746, 1646)]
+            interior = [[sly.PointLocation(1907, 1255), sly.PointLocation(2468, 875), sly.PointLocation(2679, 1577)]]
+            # or interior = [[[730, 2104], [2479, 402], [3746, 1646]]]
+            # or interior = [[(730, 2104), (2479, 402), (3746, 1646)]]
 
-        figure = sly.Polygon(exterior, interior)
+            figure = sly.Polygon(exterior, interior)
     """
 
     def __init__(
@@ -123,28 +123,29 @@ class VectorGeometry(Geometry):
 
         :return: Json format as a dict
         :rtype: :class:`dict`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            figure_json = figure.to_json()
-            print(figure_json)
-            # Output: {
-            #    "points": {
-            #        "exterior": [
-            #            [2104, 730],
-            #            [402, 2479],
-            #            [1646, 3746]
-            #        ],
-            #        "interior": [
-            #            [
-            #                [1255, 1907],
-            #                [875, 2468],
-            #                [1577, 2679]
-            #            ]
-            #        ]
-            #    }
-            # }
+            .. code-block:: python
+
+                figure_json = figure.to_json()
+                print(figure_json)
+                # Output: {
+                #    "points": {
+                #        "exterior": [
+                #            [2104, 730],
+                #            [402, 2479],
+                #            [1646, 3746]
+                #        ],
+                #        "interior": [
+                #            [
+                #                [1255, 1907],
+                #                [875, 2468],
+                #                [1577, 2679]
+                #            ]
+                #        ]
+                #    }
+                # }
         """
         packed_obj = {
             POINTS: {
@@ -166,11 +167,12 @@ class VectorGeometry(Geometry):
 
         :return: VectorGeometry exterior points
         :rtype: :class:`List[PointLocation]<supervisely.geometry.point_location.PointLocation>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            exterior = figure.exterior
+            .. code-block:: python
+
+                exterior = figure.exterior
         """
         return deepcopy(self._exterior)
 
@@ -182,15 +184,15 @@ class VectorGeometry(Geometry):
         :return: Numpy array
         :rtype: :class:`np.ndarray`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            print(figure.exterior_np)
-            # Output:
-            # [[ 730 2104]
-            #  [2479  402]
-            #  [3746 1646]]
+                print(figure.exterior_np)
+                # Output:
+                # [[ 730 2104]
+                #  [2479  402]
+                #  [3746 1646]]
         """
         return np.array(points_to_row_col_list(self._exterior), dtype=np.int64)
 
@@ -201,11 +203,12 @@ class VectorGeometry(Geometry):
 
         :return: VectorGeometry interior points
         :rtype: :class:`List[List[PointLocation]]<supervisely.geometry.point_location.PointLocation>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            interior = figure.interior
+            .. code-block:: python
+
+                interior = figure.interior
         """
         return deepcopy(self._interior)
 
@@ -217,15 +220,15 @@ class VectorGeometry(Geometry):
         :return: Numpy array
         :rtype: :class:`List[np.ndarray]`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            print(figure.interior_np)
-            # Output:
-            # [array([[1907, 1255],
-            #        [2468,  875],
-            #        [2679, 1577]])]
+                print(figure.interior_np)
+                # Output:
+                # [array([[1907, 1255],
+                #        [2468,  875],
+                #        [2679, 1577]])]
         """
         return [np.array(points_to_row_col_list(i), dtype=np.int64) for i in self._interior]
 
@@ -249,12 +252,12 @@ class VectorGeometry(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            # Remember that VectorGeometry class object is immutable, and we need to assign new instance of VectorGeometry to a new variable
-            in_height, in_width = 300, 400
-            out_height, out_width = 600, 800
-            resize_figure = figure.resize((in_height, in_width), (out_height, out_width))
+                # Remember that VectorGeometry class object is immutable, and we need to assign new instance of VectorGeometry to a new variable
+                in_height, in_width = 300, 400
+                out_height, out_width = 600, 800
+                resize_figure = figure.resize((in_height, in_width), (out_height, out_width))
         """
         return self._transform(lambda p: p.resize(in_size, out_size))
 
@@ -269,10 +272,10 @@ class VectorGeometry(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            # Remember that VectorGeometry class object is immutable, and we need to assign new instance of VectorGeometry to a new variable
-            scale_figure = figure.scale(0.75)
+                # Remember that VectorGeometry class object is immutable, and we need to assign new instance of VectorGeometry to a new variable
+                scale_figure = figure.scale(0.75)
         """
         return self._transform(lambda p: p.scale(factor))
 
@@ -289,10 +292,10 @@ class VectorGeometry(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            # Remember that VectorGeometry class object is immutable, and we need to assign new instance of VectorGeometry to a new variable
-            translate_figure = figure.translate(150, 250)
+                # Remember that VectorGeometry class object is immutable, and we need to assign new instance of VectorGeometry to a new variable
+                translate_figure = figure.translate(150, 250)
         """
         return self._transform(lambda p: p.translate(drow, dcol))
 
@@ -307,14 +310,14 @@ class VectorGeometry(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            from supervisely.geometry.image_rotator import ImageRotator
+                from supervisely.geometry.image_rotator import ImageRotator
 
-            # Remember that VectorGeometry class object is immutable, and we need to assign new instance of VectorGeometry to a new variable
-            height, width = 300, 400
-            rotator = ImageRotator((height, width), 25)
-            rotate_figure = figure.rotate(rotator)
+                # Remember that VectorGeometry class object is immutable, and we need to assign new instance of VectorGeometry to a new variable
+                height, width = 300, 400
+                rotator = ImageRotator((height, width), 25)
+                rotate_figure = figure.rotate(rotator)
 
         """
         return self._transform(lambda p: p.rotate(rotator))
@@ -330,11 +333,11 @@ class VectorGeometry(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            # Remember that VectorGeometry class object is immutable, and we need to assign new instance of VectorGeometry to a new variable
-            height, width = 300, 400
-            fliplr_figure = figure.fliplr((height, width))
+                # Remember that VectorGeometry class object is immutable, and we need to assign new instance of VectorGeometry to a new variable
+                height, width = 300, 400
+                fliplr_figure = figure.fliplr((height, width))
         """
         return self._transform(lambda p: p.fliplr(img_size))
 
@@ -349,11 +352,11 @@ class VectorGeometry(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            # Remember that VectorGeometry class object is immutable, and we need to assign new instance of VectorGeometry to a new variable
-            height, width = 300, 400
-            flipud_figure = figure.flipud((height, width))
+                # Remember that VectorGeometry class object is immutable, and we need to assign new instance of VectorGeometry to a new variable
+                height, width = 300, 400
+                flipud_figure = figure.flipud((height, width))
         """
         return self._transform(lambda p: p.flipud(img_size))
 
@@ -366,9 +369,9 @@ class VectorGeometry(Geometry):
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            rectangle = figure.to_bbox()
+                rectangle = figure.to_bbox()
         """
         exterior_np = self.exterior_np
         rows, cols = exterior_np[:, 0], exterior_np[:, 1]

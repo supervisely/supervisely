@@ -33,13 +33,14 @@ class Card(Widget):
     :param widget_id: Unique widget identifier.
     :type widget_id: str
 
-    :Usage example:
-    .. code-block:: python
+    :Usage Example:
 
-        from supervisely.app.widgets import Card, Text
+        .. code-block:: python
 
-        text = Text("Hello, world!")
-        card = Card(title="Card title", description="Card description", content=text)
+            from supervisely.app.widgets import Card, Text
+
+            text = Text("Hello, world!")
+            card = Card(title="Card title", description="Card description", content=text)
     """
 
     def __init__(

@@ -15,13 +15,14 @@ class CopyToClipboard(Widget):
     :type widget_id: str, optional
     :raises TypeError: if content is not str, Editor, Text, TextArea, or Input
 
-    :Usage example:
-    .. code-block:: python
+    :Usage Example:
 
-        from supervisely.app.widgets import CopyToClipboard, Text
+        .. code-block:: python
 
-        text = Text("Text to be copied")
-        copy_to_clipboard = CopyToClipboard(text)
+            from supervisely.app.widgets import CopyToClipboard, Text
+
+            text = Text("Text to be copied")
+            copy_to_clipboard = CopyToClipboard(text)
     """
 
     def __init__(

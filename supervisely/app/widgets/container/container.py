@@ -24,22 +24,23 @@ class Container(Widget):
     :param widget_id: An identifier of the widget.
     :type widget_id: str, optional
 
-    :Usage example:
-    .. code-block:: python
+    :Usage Example:
 
-        from supervisely.app.widgets import Container, Text
+        .. code-block:: python
 
-        container = Container(
-            widgets=[
-                Text("First widget"),
-                Text("Second widget"),
-            ],
-            direction="horizontal",
-            gap=10,
-            fractions=[1, 2],
-            overflow="scroll",
-            style="background-color: #f0f0f0; padding: 10px",
-        )
+            from supervisely.app.widgets import Container, Text
+
+            container = Container(
+                widgets=[
+                    Text("First widget"),
+                    Text("Second widget"),
+                ],
+                direction="horizontal",
+                gap=10,
+                fractions=[1, 2],
+                overflow="scroll",
+                style="background-color: #f0f0f0; padding: 10px",
+            )
     """
 
     def __init__(

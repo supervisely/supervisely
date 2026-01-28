@@ -148,14 +148,16 @@ class VolumeProject(VideoProject):
 
         :return: Project type.
         :rtype: :class:`str`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            project = sly.VolumeProject("/home/admin/work/supervisely/projects/volumes", sly.OpenMode.READ)
-            print(project.type)
-            # Output: 'volumes'
+            .. code-block:: python
+
+                import supervisely as sly
+
+                project = sly.VolumeProject("/home/admin/work/supervisely/projects/volumes", sly.OpenMode.READ)
+                print(project.type)
+                # Output: 'volumes'
         """
         return ProjectType.VOLUMES.value
 
@@ -187,29 +189,31 @@ class VolumeProject(VideoProject):
         :type log_progress: bool
         :param progress_cb: Function for tracking the download progress.
         :type progress_cb: tqdm or callable, optional
-
         :return: None
         :rtype: NoneType
-        :Usage example:
-        .. code-block:: python
 
-                import supervisely as sly
+        :Usage Example:
 
-                # Local destination Volume Project folder
-                save_directory = "/home/admin/work/supervisely/source/vlm_project"
+            .. code-block:: python
 
-                # Obtain server address and your api_token from environment variables
-                # Edit those values if you run this notebook on your own PC
-                address = os.environ['SERVER_ADDRESS']
-                token = os.environ['API_TOKEN']
+                    import os
+                    import supervisely as sly
 
-                # Initialize API object
-                api = sly.Api(address, token)
-                project_id = 8888
+                    # Local destination Volume Project folder
+                    save_directory = "/home/admin/work/supervisely/source/vlm_project"
 
-                # Download Project
-                sly.VolumeProject.download(api, project_id, save_directory)
-                project_fs = sly.VolumeProject(save_directory, sly.OpenMode.READ)
+                    # Obtain server address and your api_token from environment variables
+                    # Edit those values if you run this notebook on your own PC
+                    address = os.environ['SERVER_ADDRESS']
+                    token = os.environ['API_TOKEN']
+
+                    # Initialize API object
+                    api = sly.Api(address, token)
+                    project_id = 8888
+
+                    # Download Project
+                    sly.VolumeProject.download(api, project_id, save_directory)
+                    project_fs = sly.VolumeProject(save_directory, sly.OpenMode.READ)
         """
         download_volume_project(
             api=api,
@@ -270,32 +274,32 @@ class VolumeProject(VideoProject):
         :raises ValueError: If ``dest_dir`` is not provided and ``return_bytesio`` is False.
         :raises RuntimeError: If required optional dependencies (e.g. pyarrow) are missing.
 
-        :Usage example:
+        :Usage Example:
 
-        .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
-            import os
+                import os
+                import supervisely as sly
 
-            api = sly.Api(os.environ["SERVER_ADDRESS"], os.environ["API_TOKEN"])
+                api = sly.Api(os.environ["SERVER_ADDRESS"], os.environ["API_TOKEN"])
 
-            # 1) Save snapshot to disk
-            out_path = sly.VolumeProject.download_bin(
-                api,
-                project_id=123,
-                dest_dir="/tmp/vol_project_snapshot",
-                download_volumes=True,
-                log_progress=True,
-            )
+                # 1) Save snapshot to disk
+                out_path = sly.VolumeProject.download_bin(
+                    api,
+                    project_id=123,
+                    dest_dir="/tmp/vol_project_snapshot",
+                    download_volumes=True,
+                    log_progress=True,
+                )
 
-            # 2) Create an in-memory snapshot (BytesIO) and restore it
-            blob = sly.VolumeProject.download_bin(
-                api,
-                project_id=123,
-                return_bytesio=True,
-                download_volumes=False,  # structure-only
-            )
-            restored = sly.VolumeProject.upload_bin(api, blob, workspace_id=45, project_name="Restored")
+                # 2) Create an in-memory snapshot (BytesIO) and restore it
+                blob = sly.VolumeProject.download_bin(
+                    api,
+                    project_id=123,
+                    return_bytesio=True,
+                    download_volumes=False,  # structure-only
+                )
+                restored = sly.VolumeProject.upload_bin(api, blob, workspace_id=45, project_name="Restored")
         """
 
         pa = VolumeProject._require_pyarrow()
@@ -436,30 +440,32 @@ class VolumeProject(VideoProject):
 
         :return: Project ID and name. It is recommended to check that returned project name coincides with provided project name.
         :rtype: :class:`int`, :class:`str`
-        :Usage example:
 
-        .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            # Local folder with Volume Project
-            project_directory = "/home/admin/work/supervisely/source/vlm_project"
+                import os
+                import supervisely as sly
 
-            # Obtain server address and your api_token from environment variables
-            # Edit those values if you run this notebook on your own PC
-            address = os.environ['SERVER_ADDRESS']
-            token = os.environ['API_TOKEN']
+                # Local folder with Volume Project
+                project_directory = "/home/admin/work/supervisely/source/vlm_project"
 
-            # Initialize API object
-            api = sly.Api(address, token)
+                # Obtain server address and your api_token from environment variables
+                # Edit those values if you run this notebook on your own PC
+                address = os.environ['SERVER_ADDRESS']
+                token = os.environ['API_TOKEN']
 
-            # Upload Volume Project
-            project_id, project_name = sly.VolumeProject.upload(
-                project_directory,
-                api,
-                workspace_id=45,
-                project_name="My Volume Project"
-            )
+                # Initialize API object
+                api = sly.Api(address, token)
+
+                # Upload Volume Project
+                project_id, project_name = sly.VolumeProject.upload(
+                    project_directory,
+                    api,
+                    workspace_id=45,
+                    project_name="My Volume Project"
+                )
         """
         return upload_volume_project(
             dir=directory,
@@ -970,39 +976,41 @@ def download_volume_project(
 
     :return: None.
     :rtype: NoneType
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import os
-        from dotenv import load_dotenv
+        .. code-block:: python
 
-        from tqdm import tqdm
-        import supervisely as sly
+            import os
+            from dotenv import load_dotenv
 
-        # Load secrets and create API object from .env file (recommended)
-        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-        if sly.is_development():
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-        api = sly.Api.from_env()
+            from tqdm import tqdm
+            import supervisely as sly
 
-        # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-        dest_dir = 'your/local/dest/dir'
+            api = sly.Api.from_env()
 
-        # Download volume project
-        project_id = 18532
-        project_info = api.project.get_info_by_id(project_id)
-        num_volumes = project_info.items_count
+            # Pass values into the API constructor (optional, not recommended)
+            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
-        p = tqdm(desc="Downloading volume project", total=num_volumes)
-        sly.download_volume_project(
-            api,
-            project_id,
-            dest_dir,
-            progress_cb=p,
-        )
+            dest_dir = 'your/local/dest/dir'
+
+            # Download volume project
+            project_id = 18532
+            project_info = api.project.get_info_by_id(project_id)
+            num_volumes = project_info.items_count
+
+            p = tqdm(desc="Downloading volume project", total=num_volumes)
+            sly.download_volume_project(
+                api,
+                project_id,
+                dest_dir,
+                progress_cb=p,
+            )
     """
 
     LOG_BATCH_SIZE = 1
@@ -1095,7 +1103,7 @@ def download_volume_project(
                         mesh_ids.append(figure_id)
                         figure_path = dataset_fs.get_interpolation_path(volume_name, sf)
                         mesh_paths.append(figure_path)
-                
+
                 figs = api.volume.figure.download(dataset.id, [volume_id], skip_geometry=True)
                 figs = figs.get(volume_id, {})
                 figs_ids_map = {fig.id: fig for fig in figs}

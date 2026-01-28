@@ -19,12 +19,13 @@ class ColorPicker(Widget):
     :param widget_id: An identifier of the widget.
     :type widget_id: str, optional
 
-    :Usage example:
-    .. code-block:: python
+    :Usage Example:
 
-        from supervisely.app.widgets import ColorPicker
+        .. code-block:: python
 
-        color_picker = ColorPicker(color_format="rgb")
+            from supervisely.app.widgets import ColorPicker
+
+            color_picker = ColorPicker(color_format="rgb")
     """
 
     class Routes:

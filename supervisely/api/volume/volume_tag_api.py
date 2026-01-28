@@ -23,18 +23,19 @@ class VolumeTagApi(TagApi):
         :type tag_id: int
         :return: None
         :rtype: :class:`NoneType`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            api.volume.tag.remove_from_volume(volume_tag_id)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
+                api.volume.tag.remove_from_volume(volume_tag_id)
         """
 
         self._api.post("volumes.tags.remove", {ApiField.ID: tag_id})
@@ -49,17 +50,19 @@ class VolumeTagApi(TagApi):
         :type tag_value: str or int
         :return: None
         :rtype: :class:`NoneType`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            api.volume.tag.update_value(volume_tag_id, 'new_tag_value')
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                api.volume.tag.update_value(volume_tag_id, 'new_tag_value')
         """
 
         self._api.post(
@@ -87,21 +90,23 @@ class VolumeTagApi(TagApi):
         :type tag_meta: TagMeta, optional
         :return: VolumeTag ID.
         :rtype: int
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            volume_id = 19402023
-            tag_id = 19402023
-            tag_value = 'tag_value'
-            tag_meta = api.tag.get_info_by_id(tag_id).meta
-            id = api.volume.tag.append_to_volume(volume_id, tag_id, tag_value, tag_meta)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                volume_id = 19402023
+                tag_id = 19402023
+                tag_value = 'tag_value'
+                tag_meta = api.tag.get_info_by_id(tag_id).meta
+                id = api.volume.tag.append_to_volume(volume_id, tag_id, tag_value, tag_meta)
         """
         data = {
             ApiField.ENTITY_ID: volume_id,

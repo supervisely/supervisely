@@ -153,25 +153,27 @@ class TeamApi(ModuleNoParent, UpdateableModule):
 
     :param api: API connection to the server
     :type api: Api
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import os
-        from dotenv import load_dotenv
+        .. code-block:: python
 
-        import supervisely as sly
+            import os
+            from dotenv import load_dotenv
 
-        # Load secrets and create API object from .env file (recommended)
-        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-        if sly.is_development():
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-        api = sly.Api.from_env()
+            import supervisely as sly
 
-        # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-        team_info = api.team.get_info_by_id(team_id) # api usage example
+            api = sly.Api.from_env()
+
+            # Or pass values into the API constructor (optional, not recommended)
+            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
+
+            team_info = api.team.get_info_by_id(team_id) # api usage example
     """
 
     @staticmethod
@@ -220,54 +222,56 @@ class TeamApi(ModuleNoParent, UpdateableModule):
         :type filters: list, optional
         :return: List of all Teams with information. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[TeamInfo]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            team_id = 8
+                import os
+                import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                team_id = 8
 
-            team_list = api.team.get_list(team_id)
-            print(team_list)
-            # Output: [TeamInfo(id=1,
-            #                   name='Vehicle',
-            #                   description='',
-            #                   role='admin',
-            #                   created_at='2020-03-31T14:49:08.931Z',
-            #                   updated_at='2020-03-31T14:49:08.931Z',
-            #                   UsageInfo(plan='free')               ),
-            # TeamInfo(id=2,
-            #          name='Road',
-            #          description='',
-            #          role='admin',
-            #          created_at='2020-03-31T08:52:11.000Z',
-            #          updated_at='2020-03-31T08:52:11.000Z',
-            #          UsageInfo(plan='free')               ),
-            # TeamInfo(id=3,
-            #          name='Animal',
-            #          description='',
-            #          role='admin',
-            #          created_at='2020-04-02T08:59:03.717Z',
-            #          updated_at='2020-04-02T08:59:03.717Z',
-            #          UsageInfo(plan='free')               )
-            # ]
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            # Filtered Team list
-            team_list = api.team.get_list(team_id, filters=[{ 'field': 'name', 'operator': '=', 'value': 'Animal' }])
-            print(team_list)
-            # Output: [TeamInfo(id=3,
-            #                  name='Animal',
-            #                  description='',
-            #                  role='admin',
-            #                  created_at='2020-04-02T08:59:03.717Z',
-            #                  updated_at='2020-04-02T08:59:03.717Z',
-            #                  UsageInfo(plan='free')               )
-            # ]
+                team_list = api.team.get_list(team_id)
+                print(team_list)
+                # Output: [TeamInfo(id=1,
+                #                   name='Vehicle',
+                #                   description='',
+                #                   role='admin',
+                #                   created_at='2020-03-31T14:49:08.931Z',
+                #                   updated_at='2020-03-31T14:49:08.931Z',
+                #                   UsageInfo(plan='free')               ),
+                # TeamInfo(id=2,
+                #          name='Road',
+                #          description='',
+                #          role='admin',
+                #          created_at='2020-03-31T08:52:11.000Z',
+                #          updated_at='2020-03-31T08:52:11.000Z',
+                #          UsageInfo(plan='free')               ),
+                # TeamInfo(id=3,
+                #          name='Animal',
+                #          description='',
+                #          role='admin',
+                #          created_at='2020-04-02T08:59:03.717Z',
+                #          updated_at='2020-04-02T08:59:03.717Z',
+                #          UsageInfo(plan='free')               )
+                # ]
+
+                # Filtered Team list
+                team_list = api.team.get_list(team_id, filters=[{ 'field': 'name', 'operator': '=', 'value': 'Animal' }])
+                print(team_list)
+                # Output: [TeamInfo(id=3,
+                #                  name='Animal',
+                #                  description='',
+                #                  role='admin',
+                #                  created_at='2020-04-02T08:59:03.717Z',
+                #                  updated_at='2020-04-02T08:59:03.717Z',
+                #                  UsageInfo(plan='free')               )
+                # ]
         """
         return self.get_list_all_pages("teams.list", {ApiField.FILTER: filters or []})
 
@@ -279,36 +283,38 @@ class TeamApi(ModuleNoParent, UpdateableModule):
         :type id: int
         :return: Information about Team. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`TeamInfo`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            team_info = api.team.get_info_by_id(8)
-            print(team_info)
-            # Output: TeamInfo(id=8,
-            #          name='Fruits',
-            #          description='',
-            #          role='admin',
-            #          created_at='2020-04-15T10:50:41.926Z',
-            #          updated_at='2020-04-15T10:50:41.926Z',
-            #          UsageInfo(plan='free')               )
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            # You can also get Team info by name
-            team_info = api.team.get_info_by_name("Fruits")
-            print(team_info)
-            # Output: TeamInfo(id=8,
-            #          name='Fruits',
-            #          description='',
-            #          role='admin',
-            #          created_at='2020-04-15T10:50:41.926Z',
-            #          updated_at='2020-04-15T10:50:41.926Z',
-            #          UsageInfo(plan='free')               )
+                team_info = api.team.get_info_by_id(8)
+                print(team_info)
+                # Output: TeamInfo(id=8,
+                #          name='Fruits',
+                #          description='',
+                #          role='admin',
+                #          created_at='2020-04-15T10:50:41.926Z',
+                #          updated_at='2020-04-15T10:50:41.926Z',
+                #          UsageInfo(plan='free')               )
+
+                # You can also get Team info by name
+                team_info = api.team.get_info_by_name("Fruits")
+                print(team_info)
+                # Output: TeamInfo(id=8,
+                #          name='Fruits',
+                #          description='',
+                #          role='admin',
+                #          created_at='2020-04-15T10:50:41.926Z',
+                #          updated_at='2020-04-15T10:50:41.926Z',
+                #          UsageInfo(plan='free')               )
         """
 
         info = self._get_info_by_id(id, "teams.info")
@@ -333,25 +339,27 @@ class TeamApi(ModuleNoParent, UpdateableModule):
         :type change_name_if_conflict: bool, optional
         :return: Information about Team. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`TeamInfo`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            new_team = api.team.create("Flowers")
-            print(new_team)
-            # Output: TeamInfo(id=228,
-            #                  name='Flowers',
-            #                  description='',
-            #                  role='admin',
-            #                  created_at='2021-03-11T11:18:46.576Z',
-            #                  updated_at='2021-03-11T11:18:46.576Z',
-            #                  UsageInfo(plan='free')               )
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                new_team = api.team.create("Flowers")
+                print(new_team)
+                # Output: TeamInfo(id=228,
+                #                  name='Flowers',
+                #                  description='',
+                #                  role='admin',
+                #                  created_at='2021-03-11T11:18:46.576Z',
+                #                  updated_at='2021-03-11T11:18:46.576Z',
+                #                  UsageInfo(plan='free')               )
         """
         effective_name = self._get_effective_new_name(
             name=name, change_name_if_conflict=change_name_if_conflict
@@ -404,67 +412,69 @@ class TeamApi(ModuleNoParent, UpdateableModule):
         :type review_status: str, optional, one of ['done', 'accepted', 'rejected']
         :return: Team activity
         :rtype: :class:`List[dict]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            from supervisely.api.team_api import ActivityAction as aa
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
+                from supervisely.api.team_api import ActivityAction as aa
 
-            labeling_actions = [
-                aa.ATTACH_TAG,
-                aa.UPDATE_TAG_VALUE,
-                aa.DETACH_TAG,
-            ]
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            team_activity = api.team.get_activity(8, filter_actions=labeling_actions)
-            print(team_activity)
-            # Output: [
-            #     {
-            #         "userId":7,
-            #         "action":"detach_tag",
-            #         "date":"2021-01-15T15:11:55.985Z",
-            #         "user":"cxnt",
-            #         "projectId":1817,
-            #         "project":"App_Test_Poly",
-            #         "datasetId":2370,
-            #         "dataset":"train",
-            #         "imageId":726985,
-            #         "image":"IMG_8144.jpeg",
-            #         "classId":"None",
-            #         "class":"None",
-            #         "figureId":"None",
-            #         "job":"None",
-            #         "jobId":"None",
-            #         "tag":"hhhlk",
-            #         "tagId":4720,
-            #         "meta":{}
-            #     },
-            #     {
-            #         "userId":7,
-            #         "action":"attach_tag",
-            #         "date":"2021-01-15T14:24:58.480Z",
-            #         "user":"cxnt",
-            #         "projectId":1817,
-            #         "project":"App_Test_Poly",
-            #         "datasetId":2370,
-            #         "dataset":"train",
-            #         "imageId":726985,
-            #         "image":"IMG_8144.jpeg",
-            #         "classId":"None",
-            #         "class":"None",
-            #         "figureId":"None",
-            #         "job":"None",
-            #         "jobId":"None",
-            #         "tag":"hhhlk",
-            #         "tagId":4720,
-            #         "meta":{}
-            #     }
-            # ]
+                labeling_actions = [
+                    aa.ATTACH_TAG,
+                    aa.UPDATE_TAG_VALUE,
+                    aa.DETACH_TAG,
+                ]
+
+                team_activity = api.team.get_activity(8, filter_actions=labeling_actions)
+                print(team_activity)
+                # Output: [
+                #     {
+                #         "userId":7,
+                #         "action":"detach_tag",
+                #         "date":"2021-01-15T15:11:55.985Z",
+                #         "user":"cxnt",
+                #         "projectId":1817,
+                #         "project":"App_Test_Poly",
+                #         "datasetId":2370,
+                #         "dataset":"train",
+                #         "imageId":726985,
+                #         "image":"IMG_8144.jpeg",
+                #         "classId":"None",
+                #         "class":"None",
+                #         "figureId":"None",
+                #         "job":"None",
+                #         "jobId":"None",
+                #         "tag":"hhhlk",
+                #         "tagId":4720,
+                #         "meta":{}
+                #     },
+                #     {
+                #         "userId":7,
+                #         "action":"attach_tag",
+                #         "date":"2021-01-15T14:24:58.480Z",
+                #         "user":"cxnt",
+                #         "projectId":1817,
+                #         "project":"App_Test_Poly",
+                #         "datasetId":2370,
+                #         "dataset":"train",
+                #         "imageId":726985,
+                #         "image":"IMG_8144.jpeg",
+                #         "classId":"None",
+                #         "class":"None",
+                #         "figureId":"None",
+                #         "job":"None",
+                #         "jobId":"None",
+                #         "tag":"hhhlk",
+                #         "tagId":4720,
+                #         "meta":{}
+                #     }
+                # ]
         """
         from datetime import datetime
 

@@ -5,7 +5,8 @@ from supervisely.app.widgets import Widget
 
 
 class BindedInputNumber(Widget):
-    """BindedInputNumber widget in Supervisely is a user interface element that allows users
+    """
+    BindedInputNumber widget in Supervisely is a user interface element that allows users
     to input two numerical values and customize their behavior using the proportional, min, and max properties.
 
     Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/input/bindedinputnumber>`_
@@ -24,11 +25,13 @@ class BindedInputNumber(Widget):
     :param widget_id: Unique widget identifier.
     :type widget_id: str
 
-    :Usage example:
-    .. code-block:: python
-        from supervisely.app.widgets import Badge
+    :Usage Example:
 
-        binded_input_number = BindedInputNumber(width=150, height=150, min=1, max=100, proportional=False)
+        .. code-block:: python
+
+            from supervisely.app.widgets import Badge
+
+            binded_input_number = BindedInputNumber(width=150, height=150, min=1, max=100, proportional=False)
     """
 
     def __init__(
@@ -141,9 +144,14 @@ class BindedInputNumber(Widget):
         :param value: If True, the input will be proportional.
         :type value: bool
 
-        :Usage example:
-        .. code-block:: python
-            binded_input_number.proportional = True
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import BindedInputNumber
+
+                binded_input_number = BindedInputNumber(proportional=False)
+                binded_input_number.proportional = True
         """
         self._proportional = value
         DataJson()[self.widget_id]["proportional"] = self._proportional

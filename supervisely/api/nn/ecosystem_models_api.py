@@ -1,3 +1,7 @@
+"""
+API for Supervisely Ecosystem Models catalog.
+"""
+
 from typing import List, Literal
 
 from supervisely.api.api import Api
@@ -5,6 +9,7 @@ from supervisely.api.module_api import ApiField, ModuleApi
 
 
 class ModelApiField:
+    """JSON field names used by ecosystem models endpoints."""
     NAME = "name"
     FRAMEWORK = "framework"
     TASK_TYPE = "task"
@@ -25,6 +30,15 @@ class ModelApiField:
 
 
 class EcosystemModelsApi(ModuleApi):
+    """
+    API for working with ecosystem models catalog.
+
+    Use :meth:`~.list_models` to list catalog entries and :meth:`~.add` / :meth:`~.update_model`
+    to create/update an entry.
+
+    :param api: API client.
+    :type api: :class:`~supervisely.api.api.Api`
+    """
 
     def __init__(self, api: Api):
         self._api = api
@@ -104,6 +118,14 @@ class EcosystemModelsApi(ModuleApi):
         return [convert_func(item) for item in results]
 
     def list_models(self, local=False):
+        """
+        List models from the ecosystem catalog.
+
+        :param local: If True, return only models available locally for the instance.
+        :type local: bool, optional
+        :return: List of model JSON dicts.
+        :rtype: List[dict]
+        """
         method = "ecosystem.models.list"
         data = {"localModels": local}
         return self.get_list_all_pages(method, data=data)
@@ -128,6 +150,27 @@ class EcosystemModelsApi(ModuleApi):
         speed_tests: List = None,
         evaluation: dict = None,
     ):
+        """
+        Create a new ecosystem model entry.
+
+        Required fields describe model identity and associated train/serve app modules.
+        Optional fields describe architecture, metrics, tags, runtimes and files.
+
+        :param name: Model display name.
+        :type name: str
+        :param framework: Framework name (e.g. ``'RT-DETRv2'``).
+        :type framework: str
+        :param task_type: Task type string (e.g. ``'object detection'``).
+        :type task_type: str
+        :param tain_module_id: Ecosystem train module id (note: parameter name kept for backward compatibility).
+        :type tain_module_id: int
+        :param serve_module_id: Ecosystem serve module id.
+        :type serve_module_id: int
+        :param modality: Input modality.
+        :type modality: Literal['images', 'videos'], optional
+        :return: Server response.
+        :rtype: dict
+        """
         method = "ecosystem.models.add"
         data = {
             ModelApiField.NAME: name,
@@ -176,6 +219,16 @@ class EcosystemModelsApi(ModuleApi):
         speed_tests: List = None,
         evaluation: dict = None,
     ):
+        """
+        Update an existing ecosystem model entry.
+
+        Only non-None fields are sent to the server.
+
+        :param model_id: Model id in the catalog.
+        :type model_id: int
+        :return: Server response.
+        :rtype: dict
+        """
         data = {
             ModelApiField.NAME: name,
             ModelApiField.FRAMEWORK: framework,

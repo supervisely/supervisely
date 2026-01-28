@@ -70,27 +70,29 @@ class FileApi(ModuleApiBase):
 
     :param api: API connection to the server.
     :type api: Api
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import os
-        from dotenv import load_dotenv
+        .. code-block:: python
 
-        import supervisely as sly
+            import os
+            from dotenv import load_dotenv
 
-        # Load secrets and create API object from .env file (recommended)
-        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-        if sly.is_development():
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-        api = sly.Api.from_env()
+            import supervisely as sly
 
-        # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-        team_id = 8
-        file_path = "/999_App_Test/"
-        files = api.file.list(team_id, file_path)
+            api = sly.Api.from_env()
+
+            # Or pass values into the API constructor (optional, not recommended)
+            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
+
+            team_id = 8
+            file_path = "/999_App_Test/"
+            files = api.file.list(team_id, file_path)
     """
 
     @staticmethod
@@ -198,82 +200,84 @@ class FileApi(ModuleApiBase):
         :type return_type: str
         :return: List of all Files with information. See classes info_sequence and FileInfo
         :rtype: class List[Union[Dict, FileInfo]]
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import os
-            from dotenv import load_dotenv
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            if sly.is_development():
-                load_dotenv(os.path.expanduser("~/supervisely.env"))
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            # Pass values into the API constructor (optional, not recommended)
-            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            team_id = 8
-            file_path = "/999_App_Test/"
+                api = sly.Api.from_env()
 
-            # Get information about file in dict way..
-            files = api.file.list(team_id, file_path)
-            file = files[0]
-            print(file['id'])
-            # Output: 7660
+                # Or pass values into the API constructor (optional, not recommended)
+                # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
-            print(files)
-            # Output: [
-            #     {
-            #         "id":7660,
-            #         "userId":7,
-            #         "path":"/999_App_Test/ds1/00135.json",
-            #         "storagePath":"/h5un6l2bnaz1vj8a9qgms4-public/teams_storage/8/y/P/rn/...json",
-            #         "meta":{
-            #             "ext":"json",
-            #             "mime":"application/json",
-            #             "size":261
-            #         },
-            #         "createdAt":"2021-01-11T09:04:17.959Z",
-            #         "updatedAt":"2021-01-11T09:04:17.959Z",
-            #         "hash":"z7Wv1a7WIC5HIJrfX/69XXrqtDaLxucSprWHoCxyq0M=",
-            #         "fullStorageUrl":"http://supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/teams_storage/8/y/P/rn/...json",
-            #         "teamId":8,
-            #         "name":"00135.json"
-            #     },
-            #     {
-            #         "id":7661,
-            #         "userId":7,
-            #         "path":"/999_App_Test/ds1/01587.json",
-            #         "storagePath":"/h5un6l2bnaz1vj8a9qgms4-public/teams_storage/8/9/k/Hs/...json",
-            #         "meta":{
-            #             "ext":"json",
-            #             "mime":"application/json",
-            #             "size":252
-            #         },
-            #         "createdAt":"2021-01-11T09:04:18.099Z",
-            #         "updatedAt":"2021-01-11T09:04:18.099Z",
-            #         "hash":"La9+XtF2+cTlAqUE/I72e/xS12LqyH1+z<3T+SgD4CTU=",
-            #         "fullStorageUrl":"http://supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/teams_storage/8/9/k/Hs/...json",
-            #         "teamId":8,
-            #         "name":"01587.json"
-            #     }
-            # ]
+                team_id = 8
+                file_path = "/999_App_Test/"
 
-            # ..or as FileInfo with attributes:
-            files = api.file.list(team_id, file_path, return_type='fileinfo')
-            file = files[0]
-            print(file.id)
-            # Output: 7660
+                # Get information about file in dict way..
+                files = api.file.list(team_id, file_path)
+                file = files[0]
+                print(file['id'])
+                # Output: 7660
 
-            print(files)
-            # Output: [
-            # FileInfo(team_id=8, id=7660, user_id=7, name='00135.json', hash='z7Wv1a7WI...
-            # FileInfo(team_id=8, id=7661, user_id=7, name='01587.json', hash='La9+XtF2+...
-            # ]
+                print(files)
+                # Output: [
+                #     {
+                #         "id":7660,
+                #         "userId":7,
+                #         "path":"/999_App_Test/ds1/00135.json",
+                #         "storagePath":"/h5un6l2bnaz1vj8a9qgms4-public/teams_storage/8/y/P/rn/...json",
+                #         "meta":{
+                #             "ext":"json",
+                #             "mime":"application/json",
+                #             "size":261
+                #         },
+                #         "createdAt":"2021-01-11T09:04:17.959Z",
+                #         "updatedAt":"2021-01-11T09:04:17.959Z",
+                #         "hash":"z7Wv1a7WIC5HIJrfX/69XXrqtDaLxucSprWHoCxyq0M=",
+                #         "fullStorageUrl":"http://supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/teams_storage/8/y/P/rn/...json",
+                #         "teamId":8,
+                #         "name":"00135.json"
+                #     },
+                #     {
+                #         "id":7661,
+                #         "userId":7,
+                #         "path":"/999_App_Test/ds1/01587.json",
+                #         "storagePath":"/h5un6l2bnaz1vj8a9qgms4-public/teams_storage/8/9/k/Hs/...json",
+                #         "meta":{
+                #             "ext":"json",
+                #             "mime":"application/json",
+                #             "size":252
+                #         },
+                #         "createdAt":"2021-01-11T09:04:18.099Z",
+                #         "updatedAt":"2021-01-11T09:04:18.099Z",
+                #         "hash":"La9+XtF2+cTlAqUE/I72e/xS12LqyH1+z<3T+SgD4CTU=",
+                #         "fullStorageUrl":"http://supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/teams_storage/8/9/k/Hs/...json",
+                #         "teamId":8,
+                #         "name":"01587.json"
+                #     }
+                # ]
+
+                # ..or as FileInfo with attributes:
+                files = api.file.list(team_id, file_path, return_type='fileinfo')
+                file = files[0]
+                print(file.id)
+                # Output: 7660
+
+                print(files)
+                # Output: [
+                # FileInfo(team_id=8, id=7660, user_id=7, name='00135.json', hash='z7Wv1a7WI...
+                # FileInfo(team_id=8, id=7661, user_id=7, name='01587.json', hash='La9+XtF2+...
+                # ]
         """
 
         if not path.endswith("/") and recursive is False:
@@ -309,34 +313,36 @@ class FileApi(ModuleApiBase):
         :type recursive: bool
         :return: List of all Files with information. See class info_sequence
         :rtype: class List[FileInfo]
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import os
-            from dotenv import load_dotenv
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            if sly.is_development():
-                load_dotenv(os.path.expanduser("~/supervisely.env"))
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            # Pass values into the API constructor (optional, not recommended)
-            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            team_id = 9
-            file_path = "/My_App_Test/"
-            files = api.file.list2(team_id, file_path)
+                api = sly.Api.from_env()
 
-            print(files)
-            # Output: [
-            # FileInfo(team_id=9, id=18421, user_id=8, name='5071_3734_mot_video_002.tar.gz', hash='+0nrNoDjBxxJA...
-            # FileInfo(team_id=9, id=18456, user_id=8, name='5164_4218_mot_video_bitmap.tar.gz', hash='fwtVI+iptY...
-            # FileInfo(team_id=9, id=18453, user_id=8, name='all_vars.tar', hash='TVkUE+K1bnEb9QrdEm9akmHm/QEWPJK...
-            # ]
+                # Or pass values into the API constructor (optional, not recommended)
+                # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
+
+                team_id = 9
+                file_path = "/My_App_Test/"
+                files = api.file.list2(team_id, file_path)
+
+                print(files)
+                # Output: [
+                # FileInfo(team_id=9, id=18421, user_id=8, name='5071_3734_mot_video_002.tar.gz', hash='+0nrNoDjBxxJA...
+                # FileInfo(team_id=9, id=18456, user_id=8, name='5164_4218_mot_video_bitmap.tar.gz', hash='fwtVI+iptY...
+                # FileInfo(team_id=9, id=18453, user_id=8, name='all_vars.tar', hash='TVkUE+K1bnEb9QrdEm9akmHm/QEWPJK...
+                # ]
         """
         return self.list(team_id=team_id, path=path, recursive=recursive, return_type="fileinfo")
 
@@ -352,22 +358,26 @@ class FileApi(ModuleApiBase):
         :type recursive: bool
         :return: List of paths
         :rtype: :class:`List[str]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
+                import supervisely as sly
 
-            team_id = 8
-            path = "/999_App_Test/"
-            files = api.file.listdir(team_id, path)
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            print(files)
-            # Output: ["/999_App_Test/ds1", "/999_App_Test/image.png"]
+                api = sly.Api.from_env()
+
+                team_id = 8
+                path = "/999_App_Test/"
+                files = api.file.listdir(team_id, path)
+
+                print(files)
+                # Output: ["/999_App_Test/ds1", "/999_App_Test/image.png"]
         """
         files = self.list(team_id, path, recursive)
         files_paths = [file["path"] for file in files]
@@ -384,22 +394,26 @@ class FileApi(ModuleApiBase):
         :type path: str
         :return: Directory size in the Team Files
         :rtype: :class:`int`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
+                import supervisely as sly
 
-            team_id = 9
-            path = "/My_App_Test/"
-            size = api.file.get_directory_size(team_id, path)
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            print(size)
-            # Output: 3478687
+                api = sly.Api.from_env()
+
+                team_id = 9
+                path = "/My_App_Test/"
+                size = api.file.get_directory_size(team_id, path)
+
+                print(size)
+                # Output: 3478687
         """
         if self.is_on_agent(path) is True:
             agent_id, path_in_agent_folder = self.parse_agent_id_and_path(path)
@@ -476,20 +490,24 @@ class FileApi(ModuleApiBase):
         :type progress_cb: tqdm or callable, optional
         :return: None
         :rtype: :class:`NoneType`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
+                import supervisely as sly
 
-            path_to_file = "/999_App_Test/ds1/01587.json"
-            local_save_path = "/home/admin/Downloads/01587.json"
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            api.file.download(8, path_to_file, local_save_path)
+                api = sly.Api.from_env()
+
+                path_to_file = "/999_App_Test/ds1/01587.json"
+                local_save_path = "/home/admin/Downloads/01587.json"
+
+                api.file.download(8, path_to_file, local_save_path)
         """
 
         if self.is_on_agent(remote_path):
@@ -575,20 +593,24 @@ class FileApi(ModuleApiBase):
         :type progress_cb: tqdm or callable, optional
         :return: None
         :rtype: :class:`NoneType`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
+                import supervisely as sly
 
-            path_to_dir = "/My_App_Test/ds1"
-            local_save_path = "/home/admin/Downloads/My_local_test"
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            api.file.download_directory(9, path_to_dir, local_save_path)
+                api = sly.Api.from_env()
+
+                path_to_dir = "/My_App_Test/ds1"
+                local_save_path = "/home/admin/Downloads/My_local_test"
+
+                api.file.download_directory(9, path_to_dir, local_save_path)
         """
         if not remote_path.endswith("/"):
             remote_path += "/"
@@ -646,25 +668,26 @@ class FileApi(ModuleApiBase):
             - if both file and folder paths found in environment variables (debug)
             - if team id not found in environment variables
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import os
-            from dotenv import load_dotenv
+                import os
+                from dotenv import load_dotenv
+                import supervisely as sly
 
-            import supervisely as sly
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-            api = sly.Api.from_env()
+                api = sly.Api.from_env()
 
-            # Application is started...
-            save_path = "/my_app_data"
-            api.file.download_input(save_path)
+                # Application is started...
+                save_path = "/my_app_data"
+                api.file.download_input(save_path)
 
-            # The data is downloaded to the specified directory.
+                # The data is downloaded to the specified directory.
         """
         remote_file_path = env.file(raise_not_found=False)
         remote_folder_path = env.folder(raise_not_found=False)
@@ -780,20 +803,22 @@ class FileApi(ModuleApiBase):
         :type progress_cb: tqdm or callable, optional
         :return: Information about File. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`FileInfo`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            src_path = "/home/admin/Downloads/01587.json"
-            dst_remote_path = "/999_App_Test/ds1/01587.json"
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            api.file.upload(8, src_path, dst_remote_path)
+                src_path = "/home/admin/Downloads/01587.json"
+                dst_remote_path = "/999_App_Test/ds1/01587.json"
+
+                api.file.upload(8, src_path, dst_remote_path)
         """
         return self.upload_bulk(team_id, [src], [dst], progress_cb)[0]
 
@@ -817,20 +842,22 @@ class FileApi(ModuleApiBase):
         :type progress_cb: tqdm or callable, optional
         :return: Information about Files. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[FileInfo]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            src_paths = ["/home/admin/Downloads/01587.json", "/home/admin/Downloads/01588.json","/home/admin/Downloads/01589.json"]
-            dst_remote_paths = ["/999_App_Test/ds1/01587.json", "/999_App_Test/ds1/01588.json", "/999_App_Test/ds1/01589.json"]
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            api.file.upload_bulk(8, src_paths, dst_remote_paths)
+                src_paths = ["/home/admin/Downloads/01587.json", "/home/admin/Downloads/01588.json","/home/admin/Downloads/01589.json"]
+                dst_remote_paths = ["/999_App_Test/ds1/01587.json", "/999_App_Test/ds1/01588.json", "/999_App_Test/ds1/01589.json"]
+
+                api.file.upload_bulk(8, src_paths, dst_remote_paths)
         """
 
         def _group_files_generator(
@@ -927,17 +954,19 @@ class FileApi(ModuleApiBase):
         :type new_name: str
         :return: None
         :rtype: :class:`NoneType`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            # NotImplementedError('Method is not supported')
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                # NotImplementedError('Method is not supported')
         """
         pass
 
@@ -964,18 +993,20 @@ class FileApi(ModuleApiBase):
         :type path: str
         :return: None
         :rtype: :class:`NoneType`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            api.file.remove(8, "/999_App_Test/ds1/01587.json") # remove file
-            api.file.remove(8, "/999_App_Test/ds1/") # remove folder
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                api.file.remove(8, "/999_App_Test/ds1/01587.json") # remove file
+                api.file.remove(8, "/999_App_Test/ds1/") # remove folder
         """
 
         if self.is_on_agent(path) is True:
@@ -997,17 +1028,19 @@ class FileApi(ModuleApiBase):
         :type path: str
         :return: None
         :rtype: :class:`NoneType`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            api.file.remove_file(8, "/999_App_Test/ds1/01587.json")
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                api.file.remove_file(8, "/999_App_Test/ds1/01587.json")
         """
 
         file_info = self.get_info_by_path(team_id, path)
@@ -1032,17 +1065,19 @@ class FileApi(ModuleApiBase):
 
         :return: None
         :rtype: :class:`NoneType`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            api.file.remove_dir(8, "/999_App_Test/ds1/")
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                api.file.remove_dir(8, "/999_App_Test/ds1/")
         """
 
         if not path.endswith("/"):
@@ -1074,22 +1109,24 @@ class FileApi(ModuleApiBase):
         :type batch_size: int
         :return: None
         :rtype: :class:`NoneType`
-        :Usage example:
 
-        .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            paths_to_del = [
-                "/999_App_Test/ds1/01587.json",
-                "/999_App_Test/ds1/01588.json",
-                "/999_App_Test/ds1/01587.json"
-            ]
-            api.file.remove_batch(8, paths_to_del)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                paths_to_del = [
+                    "/999_App_Test/ds1/01587.json",
+                    "/999_App_Test/ds1/01588.json",
+                    "/999_App_Test/ds1/01587.json"
+                ]
+                api.file.remove_batch(8, paths_to_del)
         """
         if batch_size > 20000:
             logger.warning(
@@ -1127,18 +1164,20 @@ class FileApi(ModuleApiBase):
         :type recursive: bool
         :return: True if file exists, otherwise False
         :rtype: :class:`bool`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-           import supervisely as sly
+            .. code-block:: python
 
-           os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-           os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-           api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-           file = api.file.exists(8, "/999_App_Test/ds1/02163.json") # True
-           file = api.file.exists(8, "/999_App_Test/ds1/01587.json") # False
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                file = api.file.exists(8, "/999_App_Test/ds1/02163.json") # True
+                file = api.file.exists(8, "/999_App_Test/ds1/01587.json") # False
         """
         path_infos = self.list(team_id, remote_path, recursive)
         for info in path_infos:
@@ -1158,18 +1197,20 @@ class FileApi(ModuleApiBase):
         :type recursive: bool
         :return: True if directory exists, otherwise False
         :rtype: :class:`bool`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-           import supervisely as sly
+            .. code-block:: python
 
-           os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-           os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-           api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-           file = api.file.dir_exists(8, "/999_App_Test/")   # True
-           file = api.file.dir_exists(8, "/10000_App_Test/") # False
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                file = api.file.dir_exists(8, "/999_App_Test/")   # True
+                file = api.file.dir_exists(8, "/10000_App_Test/") # False
         """
         files_infos = self.list(team_id, remote_directory, recursive)
         if len(files_infos) > 0:
@@ -1186,19 +1227,21 @@ class FileApi(ModuleApiBase):
         :type path: str
         :return: New File name with suffix at the end
         :rtype: :class:`str`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-           import supervisely as sly
+            .. code-block:: python
 
-           os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-           os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-           api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-           file = api.file.get_free_name(8, "/999_App_Test/ds1/02163.json")
-           print(file)
-           # Output: /999_App_Test/ds1/02163_000.json
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                file = api.file.get_free_name(8, "/999_App_Test/ds1/02163.json")
+                print(file)
+                # Output: /999_App_Test/ds1/02163_000.json
         """
         directory = Path(path).parent
         name = get_file_name(path)
@@ -1228,20 +1271,22 @@ class FileApi(ModuleApiBase):
         :type file_id: int
         :return: File URL
         :rtype: :class:`str`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-           import supervisely as sly
+            .. code-block:: python
 
-           os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-           os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-           api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-           file_id = 7660
-           file_url = sly.api.file.get_url(file_id)
-           print(file_url)
-           # Output: http://supervisely.com/files/7660
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                file_id = 7660
+                file_url = sly.api.file.get_url(file_id)
+                print(file_url)
+                # Output: http://supervisely.com/files/7660
         """
         return f"/files/{file_id}"
 
@@ -1255,32 +1300,34 @@ class FileApi(ModuleApiBase):
         :type remote_path: str
         :return: Information about File. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`FileInfo`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            file_path = "/999_App_Test/ds1/00135.json"
-            file_info = api.file.get_info_by_id(8, file_path)
-            print(file_info)
-            # Output: FileInfo(team_id=8,
-            #                  id=7660,
-            #                  user_id=7,
-            #                  name='00135.json',
-            #                  hash='z7Hv9a7WIC5HIJrfX/69KVrvtDaLqucSprWHoCxyq0M=',
-            #                  path='/999_App_Test/ds1/00135.json',
-            #                  storage_path='/h5un6l2bnaz1vj8a9qgms4-public/teams_storage/8/y/P/rn/...json',
-            #                  mime='application/json',
-            #                  ext='json',
-            #                  sizeb=261,
-            #                  created_at='2021-01-11T09:04:17.959Z',
-            #                  updated_at='2021-01-11T09:04:17.959Z',
-            #                  full_storage_url='http://supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/teams_storage/8/y/P/rn/...json')
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                file_path = "/999_App_Test/ds1/00135.json"
+                file_info = api.file.get_info_by_id(8, file_path)
+                print(file_info)
+                # Output: FileInfo(team_id=8,
+                #                  id=7660,
+                #                  user_id=7,
+                #                  name='00135.json',
+                #                  hash='z7Hv9a7WIC5HIJrfX/69KVrvtDaLqucSprWHoCxyq0M=',
+                #                  path='/999_App_Test/ds1/00135.json',
+                #                  storage_path='/h5un6l2bnaz1vj8a9qgms4-public/teams_storage/8/y/P/rn/...json',
+                #                  mime='application/json',
+                #                  ext='json',
+                #                  sizeb=261,
+                #                  created_at='2021-01-11T09:04:17.959Z',
+                #                  updated_at='2021-01-11T09:04:17.959Z',
+                #                  full_storage_url='http://supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/teams_storage/8/y/P/rn/...json')
         """
         if self.is_on_agent(remote_path) is True:
             path_infos = self.list_on_agent(team_id, os.path.dirname(remote_path), recursive=False)
@@ -1309,32 +1356,34 @@ class FileApi(ModuleApiBase):
         :type id: int
         :return: Information about File. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`FileInfo`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            file_id = 7660
-            file_info = api.file.get_info_by_id(file_id)
-            print(file_info)
-            # Output: FileInfo(team_id=8,
-            #                  id=7660,
-            #                  user_id=7,
-            #                  name='00135.json',
-            #                  hash='z7Hv9a7WIC5HIJrfX/69KVrvtDaLqucSprWHoCxyq0M=',
-            #                  path='/999_App_Test/ds1/00135.json',
-            #                  storage_path='/h5un6l2bnaz1vj8a9qgms4-public/teams_storage/8/y/P/rn/...json',
-            #                  mime='application/json',
-            #                  ext='json',
-            #                  sizeb=261,
-            #                  created_at='2021-01-11T09:04:17.959Z',
-            #                  updated_at='2021-01-11T09:04:17.959Z',
-            #                  full_storage_url='http://supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/teams_storage/8/y/P/rn/...json')
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                file_id = 7660
+                file_info = api.file.get_info_by_id(file_id)
+                print(file_info)
+                # Output: FileInfo(team_id=8,
+                #                  id=7660,
+                #                  user_id=7,
+                #                  name='00135.json',
+                #                  hash='z7Hv9a7WIC5HIJrfX/69KVrvtDaLqucSprWHoCxyq0M=',
+                #                  path='/999_App_Test/ds1/00135.json',
+                #                  storage_path='/h5un6l2bnaz1vj8a9qgms4-public/teams_storage/8/y/P/rn/...json',
+                #                  mime='application/json',
+                #                  ext='json',
+                #                  sizeb=261,
+                #                  created_at='2021-01-11T09:04:17.959Z',
+                #                  updated_at='2021-01-11T09:04:17.959Z',
+                #                  full_storage_url='http://supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/teams_storage/8/y/P/rn/...json')
         """
         resp = self._api.post("file-storage.info", {ApiField.ID: id})
         return self._convert_json_info(resp.json())
@@ -1349,19 +1398,21 @@ class FileApi(ModuleApiBase):
         :type dir_path: str
         :return: New Directory name with suffix at the end
         :rtype: :class:`str`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-           import supervisely as sly
+            .. code-block:: python
 
-           os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-           os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-           api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-           new_dir_name = api.file.get_free_dir_name(9, "/My_App_Test")
-           print(new_dir_name)
-           # Output: /My_App_Test_001
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                new_dir_name = api.file.get_free_dir_name(9, "/My_App_Test")
+                print(new_dir_name)
+                # Output: /My_App_Test_001
         """
         res_dir = dir_path.rstrip("/")
         if not self.dir_exists(team_id, res_dir + "/"):
@@ -1405,20 +1456,22 @@ class FileApi(ModuleApiBase):
         :type progress_size_cb: Progress, optional
         :return: Path to Directory in Team Files
         :rtype: :class:`str`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            path_to_dir = "/My_App_Test/ds1"
-            local_path = "/home/admin/Downloads/My_local_test"
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            api.file.upload_directory(9, local_path, path_to_dir)
+                path_to_dir = "/My_App_Test/ds1"
+                local_path = "/home/admin/Downloads/My_local_test"
+
+                api.file.upload_directory(9, local_path, path_to_dir)
         """
         if not remote_dir.startswith("/"):
             if not RemoteStorageApi.is_bucket_url(remote_dir):
@@ -1465,16 +1518,21 @@ class FileApi(ModuleApiBase):
         :param override: If True, existing environment variables will be overridden.
         :type override: bool, optional
 
-        :Usage example:
+        :Usage Example:
 
             .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
+                import supervisely as sly
 
-            api = sly.Api.from_env()
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            api.file.load_dotenv_from_teamfiles()
-            # All variables from .env file are loaded into environment variables.
+                api = sly.Api.from_env()
+
+                api.file.load_dotenv_from_teamfiles()
+                # All variables from .env file are loaded into environment variables.
         """
         # If remote_path or team_id is not specified, it will be taken from environment variables.
         remote_path = remote_path or env.file(raise_not_found=False)
@@ -1513,16 +1571,22 @@ class FileApi(ModuleApiBase):
         :type download: bool, optional
         :return: JSON file content
         :rtype: :class:`dict` or :class:`NoneType`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            api = sly.Api("https://app.supervisely.com", "YourAccessToken")
+                import os
+                from dotenv import load_dotenv
+                import supervisely as sly
 
-            file_content = api.file.get_json_file_content()
-            print(file_content)
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                file_content = api.file.get_json_file_content()
+                print(file_content)
         """
 
         MB = 1024 * 1024
@@ -1658,21 +1722,24 @@ class FileApi(ModuleApiBase):
         :type progress_cb_type: Literal["number", "size"], optional
         :return: None
         :rtype: :class:`NoneType`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            import asyncio
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
+                import supervisely as sly
 
-            path_to_file = "/999_App_Test/ds1/01587.json"
-            local_save_path = "/path/to/save/999_App_Test/ds1/01587.json"
-            loop = sly.utils.get_or_create_event_loop()
-            loop.run_until_complete(api.file.download_async(8, path_to_file, local_save_path))
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                path_to_file = "/999_App_Test/ds1/01587.json"
+                local_save_path = "/path/to/save/999_App_Test/ds1/01587.json"
+                loop = sly.utils.get_or_create_event_loop()
+                loop.run_until_complete(api.file.download_async(8, path_to_file, local_save_path))
         """
         if semaphore is None:
             semaphore = self._api.get_default_semaphore()
@@ -1764,29 +1831,32 @@ class FileApi(ModuleApiBase):
         :type progress_cb_type: Literal["number", "size"], optional
         :return: None
         :rtype: :class:`NoneType`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            import asyncio
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
+                import supervisely as sly
 
-            paths_to_files = [
-                "/999_App_Test/ds1/01587.json",
-                "/999_App_Test/ds1/01588.json",
-                "/999_App_Test/ds1/01587.json"
-            ]
-            local_paths = [
-                "/path/to/save/999_App_Test/ds1/01587.json",
-                "/path/to/save/999_App_Test/ds1/01588.json",
-                "/path/to/save/999_App_Test/ds1/01587.json"
-            ]
-            loop = sly.utils.get_or_create_event_loop()
-            loop.run_until_complete(
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                paths_to_files = [
+                    "/999_App_Test/ds1/01587.json",
+                    "/999_App_Test/ds1/01588.json",
+                    "/999_App_Test/ds1/01587.json"
+                ]
+                local_paths = [
+                    "/path/to/save/999_App_Test/ds1/01587.json",
+                    "/path/to/save/999_App_Test/ds1/01588.json",
+                    "/path/to/save/999_App_Test/ds1/01587.json"
+                ]
+                loop = sly.utils.get_or_create_event_loop()
+                loop.run_until_complete(
                     api.file.download_bulk_async(8, paths_to_files, local_paths)
                 )
         """
@@ -1844,22 +1914,25 @@ class FileApi(ModuleApiBase):
         :type show_progress: bool
         :return: None
         :rtype: :class:`NoneType`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            import asyncio
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
+                import supervisely as sly
 
-            path_to_dir = "/files/folder"
-            local_path = "path/to/local/folder"
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            loop = sly.utils.get_or_create_event_loop()
-            loop.run_until_complete(
+                api = sly.Api.from_env()
+
+                path_to_dir = "/files/folder"
+                local_path = "path/to/local/folder"
+
+                loop = sly.utils.get_or_create_event_loop()
+                loop.run_until_complete(
                     api.file.download_directory_async(9, path_to_dir, local_path)
                 )
         """
@@ -1928,29 +2001,30 @@ class FileApi(ModuleApiBase):
             - if both file and folder paths found in environment variables (debug)
             - if team id not found in environment variables
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import os
-            from dotenv import load_dotenv
+                import os
+                from dotenv import load_dotenv
 
-            import supervisely as sly
-            import asyncio
+                import supervisely as sly
 
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-            api = sly.Api.from_env()
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            # Application is started...
-            save_path = "/my_app_data"
-            loop = sly.utils.get_or_create_event_loop()
-            loop.run_until_complete(
+                api = sly.Api.from_env()
+
+                # Application is started...
+                save_path = "/my_app_data"
+                loop = sly.utils.get_or_create_event_loop()
+                loop.run_until_complete(
                     api.file.download_input_async(save_path)
                 )
 
-            # The data is downloaded to the specified directory.
+                # The data is downloaded to the specified directory.
         """
 
         if semaphore is None:
@@ -2063,15 +2137,18 @@ class FileApi(ModuleApiBase):
         :type progress_cb_type: Literal["number", "size"], optional
         :return: None
         :rtype: :class:`NoneType`
-        :Usage example:
+
+        :Usage Example:
 
             .. code-block:: python
 
+                import os
+                from dotenv import load_dotenv
                 import supervisely as sly
-                import asyncio
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 path_to_file = "/path/to/local/file/01587.json"
@@ -2147,15 +2224,19 @@ class FileApi(ModuleApiBase):
         :type enable_fallback: bool, optional
         :return: None
         :rtype: :class:`NoneType`
-        :Usage example:
+
+        :Usage Example:
 
             .. code-block:: python
 
+                import os
+                from dotenv import load_dotenv
                 import supervisely as sly
-                import asyncio
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+
                 api = sly.Api.from_env()
 
                 paths_to_files = [
@@ -2244,20 +2325,24 @@ class FileApi(ModuleApiBase):
         :type enable_fallback: bool, optional
         :return: Path to Directory in Team Files
         :rtype: :class:`str`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
+                import supervisely as sly
 
-            path_to_dir = "/My_App_Test/ds1"
-            local_path = "/home/admin/Downloads/My_local_test"
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            api.file.upload_directory(9, local_path, path_to_dir)
+                api = sly.Api.from_env()
+
+                path_to_dir = "/999_App_Test/ds1"
+                local_path = "/path/to/local/folder"
+
+                api.file.upload_directory(8, local_path, path_to_dir)
         """
         try:
             if not remote_dir.startswith("/"):

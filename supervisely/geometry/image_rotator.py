@@ -21,12 +21,12 @@ class ImageRotator:
     :param angle_degrees_ccw: Angle to rotate image.
     :type angle_degrees_ccw: int
 
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        height, width = 300, 400
-        rotator = ImageRotator((height, width), 25)
+            height, width = 300, 400
+            rotator = ImageRotator((height, width), 25)
     """
     # to get rect with max 'coloured' area in rotated img
     def _calc_inner_crop(self):
@@ -115,28 +115,29 @@ class ImageRotator:
         :type point: PointLocation
         :return: PointLocation object
         :rtype: :class:`PointLocation<supervisely.geometry.point_location.PointLocation>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            point = sly.PointLocation(100, 200)
-            height, width = 300, 400
-            rotator = ImageRotator((height, width), 25)
+                import supervisely as sly
 
-            rotate_point = rotator.transform_point(point)
-            rotate_point_json = rotate_point.to_json()
-            print(rotate_point_json)
-            # Output:
-            # {
-            #    "points": {
-            #        "exterior": [
-            #            [224, 175]
-            #        ],
-            #        "interior": []
-            #    }
-            # }
+                point = sly.PointLocation(100, 200)
+                height, width = 300, 400
+                rotator = ImageRotator((height, width), 25)
+
+                rotate_point = rotator.transform_point(point)
+                rotate_point_json = rotate_point.to_json()
+                print(rotate_point_json)
+                # Output:
+                # {
+                #    "points": {
+                #        "exterior": [
+                #            [224, 175]
+                #        ],
+                #        "interior": []
+                #    }
+                # }
         """
         point_np_uniform = np.array([point.row, point.col, 1])
         transformed_np = self.affine_matrix.dot(point_np_uniform)
@@ -153,16 +154,17 @@ class ImageRotator:
         :type use_inter_nearest: bool
         :return: Rotated image
         :rtype: :class:`np.ndarray`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            height, width = 300, 400
-            rotator = ImageRotator((height, width), 25)
-            mask = np.zeros((height, width, 3), dtype=np.uint8)
-            rotate_mask = rotator.rotate_img(mask, True)
-            print(rotate_mask.shape)
-            # Output: (441, 489, 3)
+            .. code-block:: python
+
+                height, width = 300, 400
+                rotator = ImageRotator((height, width), 25)
+                mask = np.zeros((height, width, 3), dtype=np.uint8)
+                rotate_mask = rotator.rotate_img(mask, True)
+                print(rotate_mask.shape)
+                # Output: (441, 489, 3)
         """
         if use_inter_nearest:
             interp = cv2.INTER_NEAREST  # @TODO: cv2 INTER_NEAREST may shift coords, what to do?
@@ -170,4 +172,3 @@ class ImageRotator:
             interp = cv2.INTER_LANCZOS4
         res = cv2.warpAffine(src=img, M=self.opencv_affine_matrix, dsize=tuple(self.new_imsize[::-1]), flags=interp)
         return res
-

@@ -54,110 +54,113 @@ def download(
 
     :return: None.
     :rtype: NoneType
-    :Usage example:
 
-    .. code-block:: python
+    :Usage Example:
 
-        import os
-        from dotenv import load_dotenv
+        .. code-block:: python
 
-        from tqdm import tqdm
-        import supervisely as sly
+            import os
+            from dotenv import load_dotenv
 
-        # Load secrets and create API object from .env file (recommended)
-        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-        if sly.is_development():
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-        api = sly.Api.from_env()
+            from tqdm import tqdm
+            import supervisely as sly
 
-        # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
+            
+            api = sly.Api.from_env()
 
-        dest_dir = 'your/local/dest/dir'
+            # Pass values into the API constructor (optional, not recommended)
+            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
-        # Download image project
-        project_id_image = 17732
-        project_info = api.project.get_info_by_id(project_id_image)
-        num_images = project_info.items_count
+            dest_dir = 'your/local/dest/dir'
 
-        p = tqdm(desc="Downloading image project", total=num_images)
-        sly.download(
-            api,
-            project_id_image,
-            dest_dir,
-            progress_cb=p,
-            save_image_info=True,
-            save_images=True,
-        )
+            # Download image project
+            project_id_image = 17732
+            project_info = api.project.get_info_by_id(project_id_image)
+            num_images = project_info.items_count
 
-        # Download video project
-        project_id_video = 60498
-        project_info = api.project.get_info_by_id(project_id_video)
-        num_videos = project_info.items_count
+            p = tqdm(desc="Downloading image project", total=num_images)
+            sly.download(
+                api,
+                project_id_image,
+                dest_dir,
+                progress_cb=p,
+                save_image_info=True,
+                save_images=True,
+            )
 
-        # Download video project with automatic logging...
-        sly.download(
-            api,
-            project_id_video,
-            dest_dir,
-            save_video_info=True,
-        )
-        # ...or disable logging at all
-        sly.download(
-            api,
-            project_id_video,
-            dest_dir,
-            log_progress=False,
-            save_video_info=True,
-        )
+            # Download video project
+            project_id_video = 60498
+            project_info = api.project.get_info_by_id(project_id_video)
+            num_videos = project_info.items_count
 
-        # Download volume project
-        project_id_volume = 18594
-        project_info = api.project.get_info_by_id(project_id_volume)
-        num_volumes = project_info.items_count
+            # Download video project with automatic logging...
+            sly.download(
+                api,
+                project_id_video,
+                dest_dir,
+                save_video_info=True,
+            )
 
-        p = tqdm(desc="Downloading volume project",total=num_volumes)
-        sly.download(
-            api,
-            project_id_volume,
-            dest_dir,
-            progress_cb=p,
-            download_volumes=True,
-        )
+            # ...or disable logging at all
+            sly.download(
+                api,
+                project_id_video,
+                dest_dir,
+                log_progress=False,
+                save_video_info=True,
+            )
 
-        # Download pointcloud project
-        project_id_ptcl = 18592
-        project_info = api.project.get_info_by_id(project_id_ptcl)
-        num_ptcl = project_info.items_count
+            # Download volume project
+            project_id_volume = 18594
+            project_info = api.project.get_info_by_id(project_id_volume)
+            num_volumes = project_info.items_count
 
-        p = tqdm(desc="Downloading pointcloud project", total=num_ptcl)
-        sly.download(
-            api,
-            project_id_ptcl,
-            dest_dir,
-            progress_cb=p,
-            download_pointclouds_info=True,
-        )
+            p = tqdm(desc="Downloading volume project",total=num_volumes)
+            sly.download(
+                api,
+                project_id_volume,
+                dest_dir,
+                progress_cb=p,
+                download_volumes=True,
+            )
 
-        # Download some datasets from pointcloud episodes project
-        project_id_ptcl_ep = 18593
-        dataset_ids = [43546, 45765, 45656]
+            # Download pointcloud project
+            project_id_ptcl = 18592
+            project_info = api.project.get_info_by_id(project_id_ptcl)
+            num_ptcl = project_info.items_count
 
-        p = tqdm(
-            desc="Download some datasets from pointcloud episodes project",
-            total=len(dataset_ids),
-        )
-        sly.download(
-            api,
-            project_id_ptcl_ep,
-            dest_dir,
-            dataset_ids,
-            progress_cb=p,
-            download_pcd=True,
-            download_related_images=True,
-            download_annotations=True,
-            download_pointclouds_info=True,
-        )
+            p = tqdm(desc="Downloading pointcloud project", total=num_ptcl)
+            sly.download(
+                api,
+                project_id_ptcl,
+                dest_dir,
+                progress_cb=p,
+                download_pointclouds_info=True,
+            )
+
+            # Download some datasets from pointcloud episodes project
+            project_id_ptcl_ep = 18593
+            dataset_ids = [43546, 45765, 45656]
+
+            p = tqdm(
+                desc="Download some datasets from pointcloud episodes project",
+                total=len(dataset_ids),
+            )
+            sly.download(
+                api,
+                project_id_ptcl_ep,
+                dest_dir,
+                dataset_ids,
+                progress_cb=p,
+                download_pcd=True,
+                download_related_images=True,
+                download_annotations=True,
+                download_pointclouds_info=True,
+            )
     """
 
     project_info = api.project.get_info_by_id(project_id)
@@ -327,10 +330,11 @@ def download_fast(
     :return: None
     :rtype: NoneType
 
-    :Usage example:
+    :Usage Example:
 
         .. code-block:: python
 
+            import os
             import supervisely as sly
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'

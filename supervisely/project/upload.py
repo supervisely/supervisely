@@ -36,69 +36,70 @@ def upload(
 
     :return: None.
     :rtype: NoneType
-    :Usage example:
 
-    .. code-block:: python
+    :Usage Example:
 
-        import os
-        from dotenv import load_dotenv
+        .. code-block:: python
 
-        from tqdm import tqdm
-        import supervisely as sly
+            import os
+            from tqdm import tqdm
+            from dotenv import load_dotenv
+            import supervisely as sly
 
-        # Load secrets and create API object from .env file (recommended)
-        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-        if sly.is_development():
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-        api = sly.Api.from_env()
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-        # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
+            api = sly.Api.from_env()
 
-        src_dir = '/your/local/source/dir'
+            # Pass values into the API constructor (optional, not recommended)
+            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
-        # Upload image project
-        project_fs = sly.read_project(src_dir)
+            src_dir = '/your/local/source/dir'
 
-        pbar = tqdm(desc="Uploading image project", total=project_fs.total_items)
-        sly.upload(src_dir, api, workspace_id, project_name, progress_cb=pbar)
+            # Upload image project
+            project_fs = sly.read_project(src_dir)
 
-        # Upload video project
-        sly.upload(
-            src_dir,
-            api,
-            workspace_id,
-            project_name="Some Video Project",
-            log_progress=True,
-            include_custom_data=True
-        )
+            pbar = tqdm(desc="Uploading image project", total=project_fs.total_items)
+            sly.upload(src_dir, api, workspace_id, project_name, progress_cb=pbar)
 
-        # Upload volume project
-        sly.upload(src_dir, api, workspace_id, project_name="Some Volume Project", log_progress=True)
-
-        # Upload pointcloud project
-        project_fs = read_project(directory)
-
-        pbar = tqdm(desc="Uploading pointcloud project", total=project_fs.total_items)
-        sly.upload(
-            src_dir,
-            api,
-            workspace_id,
-            project_name="Some Pointcloud Project",
-            progress_cb=pbar,
-        )
-
-        # Upload pointcloud episodes project
-        project_fs = read_project(src_dir)
-
-        with tqdm(desc="Upload pointcloud episodes project", total=project_fs.total_items) as pbar:
+            # Upload video project
             sly.upload(
                 src_dir,
                 api,
                 workspace_id,
-                project_name="Some Pointcloud Episodes Project",
+                project_name="Some Video Project",
+                log_progress=True,
+                include_custom_data=True
+            )
+
+            # Upload volume project
+            sly.upload(src_dir, api, workspace_id, project_name="Some Volume Project", log_progress=True)
+
+            # Upload pointcloud project
+            project_fs = read_project(directory)
+
+            pbar = tqdm(desc="Uploading pointcloud project", total=project_fs.total_items)
+            sly.upload(
+                src_dir,
+                api,
+                workspace_id,
+                project_name="Some Pointcloud Project",
                 progress_cb=pbar,
             )
+
+            # Upload pointcloud episodes project
+            project_fs = read_project(src_dir)
+
+            with tqdm(desc="Upload pointcloud episodes project", total=project_fs.total_items) as pbar:
+                sly.upload(
+                    src_dir,
+                    api,
+                    workspace_id,
+                    project_name="Some Pointcloud Episodes Project",
+                    progress_cb=pbar,
+                )
     """
 
     project_fs = read_project(src_dir)

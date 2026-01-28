@@ -86,14 +86,15 @@ def is_valid_ext(ext: str) -> bool:
     :type ext: str
     :return: True if image extention in list of supported images extensions, False - in otherwise
     :rtype: :class:`bool`
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        sly.image.is_valid_ext('.png') # True
-        sly.image.is_valid_ext('.py') # False
+            import supervisely as sly
+
+            sly.image.is_valid_ext('.png') # True
+            sly.image.is_valid_ext('.py') # False
     """
     return ext.lower() in SUPPORTED_IMG_EXTS
 
@@ -107,14 +108,14 @@ def has_valid_ext(path: str) -> bool:
     :return: True if file extention in list of supported images extensions, False - in otherwise
     :rtype: :class:`bool`
 
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
+            import supervisely as sly
 
-        sly.image.has_valid_ext('/home/admin/work/docs/new_image.jpeg') # True
-        sly.image.has_valid_ext('/home/admin/work/docs/016_img.py') # False
+            sly.image.has_valid_ext('/home/admin/work/docs/new_image.jpeg') # True
+            sly.image.has_valid_ext('/home/admin/work/docs/016_img.py') # False
     """
     return is_valid_ext(os.path.splitext(path)[1])
 
@@ -127,21 +128,21 @@ def validate_ext(path: str) -> None:
     :type path: str
     :return: None
     :rtype: :class:`NoneType`
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        print(sly.image.validate_ext('/home/admin/work/docs/new_image.jpeg'))
-        # Output: None
+            import supervisely as sly
 
-        try:
-            print(sly.image.validate_ext('/home/admin/work/docs/016_img.py'))
-        except ImageExtensionError as error:
-            print(error)
+            sly.image.validate_ext('/home/admin/work/docs/new_image.jpeg')
 
-        # Output: Unsupported image extension: '.py' for file '/home/admin/work/docs/016_img.py'. Only the following extensions are supported: .jpg, .jpeg, .mpo, .bmp, .png, .webp.
+            try:
+                sly.image.validate_ext('/home/admin/work/docs/016_img.py')
+            except ImageExtensionError as error:
+                print(error)
+
+            # Output: Unsupported image extension: '.py' for file '/home/admin/work/docs/016_img.py'. Only the following extensions are supported: .jpg, .jpeg, .mpo, .bmp, .png, .webp.
     """
     _, ext = os.path.splitext(path)
     if not is_valid_ext(ext):
@@ -160,21 +161,22 @@ def validate_format(path: str) -> None:
     :type path: str
     :return: None
     :rtype: :class:`NoneType`
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        print(sly.image.validate_format('/home/admin/work/docs/new_image.jpeg'))
-        # Output: None
+            import supervisely as sly
 
-        try:
-            print(sly.image.validate_format('/home/admin/work/docs/016_img.py'))
-        except ImageReadException as error:
-            print(error)
+            print(sly.image.validate_format('/home/admin/work/docs/new_image.jpeg'))
+            # Output: None
 
-        # Output: Error has occured trying to read image '/home/admin/work/docs/016_img.py'. Original exception message: "cannot identify image file '/home/admin/work/docs/016_img.py'"
+            try:
+                sly.image.validate_format('/home/admin/work/docs/016_img.py')
+            except ImageReadException as error:
+                print(error)
+
+            # Output: Error has occured trying to read image '/home/admin/work/docs/016_img.py'. Original exception message: "cannot identify image file '/home/admin/work/docs/016_img.py'"
     """
     ext = get_file_ext(path)
     if ext == ".nrrd":
@@ -208,9 +210,10 @@ def is_valid_format(path: str) -> bool:
     :type path: str
     :return: True if file format in list of supported images formats, False - in otherwise
     :rtype: :class:`bool`
-    :Usage example:
 
-         .. code-block:: python
+    :Usage Example:
+
+        .. code-block:: python
 
             import supervisely as sly
 
@@ -235,13 +238,14 @@ def read(path: str, remove_alpha_channel: Optional[bool] = True) -> np.ndarray:
     :type remove_alpha_channel: bool, optional
     :return: Numpy array
     :rtype: :class:`np.ndarray`
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        im = sly.image.read('/home/admin/work/docs/image.jpeg')
+            import supervisely as sly
+
+            im = sly.image.read('/home/admin/work/docs/image.jpeg')
     """
     ext = get_file_ext(path)
     if ext == ".nrrd":
@@ -283,14 +287,15 @@ def read_bytes(image_bytes: str, keep_alpha: Optional[bool] = False) -> np.ndarr
     :type keep_alpha: bool, optional
     :return: Numpy array
     :rtype: :class:`np.ndarray`
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        im_bytes = '\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\...\xd9'
-        im = sly.image.read_bytes(im_bytes)
+            import supervisely as sly
+
+            im_bytes = '\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\...\xd9'
+            im = sly.image.read_bytes(im_bytes)
     """
     if image_bytes.startswith(b"NRRD"):
         file_like = io.BytesIO(image_bytes)
@@ -328,14 +333,15 @@ def write(path: str, img: np.ndarray, remove_alpha_channel: Optional[bool] = Tru
     :type remove_alpha_channel: bool, optional
     :return: None
     :rtype: :class:`NoneType`
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        path = '/home/admin/work/docs/new_image.jpeg'
-        sly.image.write(path, image_np)
+            import supervisely as sly
+
+            path = '/home/admin/work/docs/new_image.jpeg'
+            sly.image.write(path, image_np)
     """
     ensure_base_path(path)
     validate_ext(path)
@@ -388,21 +394,22 @@ def draw_text_sequence(
     :type fill_background: bool, optional
     :return: None
     :rtype: :class:`NoneType`
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        sly.image.draw_text_sequence(image, ['some_text', 'another_text'], (10, 10))
+            import supervisely as sly
 
-    .. list-table::
+            sly.image.draw_text_sequence(image, ['some_text', 'another_text'], (10, 10))
 
-        * - .. figure:: https://i.imgur.com/BHUALdv.jpg
+            .. list-table::
+
+            * - .. figure:: https://i.imgur.com/BHUALdv.jpg
 
                    Before
 
-          - .. figure:: https://i.imgur.com/wIzrDuf.jpg
+              - .. figure:: https://i.imgur.com/wIzrDuf.jpg
 
                    After
     """
@@ -460,21 +467,22 @@ def draw_text(
 
     :return: Height and width of text
     :rtype: :class:`Tuple[int, int]`
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        sly.image.draw_text(image, 'your text', (100, 50), color=(0, 0, 0, 255))
+            import supervisely as sly
 
-    .. list-table::
+            sly.image.draw_text(image, 'your text', (100, 50), color=(0, 0, 0, 255))
 
-        * - .. figure:: https://i.imgur.com/BHUALdv.jpg
+            .. list-table::
+
+            * - .. figure:: https://i.imgur.com/BHUALdv.jpg
 
                    Before
 
-          - .. figure:: https://i.imgur.com/6Ptz8Tf.jpg
+              - .. figure:: https://i.imgur.com/6Ptz8Tf.jpg
 
                    After
     """
@@ -535,15 +543,15 @@ def write_bytes(img: np.ndarray, ext: str) -> bytes:
     :return: Bytes object
     :rtype: :class:`bytes`
 
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
+            import supervisely as sly
 
-        bytes = sly.image.write_bytes(image_np, 'jpeg')
-        print(type(bytes))
-        # Output: <class 'bytes'>
+            bytes = sly.image.write_bytes(image_np, 'jpeg')
+            print(type(bytes))
+            # Output: <class 'bytes'>
     """
     ext = ("." + ext).replace("..", ".")
     if not is_valid_ext(ext):
@@ -580,15 +588,15 @@ def get_hash(img: np.ndarray, ext: str) -> str:
     :return: Hash string
     :rtype: :class:`str`
 
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
+            import supervisely as sly
 
-        hash = sly.image.get_hash(im, 'jpeg')
-        print(hash)
-        # Output: fTec3RD7Zxg0aYc0ooa5phPfBrzDe01urlFsgi5IzIQ=
+            hash = sly.image.get_hash(im, 'jpeg')
+            print(hash)
+            # Output: fTec3RD7Zxg0aYc0ooa5phPfBrzDe01urlFsgi5IzIQ=
     """
     return get_bytes_hash(write_bytes(img, ext))
 
@@ -604,28 +612,27 @@ def crop(img: np.ndarray, rect: Rectangle) -> np.ndarray:
     :return: Cropped image in numpy format
     :rtype: :class:`np.ndarray`
 
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
+            import supervisely as sly
 
-        # If size of rectangle is more then image shape raise ValueError:
-        try:
-            crop_image = sly.image.crop(image_np, sly.Rectangle(0, 0, 5000, 6000))
-        except ValueError as error:
-            print(error)
-        # Output: Rectangle for crop out of image area!
+            # If size of rectangle is more then image shape raise ValueError:
+            try:
+                crop_image = sly.image.crop(image_np, sly.Rectangle(0, 0, 5000, 6000))
+            except ValueError as error:
+                print(error)
+            # Output: Rectangle for crop out of image area!
+            crop_im = sly.image.crop(image_np, sly.Rectangle(0, 0, 500, 600))
 
-        crop_im = sly.image.crop(image_np, sly.Rectangle(0, 0, 500, 600))
+            .. list-table::
 
-    .. list-table::
-
-        * - .. figure:: https://i.imgur.com/BHUALdv.jpg
+            * - .. figure:: https://i.imgur.com/BHUALdv.jpg
 
                    Before
 
-          - .. figure:: https://i.imgur.com/4tNm2GS.jpg
+              - .. figure:: https://i.imgur.com/4tNm2GS.jpg
 
                    After
     """
@@ -646,21 +653,21 @@ def crop_with_padding(img: np.ndarray, rect: Rectangle) -> np.ndarray:
     :return: Cropped image in numpy format
     :rtype: :class:`np.ndarray`
 
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
+            import supervisely as sly
 
-        crop_with_padding_image = sly.image.crop_with_padding(image_np, sly.Rectangle(0, 0, 1000, 1200))
+            crop_with_padding_image = sly.image.crop_with_padding(image_np, sly.Rectangle(0, 0, 1000, 1200))
 
-    .. list-table::
+            .. list-table::
 
-        * - .. figure:: https://i.imgur.com/BHUALdv.jpg
+            * - .. figure:: https://i.imgur.com/BHUALdv.jpg
 
                    Before
 
-          - .. figure:: https://i.imgur.com/Nv1UinH.jpg
+              - .. figure:: https://i.imgur.com/Nv1UinH.jpg
 
                    After
     """
@@ -758,21 +765,21 @@ def resize(
     :return: Resize image in numpy format
     :rtype: :class:`np.ndarray`
 
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
+            import supervisely as sly
 
-        resize_image = sly.image.resize(image_np, (300, 500))
+            resize_image = sly.image.resize(image_np, (300, 500))
 
-    .. list-table::
+            .. list-table::
 
-        * - .. figure:: https://i.imgur.com/BHUALdv.jpg
+            * - .. figure:: https://i.imgur.com/BHUALdv.jpg
 
                    Before
 
-          - .. figure:: https://i.imgur.com/Xya4yz0.jpg
+              - .. figure:: https://i.imgur.com/Xya4yz0.jpg
 
                    After
     """
@@ -800,21 +807,21 @@ def resize_inter_nearest(
     :return: Resize image in numpy format
     :rtype: :class:`np.ndarray`
 
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
+            import supervisely as sly
 
-        resize_image_nearest = sly.image.resize_inter_nearest(image_np, (300, 700))
+            resize_image_nearest = sly.image.resize_inter_nearest(image_np, (300, 700))
 
-    .. list-table::
+            .. list-table::
 
-        * - .. figure:: https://i.imgur.com/BHUALdv.jpg
+            * - .. figure:: https://i.imgur.com/BHUALdv.jpg
 
                    Before
 
-          - .. figure:: https://i.imgur.com/0O6yMDH.jpg
+              - .. figure:: https://i.imgur.com/0O6yMDH.jpg
 
                    After
     """
@@ -838,21 +845,21 @@ def scale(img: np.ndarray, factor: float) -> np.ndarray:
     :return: Resize image in numpy format
     :rtype: :class:`np.ndarray`
 
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
+            import supervisely as sly
 
-        scale_image = sly.image.scale(image_np, 0.3)
+            scale_image = sly.image.scale(image_np, 0.3)
 
-    .. list-table::
+            .. list-table::
 
-        * - .. figure:: https://i.imgur.com/BHUALdv.jpg
+            * - .. figure:: https://i.imgur.com/BHUALdv.jpg
 
                    Before
 
-          - .. figure:: https://i.imgur.com/NyP8tts.jpg
+              - .. figure:: https://i.imgur.com/NyP8tts.jpg
 
                    After
     """
@@ -868,21 +875,21 @@ def fliplr(img: np.ndarray) -> np.ndarray:
     :return: Flip image in numpy format
     :rtype: :class:`np.ndarray`
 
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
+            import supervisely as sly
 
-        fliplr_image = sly.image.fliplr(image_np)
+            fliplr_image = sly.image.fliplr(image_np)
 
-    .. list-table::
+            .. list-table::
 
-        * - .. figure:: https://i.imgur.com/BHUALdv.jpg
+            * - .. figure:: https://i.imgur.com/BHUALdv.jpg
 
                    Before
 
-          - .. figure:: https://i.imgur.com/1mqnuZU.jpg
+              - .. figure:: https://i.imgur.com/1mqnuZU.jpg
 
                    After
     """
@@ -898,21 +905,21 @@ def flipud(img: np.ndarray) -> np.ndarray:
     :return: Flip image in numpy format
     :rtype: :class:`np.ndarray`
 
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
+            import supervisely as sly
 
-        flipud_image = sly.image.flipud(image_np)
+            flipud_image = sly.image.flipud(image_np)
 
-    .. list-table::
+            .. list-table::
 
-        * - .. figure:: https://i.imgur.com/BHUALdv.jpg
+            * - .. figure:: https://i.imgur.com/BHUALdv.jpg
 
                    Before
 
-          - .. figure:: https://i.imgur.com/LDwRDvm.jpg
+              - .. figure:: https://i.imgur.com/LDwRDvm.jpg
 
                    After
     """
@@ -936,34 +943,34 @@ def rotate(
     :return: Rotate image in numpy format
     :rtype: :class:`np.ndarray`
 
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
+            import supervisely as sly
 
-        # keep_black mode
-        rotate_im_keep_black = sly.image.rotate(image_np, 45)
-        # crop_black mode
-        rotate_im_crop_black = sly.image.rotate(image_np, 45, sly.image.RotateMode.CROP_BLACK)
-        # origin_size mode
-        rotate_im_origin_size = sly.image.rotate(image_np, 45, sly.image.RotateMode.SAVE_ORIGINAL_SIZE) * 255
+            # keep_black mode
+            rotate_im_keep_black = sly.image.rotate(image_np, 45)
+            # crop_black mode
+            rotate_im_crop_black = sly.image.rotate(image_np, 45, sly.image.RotateMode.CROP_BLACK)
+            # origin_size mode
+            rotate_im_origin_size = sly.image.rotate(image_np, 45, sly.image.RotateMode.SAVE_ORIGINAL_SIZE) * 255
 
-    .. list-table::
+            .. list-table::
 
-        * - .. figure:: https://i.imgur.com/BHUALdv.jpg
+            * - .. figure:: https://i.imgur.com/BHUALdv.jpg
 
                    Before
 
-          - .. figure:: https://i.imgur.com/VjiwV4O.jpg
+              - .. figure:: https://i.imgur.com/VjiwV4O.jpg
 
                    After keep_black mode
 
-          - .. figure:: https://i.imgur.com/Rs34eMa.jpg
+              - .. figure:: https://i.imgur.com/Rs34eMa.jpg
 
                    After crop_black mode
 
-          - .. figure:: https://i.imgur.com/ttDWfBE.jpg
+              - .. figure:: https://i.imgur.com/ttDWfBE.jpg
 
                    After origin_size mode
     """
@@ -1006,21 +1013,21 @@ def random_contrast(image: np.ndarray, min_factor: float, max_factor: float) -> 
     :return: Image in numpy format with new contrast
     :rtype: :class:`np.ndarray`
 
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
+            import supervisely as sly
 
-        rand_contrast_im = sly.image.random_contrast(image_np, 1.1, 1.8)
+            rand_contrast_im = sly.image.random_contrast(image_np, 1.1, 1.8)
 
-    .. list-table::
+            .. list-table::
 
-        * - .. figure:: https://i.imgur.com/BHUALdv.jpg
+            * - .. figure:: https://i.imgur.com/BHUALdv.jpg
 
                    Before
 
-          - .. figure:: https://i.imgur.com/4zSNuJU.jpg
+              - .. figure:: https://i.imgur.com/4zSNuJU.jpg
 
                    After
     """
@@ -1046,21 +1053,21 @@ def random_brightness(image: np.ndarray, min_factor: float, max_factor: float) -
     :return: Image in numpy format with new brightness
     :rtype: :class:`np.ndarray`
 
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
+            import supervisely as sly
 
-        rand_brightness_im = sly.image.random_brightness(image_np, 1.5, 8.5)
+            rand_brightness_im = sly.image.random_brightness(image_np, 1.5, 8.5)
 
-    .. list-table::
+            .. list-table::
 
-        * - .. figure:: https://i.imgur.com/BHUALdv.jpg
+            * - .. figure:: https://i.imgur.com/BHUALdv.jpg
 
                    Before
 
-          - .. figure:: https://i.imgur.com/bOYwwYH.jpg
+              - .. figure:: https://i.imgur.com/bOYwwYH.jpg
 
                    After
     """
@@ -1084,21 +1091,21 @@ def random_noise(image: np.ndarray, mean: float, std: float) -> np.ndarray:
     :return: Image in numpy format with random noise
     :rtype: :class:`np.ndarray`
 
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
+            import supervisely as sly
 
-        random_noise_im = sly.image.random_noise(image_np, 25, 19)
+            random_noise_im = sly.image.random_noise(image_np, 25, 19)
 
-    .. list-table::
+            .. list-table::
 
-        * - .. figure:: https://i.imgur.com/BHUALdv.jpg
+            * - .. figure:: https://i.imgur.com/BHUALdv.jpg
 
                    Before
 
-          - .. figure:: https://i.imgur.com/EzyEHeM.jpg
+              - .. figure:: https://i.imgur.com/EzyEHeM.jpg
 
                    After
     """
@@ -1121,21 +1128,21 @@ def random_color_scale(image: np.ndarray, min_factor: float, max_factor: float) 
     :return: Image in numpy format with random color scale
     :rtype: :class:`np.ndarray`
 
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
+            import supervisely as sly
 
-        random_color_scale_im = sly.image.random_color_scale(image_np, 0.5, 0.9)
+            random_color_scale_im = sly.image.random_color_scale(image_np, 0.5, 0.9)
 
-    .. list-table::
+            .. list-table::
 
-        * - .. figure:: https://i.imgur.com/BHUALdv.jpg
+            * - .. figure:: https://i.imgur.com/BHUALdv.jpg
 
                    Before
 
-          - .. figure:: https://i.imgur.com/GGUZqlA.jpg
+              - .. figure:: https://i.imgur.com/GGUZqlA.jpg
 
                    After
     """
@@ -1157,21 +1164,21 @@ def blur(image: np.ndarray, kernel_size: int) -> np.ndarray:
     :return: Image in numpy format with blur
     :rtype: :class:`np.ndarray`
 
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
+            import supervisely as sly
 
-        blur_im = sly.image.blur(image_np, 7)
+            blur_im = sly.image.blur(image_np, 7)
 
-    .. list-table::
+            .. list-table::
 
-        * - .. figure:: https://i.imgur.com/BHUALdv.jpg
+            * - .. figure:: https://i.imgur.com/BHUALdv.jpg
 
                    Before
 
-          - .. figure:: https://i.imgur.com/wFnBaC6.jpg
+              - .. figure:: https://i.imgur.com/wFnBaC6.jpg
 
                    After
     """
@@ -1189,21 +1196,21 @@ def median_blur(image: np.ndarray, kernel_size: int) -> np.ndarray:
     :return: Image in numpy format with median blur
     :rtype: :class:`np.ndarray`
 
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
+            import supervisely as sly
 
-        median_blur_im = sly.image.median_blur(image_np, 5)
+            median_blur_im = sly.image.median_blur(image_np, 5)
 
-    .. list-table::
+            .. list-table::
 
-        * - .. figure:: https://i.imgur.com/BHUALdv.jpg
+            * - .. figure:: https://i.imgur.com/BHUALdv.jpg
 
                    Before
 
-          - .. figure:: https://i.imgur.com/FQ977ON.jpg
+              - .. figure:: https://i.imgur.com/FQ977ON.jpg
 
                    After
     """
@@ -1223,23 +1230,23 @@ def gaussian_blur(image: np.ndarray, sigma_min: float, sigma_max: float) -> np.n
     :return: Image in numpy format with gaussian blur
     :rtype: :class:`np.ndarray`
 
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
+            import supervisely as sly
 
-        gaussian_blur_im = sly.image.gaussian_blur(image_np, 3.3, 7.5)
+            gaussian_blur_im = sly.image.gaussian_blur(image_np, 3.3, 7.5)
 
-    .. list-table::
+            .. list-table::
 
-        * - .. figure:: https://i.imgur.com/BHUALdv.jpg
+            * - .. figure:: https://i.imgur.com/BHUALdv.jpg
 
                    Before
 
-          - .. figure:: https://i.imgur.com/brs6Au0.jpg
+              - .. figure:: https://i.imgur.com/brs6Au0.jpg
 
-                   After
+                    After
     """
     sigma_value = np.random.uniform(sigma_min, sigma_max)
     return cv2.GaussianBlur(image, (0, 0), sigma_value)
@@ -1272,15 +1279,16 @@ def np_image_to_data_url(img: np.ndarray) -> str:
     :type img: np.ndarray
     :return: String with image url
     :rtype: :class:`str`
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        data_url = sly.image.np_image_to_data_url(im)
-        print(data_url)
-        # Output: 'data:image/png;base64,iVBORw0K...'
+            import supervisely as sly
+
+            data_url = sly.image.np_image_to_data_url(im)
+            print(data_url)
+            # Output: 'data:image/png;base64,iVBORw0K...'
     """
     encode_status, bgra_result_png = cv2.imencode(".png", img)
     img_png = bgra_result_png.tobytes()
@@ -1297,13 +1305,14 @@ def data_url_to_numpy(data_url: str) -> np.ndarray:
     :type img: str
     :return: Image in numpy format(RGBA)
     :rtype: :class:`np.ndarray`
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        image_np = sly.image.data_url_to_numpy(data_url)
+            import supervisely as sly
+
+            image_np = sly.image.data_url_to_numpy(data_url)
     """
     img_base64 = data_url[len("data:image/png;base64,") :]
     img_base64 = base64.b64decode(img_base64)
@@ -1320,15 +1329,16 @@ def np_image_to_data_url_backup_rgb(img: np.ndarray) -> str:
     :type img: np.ndarray
     :return: String with image url
     :rtype: :class:`str`
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        data_url = sly.image.np_image_to_data_url_backup_rgb(im)
-        print(data_url)
-        # Output: 'data:image/png;base64,iVBORw0K...'
+            import supervisely as sly
+
+            data_url = sly.image.np_image_to_data_url_backup_rgb(im)
+            print(data_url)
+            # Output: 'data:image/png;base64,iVBORw0K...'
     """
     img_base64 = base64.b64encode(write_bytes(img, "png"))
     data_url = "data:image/png;base64,{}".format(str(img_base64, "utf-8"))

@@ -14,26 +14,28 @@ class PluginApi(ModuleApi):
 
     :param api: API connection to the server
     :type api: Api
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import os
-        from dotenv import load_dotenv
+        .. code-block:: python
 
-        import supervisely as sly
+            import os
+            from dotenv import load_dotenv
 
-        # Load secrets and create API object from .env file (recommended)
-        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-        if sly.is_development():
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-        api = sly.Api.from_env()
+            import supervisely as sly
 
-        # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-        team_id = 8
-        plugin_info = api.plugin.get_list(team_id)
+            api = sly.Api.from_env()
+
+            # Or pass values into the API constructor (optional, not recommended)
+            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
+
+            team_id = 8
+            plugin_info = api.plugin.get_list(team_id)
     """
 
     @staticmethod
@@ -90,20 +92,22 @@ class PluginApi(ModuleApi):
         :type filters: List[dict], optional
         :return: List of Plugins with information. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[NamedTuple]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            team_id = 8
-            plugin_info = api.plugin.get_list(team_id)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            plugin_list_filter = api.plugin.get_list(team_id, filters=[{'field': 'name', 'operator': '=', 'value': 'Images'}])
+                team_id = 8
+                plugin_info = api.plugin.get_list(team_id)
+
+                plugin_list_filter = api.plugin.get_list(team_id, filters=[{'field': 'name', 'operator': '=', 'value': 'Images'}])
         """
         return self.get_list_all_pages(
             "plugins.list", {ApiField.TEAM_ID: team_id, ApiField.FILTER: filters or []}
@@ -119,29 +123,31 @@ class PluginApi(ModuleApi):
         :type plugin_id: int
         :return: Information about Plugin. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`NamedTuple`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            plugin_info = api.plugin.get_info_by_id(8, 3)
-            print(plugin_info)
-            # Output: PluginInfo(id=3,
-            #                    name='DTL',
-            #                    description='Allows to combine datasets, to make class mapping, filter objects and images, apply auto augmentations and so on ...',
-            #                    type='dtl',
-            #                    default_version='latest',
-            #                    docker_image='docker.deepsystems.io/supervisely/five/dtl',
-            #                    readme='# Data Transformation Language (DTL)...',
-            #                    configs=[],
-            #                    versions=['lately', 'docs', ...],
-            #                    created_at='2020-03-30T09:17:36.000Z',
-            #                    updated_at='2020-04-23T06:26:29.000Z')
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                plugin_info = api.plugin.get_info_by_id(8, 3)
+                print(plugin_info)
+                # Output: PluginInfo(id=3,
+                #                    name='DTL',
+                #                    description='Allows to combine datasets, to make class mapping, filter objects and images, apply auto augmentations and so on ...',
+                #                    type='dtl',
+                #                    default_version='latest',
+                #                    docker_image='docker.deepsystems.io/supervisely/five/dtl',
+                #                    readme='# Data Transformation Language (DTL)...',
+                #                    configs=[],
+                #                    versions=['lately', 'docs', ...],
+                #                    created_at='2020-03-30T09:17:36.000Z',
+                #                    updated_at='2020-04-23T06:26:29.000Z')
         """
         filters = [{"field": ApiField.ID, "operator": "=", "value": plugin_id}]
         return self._get_info_by_filters(team_id, filters)

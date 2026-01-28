@@ -35,89 +35,91 @@ def load_json_file(filename: str) -> Dict:
     :raises RuntimeError: If can not decode json file.
     :returns: Json format as a dict
     :rtype: :class:`dict`
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        from supervisely.io.json import load_json_file
-        json_example = load_json_file('/home/admin/work/projects/examples/ann.json')
-        print(json_example)
-        # Output: {
-        #     "description": "",
-        #     "tags": [],
-        #     "size": {
-        #         "height": 800,
-        #         "width": 1067
-        #     },
-        #     "objects": [
-        #         {
-        #             "id": 619053179,
-        #             "classId": 2791451,
-        #             "description": "",
-        #             "geometryType": "bitmap",
-        #             "labelerLogin": "alexxx",
-        #             "createdAt": "2021-02-10T08:36:33.898Z",
-        #             "updatedAt": "2021-02-10T08:39:24.828Z",
-        #             "tags": [],
-        #             "classTitle": "lemon",
-        #             "bitmap": {
-        #                 "data": "eJwBZgOZ/IlQTkcNChoKAAAADUlIR...AiRp9+EwAAAABJRU5ErkJgggn2cM0=",
-        #                 "origin": [
-        #                     531,
-        #                     120
-        #                 ]
-        #             }
-        #         },
-        #         {
-        #             "id": 619053347,
-        #             "classId": 2791453,
-        #             "description": "",
-        #             "geometryType": "rectangle",
-        #             "labelerLogin": "alexxx",
-        #             "createdAt": "2021-02-10T08:39:08.369Z",
-        #             "updatedAt": "2021-02-10T08:39:24.828Z",
-        #             "tags": [],
-        #             "classTitle": "kiwi",
-        #             "points": {
-        #                 "exterior": [
-        #                     [
-        #                         764,
-        #                         387
-        #                     ],
-        #                     [
-        #                         967,
-        #                         608
-        #                     ]
-        #                 ],
-        #                 "interior": []
-        #             }
-        #         },
-        #         {
-        #             "id": 619053355,
-        #             "classId": 2791453,
-        #             "description": "",
-        #             "geometryType": "rectangle",
-        #             "labelerLogin": "alexxx",
-        #             "createdAt": "2021-02-10T08:39:16.938Z",
-        #             "updatedAt": "2021-02-10T08:39:24.828Z",
-        #             "tags": [],
-        #             "classTitle": "kiwi",
-        #             "points": {
-        #                 "exterior": [
-        #                     [
-        #                         477,
-        #                         543
-        #                     ],
-        #                     [
-        #                         647,
-        #                         713
-        #                     ]
-        #                 ],
-        #                 "interior": []
-        #             }
-        #         }
-        #     ]
-        # }
+        .. code-block:: python
+
+            from supervisely.io.json import load_json_file
+
+            json_example = load_json_file('/home/admin/work/projects/examples/ann.json')
+            print(json_example)
+            # Output: {
+            #     "description": "",
+            #     "tags": [],
+            #     "size": {
+            #         "height": 800,
+            #         "width": 1067
+            #     },
+            #     "objects": [
+            #         {
+            #             "id": 619053179,
+            #             "classId": 2791451,
+            #             "description": "",
+            #             "geometryType": "bitmap",
+            #             "labelerLogin": "alexxx",
+            #             "createdAt": "2021-02-10T08:36:33.898Z",
+            #             "updatedAt": "2021-02-10T08:39:24.828Z",
+            #             "tags": [],
+            #             "classTitle": "lemon",
+            #             "bitmap": {
+            #                 "data": "eJwBZgOZ/IlQTkcNChoKAAAADUlIR...AiRp9+EwAAAABJRU5ErkJgggn2cM0=",
+            #                 "origin": [
+            #                     531,
+            #                     120
+            #                 ]
+            #             }
+            #         },
+            #         {
+            #             "id": 619053347,
+            #             "classId": 2791453,
+            #             "description": "",
+            #             "geometryType": "rectangle",
+            #             "labelerLogin": "alexxx",
+            #             "createdAt": "2021-02-10T08:39:08.369Z",
+            #             "updatedAt": "2021-02-10T08:39:24.828Z",
+            #             "tags": [],
+            #             "classTitle": "kiwi",
+            #             "points": {
+            #                 "exterior": [
+            #                     [
+            #                         764,
+            #                         387
+            #                     ],
+            #                     [
+            #                         967,
+            #                         608
+            #                     ]
+            #                 ],
+            #                 "interior": []
+            #             }
+            #         },
+            #         {
+            #             "id": 619053355,
+            #             "classId": 2791453,
+            #             "description": "",
+            #             "geometryType": "rectangle",
+            #             "labelerLogin": "alexxx",
+            #             "createdAt": "2021-02-10T08:39:16.938Z",
+            #             "updatedAt": "2021-02-10T08:39:24.828Z",
+            #             "tags": [],
+            #             "classTitle": "kiwi",
+            #             "points": {
+            #                 "exterior": [
+            #                     [
+            #                         477,
+            #                         543
+            #                     ],
+            #                     [
+            #                         647,
+            #                         713
+            #                     ]
+            #                 ],
+            #                 "interior": []
+            #             }
+            #         }
+            #     ]
+            # }
     """
     if os.path.isdir(filename):
         raise IsADirectoryError(f"The path {filename} is a directory, not a file.")
@@ -146,13 +148,14 @@ def dump_json_file(data: Dict, filename: str, indent: Optional[int] = 4) -> None
     :type indent: int, optional
     :returns: None
     :rtype: :class:`NoneType`
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        from supervisely.io.json import dump_json_file
-        data = {1: 'example'}
-        dump_json_file(data, '/home/admin/work/projects/examples/1.json')
+        .. code-block:: python
+
+            from supervisely.io.json import dump_json_file
+            data = {1: 'example'}
+            dump_json_file(data, '/home/admin/work/projects/examples/1.json')
     """
     with open(filename, "w") as fout:
         json.dump(data, fout, indent=indent)
@@ -189,15 +192,16 @@ def modify_keys(
     :type suffix: str, optional
     :returns: New dict with prefix and suffix in keys
     :rtype: :class:`dict`
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        from supervisely.io.json import modify_keys
-        data = {'1': 'example', '3': 4}
-        new_data = modify_keys(data, prefix='pr_', suffix='_su')
-        print(new_data)
-        # Output: {'pr_1_su': 'example', 'pr_3_su': 4}
+        .. code-block:: python
+
+            from supervisely.io.json import modify_keys
+            data = {'1': 'example', '3': 4}
+            new_data = modify_keys(data, prefix='pr_', suffix='_su')
+            print(new_data)
+            # Output: {'pr_1_su': 'example', 'pr_3_su': 4}
     """
 
     def _modify(k):
@@ -245,17 +249,18 @@ async def dump_json_file_async(data: Dict, filename: str, indent: Optional[int] 
     :type indent: int, optional
     :returns: None
     :rtype: :class:`NoneType`
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
-        from supervisely._utils import run_coroutine
+        .. code-block:: python
 
-        data = {1: 'example'}
+            import supervisely as sly
+            from supervisely._utils import run_coroutine
 
-        coroutine = sly.json.dump_json_file_async(data, '/home/admin/work/projects/examples/1.json')
-        run_coroutine(coroutine)
+            data = {1: 'example'}
+
+            coroutine = sly.json.dump_json_file_async(data, '/home/admin/work/projects/examples/1.json')
+            run_coroutine(coroutine)
     """
     async with aiofiles.open(filename, "w") as fout:
         await fout.write(json.dumps(data, indent=indent))

@@ -26,15 +26,16 @@ class DatasetThumbnail(Widget):
     :param widget_id: An identifier of the widget.
     :type widget_id: str, optional
 
-    :Usage example:
-    .. code-block:: python
+    :Usage Example:
 
-            from supervisely.app.widgets import DatasetThumbnail
+        .. code-block:: python
 
-            dataset_thumbnail = DatasetThumbnail(
-                project_info=project_info,
-                dataset_info=dataset_info,
-            )
+                from supervisely.app.widgets import DatasetThumbnail
+
+                dataset_thumbnail = DatasetThumbnail(
+                    project_info=project_info,
+                    dataset_info=dataset_info,
+                )
     """
 
     def __init__(

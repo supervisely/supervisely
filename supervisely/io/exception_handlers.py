@@ -786,23 +786,25 @@ def handle_exception(exception: Exception) -> Union[HandleException, None]:
     :type exception: Exception
     :return: Instance of the ErrorHandler class or None.
     :rtype: Union[ErrorHandler, None]
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        try:
-            # Some code that may raise an exception.
-        except Exception as e:
-            exception_handler = sly.handle_exception(e)
-            if exception_handler:
-                # You may raise the exception using the raise_error() method.
-                # Or use other approaches for handling the exception (e.g. logging, printing to console, etc.)
-                exception_handler.raise_error()
-            else:
-                # If the pattern is not found, the exception is raised as usual.
-                raise
+            import supervisely as sly
+
+            try:
+                # Code that may raise an exception.
+                raise Exception("Test exception")
+            except Exception as e:
+                exception_handler = sly.handle_exception(e)
+                if exception_handler:
+                    # You may raise the exception using the raise_error() method.
+                    # Or use other approaches for handling the exception (e.g. logging, printing to console, etc.)
+                    exception_handler.raise_error()
+                else:
+                    # If the pattern is not found, the exception is raised as usual.
+                    raise
     """
     # Extracting the stack trace.
     stack = read_stack_from_exception(exception)
@@ -827,7 +829,8 @@ def handle_exception(exception: Exception) -> Union[HandleException, None]:
 
 
 def handle_exceptions(func: Optional[Callable] = None, has_ui: bool = True) -> Callable:
-    """Decorator for handling exceptions, which tries to find a matching pattern for known errors.
+    """
+    Decorator for handling exceptions, which tries to find a matching pattern for known errors.
     If the pattern is found, the exception is handled according to the specified handler.
     Otherwise, the exception is raised as usual.
 
@@ -835,20 +838,23 @@ def handle_exceptions(func: Optional[Callable] = None, has_ui: bool = True) -> C
     :type func: Callable
     :return: Decorated function.
     :rtype: Callable
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        @sly.handle_exceptions
-        def my_func():
-            # Some code that may raise an exception.
+            import supervisely as sly
 
-        # call with argument `has_ui=False` if you don't want to raise a DialogWindowError
-        @sly.handle_exceptions(has_ui=False)
-        def my_func():
-            # Some code that may raise an exception.
+            @sly.handle_exceptions
+            def my_func():
+                # Some code that may raise an exception.
+                raise Exception("Test exception")
+
+            # call with argument `has_ui=False` if you don't want to raise a DialogWindowError
+            @sly.handle_exceptions(has_ui=False)
+            def my_func():
+                # Some code that may raise an exception.
+                raise Exception("Test exception")
     """
 
     f = None

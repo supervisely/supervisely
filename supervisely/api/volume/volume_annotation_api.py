@@ -41,28 +41,29 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
 
     :param api: API connection to the server.
     :type api: Api
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        import os
-        from dotenv import load_dotenv
+            import supervisely as sly
 
-        import supervisely as sly
+            import os
+            from dotenv import load_dotenv
 
-        # Load secrets and create API object from .env file (recommended)
-        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-        if sly.is_development():
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-        api = sly.Api.from_env()
+            import supervisely as sly
 
-        # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
+            api = sly.Api.from_env()
 
-        volume_id = 19581134
-        ann_info = api.volume.annotation.download(volume_id)
+            # Pass values into the API constructor (optional, not recommended)
+            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
+
+            volume_id = 19581134
+            ann_info = api.volume.annotation.download(volume_id)
     """
 
     _method_download_bulk = "volumes.annotations.bulk.info"
@@ -75,55 +76,55 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         :type volume_id: int
         :return: Information about VolumeAnnotation in json format
         :rtype: :class:`dict`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            from pprint import pprint
+                import os
+                import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            volume_id = 19581134
-            ann_info = api.volume.annotation.download(volume_id)
-            print(ann_info)
-            # Output:
-            # {
-            #     'createdAt': '2023-03-29T12:30:37.078Z',
-            #     'datasetId': 61803,
-            #     'description': '',
-            #     'objects': [],
-            #     'planes': [],
-            #     'spatialFigures': [],
-            #     'tags': [{'createdAt': '2023-04-03T13:21:53.368Z',
-            #             'id': 12259702,
-            #             'labelerLogin': 'almaz',
-            #             'name': 'info',
-            #             'tagId': 385328,
-            #             'updatedAt': '2023-04-03T13:21:53.368Z',
-            #             'value': 'age 31'}],
-            #     'updatedAt': '2023-03-29T12:30:37.078Z',
-            #     'volumeId': 19581134,
-            #     'volumeMeta': {
-            #             'ACS': 'RAS',
-            #             'IJK2WorldMatrix': [0.7617, 0, 0,
-            #                                 -194.2384, 0, 0.76171,
-            #                                 0, -217.5384, 0,
-            #                                 0, 2.5, -347.75,
-            #                                 0, 0, 0, 1],
-            #             'channelsCount': 1,
-            #             'dimensionsIJK': {'x': 512, 'y': 512, 'z': 139},
-            #             'intensity': {'max': 3071, 'min': -3024},
-            #             'rescaleIntercept': 0,
-            #             'rescaleSlope': 1,
-            #             'windowCenter': 23.5,
-            #             'windowWidth': 6095
-            # },
-            #     'volumeName': 'CTChest.nrrd'
-            # }
+                volume_id = 19581134
+                ann_info = api.volume.annotation.download(volume_id)
+                print(ann_info)
+                # Output:
+                # {
+                #     'createdAt': '2023-03-29T12:30:37.078Z',
+                #     'datasetId': 61803,
+                #     'description': '',
+                #     'objects': [],
+                #     'planes': [],
+                #     'spatialFigures': [],
+                #     'tags': [{'createdAt': '2023-04-03T13:21:53.368Z',
+                #             'id': 12259702,
+                #             'labelerLogin': 'almaz',
+                #             'name': 'info',
+                #             'tagId': 385328,
+                #             'updatedAt': '2023-04-03T13:21:53.368Z',
+                #             'value': 'age 31'}],
+                #     'updatedAt': '2023-03-29T12:30:37.078Z',
+                #     'volumeId': 19581134,
+                #     'volumeMeta': {
+                #             'ACS': 'RAS',
+                #             'IJK2WorldMatrix': [0.7617, 0, 0,
+                #                                 -194.2384, 0, 0.76171,
+                #                                 0, -217.5384, 0,
+                #                                 0, 2.5, -347.75,
+                #                                 0, 0, 0, 1],
+                #             'channelsCount': 1,
+                #             'dimensionsIJK': {'x': 512, 'y': 512, 'z': 139},
+                #             'intensity': {'max': 3071, 'min': -3024},
+                #             'rescaleIntercept': 0,
+                #             'rescaleSlope': 1,
+                #             'windowCenter': 23.5,
+                #             'windowWidth': 6095
+                # },
+                #     'volumeName': 'CTChest.nrrd'
+                # }
         """
 
         volume_info = self._api.volume.get_info_by_id(volume_id)
@@ -144,18 +145,19 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         :return: None
         :rtype: :class:`NoneType`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            volume_id = 19581134
-            api.volume.annotation.append(volume_id, volume_ann)
+                volume_id = 19581134
+                api.volume.annotation.append(volume_id, volume_ann)
         """
         if ann.spatial_figures:
             figures = ann.figures + ann.spatial_figures
@@ -204,19 +206,20 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         :return: None
         :rtype: :class:`NoneType`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            volume_ids = [121236918, 121236919]
-            ann_pathes = ['/home/admin/work/supervisely/example/ann1.json', '/home/admin/work/supervisely/example/ann2.json']
-            api.volume.annotation.upload_paths(volume_ids, ann_pathes, meta)
+                volume_ids = [121236918, 121236919]
+                ann_pathes = ['/home/admin/work/supervisely/example/ann1.json', '/home/admin/work/supervisely/example/ann2.json']
+                api.volume.annotation.upload_paths(volume_ids, ann_pathes, meta)
         """
 
         # use in updating project metadata
@@ -387,28 +390,29 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         :return: None
         :rtype: NoneType
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import os
-            from dotenv import load_dotenv
+                import os
+                from dotenv import load_dotenv
 
-            import supervisely as sly
+                import supervisely as sly
 
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            if sly.is_development():
-               load_dotenv(os.path.expanduser("~/supervisely.env"))
-            api = sly.Api.from_env()
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+                
+                api = sly.Api.from_env()
 
-            volume_id = 151344
-            volume_info = api.volume.get_info_by_id(volume_id)
-            mask_3d_path = "data/mask/lung.nrrd"
-            lung_obj_class = sly.ObjClass("lung", sly.Mask3D)
-            lung = sly.VolumeObject(lung_obj_class, mask_3d=mask_3d_path)
-            objects = sly.VolumeObjectCollection([lung])
-            api.volume.annotation.append_objects(volume_info.id, objects)
+                volume_id = 151344
+                volume_info = api.volume.get_info_by_id(volume_id)
+                mask_3d_path = "data/mask/lung.nrrd"
+                lung_obj_class = sly.ObjClass("lung", sly.Mask3D)
+                lung = sly.VolumeObject(lung_obj_class, mask_3d=mask_3d_path)
+                objects = sly.VolumeObjectCollection([lung])
+                api.volume.annotation.append_objects(volume_info.id, objects)
         """
 
         sf_figures = []
@@ -481,19 +485,20 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         :return: Information about VolumeAnnotation in json format
         :rtype: :class:`dict`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            volume_id = 198702499
-            loop = sly.utils.get_or_create_event_loop()
-            ann_info = loop.run_until_complete(api.volume.annotation.download_async(volume_id))
+                volume_id = 198702499
+                loop = sly.utils.get_or_create_event_loop()
+                ann_info = loop.run_until_complete(api.volume.annotation.download_async(volume_id))
         """
         return await self.download_bulk_async(
             volume_ids=[volume_id],
@@ -523,19 +528,20 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         :return: Information about VolumeAnnotations in json format
         :rtype: :class:`list`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            volume_ids = [198702499, 198702500, 198702501]
-            loop = sly.utils.get_or_create_event_loop()
-            ann_infos = loop.run_until_complete(api.volume.annotation.download_bulk_async(volume_ids))
+                volume_ids = [198702499, 198702500, 198702501]
+                loop = sly.utils.get_or_create_event_loop()
+                ann_infos = loop.run_until_complete(api.volume.annotation.download_bulk_async(volume_ids))
         """
         if semaphore is None:
             semaphore = self._api.get_default_semaphore()

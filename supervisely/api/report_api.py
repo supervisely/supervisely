@@ -30,11 +30,12 @@ class ReportApi(ModuleApiBase):
 
     :param api: API connection to the server
     :type api: Api
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        report = api.report
+        .. code-block:: python
+
+            report = api.report
     """
 
     def __init__(self, api):
@@ -57,9 +58,6 @@ class ReportApi(ModuleApiBase):
         :type layout:
         :return:
         :rtype:
-        :Usage example:
-
-         .. code-block: python
         """
         data = {
             ApiField.TEAM_ID: team_id,

@@ -34,58 +34,59 @@ class ClassBalance(Widget):
     :param widget_id: Unique widget identifier.
     :type widget_id: str
 
-    :Usage example:
-    .. code-block:: python
+    :Usage Example:
 
-        from supervisely.app.widgets import ClassBalance
+        .. code-block:: python
 
-        max_value = 1000
-        segments = [
-            {"name": "train", "key": "train", "color": "#1892f8"},
-            {"name": "val", "key": "val", "color": "#25e298"},
-            {"name": "test", "key": "test", "color": "#fcaf33"},
-        ]
+            from supervisely.app.widgets import ClassBalance
 
-        rows_data = [
-            {
-                "nameHtml": "<strong>black-pawn</strong>",
-                "name": "black-pawn",
-                "total": 1000,
-                "disabled": False,
-                "segments": {"train": 600, "val": 350, "test": 50},
-            },
-            {
-                "nameHtml": "<strong>white-pawn</strong>",
-                "name": "white-pawn",
-                "total": 700,
-                "disabled": False,
-                "segments": {"train": 400, "val": 250, "test": 50},
-            },
-        ]
+            max_value = 1000
+            segments = [
+                {"name": "train", "key": "train", "color": "#1892f8"},
+                {"name": "val", "key": "val", "color": "#25e298"},
+                {"name": "test", "key": "test", "color": "#fcaf33"},
+            ]
 
-        slider_data = {
-            "black-pawn": [
+            rows_data = [
                 {
-                    "moreExamples": ["https://www.w3schools.com/howto/img_nature.jpg"],
-                    "preview": "https://www.w3schools.com/howto/img_nature.jpg",
-                }
-            ],
-            "white-pawn": [
+                    "nameHtml": "<strong>black-pawn</strong>",
+                    "name": "black-pawn",
+                    "total": 1000,
+                    "disabled": False,
+                    "segments": {"train": 600, "val": 350, "test": 50},
+                },
                 {
-                    "moreExamples": ["https://i.imgur.com/35pUPD2.jpg"],
-                    "preview": "https://i.imgur.com/35pUPD2.jpg",
-                }
-            ],
-        }
+                    "nameHtml": "<strong>white-pawn</strong>",
+                    "name": "white-pawn",
+                    "total": 700,
+                    "disabled": False,
+                    "segments": {"train": 400, "val": 250, "test": 50},
+                },
+            ]
 
-        class_balance_1 = ClassBalance(
-            max_value=max_value,
-            segments=segments,
-            rows_data=rows_data,
-            slider_data=slider_data,
-            max_height=700,
-            collapsable=True,
-        )
+            slider_data = {
+                "black-pawn": [
+                    {
+                        "moreExamples": ["https://www.w3schools.com/howto/img_nature.jpg"],
+                        "preview": "https://www.w3schools.com/howto/img_nature.jpg",
+                    }
+                ],
+                "white-pawn": [
+                    {
+                        "moreExamples": ["https://i.imgur.com/35pUPD2.jpg"],
+                        "preview": "https://i.imgur.com/35pUPD2.jpg",
+                    }
+                ],
+            }
+
+            class_balance_1 = ClassBalance(
+                max_value=max_value,
+                segments=segments,
+                rows_data=rows_data,
+                slider_data=slider_data,
+                max_height=700,
+                collapsable=True,
+            )
     """
 
     class Routes:

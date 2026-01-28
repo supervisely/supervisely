@@ -63,28 +63,31 @@ class IssuesApi(ModuleApiBase):
 
     :param api: API connection to the server.
     :type api: Api
-    :Usage example:
-         .. code-block:: python
 
-        import os
-        from dotenv import load_dotenv
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        # Load secrets and create API object from .env file (recommended)
-        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-        if sly.is_development():
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-        api = sly.Api.from_env()
+            import os
+            from dotenv import load_dotenv
 
-        # Get list of issues in specified team.
-        issues = api.issues.get_list(team_id=1)
+            import supervisely as sly
 
-        # Get information about issue by its ID.
-        issue_info = api.issues.get_info_by_id(id=1)
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-        # Add new issue.
-        new_issue = api.issues.add(team_id=1, issue_name="New issue", comment="Some comment")
+            api = sly.Api.from_env()
+
+            # Get list of issues in specified team.
+            issues = api.issues.get_list(team_id=1)
+
+            # Get information about issue by its ID.
+            issue_info = api.issues.get_info_by_id(id=1)
+
+            # Add new issue.
+            new_issue = api.issues.add(team_id=1, issue_name="New issue", comment="Some comment")
     """
 
     @staticmethod
@@ -120,25 +123,25 @@ class IssuesApi(ModuleApiBase):
         :return: List of issues.
         :rtype: List[IssueInfo]
 
-        :Usage example:
+        :Usage Example:
 
-        .. code-block:: python
+            .. code-block:: python
 
-            import os
-            from dotenv import load_dotenv
+                import os
+                from dotenv import load_dotenv
 
-            import supervisely as sly
+                import supervisely as sly
 
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
 
-            if sly.is_development():
-                load_dotenv(os.path.expanduser("~/supervisely.env"))
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            api = sly.Api.from_env()
+                api = sly.Api.from_env()
 
-            # Get list of issues in specified team.
-            issues = api.issues.get_list(team_id=1)
+                # Get list of issues in specified team.
+                issues = api.issues.get_list(team_id=1)
         """
         return self.get_list_all_pages(
             "issues.list",
@@ -153,24 +156,25 @@ class IssuesApi(ModuleApiBase):
         :return: Information about the issue.
         :rtype: IssueInfo
 
-        :Usage example:
+        :Usage Example:
 
-        .. code-block:: python
+            .. code-block:: python
 
-            import os
-            from dotenv import load_dotenv
+                import os
+                from dotenv import load_dotenv
 
-            import supervisely as sly
+                import supervisely as sly
 
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            if sly.is_development():
-               load_dotenv(os.path.expanduser("~/supervisely.env"))
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            api = sly.Api.from_env()
+                api = sly.Api.from_env()
 
-            # Get information about the issue by its ID.
-            issue_info = api.issues.get_info_by_id(1)"""
+                # Get information about the issue by its ID.
+                issue_info = api.issues.get_info_by_id(1)
+        """
         response = self._get_response_by_id(id, "issues.info", id_field=ApiField.ID)
         return (
             self._convert_json_info(response.json(), skip_missing=True)
@@ -202,25 +206,23 @@ class IssuesApi(ModuleApiBase):
         :return: Information about the added issue.
         :rtype: IssueInfo
 
-        :Usage example:
+        :Usage Example:
 
-        .. code-block:: python
+            .. code-block:: python
 
-            import os
+                import os
+                from dotenv import load_dotenv
+                import supervisely as sly
 
-            from dotenv import load_dotenv
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            import supervisely as sly
+                api = sly.Api.from_env()
 
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            if sly.is_development():
-                load_dotenv(os.path.expanduser("~/supervisely.env"))
-
-            api = sly.Api.from_env()
-
-            # Add new issue.
-            new_issue = api.issues.add(team_id=1, issue_name="New issue", comment="Some comment")
+                # Add new issue.
+                new_issue = api.issues.add(team_id=1, issue_name="New issue", comment="Some comment")
         """
         response = self._api.post(
             "issues.add",
@@ -259,24 +261,24 @@ class IssuesApi(ModuleApiBase):
         :return: Information about the issue.
         :rtype: IssueInfo
 
-        :Usage example:
+        :Usage Example:
 
-        .. code-block:: python
+            .. code-block:: python
 
-            import os
-            from dotenv import load_dotenv
+                import os
+                from dotenv import load_dotenv
 
-            import supervisely as sly
+                import supervisely as sly
 
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            if sly.is_development():
-                load_dotenv(os.path.expanduser("~/supervisely.env"))
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            api = sly.Api.from_env()
+                api = sly.Api.from_env()
 
-            # Update information about the issue.
-            updated_issue = api.issues.update(issue_id=1, issue_name="Updated issue name")
+                # Update information about the issue.
+                updated_issue = api.issues.update(issue_id=1, issue_name="Updated issue name")
         """
         available_statuses = ["open", "closed"]
         if status is not None and status not in available_statuses:
@@ -302,24 +304,25 @@ class IssuesApi(ModuleApiBase):
         :param issue_id: Issue ID.
         :type issue_id: int
 
-        :Usage example:
+        :Usage Example:
 
-        .. code-block:: python
+            .. code-block:: python
 
-            import os
-            from dotenv import load_dotenv
+                import os
+                from dotenv import load_dotenv
 
-            import supervisely as sly
+                import supervisely as sly
 
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            if sly.is_development():
-                load_dotenv(os.path.expanduser("~/supervisely.env"))
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            api = sly.Api.from_env()
+                api = sly.Api.from_env()
 
-            # Remove the issue by its ID.
-            api.issues.remove(issue_id=1)"""
+                # Remove the issue by its ID.
+                api.issues.remove(issue_id=1)
+        """
         self._api.post("issues.remove", {ApiField.ID: issue_id})
 
     def add_comment(self, issue_id: int, comment: str) -> CommentInfo:
@@ -333,29 +336,29 @@ class IssuesApi(ModuleApiBase):
         :return: Information about the added comment.
         :rtype: CommentInfo
 
-        :Usage example:
+        :Usage Example:
 
-        .. code-block:: python
+            .. code-block:: python
 
-            import os
-            from dotenv import load_dotenv
+                import os
+                from dotenv import load_dotenv
 
-            import supervisely as sly
+                import supervisely as sly
 
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            if sly.is_development():
-                load_dotenv(os.path.expanduser("~/supervisely.env"))
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            api = sly.Api.from_env()
+                api = sly.Api.from_env()
 
-            # Add a comment to the issue with the specified ID.
-            comment_info = api.issues.add_comment(issue_id=1, comment="Some comment")"""
+                # Add a comment to the issue with the specified ID.
+                comment_info = api.issues.add_comment(issue_id=1, comment="Some comment")
+        """
         response = self._api.post(
             "issues.comments.add",
             {ApiField.ISSUE_ID: issue_id, ApiField.COMMENT: comment},
         )
-
         return CommentInfo.from_json(response.json())
 
     def update_comment(self, comment_id: int, comment: str) -> CommentInfo:
@@ -368,34 +371,32 @@ class IssuesApi(ModuleApiBase):
         :return: Information about the updated comment.
         :rtype: CommentInfo
 
-        :Usage example:
+        :Usage Example:
 
-        .. code-block:: python
+            .. code-block:: python
 
-            import os
-            from dotenv import load_dotenv
+                import os
+                from dotenv import load_dotenv
 
-            import supervisely as sly
+                import supervisely as sly
 
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            if sly.is_development():
-                load_dotenv(os.path.expanduser("~/supervisely.env"))
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            api = sly.Api.from_env()
+                api = sly.Api.from_env()
 
-            # Update the comment with the specified ID.
-            api.issues.update_comment(comment_id=1, comment="Updated comment")"""
+                # Update the comment with the specified ID.
+                api.issues.update_comment(comment_id=1, comment="Updated comment")
+        """
         response = self._api.post(
             "issues.comments.editInfo",
             {ApiField.ID: comment_id, ApiField.COMMENT: comment},
         )
-
         return CommentInfo.from_json(response.json())
 
-    def _create_bindings(
-        self, label_id: int, image_id: int
-    ) -> Dict[str, Union[str, int, Dict[str, int]]]:
+    def _create_bindings(self, label_id: int, image_id: int) -> Dict[str, Union[str, int, Dict[str, int]]]:
         """Create bindings from the given parameters.
 
         :param label_id: Label ID.
@@ -403,7 +404,8 @@ class IssuesApi(ModuleApiBase):
         :param image_id: Image ID.
         :type image_id: int
         :return: Bindings.
-        :rtype: Dict[str, Union[str, int, Dict[str, int]]]"""
+        :rtype: Dict[str, Union[str, int, Dict[str, int]]]
+        """
         # NOTE: This method is designed to handle the bindings for different cases,
         # e.g. linking dataset, project, etc. At the moment, it's used for linking
         # the issue with the image. Later, it can be extended to handle other cases.
@@ -445,40 +447,40 @@ class IssuesApi(ModuleApiBase):
         :param project_meta: Project meta information.
         :type project_meta: ProjectMeta
 
-        :Usage example:
+        :Usage Example:
 
-        .. code-block:: python
+            .. code-block:: python
 
-            import os
-            from dotenv import load_dotenv
+                import os
+                from dotenv import load_dotenv
 
-            import supervisely as sly
+                import supervisely as sly
 
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            if sly.is_development():
-                load_dotenv(os.path.expanduser("~/supervisely.env"))
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            api = sly.Api.from_env()
+                api = sly.Api.from_env()
 
-            project_id = 123
-            image_id = 456
-            label_id = 789
+                project_id = 123
+                image_id = 456
+                label_id = 789
 
-            # Get project meta and annotation info.
-            project_meta = sly.ProjectMeta.from_json(api.project.get_meta(project_id))
-            annotation_info = api.annotation.download(image_id)
+                # Get project meta and annotation info.
+                project_meta = sly.ProjectMeta.from_json(api.project.get_meta(project_id))
+                annotation_info = api.annotation.download(image_id)
 
-            # Add a subissue to the specified issue.
-            api.issues.add_subissue(
-                issue_id=1,
-                image_ids=image_id,
-                label_ids=label_id,
-                top=100,
-                left=100,
-                annotation_info=annotation_info,
-                project_meta=project_meta
-            )
+                # Add a subissue to the specified issue.
+                api.issues.add_subissue(
+                    issue_id=1,
+                    image_ids=image_id,
+                    label_ids=label_id,
+                    top=100,
+                    left=100,
+                    annotation_info=annotation_info,
+                    project_meta=project_meta
+                )
         """
         # NOTE: DO NOT USE THIS METHOD IN PRODUCTION CODE.
         # From the API side, there will be significant changes in the future which lead to

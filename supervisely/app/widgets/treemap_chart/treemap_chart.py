@@ -24,35 +24,29 @@ class TreemapChart(Apexchart):
     delete_series(): delete series by index. If index is out of range, IndexError will be raised
     @click(): decorator for handling click events on datapoints. It will return ClickedDataPoint object.
 
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
-        from supervisely.app.widgets import TreemapChart
+        .. code-block:: python
 
-        # Preparing list of custom colors for series (it's optional)
-        colors = [
-            "#008FFB",
-            "#00E396",
-            "#FEB019",
-            "#FF4560",
-            "#775DD0",
-            ]
+            from supervisely.app.widgets import TreemapChart
 
-        # Creating tooltip for chart (it's optional)
-        tooltip = "There are {y} objects"
+            # Preparing list of custom colors for series (it's optional)
+            colors = ["#008FFB", "#00E396", "#FEB019", "#FF4560", "#775DD0"]
 
-        # Initialize empty chart without any series.
-        tc = TreemapChart(title="Treemap Chart", colors=colors)
+            # Creating tooltip for chart (it's optional)
+            tooltip = "There are {y} objects"
+
+            # Initialize empty chart without any series.
+            tc = TreemapChart(title="Treemap Chart", colors=colors)
 
 
-        # Preparing series data for widget
-        # Remember that names and values must have the same length, otherwise ValueError will be raised
-        names = ["cats", "dogs", "birds", "fishes", "snakes"]
-        values = [3, 5, 1, 2, 1]
+            # Preparing series data for widget
+            # Remember that names and values must have the same length, otherwise ValueError will be raised
+            names = ["cats", "dogs", "birds", "fishes", "snakes"]
+            values = [3, 5, 1, 2, 1]
 
-        # Setting series to the chart (aware that it will delete all previous series if they existed)
-        dc.set_series(names, values)
-
+            # Setting series to the chart (aware that it will delete all previous series if they existed)
+            dc.set_series(names, values)
     """
 
     class ClickedDataPoint(NamedTuple):

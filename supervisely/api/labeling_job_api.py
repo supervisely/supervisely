@@ -98,25 +98,27 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
 
     :param api: API connection to the server.
     :type api: Api
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import os
-        from dotenv import load_dotenv
+        .. code-block:: python
 
-        import supervisely as sly
+            import os
+            from dotenv import load_dotenv
 
-        # Load secrets and create API object from .env file (recommended)
-        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-        if sly.is_development():
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-        api = sly.Api.from_env()
+            import supervisely as sly
 
-        # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-        jobs = api.labeling_job.get_list(9) # api usage example
+            api = sly.Api.from_env()
+
+            # Or pass values into the API constructor (optional, not recommended)
+            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
+
+            jobs = api.labeling_job.get_list(9) # api usage example
     """
 
     class Status(StrEnum):
@@ -398,39 +400,41 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type allow_restore: bool
         :return: List of information about new Labeling Job. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[LabelingJobInfo]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            user_name = 'alex'
-            dataset_id = 602
-            new_labeling_jobs = api.labeling_job.create(
-                user_name,
-                dataset_id,
-                user_ids=[111, 222],
-                readme='Readmy text',
-                description='Work for labelers',
-                objects_limit_per_image=5,
-                tags_limit_per_image=3
-            )
-            print(new_labeling_jobs)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            # >>> List[LabelingJobInfo(id=2,...)]
+                user_name = 'alex'
+                dataset_id = 602
+                new_labeling_jobs = api.labeling_job.create(
+                    user_name,
+                    dataset_id,
+                    user_ids=[111, 222],
+                    readme='Readmy text',
+                    description='Work for labelers',
+                    objects_limit_per_image=5,
+                    tags_limit_per_image=3
+                )
+                print(new_labeling_jobs)
 
-            # Create video labeling job with toolbox settings
+                # >>> List[LabelingJobInfo(id=2,...)]
 
-            user_id = 4
-            dataset_id = 277
-            video_id = 24897
-            toolbox_settings = {"playbackRate": 32, "skipFramesSize": 15, "showVideoTime": True}
+                # Create video labeling job with toolbox settings
 
-            new_labeling_jobs = api.labeling_job.create(
+                user_id = 4
+                dataset_id = 277
+                video_id = 24897
+                toolbox_settings = {"playbackRate": 32, "skipFramesSize": 15, "showVideoTime": True}
+
+                new_labeling_jobs = api.labeling_job.create(
                 name="Labeling Job name",
                 dataset_id=dataset_id,
                 user_ids=[user_id],
@@ -440,10 +444,10 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
                 tags_to_label=["animal_age_group"],
                 images_ids=[video_id],
                 toolbox_settings=toolbox_settings,
-            )
-            print(new_labeling_jobs)
+                )
+                print(new_labeling_jobs)
 
-            # >>> List[LabelingJobInfo(id=3,...)]
+                # >>> List[LabelingJobInfo(id=3,...)]
         """
         if classes_to_label is None:
             classes_to_label = []
@@ -597,106 +601,108 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type exclude_statuses: List[Literal["pending", "in_progress", "on_review", "completed"]], optional
         :return: List of information about Labeling Jobs. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[LabelingJobInfo]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            label_jobs = api.labeling_job.get_list(4)
-            print(label_jobs)
-            # Output: [
-            #     [
-            #         2,
-            #         "Annotation Job (#1) (#1) (dataset_01)",
-            #         "",
-            #         "",
-            #         4,
-            #         8,
-            #         "First Workspace",
-            #         58,
-            #         "tutorial_project",
-            #         54,
-            #         "dataset_01",
-            #         4,
-            #         "anna",
-            #         4,
-            #         "anna",
-            #         4,
-            #         "anna",
-            #         "2020-04-08T15:10:12.618Z",
-            #         "2020-04-08T15:10:19.833Z",
-            #         "2020-04-08T15:13:39.788Z",
-            #         "completed",
-            #         false,
-            #         3,
-            #         null,
-            #         3,
-            #         0,
-            #         1,
-            #         2,
-            #         2,
-            #         [],
-            #         [],
-            #         [
-            #             1,
-            #             5
-            #         ],
-            #         null,
-            #         null,
-            #         [],
-            #         [],
-            #         [],
-            #         null
-            #     ],
-            #     [
-            #         3,
-            #         "Annotation Job (#1) (#2) (dataset_02)",
-            #         "",
-            #         "",
-            #         4,
-            #         8,
-            #         "First Workspace",
-            #         58,
-            #         "tutorial_project",
-            #         55,
-            #         "dataset_02",
-            #         4,
-            #         "anna",
-            #         4,
-            #         "anna",
-            #         4,
-            #         "anna",
-            #         "2020-04-08T15:10:12.618Z",
-            #         "2020-04-08T15:15:46.749Z",
-            #         "2020-04-08T15:17:33.572Z",
-            #         "completed",
-            #         false,
-            #         3,
-            #         null,
-            #         2,
-            #         0,
-            #         0,
-            #         2,
-            #         2,
-            #         [],
-            #         [],
-            #         [
-            #             1,
-            #             5
-            #         ],
-            #         null,
-            #         null,
-            #         [],
-            #         [],
-            #         [],
-            #         null
-            #     ]
-            # ]
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                label_jobs = api.labeling_job.get_list(4)
+                print(label_jobs)
+                # Output: [
+                #     [
+                #         2,
+                #         "Annotation Job (#1) (#1) (dataset_01)",
+                #         "",
+                #         "",
+                #         4,
+                #         8,
+                #         "First Workspace",
+                #         58,
+                #         "tutorial_project",
+                #         54,
+                #         "dataset_01",
+                #         4,
+                #         "anna",
+                #         4,
+                #         "anna",
+                #         4,
+                #         "anna",
+                #         "2020-04-08T15:10:12.618Z",
+                #         "2020-04-08T15:10:19.833Z",
+                #         "2020-04-08T15:13:39.788Z",
+                #         "completed",
+                #         false,
+                #         3,
+                #         null,
+                #         3,
+                #         0,
+                #         1,
+                #         2,
+                #         2,
+                #         [],
+                #         [],
+                #         [
+                #             1,
+                #             5
+                #         ],
+                #         null,
+                #         null,
+                #         [],
+                #         [],
+                #         [],
+                #         null
+                #     ],
+                #     [
+                #         3,
+                #         "Annotation Job (#1) (#2) (dataset_02)",
+                #         "",
+                #         "",
+                #         4,
+                #         8,
+                #         "First Workspace",
+                #         58,
+                #         "tutorial_project",
+                #         55,
+                #         "dataset_02",
+                #         4,
+                #         "anna",
+                #         4,
+                #         "anna",
+                #         4,
+                #         "anna",
+                #         "2020-04-08T15:10:12.618Z",
+                #         "2020-04-08T15:15:46.749Z",
+                #         "2020-04-08T15:17:33.572Z",
+                #         "completed",
+                #         false,
+                #         3,
+                #         null,
+                #         2,
+                #         0,
+                #         0,
+                #         2,
+                #         2,
+                #         [],
+                #         [],
+                #         [
+                #             1,
+                #             5
+                #         ],
+                #         null,
+                #         null,
+                #         [],
+                #         [],
+                #         [],
+                #         null
+                #     ]
+                # ]
         """
         if not is_part_of_queue and queue_ids is not None:
             raise ValueError("To filter by `queue_id`, `is_part_of_queue` must be set to `True`.")
@@ -740,17 +746,19 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type id: int
         :return: None
         :rtype: :class:`NoneType`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            api.labeling_job.stop(9)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                api.labeling_job.stop(9)
         """
         self._api.post("jobs.stop", {ApiField.ID: id})
 
@@ -762,75 +770,77 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type id: int
         :return: Information about Labeling Job. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`LabelingJobInfo`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            label_job_info = api.labeling_job.get_info_by_id(2)
-            print(label_job_info)
-            # Output: [
-            #     2,
-            #     "Annotation Job (#1) (#1) (dataset_01)",
-            #     "",
-            #     "",
-            #     4,
-            #     8,
-            #     "First Workspace",
-            #     58,
-            #     "tutorial_project",
-            #     54,
-            #     "dataset_01",
-            #     4,
-            #     "anna",
-            #     4,
-            #     "anna",
-            #     4,
-            #     "anna",
-            #     "2020-04-08T15:10:12.618Z",
-            #     "2020-04-08T15:10:19.833Z",
-            #     "2020-04-08T15:13:39.788Z",
-            #     "completed",
-            #     false,
-            #     3,
-            #     0,
-            #     1,
-            #     2,
-            #     2,
-            #     [],
-            #     [],
-            #     [
-            #         1,
-            #         5
-            #     ],
-            #     null,
-            #     null,
-            #     [],
-            #     [],
-            #     [],
-            #     [
-            #         {
-            #             "reviewStatus": "rejected",
-            #             "id": 283,
-            #             "name": "image_03"
-            #         },
-            #         {
-            #             "reviewStatus": "accepted",
-            #             "id": 282,
-            #             "name": "image_02"
-            #         },
-            #         {
-            #             "reviewStatus": "accepted",
-            #             "id": 281,
-            #             "name": "image_01"
-            #         }
-            #     ]
-            # ]
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                label_job_info = api.labeling_job.get_info_by_id(2)
+                print(label_job_info)
+                # Output: [
+                #     2,
+                #     "Annotation Job (#1) (#1) (dataset_01)",
+                #     "",
+                #     "",
+                #     4,
+                #     8,
+                #     "First Workspace",
+                #     58,
+                #     "tutorial_project",
+                #     54,
+                #     "dataset_01",
+                #     4,
+                #     "anna",
+                #     4,
+                #     "anna",
+                #     4,
+                #     "anna",
+                #     "2020-04-08T15:10:12.618Z",
+                #     "2020-04-08T15:10:19.833Z",
+                #     "2020-04-08T15:13:39.788Z",
+                #     "completed",
+                #     false,
+                #     3,
+                #     0,
+                #     1,
+                #     2,
+                #     2,
+                #     [],
+                #     [],
+                #     [
+                #         1,
+                #         5
+                #     ],
+                #     null,
+                #     null,
+                #     [],
+                #     [],
+                #     [],
+                #     [
+                #         {
+                #             "reviewStatus": "rejected",
+                #             "id": 283,
+                #             "name": "image_03"
+                #         },
+                #         {
+                #             "reviewStatus": "accepted",
+                #             "id": 282,
+                #             "name": "image_02"
+                #         },
+                #         {
+                #             "reviewStatus": "accepted",
+                #             "id": 281,
+                #             "name": "image_01"
+                #         }
+                #     ]
+                # ]
         """
         return self._get_info_by_id(id, "jobs.info")
 
@@ -842,17 +852,19 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type id: int
         :return: None
         :rtype: :class:`NoneType`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            api.labeling_job.archive(23)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                api.labeling_job.archive(23)
         """
         self._api.post("jobs.archive", {ApiField.ID: id})
 
@@ -864,18 +876,20 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type id: int
         :return: Labeling Job Status
         :rtype: :class:`Status<supervisely.api.labeling_job_api.LabelingJobApi.Status>`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            job_status = api.labeling_job.get_status(4)
-            print(job_status) # pending
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                job_status = api.labeling_job.get_status(4)
+                print(job_status) # pending
         """
         status_str = self.get_info_by_id(id).status
         return self.Status(status_str)
@@ -906,18 +920,20 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :raises: :class:`WaitingTimeExceeded`, if waiting time exceeded
         :return: None
         :rtype: :class:`NoneType`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            api.labeling_job.wait(4, 'completed', wait_attempts=2, wait_attempt_timeout_sec=1)
-            # supervisely.api.module_api.WaitingTimeExceeded: Waiting time exceeded
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                api.labeling_job.wait(4, 'completed', wait_attempts=2, wait_attempt_timeout_sec=1)
+                # supervisely.api.module_api.WaitingTimeExceeded: Waiting time exceeded
         """
         wait_attempts = wait_attempts or self.MAX_WAIT_ATTEMPTS
         effective_wait_timeout = wait_attempt_timeout_sec or self.WAIT_ATTEMPT_TIMEOUT_SEC
@@ -937,179 +953,181 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type id: int
         :return: Dict with information about given Labeling Job
         :rtype: :class:`dict`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            status = api.labeling_job.get_stats(3)
-            print(status)
-            # Output: {
-            #     "job": {
-            #         "editingDuration": 0,
-            #         "annotationDuration": 720,
-            #         "id": 3,
-            #         "name": "Annotation Job (#1) (#2) (dataset_02)",
-            #         "startedAt": "2020-04-08T15:15:46.749Z",
-            #         "finishedAt": "2020-04-08T15:17:33.572Z",
-            #         "imagesCount": 2,
-            #         "finishedImagesCount": 2,
-            #         "tagsStats": [
-            #             {
-            #                 "id": 24,
-            #                 "color": "#ED68A1",
-            #                 "images": 1,
-            #                 "figures": 1,
-            #                 "name": "car_color"
-            #             },
-            #             {
-            #                 "id": 19,
-            #                 "color": "#A0A08C",
-            #                 "images": 0,
-            #                 "figures": 1,
-            #                 "name": "cars_number"
-            #             },
-            #             {
-            #                 "id": 20,
-            #                 "color": "#D98F7E",
-            #                 "images": 1,
-            #                 "figures": 1,
-            #                 "name": "like"
-            #             },
-            #             {
-            #                 "id": 23,
-            #                 "color": "#65D37C",
-            #                 "images": 0,
-            #                 "figures": 1,
-            #                 "name": "person_gender"
-            #             },
-            #             {
-            #                 "parentId": 23,
-            #                 "color": "#65D37C",
-            #                 "images": 0,
-            #                 "figures": 1,
-            #                 "name": "person_gender (male)"
-            #             },
-            #             {
-            #                 "parentId": 23,
-            #                 "color": "#65D37C",
-            #                 "images": 0,
-            #                 "figures": 0,
-            #                 "name": "person_gender (female)"
-            #             },
-            #             {
-            #                 "id": 21,
-            #                 "color": "#855D79",
-            #                 "images": 1,
-            #                 "figures": 1,
-            #                 "name": "situated"
-            #             },
-            #             {
-            #                 "parentId": 21,
-            #                 "color": "#855D79",
-            #                 "images": 1,
-            #                 "figures": 1,
-            #                 "name": "situated (inside)"
-            #             },
-            #             {
-            #                 "parentId": 21,
-            #                 "color": "#855D79",
-            #                 "images": 0,
-            #                 "figures": 0,
-            #                 "name": "situated (outside)"
-            #             },
-            #             {
-            #                 "id": 22,
-            #                 "color": "#A2B4FA",
-            #                 "images": 0,
-            #                 "figures": 1,
-            #                 "name": "vehicle_age"
-            #             },
-            #             {
-            #                 "parentId": 22,
-            #                 "color": "#A2B4FA",
-            #                 "images": 0,
-            #                 "figures": 1,
-            #                 "name": "vehicle_age (modern)"
-            #             },
-            #             {
-            #                 "parentId": 22,
-            #                 "color": "#A2B4FA",
-            #                 "images": 0,
-            #                 "figures": 0,
-            #                 "name": "vehicle_age (vintage)"
-            #             }
-            #         ]
-            #     },
-            #     "classes": [
-            #         {
-            #             "id": 43,
-            #             "color": "#F6FF00",
-            #             "shape": "rectangle",
-            #             "totalDuration": 0,
-            #             "imagesCount": 0,
-            #             "avgDuration": null,
-            #             "name": "bike",
-            #             "labelsCount": 0
-            #         },
-            #         {
-            #             "id": 42,
-            #             "color": "#BE55CE",
-            #             "shape": "polygon",
-            #             "totalDuration": 0,
-            #             "imagesCount": 0,
-            #             "avgDuration": null,
-            #             "name": "car",
-            #             "labelsCount": 0
-            #         },
-            #         {
-            #             "id": 41,
-            #             "color": "#FD0000",
-            #             "shape": "polygon",
-            #             "totalDuration": 0,
-            #             "imagesCount": 0,
-            #             "avgDuration": null,
-            #             "name": "dog",
-            #             "labelsCount": 0
-            #         },
-            #         {
-            #             "id": 40,
-            #             "color": "#00FF12",
-            #             "shape": "bitmap",
-            #             "totalDuration": 0,
-            #             "imagesCount": 0,
-            #             "avgDuration": null,
-            #             "name": "person",
-            #             "labelsCount": 0
-            #         }
-            #     ],
-            #     "images": {
-            #         "total": 2,
-            #         "images": [
-            #             {
-            #                 "id": 285,
-            #                 "reviewStatus": "accepted",
-            #                 "annotationDuration": 0,
-            #                 "totalDuration": 0,
-            #                 "name": "image_01",
-            #                 "labelsCount": 0
-            #             },
-            #             {
-            #                 "id": 284,
-            #                 "reviewStatus": "accepted",
-            #                 "annotationDuration": 0,
-            #                 "totalDuration": 0,
-            #                 "name": "image_02",
-            #                 "labelsCount": 0
-            #             }
-            #         ]
-            #     }
-            # }
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                status = api.labeling_job.get_stats(3)
+                print(status)
+                # Output: {
+                #     "job": {
+                #         "editingDuration": 0,
+                #         "annotationDuration": 720,
+                #         "id": 3,
+                #         "name": "Annotation Job (#1) (#2) (dataset_02)",
+                #         "startedAt": "2020-04-08T15:15:46.749Z",
+                #         "finishedAt": "2020-04-08T15:17:33.572Z",
+                #         "imagesCount": 2,
+                #         "finishedImagesCount": 2,
+                #         "tagsStats": [
+                #             {
+                #                 "id": 24,
+                #                 "color": "#ED68A1",
+                #                 "images": 1,
+                #                 "figures": 1,
+                #                 "name": "car_color"
+                #             },
+                #             {
+                #                 "id": 19,
+                #                 "color": "#A0A08C",
+                #                 "images": 0,
+                #                 "figures": 1,
+                #                 "name": "cars_number"
+                #             },
+                #             {
+                #                 "id": 20,
+                #                 "color": "#D98F7E",
+                #                 "images": 1,
+                #                 "figures": 1,
+                #                 "name": "like"
+                #             },
+                #             {
+                #                 "id": 23,
+                #                 "color": "#65D37C",
+                #                 "images": 0,
+                #                 "figures": 1,
+                #                 "name": "person_gender"
+                #             },
+                #             {
+                #                 "parentId": 23,
+                #                 "color": "#65D37C",
+                #                 "images": 0,
+                #                 "figures": 1,
+                #                 "name": "person_gender (male)"
+                #             },
+                #             {
+                #                 "parentId": 23,
+                #                 "color": "#65D37C",
+                #                 "images": 0,
+                #                 "figures": 0,
+                #                 "name": "person_gender (female)"
+                #             },
+                #             {
+                #                 "id": 21,
+                #                 "color": "#855D79",
+                #                 "images": 1,
+                #                 "figures": 1,
+                #                 "name": "situated"
+                #             },
+                #             {
+                #                 "parentId": 21,
+                #                 "color": "#855D79",
+                #                 "images": 1,
+                #                 "figures": 1,
+                #                 "name": "situated (inside)"
+                #             },
+                #             {
+                #                 "parentId": 21,
+                #                 "color": "#855D79",
+                #                 "images": 0,
+                #                 "figures": 0,
+                #                 "name": "situated (outside)"
+                #             },
+                #             {
+                #                 "id": 22,
+                #                 "color": "#A2B4FA",
+                #                 "images": 0,
+                #                 "figures": 1,
+                #                 "name": "vehicle_age"
+                #             },
+                #             {
+                #                 "parentId": 22,
+                #                 "color": "#A2B4FA",
+                #                 "images": 0,
+                #                 "figures": 1,
+                #                 "name": "vehicle_age (modern)"
+                #             },
+                #             {
+                #                 "parentId": 22,
+                #                 "color": "#A2B4FA",
+                #                 "images": 0,
+                #                 "figures": 0,
+                #                 "name": "vehicle_age (vintage)"
+                #             }
+                #         ]
+                #     },
+                #     "classes": [
+                #         {
+                #             "id": 43,
+                #             "color": "#F6FF00",
+                #             "shape": "rectangle",
+                #             "totalDuration": 0,
+                #             "imagesCount": 0,
+                #             "avgDuration": null,
+                #             "name": "bike",
+                #             "labelsCount": 0
+                #         },
+                #         {
+                #             "id": 42,
+                #             "color": "#BE55CE",
+                #             "shape": "polygon",
+                #             "totalDuration": 0,
+                #             "imagesCount": 0,
+                #             "avgDuration": null,
+                #             "name": "car",
+                #             "labelsCount": 0
+                #         },
+                #         {
+                #             "id": 41,
+                #             "color": "#FD0000",
+                #             "shape": "polygon",
+                #             "totalDuration": 0,
+                #             "imagesCount": 0,
+                #             "avgDuration": null,
+                #             "name": "dog",
+                #             "labelsCount": 0
+                #         },
+                #         {
+                #             "id": 40,
+                #             "color": "#00FF12",
+                #             "shape": "bitmap",
+                #             "totalDuration": 0,
+                #             "imagesCount": 0,
+                #             "avgDuration": null,
+                #             "name": "person",
+                #             "labelsCount": 0
+                #         }
+                #     ],
+                #     "images": {
+                #         "total": 2,
+                #         "images": [
+                #             {
+                #                 "id": 285,
+                #                 "reviewStatus": "accepted",
+                #                 "annotationDuration": 0,
+                #                 "totalDuration": 0,
+                #                 "name": "image_01",
+                #                 "labelsCount": 0
+                #             },
+                #             {
+                #                 "id": 284,
+                #                 "reviewStatus": "accepted",
+                #                 "annotationDuration": 0,
+                #                 "totalDuration": 0,
+                #                 "name": "image_02",
+                #                 "labelsCount": 0
+                #             }
+                #         ]
+                #     }
+                # }
         """
         response = self._api.post("jobs.stats", {ApiField.ID: id})
         return response.json()
@@ -1130,31 +1148,33 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type progress_cb: tqdm, optional
         :return: Activity data as `pd.DataFrame <https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.html>`_
         :rtype: :class:`pd.DataFrame`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            activity = api.labeling_job.get_activity(3)
-            print(activity)
-            # Output:
-            #   userId         action  ... tagId                 meta
-            # 0       4  update_figure  ...   NaN                   {}
-            # 1       4  create_figure  ...   NaN                   {}
-            # 2       4     attach_tag  ...  20.0                   {}
-            # 3       4     attach_tag  ...  21.0  {'value': 'inside'}
-            # 4       4     attach_tag  ...  24.0      {'value': '12'}
-            # 5       4  update_figure  ...   NaN                   {}
-            # 6       4  update_figure  ...   NaN                   {}
-            # 7       4  update_figure  ...   NaN                   {}
-            # 8       4  create_figure  ...   NaN                   {}
-            # 9       4  update_figure  ...   NaN                   {}
-            # [10 rows x 18 columns]
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                activity = api.labeling_job.get_activity(3)
+                print(activity)
+                # Output:
+                #   userId         action  ... tagId                 meta
+                # 0       4  update_figure  ...   NaN                   {}
+                # 1       4  create_figure  ...   NaN                   {}
+                # 2       4     attach_tag  ...  20.0                   {}
+                # 3       4     attach_tag  ...  21.0  {'value': 'inside'}
+                # 4       4     attach_tag  ...  24.0      {'value': '12'}
+                # 5       4  update_figure  ...   NaN                   {}
+                # 6       4  update_figure  ...   NaN                   {}
+                # 7       4  update_figure  ...   NaN                   {}
+                # 8       4  create_figure  ...   NaN                   {}
+                # 9       4  update_figure  ...   NaN                   {}
+                # [10 rows x 18 columns]
         """
         activity = self._api.team.get_activity(
             team_id, filter_job_id=job_id, progress_cb=progress_cb
@@ -1172,18 +1192,19 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type status: str
         :return: None
         :rtype: :class:`NoneType`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            from supervisely.api.labeling_job_api.LabelingJobApi.Status import COMPLETED
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import supervisely as sly
+                from supervisely.api.labeling_job_api.LabelingJobApi.Status import COMPLETED
 
-            api.labeling_job.set_status(id=9, status="completed")
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                api.labeling_job.set_status(id=9, status="completed")
         """
         self._api.post("jobs.set-status", {ApiField.ID: id, ApiField.STATUS: status})
 
@@ -1425,26 +1446,30 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type ignore_errors: bool, optional
         :return: List of dicts with information about created Labeling Jobs.
         :rtype: :class:`List[dict]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            api = sly.Api("https://app.supervisely.com", "your_api_token")
+                import os
+                import supervisely as sly
 
-            job_info_list = api.labeling_job.restart(222)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            print(job_info_list)
-            # Output:
-            #   [
-            #       {
-            #           'id': 940,
-            #           'userId': 342,
-            #           'type': 'annotation',
-            #           'name': 'Annotation Job (#2)'
-            #       }
-            #   ]
+                job_info_list = api.labeling_job.restart(222)
+
+                print(job_info_list)
+                # Output:
+                #   [
+                #       {
+                #           'id': 940,
+                #           'userId': 342,
+                #           'type': 'annotation',
+                #           'name': 'Annotation Job (#2)'
+                #       }
+                #   ]
         """
 
         job_info = self.get_info_by_id(id)
@@ -1490,18 +1515,20 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type id: int
         :return: Custom data of the job
         :rtype: :class:`dict`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            custom_data = api.labeling_job.get_custom_data(9)
-            print(custom_data)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                custom_data = api.labeling_job.get_custom_data(9)
+                print(custom_data)
         """
         method = "jobs.info"
         response = self._get_response_by_id(id, method, id_field=ApiField.ID)
@@ -1523,17 +1550,19 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type update: bool
         :return: None
         :rtype: :class:`NoneType`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            api.labeling_job.set_custom_data(9, {"key": "value"})
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                api.labeling_job.set_custom_data(9, {"key": "value"})
         """
         method = "jobs.editInfo"
 

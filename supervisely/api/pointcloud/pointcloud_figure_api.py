@@ -36,22 +36,24 @@ class PointcloudFigureApi(FigureApi):
         :type track_id: int, optional
         :return: New figure ID
         :rtype: :class:`int`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            pcd_id = 19618685
-            object_id = 5565921
-            geometry_json = {'points': {'exterior': [[500, 500], [1555, 1500]], 'interior': []}}
-            geometry_type = 'rectangle'
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            figure_id = api.pointcloud.figure.create(pcd_id, object_id, geometry_json, geometry_type) # 643182610
+                pcd_id = 19618685
+                object_id = 5565921
+                geometry_json = {'points': {'exterior': [[500, 500], [1555, 1500]], 'interior': []}}
+                geometry_type = 'rectangle'
+
+                figure_id = api.pointcloud.figure.create(pcd_id, object_id, geometry_json, geometry_type) # 643182610
         """
 
         return super().create(pointcloud_id, object_id, {}, geometry_json, geometry_type, track_id)
@@ -73,26 +75,28 @@ class PointcloudFigureApi(FigureApi):
         :type key_id_map: KeyIdMap
         :return: None
         :rtype: :class:`NoneType`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import supervisely as sly
 
-            project_id = 124976
-            meta_json = api.project.get_meta(project_id)
-            meta = sly.ProjectMeta.from_json(meta_json)
-            key_id_map = KeyIdMap()
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            pcd_id = 198703212
-            ann_info = api.pointcloud.annotation.download(pcd_id)
-            ann = sly.PointcloudAnnotation.from_json(ann_info, meta, key_id_map)
-            figures = ann.figures[:5]
-            api.video.figure.append_bulk(pcd_id, figures, key_id_map)
+                project_id = 124976
+                meta_json = api.project.get_meta(project_id)
+                meta = sly.ProjectMeta.from_json(meta_json)
+                key_id_map = KeyIdMap()
+
+                pcd_id = 198703212
+                ann_info = api.pointcloud.annotation.download(pcd_id)
+                ann = sly.PointcloudAnnotation.from_json(ann_info, meta, key_id_map)
+                figures = ann.figures[:5]
+                api.video.figure.append_bulk(pcd_id, figures, key_id_map)
         """
 
         keys = []
@@ -122,56 +126,57 @@ class PointcloudFigureApi(FigureApi):
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
         :rtype: :class:`NoneType`
-        :Usage example:
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            from supervisely.geometry.cuboid_3d import Cuboid3d, Vector3d
-            from supervisely.pointcloud_annotation.pointcloud_annotation import PointcloudObjectCollection
-            from supervisely.pointcloud_annotation.pointcloud_figure import PointcloudFigure
-            from supervisely.video_annotation.key_id_map import KeyIdMap
+                import os
+                import supervisely as sly
+                from supervisely.geometry.cuboid_3d import Cuboid3d, Vector3d
+                from supervisely.pointcloud_annotation.pointcloud_annotation import PointcloudObjectCollection
+                from supervisely.pointcloud_annotation.pointcloud_figure import PointcloudFigure
+                from supervisely.video_annotation.key_id_map import KeyIdMap
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
 
-            project_id = 17231
-            dataset_id = 55875
-            pointcloud_id = 19373403
-            project = api.project.get_info_by_id(project_id)
-            dataset = api.dataset.get_info_by_id(dataset_id)
+                project_id = 17231
+                dataset_id = 55875
+                pointcloud_id = 19373403
+                project = api.project.get_info_by_id(project_id)
+                dataset = api.dataset.get_info_by_id(dataset_id)
 
-            class_car = sly.ObjClass('car', Cuboid3d)
-            classes = sly.ObjClassCollection([class_car])
-            project_meta = sly.ProjectMeta(classes)
-            updated_meta = api.project.update_meta(project.id, project_meta.to_json())
+                class_car = sly.ObjClass('car', Cuboid3d)
+                classes = sly.ObjClassCollection([class_car])
+                project_meta = sly.ProjectMeta(classes)
+                updated_meta = api.project.update_meta(project.id, project_meta.to_json())
 
-            key_id_map = KeyIdMap()
+                key_id_map = KeyIdMap()
 
-            car_object = sly.PointcloudObject(class_car)
-            objects_collection = PointcloudObjectCollection([car_object])
+                car_object = sly.PointcloudObject(class_car)
+                objects_collection = PointcloudObjectCollection([car_object])
 
-            uploaded_objects_ids = api.pointcloud_episode.object.append_to_dataset(
-                dataset.id,
-                objects_collection,
-                key_id_map,
-            )
+                uploaded_objects_ids = api.pointcloud_episode.object.append_to_dataset(
+                    dataset.id,
+                    objects_collection,
+                    key_id_map,
+                )
 
-            position, rotation, dimension = Vector3d(-32.4, 33.9, -0.7), Vector3d(0., 0, 0.1), Vector3d(1.8, 3.9, 1.6)
-            cuboid = Cuboid3d(position, rotation, dimension)
-            figure_1 = PointcloudFigure(car_object, cuboid)
+                position, rotation, dimension = Vector3d(-32.4, 33.9, -0.7), Vector3d(0., 0, 0.1), Vector3d(1.8, 3.9, 1.6)
+                cuboid = Cuboid3d(position, rotation, dimension)
+                figure_1 = PointcloudFigure(car_object, cuboid)
 
-            api.pointcloud_episode.figure.append_to_dataset(
-                dataset.id,
-                [figure_1],
-                [pointcloud_id],
-                key_id_map,
-            )
+                api.pointcloud_episode.figure.append_to_dataset(
+                    dataset.id,
+                    [figure_1],
+                    [pointcloud_id],
+                    key_id_map,
+                )
         """
 
         keys = []
