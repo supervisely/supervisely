@@ -146,7 +146,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         :type workspace_id: int
         :param filters: List of params to sort output Projects.
         :type filters: List[dict], optional
-        :return: List of Tasks with information for the given Workspace.
+        :returns: List of Tasks with information for the given Workspace.
         :rtype: :class:`List[NamedTuple]`
 
         :Usage Example:
@@ -203,7 +203,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
 
         :param id: Task ID in Supervisely.
         :type id: int
-        :return: Information about Task.
+        :returns: Information about Task.
         :rtype: :class:`NamedTuple`
 
         :Usage Example:
@@ -266,7 +266,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
 
         :param id: Task ID in Supervisely.
         :type id: int
-        :return: Status object
+        :returns: Status object
         :rtype: :class:`Status`
 
         :Usage Example:
@@ -295,7 +295,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
 
         :param status: Status object.
         :type status: Status
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
         """
         if status is self.Status.ERROR:
@@ -319,7 +319,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         :type wait_attempts: int, optional
         :param wait_attempt_timeout_sec: Number of seconds for intervals between attempts(raise error if waiting time exceeded).
         :type wait_attempt_timeout_sec: int, optional
-        :return: True if the desired status is reached, False otherwise
+        :returns: True if the desired status is reached, False otherwise
         :rtype: :class:`bool`
         """
         wait_attempts = wait_attempts or self.MAX_WAIT_ATTEMPTS
@@ -345,7 +345,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
 
         :param id: Task ID in Supervisely.
         :type id: int
-        :return: Context information in dict format
+        :returns: Context information in dict format
         :rtype: :class:`dict`
 
         :Usage Example:
@@ -443,7 +443,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                                    All users will have separate application states.
                                    Available only for applications that support multi-user sessions.
         :type multi_user_session: bool, default is False
-        :return: Task information in JSON format.
+        :returns: Task information in JSON format.
         :rtype: Dict[str, Any]
 
         :Usage Example:
@@ -878,7 +878,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         :type description: Optional[str]
         :param show_logs: If True, the link to the task logs will be displayed in the task output.
         :type show_logs: Optional[bool], default True
-        :return: Response JSON.
+        :returns: Response JSON.
         :rtype: Dict
 
         :Usage Example:
@@ -953,7 +953,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         :type icon_color: Optional[str], default "#33c94c" (nearest Duron Jolly Green)
         :param background_color: Background color in HEX format.
         :type background_color: Optional[str], default "#d9f7e4" (Cosmic Latte)
-        :return: Response JSON.
+        :returns: Response JSON.
         :rtype: Dict
 
         :Usage Example:
@@ -1029,7 +1029,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         :type task_id: int
         :param experiment_info: Experiment info from TrainApp.
         :type experiment_info: dict
-        :return: Server response JSON.
+        :returns: Server response JSON.
         :rtype: dict
 
         Example:
@@ -1082,7 +1082,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
 
         :param task_id: Task ID in Supervisely.
         :type task_id: int
-        :return: True if the task is running, False otherwise.
+        :returns: True if the task is running, False otherwise.
         :rtype: bool
         """
         try:
@@ -1097,7 +1097,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
 
         :param task_id: Task ID in Supervisely.
         :type task_id: int
-        :return: True if the task is ready, False otherwise.
+        :returns: True if the task is ready, False otherwise.
         :rtype: bool
         """
         try:

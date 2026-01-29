@@ -68,7 +68,7 @@ class PointcloudEpisodeApi(PointcloudApi):
 
         :param dataset_id: :class:`Dataset<supervisely.project.project.Dataset>` ID in Supervisely.
         :type dataset_id: int
-        :return: Dict with frame_id and name of pointcloud.
+        :returns: Dict with frame_id and name of pointcloud.
         :rtype: Dict
 
         :Usage Example:
@@ -119,7 +119,7 @@ class PointcloudEpisodeApi(PointcloudApi):
         :param pcd_ids: list
         :param current: int
         :param total: int
-        :return: str
+        :returns: str
         """
 
         response = self._api.post(
@@ -143,7 +143,7 @@ class PointcloudEpisodeApi(PointcloudApi):
 
         :param dataset_id: :class:`Dataset<supervisely.project.project.Dataset>` ID in Supervisely.
         :type dataset_id: int
-        :return: Max frame index.
+        :returns: Max frame index.
         :rtype: int
 
         :Usage Example:

@@ -103,7 +103,7 @@ class ObjClass(KeyObject, JsonSerializable):
         """
         Name.
 
-        :return: Name
+        :returns: Name
         :rtype: :class:`str`
 
         :Usage Example:
@@ -121,7 +121,7 @@ class ObjClass(KeyObject, JsonSerializable):
         """
         Description.
 
-        :return: Description
+        :returns: Description
         :rtype: :class:`str`
 
         :Usage Example:
@@ -138,7 +138,7 @@ class ObjClass(KeyObject, JsonSerializable):
         """
         Used as a key in ObjClassCollection (like key in dict)
 
-        :return: string name of the ObjectClass
+        :returns: string name of the ObjectClass
         :rtype: :class:`Str`
         """
         return self.name
@@ -148,7 +148,7 @@ class ObjClass(KeyObject, JsonSerializable):
         """
         Type of the geometry that is associated with ObjClass.
 
-        :return: Geometry type
+        :returns: Geometry type
         :rtype: :class:`type`
 
         :Usage Example:
@@ -177,7 +177,7 @@ class ObjClass(KeyObject, JsonSerializable):
         """
         :class:`[R,G,B]` color.
 
-        :return: Color
+        :returns: Color
         :rtype: :class:`List[int, int, int]`
 
         :Usage Example:
@@ -195,7 +195,7 @@ class ObjClass(KeyObject, JsonSerializable):
         """
         Class ID in Supervisely server.
 
-         :return: ID
+         :returns: ID
          :rtype: :class:`int`
 
          :Usage Example:
@@ -213,7 +213,7 @@ class ObjClass(KeyObject, JsonSerializable):
         """
         Hotkey for ObjClass in annotation tool UI..
 
-        :return: Hotkey
+        :returns: Hotkey
         :rtype: :class:`str`
 
         :Usage Example:
@@ -230,7 +230,7 @@ class ObjClass(KeyObject, JsonSerializable):
         """
         Convert the ObjClass to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
-        :return: Json format as a dict
+        :returns: Json format as a dict
         :rtype: :class:`dict`
 
         :Usage Example:
@@ -278,7 +278,7 @@ class ObjClass(KeyObject, JsonSerializable):
         :param data: ObjClass in json format as a dict.
         :type data: dict
 
-        :return: ObjClass object
+        :returns: ObjClass object
         :rtype: :class:`ObjClass<ObjClass>`
 
         :Usage Example:
@@ -334,7 +334,7 @@ class ObjClass(KeyObject, JsonSerializable):
 
         :param other: ObjClass object.
         :type other: ObjClass
-        :return: True if comparable objects are equal, otherwise False
+        :returns: True if comparable objects are equal, otherwise False
         :rtype: :class:`bool`
 
         :Usage Example:
@@ -370,7 +370,7 @@ class ObjClass(KeyObject, JsonSerializable):
 
         :param other: ObjClass object.
         :type other: ObjClass
-        :return: True if comparable objects are not equal, otherwise False
+        :returns: True if comparable objects are not equal, otherwise False
         :rtype: :class:`bool`
 
         :Usage Example:
@@ -447,7 +447,7 @@ class ObjClass(KeyObject, JsonSerializable):
         :param description: Description of the class.
         :type description: str, optional
 
-        :return: New instance of ObjClass
+        :returns: New instance of ObjClass
         :rtype: :class:`ObjClass<ObjClass>`
 
         :Usage Example:

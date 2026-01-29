@@ -151,7 +151,7 @@ class VideoFigure:
         """
         VideoObject of current VideoFigure.
 
-        :return: VideoObject object
+        :returns: VideoObject object
         :rtype: :class:`VideoObject<VideoObject>`
 
         :Usage Example:
@@ -173,7 +173,7 @@ class VideoFigure:
         """
         VideoObject of current VideoFigure.
 
-        :return: VideoObject object
+        :returns: VideoObject object
         :rtype: :class:`VideoObject<VideoObject>`
 
         :Usage Example:
@@ -195,7 +195,7 @@ class VideoFigure:
         """
         Geometry of the current VideoFigure.
 
-        :return: Geometry object
+        :returns: Geometry object
         :rtype: :class:`Geometry<supervisely.geometry>`
 
         :Usage Example:
@@ -227,7 +227,7 @@ class VideoFigure:
         """
         Frame index of the current VideoFigure.
 
-        :return: Index of Frame to which VideoFigure belongs
+        :returns: Index of Frame to which VideoFigure belongs
         :rtype: :class:`int`
 
         :Usage Example:
@@ -278,7 +278,7 @@ class VideoFigure:
         """
         Figure key.
 
-        :return: Figure key.
+        :returns: Figure key.
         :rtype: UUID
 
         :Usage Example:
@@ -322,7 +322,7 @@ class VideoFigure:
         :type key_id_map: KeyIdMap, optional
         :param save_meta: Save frame index or not.
         :type save_meta: bool, optional
-        :return: Json format as a dict
+        :returns: Json format as a dict
         :rtype: :class:`dict`
 
         :Usage Example:
@@ -398,7 +398,7 @@ class VideoFigure:
         """
         Get metadata for the video figure.
 
-        :return: Dictionary with metadata for the video figure.
+        :returns: Dictionary with metadata for the video figure.
         :rtype: :py:class:`Dict[str, int]`
 
         :Usage Example:
@@ -438,7 +438,7 @@ class VideoFigure:
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
         :raises: :class:`RuntimeError`, if video object ID and video object key are None, if video object key and key_id_map are None, if video object with given id not found in key_id_map
-        :return: VideoFigure object
+        :returns: VideoFigure object
         :rtype: :class:`VideoFigure`
 
         :Usage Example:
@@ -555,7 +555,7 @@ class VideoFigure:
         :type priority: int, optional
         :param status: Sets labeling status. Specifies if the VideoFigure was created by NN model, manually or created by NN and then manually corrected.
         :type status: LabelingStatus, optional
-        :return: VideoFigure object
+        :returns: VideoFigure object
         :rtype: :class:`VideoFigure`
 
         :Usage Example:
@@ -636,7 +636,7 @@ class VideoFigure:
         :param _auto_correct: Correct the geometry of a shape if it is out of bounds or not.
         :type _auto_correct: bool, optional
         :raises: :class:`OutOfImageBoundsException<supervisely.video_annotation.video_figure.OutOfImageBoundsException>`, if figure is out of image bounds
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:

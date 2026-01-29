@@ -95,7 +95,7 @@ class DateTimePicker(Widget):
             - type: picker type, one of: year, month, date, datetime, week, datetimerange, daterange
             - format: date format, one of: yyyy, MM, dd, HH, mm, ss
 
-        :return: dictionary with widget data
+        :returns: dictionary with widget data
         :rtype: Dict[str, Union[str, bool]]
         """
         return {
@@ -115,7 +115,7 @@ class DateTimePicker(Widget):
         Dictionary contains the following fields:
             - value: current value
 
-        :return: dictionary with widget state
+        :returns: dictionary with widget state
         :rtype: Dict[str, Union[str, list]]
         """
         return {"value": self._value}
@@ -123,7 +123,7 @@ class DateTimePicker(Widget):
     def get_value(self) -> Union[int, str, datetime, list, tuple]:
         """Returns current value.
 
-        :return: current value
+        :returns: current value
         :rtype: Union[int, str, datetime, list, tuple]
         """
         if "value" not in StateJson()[self.widget_id].keys():
@@ -175,7 +175,7 @@ class DateTimePicker(Widget):
 
         :param func: function that will be called when the value of the widget is changed
         :type func: Callable[[Union[int, str, datetime, list, tuple]], Any]
-        :return: decorated function
+        :returns: decorated function
         :rtype: Callable[[], None]
         """
         route_path = self.get_route_path(DateTimePicker.Routes.VALUE_CHANGED)

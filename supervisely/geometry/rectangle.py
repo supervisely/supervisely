@@ -108,7 +108,7 @@ class Rectangle(Geometry):
         """
         Convert the Rectangle to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
-        :return: Json format as a dict
+        :returns: Json format as a dict
         :rtype: :class:`dict`
 
         :Usage Example:
@@ -143,7 +143,7 @@ class Rectangle(Geometry):
 
         :param data: Rectangle in json format as a dict.
         :type data: dict
-        :return: Rectangle object
+        :returns: Rectangle object
         :rtype: :class:`Rectangle<Rectangle>`
 
         :Usage Example:
@@ -196,7 +196,7 @@ class Rectangle(Geometry):
 
         :param rect: Rectangle object for crop.
         :type rect: Rectangle
-        :return: List of Rectangle objects
+        :returns: List of Rectangle objects
         :rtype: :class:`List[Rectangle]<Rectangle>`
 
         :Usage Example:
@@ -232,7 +232,7 @@ class Rectangle(Geometry):
         """
         Get list of Rectangle corners.
 
-        :return: List of PointLocation objects
+        :returns: List of PointLocation objects
         :rtype: :class:`List[PointLocation]<supervisely.geometry.point_location.PointLocation>`
 
         :Usage Example:
@@ -261,7 +261,7 @@ class Rectangle(Geometry):
 
         :param rotator: ImageRotator object for rotation.
         :type rotator: ImageRotator
-        :return: Rectangle object
+        :returns: Rectangle object
         :rtype: :class:`Rectangle<Rectangle>`
 
         :Usage Example:
@@ -285,7 +285,7 @@ class Rectangle(Geometry):
         :type in_size: Tuple[int, int]
         :param out_size: Desired output image size (height, width) to which belongs Rectangle.
         :type out_size: Tuple[int, int]
-        :return: Rectangle object
+        :returns: Rectangle object
         :rtype: :class:`Rectangle<Rectangle>`
 
         :Usage Example:
@@ -305,7 +305,7 @@ class Rectangle(Geometry):
 
         :param factor: Scale parameter.
         :type factor: float
-        :return: Rectangle object
+        :returns: Rectangle object
         :rtype: :class:`Rectangle<Rectangle>`
 
         :Usage Example:
@@ -325,7 +325,7 @@ class Rectangle(Geometry):
         :type drow: int
         :param dcol: Vertical shift.
         :type dcol: int
-        :return: Rectangle object
+        :returns: Rectangle object
         :rtype: :class:`Rectangle<Rectangle>`
 
         :Usage Example:
@@ -343,7 +343,7 @@ class Rectangle(Geometry):
 
         :param img_size: Input image size (height, width) to which belongs Rectangle.
         :type img_size: Tuple[int, int]
-        :return: Rectangle object
+        :returns: Rectangle object
         :rtype: :class:`Rectangle<Rectangle>`
 
         :Usage Example:
@@ -368,7 +368,7 @@ class Rectangle(Geometry):
 
         :param img_size: Input image size (height, width) to which belongs Rectangle.
         :type img_size: Tuple[int, int]
-        :return: Rectangle object
+        :returns: Rectangle object
         :rtype: :class:`Rectangle<Rectangle>`
 
         :Usage Example:
@@ -405,7 +405,7 @@ class Rectangle(Geometry):
         """
         Makes a copy of Rectangle.
 
-        :return: Rectangle object
+        :returns: Rectangle object
         :rtype: :class:`Rectangle<Rectangle>`
 
         :Usage Example:
@@ -422,7 +422,7 @@ class Rectangle(Geometry):
         """
         Rectangle area.
 
-        :return: Area of current Rectangle object
+        :returns: Area of current Rectangle object
         :rtype: :class:`float`
 
         :Usage Example:
@@ -441,7 +441,7 @@ class Rectangle(Geometry):
 
         :param arr: Numpy array.
         :type arr: np.ndarray
-        :return: Rectangle object
+        :returns: Rectangle object
         :rtype: :class:`Rectangle<Rectangle>`
 
         :Usage Example:
@@ -463,7 +463,7 @@ class Rectangle(Geometry):
 
         :param size: Input size.
         :type size: Tuple[int, int]
-        :return: Rectangle object
+        :returns: Rectangle object
         :rtype: :class:`Rectangle<Rectangle>`
 
         :Usage Example:
@@ -484,7 +484,7 @@ class Rectangle(Geometry):
 
         :param geometries: List of geometry type objects: :class:`Bitmap<supervisely.geometry.bitmap.Bitmap>`, :class:`Cuboid<supervisely.geometry.cuboid.Cuboid>`, :class:`Point<supervisely.geometry.point.Point>`, :class:`Polygon<supervisely.geometry.polygon.Polygon>`, :class:`Polyline<supervisely.geometry.polyline.Polyline>`, :class:`Rectangle<Rectangle>`, :class:`Graph<supervisely.geometry.graph.GraphNodes>`.
         :type geometries: List[Geometry]
-        :return: Rectangle object
+        :returns: Rectangle object
         :rtype: :class:`Rectangle<Rectangle>`
 
         :Usage Example:
@@ -510,7 +510,7 @@ class Rectangle(Geometry):
         """
         Minimal horizontal value of Rectangle.
 
-        :return: Minimal horizontal value
+        :returns: Minimal horizontal value
         :rtype: :class:`int`
 
         :Usage Example:
@@ -527,7 +527,7 @@ class Rectangle(Geometry):
         """
         Maximal horizontal value of Rectangle.
 
-        :return: Maximal horizontal value
+        :returns: Maximal horizontal value
         :rtype: :class:`int`
 
         :Usage Example:
@@ -544,7 +544,7 @@ class Rectangle(Geometry):
         """
         Minimal vertical value of Rectangle.
 
-        :return: Minimal vertical value
+        :returns: Minimal vertical value
         :rtype: :class:`int`
 
         :Usage Example:
@@ -561,7 +561,7 @@ class Rectangle(Geometry):
         """
         Maximal vertical value of Rectangle.
 
-        :return: Maximal vertical value
+        :returns: Maximal vertical value
         :rtype: :class:`int`
 
         :Usage Example:
@@ -578,7 +578,7 @@ class Rectangle(Geometry):
         """
         Center of Rectangle.
 
-        :return: PointLocation object
+        :returns: PointLocation object
         :rtype: :class:`PointLocation<supervisely.geometry.point_location.PointLocation>`
 
         :Usage Example:
@@ -594,7 +594,7 @@ class Rectangle(Geometry):
         """
         Width of Rectangle.
 
-        :return: Width
+        :returns: Width
         :rtype: :class:`int`
 
         :Usage Example:
@@ -611,7 +611,7 @@ class Rectangle(Geometry):
         """
         Height of Rectangle
 
-        :return: Height
+        :returns: Height
         :rtype: :class:`int`
 
         :Usage Example:
@@ -629,7 +629,7 @@ class Rectangle(Geometry):
 
         :param rect: Rectangle object.
         :type rect: Rectangle
-        :return: True if Rectangle contains given Rectangle object, otherwise False
+        :returns: True if Rectangle contains given Rectangle object, otherwise False
         :rtype: :class:`bool`
 
         :Usage Example:
@@ -655,7 +655,7 @@ class Rectangle(Geometry):
 
         :param pt: PointLocation object.
         :type pt: PointLocation
-        :return: True if Rectangle contains given PointLocation object, otherwise False
+        :returns: True if Rectangle contains given PointLocation object, otherwise False
         :rtype: :class:`bool`
 
         :Usage Example:
@@ -674,7 +674,7 @@ class Rectangle(Geometry):
         """
         Height and width of Rectangle.
 
-        :return: Height and width of Rectangle object
+        :returns: Height and width of Rectangle object
         :rtype: :class:`Tuple[int, int]`
 
         :Usage Example:
@@ -693,7 +693,7 @@ class Rectangle(Geometry):
 
         :param data: Numpy array.
         :type data: np.ndarray
-        :return: Sliced numpy array
+        :returns: Sliced numpy array
         :rtype: :class:`np.ndarray<np.ndarray>`
 
         :Usage Example:
@@ -713,7 +713,7 @@ class Rectangle(Geometry):
 
         :param rect: Rectangle object.
         :type rect: Rectangle
-        :return: True if given Rectangle object intersects with Rectangle, otherwise False
+        :returns: True if given Rectangle object intersects with Rectangle, otherwise False
         :rtype: :class:`bool`
 
         :Usage Example:
@@ -790,7 +790,7 @@ class Rectangle(Geometry):
         :type bottom: Union[int, float]
         :param right: Maximal vertical value of Rectangle object.
         :type right: Union[int, float]
-        :return: Rounded rectangle coordinates
+        :returns: Rounded rectangle coordinates
         :rtype: Tuple[int, int, int, int]
         """
         RIGHT_OVERLAP = 0.3
@@ -875,7 +875,7 @@ class Rectangle(Geometry):
         :type data: :class:`dict`
         :param image_size: Image size in pixels (height, width).
         :type image_size: List[int]
-        :return: Json data with coordinates converted to pixel coordinate system.
+        :returns: Json data with coordinates converted to pixel coordinate system.
         :rtype: :class:`dict`
         """
         data = deepcopy(data)  # Avoid modifying the original data
@@ -904,7 +904,7 @@ class Rectangle(Geometry):
 
         :param data: Json data with geometry config.
         :type data: :class:`dict`
-        :return: Json data with coordinates converted to subpixel coordinate system.
+        :returns: Json data with coordinates converted to subpixel coordinate system.
         :rtype: :class:`dict`
         """
         data = deepcopy(data)  # Avoid modifying the original data
@@ -966,7 +966,7 @@ class Rectangle(Geometry):
     #         |   |   | x | x |   |
     #     5   +---+---+---+---+---+
 
-    #     :return: New instance of Rectangle object with corners in pixel format.
+    #     :returns: New instance of Rectangle object with corners in pixel format.
     #     :rtype: :class:`Rectangle<Rectangle>`
     #     """
     #     left = floor(self.left)
@@ -993,7 +993,7 @@ class Rectangle(Geometry):
     #     which means that the coordinates of the rectangle corners (top, left and bottom, right) can have decimal values representing fractions of a pixel.
     #     However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
 
-    #     :return: New instance of Rectangle object with corners in subpixel format.
+    #     :returns: New instance of Rectangle object with corners in subpixel format.
     #     :rtype: :class:`Rectangle<Rectangle>`
     #     """
     #     left = self.left

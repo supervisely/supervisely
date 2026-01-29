@@ -19,7 +19,7 @@ def _get_font_path_by_name(font_file_name: str) -> str:
 
     :param font_file_name: Nameame of the font file.
     :type font_file_name: str
-    :return: Full path of requested by name font or None if file not found in system paths.
+    :returns: Full path of requested by name font or None if file not found in system paths.
     :rtype: str
     """
     import matplotlib.font_manager as fontman
@@ -41,7 +41,7 @@ def load_font(
     :type font_file_name: str
     :param font_size: selected font size
     :type font_size: int
-    :return: Font object
+    :returns: Font object
     :rtype: PIL.ImageFont.FreeTypeFont
     """
     if get_file_ext(font_file_name) == FONT_EXTENSION:
@@ -81,7 +81,7 @@ def get_readable_font_size(img_size: Tuple[int, int]) -> int:
     """
     Get size of font for image with given sizes
     :param img_size: size of image
-    :return: size of font
+    :returns: size of font
     """
     minimal_font_size = 6
     base_font_size = 14

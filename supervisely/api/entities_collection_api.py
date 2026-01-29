@@ -64,7 +64,7 @@ class CollectionItem:
             """
             Convert meta information to a JSON-compatible dictionary.
 
-            :return: Dictionary with meta information.
+            :returns: Dictionary with meta information.
             :rtype: dict
             """
             return {ApiField.SCORE: self.score}
@@ -76,7 +76,7 @@ class CollectionItem:
 
             :param data: Dictionary with meta information.
             :type data: dict
-            :return: Meta object.
+            :returns: Meta object.
             :rtype: CollectionItem.Meta
             """
             return cls(score=data.get(ApiField.SCORE, 0.0))
@@ -88,7 +88,7 @@ class CollectionItem:
         """
         Convert collection item to a JSON-compatible dictionary.
 
-        :return: Dictionary with collection item data.
+        :returns: Dictionary with collection item data.
         :rtype: dict
         """
         result = {ApiField.ENTITY_ID: self.entity_id}
@@ -103,7 +103,7 @@ class CollectionItem:
 
         :param data: Dictionary with collection item data.
         :type data: dict
-        :return: CollectionItem object.
+        :returns: CollectionItem object.
         :rtype: CollectionItem
         """
         meta_data = data.get(ApiField.META)
@@ -227,7 +227,7 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
         """
         Get string name of :class:`EntitiesCollectionInfo` NamedTuple.
 
-        :return: NamedTuple name.
+        :returns: NamedTuple name.
         :rtype: :class:`str`
         """
         return "EntitiesCollectionInfo"
@@ -297,7 +297,7 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
         :type ai_search_key: Optional[str]
         :param change_name_if_conflict: Checks if given name already exists and adds suffix to the end of the name. Defaults to False.
         :type change_name_if_conflict: bool
-        :return: Information about new Entities Collection
+        :returns: Information about new Entities Collection
         :rtype: :class:`EntitiesCollectionInfo`
 
         :Usage Example:
@@ -359,7 +359,7 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
         :type id: int
         :param force: If True, the collection will be removed permanently. Defaults to False.
         :type force: bool
-        :return: None
+        :returns: None
         """
         self._api.post(
             self._remove_api_method_name(), {ApiField.ID: id, ApiField.HARD_DELETE: force}
@@ -389,7 +389,7 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
                      - CollectionType.AI_SEARCH
                      - CollectionType.ALL
         :type collection_type: CollectionType
-        :return: List of information about Entities Collections.
+        :returns: List of information about Entities Collections.
         :rtype: :class:`List[EntitiesCollectionInfo]`
 
         :Usage Example:
@@ -424,7 +424,7 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
         :type id: int
         :param with_meta: If True, includes meta information in the response. Defaults to False.
         :type with_meta: bool, optional
-        :return: Information about Entities Collection.
+        :returns: Information about Entities Collection.
         :rtype: :class:`EntitiesCollectionInfo`
 
         :Usage Example:
@@ -468,7 +468,7 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
         :type project_id: int
         :param ai_search_key: AI search key for the collection.
         :type ai_search_key: str
-        :return: Information about Entities Collection.
+        :returns: Information about Entities Collection.
         :rtype: :class:`EntitiesCollectionInfo`
 
         :Usage Example:
@@ -534,7 +534,7 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
         :type id: int
         :param items: List of items to add to the collection. Could be a list of entity IDs (int) or CollectionItem objects.
         :type items: List[Union[int, CollectionItem]]
-        :return: List of added items with their IDs and creation timestamps.
+        :returns: List of added items with their IDs and creation timestamps.
         :rtype: List[Dict[str, int]]
 
         :Usage Example:
@@ -598,7 +598,7 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
         :type ai_search_threshold: float, optional
         :param ai_search_threshold_direction: Direction for the AI search threshold. Optional, defaults to 'above'.
         :type ai_search_threshold_direction: str
-        :return: List of ImageInfo objects.
+        :returns: List of ImageInfo objects.
         :rtype: List[ImageInfo]
         :raises RuntimeError: If Entities Collection with given ID not found.
 

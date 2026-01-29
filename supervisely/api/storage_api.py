@@ -101,7 +101,7 @@ class StorageApi(FileApi):
         :type include_folders: bool
         :param limit: Limit the number of files returned.
         :type limit: int
-        :return: List of all Files with information. See classes info_sequence and FileInfo
+        :returns: List of all Files with information. See classes info_sequence and FileInfo
         :rtype: class List[Union[Dict, FileInfo]]
 
         :Usage Example:
@@ -245,7 +245,7 @@ class StorageApi(FileApi):
         :type team_id: int
         :param remote_path: Remote path to File in Team Files.
         :type remote_path: str
-        :return: True if file exists, otherwise False
+        :returns: True if file exists, otherwise False
         :rtype: :class:`bool`
 
         :Usage Example:
@@ -272,7 +272,7 @@ class StorageApi(FileApi):
         :type team_id: int
         :param remote_path: Remote path to directory in Team Files.
         :type remote_path: str
-        :return: True if directory exists, otherwise False
+        :returns: True if directory exists, otherwise False
         :rtype: :class:`bool`
 
         :Usage Example:
@@ -299,7 +299,7 @@ class StorageApi(FileApi):
         :type team_id: int
         :param remote_path: Remote path to file in Team Files.
         :type remote_path: str
-        :return: Information about File. See :class:`info_sequence<info_sequence>`
+        :returns: Information about File. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`FileInfo`
 
         :Usage Example:

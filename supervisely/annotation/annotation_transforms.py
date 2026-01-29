@@ -32,7 +32,7 @@ def skeletonize_bitmap(
     :type classes: List[str]
     :param method_id: Algorithm of processing. See supervisely.geometry.bitmap.SkeletonizeMethod enum.
     :type method_id: SkeletonizeMethod
-    :return: Annotation with skeletonized labels.
+    :returns: Annotation with skeletonized labels.
     :rtype: Annotation
     :raises RuntimeError: If input class is not a Bitmap.
     """
@@ -58,7 +58,7 @@ def approximate_vector(ann: Annotation, classes: List[str], epsilon: float) -> A
     :type classes: List[str]
     :param epsilon: Approximation accuracy (maximum distance between the original curve and its approximation)
     :type epsilon: float
-    :return: Annotation with approximated vector figures of selected classes.
+    :returns: Annotation with approximated vector figures of selected classes.
     :rtype: Annotation
     :raises RuntimeError: If input class is not a Polygon or a Line.
     """
@@ -82,7 +82,7 @@ def add_background(ann: Annotation, bg_class: ObjClass) -> Annotation:
     :type ann: Annotation
     :param bg_class: ObjClass instance for background class label.
     :type bg_class: ObjClass
-    :return: Annotation with added background rectangle.
+    :returns: Annotation with added background rectangle.
     :rtype: Annotation
     """
     img_size = ann.img_size
@@ -98,7 +98,7 @@ def drop_object_by_class(ann: Annotation, classes: List[str]) -> Annotation:
     :type ann: Annotation
     :param classes: List of classes to remove.
     :type classes: List[str]
-    :return: Annotation with removed labels of specified classes.
+    :returns: Annotation with removed labels of specified classes.
     :rtype: Annotation
     """
 
@@ -126,7 +126,7 @@ def filter_objects_by_area(
     :type comparator: Callable, optional
     :param thresh_percent: Threshold percent value of image area.
     :type thresh_percent: float, optional
-    :return: Annotation containing filtered labels.
+    :returns: Annotation containing filtered labels.
     :rtype: Annotation
     """
     imsize = ann.img_size
@@ -159,7 +159,7 @@ def bitwise_mask(
     :type classes_to_correct: List[str]
     ;param bitwise_op: Bitwise numpy function to process masks.For example: "np.logical_or", "np.logical_and",
     :type bitwise_op: Callable[[np.ndarray, np.ndarray], np.ndarray], optional
-    :return: Annotation containing corrected Bitmaps.
+    :returns: Annotation containing corrected Bitmaps.
     :rtype: Annotation
     :raises RuntimeError: If input class is not a Bitmap.
     """
@@ -208,7 +208,7 @@ def find_contours(
     :type ann: Annotation
     :param classes_mapping: Dict matching source class names and new ObjClasses
     :type classes_mapping: Dict[str, ObjClass]
-    :return: Annotation with Bitmaps converted to contours Polygons.
+    :returns: Annotation with Bitmaps converted to contours Polygons.
     :rtype: Annotation
     :raises RuntimeError: If input class is not a Bitmap.
     """
@@ -236,7 +236,7 @@ def extract_labels_from_mask(
     :type mask: np.ndarray
     :param color_id_to_obj_class: dict of objects classes assigned to color id (e.g. {1: ObjClass('cat), ...})
     :type color_id_to_obj_class: Dict[int, ObjClass]
-    :return: list of labels with bitmap geometry
+    :returns: list of labels with bitmap geometry
     :rtype: List[Label]
     """
     from scipy import ndimage

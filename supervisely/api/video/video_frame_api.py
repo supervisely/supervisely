@@ -27,7 +27,7 @@ class VideoFrameAPI(ModuleApi):
 
         :param video_id: int
         :param frame_index: int
-        :return: Response class object containing frame data with given index from given video id
+        :returns: Response class object containing frame data with given index from given video id
         """
 
         response = self._api.post(
@@ -46,7 +46,7 @@ class VideoFrameAPI(ModuleApi):
 
         :param video_id: int
         :param frame_indexes: List[int]
-        :return: Response class object containing frame data with given index from given video id
+        :returns: Response class object containing frame data with given index from given video id
         """
 
         for batch_ids in batched(frame_indexes):
@@ -73,7 +73,7 @@ class VideoFrameAPI(ModuleApi):
         :type video_id: int
         :param frame_index: Index of frame to download.
         :type frame_index: int
-        :return: Image in RGB numpy matrix format
+        :returns: Image in RGB numpy matrix format
         :rtype: :class:`np.ndarray`
 
         :Usage Example:
@@ -112,7 +112,7 @@ class VideoFrameAPI(ModuleApi):
         :type frame_indexes: List[int]
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
-        :return: List of Images in RGB numpy matrix format
+        :returns: List of Images in RGB numpy matrix format
         :rtype: List[np.ndarray]
 
         :Usage Example:
@@ -169,7 +169,7 @@ class VideoFrameAPI(ModuleApi):
         :type frame_index: int
         :param path: Local save path for Image.
         :type path: str
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -213,7 +213,7 @@ class VideoFrameAPI(ModuleApi):
         :type paths: List[str]
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -260,7 +260,7 @@ class VideoFrameAPI(ModuleApi):
         :type frame_indexes: List[int]
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
-        :return: List of Images in binary format
+        :returns: List of Images in binary format
         :rtype: :class:`List[bytes]`
 
         :Usage Example:

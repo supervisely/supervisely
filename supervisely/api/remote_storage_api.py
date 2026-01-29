@@ -295,7 +295,7 @@ class RemoteStorageApi(ModuleApiBase):
 
         :param team_id: Team ID (to get cloud storages connected to the team)
         :type team_id: int
-        :return: List of available providers
+        :returns: List of available providers
         :rtype: List[dict]
 
         :Usage Example:
@@ -355,7 +355,7 @@ class RemoteStorageApi(ModuleApiBase):
 
         :param team_id: Team ID (to get cloud storages connected to the team)
         :type team_id: int
-        :return: List of supported providers
+        :returns: List of supported providers
         :rtype: List[dict]
 
         :Usage Example:
@@ -415,7 +415,7 @@ class RemoteStorageApi(ModuleApiBase):
         :type path: str
         :param team_id: Team ID (to get cloud storages connected to the team)
         :type team_id: int
-        :return: True if the file exists, False otherwise
+        :returns: True if the file exists, False otherwise
         :rtype: bool
 
         :Usage Example:
@@ -471,7 +471,7 @@ class RemoteStorageApi(ModuleApiBase):
         :type path: str
         :param team_id: Team ID (to get cloud storages connected to the team)
         :type team_id: int
-        :return: File 'size' in bytes and 'lastModified' date if file exists, otherwise None
+        :returns: File 'size' in bytes and 'lastModified' date if file exists, otherwise None
         :rtype: Optional[dict]
 
         :Usage Example:
@@ -530,7 +530,7 @@ class RemoteStorageApi(ModuleApiBase):
 
         :param url: URL
         :type url: str
-        :return: True if URL is a bucket URL, False otherwise
+        :returns: True if URL is a bucket URL, False otherwise
         :rtype: bool
 
         :Usage Example:

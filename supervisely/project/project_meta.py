@@ -169,7 +169,7 @@ class ProjectMeta(JsonSerializable):
         """
         Collection of ObjClasses in ProjectMeta.
 
-        :return: ObjClassCollection object
+        :returns: ObjClassCollection object
         :rtype: :class:`ObjClassCollection<supervisely.annotation.obj_class_collection.ObjClassCollection>`
 
         :Usage Example:
@@ -215,7 +215,7 @@ class ProjectMeta(JsonSerializable):
         """
         Collection of TagMetas in ProjectMeta.
 
-        :return: TagMetaCollection object
+        :returns: TagMetaCollection object
         :rtype: :class:`TagMetaCollection<supervisely.annotation.tag_meta_collection.TagMetaCollection>`
 
         :Usage Example:
@@ -250,7 +250,7 @@ class ProjectMeta(JsonSerializable):
         """
         Type of project. See possible value types in :class:`ProjectType<supervisely.project.project_type.ProjectType>`.
 
-        :return: Project type
+        :returns: Project type
         :rtype: :class:`str`
 
         :Usage Example:
@@ -271,7 +271,7 @@ class ProjectMeta(JsonSerializable):
         """
         Settings of the project. See possible values in :class: `ProjectSettings`.
 
-        :return: Project settings
+        :returns: Project settings
         :rtype: :class: `Dict[str, str]`
 
         :Usage Example:
@@ -297,7 +297,7 @@ class ProjectMeta(JsonSerializable):
         """
         Get labeling interface settings of the project.
 
-        :return: Labeling interface settings
+        :returns: Labeling interface settings
         :rtype: :class: `LabelingInterface` or None
 
         :Usage Example:
@@ -323,7 +323,7 @@ class ProjectMeta(JsonSerializable):
         """
         Convert the ProjectMeta to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
-        :return: Json format as a dict
+        :returns: Json format as a dict
         :rtype: :class:`dict`
 
         :Usage Example:
@@ -378,7 +378,7 @@ class ProjectMeta(JsonSerializable):
 
         :param data: ProjectMeta in json format as a dict.
         :type data: dict
-        :return: ProjectMeta object
+        :returns: ProjectMeta object
         :rtype: :class:`ProjectMeta<ProjectMeta>`
 
         :Usage Example:
@@ -476,7 +476,7 @@ class ProjectMeta(JsonSerializable):
 
         :param other: ProjectMeta object.
         :type other: ProjectMeta
-        :return: New instance of ProjectMeta object
+        :returns: New instance of ProjectMeta object
         :rtype: :class:`ProjectMeta<ProjectMeta>`
         :raises: :class:`ValueError` Upon attempt to merge metas which contain the same obj class or tag meta
 
@@ -562,7 +562,7 @@ class ProjectMeta(JsonSerializable):
         :param project_settings: Additional project properties. For example, multi-view settings
         :type project_settings: dict or ProjectSettings, optional
 
-        :return: New instance of ProjectMeta object
+        :returns: New instance of ProjectMeta object
         :rtype: :class:`ProjectMeta<ProjectMeta>`
 
         :Usage Example:
@@ -617,7 +617,7 @@ class ProjectMeta(JsonSerializable):
 
         :param new_obj_class: ObjClass object.
         :type new_obj_class: ObjClass
-        :return: New instance of ProjectMeta object
+        :returns: New instance of ProjectMeta object
         :rtype: :class:`ProjectMeta<ProjectMeta>`
 
         :Usage Example:
@@ -655,7 +655,7 @@ class ProjectMeta(JsonSerializable):
 
         :param new_obj_classes: List of ObjClass objects.
         :type new_obj_classes: ObjClassCollection or List[ObjClass]
-        :return: New instance of ProjectMeta object
+        :returns: New instance of ProjectMeta object
         :rtype: :class:`ProjectMeta<ProjectMeta>`
 
         :Usage Example:
@@ -699,7 +699,7 @@ class ProjectMeta(JsonSerializable):
 
         :param new_tag_meta: TagMeta object.
         :type new_tag_meta: TagMeta
-        :return: New instance of ProjectMeta object
+        :returns: New instance of ProjectMeta object
         :rtype: :class:`ProjectMeta<ProjectMeta>`
 
         :Usage Example:
@@ -736,7 +736,7 @@ class ProjectMeta(JsonSerializable):
 
         :param new_tag_metas: List of TagMeta objects.
         :type new_tag_metas: List[TagMeta]
-        :return: New instance of ProjectMeta object
+        :returns: New instance of ProjectMeta object
         :rtype: :class:`ProjectMeta<ProjectMeta>`
 
         :Usage Example:
@@ -781,7 +781,7 @@ class ProjectMeta(JsonSerializable):
         """
         :param collection: ObjClassCollection or TagMetaCollection instance
         :param item_names: list of item names to delete
-        :return: list of items, which are in collection and not in given list of items to delete
+        :returns: list of items, which are in collection and not in given list of items to delete
         """
         names_to_delete = set(item_names)
         res_items = []
@@ -796,7 +796,7 @@ class ProjectMeta(JsonSerializable):
 
         :param obj_class_name: ObjClass name.
         :type obj_class_name: str
-        :return: New instance of ProjectMeta object
+        :returns: New instance of ProjectMeta object
         :rtype: :class:`ProjectMeta<ProjectMeta>`
 
         :Usage Example:
@@ -841,7 +841,7 @@ class ProjectMeta(JsonSerializable):
 
         :param obj_class_names: List of ObjClasses names.
         :type obj_class_names: List[str]
-        :return: New instance of ProjectMeta object
+        :returns: New instance of ProjectMeta object
         :rtype: :class:`ProjectMeta<ProjectMeta>`
 
         :Usage Example:
@@ -895,7 +895,7 @@ class ProjectMeta(JsonSerializable):
 
         :param tag_name: TagMeta name.
         :type tag_name: str
-        :return: New instance of ProjectMeta object
+        :returns: New instance of ProjectMeta object
         :rtype: :class:`ProjectMeta<ProjectMeta>`
 
         :Usage Example:
@@ -941,7 +941,7 @@ class ProjectMeta(JsonSerializable):
 
         :param tag_names: List of TagMetas names.
         :type tag_names: List[TagMeta]
-        :return: New instance of ProjectMeta object
+        :returns: New instance of ProjectMeta object
         :rtype: :class:`ProjectMeta<ProjectMeta>`
 
         :Usage Example:
@@ -998,7 +998,7 @@ class ProjectMeta(JsonSerializable):
 
         :param obj_class_name: ObjClass name.
         :type obj_class_name: str
-        :return: ObjClass object
+        :returns: ObjClass object
         :rtype: :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>`
 
         :Usage Example:
@@ -1052,7 +1052,7 @@ class ProjectMeta(JsonSerializable):
 
         :param obj_class_id: ObjClass id.
         :type obj_class_id: int
-        :return: ObjClass object or None
+        :returns: ObjClass object or None
         :rtype: :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>`
 
         :Usage Example:
@@ -1079,7 +1079,7 @@ class ProjectMeta(JsonSerializable):
 
         :param tag_name: TagMeta name.
         :type tag_name: str
-        :return: TagMeta object or None.
+        :returns: TagMeta object or None.
         :rtype: :class:`TagMeta<supervisely.annotation.tag_meta.TagMeta>`
 
         :Usage Example:
@@ -1134,7 +1134,7 @@ class ProjectMeta(JsonSerializable):
 
         :param tag_id: TagMeta id to search for.
         :type tag_id: int
-        :return: TagMeta with given id.
+        :returns: TagMeta with given id.
         :rtype: TagMeta or None
         """
         return self._tag_metas.get_by_id(tag_id)
@@ -1144,7 +1144,7 @@ class ProjectMeta(JsonSerializable):
 
         :param tag_id: TagMeta id to search for.
         :type tag_id: int
-        :return: tag name with given id.
+        :returns: tag name with given id.
         :rtype: tag name or None
         """
         return self._tag_metas.get_tag_name_by_id(tag_id)
@@ -1156,7 +1156,7 @@ class ProjectMeta(JsonSerializable):
 
         :param metas: List of ProjectMeta objects.
         :type metas: List[ProjectMeta]
-        :return: New instance of ProjectMeta object
+        :returns: New instance of ProjectMeta object
         :rtype: :class:`ProjectMeta<ProjectMeta>`
 
         :Usage Example:
@@ -1228,7 +1228,7 @@ class ProjectMeta(JsonSerializable):
 
         :param keep_geometries: List of geometries that can be converted.
         :type keep_geometries: List, optional
-        :return: New project meta and dict correspondences of old classes to new
+        :returns: New project meta and dict correspondences of old classes to new
         :rtype: :class:`Tuple[ProjectMeta, Dict[ObjClass, ObjClass]]`
 
         :Usage Example:
@@ -1316,7 +1316,7 @@ class ProjectMeta(JsonSerializable):
 
         :param convert_classes: Convert classes with no Rectangle type to Rectangle or skip them.
         :type convert_classes: bool, optional
-        :return: New project meta and dict correspondences of old classes to new
+        :returns: New project meta and dict correspondences of old classes to new
         :rtype: :class:`Tuple[ProjectMeta, Dict[ObjClass, ObjClass]]`
 
         :Usage Example:

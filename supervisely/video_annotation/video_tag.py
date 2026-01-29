@@ -122,7 +122,7 @@ class VideoTag(Tag):
         """
         VideoTag frame range.
 
-        :return: Range of frames for current VideoTag
+        :returns: Range of frames for current VideoTag
         :rtype: :class:`Tuple[int, int]`
 
         :Usage Example:
@@ -138,7 +138,7 @@ class VideoTag(Tag):
         """
         VideoTag is finished or not (applicable for range tags).
 
-        :return: True if VideoTag is finished, otherwise False
+        :returns: True if VideoTag is finished, otherwise False
         :rtype: :class:`bool`
 
         :Usage Example:
@@ -154,7 +154,7 @@ class VideoTag(Tag):
         """
         VideoTag value is final or not.
 
-        :return: True if VideoTag value is final, otherwise False
+        :returns: True if VideoTag value is final, otherwise False
         :rtype: :class:`bool`
 
         :Usage Example:
@@ -188,7 +188,7 @@ class VideoTag(Tag):
 
         :param key_id_map: Key ID Map object.
         :type key_id_map: KeyIdMap, optional
-        :return: Json format as a dict
+        :returns: Json format as a dict
         :rtype: :class:`dict`
 
         :Usage Example:
@@ -242,7 +242,7 @@ class VideoTag(Tag):
         :type tag_meta_collection: TagMetaCollection
         :param key_id_map: Key ID Map object.
         :type key_id_map: KeyIdMap, optional
-        :return: VideoTag object
+        :returns: VideoTag object
         :rtype: :class:`VideoTag<VideoTag>`
 
         :Usage Example:
@@ -288,7 +288,7 @@ class VideoTag(Tag):
         """
         Get string with information about VideoTag: name, value and range of frames.
 
-        :return: Information about VideoTag object
+        :returns: Information about VideoTag object
         :rtype: :class:`str`
 
         :Usage Example:
@@ -317,7 +317,7 @@ class VideoTag(Tag):
 
         :param other: VideoTag object.
         :type other: VideoTag
-        :return: True if comparable objects are equal, otherwise False
+        :returns: True if comparable objects are equal, otherwise False
         :rtype: :class:`bool`
 
         :Usage Example:

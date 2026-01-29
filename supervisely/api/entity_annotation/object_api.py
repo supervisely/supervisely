@@ -50,7 +50,7 @@ class ObjectApi(RemoveableBulkModuleApi):
         """
         Get string name of NamedTuple for class.
 
-        :return: NamedTuple name.
+        :returns: NamedTuple name.
         :rtype: :class:`str`
 
         :Usage Example:
@@ -76,7 +76,7 @@ class ObjectApi(RemoveableBulkModuleApi):
 
         :param id: Object ID in Supervisely.
         :type id: int
-        :return: Information about Object. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Object. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`NamedTuple`
         """
         return self._get_info_by_id(id, "annotation-objects.info")
@@ -91,7 +91,7 @@ class ObjectApi(RemoveableBulkModuleApi):
         :type dataset_id: int
         :param filters: List of parameters to sort output Objects.
         :type filters: List[dict], optional
-        :return: Information about Objects. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Objects. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[NamedTuple]`
 
         :Usage Example:

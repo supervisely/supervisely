@@ -24,7 +24,7 @@ def matrix_from_nrrd_header(header: Dict) -> np.ndarray:
 
     :param header: Dictionary containing the header fields and their corresponding parsed value
     :type header: :class:`dict` (:class:`str`, :obj:`Object`)
-    :return: Transformation matrix that maps voxel coordinates to world coordinates
+    :returns: Transformation matrix that maps voxel coordinates to world coordinates
     :rtype: np.ndarray
     :raises IOError: Need "{}" field of header to determine the mapping from voxels to world coordinates
     """
@@ -58,7 +58,7 @@ def voxels_to_mask(mask_shape: List, voxel_to_world: np.ndarray, stl_path: str) 
     :type voxel_to_world: np.ndarray
     :param stl_path: Path to STL file
     :type stl_path: str
-    :return: Mask
+    :returns: Mask
     :rtype: np.ndarray
     """
 
@@ -136,7 +136,7 @@ def to_nrrd(
     :type volume_path: str
     :param header: Dictionary with NRRD volume header parameters, must be used when there is no Volume NRRD file available.
     :type header: Dict
-    :return: None
+    :returns: None
     :rtype: NoneType
     """
 

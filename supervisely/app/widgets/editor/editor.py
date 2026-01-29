@@ -97,7 +97,7 @@ class Editor(Widget):
                 - maxLines: Overwrites height if specified. If >= 1000, all lines will be displayed
                 - highlightActiveLine: If True, active line will be highlighted
 
-        :return: Dictionary with widget data
+        :returns: Dictionary with widget data
         :rtype: Dict[str, Union[bool, str, int]]
         """
         return {
@@ -118,7 +118,7 @@ class Editor(Widget):
         Dictionary contains the following fields:
             - text: current text in the editor
 
-        :return: Dictionary with widget state
+        :returns: Dictionary with widget state
         :rtype: Dict[str, str]
         """
         return {"text": self._current_code}
@@ -127,7 +127,7 @@ class Editor(Widget):
         """Returns current text in the editor.
         Same as get_value().
 
-        :return: current text in the editor
+        :returns: current text in the editor
         :rtype: str
         """
         return StateJson()[self.widget_id]["text"]
@@ -136,7 +136,7 @@ class Editor(Widget):
         """Returns current text in the editor.
         Same as get_text().
 
-        :return: current text in the editor
+        :returns: current text in the editor
         :rtype: str
         """
         return StateJson()[self.widget_id]["text"]
@@ -169,7 +169,7 @@ class Editor(Widget):
     def readonly(self) -> bool:
         """Returns True if editor is readonly, False otherwise.
 
-        :return: True if editor is readonly, False otherwise
+        :returns: True if editor is readonly, False otherwise
         :rtype: bool
         """
         return self._readonly

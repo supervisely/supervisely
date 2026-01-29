@@ -11,20 +11,20 @@ class VideoExtensionError(Exception):
 
 
 def is_valid_ext(ext: str) -> bool:
-    '''
+    """
     The function is_valid_ext checks file extension for list of supported video extensions('.avi', '.mp4')
     :param ext: file extention
-    :return: True if file extention in list of supported images extensions, False - in otherwise
-    '''
+    :returns: True if file extention in list of supported images extensions, False - in otherwise
+    """
     return ext.lower() in ALLOWED_VIDEO_EXTENSIONS
 
 
 def has_valid_ext(path: str) -> bool:
-    '''
+    """
     The function has_valid_ext checks if a given file has a supported extension('.avi', '.mp4')
     :param path: the path to the input file
-    :return: True if a given file has a supported extension, False - in otherwise
-    '''
+    :returns: True if a given file has a supported extension, False - in otherwise
+    """
     return is_valid_ext(os.path.splitext(path)[1])
 
 
@@ -37,4 +37,3 @@ def validate_ext(ext: str):
     if not is_valid_ext(ext):
         raise VideoExtensionError('Unsupported video extension: {}. Only the following extensions are supported: {}.'
                                   .format(ext, ALLOWED_VIDEO_EXTENSIONS))
-

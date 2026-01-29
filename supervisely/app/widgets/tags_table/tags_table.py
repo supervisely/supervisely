@@ -94,7 +94,7 @@ class TagsTable(Widget):
 
         :param func: Function to be called when the value of the widget changes.
         :type func: Callable[[List[str]], Any]
-        :return: Decorated function.
+        :returns: Decorated function.
         :rtype: Callable[[], None]
         """
         route_path = self.get_route_path(TagsTable.Routes.TAG_SELECTED)
@@ -277,7 +277,7 @@ class TagsTable(Widget):
             - disabled: If True, the elements in the table will be disabled.
             - selectable: If True, user can select tags from table.
 
-        :return: Dictionary with widget data.
+        :returns: Dictionary with widget data.
         :rtype: Dict[str, Any]
         """
         return {
@@ -292,7 +292,7 @@ class TagsTable(Widget):
     def allowed_types(self) -> List[TagValueType]:
         """Returns list of allowed tag value types to be displayed in table.
 
-        :return: List of allowed tag value types to be displayed in table.
+        :returns: List of allowed tag value types to be displayed in table.
         :rtype: List[TagValueType]
         """
         return self._allowed_types
@@ -301,7 +301,7 @@ class TagsTable(Widget):
     def project_id(self) -> int:
         """Returns project id from which tags was taken.
 
-        :return: Project id from which tags was taken.
+        :returns: Project id from which tags was taken.
         :rtype: int
         """
         return self._project_id
@@ -310,7 +310,7 @@ class TagsTable(Widget):
     def project_fs(self) -> int:
         """Returns project object from which tags was taken.
 
-        :return: Project object from which tags was taken.
+        :returns: Project object from which tags was taken.
         :rtype: sly.Project
         """
         return self._project_fs
@@ -319,7 +319,7 @@ class TagsTable(Widget):
     def loading(self) -> bool:
         """Returns True if the widget is in loading state.
 
-        :return: True if the widget is in loading state.
+        :returns: True if the widget is in loading state.
         :rtype: bool
         """
         return self._loading
@@ -328,7 +328,7 @@ class TagsTable(Widget):
     def project_meta(self) -> bool:
         """Returns project meta object from which tags was taken.
 
-        :return: Project meta object from which tags was taken.
+        :returns: Project meta object from which tags was taken.
         :rtype: sly.ProjectMeta
         """
         return self._project_meta
@@ -351,7 +351,7 @@ class TagsTable(Widget):
             - global_checkbox: State of global checkbox.
             - checkboxes: List of checkboxes states.
 
-        :return: Dictionary with widget state.
+        :returns: Dictionary with widget state.
         :rtype: Dict[str, Any]
         """
         return {
@@ -362,7 +362,7 @@ class TagsTable(Widget):
     def get_selected_tags(self) -> List[str]:
         """Returns list of selected tags.
 
-        :return: List of selected tags.
+        :returns: List of selected tags.
         :rtype: List[str]
         """
         tags = []

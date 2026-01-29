@@ -33,14 +33,14 @@ class Renamer:
         """
         The function add special suffix to input name
         :param name: name to be changed
-        :return: new name
+        :returns: new name
         """
         return (name + self._add_suffix) if is_name_included(name, self._save_names) else None
 
     def to_json(self):
         """
         The function to_json convert Renamer to json format
-        :return: Renamer in json format
+        :returns: Renamer in json format
         """
         return {Renamer.ADD_SUFFIX: self._add_suffix, Renamer.SAVE_CLASSES: self._save_names}
 
@@ -49,7 +49,7 @@ class Renamer:
         """
         The function from_json convert Renamer from json format to Renamer class object.
         :param renamer_json: Renamer in json format
-        :return: Renamer class object
+        :returns: Renamer class object
         """
         enabled_names = renamer_json.get(Renamer.SAVE_NAMES)
         if enabled_names is None:

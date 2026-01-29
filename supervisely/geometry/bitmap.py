@@ -189,7 +189,7 @@ class Bitmap(BitmapBase):
 
         :param rotator: :class:`ImageRotator<supervisely.geometry.image_rotator.ImageRotator>` for Bitamp rotation.
         :type rotator: ImageRotator
-        :return: Bitmap object
+        :returns: Bitmap object
         :rtype: :class:`Bitmap<Bitmap>`
 
         :Usage Example:
@@ -217,7 +217,7 @@ class Bitmap(BitmapBase):
 
         :param rect: Rectangle object for cropping.
         :type rect: Rectangle
-        :return: List of Bitmaps
+        :returns: List of Bitmaps
         :rtype: :class:`List[Bitmap]<supervisely.geometry.bitmap.Bitmap>`
 
         :Usage Example:
@@ -252,7 +252,7 @@ class Bitmap(BitmapBase):
         :type in_size: Tuple[int, int]
         :param out_size: Output image size (height, width) to which Bitmap belongs.
         :type out_size: Tuple[int, int]
-        :return: Bitmap object
+        :returns: Bitmap object
         :rtype: :class:`Bitmap<Bitmap>`
 
         :Usage Example:
@@ -304,7 +304,7 @@ class Bitmap(BitmapBase):
         """
         Bitmap area.
 
-        :return: Area of current Bitmap
+        :returns: Area of current Bitmap
         :rtype: :class:`float`
 
         :Usage Example:
@@ -323,7 +323,7 @@ class Bitmap(BitmapBase):
 
         :param s: Input base64 encoded string.
         :type s: str
-        :return: Bool numpy array
+        :returns: Bool numpy array
         :rtype: :class:`np.ndarray`
 
         :Usage Example:
@@ -374,7 +374,7 @@ class Bitmap(BitmapBase):
 
         :param mask: Bool numpy array.
         :type mask: np.ndarray
-        :return: Base64 encoded string
+        :returns: Base64 encoded string
         :rtype: :class:`str`
 
         :Usage Example:
@@ -415,7 +415,7 @@ class Bitmap(BitmapBase):
 
         :param method_id: Method to convert bool numpy array.
         :type method_id: SkeletonizeMethod
-        :return: Bitmap object
+        :returns: Bitmap object
         :rtype: :class:`Bitmap<Bitmap>`
 
         :Usage Example:
@@ -449,7 +449,7 @@ class Bitmap(BitmapBase):
         """
         Get list of contours in Bitmap.
 
-        :return: List of Polygon objects
+        :returns: List of Polygon objects
         :rtype: :class:`List[Polygon]<supervisely.geometry.polygon.Polygon>`
 
         :Usage Example:
@@ -506,7 +506,7 @@ class Bitmap(BitmapBase):
         :type full_target_mask: np.ndarray
         :param bit_op: Type of bitwise operation(and, or, not, xor), uses `numpy logic <https://numpy.org/doc/stable/reference/routines.logic.html>`_ functions.
         :type bit_op: `Numpy logical operation <https://numpy.org/doc/stable/reference/routines.logic.html#logical-operations>`_
-        :return: Bitmap object or empty list
+        :returns: Bitmap object or empty list
         :rtype: :class:`Bitmap<Bitmap>` or :class:`list`
 
         :Usage Example:
@@ -576,7 +576,7 @@ class Bitmap(BitmapBase):
 
         :param path: Path to image
         :type path: str
-        :return: Bitmap
+        :returns: Bitmap
         :rtype: Bitmap
         """
         img = read(path)

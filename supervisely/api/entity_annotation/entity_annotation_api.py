@@ -26,7 +26,7 @@ class EntityAnnotationAPI(ModuleApi):
         """
         :param dataset_id: int
         :param entity_id: int
-        :return: list of content(annotation with given id from dataset with given id), received after execution post request
+        :returns: list of content(annotation with given id from dataset with given id), received after execution post request
         """
         return self.download_bulk(dataset_id, [entity_id])[0]
 
@@ -36,7 +36,7 @@ class EntityAnnotationAPI(ModuleApi):
 
         :param dataset_id: int
         :param entity_ids: list of integers
-        :return: list of content(annotations with given ids from dataset with given id), received after execution post request
+        :returns: list of content(annotations with given ids from dataset with given id), received after execution post request
         """
         response = self._api.post(
             self._method_download_bulk,

@@ -174,7 +174,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
         """
         Get list of all :class:`PointcloudInfo<PointcloudInfo>` field names.
 
-        :return: List of :class:`PointcloudInfo<PointcloudInfo>` field names.`
+        :returns: List of :class:`PointcloudInfo<PointcloudInfo>` field names.`
         :rtype: :class:`list`
         """
 
@@ -205,7 +205,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
         """
         Get string name of :class:`PointcloudInfo<PointcloudInfo>` NamedTuple.
 
-        :return: NamedTuple name.
+        :returns: NamedTuple name.
         :rtype: :class:`str`
 
         :Usage Example:
@@ -241,7 +241,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :type dataset_id: int
         :param filters: List of parameters to sort output Pointclouds. See: https://api.docs.supervisely.com/#tag/Point-Clouds/paths/~1point-clouds.list/get
         :type filters: List[Dict[str, str]], optional
-        :return: List of the point clouds objects from the dataset with given id.
+        :returns: List of the point clouds objects from the dataset with given id.
         :rtype: :class:`List[PointcloudInfo]`
 
         :Usage Example:
@@ -283,7 +283,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :type id: int
         :param raise_error: Return an error if the point cloud info was not received.
         :type raise_error: bool
-        :return: Information about point cloud. See :class:`info_sequence<info_sequence>`
+        :returns: Information about point cloud. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`PointcloudInfo`
 
         :Usage Example:
@@ -329,7 +329,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
         """
         :param id: int
         :param is_stream: bool
-        :return: Response object containing pointcloud object with given id
+        :returns: Response object containing pointcloud object with given id
         """
         response = self._api.post(
             "point-clouds.download",
@@ -346,7 +346,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :type id: int
         :param path: Local save path for point cloud.
         :type path: str
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -383,7 +383,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
 
         :param id: Point cloud ID in Supervisely.
         :type id: int
-        :return: List of dictionaries with informations about related images
+        :returns: List of dictionaries with informations about related images
         :rtype: List
 
         :Usage Example:
@@ -448,7 +448,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :type id: int
         :param path: Local save path for point cloud.
         :type path: str
-        :return: List of dictionaries with informations about related images
+        :returns: List of dictionaries with informations about related images
         :rtype: List
 
         :Usage Example:
@@ -506,7 +506,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :type hash: str
         :param meta: Point cloud metadata.
         :type meta: dict, optional
-        :return: Information about point cloud. See :class:`info_sequence<info_sequence>`
+        :returns: Information about point cloud. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`PointcloudInfo`
 
         :Usage Example:
@@ -577,7 +577,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :type metas: Optional[List[Dict]], optional
         :param progress_cb: Function for tracking upload progress.
         :type progress_cb: Progress, optional
-        :return: List of informations about Pointclouds. See :class:`info_sequence<info_sequence>`
+        :returns: List of informations about Pointclouds. See :class:`info_sequence<info_sequence>`
         :rtype: List[:class:`PointcloudInfo`]
 
         :Usage Example:
@@ -636,7 +636,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :type metas: Optional[List[Dict]]
         :param progress_cb: Function for tracking upload progress.
         :type progress_cb: Optional[Callable]
-        :return: List with information about Point clouds. See :class:`info_sequence<info_sequence>`
+        :returns: List with information about Point clouds. See :class:`info_sequence<info_sequence>`
         :rtype: List[:class:`PointcloudInfo`]
         :Usage example:
 
@@ -686,7 +686,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :type name: str, optional
         :param meta: Point cloud metadata.
         :type meta: Dict, optional
-        :return: Information about point cloud. See :class:`info_sequence<info_sequence>`
+        :returns: Information about point cloud. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`PointcloudInfo`
         :Usage example:
 
@@ -776,7 +776,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
 
         :param path: Image path.
         :type path: str
-        :return: Hash for image. See :class:`info_sequence<info_sequence>`
+        :returns: Hash for image. See :class:`info_sequence<info_sequence>`
         :rtype: str
 
         :Usage Example:
@@ -810,7 +810,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
 
         :param paths: Images pathes.
         :type paths: List[str]
-        :return: List of hashes for images. See :class:`info_sequence<info_sequence>`
+        :returns: List of hashes for images. See :class:`info_sequence<info_sequence>`
         :rtype: List[str]
 
         :Usage Example:
@@ -848,7 +848,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :type images_json: List[Dict]
         :param camera_names: List of camera informations.
         :type camera_names: List[Dict]
-        :return: Response object
+        :returns: Response object
         :rtype: Dict
 
         :Usage Example:
@@ -922,7 +922,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :type path: str
         :param meta: Dictionary with metadata for point cloud.
         :type meta: Optional[Dict]
-        :return: Information about point cloud
+        :returns: Information about point cloud
         :rtype: PointcloudInfo
 
         :Usage Example:
@@ -968,7 +968,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :type progress_cb: Progress, optional
         :param metas: List of dictionary with metadata for point cloud.
         :type metas: Optional[List[Dict]]
-        :return: List of informations about point clouds
+        :returns: List of informations about point clouds
         :rtype: List[PointcloudInfo]
 
         :Usage Example:
@@ -1002,7 +1002,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
 
         :param paths: Point clouds hashes to check.
         :type paths: List[str]
-        :return: List of point clouds hashes that are exist.
+        :returns: List of point clouds hashes that are exist.
         :rtype: List[str]
 
         :Usage Example:
@@ -1095,7 +1095,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :type dataset_id: int
         :param names: List of names to check.
         :type names: List[str]
-        :return: List of free names.
+        :returns: List of free names.
         :rtype: List[str]
         """
 
@@ -1122,7 +1122,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :type names: List[str]
         :param message: Error message.
         :type message: str, optional
-        :return: None
+        :returns: None
         :rtype: None
         """
         pcds_in_dataset = self.get_list(dataset_id)
@@ -1155,7 +1155,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :type change_name_if_conflict: bool, optional
         :param progress_cb: Function for tracking upload progress.
         :type progress_cb: Optional[Union[tqdm, Callable]]
-        :return: List of uploaded pointclouds infos
+        :returns: List of uploaded pointclouds infos
         :rtype: List[PointcloudInfo]
         """
 
@@ -1201,7 +1201,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :type change_name_if_conflict: bool, optional
         :param progress_cb: Function for tracking upload progress.
         :type progress_cb: Optional[Union[tqdm, Callable]]
-        :return: List of uploaded pointclouds infos
+        :returns: List of uploaded pointclouds infos
         :rtype: List[Pointclouds]
         """
         if not isinstance(dir_paths, list):
@@ -1242,7 +1242,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :type headers: dict, optional
         :param chunk_size: Size of chunk for partial download. Default is 1MB.
         :type chunk_size: int, optional
-        :return: Stream of bytes or response object.
+        :returns: Stream of bytes or response object.
         :rtype: AsyncGenerator
         """
         api_method_name = "point-clouds.download"
@@ -1302,7 +1302,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :type progress_cb: Optional[Union[tqdm, Callable]]
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
         :type progress_cb_type: Literal["number", "size"], optional
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -1396,7 +1396,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
         :type progress_cb_type: Literal["number", "size"], optional
         :raises: :class:`ValueError` if len(ids) != len(paths)
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -1466,7 +1466,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :type progress_cb: Optional[Union[tqdm, Callable]]
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
         :type progress_cb_type: Literal["number", "size"], optional
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -1547,7 +1547,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :type progress_cb: Optional[Union[tqdm, Callable]]
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
         :type progress_cb_type: Literal["number", "size"], optional
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -1604,7 +1604,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :type id: int
         :param name: New Pointcloud name.
         :type name: str
-        :return: Information about updated Pointcloud.
+        :returns: Information about updated Pointcloud.
         :rtype: :class:`PointcloudInfo`
 
         :Usage Example:

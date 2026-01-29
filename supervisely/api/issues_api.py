@@ -28,7 +28,7 @@ class CommentInfo(NamedTuple):
 
         :param data: JSON data.
         :type data: Dict
-        :return: Instance of the class.
+        :returns: Instance of the class.
         :rtype: CommentInfo"""
         return cls(
             id=data.get(ApiField.ID),
@@ -120,7 +120,7 @@ class IssuesApi(ModuleApiBase):
         :param filters: List of filters to apply to the list of issues.
         :type filters: List[Dict[str, str]], optional
 
-        :return: List of issues.
+        :returns: List of issues.
         :rtype: List[IssueInfo]
 
         :Usage Example:
@@ -153,7 +153,7 @@ class IssuesApi(ModuleApiBase):
 
         :param id: Issue ID.
         :type id: int
-        :return: Information about the issue.
+        :returns: Information about the issue.
         :rtype: IssueInfo
 
         :Usage Example:
@@ -203,7 +203,7 @@ class IssuesApi(ModuleApiBase):
         :param is_local: The local issue will be available only for the members of the team, where it was
             created. If set to False, the issue will be available for all users from all teams.
         :type is_local: bool
-        :return: Information about the added issue.
+        :returns: Information about the added issue.
         :rtype: IssueInfo
 
         :Usage Example:
@@ -258,7 +258,7 @@ class IssuesApi(ModuleApiBase):
         :param is_pinned: Whether the issue is pinned.
         :type is_pinned: bool, optional
         :raises ValueError: If the status is incorrect.
-        :return: Information about the issue.
+        :returns: Information about the issue.
         :rtype: IssueInfo
 
         :Usage Example:
@@ -333,7 +333,7 @@ class IssuesApi(ModuleApiBase):
         :param comment: Comment text.
         :type comment: str
 
-        :return: Information about the added comment.
+        :returns: Information about the added comment.
         :rtype: CommentInfo
 
         :Usage Example:
@@ -368,7 +368,7 @@ class IssuesApi(ModuleApiBase):
         :type comment_id: int
         :param comment: New comment text.
         :type comment: str
-        :return: Information about the updated comment.
+        :returns: Information about the updated comment.
         :rtype: CommentInfo
 
         :Usage Example:
@@ -403,7 +403,7 @@ class IssuesApi(ModuleApiBase):
         :type label_id: int
         :param image_id: Image ID.
         :type image_id: int
-        :return: Bindings.
+        :returns: Bindings.
         :rtype: Dict[str, Union[str, int, Dict[str, int]]]
         """
         # NOTE: This method is designed to handle the bindings for different cases,

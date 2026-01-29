@@ -102,7 +102,7 @@ class PointcloudEpisodeAnnotation:
 
         :param frame_index: The index of the frame for which tags need to be retrieved.
         :type frame_index: int
-        :return: PointcloudEpisodeTagCollection containing the retrieved tags associated with the specified frame.
+        :returns: PointcloudEpisodeTagCollection containing the retrieved tags associated with the specified frame.
         :rtype: PointcloudEpisodeTagCollection
         :raises ValueError: If no frame with the given frame_index exists in the annotation.
 
@@ -158,7 +158,7 @@ class PointcloudEpisodeAnnotation:
 
         :param frame_index: The index of the frame for which objects need to be retrieved.
         :type frame_index: int
-        :return: PointcloudEpisodeObjectCollection containing the retrieved objects associated with the specified frame.
+        :returns: PointcloudEpisodeObjectCollection containing the retrieved objects associated with the specified frame.
         :rtype:
         :raises ValueError: If no frame with the given frame_index exists in the annotation.
 
@@ -227,7 +227,7 @@ class PointcloudEpisodeAnnotation:
 
         :param frame_index: The index of the frame for which figures need to be retrieved.
         :type frame_index: int
-        :return: List of PointcloudFigure objects containing the retrieved figures associated with the specified frame.
+        :returns: List of PointcloudFigure objects containing the retrieved figures associated with the specified frame.
         :rtype: List[PointcloudFigure]
 
         :Usage Example:
@@ -248,7 +248,7 @@ class PointcloudEpisodeAnnotation:
                     project_meta=project_meta,
                     key_id_map=key_id_map
                 )
-                
+
                 frame_index = 0
                 figures_on_frame = ann.get_figures_on_frame(frame_index)
                 print(figures_on_frame)
@@ -275,7 +275,7 @@ class PointcloudEpisodeAnnotation:
 
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
-        :return: PointcloudEpisodeAnnotation in JSON format.
+        :returns: PointcloudEpisodeAnnotation in JSON format.
         :rtype: Dict
 
         :Usage Example:
@@ -368,7 +368,7 @@ class PointcloudEpisodeAnnotation:
         :type data: Dict
         :param project_meta: Project metadata.
         :type project_meta: ProjectMeta
-        :return: PointcloudEpisodeAnnotation object
+        :returns: PointcloudEpisodeAnnotation object
         :rtype: :class:`PointcloudEpisodeAnnotation<PointcloudEpisodeAnnotation>`
 
         :Usage Example:
@@ -425,7 +425,7 @@ class PointcloudEpisodeAnnotation:
         :type project_meta: ProjectMeta
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
-        :return: PointcloudEpisodeAnnotation object
+        :returns: PointcloudEpisodeAnnotation object
         :rtype: :class:`PointcloudEpisodeAnnotation<PointcloudEpisodeAnnotation>`
 
         :Usage Example:
@@ -475,7 +475,7 @@ class PointcloudEpisodeAnnotation:
         :type tags: PointcloudEpisodeTagCollection, optional
         :param description: Description text
         :type description: str, optional
-        :return: PointcloudAnnotation class object
+        :returns: PointcloudAnnotation class object
 
         :Usage Example:
 
@@ -597,7 +597,7 @@ class PointcloudEpisodeAnnotation:
         """
         Number of frames.
 
-        :return: Frames count
+        :returns: Frames count
         :rtype: :class:`int`
 
         :Usage Example:
@@ -650,7 +650,7 @@ class PointcloudEpisodeAnnotation:
         """
         PointcloudEpisodeFrameCollection collection.
 
-        :return: PointcloudEpisodeFrameCollection object
+        :returns: PointcloudEpisodeFrameCollection object
         :rtype: :class:`PointcloudEpisodeFrameCollection<supervisely.pointcloud_episodes.pointcloud_episode_frame_collection.PointcloudEpisodeFrameCollection>`
 
         :Usage Example:
@@ -796,7 +796,7 @@ class PointcloudEpisodeAnnotation:
         """
         Description text for PointcloudEpisodeAnnotation object.
 
-        :return: PointcloudEpisodeAnnotation description
+        :returns: PointcloudEpisodeAnnotation description
         :rtype: :class:`str`
 
         :Usage Example:

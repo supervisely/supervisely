@@ -11,7 +11,7 @@ def get_labeling_tool_url(dataset_id, pointcloud_id):
     :type dataset_id: int
     :param pointcloud_id: Point cloud ID in Supervisely.
     :type pointcloud_id: int
-    :return: URL for the labeling tool with the specified dataset ID and point cloud ID
+    :returns: URL for the labeling tool with the specified dataset ID and point cloud ID
     :rtype: str
 
     :Usage Example:
@@ -56,7 +56,7 @@ def get_labeling_tool_link(url, name="open in labeling tool"):
     :type url: str
     :param name: Name of the link, default is "open in labeling tool".
     :type name: str
-    :return: HTML link to the labeling tool with the specified URL and name.
+    :returns: HTML link to the labeling tool with the specified URL and name.
     :rtype: str
 
     :Usage Example:

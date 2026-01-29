@@ -86,7 +86,7 @@ class RoleApi(ModuleApiBase):
 
         :param filters: List of params to sort output Roles.
         :type filters: list
-        :return: List of all roles with information. See :class:`info_sequence<info_sequence>`
+        :returns: List of all roles with information. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[RoleInfo]`
 
         :Usage Example:

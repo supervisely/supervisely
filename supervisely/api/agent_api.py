@@ -129,7 +129,7 @@ class AgentApi(ModuleApi, ModuleWithStatus):
         :type team_id: int
         :param filters: List of params to sort output Agents.
         :type filters: List[dict], optional
-        :return: List of Agents with information. See :class:`info_sequence<info_sequence>`
+        :returns: List of Agents with information. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[NamedTuple]`
 
         :Usage Example:
@@ -196,7 +196,7 @@ class AgentApi(ModuleApi, ModuleWithStatus):
         :type envs: List[dict], optional
         :param min_nvidia_driver_version: Filter by minimum nvidia driver version.
         :type min_nvidia_driver_version: str, optional
-        :return: List of Agents with information. See :class:`AgentInfo`
+        :returns: List of Agents with information. See :class:`AgentInfo`
         :rtype: :class:`List[AgentInfo]`
 
         :Usage Example:
@@ -253,7 +253,7 @@ class AgentApi(ModuleApi, ModuleWithStatus):
 
         :param id: Agent ID in Supervisely.
         :type id: int
-        :return: Information about Agent. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Agent. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`NamedTuple`
 
         :Usage Example:
@@ -277,7 +277,7 @@ class AgentApi(ModuleApi, ModuleWithStatus):
 
         :param id: Agent ID in Supervisely.
         :type id: int
-        :return: Agent Status
+        :returns: Agent Status
         :rtype: :class:`Status<supervisely.api.agent_api.AgentApi.Status>`
 
         :Usage Example:

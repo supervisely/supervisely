@@ -90,7 +90,7 @@ class VideoDataset(Dataset):
         """
         Path to the video project containing the video dataset.
 
-        :return: Path to the video project.
+        :returns: Path to the video project.
         :rtype: :class:`str`
 
         :Usage Example:
@@ -111,7 +111,7 @@ class VideoDataset(Dataset):
         """
         Video Dataset name.
 
-        :return: Video Dataset Name.
+        :returns: Video Dataset Name.
         :rtype: :class:`str`
 
         :Usage Example:
@@ -132,7 +132,7 @@ class VideoDataset(Dataset):
         """
         Path to the video dataset directory.
 
-        :return: Path to the video dataset directory.
+        :returns: Path to the video dataset directory.
         :rtype: :class:`str`
 
         :Usage Example:
@@ -154,7 +154,7 @@ class VideoDataset(Dataset):
         """
         Path to the video dataset items directory.
 
-        :return: Path to the video dataset items directory.
+        :returns: Path to the video dataset items directory.
         :rtype: :class:`str`
 
         :Usage Example:
@@ -186,7 +186,7 @@ class VideoDataset(Dataset):
         """
         Path to the video dataset annotations directory.
 
-        :return: Path to the video dataset directory with annotations.
+        :returns: Path to the video dataset directory with annotations.
         :rtype: :class:`str`
 
         :Usage Example:
@@ -218,7 +218,7 @@ class VideoDataset(Dataset):
         """
         Path to the video dataset item with items info.
 
-        :return: Path to the video dataset directory with items info.
+        :returns: Path to the video dataset directory with items info.
         :rtype: :class:`str`
 
         :Usage Example:
@@ -250,7 +250,7 @@ class VideoDataset(Dataset):
         """
         Checks if file from given path is supported
         :param path: str
-        :return: bool
+        :returns: bool
         """
         return sly_video.has_valid_ext(path)
 
@@ -258,7 +258,7 @@ class VideoDataset(Dataset):
         """
         List of video dataset item names.
 
-        :return: List of item names.
+        :returns: List of item names.
         :rtype: :class:`list` [ :class:`str` ]
 
         :Usage Example:
@@ -281,7 +281,7 @@ class VideoDataset(Dataset):
 
         :param item_name: Item name.
         :type item_name: :class:`str`
-        :return: True if item exist, otherwise False.
+        :returns: True if item exist, otherwise False.
         :rtype: :class:`bool`
 
         :Usage Example:
@@ -304,7 +304,7 @@ class VideoDataset(Dataset):
 
         :param item_name: Item name.
         :type item_name: :class:`str`
-        :return: Path to the given item.
+        :returns: Path to the given item.
         :rtype: :class:`str`
         :raises: :class:`RuntimeError` if item not found in the project
 
@@ -346,7 +346,7 @@ class VideoDataset(Dataset):
         :type project_meta: :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`
         :param key_id_map: KeyIdMap object.
         :type key_id_map: :class:`KeyIdMap<supervisely.video_annotation.key_id_map.KeyIdMap>`, optional
-        :return: VideoAnnotation object.
+        :returns: VideoAnnotation object.
         :rtype: :class:`VideoAnnotation<supervisely.video_annotation.video_annotation.VideoAnnotation>`
         :raises: :class:`RuntimeError` if item not found in the project
 
@@ -391,7 +391,7 @@ class VideoDataset(Dataset):
 
         :param item_name: Item name.
         :type item_name: :class:`str`
-        :return: Path to the given annotation json file.
+        :returns: Path to the given annotation json file.
         :rtype: :class:`str`
         :raises: :class:`RuntimeError` if item not found in the project
 
@@ -427,7 +427,7 @@ class VideoDataset(Dataset):
 
         :param item_name: Item name.
         :type item_name: :class:`str`
-        :return: Path to the given item info json file.
+        :returns: Path to the given item info json file.
         :rtype: :class:`str`
         :raises: :class:`RuntimeError` if item not found in the project.
 
@@ -463,7 +463,7 @@ class VideoDataset(Dataset):
 
         :param item_name: Item name.
         :type item_name: :class:`str`
-        :return: VideoInfo object.
+        :returns: VideoInfo object.
         :rtype: :class:`VideoInfo<supervisely.api.video.video_api.VideoInfo>`
 
         :Usage Example:
@@ -533,7 +533,7 @@ class VideoDataset(Dataset):
         :type _use_hardlink: :class:`bool`, optional
         :param item_info: VideoInfo object or VideoInfo object converted to dict or path to item info json file for copying to dataset item info directory.
         :type item_info: :class:`VideoInfo<supervisely.api.video.video_api.VideoInfo>` or :class:`dict` or :class:`str`, optional
-        :return: None
+        :returns: None
         :rtype: NoneType
         :raises: :class:`RuntimeError` if item_name already exists in dataset or item name has unsupported extension.
 
@@ -620,7 +620,7 @@ class VideoDataset(Dataset):
         """
         Create empty VideoAnnotation for given video
         :param item_name: str
-        :return: VideoAnnotation class object
+        :returns: VideoAnnotation class object
         """
         img_size, frames_count = sly_video.get_image_size_and_frames_count(item_name)
         return self.annotation_class(img_size, frames_count)
@@ -667,7 +667,7 @@ class VideoDataset(Dataset):
         :type ann: :class:`VideoAnnotation<supervisely.video_annotation.video_annotation.VideoAnnotation>`
         :param key_id_map: KeyIdMap object.
         :type key_id_map: :class:`KeyIdMap<supervisely.video_annotation.key_id_map.KeyIdMap>`, optional
-        :return: None
+        :returns: None
         :rtype: NoneType
 
         :Usage Example:
@@ -696,7 +696,7 @@ class VideoDataset(Dataset):
 
         :param item_name: Item name.
         :type item_name: :class:`str`
-        :return: VideoItemPaths object
+        :returns: VideoItemPaths object
         :rtype: :class:`VideoItemPaths<VideoItemPaths>`
 
         :Usage Example:
@@ -728,7 +728,7 @@ class VideoDataset(Dataset):
         :type project_id: :class:`int`
         :param dataset_id: :class:`VideoDataset<VideoDataset>` ID in Supervisely.
         :type dataset_id: :class:`int`
-        :return: URL to dataset items list.
+        :returns: URL to dataset items list.
         :rtype: :class:`str`
 
         :Usage Example:
@@ -786,7 +786,7 @@ class VideoProject(Project):
 
         :param id: :class:`VideoProject<VideoProject>` ID in Supervisely.
         :type id: :class:`int`
-        :return: URL to datasets list.
+        :returns: URL to datasets list.
         :rtype: :class:`str`
 
         :Usage Example:
@@ -841,7 +841,7 @@ class VideoProject(Project):
         """
         Project type.
 
-        :return: Project type.
+        :returns: Project type.
         :rtype: :class:`str`
 
         :Usage Example:
@@ -866,7 +866,7 @@ class VideoProject(Project):
 
     def _get_key_id_map_path(self):
         """
-        :return: str (full path to key_id_map.json)
+        :returns: str (full path to key_id_map.json)
         """
         return os.path.join(self.directory, "key_id_map.json")
 
@@ -888,7 +888,7 @@ class VideoProject(Project):
         :type _validate_item: :class:`bool`, optional
         :param _use_hardlink: If True creates a hardlink pointing to src named dst, otherwise don't.
         :type _use_hardlink: :class:`bool`, optional
-        :return: VideoProject object.
+        :returns: VideoProject object.
         :rtype: :class:`VideoProject<VideoProject>`
 
         :Usage Example:
@@ -1111,7 +1111,7 @@ class VideoProject(Project):
         """
         Read project from given ditectory. Generate exception error if given dir contains more than one subdirectory
         :param dir: str
-        :return: VideoProject class object
+        :returns: VideoProject class object
         """
         return read_project_wrapper(dir, cls)
 
@@ -1146,7 +1146,7 @@ class VideoProject(Project):
         :type log_progress: :class:`bool`
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: :class:`tqdm`, optional
-        :return: None
+        :returns: None
         :rtype: NoneType
 
         :Usage Example:
@@ -1207,7 +1207,7 @@ class VideoProject(Project):
         :type project_name: str
         :param log_progress: Logging progress of download video project or not.
         :type log_progress: bool
-        :return: New video project ID in Supervisely and project name
+        :returns: New video project ID in Supervisely and project name
         :rtype: :class:`int`, :class:`str`
 
         :Usage Example:
@@ -1283,7 +1283,7 @@ class VideoProject(Project):
         :type progress_cb: :class:`tqdm`, optional
         :param include_custom_data: Include custom data in the download.
         :type include_custom_data: :class:`bool`, optional
-        :return: None
+        :returns: None
         :rtype: NoneType
 
         :Usage Example:
@@ -1363,7 +1363,7 @@ class VideoProject(Project):
         :type progress_cb: Optional[Union[tqdm, Callable]]
         :param return_bytesio: If True, return the snapshot as :class:`io.BytesIO`. If False, write the snapshot to ``dest_dir`` and return the output file path.
         :type return_bytesio: bool
-        :return: Either output file path (``.tar.zst``) when ``return_bytesio`` is False, or an in-memory snapshot stream when ``return_bytesio`` is True.
+        :returns: Either output file path (``.tar.zst``) when ``return_bytesio`` is False, or an in-memory snapshot stream when ``return_bytesio`` is True.
         :rtype: Union[str, io.BytesIO]
         """
         if dest_dir is None and not return_bytesio:
@@ -1424,7 +1424,7 @@ class VideoProject(Project):
         :type progress_cb: Optional[Union[tqdm, Callable]]
         :param skip_missed: If True, skip videos that are missing on server when restoring by hash.
         :type skip_missed: bool
-        :return: Info of the newly created project.
+        :returns: Info of the newly created project.
         :rtype: ProjectInfo
         """
         if isinstance(file, io.BytesIO):
@@ -2050,7 +2050,7 @@ def download_video_project(
     :param progress_cb: Function for tracking the download progress.
     :type progress_cb: tqdm or callable, optional
 
-    :return: None.
+    :returns: None.
     :rtype: NoneType
 
     :Usage Example:
@@ -2060,6 +2060,7 @@ def download_video_project(
             import os
             from tqdm import tqdm
             from dotenv import load_dotenv
+
             import supervisely as sly
 
             # Load secrets and create API object from .env file (recommended)
@@ -2388,7 +2389,7 @@ async def download_video_project_async(
     :type progress_cb: tqdm or callable, optional
     :param include_custom_data: Include custom data in the download.
     :type include_custom_data: bool, optional
-    :return: None.
+    :returns: None.
     :rtype: NoneType
 
     :Usage Example:
@@ -2398,6 +2399,7 @@ async def download_video_project_async(
             import os
             from tqdm import tqdm
             from dotenv import load_dotenv
+
             import supervisely as sly
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'

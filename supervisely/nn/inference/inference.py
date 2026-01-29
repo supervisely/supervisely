@@ -1192,7 +1192,7 @@ class Inference:
         :type: device: str
         :param: kwargs: additional parameters will be passed to load_model method.
         :type: kwargs: dict
-        :return: None
+        :returns: None
         :rtype: None
 
         :Usage Example:
@@ -1653,7 +1653,7 @@ class Inference:
         :type: source: Union[str, int, np.ndarray, List[str], List[int], List[np.ndarray]]
         :param: settings: inference settings
         :type: settings: dict
-        :return: annotation or list of annotations
+        :returns: annotation or list of annotations
         :rtype: Union[Annotation, List[Annotation]]
 
         :Usage Example:
@@ -1839,7 +1839,7 @@ class Inference:
         :param images_np: list of numpy arrays in RGB format
         :param settings: inference settings
 
-        :return: tuple of annotation and benchmark dict with speedtest results in milliseconds.
+        :returns: tuple of annotation and benchmark dict with speedtest results in milliseconds.
             The benchmark dict should contain the following keys (all values in milliseconds):
             - preprocess: time of preprocessing (e.g. image loading, resizing, etc.)
             - inference: time of inference. Consider to include not only the time of the model forward pass, but also
@@ -4733,7 +4733,7 @@ def _filter_duplicated_predictions_from_ann(
     :param iou_threshold:   IoU threshold (0.0-1.0). Predictions with IoU >= threshold with any
                             ground truth box of the same class will be removed
     :type iou_threshold: float
-    :return: A new annotation object containing only predictions that don't significantly
+    :returns: A new annotation object containing only predictions that don't significantly
                 overlap with ground truth annotations
     :rtype: Annotation
 
@@ -4814,7 +4814,7 @@ def _exclude_duplicated_predictions(
     :type iou: Optional[float]
     :param meta: ProjectMeta object
     :type meta: Optional[ProjectMeta]
-    :return: List of Annotation objects containing filtered predictions
+    :returns: List of Annotation objects containing filtered predictions
     :rtype: List[Annotation]
 
     Notes:

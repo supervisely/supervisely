@@ -75,7 +75,7 @@ class DatasetThumbnail(Widget):
             - project_name: project name
             - project_url: project url
 
-        :return: dictionary with widget data
+        :returns: dictionary with widget data
         :rtype: Dict[str, Union[int, str, bool]]
         """
         return {

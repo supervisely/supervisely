@@ -26,7 +26,7 @@ def get_runtime(runtime: Optional[str] = None):
 
     :param runtime: Runtime string or alias (e.g. ``'onnx'``, ``'onnxruntime'``, ``'tensorrt'``).
     :type runtime: str, optional
-    :return: Runtime enum value or None.
+    :returns: Runtime enum value or None.
     :rtype: :class:`~supervisely.nn.utils.RuntimeType` or None
     :raises ValueError: If runtime is not supported.
     """
@@ -207,7 +207,7 @@ class DeployApi:
         :type public: bool
         :param gpu: If True, find an agent with GPU.
         :type gpu: bool
-        :return: Agent ID
+        :returns: Agent ID
         :rtype: int
         """
         if team_id is None:
@@ -258,7 +258,7 @@ class DeployApi:
         :type app: Union[str, int]
         :param kwargs: Additional parameters to start the task. See Api.task.start() for more details.
         :type kwargs: Dict[str, Any]
-        :return: Task Info
+        :returns: Task Info
         :rtype: Dict[str, Any]
         :raises ValueError: if no serving apps found for the app name or multiple serving apps found for the app name.
         """
@@ -386,7 +386,7 @@ class DeployApi:
         :type agent_id: Optional[int]
         :param kwargs: Additional parameters to start the task. See Api.task.start() for more details.
         :type kwargs: Dict[str, Any]
-        :return: Task Info
+        :returns: Task Info
         :rtype: Dict[str, Any]
         :raises ValueError: if validations fail.
         """
@@ -437,7 +437,7 @@ class DeployApi:
         :type agent_id: Optional[int]
         :param kwargs: Additional parameters to start the task. See Api.task.start() for more details.
         :type kwargs: Dict[str, Any]
-        :return: Task Info
+        :returns: Task Info
         :rtype: Dict[str, Any]
         :raises ValueError: if validations fail.
         """
@@ -505,7 +505,7 @@ class DeployApi:
         :type timeout: Optional[int]
         :param kwargs: Additional parameters to start the task. See Api.task.start() for more details.
         :type kwargs: Dict[str, Any]
-        :return: Task Info
+        :returns: Task Info
         :rtype: Dict[str, Any]
         :raises ValueError: if validations fail.
         """
@@ -560,7 +560,7 @@ class DeployApi:
         :type module_id: Optional[int]
         :param kwargs: Additional parameters to start the task. See Api.task.start() for more details.
         :type kwargs: Dict[str, Any]
-        :return: Task Info
+        :returns: Task Info
         :rtype: Dict[str, Any]
         """
         if app_name is None and module_id is None:
@@ -650,7 +650,7 @@ class DeployApi:
 
         :param task_id: Task ID of the serving App.
         :type task_id: int
-        :return: Deploy Info
+        :returns: Deploy Info
         :rtype: Dict[str, Any]
         """
         return self._api.task.send_request(task_id, "get_deploy_info", data={}, raise_error=True)

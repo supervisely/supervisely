@@ -56,7 +56,7 @@ class ReportApi(ModuleApiBase):
         :type widgets:
         :param layout:
         :type layout:
-        :return:
+        :returns:
         :rtype:
         """
         data = {

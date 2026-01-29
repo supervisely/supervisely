@@ -102,7 +102,7 @@ class DatePicker(Widget):
             - options: dictionary with options for date picker
                 - firstDayOfWeek: first day of week
 
-        :return: dictionary with widget data
+        :returns: dictionary with widget data
         :rtype: Dict[str, Union[str, bool, int, Dict[str, int]]]
         """
 
@@ -124,7 +124,7 @@ class DatePicker(Widget):
         Dictionary contains the following fields:
             - value: current value
 
-        :return: dictionary with widget state
+        :returns: dictionary with widget state
         :rtype: Dict[str, Union[str, List[int]]]
         """
         return {"value": self._value}
@@ -138,7 +138,7 @@ class DatePicker(Widget):
     def get_value(self) -> Union[int, str, datetime, list, tuple, None]:
         """Returns current value.
 
-        :return: current value
+        :returns: current value
         :rtype: Union[int, str, datetime, list, tuple, None]
         """
         if "value" not in StateJson()[self.widget_id].keys():
@@ -186,7 +186,7 @@ class DatePicker(Widget):
 
         :param func: function that will be called when value is changed
         :type func: Callable[[Union[int, str, datetime, list, tuple]], Any]
-        :return: decorated function
+        :returns: decorated function
         :rtype: Callable[[], None]
         """
         route_path = self.get_route_path(DatePicker.Routes.VALUE_CHANGED)

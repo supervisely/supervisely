@@ -47,7 +47,7 @@ class SalientObjectSegmentation(SemanticSegmentation):
         :param image_path: Path to image (use image_path or image_np, not both)
         :type image_path: str
         :raises: :class:`ValueError`, if image_np or image_path invalid or not provided
-        :return: Annotation in json format
+        :returns: Annotation in json format
         :rtype: :class:`dict`
         """
 

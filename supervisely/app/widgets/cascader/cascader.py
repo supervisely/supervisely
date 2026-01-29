@@ -161,7 +161,7 @@ class Cascader(Widget):
             - parentSelectable: If True, parent items will be selectable.
             - items: List of cascader items.
 
-        :return: Dictionary with widget data.
+        :returns: Dictionary with widget data.
         :rtype: Dict[str, Any]
         """
         res = {
@@ -185,7 +185,7 @@ class Cascader(Widget):
         Dictionary contains the following fields:
             - selectedItems: List of selected items.
 
-        :return: Dictionary with widget state.
+        :returns: Dictionary with widget state.
         :rtype: Dict[str, List[Cascader.Item]]
         """
         return {"selectedItems": self._selected_items}
@@ -193,7 +193,7 @@ class Cascader(Widget):
     def get_selected_items(self) -> List[str]:
         """Returns list of values of selected items.
 
-        :return: List of values of selected items.
+        :returns: List of values of selected items.
         :rtype: List[str]
         """
         return StateJson()[self.widget_id]["selectedItems"]
@@ -243,7 +243,7 @@ class Cascader(Widget):
     def get_items(self) -> List[Cascader.Item]:
         """Returns list of Cascader.Item objects.
 
-        :return: List of Cascader.Item objects.
+        :returns: List of Cascader.Item objects.
         :rtype: List[Cascader.Item]
         """
         return DataJson()[self.widget_id]["items"]
@@ -253,7 +253,7 @@ class Cascader(Widget):
 
         :param value: Value of the item.
         :type value: str
-        :return: Cascader.Item object.
+        :returns: Cascader.Item object.
         :rtype: Cascader.Item
         """
 
@@ -262,7 +262,7 @@ class Cascader(Widget):
 
             :param items: List of Cascader.Item objects.
             :type items: List[Cascader.Item]
-            :return: Cascader.Item object.
+            :returns: Cascader.Item object.
             :rtype: Cascader.Item
             """
             for item in items:
@@ -326,7 +326,7 @@ class Cascader(Widget):
 
         :param func: Function to be called when the value of the cascader is changed.
         :type func: Callable[[List[str]], Any]
-        :return: Decorated function.
+        :returns: Decorated function.
         :rtype: Callable[[], None]
         """
         route_path = self.get_route_path(Cascader.Routes.VALUE_CHANGED)

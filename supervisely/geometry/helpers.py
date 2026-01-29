@@ -88,7 +88,7 @@ def get_effective_nonoverlapping_masks(
     Find nonoverlapping objects from given list of geometries
     :param geometries: list of geometry type objects(Point, Polygon, PolyLine, Bitmap etc.)
     :param img_size: tuple or list of integers
-    :return: list of bitmaps, numpy array
+    :returns: list of bitmaps, numpy array
     """
     if img_size is None:
         if len(geometries) > 0:
@@ -115,7 +115,7 @@ def deserialize_geometry(geometry_type_str: str, geometry_json: Dict) -> Geometr
     Get geometry from json format
     :param geometry_type_str: str
     :param geometry_json: geometry in json format
-    :return: geometry type object(Point, Polygon, PolyLine, Bitmap etc.)
+    :returns: geometry type object(Point, Polygon, PolyLine, Bitmap etc.)
     """
     geometry_type = GET_GEOMETRY_FROM_STR(geometry_type_str)
     geometry = geometry_type.from_json(geometry_json)

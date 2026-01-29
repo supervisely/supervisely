@@ -132,7 +132,7 @@ class AlphaMask(Bitmap):
 
         :param rotator: :class:`ImageRotator<supervisely.geometry.image_rotator.ImageRotator>` for AlphaMask rotation.
         :type rotator: ImageRotator
-        :return: AlphaMask object
+        :returns: AlphaMask object
         :rtype: :class:`AlphaMask<AlphaMask>`
 
         :Usage Example:
@@ -180,7 +180,7 @@ class AlphaMask(Bitmap):
         """
         AlphaMask area.
 
-        :return: Area of current AlphaMask
+        :returns: Area of current AlphaMask
         :rtype: :class:`float`
 
         :Usage Example:
@@ -199,7 +199,7 @@ class AlphaMask(Bitmap):
 
         :param mask: Bool numpy array.
         :type mask: np.ndarray
-        :return: Base64 encoded string
+        :returns: Base64 encoded string
         :rtype: :class:`str`
 
         :Usage Example:
@@ -241,7 +241,7 @@ class AlphaMask(Bitmap):
 
         :param s: Input base64 encoded string.
         :type s: str
-        :return: numpy array
+        :returns: numpy array
         :rtype: :class:`np.ndarray`
 
         :Usage Example:
@@ -294,7 +294,7 @@ class AlphaMask(Bitmap):
 
         :param path: Path to image
         :type path: str
-        :return: AlphaMask
+        :returns: AlphaMask
         :rtype: AlphaMask
         """
         img = cv2.imread(path, cv2.IMREAD_UNCHANGED)  # pylint: disable=no-member

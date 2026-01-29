@@ -330,7 +330,7 @@ API
 
 
 Neural Networks API
-------------
+-------------------
 **Neural Networks API**
 - API for working with videos in Supervisely.
 
@@ -387,7 +387,7 @@ Training
 
 
 Video API
-------------
+---------
 **Video API**
 - API for working with videos in Supervisely.
 
@@ -448,7 +448,7 @@ Video API
     VideoTagApi
 
 Volume API
-------------
+----------
 **Volume API**
 - API for working with volumes in Supervisely.
 

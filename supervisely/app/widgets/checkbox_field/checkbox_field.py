@@ -41,7 +41,7 @@ class CheckboxField(Widget):
             - title: Current title data of the checkbox.
             - description: Current description data of the checkbox
 
-        :return: Dictionary with the data of the checkbox.
+        :returns: Dictionary with the data of the checkbox.
         :rtype: Dict[str, str]
         """
         return {"title": self._title, "description": self._description}
@@ -51,7 +51,7 @@ class CheckboxField(Widget):
         Dictionary contains the following keys:
             - checked: Current state of the checkbox.
 
-        :return: Dictionary with the state of the checkbox.
+        :returns: Dictionary with the state of the checkbox.
         :rtype: Dict[str, bool]
         """
         return {"checked": self._checked}
@@ -59,7 +59,7 @@ class CheckboxField(Widget):
     def is_checked(self) -> bool:
         """Returns the state of the checkbox. True if checked, False otherwise.
 
-        :return: Current state of the checkbox.
+        :returns: Current state of the checkbox.
         :rtype: bool
         """
         return StateJson()[self.widget_id]["checked"]
@@ -106,7 +106,7 @@ class CheckboxField(Widget):
 
         :param func: Function that handles the event of changing the state of the checkbox.
         :type func: Callable[[bool], Any]
-        :return: Decorated function.
+        :returns: Decorated function.
         :rtype: Callable[[], None]
         """
         route_path = self.get_route_path(CheckboxField.Routes.VALUE_CHANGED)

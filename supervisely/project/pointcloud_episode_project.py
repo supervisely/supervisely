@@ -111,7 +111,7 @@ class PointcloudEpisodeDataset(PointcloudDataset):
         :type project_meta: :class:`ProjectMeta<supervisely.ProjectMeta>`
         :param key_id_map: KeyIdMap object.
         :type key_id_map: :class:`KeyIdMap<supervisely.video_annotation.key_id_map.KeyIdMap>`, optional
-        :return: PointcloudEpisodeAnnotation object
+        :returns: PointcloudEpisodeAnnotation object
         :rtype: :class:`PointcloudEpisodeAnnotation<supervisely.PointcloudEpisodeAnnotation>`
         :raises: :class:`RuntimeError` if item not found in the project
 
@@ -203,7 +203,7 @@ class PointcloudEpisodeDataset(PointcloudDataset):
         :type _use_hardlink: bool, optional
         :param item_info: NamedTuple ImageInfo containing information about pointcloud.
         :type item_info: NamedTuple, optional
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
         :raises: :class:`Exception` if item_name already exists in dataset or item name has unsupported extension.
 
@@ -315,7 +315,7 @@ class PointcloudEpisodeProject(PointcloudProject):
         """
         Project type.
 
-        :return: Project type.
+        :returns: Project type.
         :rtype: :class:`str`
 
         :Usage Example:
@@ -344,7 +344,7 @@ class PointcloudEpisodeProject(PointcloudProject):
         :param val_count: Number of val items.
         :type val_count: int
         :raises: :class:`ValueError` if total_count != train_count + val_count
-        :return: Tuple with lists of train items information and val items information
+        :returns: Tuple with lists of train items information and val items information
         :rtype: :class:`Tuple[List[EpisodeItemInfo], List[EpisodeItemInfo]]`
 
         :Usage Example:
@@ -404,7 +404,7 @@ class PointcloudEpisodeProject(PointcloudProject):
         :param untagged: Actions in case of absence of train_tag_name and val_tag_name in project.
         :type untagged: str, optional
         :raises: :class:`ValueError` if untagged not in ["ignore", "train", "val"]
-        :return: Tuple with lists of train items information and val items information
+        :returns: Tuple with lists of train items information and val items information
         :rtype: :class:`Tuple[List[EpisodeItemInfo], List[EpisodeItemInfo]]`
 
         :Usage Example:
@@ -469,7 +469,7 @@ class PointcloudEpisodeProject(PointcloudProject):
         :param val_datasets: List of val datasets names.
         :type val_datasets: List[str]
         :raises: :class:`KeyError` if dataset name not found in project
-        :return: Tuple with lists of train items information and val items information
+        :returns: Tuple with lists of train items information and val items information
         :rtype: :class:`Tuple[List[EpisodeItemInfo], List[EpisodeItemInfo]]`
 
         :Usage Example:
@@ -562,7 +562,7 @@ class PointcloudEpisodeProject(PointcloudProject):
         :type log_progress: :class:`bool`
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: :class:`tqdm` or callable, optional
-        :return: None
+        :returns: None
         :rtype: NoneType
 
         :Usage Example:
@@ -625,7 +625,7 @@ class PointcloudEpisodeProject(PointcloudProject):
         :type log_progress: bool
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
-        :return: Project ID and name. It is recommended to check that returned project name coincides with provided project name.
+        :returns: Project ID and name. It is recommended to check that returned project name coincides with provided project name.
         :rtype: int, str
 
         :Usage Example:
@@ -728,7 +728,7 @@ def download_pointcloud_episode_project(
     :param progress_cb: Function for tracking download progress.
     :type progress_cb: tqdm or callable, optional
 
-    :return: None.
+    :returns: None.
     :rtype: NoneType
 
     :Usage Example:
@@ -738,6 +738,7 @@ def download_pointcloud_episode_project(
             import os
             from tqdm import tqdm
             from dotenv import load_dotenv
+
             import supervisely as sly
 
             # Load secrets and create API object from .env file (recommended)

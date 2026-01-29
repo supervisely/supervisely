@@ -56,7 +56,7 @@ class VolumeDataset(VideoDataset):
         """
         Checks if file from given path is supported
         :param path: str
-        :return: bool
+        :returns: bool
         """
         return sly_volume.has_valid_ext(path)
 
@@ -146,7 +146,7 @@ class VolumeProject(VideoProject):
         """
         Project type.
 
-        :return: Project type.
+        :returns: Project type.
         :rtype: :class:`str`
 
         :Usage Example:
@@ -189,7 +189,7 @@ class VolumeProject(VideoProject):
         :type log_progress: bool
         :param progress_cb: Function for tracking the download progress.
         :type progress_cb: tqdm or callable, optional
-        :return: None
+        :returns: None
         :rtype: NoneType
 
         :Usage Example:
@@ -269,7 +269,7 @@ class VolumeProject(VideoProject):
         :type return_bytesio: bool, optional
         :param schema_version: Snapshot schema version. Controls the internal Parquet layout/fields. Supported values are the keys from :func:`~supervisely.project.volume_schema.get_volume_snapshot_schema` (currently: ``"v2.0.0"``).
         :type schema_version: str, optional
-        :return: Snapshot file path (when ``return_bytesio=False``) or a BytesIO (when ``return_bytesio=True``).
+        :returns: Snapshot file path (when ``return_bytesio=False``) or a BytesIO (when ``return_bytesio=True``).
         :rtype: str or io.BytesIO
         :raises ValueError: If ``dest_dir`` is not provided and ``return_bytesio`` is False.
         :raises RuntimeError: If required optional dependencies (e.g. pyarrow) are missing.
@@ -438,7 +438,7 @@ class VolumeProject(VideoProject):
         :param progress_cb: Function for tracking the download progress.
         :type progress_cb: tqdm or callable, optional
 
-        :return: Project ID and name. It is recommended to check that returned project name coincides with provided project name.
+        :returns: Project ID and name. It is recommended to check that returned project name coincides with provided project name.
         :rtype: :class:`int`, :class:`str`
 
         :Usage Example:
@@ -505,7 +505,7 @@ class VolumeProject(VideoProject):
         :type progress_cb: tqdm or callable, optional
         :param skip_missed_entities: If True, skip volumes that cannot be restored because their source hash is missing in the snapshot payload. If False, such cases raise an error.
         :type skip_missed_entities: bool
-        :return: Info of the newly created project.
+        :returns: Info of the newly created project.
         :rtype: :class:`~supervisely.api.project_api.ProjectInfo`
         :raises RuntimeError: If the snapshot contains volumes without hashes and ``skip_missed_entities`` is False.
         """
@@ -974,7 +974,7 @@ def download_volume_project(
     :param progress_cb: Function for tracking download progress.
     :type progress_cb: tqdm or callable, optional
 
-    :return: None.
+    :returns: None.
     :rtype: NoneType
 
     :Usage Example:
@@ -982,9 +982,9 @@ def download_volume_project(
         .. code-block:: python
 
             import os
+            from tqdm import tqdm
             from dotenv import load_dotenv
 
-            from tqdm import tqdm
             import supervisely as sly
 
             # Load secrets and create API object from .env file (recommended)
@@ -1243,7 +1243,7 @@ def _create_volume_header(ann: VolumeAnnotation) -> Dict:
 
     :param ann: VolumeAnnotation object
     :type ann: VolumeAnnotation
-    :return: header with Volume meta parameters
+    :returns: header with Volume meta parameters
     :rtype: Dict
     """
     header = {}

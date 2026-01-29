@@ -39,7 +39,7 @@ class Checkbox(Widget):
     def get_json_data(self) -> Dict:
         """Checkbox widget does not have any additional data, so it returns an empty dictionary.
 
-        :return: Empty dictionary.
+        :returns: Empty dictionary.
         :rtype: Dict
         """
         return {}
@@ -49,7 +49,7 @@ class Checkbox(Widget):
         Dictionary contains the following keys:
             - checked: Current state of the checkbox.
 
-        :return: Dictionary with the state of the checkbox.
+        :returns: Dictionary with the state of the checkbox.
         :rtype: Dict[str, bool]
         """
         return {"checked": self._checked}
@@ -57,7 +57,7 @@ class Checkbox(Widget):
     def is_checked(self) -> bool:
         """Returns the state of the checkbox. True if checked, False otherwise.
 
-        :return: Current state of the checkbox.
+        :returns: Current state of the checkbox.
         :rtype: bool
         """
         return StateJson()[self.widget_id]["checked"]
@@ -87,7 +87,7 @@ class Checkbox(Widget):
 
         :param func: Function that handles the event of changing the state of the checkbox.
         :type func: Callable[[bool], Any]
-        :return: Decorated function.
+        :returns: Decorated function.
         :rtype: Callable[[], None]
         """
         route_path = self.get_route_path(Checkbox.Routes.VALUE_CHANGED)

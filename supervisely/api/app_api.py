@@ -127,7 +127,7 @@ def check_workflow_compatibility(api, min_instance_version: str) -> bool:
     :type api: supervisely.api.api.Api
     :param min_instance_version: Minimum version of the instance that supports workflow features
     :type min_instance_version: str
-    :return: True if the instance is compatible, False otherwise
+    :returns: True if the instance is compatible, False otherwise
     :rtype: bool
     """
 
@@ -264,7 +264,7 @@ class ModuleInfo(NamedTuple):
         It should be used with api.app.start() method.
         See usage example below.
 
-        :return: arguments for launching the application
+        :returns: arguments for launching the application
         :rtype: Dict[str, Any]
         :raises ValueError: if arguments was not passed, and the application is not
             starting from the context menu Ecosystem
@@ -617,7 +617,7 @@ class AppApi(TaskApi):
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
             :type meta: Optional[Union[WorkflowMeta, dict]]
-            :return: Response from the API.
+            :returns: Response from the API.
             :rtype: dict
             """
             try:
@@ -691,7 +691,7 @@ class AppApi(TaskApi):
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
             :type meta: Optional[Union[WorkflowMeta, dict]]
-            :return: Response from the API.
+            :returns: Response from the API.
             :rtype: :class:`dict`
             """
             try:
@@ -747,7 +747,7 @@ class AppApi(TaskApi):
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
             :type meta: Optional[Union[WorkflowMeta, dict]]
-            :return: Response from the API.
+            :returns: Response from the API.
             :rtype: :class:`dict`
             """
             try:
@@ -783,7 +783,7 @@ class AppApi(TaskApi):
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
             :type meta: Optional[Union[WorkflowMeta, dict]]
-            :return: Response from the API.
+            :returns: Response from the API.
             :rtype: :class:`dict`
             """
             try:
@@ -829,7 +829,7 @@ class AppApi(TaskApi):
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
             :type meta: Optional[Union[WorkflowMeta, dict]]
-            :return: Response from the API.
+            :returns: Response from the API.
             :rtype: :class:`dict`
             """
             try:
@@ -868,7 +868,7 @@ class AppApi(TaskApi):
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
             :type meta: Optional[Union[WorkflowMeta, dict]]
-            :return: Response from the API.
+            :returns: Response from the API.
             :rtype: :class:`dict`
             """
             try:
@@ -902,7 +902,7 @@ class AppApi(TaskApi):
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
             :type meta: Optional[Union[WorkflowMeta, dict]]
-            :return: Response from the API.
+            :returns: Response from the API.
             :rtype: :class:`dict`
             """
             try:
@@ -941,7 +941,7 @@ class AppApi(TaskApi):
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
             :type meta: Optional[Union[WorkflowMeta, dict]]
-            :return: Response from the API.
+            :returns: Response from the API.
             :rtype: :class:`dict`
             """
             try:
@@ -987,7 +987,7 @@ class AppApi(TaskApi):
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
             :type meta: Optional[Union[WorkflowMeta, dict]]
-            :return: Response from the API.
+            :returns: Response from the API.
             :rtype: :class:`dict`
             """
             try:
@@ -1023,7 +1023,7 @@ class AppApi(TaskApi):
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
             :type meta: Optional[Union[WorkflowMeta, dict]]
-            :return: Response from the API.
+            :returns: Response from the API.
             :rtype: :class:`dict`
             """
             try:
@@ -1059,7 +1059,7 @@ class AppApi(TaskApi):
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
             :type meta: Optional[Union[WorkflowMeta, dict]]
-            :return: Response from the API.
+            :returns: Response from the API.
             :rtype: :class:`dict`
             """
             try:
@@ -1095,7 +1095,7 @@ class AppApi(TaskApi):
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
             :type meta: Optional[Union[WorkflowMeta, dict]]
-            :return: Response from the API.
+            :returns: Response from the API.
             :rtype: :class:`dict`
             """
             try:
@@ -1126,7 +1126,7 @@ class AppApi(TaskApi):
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
             :type meta: Optional[Union[WorkflowMeta, dict]]
-            :return: Response from the API.
+            :returns: Response from the API.
             :rtype: :class:`dict`
             """
             try:
@@ -1160,7 +1160,7 @@ class AppApi(TaskApi):
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
             :type meta: Optional[Union[WorkflowMeta, dict]]
-            :return: Response from the API.
+            :returns: Response from the API.
             :rtype: :class:`dict`
             """
             try:
@@ -1211,7 +1211,7 @@ class AppApi(TaskApi):
     def get_info_by_id(self, id: int) -> AppInfo:
         """
         :param id: int
-        :return: application info by numeric id
+        :returns: application info by numeric id
         """
         return self._get_info_by_id(id, "apps.info")
 
@@ -1263,7 +1263,7 @@ class AppApi(TaskApi):
                                 Note that it can be a long operation.
         :type force_all_sessions: bool
 
-        :return: list of applications
+        :returns: list of applications
         :rtype: List[AppInfo]
 
 
@@ -1436,7 +1436,7 @@ class AppApi(TaskApi):
         :type log_progress: bool
         :param ext_logger: Logger to use for logging
         :type ext_logger: Logger
-        :return: None
+        :returns: None
         :rtype: None
         """
         if file_path is None and file_key is None:
@@ -1539,7 +1539,7 @@ class AppApi(TaskApi):
         :type slug: Optional[str]
         :raises ValueError: if both module_id and slug are None
         :raises ValueError: if both module_id and slug are provided
-        :return: ModuleInfo object
+        :returns: ModuleInfo object
         :rtype: ModuleInfo
 
         :Usage Example:
@@ -1578,7 +1578,7 @@ class AppApi(TaskApi):
 
         :param slug: module slug, starts with "supervisely-ecosystem/"
         :type slug: str
-        :return: ID of the module
+        :returns: ID of the module
         :rtype: int
         :raises KeyError: if module with given slug not found
         :raises KeyError: if there are multiple modules with the same slug
@@ -1670,7 +1670,7 @@ class AppApi(TaskApi):
         :param with_shared: include shared application sessions
         :type with_shared: bool
 
-        :return: list of sessions
+        :returns: list of sessions
         :rtype: List[SessionInfo]
 
         :Usage Example:
@@ -1804,7 +1804,7 @@ class AppApi(TaskApi):
                                    All users will have separate application states.
                                    Available only for applications that support multi-user sessions.
         :type multi_user_session: bool, default is False
-        :return: SessionInfo object with information about the started task.
+        :returns: SessionInfo object with information about the started task.
         :rtype: SessionInfo
         :raises ValueError: If both app_id and module_id are not provided.
         :raises ValueError: If both app_id and module_id are provided.
@@ -1876,7 +1876,7 @@ class AppApi(TaskApi):
         Checks if app is ready for API calls.
         :param task_id: ID of the running task.
         :type task_id: int
-        :return: True if app is ready for API calls, False otherwise.
+        :returns: True if app is ready for API calls, False otherwise.
         """
         try:
             info = self._api.app.send_request(
@@ -1903,7 +1903,7 @@ class AppApi(TaskApi):
         :type attempts: int
         :param attempt_delay_sec: Delay between attempts in seconds.
         :type attempt_delay_sec: int
-        :return: True if app is ready for API calls, False otherwise.
+        :returns: True if app is ready for API calls, False otherwise.
         """
         is_ready = False
         logger.info("Waiting for app to be ready for API calls")
@@ -1935,7 +1935,7 @@ class AppApi(TaskApi):
         :param slug: Slug of the app, e.g. "supervisely-ecosystem/hello-world-app".
         :type slug: str
 
-        :return: Session token for the app.
+        :returns: Session token for the app.
         :rtype: str
         """
         data = {ApiField.SLUG: slug}

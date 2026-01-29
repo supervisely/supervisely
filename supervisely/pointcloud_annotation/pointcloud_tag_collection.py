@@ -157,7 +157,7 @@ class PointcloudTagCollection(TagCollection):
 
     #     :param tag_name: Pointcloud Tag name.
     #     :type tag_name: :class:`str`
-    #     :return: List of Pointcloud Tags.
+    #     :returns: List of Pointcloud Tags.
     #     :rtype: :class:`List[PointcloudTag]<supervisely.pointcloud_annotation.pointcloud_tag.PointcloudTag>`
     #     """
     #     res = []
@@ -173,7 +173,7 @@ class PointcloudTagCollection(TagCollection):
 
     #     :param tag_name: Pointcloud Tag name.
     #     :type tag_name: :class:`str`
-    #     :return: PointcloudTag object or :class:`None<None>` If no elements with provided name in collection.
+    #     :returns: PointcloudTag object or :class:`None<None>` If no elements with provided name in collection.
     #     :rtype: :class:`PointcloudTag<supervisely.pointcloud_annotation.pointcloud_tag.PointcloudTag>` or :class:`NoneType<NoneType>`
     #     :raises: :class:`ValueError`, If collection contains more than 1 tag with provided name.
     #     """
@@ -196,7 +196,7 @@ class PointcloudTagCollection(TagCollection):
 
         :param key_id_map: KeyIdMap object.
         :type key_id_map: :class:`KeyIdMap<supervisely.video_annotation.key_id_map.KeyIdMap>`, optional
-        :return: List of dicts in json format
+        :returns: List of dicts in json format
         :rtype: :class:`List[dict]`
 
         :Usage Example:
@@ -250,7 +250,7 @@ class PointcloudTagCollection(TagCollection):
         :type tag_meta_collection: :class:`TagMetaCollection<supervisely.annotation.tag_meta_collection.TagMetaCollection>`
         :param key_id_map: KeyIdMap object.
         :type key_id_map: :class:`KeyIdMap<supervisely.video_annotation.key_id_map.KeyIdMap>`, optional
-        :return: TagCollection object.
+        :returns: TagCollection object.
         :rtype: :class:`PointcloudTagCollection<PointcloudTagCollection>`
 
         :Usage Example:

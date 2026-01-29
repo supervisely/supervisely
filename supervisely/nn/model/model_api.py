@@ -116,7 +116,7 @@ class ModelAPI:
         For task-based mode this calls internal deploy API, for URL-based mode it calls
         ``get_deploy_info`` endpoint of the deployment.
 
-        :return: Deployment info (raw JSON returned by the backend).
+        :returns: Deployment info (raw JSON returned by the backend).
         :rtype: dict
         """
         if self.task_id is not None:
@@ -127,7 +127,7 @@ class ModelAPI:
         """
         Return custom inference settings for the deployed model.
 
-        :return: Settings dict.
+        :returns: Settings dict.
         :rtype: dict
         """
         if self.task_id is not None:
@@ -143,7 +143,7 @@ class ModelAPI:
 
         Currently returns settings for the ``botsort`` tracker.
 
-        :return: Tracking settings dict.
+        :returns: Tracking settings dict.
         :rtype: dict
         """
         # @TODO: botsort hardcoded
@@ -159,7 +159,7 @@ class ModelAPI:
 
         The meta typically includes object classes and tags that the model predicts.
 
-        :return: Model output meta.
+        :returns: Model output meta.
         :rtype: :class:`~supervisely.project.project_meta.ProjectMeta`
         """
         if self.task_id is not None:
@@ -173,7 +173,7 @@ class ModelAPI:
         """
         Convenience wrapper to return output class names from :meth:`~.get_model_meta`.
 
-        :return: List of class names.
+        :returns: List of class names.
         :rtype: List[str]
         """
         model_meta = self.get_model_meta()
@@ -183,7 +183,7 @@ class ModelAPI:
         """
         Return a list of pretrained model names available for deployment.
 
-        :return: Pretrained model names.
+        :returns: Pretrained model names.
         :rtype: List[str]
         """
         return self._post("list_pretrained_models", {})
@@ -192,7 +192,7 @@ class ModelAPI:
         """
         Return a list of pretrained model infos with full information about each model.
 
-        :return: List of model info dicts.
+        :returns: List of model info dicts.
         :rtype: List[dict]
         """
         return self._post("list_pretrained_model_infos", {})
@@ -204,7 +204,7 @@ class ModelAPI:
         .. note::
             This method is not implemented.
 
-        :return: Experiments list.
+        :returns: Experiments list.
         :rtype: List[:class:`~supervisely.nn.experiments.ExperimentInfo`]
         :raises NotImplementedError: Always.
         """
@@ -214,7 +214,7 @@ class ModelAPI:
         """
         Check whether the deployment is ready.
 
-        :return: True if ready.
+        :returns: True if ready.
         :rtype: bool
         """
         if self.task_id is not None:
@@ -225,7 +225,7 @@ class ModelAPI:
         """
         Return deployment status JSON.
 
-        :return: Status dict.
+        :returns: Status dict.
         :rtype: dict
         """
         if self.task_id is not None:
@@ -236,7 +236,7 @@ class ModelAPI:
         """
         Stop the deployment task (task-based mode) or request shutdown (URL-based mode).
 
-        :return: Status info. In task-based mode returns task stop response, in URL-based mode returns
+        :returns: Status info. In task-based mode returns task stop response, in URL-based mode returns
             status enum value if supported by the backend.
         """
         if self.task_id is not None:
@@ -248,7 +248,7 @@ class ModelAPI:
         """
         Freeze the model to free up resources.
 
-        :return: Backend response.
+        :returns: Backend response.
         :rtype: dict
         """
         if self.task_id is not None:
@@ -280,7 +280,7 @@ class ModelAPI:
         :type device: str, optional
         :param runtime: Optional runtime spec (passed to deploy backend).
         :type runtime: str, optional
-        :return: Backend response (URL-based mode) or None (task-based mode).
+        :returns: Backend response (URL-based mode) or None (task-based mode).
         :rtype: dict or None
         :raises ValueError: If pretrained model name is not found (URL-based mode).
         """
@@ -384,7 +384,7 @@ class ModelAPI:
 
         Parameters are forwarded to :class:`~supervisely.nn.model.prediction_session.PredictionSession`.
 
-        :return: Prediction session.
+        :returns: Prediction session.
         :rtype: :class:`~supervisely.nn.model.prediction_session.PredictionSession`
         """
         return PredictionSession(
@@ -431,7 +431,7 @@ class ModelAPI:
 
         Parameters are forwarded to :class:`~supervisely.nn.model.prediction_session.PredictionSession`.
 
-        :return: Predictions list.
+        :returns: Predictions list.
         :rtype: List[:class:`~supervisely.nn.model.prediction.Prediction`]
         """
         if "show_progress" not in kwargs:

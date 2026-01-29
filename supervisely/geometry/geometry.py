@@ -76,7 +76,7 @@ class Geometry(JsonSerializable):
     @staticmethod
     def geometry_name():
         """
-        :return: string with name of geometry
+        :returns: string with name of geometry
         """
         raise NotImplementedError()
 
@@ -85,28 +85,28 @@ class Geometry(JsonSerializable):
         """
         Same as geometry_name(), but shorter. In order to make the code more concise.
 
-        :return: string with name of geometry
+        :returns: string with name of geometry
         """
         return cls.geometry_name()
 
     def crop(self, rect):
         """
         :param rect: Rectangle
-        :return: list of Geometry
+        :returns: list of Geometry
         """
         raise NotImplementedError()
 
     def relative_crop(self, rect):
         """Crops object like "crop" method, but return results with coordinates relative to rect
         :param rect:
-        :return: list of Geometry
+        :returns: list of Geometry
         """
         return [geom.translate(drow=-rect.top, dcol=-rect.left) for geom in self.crop(rect)]
 
     def rotate(self, rotator):
         """Rotates around image center -> New Geometry
         :param rotator: ImageRotator
-        :return: Geometry
+        :returns: Geometry
         """
         raise NotImplementedError()
 
@@ -117,14 +117,14 @@ class Geometry(JsonSerializable):
             (128, 256)
             (128, KEEP_ASPECT_RATIO)
             (KEEP_ASPECT_RATIO, 256)
-        :return: Geometry
+        :returns: Geometry
         """
         raise NotImplementedError()
 
     def scale(self, factor):
         """Scales around origin with a given factor.
         :param: factor (float):
-        :return: Geometry
+        :returns: Geometry
         """
         raise NotImplementedError()
 
@@ -132,21 +132,21 @@ class Geometry(JsonSerializable):
         """
         :param drow: int rows shift
         :param dcol: int cols shift
-        :return: Geometry
+        :returns: Geometry
         """
         raise NotImplementedError()
 
     def fliplr(self, img_size):
         """
         :param img_size: (rows, cols)
-        :return: Geometry
+        :returns: Geometry
         """
         raise NotImplementedError()
 
     def flipud(self, img_size):
         """
         :param img_size: (rows, cols)
-        :return: Geometry
+        :returns: Geometry
         """
         raise NotImplementedError()
 
@@ -179,7 +179,7 @@ class Geometry(JsonSerializable):
 
         :param img_size: size of the image (height, width)
         :type img_size: Tuple[int, int]
-        :return: 2D boolean mask of the geometry
+        :returns: 2D boolean mask of the geometry
         :rtype: np.ndarray
         """
         bitmap = np.zeros(img_size + (3,), dtype=np.uint8)
@@ -214,13 +214,13 @@ class Geometry(JsonSerializable):
     @property
     def area(self):
         """
-        :return: float
+        :returns: float
         """
         raise NotImplementedError()
 
     def to_bbox(self) -> Rectangle:
         """
-        :return: Rectangle
+        :returns: Rectangle
         """
         raise NotImplementedError()
 
@@ -312,7 +312,7 @@ class Geometry(JsonSerializable):
         :type data: :class:`dict`
         :param image_size: Image size in pixels (height, width).
         :type image_size: List[int]
-        :return: Json data with coordinates converted to pixel coordinate system.
+        :returns: Json data with coordinates converted to pixel coordinate system.
         :rtype: :class:`dict`
         """
         data = deepcopy(data)  # Avoid modifying the original data
@@ -371,7 +371,7 @@ class Geometry(JsonSerializable):
 
         :param data: Json data with geometry config.
         :type data: :class:`dict`
-        :return: Json data with coordinates converted to subpixel coordinate system.
+        :returns: Json data with coordinates converted to subpixel coordinate system.
         :rtype: :class:`dict`
         """
         data = deepcopy(data)  # Avoid modifying the original data
@@ -416,7 +416,7 @@ class Geometry(JsonSerializable):
     #     which means that the coordinates of the geometry can have decimal values representing fractions of a pixel.
     #     However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
 
-    #     :return: New instance of Geometry object in pixel coordinates system
+    #     :returns: New instance of Geometry object in pixel coordinates system
     #     :rtype: :class:`Geometry<Geometry>`
     #     """
     #     return self
@@ -431,7 +431,7 @@ class Geometry(JsonSerializable):
     #     which means that the coordinates of the geometry can have decimal values representing fractions of a pixel.
     #     However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
 
-    #     :return: New instance of Geometry object in subpixel coordinates system
+    #     :returns: New instance of Geometry object in subpixel coordinates system
     #     :rtype: :class:`Geometry<Geometry>`
     #     """
     #     return self

@@ -120,7 +120,7 @@ class _slyProgressBarIO:
     def get_unit(self) -> str:
         """Returns the unit of the progress bar according to the total number of bytes.
 
-        :return: unit of the progress bar
+        :returns: unit of the progress bar
         :rtype: str
         """
         total = self.total
@@ -135,7 +135,7 @@ class _slyProgressBarIO:
 
         :param bytes: number of bytes
         :type bytes: int
-        :return: converted size from bytes to self.unit
+        :returns: converted size from bytes to self.unit
         :rtype: Union[float, Any]
         """
         if not isinstance(bytes, int) or self.unit not in UNITS:

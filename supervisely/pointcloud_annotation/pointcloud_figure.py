@@ -100,7 +100,7 @@ class PointcloudFigure(VideoFigure):
         """
         PointcloudObject of current PointcloudFigure.
 
-        :return: PointcloudObject ot PointcloudEpisodeObject object
+        :returns: PointcloudObject ot PointcloudEpisodeObject object
         :rtype: :class:`PointcloudObject<PointcloudObject>` or :class:`PointcloudEpisodeObject<PointcloudEpisodeObject>`
 
         :Usage Example:
@@ -150,7 +150,7 @@ class PointcloudFigure(VideoFigure):
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
         :raises: :class:`RuntimeError`, if point cloudobject ID and pointcloud object key are None, if pointcloud object key and key_id_map are None, if pointcloud object with given id not found in key_id_map
-        :return: PointcloudFigure object
+        :returns: PointcloudFigure object
         :rtype: :class:`PointcloudFigure`
 
         :Usage Example:
@@ -208,7 +208,7 @@ class PointcloudFigure(VideoFigure):
         :type updated_at: str, optional
         :param created_at: Date and Time when PointcloudFigure was created. Date Format is the same as in "updated_at" parameter.
         :type created_at: str, optional
-        :return: PointcloudFigure object
+        :returns: PointcloudFigure object
         :rtype: :class:`PointcloudFigure`
 
         :Usage Example:

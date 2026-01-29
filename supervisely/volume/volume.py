@@ -31,7 +31,7 @@ def get_extension(path: str):
 
     :param path: Path to volume.
     :type path: str
-    :return: Path extension
+    :returns: Path extension
     :rtype: str
 
     :Usage Example:
@@ -71,7 +71,7 @@ def is_valid_ext(ext: str) -> bool:
 
     :param ext: Volume file extension.
     :type ext: str
-    :return: True if extensions is in the list of supported extensions else False
+    :returns: True if extensions is in the list of supported extensions else False
     :rtype: :class:`bool`
 
     :Usage Example:
@@ -96,7 +96,7 @@ def has_valid_ext(path: str) -> bool:
 
     :param path: Path to volume file.
     :type path: str
-    :return: True if Volume file has supported extension else False
+    :returns: True if Volume file has supported extension else False
     :rtype: :class:`bool`
 
     :Usage Example:
@@ -119,7 +119,7 @@ def validate_format(path: str):
     :param path: Path to Volume file.
     :type path: str
     :raises: :class:`UnsupportedVolumeFormat` if Volume file from given path couldn't be read or file extension is not supported.
-    :return: None
+    :returns: None
     :rtype: :class:`NoneType`
 
     :Usage Example:
@@ -145,7 +145,7 @@ def is_valid_format(path: str) -> bool:
 
     :param path: Path to file.
     :type path: str
-    :return: True if file format in list of supported Volume formats, False - in otherwise
+    :returns: True if file format in list of supported Volume formats, False - in otherwise
     :rtype: :class:`bool`
 
     :Usage Example:
@@ -175,7 +175,7 @@ def rescale_slope_intercept(value: float, slope: float, intercept: float) -> flo
     :type slope: float
     :param intercept: The intercept for rescaling.
     :type intercept: float
-    :return: The rescaled intensity value.
+    :returns: The rescaled intensity value.
     :rtype: float
 
     :Usage Example:
@@ -200,7 +200,7 @@ def normalize_volume_meta(meta: dict) -> dict:
 
     :param meta: Metadata of the volume.
     :type meta: dict
-    :return: Normalized volume metadata.
+    :returns: Normalized volume metadata.
     :rtype: dict
 
     :Usage Example:
@@ -257,7 +257,7 @@ def read_dicom_serie_volume_np(paths: List[str], anonymize=True) -> Tuple[np.nda
     :type paths: List[str]
     :param anonymize: Specify whether to hide PatientID and PatientName fields.
     :type anonymize: bool
-    :return: Volume data in NumPy array format and dictionary with metadata
+    :returns: Volume data in NumPy array format and dictionary with metadata
     :rtype: Tuple[np.ndarray, dict]
 
     :Usage Example:
@@ -321,7 +321,7 @@ def read_dicom_tags(
     :type allowed_keys: Union[None, List[str]], optional
     :param anonymize: Flag to indicate whether to anonymize certain tags or not.
     :type anonymize: bool, optional
-    :return: Dictionary containing the extracted DICOM tags.
+    :returns: Dictionary containing the extracted DICOM tags.
     :rtype: dict
 
     :Usage Example:
@@ -373,7 +373,7 @@ def encode(volume_np: np.ndarray, volume_meta: dict) -> bytes:
     :param volume_meta: Metadata of the volume.
     :type volume_meta: dict
 
-    :return: Encoded volume data in bytes.
+    :returns: Encoded volume data in bytes.
     :rtype: bytes
 
     :Usage Example:
@@ -431,7 +431,7 @@ def inspect_dicom_series(root_dir: str, logging: bool = True) -> dict:
     :type root_dir: str
     :param logging: Specify whether to print logging messages.
     :type logging: bool
-    :return: Dictionary with DICOM volumes IDs and corresponding file names.
+    :returns: Dictionary with DICOM volumes IDs and corresponding file names.
     :rtype: dict
 
     :Usage Example:
@@ -503,7 +503,7 @@ def read_dicom_serie_volume(paths: List[str], anonymize: bool = True) -> Tuple[s
     :type paths: List[str]
     :param anonymize: Specify whether to hide PatientID and PatientName fields.
     :type anonymize: bool
-    :return: Volume data in SimpleITK.Image format and dictionary with metadata.
+    :returns: Volume data in SimpleITK.Image format and dictionary with metadata.
     :rtype: Tuple[SimpleITK.Image, dict]
 
     :Usage Example:
@@ -630,7 +630,7 @@ def get_meta(
     :type directions: tuple
     :param dicom_tags: Dictionary containing additional DICOM tags for the volume meta-data.
     :type dicom_tags: dict, optional
-    :return: Dictionary containing the normalized meta-data for the volume.
+    :returns: Dictionary containing the normalized meta-data for the volume.
     :rtype: dict
 
     :Usage Example:
@@ -697,7 +697,7 @@ def inspect_nrrd_series(root_dir: str, logging: bool = True) -> List[str]:
     :type root_dir: str
     :param logging: Specify whether to print logging messages.
     :type logging: bool
-    :return: List of NRRD file paths found in the given directory.
+    :returns: List of NRRD file paths found in the given directory.
     :rtype: List[str]
 
     :Usage Example:
@@ -722,7 +722,7 @@ def read_nrrd_serie_volume(path: str) -> Tuple[sitk.Image, dict]:
 
     :param path: Path to NRRD volume files.
     :type path: List[str]
-    :return: Volume data in SimpleITK.Image format and dictionary with metadata.
+    :returns: Volume data in SimpleITK.Image format and dictionary with metadata.
     :rtype: Tuple[SimpleITK.Image, dict]
 
     :Usage Example:
@@ -764,7 +764,7 @@ def read_nrrd_serie_volume_np(paths: str) -> Tuple[np.ndarray, dict]:
 
     :param paths: Path to NRRD volume file.
     :type paths: str
-    :return: Volume data in NumPy array format and dictionary with metadata.
+    :returns: Volume data in NumPy array format and dictionary with metadata.
     :rtype: Tuple[np.ndarray, dict]
 
     :Usage Example:
@@ -791,7 +791,7 @@ def convert_nifti_to_nrrd(path: str) -> Tuple[np.ndarray, dict]:
 
     :param path: Path to NIFTI volume file.
     :type path: str
-    :return: Volume data in NumPy array format and dictionary with metadata (NRRD header).
+    :returns: Volume data in NumPy array format and dictionary with metadata (NRRD header).
     :rtype: Tuple[np.ndarray, dict]
 
     :Usage Example:
@@ -827,7 +827,7 @@ def convert_3d_nifti_to_nrrd(path: str) -> Tuple[np.ndarray, dict]:
 
     :param path: Path to NIFTI volume file.
     :type path: str
-    :return: Volume data in NumPy array format and dictionary with metadata (NRRD header).
+    :returns: Volume data in NumPy array format and dictionary with metadata (NRRD header).
     :rtype: Tuple[np.ndarray, dict]
 
     :Usage Example:
@@ -869,7 +869,7 @@ def is_nifti_file(path: str) -> bool:
 
     :param filepath: Path to the file.
     :type filepath: str
-    :return: True if the file is a NIFTI file, False otherwise.
+    :returns: True if the file is a NIFTI file, False otherwise.
     :rtype: bool
     """
     try:
@@ -909,7 +909,7 @@ def convert_3d_geometry_to_mesh(
     :type decimation_fraction: float
     :param volume_meta: Metadata of the volume. Used for mesh alignment if geometry lacks specific fields. Default is None.
     :type volume_meta: dict, optional
-    :return: The resulting Trimesh mesh.
+    :returns: The resulting Trimesh mesh.
     :rtype: trimesh.Trimesh
 
     :Usage Example:
@@ -963,7 +963,7 @@ def export_3d_as_mesh(geometry: Mask3D, output_path: str, **kwargs):
         - apply_decimation (bool): Whether to simplify the mesh. Default is False.
         - decimation_fraction (float): Fraction of faces to keep if decimation is applied. Default is 0.5.
         - volume_meta (dict): Metadata of the volume. Used for mesh alignment if geometry lacks specific fields. Default is None.
-    :return: None
+    :returns: None
 
     :Usage Example:
 

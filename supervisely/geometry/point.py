@@ -77,7 +77,7 @@ class Point(Geometry):
         """
         Position of Point height.
 
-        :return: Height of Point
+        :returns: Height of Point
         :rtype: :class:`int`
 
         :Usage Example:
@@ -94,7 +94,7 @@ class Point(Geometry):
         """
         Position of Point width.
 
-        :return: Width of Point
+        :returns: Width of Point
         :rtype: :class:`int`
 
         :Usage Example:
@@ -131,7 +131,7 @@ class Point(Geometry):
         :type updated_at: str, optional
         :param created_at: Date and Time when Point was created. Date Format is the same as in "updated_at" parameter.
         :type created_at: str, optional
-        :return: Point object
+        :returns: Point object
         :rtype: :class:`Point<Point>`
 
         :Usage Example:
@@ -158,7 +158,7 @@ class Point(Geometry):
         """
         Create PointLocation object from Point.
 
-        :return: PointLocation object
+        :returns: PointLocation object
         :rtype: :class:`PointLocation<supervisely.geometry.point_location.PointLocation>`
 
         :Usage Example:
@@ -180,7 +180,7 @@ class Point(Geometry):
 
         :param rect: Rectangle object for crop.
         :type rect: Rectangle
-        :return: List of Point objects
+        :returns: List of Point objects
         :rtype: :class:`List[Point]<Point>`
 
         :Usage Example:
@@ -199,7 +199,7 @@ class Point(Geometry):
 
         :param rotator: ImageRotator object for rotation.
         :type rotator: ImageRotator
-        :return: Point object
+        :returns: Point object
         :rtype: :class:`Point<Point>`
 
         :Usage Example:
@@ -224,7 +224,7 @@ class Point(Geometry):
         :type in_size: Tuple[int, int]
         :param out_size: Desired output image size (height, width) to which belongs Point.
         :type out_size: Tuple[int, int]
-        :return: Point object
+        :returns: Point object
         :rtype: :class:`Point<Point>`
 
         :Usage Example:
@@ -244,7 +244,7 @@ class Point(Geometry):
 
         :param img_size: Input image size (height, width) to which belongs Point object.
         :type img_size: Tuple[int, int]
-        :return: Point object
+        :returns: Point object
         :rtype: :class:`Point<Point>`
 
         :Usage Example:
@@ -263,7 +263,7 @@ class Point(Geometry):
 
         :param img_size: Input image size (height, width) to which belongs Point object.
         :type img_size: Tuple[int, int]
-        :return: Point object
+        :returns: Point object
         :rtype: :class:`Point<Point>`
 
         :Usage Example:
@@ -282,7 +282,7 @@ class Point(Geometry):
 
         :param factor: Scale parameter.
         :type factor: float
-        :return: Point object
+        :returns: Point object
         :rtype: :class:`Point<Point>`
 
         :Usage Example:
@@ -302,7 +302,7 @@ class Point(Geometry):
         :type drow: int
         :param dcol: Vertical shift.
         :type dcol: int
-        :return: Point object
+        :returns: Point object
         :rtype: :class:`Point<Point>`
 
         :Usage Example:
@@ -328,7 +328,7 @@ class Point(Geometry):
         """
         Point area.
 
-        :return: Area of current Point object, always 0.0
+        :returns: Area of current Point object, always 0.0
         :rtype: :class:`float`
 
         :Usage Example:
@@ -344,7 +344,7 @@ class Point(Geometry):
         """
         Create Rectangle object from current Point.
 
-        :return: Rectangle object
+        :returns: Rectangle object
         :rtype: :class:`Rectangle<supervisely.geometry.rectangle.Rectangle>`
 
         :Usage Example:
@@ -359,7 +359,7 @@ class Point(Geometry):
         """
         Convert the Point to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
-        :return: Json format as a dict
+        :returns: Json format as a dict
         :rtype: :class:`dict`
 
         :Usage Example:
@@ -388,7 +388,7 @@ class Point(Geometry):
 
         :param data: Point in json format as a dict.
         :type data: dict
-        :return: Point object
+        :returns: Point object
         :rtype: :class:`Point<Point>`
 
         :Usage Example:

@@ -33,7 +33,7 @@ class VideoObjectApi(ObjectApi):
         :type objects: VideoObjectCollection
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
-        :return: List of objects IDs
+        :returns: List of objects IDs
         :rtype: :class:`List[int]`
 
         :Usage Example:

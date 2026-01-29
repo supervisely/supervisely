@@ -24,7 +24,7 @@ class RenamingObjClassMapper(ObjClassMapper):
     def map(self, src: ObjClass) -> ObjClass:
         """
         The function map rename ObjClass in given collection
-        :return: ObjClass
+        :returns: ObjClass
         """
         dest_name = self._renamer.rename(src.name)
         return self._dest_obj_classes.get(dest_name, None) if (dest_name is not None) else None

@@ -73,7 +73,7 @@ class Polyline3D(Geometry):
 
         :param data: Polyline3D in json format as a dict.
         :type data: dict
-        :return: Polyline3D object
+        :returns: Polyline3D object
         :rtype: :class:`Polyline3D<Polyline3D>`
 
         :Usage Example:

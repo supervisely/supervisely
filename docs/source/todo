@@ -1,0 +1,17 @@
+# @TODO:
+print(geometry.to_json())
+
+поправить двойные примеры питон кода, разделить их на 2 блока
+если используется api = sly.Api.from_env() то надо убедиться что есть инструкция по енвам (также sly.Api(address, token))
+
+проверить что везде есть сокращение в ссылках типо :class:`ImageInfo<supervisely.api.image_api.ImageInfo>`
+проверить что работают ссылки вида :class:`RuntimeError` :class:`str`
+
+если вспомню ееще поменять местами импорты в докстрингах from tqdm import tqdm
+
+Difference, finds difference
+
+неправильно? ann = sly.PointcloudEpisodeAnnotation()
+
+поправить примеры доки с картинками .. list-table::
+проверить .. image:: в доке

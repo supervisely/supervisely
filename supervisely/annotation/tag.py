@@ -111,7 +111,7 @@ class Tag(KeyObject):
         """
         General information about Tag. When creating a new Tag, it's value is automatically cross-checked against :class:`TagValueType<supervisely.annotation.tag_meta.TagValueType>` to make sure that value is valid.
 
-        :return: TagMeta object
+        :returns: TagMeta object
         :rtype: :class:`TagMeta<supervisely.annotation.tag_meta.TagMeta>`
 
         :Usage Example:
@@ -132,7 +132,7 @@ class Tag(KeyObject):
         """
         Tag value. Return type depends on :class:`TagValueType<supervisely.annotation.tag_meta.TagValueType>`.
 
-        :return: Tag value
+        :returns: Tag value
         :rtype: :class:`str`, :class:`int` or :class:`float` or :class:`None`
 
         :Usage Example:
@@ -160,7 +160,7 @@ class Tag(KeyObject):
         """
         Name property.
 
-        :return: Name
+        :returns: Name
         :rtype: :class:`str`
 
         :Usage Example:
@@ -179,7 +179,7 @@ class Tag(KeyObject):
         """
         Get TagMeta key value.
 
-        :return: TagMeta key value
+        :returns: TagMeta key value
         :rtype: str
 
         :Usage Example:
@@ -202,7 +202,7 @@ class Tag(KeyObject):
         """
         Convert the Tag to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
-        :return: Json format as a dict
+        :returns: Json format as a dict
         :rtype: :class:`dict`
 
         :Usage Example:
@@ -253,7 +253,7 @@ class Tag(KeyObject):
         :type data: dict
         :param tag_meta_collection: TagMetaCollection object.
         :type tag_meta_collection: TagMetaCollection
-        :return: Tag object
+        :returns: Tag object
         :rtype: :class:`Tag<Tag>`
 
         :Usage Example:
@@ -303,7 +303,7 @@ class Tag(KeyObject):
         """
         Displays information about Tag's name and value in string format.
 
-        :return: Name and value of the given Tag
+        :returns: Name and value of the given Tag
         :rtype: :class:`str`
 
         :Usage Example:
@@ -328,7 +328,7 @@ class Tag(KeyObject):
 
         :param other: Tag object.
         :type other: Tag
-        :return: True if comparable objects are equal, otherwise False
+        :returns: True if comparable objects are equal, otherwise False
         :rtype: :class:`bool`
 
         :Usage Example:
@@ -362,7 +362,7 @@ class Tag(KeyObject):
 
         :param other: Tag object.
         :type other: Tag
-        :return: True if comparable objects are not equal, otherwise False
+        :returns: True if comparable objects are not equal, otherwise False
         :rtype: :class:`bool`
 
         :Usage Example:
@@ -413,7 +413,7 @@ class Tag(KeyObject):
         :type updated_at: str, optional
         :param created_at: Date and Time when Tag was created. Date Format is the same as in "updated_at" parameter.
         :type created_at: str, optional
-        :return: New instance of Tag
+        :returns: New instance of Tag
         :rtype: :class:`Tag<Tag>`
 
         :Usage Example:
@@ -460,7 +460,7 @@ class Tag(KeyObject):
         """
         Get header of the table with tags.
 
-        :return: List of table header values.
+        :returns: List of table header values.
         :rtype: List[str]
 
         :Usage Example:
@@ -481,7 +481,7 @@ class Tag(KeyObject):
         """
         Get row with tag properties.
 
-        :return: List of tag properties.
+        :returns: List of tag properties.
         :rtype: List[str]
 
         :Usage Example:

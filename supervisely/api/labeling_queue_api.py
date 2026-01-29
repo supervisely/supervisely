@@ -263,7 +263,7 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type guide_id: int, optional
         :param description: Description of Labeling Queue.
         :type description: str, optional
-        :return: Labeling Queue ID in Supervisely.
+        :returns: Labeling Queue ID in Supervisely.
         :rtype: int
 
         :Usage Example:
@@ -459,7 +459,7 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type show_disabled: bool, optional
         :param collection_id: Entities Collection ID in Supervisely.
         :type collection_id: int, optional
-        :return: List of information about Labeling Queues. See :class:`info_sequence<info_sequence>`
+        :returns: List of information about Labeling Queues. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[LabelingQueueInfo]`
 
         :Usage Example:
@@ -500,7 +500,7 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
 
         :param id: Labeling Queue ID in Supervisely.
         :type id: int
-        :return: Information about Labeling Queue. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Labeling Queue. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`LabelingJobInfo`
 
         :Usage Example:
@@ -582,7 +582,7 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
 
         :param id: Labeling job ID in Supervisely.
         :type id: int
-        :return: Labeling Job Status
+        :returns: Labeling Job Status
         :rtype: :class:`Status<supervisely.api.labeling_job_api.LabelingJobApi.Status>`
 
         :Usage Example:
@@ -610,7 +610,7 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type id: int
         :param status: New Labeling Queue status
         :type status: str
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -634,7 +634,7 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
 
         :param id: Labeling Queue ID in Supervisely.
         :type id: int
-        :return: Project meta of the labeling queue with given id.
+        :returns: Project meta of the labeling queue with given id.
         :rtype: :class:`ProjectMeta`
         """
         queue_info = self.get_info_by_id(id)
@@ -770,7 +770,7 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :param filter_by: Filter for entities. Each element is a dict with keys ``field``, ``operator``, ``value``.
             Example: ``[{"field": "name", "operator": "in", "value": ["image_01", "image_02"]}]``.
         :type filter_by: List[Dict], optional
-        :return: Count of entities in the Labeling Queue with given status.
+        :returns: Count of entities in the Labeling Queue with given status.
         :rtype: int
 
         :Usage Example:

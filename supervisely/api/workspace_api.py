@@ -94,7 +94,7 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
         :type team_id: int
         :param filters: List of params to sort output Workspaces.
         :type filters: List[dict], optional
-        :return: List of all Workspaces with information for the given Team. See :class:`info_sequence<info_sequence>`
+        :returns: List of all Workspaces with information for the given Team. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[WorkspaceInfo]`
 
         :Usage Example:
@@ -153,7 +153,7 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
 
         :param id: Workspace ID in Supervisely.
         :type id: int
-        :return: Information about Workspace. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Workspace. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`WorkspaceInfo`
 
         :Usage Example:
@@ -199,7 +199,7 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
         :type description: str, optional
         :param change_name_if_conflict: Checks if given name already exists and adds suffix to the end of the name.
         :type change_name_if_conflict: bool, optional
-        :return: Information about Workspace. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Workspace. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`WorkspaceInfo`
 
         :Usage Example:

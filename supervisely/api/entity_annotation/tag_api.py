@@ -53,7 +53,7 @@ class TagApi(ModuleApi):
         """
         Get string name of NamedTuple for class.
 
-        :return: NamedTuple name.
+        :returns: NamedTuple name.
         :rtype: :class:`str`
 
         :Usage Example:
@@ -81,7 +81,7 @@ class TagApi(ModuleApi):
         :type project_id: int
         :param filters: List of parameters to sort output tags. See: https://api.docs.supervisely.com/#tag/Advanced/paths/~1tags.list/get
         :type filters: List[Dict[str, str]], optional
-        :return: List of the tags from the project with given id.
+        :returns: List of the tags from the project with given id.
         :rtype: list
         """
 
@@ -95,7 +95,7 @@ class TagApi(ModuleApi):
 
         :param project_id: :class:`Dataset<supervisely.project.project.Project>` ID in Supervisely.
         :type project_id: int
-        :return: Dictionary with mapping tag name to tag id for a given project ID.
+        :returns: Dictionary with mapping tag name to tag id for a given project ID.
         :rtype: dict
         """
 
@@ -135,7 +135,7 @@ class TagApi(ModuleApi):
         :type tags: KeyIndexedCollection
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
-        :return: List of tags IDs
+        :returns: List of tags IDs
         :rtype: list
         """
 
@@ -182,7 +182,7 @@ class TagApi(ModuleApi):
         :type key_id_map: KeyIdMap
         :param is_video_multi_view: If True, indicates that the entity is a multi-view video.
         :type is_video_multi_view: bool
-        :return: List of tags IDs
+        :returns: List of tags IDs
         :rtype: list
 
         :Usage Example:
@@ -247,7 +247,7 @@ class TagApi(ModuleApi):
         :type project_id: int, optional
         :param is_video_multi_view: If True, indicates that the entity is a multi-view video.
         :type is_video_multi_view: bool
-        :return: List of tags IDs
+        :returns: List of tags IDs
         :rtype: list
 
         :Usage Example:
@@ -338,7 +338,7 @@ class TagApi(ModuleApi):
         :param entity_id: ID of the entity in Supervisely to add a tag to its objects.
                           Required if `is_video_multi_view` is True.
         :type entity_id: Optional[int]
-        :return: List of tags infos as dictionaries.
+        :returns: List of tags infos as dictionaries.
         :rtype: List[Dict[str, Union[str, int, None]]]
 
         :Usage Example:
@@ -453,7 +453,7 @@ class TagApi(ModuleApi):
         :type batch_size: int
         :param log_progress: If True, will display a progress bar.
         :type log_progress: bool
-        :return: List of tags IDs.
+        :returns: List of tags IDs.
         :rtype: List[int]
 
         :Usage Example:
@@ -532,7 +532,7 @@ class TagApi(ModuleApi):
         :param entity_id: ID of the entity in Supervisely to add a tag to its objects.
                           Required if `is_video_multi_view` is True.
         :type entity_id: Optional[int]
-        :return: List of tags infos as dictionaries.
+        :returns: List of tags infos as dictionaries.
         :rtype: List[Dict[str, Union[str, int, None]]]
 
         :Usage Example:

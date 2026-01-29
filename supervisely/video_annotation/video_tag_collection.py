@@ -168,7 +168,7 @@ class VideoTagCollection(TagCollection):
 
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
-        :return: List of dicts in json format
+        :returns: List of dicts in json format
         :rtype: :class:`List[dict]`
 
         :Usage Example:
@@ -217,7 +217,7 @@ class VideoTagCollection(TagCollection):
         :type project_meta: TagMetaCollection
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
-        :return: VideoTagCollection object
+        :returns: VideoTagCollection object
         :rtype: :class:`VideoTagCollection`
 
         :Usage Example:
@@ -261,7 +261,7 @@ class VideoTagCollection(TagCollection):
         :type tag_meta_collection: TagMetaCollection
         :param id_to_tagmeta: Mapping of tag IDs to tag metadata.
         :type id_to_tagmeta: Optional[Dict[int, TagMeta]]
-        :return: VideoTagCollection object.
+        :returns: VideoTagCollection object.
         :rtype: VideoTagCollection
 
         :Usage Example:
@@ -295,7 +295,7 @@ class VideoTagCollection(TagCollection):
 
         :param tag_name: Name of the tags to get.
         :type tag_name: str
-        :return:  List of VideoTag objects with the specified name.
+        :returns:  List of VideoTag objects with the specified name.
         :rtype: List[VideoTag]
 
         :Usage Example:
@@ -335,7 +335,7 @@ class VideoTagCollection(TagCollection):
 
         :param tag_name: Name of the tag to get.
         :type tag_name: str
-        :return: VideoTag object with the specified name.
+        :returns: VideoTag object with the specified name.
         :rtype: VideoTag
 
         :Usage Example:

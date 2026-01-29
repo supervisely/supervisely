@@ -49,7 +49,7 @@ class PointcloudEpisodeAnnotationAPI(EntityAnnotationAPI):
 
         :param dataset_id: :class:`Dataset<supervisely.project.project.Dataset>` ID in Supervisely.
         :type dataset_id: int
-        :return: Dictionary woth information about PointcloudEpisodeAnnotation in json format
+        :returns: Dictionary woth information about PointcloudEpisodeAnnotation in json format
         :rtype: :class:`dict`
 
         :Usage Example:
@@ -136,7 +136,7 @@ class PointcloudEpisodeAnnotationAPI(EntityAnnotationAPI):
         :type frame_to_pointcloud_ids: List[dict]
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:

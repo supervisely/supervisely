@@ -173,7 +173,7 @@ class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
         """
         Convert the TagMetaCollection to a list of json dicts. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
-        :return: List of dicts in json format
+        :returns: List of dicts in json format
         :rtype: :class:`List[dict]`
 
         :Usage Example:
@@ -213,7 +213,7 @@ class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
 
         :param data: List with dicts in json format.
         :type data: List[dict]
-        :return: TagMetaCollection object
+        :returns: TagMetaCollection object
         :rtype: :class:`TagMetaCollection<TagMetaCollection>`
 
         :Usage Example:
@@ -253,7 +253,7 @@ class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
 
         :param raise_if_no_id: Raise ValueError if where is TagMetas without id.
         :type raise_if_no_id: bool, optional
-        :return: Json format as a dict
+        :returns: Json format as a dict
         :rtype: :class:`dict`
         :raises: :class:`KeyError`, if where is duplication of TagMetas id
         """
@@ -294,7 +294,7 @@ class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
 
         :param tag_meta_id: TagMeta id to search for.
         :type tag_meta_id: int
-        :return: TagMeta with given id.
+        :returns: TagMeta with given id.
         :rtype: TagMeta
         """
         for tag_meta in self:
@@ -315,7 +315,7 @@ class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
         :param other: TagMetaCollection object.
         :type other:  TagMetaCollection
         :raises: :class:`ValueError` if item name from given collection is in TagMetaCollection but TagMetas in both are different
-        :return: TagMetaCollection object
+        :returns: TagMetaCollection object
         :rtype: :class:`TagMetaCollection<TagMetaCollection>`
 
         :Usage Example:

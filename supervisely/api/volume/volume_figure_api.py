@@ -52,7 +52,7 @@ class VolumeFigureApi(FigureApi):
         :type geometry_json: dict
         :param geometry_type: Type of VolumeFigure geometry.
         :type geometry_type: str
-        :return: New figure ID
+        :returns: New figure ID
         :rtype: :class:`int`
 
         :Usage Example:
@@ -115,7 +115,7 @@ class VolumeFigureApi(FigureApi):
         :type key_id_map: KeyIdMap
         :param figures: List of VolumeFigure objects.
         :type figures: List[VolumeFigure]
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -197,7 +197,7 @@ class VolumeFigureApi(FigureApi):
         :type ids: int
         :param paths: List of paths to download.
         :type paths: List[str]
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -255,7 +255,7 @@ class VolumeFigureApi(FigureApi):
         :type spatial_figure: VolumeFigure
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -380,7 +380,7 @@ class VolumeFigureApi(FigureApi):
         :type spatial_figures: List[VolumeFigure]
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -500,7 +500,7 @@ class VolumeFigureApi(FigureApi):
         :type geometries: Dict[UUID, bytes]
         :param key_id_map: The KeyIdMap object (a dictionary with bidict values).
         :type key_id_map: KeyIdMap
-        :return: None
+        :returns: None
         :rtype: NoneType
 
         :Usage Example:
@@ -574,7 +574,7 @@ class VolumeFigureApi(FigureApi):
         :type ids: List[int]
         :param paths: List of paths to save the downloaded geometries.
         :type paths: List[str]
-        :return: None
+        :returns: None
         :rtype: NoneType
 
         :Usage Example:
@@ -651,7 +651,7 @@ class VolumeFigureApi(FigureApi):
         :param skip_geometry: Skip the download of figure geometry. May be useful for a significant api request speed increase in the large datasets.
         :type skip_geometry: bool
 
-        :return: A dictionary where keys are volume IDs and values are lists of figures.
+        :returns: A dictionary where keys are volume IDs and values are lists of figures.
         :rtype: :class: `Dict[int, List[FigureInfo]]`
         """
         if kwargs.get("image_ids", False) is not False:
@@ -673,7 +673,7 @@ class VolumeFigureApi(FigureApi):
         :type custom_data: Dict[str, str]
         :param update_strategy: Strategy to apply, either "replace" or "merge".
         :type update_strategy: Literal["replace", "merge"]
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         """

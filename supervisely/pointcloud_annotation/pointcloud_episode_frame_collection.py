@@ -229,7 +229,7 @@ class PointcloudEpisodeFrameCollection(FrameCollection):
         :type key: str
         :param default: Default value to return if the key is not found (default: None).
         :type default: Optional[Any]
-        :return: PointcloudEpisodeFrame object.
+        :returns: PointcloudEpisodeFrame object.
         :rtype: PointcloudEpisodeFrame
 
         :Usage Example:
@@ -268,7 +268,7 @@ class PointcloudEpisodeFrameCollection(FrameCollection):
         :type frames_count: int, optional
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
-        :return: FrameCollection object
+        :returns: FrameCollection object
         :rtype: :class:`FrameCollection`
 
         :Usage Example:
@@ -321,7 +321,7 @@ class PointcloudEpisodeFrameCollection(FrameCollection):
         """
         Get figures from all frames in collection.
 
-        :return: List of figures from all frames in collection
+        :returns: List of figures from all frames in collection
         :rtype: :class:`List[PointcloudFigure]<supervisely.pointcloud_annotation.pointcloud_figure.PointcloudFigure>`
 
         :Usage Example:

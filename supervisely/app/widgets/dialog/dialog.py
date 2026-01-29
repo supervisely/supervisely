@@ -61,7 +61,7 @@ class Dialog(Widget):
             - title: Dialog title
             - size: Dialog size, one of: tiny, small, large, full
 
-        :return: Dictionary with widget data
+        :returns: Dictionary with widget data
         :rtype: Dict[str, str]
         """
         return {
@@ -75,7 +75,7 @@ class Dialog(Widget):
         Dictionary contains the following fields:
             - visible: Dialog visibility
 
-        :return: Dictionary with widget state
+        :returns: Dictionary with widget state
         :rtype: Dict[str, bool]
         """
         return {
@@ -96,7 +96,7 @@ class Dialog(Widget):
     def title(self) -> str:
         """Returns dialog title.
 
-        :return: Dialog title
+        :returns: Dialog title
         :rtype: str
         """
         return self._title

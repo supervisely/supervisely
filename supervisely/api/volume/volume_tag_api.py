@@ -21,7 +21,7 @@ class VolumeTagApi(TagApi):
 
         :param tag_id: VolumeTag ID in Supervisely.
         :type tag_id: int
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -48,7 +48,7 @@ class VolumeTagApi(TagApi):
         :type tag_id: int
         :param tag_value: New VolumeTag value.
         :type tag_value: str or int
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -88,7 +88,7 @@ class VolumeTagApi(TagApi):
         :type tag_value: str or int or None, optional
         :param tag_meta: TagMeta object.
         :type tag_meta: TagMeta, optional
-        :return: VolumeTag ID.
+        :returns: VolumeTag ID.
         :rtype: int
 
         :Usage Example:

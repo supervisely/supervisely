@@ -85,7 +85,7 @@ class ObjectClassApi(ModuleApi):
         :type project_id: int
         :param filters: List of params to sort output ObjClasses.
         :type filters: List[dict], optional
-        :return: List of ObjClasses with information from the given Project. See :class:`info_sequence<info_sequence>`
+        :returns: List of ObjClasses with information from the given Project. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[NamedTuple]`
 
         :Usage Example:
@@ -144,7 +144,7 @@ class ObjectClassApi(ModuleApi):
         """
         :param project_id: Project ID in which the ObjClasses are located.
         :type project_id: int
-        :return: Dictionary Key ID Map {'key': id}
+        :returns: Dictionary Key ID Map {'key': id}
         :rtype: :class:`KeyIdMap<supervisely.video_annotation.key_id_map.KeyIdMap>`
 
         :Usage Example:
@@ -239,7 +239,7 @@ class ObjectClassApi(ModuleApi):
                         Do not pass "availableShapes" that does not contain the current shape.
         :type settings: dict, optional
 
-        :return: Updated class information
+        :returns: Updated class information
         :rtype: :class:`ObjectClassInfo<ObjectClassInfo>`
 
         :Usage Example:

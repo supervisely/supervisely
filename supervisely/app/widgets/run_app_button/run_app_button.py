@@ -150,7 +150,7 @@ class RunAppButton(Widget):
     def workspace_id(self) -> int:
         """Returns the workspace ID.
 
-        :return: Workspace ID.
+        :returns: Workspace ID.
         :rtype: int
         """
         return self._workspace_id
@@ -170,7 +170,7 @@ class RunAppButton(Widget):
     def text(self) -> str:
         """Returns the text to be displayed on the button.
 
-        :return: Text to be displayed on the button.
+        :returns: Text to be displayed on the button.
         :rtype: str
         """
         return self._text
@@ -190,7 +190,7 @@ class RunAppButton(Widget):
     def payload(self) -> dict:
         """Returns the payload to be sent to the app.
 
-        :return: Payload to be sent to the app.
+        :returns: Payload to be sent to the app.
         :rtype: dict
         """
         return self._payload
@@ -210,7 +210,7 @@ class RunAppButton(Widget):
     def icon(self) -> str:
         """Returns the icon to be displayed on the button.
 
-        :return: Icon to be displayed on the button.
+        :returns: Icon to be displayed on the button.
         :rtype: str
         """
         return self._icon
@@ -233,7 +233,7 @@ class RunAppButton(Widget):
     def button_type(self) -> str:
         """Returns the type of the button.
 
-        :return: Type of the button.
+        :returns: Type of the button.
         :rtype: str
         """
         return self._button_type
@@ -255,7 +255,7 @@ class RunAppButton(Widget):
     def plain(self) -> bool:
         """Returns True if the button is plain, False otherwise.
 
-        :return: True if the button is plain, False otherwise.
+        :returns: True if the button is plain, False otherwise.
         :rtype: bool
         """
         return self._plain
@@ -275,7 +275,7 @@ class RunAppButton(Widget):
     def loading(self) -> bool:
         """Returns True if the button shows loading animation, False otherwise.
 
-        :return: True if the button shows loading animation, False otherwise.
+        :returns: True if the button shows loading animation, False otherwise.
         :rtype: bool
         """
         return self._loading
@@ -295,7 +295,7 @@ class RunAppButton(Widget):
     def disabled(self) -> bool:
         """Returns True if the button is disabled, False otherwise.
 
-        :return: True if the button is disabled, False otherwise.
+        :returns: True if the button is disabled, False otherwise.
         :rtype: bool
         """
         return self._disabled

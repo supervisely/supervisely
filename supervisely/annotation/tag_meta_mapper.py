@@ -27,7 +27,7 @@ class RenamingTagMetaMapper(TagMetaMapper):
     def map(self, src: TagMeta) -> TagMeta:
         """
         The function map rename TagMeta in given collection
-        :return: TagMeta
+        :returns: TagMeta
         """
         dest_name = self._renamer.rename(src.name)
         return self._dest_tag_meta_dict.get(dest_name, None) if (dest_name is not None) else None
@@ -36,7 +36,7 @@ class RenamingTagMetaMapper(TagMetaMapper):
 def make_renamed_tags(tags: TagCollection, tag_meta_mapper: TagMetaMapper, skip_missing=True) -> TagCollection:
     """
     The function make_renamed_tags rename tags names in given collection and return new collection
-    :return: TagCollection
+    :returns: TagCollection
     """
     renamed_tags = []
     for tag in tags:

@@ -270,7 +270,7 @@ class VolumeAnnotation:
         """
         VolumeAnnotation objects.
 
-        :return: VolumeObjectCollection object
+        :returns: VolumeObjectCollection object
         :rtype: :class:`VolumeObjectCollection<supervisely.volume_annotation.volume_object_collection.VolumeObjectCollection>`
 
         :Usage Example:
@@ -390,7 +390,7 @@ class VolumeAnnotation:
         Checks if all slices in each plane contains figures.
 
         :raises: :class:`OutOfImageBoundsException<supervisely.video_annotation.video_figure.OutOfImageBoundsException>`, if figure is out of slices images bounds
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -508,7 +508,7 @@ class VolumeAnnotation:
             - or a dict mapping figure ids (or keys) to their corresponding geometry file paths.
             Used to load 3D geometry for spatial figures.
         :type spatial_geometry_paths: list or dict, optional
-        :return: VolumeAnnotation object
+        :returns: VolumeAnnotation object
         :rtype: :class:`VolumeAnnotation<VolumeAnnotation>`
 
         :Usage Example:
@@ -643,7 +643,7 @@ class VolumeAnnotation:
 
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
-        :return: Volume annotation in json format as a dict.
+        :returns: Volume annotation in json format as a dict.
         :rtype: dict
 
         :Usage Example:
@@ -714,7 +714,7 @@ class VolumeAnnotation:
         :type path: str
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -739,7 +739,7 @@ class VolumeAnnotation:
 
         :param objects: New volume objects.
         :type objects: List[VolumeObject] or VolumeObjectCollection
-        :return: A VolumeAnnotation object containing the original and new volume objects.
+        :returns: A VolumeAnnotation object containing the original and new volume objects.
         :rtype: VolumeAnnotation
 
         :Usage Example:
@@ -777,7 +777,7 @@ class VolumeAnnotation:
 
         :param keys: List of object keys or single object key.
         :type keys: List[uuid.UUID] or uuid.UUID
-        :return: A VolumeAnnotation object containing the original volume objects without the removed objects.
+        :returns: A VolumeAnnotation object containing the original volume objects without the removed objects.
         :rtype: VolumeAnnotation
 
         :Usage Example:
@@ -823,7 +823,7 @@ class VolumeAnnotation:
 
         :param tags: New VolumeTags.
         :type tags: List[VolumeTag] or VolumeTagCollection
-        :return: A VolumeAnnotation object containing the original and new volume tags.
+        :returns: A VolumeAnnotation object containing the original and new volume tags.
         :rtype: VolumeAnnotation
 
         :Usage Example:
@@ -849,7 +849,7 @@ class VolumeAnnotation:
 
         :param keys: List of VolumeTag keys or single tag key.
         :type keys: List[uuid.UUID] or uuid.UUID
-        :return: A VolumeAnnotation object containing the original VolumeTags without the removed VolumeTags.
+        :returns: A VolumeAnnotation object containing the original VolumeTags without the removed VolumeTags.
         :rtype: VolumeAnnotation
 
         :Usage Example:

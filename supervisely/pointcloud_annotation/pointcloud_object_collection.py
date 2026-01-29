@@ -33,7 +33,7 @@ class PointcloudObjectCollection(VideoObjectCollection):
         :type project_meta: ProjectMeta
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
-        :return: PointcloudObjectCollection object
+        :returns: PointcloudObjectCollection object
         :rtype: :class:`PointcloudObjectCollection`
 
         :Usage Example:

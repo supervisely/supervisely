@@ -1161,7 +1161,7 @@ class Application(metaclass=Singleton):
         If set to `False` and shutdown request recieved (i.e. `app.is_stopped()` is `True`),
         the application will be terminated immediately, defaults to `True`
         :type graceful: bool
-        :return: context manager
+        :returns: context manager
         :rtype: _type_
         """
         self._graceful_stop_event = ThreadingEvent()
@@ -1178,7 +1178,7 @@ class Application(metaclass=Singleton):
         :param use_state: if set to True, data will be extracted from request.state.state,
             otherwise from request.state.context, defaults to False
         :type use_state: bool, optional
-        :return: decorator
+        :returns: decorator
         :rtype: Callable
 
         :Usage Example:
@@ -1291,7 +1291,7 @@ def call_on_autostart(
 
     :param default_func: default function to call if autostart is not enabled, defaults to None
     :type default_func: Optional[Callable], optional
-    :return: decorator
+    :returns: decorator
     :rtype: Callable
     """
     set_autostart_flag_from_state()

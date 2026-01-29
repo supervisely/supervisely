@@ -128,7 +128,7 @@ class Plane(FrameCollection):
         """
         Get the name of the plane.
 
-        :return: Name of the plane.
+        :returns: Name of the plane.
         :rtype: Union[str, None]
 
         :Usage Example:
@@ -151,7 +151,7 @@ class Plane(FrameCollection):
         """
         Get the number of slices in the plane.
 
-        :return: Number of slices in the plane.
+        :returns: Number of slices in the plane.
         :rtype: int
 
         :Usage Example:
@@ -174,7 +174,7 @@ class Plane(FrameCollection):
         """
         Get the size of the image in the plane.
 
-        :return: Size of the image in the plane.
+        :returns: Size of the image in the plane.
         :rtype: Tuple[int]
 
         :Usage Example:
@@ -197,7 +197,7 @@ class Plane(FrameCollection):
         """
         Returns the normal vector of the plane.
 
-        :return: A dictionary representing the normal vector of the plane.
+        :returns: A dictionary representing the normal vector of the plane.
         :rtype: dict
 
         :Usage Example:
@@ -225,7 +225,7 @@ class Plane(FrameCollection):
 
         :param name: Name of the plane.
         :type name: str
-        :return: A dictionary representing the normal vector of the plane.
+        :returns: A dictionary representing the normal vector of the plane.
         :rtype: dict
         :raises ValueError: If `name` is not one of "sagittal", "coronal", or "axial".
 
@@ -254,7 +254,7 @@ class Plane(FrameCollection):
 
         :param normal: A dictionary representing the normal vector of a plane.
         :type normal: dict
-        :return: The name of the plane.
+        :returns: The name of the plane.
         :rtype: str
 
         :Usage Example:
@@ -283,7 +283,7 @@ class Plane(FrameCollection):
         :type name: str
         :param volume_meta: Metadata for the volume.
         :type volume_meta: dict
-        :return: The size of the image for the given plane.
+        :returns: The size of the image for the given plane.
         :rtype: List[int]
         :raises ValueError: If `name` is not one of "sagittal", "coronal", or "axial".
 
@@ -326,7 +326,7 @@ class Plane(FrameCollection):
         :type name: str
         :param volume_meta: Metadata of the volume to extract slices from.
         :type volume_meta: dict
-        :return: Number of slices in the given plane.
+        :returns: Number of slices in the given plane.
         :rtype: int
         :raises ValueError: If `name` is not one of "sagittal", "coronal", or "axial".
 
@@ -381,7 +381,7 @@ class Plane(FrameCollection):
         :type volume_meta: Optional[dict]
         :param key_id_map: Dictionary mapping object keys to object IDs.
         :type key_id_map: Optional[KeyIdMap]
-        :return: A new class:`Plane<Plane>` instance created from the JSON.
+        :returns: A new class:`Plane<Plane>` instance created from the JSON.
         :rtype: :py:class:`Plane<supervisely.volume_annotation.plane.Plane>`
 
         :raises ValueError: If `plane_name` is not equal to the "name" field in "data", or if the "normal" field in "data" is not valid for the given plane, or if both `slices_count` and `volume_meta` are None.
@@ -437,7 +437,7 @@ class Plane(FrameCollection):
 
         :param key_id_map: Dictionary mapping object keys to object IDs.
         :type key_id_map: Optional[KeyIdMap]
-        :return: A JSON serializable dictionary representation of the `Plane` instance.
+        :returns: A JSON serializable dictionary representation of the `Plane` instance.
         :rtype: dict
 
         :Usage Example:

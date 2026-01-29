@@ -648,7 +648,7 @@ def sly_project_to_yolo(
                             If specified, datasets from the list will be marked as val, others as train.
                             If not specified, the function will determine the validation datasets automatically.
     :type val_datasets: :class:`list`, optional
-    :return: Path to the destination directory.
+    :returns: Path to the destination directory.
     :rtype: :class:`str`
 
     :Usage Example:
@@ -746,7 +746,7 @@ def to_yolo(
     :type val_datasets: :class:`list`, optional
     :param is_val: Whether the dataset is for validation.
     :type is_val: :class:`bool`, optional
-    :return: None, list of YOLO lines, or path to the destination directory.
+    :returns: None, list of YOLO lines, or path to the destination directory.
     :rtype: NoneType, list, str
 
     :Usage Example:

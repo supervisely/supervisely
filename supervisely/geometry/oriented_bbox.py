@@ -106,7 +106,7 @@ class OrientedBBox(Rectangle):
         """
         Angle of rotation in radians. Positive values mean clockwise rotation.
 
-        :return: Angle of rotation in radians
+        :returns: Angle of rotation in radians
         :rtype: int or float
 
         :Usage Example:
@@ -121,7 +121,7 @@ class OrientedBBox(Rectangle):
         """
         Convert the OrientedBBox to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
-        :return: Json format as a dict
+        :returns: Json format as a dict
         :rtype: :class:`dict`
 
         :Usage Example:
@@ -152,7 +152,7 @@ class OrientedBBox(Rectangle):
 
         :param data: OrientedBBox in json format as a dict.
         :type data: dict
-        :return: OrientedBBox object
+        :returns: OrientedBBox object
         :rtype: :class:`OrientedBBox<OrientedBBox>`
 
         :Usage Example:
@@ -208,7 +208,7 @@ class OrientedBBox(Rectangle):
         """
         Convert the OrientedBBox to the axis-aligned :class:`Rectangle<supervisely.geometry.rectangle.Rectangle>` that fully contains the OrientedBBox.
 
-        :return: Axis-aligned Rectangle object
+        :returns: Axis-aligned Rectangle object
         :rtype: :class:`Rectangle<supervisely.geometry.rectangle.Rectangle>`
 
         :Usage Example:
@@ -272,7 +272,7 @@ class OrientedBBox(Rectangle):
 
         :param point: PointLocation object
         :type point: :class:`PointLocation<supervisely.geometry.point_location.PointLocation>`
-        :return: True if the point is inside the OrientedBBox, False otherwise
+        :returns: True if the point is inside the OrientedBBox, False otherwise
         :rtype: bool
 
         :Usage Example:
@@ -307,7 +307,7 @@ class OrientedBBox(Rectangle):
 
         :param geometry: PointLocation object
         :type geometry: :class:`Geometry<supervisely.geometry.geometry.Geometry>`
-        :return: True if the point is inside the OrientedBBox, False otherwise
+        :returns: True if the point is inside the OrientedBBox, False otherwise
         :rtype: bool
 
         :Usage Example:
@@ -335,7 +335,7 @@ class OrientedBBox(Rectangle):
 
         :param obb: OrientedBBox object
         :type obb: :class:`OrientedBBox<supervisely.geometry.oriented_bbox.OrientedBBox>`
-        :return: True if the OrientedBBox is inside the OrientedBBox, False otherwise
+        :returns: True if the OrientedBBox is inside the OrientedBBox, False otherwise
         :rtype: bool
 
         :Usage Example:
@@ -359,7 +359,7 @@ class OrientedBBox(Rectangle):
         """
         Get the corners of the OrientedBBox.
 
-        :return: List of corners as (x, y) tuples
+        :returns: List of corners as (x, y) tuples
         :rtype: List[Tuple[float, float]]
 
         :Usage Example:
@@ -393,7 +393,7 @@ class OrientedBBox(Rectangle):
         """
         Get the corners of the OrientedBBox.
 
-        :return: List of corners as PointLocation objects
+        :returns: List of corners as PointLocation objects
         :rtype: List[:class:`PointLocation<supervisely.geometry.point_location.PointLocation>`]
 
         :Usage Example:
@@ -410,7 +410,7 @@ class OrientedBBox(Rectangle):
 
         :param rectangle: Rectangle object
         :type rectangle: :class:`Rectangle<supervisely.geometry.rectangle.Rectangle>`
-        :return: True if the Rectangle is inside the OrientedBBox, False otherwise
+        :returns: True if the Rectangle is inside the OrientedBBox, False otherwise
         :rtype: bool
 
         :Usage Example:
@@ -436,7 +436,7 @@ class OrientedBBox(Rectangle):
 
         :param bbox: Rectangle object.
         :type bbox: :class:`Rectangle<supervisely.geometry.rectangle.Rectangle>`
-        :return: OrientedBBox object
+        :returns: OrientedBBox object
         :rtype: :class:`OrientedBBox<OrientedBBox>`
 
         :Usage Example:
@@ -463,7 +463,7 @@ class OrientedBBox(Rectangle):
 
         :param arr: Numpy array.
         :type arr: np.ndarray
-        :return: OrientedBBox object
+        :returns: OrientedBBox object
         :rtype: :class:`OrientedBBox<OrientedBBox>`
 
         :Usage Example:
@@ -483,7 +483,7 @@ class OrientedBBox(Rectangle):
 
         :param data: Numpy array.
         :type data: np.ndarray
-        :return: Sliced numpy array
+        :returns: Sliced numpy array
         :rtype: :class:`np.ndarray<np.ndarray>`
 
         :Usage Example:
@@ -644,7 +644,7 @@ class OrientedBBox(Rectangle):
         :type data: :class:`dict`
         :param image_size: Image size in pixels (height, width).
         :type image_size: List[int]
-        :return: Json data with coordinates converted to pixel coordinate system.
+        :returns: Json data with coordinates converted to pixel coordinate system.
         :rtype: :class:`dict`
         """
         data = deepcopy(data)  # Avoid modifying the original data
@@ -672,7 +672,7 @@ class OrientedBBox(Rectangle):
 
         :param data: Json data with geometry config.
         :type data: :class:`dict`
-        :return: Json data with coordinates converted to subpixel coordinate system.
+        :returns: Json data with coordinates converted to subpixel coordinate system.
         :rtype: :class:`dict`
         """
         data = deepcopy(data)  # Avoid modifying the original data

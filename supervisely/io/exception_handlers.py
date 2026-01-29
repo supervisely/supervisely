@@ -784,7 +784,7 @@ def handle_exception(exception: Exception) -> Union[HandleException, None]:
 
     :param exception: Exception to be handled.
     :type exception: Exception
-    :return: Instance of the ErrorHandler class or None.
+    :returns: Instance of the ErrorHandler class or None.
     :rtype: Union[ErrorHandler, None]
 
     :Usage Example:
@@ -836,7 +836,7 @@ def handle_exceptions(func: Optional[Callable] = None, has_ui: bool = True) -> C
 
     :param func: Function to be decorated.
     :type func: Callable
-    :return: Decorated function.
+    :returns: Decorated function.
     :rtype: Callable
 
     :Usage Example:

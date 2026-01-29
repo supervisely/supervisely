@@ -60,7 +60,7 @@ class Collapse(Widget):
                 - label: title of the panel
                 - content_type: type of the content (str or Widget)
 
-            :return: JSON representation of the item
+            :returns: JSON representation of the item
             :rtype: Dict[str, Any]
             """
             if isinstance(self.content, str):
@@ -104,7 +104,7 @@ class Collapse(Widget):
             - accordion: if True, only one panel could be active at a time
             - items: list of items to be displayed in the widget
 
-        :return: dictionary with widget data
+        :returns: dictionary with widget data
         :rtype: Dict[str, Any]
         """
         return {
@@ -118,7 +118,7 @@ class Collapse(Widget):
         Dictionary contains the following fields:
             - value: list of active panels
 
-        :return: dictionary with widget state
+        :returns: dictionary with widget state
         :rtype: Dict[str, List[str]]
         """
         return {"value": self._active_panels}
@@ -158,7 +158,7 @@ class Collapse(Widget):
     def get_active_panel(self) -> Union[str, List[str]]:
         """Returns active panel or panels.
 
-        :return: active panel or panels
+        :returns: active panel or panels
         :rtype: Union[str, List[str]]
         """
         return StateJson()[self.widget_id]["value"]
@@ -166,7 +166,7 @@ class Collapse(Widget):
     def get_items(self) -> List[Collapse.Item]:
         """Returns list of items.
 
-        :return: list of items
+        :returns: list of items
         :rtype: List[Collapse.Item]
         """
         return DataJson()[self.widget_id]["items"]
@@ -214,7 +214,7 @@ class Collapse(Widget):
 
         :param func: function to be called when active panel or panels are changed
         :type func: Callable[[List[str]], Any]
-        :return: decorated function
+        :returns: decorated function
         :rtype: Callable[[], None]
         """
         route_path = self.get_route_path(Collapse.Routes.VALUE_CHANGED)
@@ -233,7 +233,7 @@ class Collapse(Widget):
     def items_names(self) -> Set[str]:
         """Returns set of names of items.
 
-        :return: set of names of items
+        :returns: set of names of items
         :rtype: Set[str]
         """
 

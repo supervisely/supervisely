@@ -90,7 +90,7 @@ class Slice(Frame):
         :type slices_count: Optional[int]
         :param key_id_map: A mapping of keys to IDs used for referencing objects.
         :type key_id_map: Optional[KeyIdMap]
-        :return: The deserialized `Slice<Slice>` object.
+        :returns: The deserialized `Slice<Slice>` object.
         :rtype: Slice
         :raises ValueError: If the slice index is negative or greater than the total number of slices.
 

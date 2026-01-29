@@ -77,7 +77,7 @@ class FigureInfo(NamedTuple):
         """
         Get Figure's bounding box.
 
-        :return: Rectangle in supervisely format.
+        :returns: Rectangle in supervisely format.
         :rtype: :class: `sly.Rectangle`
         """
         if self.geometry_meta is not None:
@@ -145,7 +145,7 @@ class FigureApi(RemoveableBulkModuleApi):
         """
         Get string name of NamedTuple for class.
 
-        :return: NamedTuple name.
+        :returns: NamedTuple name.
         :rtype: :class:`str`
 
         :Usage Example:
@@ -171,7 +171,7 @@ class FigureApi(RemoveableBulkModuleApi):
 
         :param id: Figure ID in Supervisely.
         :type id: int
-        :return: Information about Figure. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Figure. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`NamedTuple`
 
         :Usage Example:
@@ -276,7 +276,7 @@ class FigureApi(RemoveableBulkModuleApi):
         :type dataset_id: int
         :param ids: List of Figures IDs.
         :type ids: List[int]
-        :return: List of information about Figures. See :class:`info_sequence<info_sequence>`
+        :returns: List of information about Figures. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[NamedTuple]`
 
         :Usage Example:
@@ -462,7 +462,7 @@ class FigureApi(RemoveableBulkModuleApi):
         :type entity_id: int
         :param dataset_id: Dataset ID.
         :type dataset_id: int
-        :return: List of figure IDs.
+        :returns: List of figure IDs.
         """
         figure_ids = []
         if len(figures_json) == 0:
@@ -495,7 +495,7 @@ class FigureApi(RemoveableBulkModuleApi):
         :param skip_geometry: Skip the download of figure geometry. May be useful for a significant api request speed increase in the large datasets.
         :type skip_geometry: bool
 
-        :return: A dictionary where keys are image IDs and values are lists of figures.
+        :returns: A dictionary where keys are image IDs and values are lists of figures.
         :rtype: :class: `Dict[int, List[FigureInfo]]`
         """
         fields = [
@@ -579,7 +579,7 @@ class FigureApi(RemoveableBulkModuleApi):
 
         :param figure_id: Figure ID in Supervisely.
         :type figure_id: int
-        :return: Figure geometry in Supervisely JSON format.
+        :returns: Figure geometry in Supervisely JSON format.
         :rtype: dict
         """
         return self.download_geometries_batch([figure_id])
@@ -596,7 +596,7 @@ class FigureApi(RemoveableBulkModuleApi):
         :type ids: List[int]
         :param progress_cb: Progress bar to show the download progress. Shows the number of bytes downloaded.
         :type progress_cb: Union[tqdm, Callable], optional
-        :return: List of figure geometries in Supervisely JSON format.
+        :returns: List of figure geometries in Supervisely JSON format.
         :rtype: List[dict]
         """
         geometries = {}
@@ -622,7 +622,7 @@ class FigureApi(RemoveableBulkModuleApi):
         :type figure_id: int
         :param geometry: Figure geometry in Supervisely JSON format.
         :type geometry: dict
-        :return: None
+        :returns: None
         :rtype: None
         """
         self.upload_geometries_batch([figure_id], [geometry])
@@ -635,7 +635,7 @@ class FigureApi(RemoveableBulkModuleApi):
         :type figure_ids: List[int]
         :param geometries: List of figure geometries in Supervisely JSON format.
         :type geometries: List[dict]
-        :return: None
+        :returns: None
         :rtype: None
         """
         geometries = [json.dumps(geometry).encode("utf-8") for geometry in geometries]
@@ -663,7 +663,7 @@ class FigureApi(RemoveableBulkModuleApi):
 
         :param ids: List of figure IDs in Supervisely.
         :type ids: List[int]
-        :return: Async generator with pairs of figure ID and figure geometry.
+        :returns: Async generator with pairs of figure ID and figure geometry.
         :rtype: AsyncGenerator[Tuple[int, bytes], None, None]
         """
         if semaphore is None:
@@ -697,7 +697,7 @@ class FigureApi(RemoveableBulkModuleApi):
         :type progress_cb: Union[tqdm, Callable], optional
         :param semaphore: Semaphore to limit the number of concurrent downloads.
         :type semaphore: Optional[asyncio.Semaphore], optional
-        :return: List of figure geometries in Supervisely JSON format.
+        :returns: List of figure geometries in Supervisely JSON format.
         :rtype: List[dict]
 
         :Usage Example:
@@ -752,7 +752,7 @@ class FigureApi(RemoveableBulkModuleApi):
         :type semaphore: Optional[asyncio.Semaphore], optional
         :param progress_cb: Progress bar to show the upload progress. Shows the number of geometries uploaded.
         :type progress_cb: Union[tqdm, Callable], optional
-        :return: None
+        :returns: None
         :rtype: None
 
         :Usage Example:
@@ -846,7 +846,7 @@ class FigureApi(RemoveableBulkModuleApi):
                         Used for batching image_ids when filtering by specific images.
                         Adjust this value for optimal performance, value cannot exceed 500.
         :type batch_size: int, optional
-        :return: A dictionary where keys are image IDs and values are lists of figures.
+        :returns: A dictionary where keys are image IDs and values are lists of figures.
         :rtype: Dict[int, List[FigureInfo]]
 
         :Usage Example:
@@ -1018,7 +1018,7 @@ class FigureApi(RemoveableBulkModuleApi):
                         Adjust this value for optimal performance, value cannot exceed 500.
         :type batch_size: int, optional
 
-        :return: A dictionary where keys are image IDs and values are lists of figures.
+        :returns: A dictionary where keys are image IDs and values are lists of figures.
         :rtype: Dict[int, List[FigureInfo]]
 
         :Usage Example:

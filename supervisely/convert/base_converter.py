@@ -231,7 +231,7 @@ class BaseConverter:
             2. creates items, count detected annotations and save them to self._items
             3. validates annotation files (and genereate meta if key file is missing)
 
-        :return: True if format is valid, False otherwise.
+        :returns: True if format is valid, False otherwise.
         """
         raise NotImplementedError()
 

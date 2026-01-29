@@ -181,7 +181,7 @@ class Transfer(Widget):
 
         :raises ValueError: If the keys of the items are not unique.
 
-        :return: The list of Transfer.Item objects with unique keys.
+        :returns: The list of Transfer.Item objects with unique keys.
         :rtype: List[Transfer.Item]
         """
 
@@ -213,7 +213,7 @@ class Transfer(Widget):
         :raises ValueError: If transferred items are specified, but the list of items is not specified.
         :raises ValueError: If any of transferred items keys is not in the list of items.
 
-        :return: List of transferred items (keys of the items which should be displayed in the right list).
+        :returns: List of transferred items (keys of the items which should be displayed in the right list).
         :rtype: List[str]
         """
 
@@ -237,7 +237,7 @@ class Transfer(Widget):
 
         Data will contain the list of items and the list of transferred items.
 
-        :return: The data of the widget in JSON format: {"items": List[Dict[str, Any]], "transferred_items": List[str]}.
+        :returns: The data of the widget in JSON format: {"items": List[Dict[str, Any]], "transferred_items": List[str]}.
             "items" - the list of items in the widget in JSON format. Each item is represented as Transfer.Item object.
             "transferred_items" - the list of transferred items (keys of the items which should be displayed in the right list).
         :rtype: Dict[str, List[Dict[str, Union[str, bool]]]]
@@ -257,7 +257,7 @@ class Transfer(Widget):
 
         State will contain the list of transferred items.
 
-        :return: The state of the widget in JSON format: {"transferred_items": List[str]}. "transferred_items" - the list of
+        :returns: The state of the widget in JSON format: {"transferred_items": List[str]}. "transferred_items" - the list of
             transferred items (keys of the items which should be displayed in the right list).
         :rtype: Dict[str, List[str]]
         """
@@ -270,7 +270,7 @@ class Transfer(Widget):
         """
         Returns the list of transferred items.
 
-        :return: List of transferred items (keys of the items which should be displayed in the right list).
+        :returns: List of transferred items (keys of the items which should be displayed in the right list).
         :rtype: List[str]
         """
 
@@ -280,7 +280,7 @@ class Transfer(Widget):
         """
         Returns the list of untransferred items.
 
-        :return: List of untransferred items (keys of the items which should be displayed in the left list).
+        :returns: List of untransferred items (keys of the items which should be displayed in the left list).
         :rtype: List[str]
         """
 
@@ -294,7 +294,7 @@ class Transfer(Widget):
             namedtuple with the following fields: transferred_items, untransferred_items.
         :type func: Callable
 
-        :return: Wrapped function.
+        :returns: Wrapped function.
         :rtype: Callable
 
         :Usage Example:
@@ -425,7 +425,7 @@ class Transfer(Widget):
         """
         Returns the list of keys of the items.
 
-        :return: List of keys of the items.
+        :returns: List of keys of the items.
         :rtype: List[str]
         """
 

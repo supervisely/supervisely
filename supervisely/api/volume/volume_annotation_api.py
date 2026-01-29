@@ -74,7 +74,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         Download information about VolumeAnnotation by volume ID from API.
         :param volume_id: Volume ID in Supervisely.
         :type volume_id: int
-        :return: Information about VolumeAnnotation in json format
+        :returns: Information about VolumeAnnotation in json format
         :rtype: :class:`dict`
 
         :Usage Example:
@@ -142,7 +142,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         :type ann: VolumeAnnotation
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -203,7 +203,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         :type progress_cb: tqdm or callable, optional
         :param mask_dirs: Paths to dirs with Mask3D geometries
         :type mask_dirs: List[str], optional
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -309,7 +309,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         :type nrrd_paths: List[str]
         :param project_id: The Project ID to update metadata on upload (optional).
         :type project_id: int, optional
-        :return: A tuple containing the updated ann and project_meta objects.
+        :returns: A tuple containing the updated ann and project_meta objects.
         :rtype: Tuple[VolumeAnnotation, ProjectMeta]
         """
 
@@ -387,7 +387,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         :type objects: List[VolumeObject] or VolumeObjectCollection
         :param key_id_map: The KeyIdMap (optional).
         :type key_id_map: KeyIdMap, optional
-        :return: None
+        :returns: None
         :rtype: NoneType
 
         :Usage Example:
@@ -403,7 +403,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
                 if sly.is_development():
                     load_dotenv(os.path.expanduser("~/supervisely.env"))
-                
+
                 api = sly.Api.from_env()
 
                 volume_id = 151344
@@ -436,7 +436,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         :type interpolation_dir: str
         :param ann: VolumeAnnotation object
         :type ann: VolumeAnnotation
-        :return: Paths to STL and NRRD files used in the conversion process
+        :returns: Paths to STL and NRRD files used in the conversion process
         :rtype: Tuple[List, List, List]
         """
         stl_paths_in = list_files(interpolation_dir, valid_extensions=[".stl"])
@@ -482,7 +482,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         :type integer_coords: bool, optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
-        :return: Information about VolumeAnnotation in json format
+        :returns: Information about VolumeAnnotation in json format
         :rtype: :class:`dict`
 
         :Usage Example:
@@ -525,7 +525,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         :type integer_coords: bool, optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
-        :return: Information about VolumeAnnotations in json format
+        :returns: Information about VolumeAnnotations in json format
         :rtype: :class:`list`
 
         :Usage Example:

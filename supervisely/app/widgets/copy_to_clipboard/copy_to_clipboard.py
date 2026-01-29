@@ -58,7 +58,7 @@ class CopyToClipboard(Widget):
             - content: content to be copied
             - curr_property: current property of the content widget
 
-        :return: dictionary with widget data
+        :returns: dictionary with widget data
         :rtype: Dict[str, Union[str, Dict]]
         """
         return {"content": self._content_value, "curr_property": self._curr_prop_name}
@@ -70,7 +70,7 @@ class CopyToClipboard(Widget):
             - content: content to be copied
             - curr_property: current property of the content widget
 
-        :return: dictionary with widget state
+        :returns: dictionary with widget state
         :rtype: Dict[str, Union[str, Dict]]
         """
         return {"content": self._content_value, "curr_property": self._curr_prop_name}
@@ -78,7 +78,7 @@ class CopyToClipboard(Widget):
     def get_content(self) -> Union[Editor, Input, Text, TextArea, str]:
         """Returns content of the widget.
 
-        :return: content of the widget
+        :returns: content of the widget
         :rtype: Union[Editor, Input, Text, TextArea, str]
         """
         return self._content

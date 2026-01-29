@@ -171,7 +171,7 @@ class VideoObjectCollection(KeyIndexedCollection):
 
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
-        :return: List of dicts in json format
+        :returns: List of dicts in json format
         :rtype: :class:`List[dict]`
 
         :Usage Example:
@@ -215,7 +215,7 @@ class VideoObjectCollection(KeyIndexedCollection):
         :type project_meta: ProjectMeta
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
-        :return: VideoObjectCollection object
+        :returns: VideoObjectCollection object
         :rtype: :class:`VideoObjectCollection`
 
         :Usage Example:

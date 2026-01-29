@@ -239,7 +239,7 @@ class Prediction:
         :type json_data: dict
         :param kwargs: Additional fields to override/extend JSON (e.g. ``api``, ``model_meta``).
         :type kwargs: dict
-        :return: Prediction instance.
+        :returns: Prediction instance.
         :rtype: :class:`~supervisely.nn.model.prediction.Prediction`
         :raises ValueError: If annotation payload is missing.
         """
@@ -262,7 +262,7 @@ class Prediction:
         """
         Serialize prediction to a JSON-compatible dict.
 
-        :return: JSON dict.
+        :returns: JSON dict.
         :rtype: dict
         """
 
@@ -292,7 +292,7 @@ class Prediction:
         ``path`` → ``url`` → ``image_id`` (requires ``api`` or environment config) →
         ``video_id`` + ``frame_index`` → video ``path``/``url`` + ``frame_index``.
 
-        :return: Image (or frame) as ``H×W×C`` NumPy array.
+        :returns: Image (or frame) as ``H×W×C`` NumPy array.
         :rtype: numpy.ndarray
         """
 
@@ -371,7 +371,7 @@ class Prediction:
         :type draw_tags: bool, optional
         :param fill_rectangles: If True, fills rectangles.
         :type fill_rectangles: bool, optional
-        :return: Rendered image.
+        :returns: Rendered image.
         :rtype: numpy.ndarray
         """
 

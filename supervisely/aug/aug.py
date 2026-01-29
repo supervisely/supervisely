@@ -42,7 +42,7 @@ def fliplr(img: np.ndarray, ann: Annotation) -> Tuple[np.ndarray, Annotation]:
     :param ann: Annotation object.
     :type ann: Annotation
     :raises: :class:`RuntimeError` if Image shape does not match img_size in Annotation
-    :return: Tuple containing flipped Image and Annotation
+    :returns: Tuple containing flipped Image and Annotation
     :rtype: :class:`Tuple[np.ndarray, Annotation]`
 
     :Usage Example:
@@ -85,7 +85,7 @@ def flipud(img: np.ndarray, ann: Annotation) -> Tuple[np.ndarray, Annotation]:
     :param ann: Annotation object.
     :type ann: Annotation
     :raises: :class:`RuntimeError` if Image shape does not match img_size in Annotation
-    :return: Tuple containing flipped Image and Annotation
+    :returns: Tuple containing flipped Image and Annotation
     :rtype: :class:`Tuple[np.ndarray, Annotation]`
 
     :Usage Example:
@@ -144,7 +144,7 @@ def crop(
     :param right_pad: Right padding in pixels.
     :type right_pad: int, optional
     :raises: :class:`RuntimeError` if Image shape does not match img_size in Annotation
-    :return: Tuple containing cropped Image and Annotation
+    :returns: Tuple containing cropped Image and Annotation
     :rtype: :class:`Tuple[np.ndarray, Annotation]`
 
     :Usage Example:
@@ -209,7 +209,7 @@ def crop_fraction(
     :param right: Right padding in pixels.
     :type right: int, optional
     :raises: :class:`ValueError` if fraction values not between 0 and 1
-    :return: Tuple containing cropped Image and Annotation
+    :returns: Tuple containing cropped Image and Annotation
     :rtype: :class:`Tuple[np.ndarray, Annotation]`
 
     :Usage Example:
@@ -274,7 +274,7 @@ def random_crop(
     :param width: Desired width of output crop.
     :type width: int, optional
     :raises: :class:`RuntimeError` if Image shape does not match img_size in Annotation
-    :return: Tuple containing cropped Image and Annotation
+    :returns: Tuple containing cropped Image and Annotation
     :rtype: :class:`Tuple[np.ndarray, Annotation]`
 
     :Usage Example:
@@ -345,7 +345,7 @@ def random_crop_fraction(
     :param width_fraction_range: Range of relative values [0, 1] to select output width from.
     :type width_fraction_range: Tuple[float, float]
     :raises: :class:`RuntimeError` if Image shape does not match img_size in Annotation
-    :return: Tuple containing cropped Image and Annotation
+    :returns: Tuple containing cropped Image and Annotation
     :rtype: :class:`Tuple[np.ndarray, Annotation]`
 
     :Usage Example:
@@ -464,7 +464,7 @@ def instance_crop(
     :param padding_config: Dict with padding.
     :type padding_config: dict, optional
     :raises: :class:`ValueError` if padding size format is incorrect
-    :return: List of cropped (image numpy array, Annotation) pairs
+    :returns: List of cropped (image numpy array, Annotation) pairs
     :rtype: :class:`List[Tuple[np.ndarray, Annotation]]`
 
     :Usage Example:
@@ -547,7 +547,7 @@ def resize(
     :param skip_empty_masks: If True, skips resizing of empty masks in Annotation.
     :type skip_empty_masks: bool, optional
     :raises: :class:`RuntimeError` if Image shape does not match img_size in Annotation
-    :return: Tuple containing resized Image and Annotation
+    :returns: Tuple containing resized Image and Annotation
     :rtype: :class:`Tuple[np.ndarray, Annotation]`
 
     :Usage Example:
@@ -612,7 +612,7 @@ def scale(
     :param f: Desired height and width scale values in one(positive).
     :type f: float, optional
     :raises: :class:`RuntimeError` if Image shape does not match img_size in Annotation
-    :return: Tuple containing scaled Image and Annotation
+    :returns: Tuple containing scaled Image and Annotation
     :rtype: :class:`Tuple[np.ndarray, Annotation]`
 
     :Usage Example:
@@ -675,7 +675,7 @@ def rotate(
     :param mode: One of RotateMode enum values.
     :type mode: RotationModes, optional
     :raises: :class:`RuntimeError` if Image shape does not match img_size in Annotation
-    :return: Tuple containing rotated Image and Annotation
+    :returns: Tuple containing rotated Image and Annotation
     :rtype: :class:`Tuple[np.ndarray, Annotation]`
 
     :Usage Example:

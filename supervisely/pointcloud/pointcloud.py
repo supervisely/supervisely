@@ -32,7 +32,7 @@ def is_valid_ext(ext: str) -> bool:
 
     :param ext: Pointcloud file extension.
     :type ext: str
-    :return: bool
+    :returns: bool
     :rtype: :class:`bool`
 
     :Usage Example:
@@ -54,7 +54,7 @@ def has_valid_ext(path: str) -> bool:
 
     :param path: Pointcloud file path.
     :type path: str
-    :return: bool
+    :returns: bool
     :rtype: :class:`bool`
 
     :Usage Example:
@@ -77,7 +77,7 @@ def validate_ext(ext: str) -> None:
 
     :param ext: Pointcloud file extension.
     :type ext: str
-    :return: None
+    :returns: None
     :rtype: :class:`NoneType`
 
     :Usage Example:
@@ -107,7 +107,7 @@ def validate_ext(ext: str) -> None:
 
 #     :param file_path: Path to the file.
 #     :type file_path: str
-#     :return: True if the file is a valid PCD file, False otherwise.
+#     :returns: True if the file is a valid PCD file, False otherwise.
 #     :rtype: :class:`bool`
 #     :Usage Example:
 
@@ -154,7 +154,7 @@ def validate_format(path: str):
 
     :param path: Pointcloud file path.
     :type path: str
-    :return: None
+    :returns: None
     :rtype: :class:`NoneType`
 
     :Usage Example:
@@ -180,7 +180,7 @@ def is_valid_format(path: str) -> bool:
 
     :param path: Path to Pointcloud file.
     :type path: str
-    :return: True if file format in list of supported pointcloud formats, False - in otherwise
+    :returns: True if file format in list of supported pointcloud formats, False - in otherwise
     :rtype: :class:`bool`
 
     :Usage Example:
@@ -212,7 +212,7 @@ def get_labeling_tool_url(dataset_id: int, pointcloud_id: int):
     :type dataset_id: int
     :param pointcloud_id: Point cloud ID in Supervisely.
     :type pointcloud_id: int
-    :return: URL for the labeling tool with the specified dataset ID and point cloud ID
+    :returns: URL for the labeling tool with the specified dataset ID and point cloud ID
     :rtype: str
 
     :Usage Example:
@@ -256,7 +256,7 @@ def get_labeling_tool_link(url, name="open in labeling tool"):
     :type url: str
     :param name: Name of the link, default is "open in labeling tool".
     :type name: str
-    :return: HTML link to the labeling tool with the specified URL and name.
+    :returns: HTML link to the labeling tool with the specified URL and name.
     :rtype: str
 
     :Usage Example:
@@ -304,7 +304,7 @@ def read(path: str, coords_dims: Optional[List[int]] = None) -> np.ndarray:
 
     :param path: Path to file.
     :type path: str
-    :return: Numpy array
+    :returns: Numpy array
     :rtype: :class:`np.ndarray`
 
     :Usage Example:
@@ -343,7 +343,7 @@ def write(path: str, pointcloud_np: np.ndarray, coords_dims: Optional[List[int]]
     :type pointcloud_np: :class:`np.ndarray`
     :param coords_dims: List of indexes for (X, Y, Z) coords. Default (if None): [0, 1, 2].
     :type coords_dims: Optional[List[int]]
-    :return: Success or not.
+    :returns: Success or not.
     :rtype: bool
 
     :Usage Example:

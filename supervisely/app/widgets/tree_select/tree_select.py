@@ -150,7 +150,7 @@ class TreeSelect(Widget):
     def get_json_data(self) -> Dict[str, List[Dict]]:
         """Return the JSON representation of the widget data.
 
-        :return: The JSON representation of the widget data.
+        :returns: The JSON representation of the widget data.
         :rtype: Dict[str, List[Dict]]
         """
         return {
@@ -161,7 +161,7 @@ class TreeSelect(Widget):
     def get_json_state(self) -> Dict[str, Union[Dict, List[Dict]]]:
         """Return the JSON representation of the widget state.
 
-        :return: The JSON representation of the widget state.
+        :returns: The JSON representation of the widget state.
         :rtype: Dict[str, Union[Dict, List[Dict]]]
         """
         return {
@@ -182,7 +182,7 @@ class TreeSelect(Widget):
         """Return the selected item(s).
         Do not use this property directly, use get_selected() instead.
 
-        :return: The selected item(s).
+        :returns: The selected item(s).
         :rtype: Union[List[TreeSelect.Item], TreeSelect.Item]
         """
         return self._value
@@ -200,7 +200,7 @@ class TreeSelect(Widget):
     def _get_value(self) -> Union[List[TreeSelect.Item], TreeSelect.Item]:
         """Get the selected item as instances of the Item class.
 
-        :return: The selected item(s).
+        :returns: The selected item(s).
         :rtype: Union[List[TreeSelect.Item], TreeSelect.Item]
         """
         res = StateJson()[self.widget_id]["value"]
@@ -233,7 +233,7 @@ class TreeSelect(Widget):
     def get_selected(self) -> Union[List[TreeSelect.Item], TreeSelect.Item]:
         """Get the selected item(s).
 
-        :return: The selected item(s).
+        :returns: The selected item(s).
         :rtype: Union[List[TreeSelect.Item], TreeSelect.Item]
         """
         return self._get_value()
@@ -259,7 +259,7 @@ class TreeSelect(Widget):
     def get_all_items(self) -> List[TreeSelect.Item]:
         """Get all items in the tree.
 
-        :return: All items in the tree.
+        :returns: All items in the tree.
         :rtype: List[TreeSelect.Item]
         """
 
@@ -285,7 +285,7 @@ class TreeSelect(Widget):
     def is_all_selected(self) -> bool:
         """Check if all items are selected.
 
-        :return: True if all items are selected, False otherwise.
+        :returns: True if all items are selected, False otherwise.
         :rtype: bool
         """
         if not self._multiple:
@@ -303,7 +303,7 @@ class TreeSelect(Widget):
 
         :param item_id: The ID of the item.
         :type item_id: str
-        :return: The item with the specified ID.
+        :returns: The item with the specified ID.
         :rtype: Optional[TreeSelect.Item]
         """
 
@@ -382,7 +382,7 @@ class TreeSelect(Widget):
 
         :param func: The function to be called when the value is changed.
         :type func: Callable
-        :return: The decorated function.
+        :returns: The decorated function.
         :rtype: Callable
         """
         route_path = self.get_route_path(TreeSelect.Routes.VALUE_CHANGED)

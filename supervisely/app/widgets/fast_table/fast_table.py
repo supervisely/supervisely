@@ -297,7 +297,7 @@ class FastTable(Widget):
             - showHeader: whether to show table header
             - selectionChangedHandled: whether selection changed event listener is set
 
-        :return: Dictionary with widget data
+        :returns: Dictionary with widget data
         :rtype: Dict[str, Any]
         """
         return {
@@ -332,7 +332,7 @@ class FastTable(Widget):
                 - column: index of the column to sort by
                 - order: sorting order
 
-        :return: Dictionary with widget state
+        :returns: Dictionary with widget state
         :rtype: Dict[str, Any]
         """
         return {
@@ -351,7 +351,7 @@ class FastTable(Widget):
     def fixed_columns_num(self) -> int:
         """Returns number of fixed columns.
 
-        :return: Number of fixed columns
+        :returns: Number of fixed columns
         :rtype: int
         """
         return self._fix_columns
@@ -370,7 +370,7 @@ class FastTable(Widget):
     def project_meta(self) -> Dict[str, Any]:
         """Returns project meta information.
 
-        :return: Project meta information
+        :returns: Project meta information
         :rtype: Dict[str, Any]
         """
         return self._project_meta
@@ -561,7 +561,7 @@ class FastTable(Widget):
 
         :param active_page: Specifies the size of the data to be exported. If True - returns only the active page of the table
         :type active_page: Optional[bool]
-        :return: Table data with current options
+        :returns: Table data with current options
         :rtype: dict
         """
         if active_page is True:
@@ -584,7 +584,7 @@ class FastTable(Widget):
 
         :param active_page: Specifies the size of the data to be exported. If True - returns only the active page of the table
         :type active_page: bool
-        :return: Table data
+        :returns: Table data
         :rtype: pd.DataFrame
         """
         if active_page is True:
@@ -611,7 +611,7 @@ class FastTable(Widget):
     def get_selected_row(self) -> ClickedRow:
         """Returns the selected row.
 
-        :return: Selected row
+        :returns: Selected row
         :rtype: ClickedRow
         """
         if self._is_radio or self._is_selectable:
@@ -666,7 +666,7 @@ class FastTable(Widget):
     def get_clicked_cell(self) -> ClickedCell:
         """Returns the selected cell.
 
-        :return: Selected cell
+        :returns: Selected cell
         :rtype: ClickedCell
         """
         cell_data = StateJson()[self.widget_id]["selectedCell"]
@@ -772,7 +772,7 @@ class FastTable(Widget):
 
         :param index: Index of the row to remove
         :type index: Optional[int]
-        :return: Removed row
+        :returns: Removed row
         :rtype: List
         """
         index = (
@@ -812,7 +812,7 @@ class FastTable(Widget):
 
         :param func: Function that handles row click event
         :type func: Callable[[ClickedRow], Any]
-        :return: Decorated function
+        :returns: Decorated function
         :rtype: Callable[[], None]
         """
         row_clicked_route_path = self.get_route_path(FastTable.Routes.ROW_CLICKED)
@@ -845,7 +845,7 @@ class FastTable(Widget):
 
         :param func: Function that handles cell click event
         :type func: Callable[[ClickedCell], Any]
-        :return: Decorated function
+        :returns: Decorated function
         :rtype: Callable[[], None]
         """
         cell_clicked_route_path = self.get_route_path(FastTable.Routes.CELL_CLICKED)
@@ -880,7 +880,7 @@ class FastTable(Widget):
         """Filter source data using a self._filter_function as filter function.
         To apply a custom filter function, use the set_filter method.
 
-        :return: Filtered data
+        :returns: Filtered data
         :rtype: pd.DataFrame
         """
         filtered_data = self._filter_function(data, self._filter_value)
@@ -915,7 +915,7 @@ class FastTable(Widget):
 
         :param search_value: Search value
         :type search_value: str
-        :return: Filtered data
+        :returns: Filtered data
         :rtype: pd.DataFrame
         """
         # Use filtered_data if available, otherwise use source_data directly
@@ -1330,7 +1330,7 @@ class FastTable(Widget):
 
         :param func: Function that handles selection change event
         :type func: Callable[[], Any]
-        :return: Decorated function
+        :returns: Decorated function
         :rtype: Callable[[], None]
         """
         selection_changed_route_path = self.get_route_path(FastTable.Routes.SELECTION_CHANGED)

@@ -74,7 +74,7 @@ class Frame(KeyObject):
         """
         Frame index.
 
-        :return: Frame index.
+        :returns: Frame index.
         :rtype: int
 
         :Usage Example:
@@ -89,7 +89,7 @@ class Frame(KeyObject):
         """
         Get Frame key (index) value.
 
-        :return: Frame key (index) value
+        :returns: Frame key (index) value
         :rtype: int
 
         :Usage Example:
@@ -116,7 +116,7 @@ class Frame(KeyObject):
         """
         Frame figures.
 
-        :return: List of figures on Frame.
+        :returns: List of figures on Frame.
         :rtype: :class:`List[VideoFigure]<supervisely.video_annotation.video_figure.VideoFigure>`
 
         :Usage Example:
@@ -134,7 +134,7 @@ class Frame(KeyObject):
         :param img_size: Size of the image (height, width).
         :type img_size: Tuple[int, int], optional
         :raises: :class:`OutOfImageBoundsException<supervisely.video_annotation.video_figure.OutOfImageBoundsException>`, if figure is out of image bounds
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -165,7 +165,7 @@ class Frame(KeyObject):
 
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
-        :return: Json format as a dict
+        :returns: Json format as a dict
         :rtype: :class:`dict`
 
         :Usage Example:
@@ -236,7 +236,7 @@ class Frame(KeyObject):
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
         :raises: :class:`ValueError` if frame index < 0 and if frame index > number of frames in video
-        :return: Frame object
+        :returns: Frame object
         :rtype: :class:`Frame`
 
         :Usage Example:
@@ -283,7 +283,7 @@ class Frame(KeyObject):
         :type index: int, optional
         :param figures: List of :class:`VideoFigures<supervisely.video_annotation.video_figure.VideoFigure>`.
         :type figures: list, optional
-        :return: Frame object
+        :returns: Frame object
         :rtype: :class:`Frame`
 
         :Usage Example:

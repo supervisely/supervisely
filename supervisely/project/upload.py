@@ -34,7 +34,7 @@ def upload(
     :param progress_cb: Function for tracking upload progress.
     :type progress_cb: tqdm or callable, optional
 
-    :return: None.
+    :returns: None.
     :rtype: NoneType
 
     :Usage Example:
@@ -44,6 +44,7 @@ def upload(
             import os
             from tqdm import tqdm
             from dotenv import load_dotenv
+
             import supervisely as sly
 
             # Load secrets and create API object from .env file (recommended)

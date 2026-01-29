@@ -112,7 +112,7 @@ class Cuboid2d(GraphNodes):
         """
         Copy of Cuboid2d vertices.
 
-        :return: Cuboid2d vertices
+        :returns: Cuboid2d vertices
         :rtype: Optional[Dict]
         """
         return self.nodes
@@ -122,7 +122,7 @@ class Cuboid2d(GraphNodes):
         """
         Copy of the position of the Cuboid2d.
 
-        :return: Position of the Cuboid2d
+        :returns: Position of the Cuboid2d
         :rtype: Optional[Dict]
         """
         if isinstance(self._position, dict):
@@ -133,7 +133,7 @@ class Cuboid2d(GraphNodes):
         """
         Copy of the rotation of the Cuboid2d.
 
-        :return: Rotation of the Cuboid2d
+        :returns: Rotation of the Cuboid2d
         :rtype: Optional[Dict]
         """
         if isinstance(self._rotation, dict):
@@ -144,7 +144,7 @@ class Cuboid2d(GraphNodes):
         """
         Copy of the dimensions of the Cuboid2d.
 
-        :return: Dimensions of the Cuboid2d
+        :returns: Dimensions of the Cuboid2d
         :rtype: :class:`dict`
         """
         if isinstance(self._dimensions, dict):
@@ -155,7 +155,7 @@ class Cuboid2d(GraphNodes):
         """
         Copy of the face of the Cuboid2d.
 
-        :return: Face of the Cuboid2d
+        :returns: Face of the Cuboid2d
         :rtype: Optional[List[str]]
         """
         if isinstance(self._face, list):
@@ -168,7 +168,7 @@ class Cuboid2d(GraphNodes):
 
         :param data: Cuboid2d in json format as a dict.
         :type data: Dict[str, Dict]
-        :return: Cuboid2d object
+        :returns: Cuboid2d object
         :rtype: :class:`Cuboid2d<Cuboid2d>`
 
         :Usage Example:
@@ -232,7 +232,7 @@ class Cuboid2d(GraphNodes):
         """
         Convert the Cuboid2d to list. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
-        :return: Json format as a dict
+        :returns: Json format as a dict
         :rtype: Dict[str, Dict]
 
         :Usage Example:
@@ -317,7 +317,7 @@ class Cuboid2d(GraphNodes):
         Transform colors of edges and nodes in graph template
         :param config: dictionary(graph template)
         :param transform_fn: function to convert
-        :return: dictionary(graph template)
+        :returns: dictionary(graph template)
         """
         if config is None:
             return None
@@ -332,7 +332,7 @@ class Cuboid2d(GraphNodes):
         """
         Convert graph template from json format
         :param config: dictionary(graph template) in json format
-        :return: dictionary(graph template)
+        :returns: dictionary(graph template)
         """
 
         try:
@@ -349,7 +349,7 @@ class Cuboid2d(GraphNodes):
         """
         Convert graph template in json format
         :param config: dictionary(graph template)
-        :return: dictionary(graph template) in json format
+        :returns: dictionary(graph template) in json format
         """
         return Cuboid2d._transform_config_colors(config, rgb2hex)
 

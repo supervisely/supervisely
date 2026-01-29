@@ -42,7 +42,7 @@ class Vector3d:
     def to_json(self):
         """
         The function to_json convert Vector3d class object to json format(dict)
-        :return: Vector3d in json format
+        :returns: Vector3d in json format
         """
         return {X: self.x, Y: self.y, Z: self.z}
 
@@ -51,7 +51,7 @@ class Vector3d:
         """
         The function from_json convert Vector3d from json format(dict) to Vector3d class object.
         :param data: Vector3d in json format(dict)
-        :return: Vector3d class object
+        :returns: Vector3d class object
         """
         x = data[X]
         y = data[Y]
@@ -84,7 +84,7 @@ class Cuboid3d(Geometry):
         :param dimensions: Vector3d class object
         """         
         super().__init__(sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
-        
+
         if type(position) is not Vector3d:
             raise TypeError("\"position\" param has to be of type {!r}".format(type(Vector3d)))
         if type(rotation) is not Vector3d:
@@ -117,7 +117,7 @@ class Cuboid3d(Geometry):
     def to_json(self):
         """
         The function to_json convert Cuboid3d class object to json format(dict)
-        :return: Cuboid3d in json format
+        :returns: Cuboid3d in json format
         """
         res = {POSITION: self.position.to_json(),
                 ROTATION: self.rotation.to_json(),
@@ -131,7 +131,7 @@ class Cuboid3d(Geometry):
         """
         The function from_json convert Cuboid3d from json format(dict) to Cuboid3d class object.
         :param data: Cuboid3d in json format(dict)
-        :return: Cuboid3d class object
+        :returns: Cuboid3d class object
         """
         position = Vector3d.from_json(data[POSITION])
         rotation = Vector3d.from_json(data[ROTATION])

@@ -121,7 +121,7 @@ class VectorGeometry(Geometry):
         """
         Convert the VectorGeometry to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
-        :return: Json format as a dict
+        :returns: Json format as a dict
         :rtype: :class:`dict`
 
         :Usage Example:
@@ -165,7 +165,7 @@ class VectorGeometry(Geometry):
         """
         VectorGeometry exterior points.
 
-        :return: VectorGeometry exterior points
+        :returns: VectorGeometry exterior points
         :rtype: :class:`List[PointLocation]<supervisely.geometry.point_location.PointLocation>`
 
         :Usage Example:
@@ -181,7 +181,7 @@ class VectorGeometry(Geometry):
         """
         Converts exterior attribute of VectorGeometry to numpy array.
 
-        :return: Numpy array
+        :returns: Numpy array
         :rtype: :class:`np.ndarray`
 
         :Usage Example:
@@ -201,7 +201,7 @@ class VectorGeometry(Geometry):
         """
         VectorGeometry interior points.
 
-        :return: VectorGeometry interior points
+        :returns: VectorGeometry interior points
         :rtype: :class:`List[List[PointLocation]]<supervisely.geometry.point_location.PointLocation>`
 
         :Usage Example:
@@ -217,7 +217,7 @@ class VectorGeometry(Geometry):
         """
         Converts interior attribute of VectorGeometry to numpy array.
 
-        :return: Numpy array
+        :returns: Numpy array
         :rtype: :class:`List[np.ndarray]`
 
         :Usage Example:
@@ -247,7 +247,7 @@ class VectorGeometry(Geometry):
         :type in_size: Tuple[int, int]
         :param out_size: Desired output image size (height, width) to which belongs VectorGeometry.
         :type out_size: Tuple[int, int]
-        :return: VectorGeometry object
+        :returns: VectorGeometry object
         :rtype: :class:`VectorGeometry<VectorGeometry>`
 
         :Usage Example:
@@ -267,7 +267,7 @@ class VectorGeometry(Geometry):
 
         :param factor: Scale parameter.
         :type factor: float
-        :return: VectorGeometry object
+        :returns: VectorGeometry object
         :rtype: :class:`VectorGeometry<VectorGeometry>`
 
         :Usage Example:
@@ -287,7 +287,7 @@ class VectorGeometry(Geometry):
         :type drow: int
         :param dcol: Vertical shift.
         :type dcol: int
-        :return: VectorGeometry object
+        :returns: VectorGeometry object
         :rtype: :class:`VectorGeometry<VectorGeometry>`
 
         :Usage Example:
@@ -305,7 +305,7 @@ class VectorGeometry(Geometry):
 
         :param rotator: ImageRotator object for rotate.
         :type rotator: ImageRotator
-        :return: VectorGeometry object
+        :returns: VectorGeometry object
         :rtype: :class:`VectorGeometry<VectorGeometry>`
 
         :Usage Example:
@@ -328,7 +328,7 @@ class VectorGeometry(Geometry):
 
         :param img_size: Input image size (height, width) to which belongs VectorGeometry.
         :type img_size: Tuple[int, int]
-        :return: VectorGeometry object
+        :returns: VectorGeometry object
         :rtype: :class:`VectorGeometry<VectorGeometry>`
 
         :Usage Example:
@@ -347,7 +347,7 @@ class VectorGeometry(Geometry):
 
         :param img_size: Input image size (height, width) to which belongs VectorGeometry.
         :type img_size: Tuple[int, int]
-        :return: VectorGeometry object
+        :returns: VectorGeometry object
         :rtype: :class:`VectorGeometry<VectorGeometry>`
 
         :Usage Example:
@@ -364,7 +364,7 @@ class VectorGeometry(Geometry):
         """
         Creates Rectangle object from current VectorGeometry.
 
-        :return: Rectangle object
+        :returns: Rectangle object
         :rtype: :class:`Rectangle<supervisely.geometry.rectangle.Rectangle>`
 
         :Usage Example:

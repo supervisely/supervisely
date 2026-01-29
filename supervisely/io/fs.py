@@ -890,7 +890,7 @@ def string_to_byte_size(string: Union[str, int]) -> int:
 
     :param string: String representation of byte size (e.g. ``1.5Kb``, ``2Mb``, ``3.7Gb``, ``4.2Tb``) or integer.
     :type string: Union[str, int]
-    :return: Integer representation of byte size (or the same integer if input is integer).
+    :returns: Integer representation of byte size (or the same integer if input is integer).
     :rtype: int
     :raises ValueError: If input string is invalid.
 
@@ -1244,7 +1244,7 @@ def is_on_agent(remote_path: str) -> bool:
 
     :param remote_path: path to check
     :type remote_path: str
-    :return: True if remote_path starts with 'agent://<agent-id>/' and False otherwise
+    :returns: True if remote_path starts with 'agent://<agent-id>/' and False otherwise
     :rtype: bool
     """
     if remote_path.startswith("agent://"):
@@ -1258,7 +1258,7 @@ def parse_agent_id_and_path(remote_path: str) -> Tuple[int, str]:
 
     :param remote_path: path to parse
     :type remote_path: str
-    :return: agent id and path in agent folder
+    :returns: agent id and path in agent folder
     :rtype: Tuple[int, str]
     :raises ValueError: if remote_path doesn't start with 'agent://<agent-id>/'
 
@@ -1410,7 +1410,7 @@ def change_directory_at_index(path: str, dir_name: str, dir_index: int) -> str:
     :type dir_name: str
     :param dir_index: Index of the directory we want to change, negative values count from the end
     :type dir_index: int
-    :return: New path
+    :returns: New path
     :rtype: str
     :raises IndexError: If the catalog index is out of bounds for a given path
 
@@ -1441,7 +1441,7 @@ def is_archive(file_path: str) -> bool:
 
     :param local_path: path to the local file
     :type local_path: str
-    :return: True if the file is an archive, False otherwise
+    :returns: True if the file is an archive, False otherwise
     :rtype: bool
     """
     archive_mimetypes = [
@@ -1470,7 +1470,7 @@ def str_is_url(string: str) -> bool:
 
     :param string: string to check
     :type string: str
-    :return: True if string is a valid URL, False otherwise
+    :returns: True if string is a valid URL, False otherwise
     :rtype: bool
 
     :Usage Example:

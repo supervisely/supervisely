@@ -39,7 +39,7 @@ def is_valid_ext(ext: str) -> bool:
 
     :param ext: Video file extension.
     :type ext: str
-    :return: bool
+    :returns: bool
     :rtype: :class:`bool`
 
     :Usage Example:
@@ -60,7 +60,7 @@ def has_valid_ext(path: str) -> bool:
 
     :param path: Path to Video file.
     :type path: str
-    :return: bool
+    :returns: bool
     :rtype: :class:`bool`
 
     :Usage Example:
@@ -82,7 +82,7 @@ def validate_ext(ext: str):
     :param ext: Video extension. Available extensions: avi, mp4, 3gp, flv, webm, wmv, mov, mkv.
     :type ext: str
     :raises: :class:`UnsupportedVideoFormat` if given video with extension that is not supported.
-    :return: None
+    :returns: None
     :rtype: :class:`NoneType`
 
     :Usage Example:
@@ -109,7 +109,7 @@ def get_image_size_and_frames_count(path: str) -> Tuple[Tuple[int, int], int]:
 
     :param path: Path to Video file.
     :type path: str
-    :return: Image size and number of Video frames.
+    :returns: Image size and number of Video frames.
     :rtype: :class:`Tuple[Tuple[int, int], int]`
 
     :Usage Example:
@@ -145,7 +145,7 @@ def validate_format(path: str) -> None:
     :param path: Path to Video file.
     :type path: str
     :raises: :class:`VideoReadException` if Video file from given path couldn't be read or file extension is not supported
-    :return: None
+    :returns: None
     :rtype: :class:`NoneType`
 
     :Usage Example:
@@ -176,7 +176,7 @@ def is_valid_format(path: str) -> bool:
 
     :param path: Path to Video file.
     :type path: str
-    :return: True if file format in list of supported video formats, False - in otherwise
+    :returns: True if file format in list of supported video formats, False - in otherwise
     :rtype: :class:`bool`
 
     :Usage Example:
@@ -200,7 +200,7 @@ def _check_video_requires_processing(video_info, stream_info):
     Check if video need container or codec processing
     :param video_info: dict
     :param stream_info: dict
-    :return: bool
+    :returns: bool
     """
     need_process_container = True
     for name in video_info["meta"]["formatName"].split(","):
@@ -226,7 +226,7 @@ def count_video_streams(all_streams: List[Dict]) -> int:
 
     :param all_streams: List of Video file audio and video streams.
     :type all_streams: List[dict]
-    :return: Number of video streams in Video file
+    :returns: Number of video streams in Video file
     :rtype: :class:`int`
     """
     count = 0
@@ -242,7 +242,7 @@ def get_video_streams(all_streams: List[Dict]) -> List:
 
     :param all_streams: List of Video file audio and video streams.
     :type all_streams: List[dict]
-    :return: List of video streams in Video file.
+    :returns: List of video streams in Video file.
     :rtype: :class:`list`
     """
     video_streams = []
@@ -260,7 +260,7 @@ def warn_video_requires_processing(file_name: str, logger: Optional[default_logg
     :type file_name: str
     :param logger: Logger object.
     :type logger: logger
-    :return: None
+    :returns: None
     :rtype: :class:`NoneType`
     """
     if logger is None:
@@ -280,7 +280,7 @@ def gen_video_stream_name(file_name: str, stream_index: int) -> str:
     :type file_name: str
     :param stream_index: Stream index.
     :type stream_index: int
-    :return: str
+    :returns: str
     :rtype: str
 
     :Usage Example:
@@ -305,7 +305,7 @@ def get_info(video_path: str, cpu_count: Optional[int] = None) -> Dict:
     :param cpu_count: CPU count.
     :type cpu_count: int
     :raises: :class:`ValueError` if no video streams found.
-    :return: Information about video
+    :returns: Information about video
     :rtype: :class:`Dict`
 
     :Usage Example:
@@ -482,7 +482,7 @@ def get_labeling_tool_url(
     :type link: Optional[bool]
     :param link_text: Text of the link, defaults to "open in labeling tool".
     :type link_text: Optional[str]
-    :return: Labeling tool url or html link to labeling tool.
+    :returns: Labeling tool url or html link to labeling tool.
     :rtype: str
 
     :Usage Example:
@@ -528,7 +528,7 @@ def get_labeling_tool_link(url: str, name: Optional[str] = "open in labeling too
     :type url: str
     :param name: text of the link, defaults to "open in labeling tool".
     :type name: Optional[str]
-    :return: HTML link to labeling tool.
+    :returns: HTML link to labeling tool.
     :rtype: str
     """
     return f'<a href="{url}" rel="noopener noreferrer" target="_blank">{name}<i class="zmdi zmdi-open-in-new" style="margin-left: 5px"></i></a>'

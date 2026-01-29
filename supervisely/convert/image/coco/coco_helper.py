@@ -414,7 +414,7 @@ def sly_ann_to_coco(
     :type last_label_id: int, optional
     :param coco_captions: COCO captions in dictionary or list format to append new captions.
     :type coco_captions: Union[Dict, List], optional
-    :return: Tuple with list of COCO objects and list of COCO captions.
+    :returns: Tuple with list of COCO objects and list of COCO captions.
     :rtype: :class:`tuple`
 
 
@@ -697,7 +697,7 @@ def sly_ds_to_coco(
     :type log_progress: :class:`bool`, optional
     :param progress_cb: Callback function to track the progress of the conversion.
     :type progress_cb: :class:`Callable`, optional
-    :return:
+    :returns:
             If return_type is 'path', returns paths to COCO dataset file or file (instances or instances and captions).
             If return_type is 'dict', returns COCO dataset dictionary or dictionaries (instances or instances and captions).
     :rtype: :class:`tuple`
@@ -837,7 +837,7 @@ def sly_project_to_coco(
     :type log_progress: :class:`bool`
     :param progress_cb: Function for tracking conversion progress (for all items in the project).
     :type progress_cb: callable, optional
-    :return: None
+    :returns: None
     :rtype: NoneType
 
     :Usage Example:
@@ -921,7 +921,7 @@ def to_coco(
     :param progress_cb: Function for tracking conversion progress (for all items in the project or dataset).
     :type progress_cb: callable, optional
 
-    :return: None
+    :returns: None
     :rtype: NoneType
 
     :Usage Example:

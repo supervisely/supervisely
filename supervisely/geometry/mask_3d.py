@@ -69,7 +69,7 @@ class PointVolume(JsonSerializable):
         """
         Position of PointVolume on X-axis.
 
-        :return: X of PointVolume
+        :returns: X of PointVolume
         :rtype: :class:`int`
 
         :Usage Example:
@@ -86,7 +86,7 @@ class PointVolume(JsonSerializable):
         """
         Position of PointVolume on Y-axis.
 
-        :return: Y of PointVolume
+        :returns: Y of PointVolume
         :rtype: :class:`int`
 
         :Usage Example:
@@ -103,7 +103,7 @@ class PointVolume(JsonSerializable):
         """
         Position of PointVolume on Z-axis.
 
-        :return: Z of PointVolume
+        :returns: Z of PointVolume
         :rtype: :class:`int`
 
         :Usage Example:
@@ -119,7 +119,7 @@ class PointVolume(JsonSerializable):
         """
         Convert the PointVolume to a json dict.
 
-        :return: Json format as a dict
+        :returns: Json format as a dict
         :rtype: :class:`dict`
 
         :Usage Example:
@@ -148,7 +148,7 @@ class PointVolume(JsonSerializable):
 
         :param data: PointVolume in json format as a dict.
         :type data: dict
-        :return: PointVolume object
+        :returns: PointVolume object
         :rtype: :class:`PointVolume<PointVolume>`
 
         :Usage Example:
@@ -276,7 +276,7 @@ class Mask3D(Geometry):
         """
         Get the space origin of the Mask3D as a list of floats.
 
-        :return: Space origin of the Mask3D.
+        :returns: Space origin of the Mask3D.
         :rtype: List[float] or None
         """
         if self._space_origin is not None:
@@ -305,7 +305,7 @@ class Mask3D(Geometry):
         """
         Get the space of the Mask3D.
 
-        :return: Space of the Mask3D.
+        :returns: Space of the Mask3D.
         :rtype: :class:`str`
         """
         return self._space
@@ -327,7 +327,7 @@ class Mask3D(Geometry):
         """
         Get the space directions of the Mask3D.
 
-        :return: Space directions of the Mask3D.
+        :returns: Space directions of the Mask3D.
         :rtype: :class:`List[List[float]]`
         """
         return self._space_directions
@@ -410,7 +410,7 @@ class Mask3D(Geometry):
 
         :param geometry_bytes: NRRD file represented as bytes.
         :type geometry_bytes: bytes
-        :return: A Mask3D geometry object.
+        :returns: A Mask3D geometry object.
         :rtype: Mask3D
         """
         with tempfile.NamedTemporaryFile(delete=True, suffix=".nrrd") as temp_file:
@@ -421,7 +421,7 @@ class Mask3D(Geometry):
         """
         Convert the Mask 3D to a json dict.
 
-        :return: Json format as a dict
+        :returns: Json format as a dict
         :rtype: :class:`dict`
 
         :Usage Example:
@@ -480,7 +480,7 @@ class Mask3D(Geometry):
 
         :param data: Mask in json format as a dict.
         :type data: dict
-        :return: Mask3D object
+        :returns: Mask3D object
         :rtype: :class:`Mask3D<Mask3D>`
 
         :Usage Example:
@@ -558,7 +558,7 @@ class Mask3D(Geometry):
 
         :param mask: Bool numpy array.
         :type mask: np.ndarray
-        :return: Base64 encoded string
+        :returns: Base64 encoded string
         :rtype: :class:`str`
 
         :Usage Example:
@@ -602,7 +602,7 @@ class Mask3D(Geometry):
 
         :param s: Input base64 encoded string.
         :type s: str
-        :return: Bool numpy array
+        :returns: Bool numpy array
         :rtype: :class:`np.ndarray`
 
         :Usage Example:
@@ -697,7 +697,7 @@ class Mask3D(Geometry):
 
         :param path: Path to the NRRD file containing geometry.
         :type path: str
-        :return: A tuple containing the key hex value and geometry bytes, or (None, None) if the file is not found.
+        :returns: A tuple containing the key hex value and geometry bytes, or (None, None) if the file is not found.
         :rtype: Tuple[str, bytes]
         """
 
@@ -718,7 +718,7 @@ class Mask3D(Geometry):
 
         :param paths: Paths to the NRRD files containing geometry.
         :type paths: List[str]
-        :return: A dictionary mapping figure UUID hex values to their respective geometries.
+        :returns: A dictionary mapping figure UUID hex values to their respective geometries.
         :rtype: Dict[str, bytes]
         """
         geometries_dict = {}
@@ -751,7 +751,7 @@ class Mask3D(Geometry):
         """
         Create header for encoding Mask3D to NRRD bytes
 
-        :return: Header for NRRD file
+        :returns: Header for NRRD file
         :rtype: OrderedDict
         """
         header = OrderedDict()

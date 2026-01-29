@@ -55,7 +55,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
 
         :param video_id: Video ID in Supervisely.
         :type video_id: int
-        :return: Information about VideoAnnotation in json format
+        :returns: Information about VideoAnnotation in json format
         :rtype: :class:`dict`
 
         :Usage Example:
@@ -110,7 +110,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         :type key_id_map: KeyIdMap, optional
         :param progress: Progress.
         :type progress: Optional[Union[tqdm, Callable]]
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -161,7 +161,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         :type project_meta: ProjectMeta
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -211,7 +211,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         :type project_meta: ProjectMeta
         :param progress_cb: Function for tracking upload progress.
         :type progress_cb: tqdm or callable, optional
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
         """
         if len(video_ids) != len(ann_paths):
@@ -251,7 +251,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         :type progress_cb: tqdm or callable, optional
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
         """
         if len(video_ids) != len(anns):
@@ -326,7 +326,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
         :raises: :class:`RuntimeError`, if len(src_video_ids) != len(dst_video_ids)
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -402,7 +402,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         :type integer_coords: bool, optional
         :param progress_cb: Progress callback to track download progress.
         :type progress_cb: Union[tqdm, Callable], optional
-        :return: Information about VideoAnnotation in json format
+        :returns: Information about VideoAnnotation in json format
         :rtype: :class:`dict`
 
         :Usage Example:
@@ -452,7 +452,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         :type batch_size: int, optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
-        :return: Information about VideoAnnotations in json format
+        :returns: Information about VideoAnnotations in json format
         :rtype: :class:`list`
 
         :Usage Example:

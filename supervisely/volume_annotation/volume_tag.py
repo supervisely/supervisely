@@ -82,7 +82,7 @@ class VolumeTag(Tag):
         """
         Get key value.
 
-        :return: Get key value.
+        :returns: Get key value.
         :rtype: str
 
         :Usage Example:
@@ -106,7 +106,7 @@ class VolumeTag(Tag):
 
         :param key_id_map: Key ID Map object.
         :type key_id_map: KeyIdMap, optional
-        :return: Json format as a dict
+        :returns: Json format as a dict
         :rtype: :class:`dict`
 
         :Usage Example:
@@ -152,7 +152,7 @@ class VolumeTag(Tag):
         :type tag_meta_collection: TagMetaCollection
         :param key_id_map: Key ID Map object.
         :type key_id_map: KeyIdMap, optional
-        :return: VolumeTag object
+        :returns: VolumeTag object
         :rtype: :class:`VolumeTag<VolumeTag>`
 
         :Usage Example:

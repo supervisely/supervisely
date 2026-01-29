@@ -123,7 +123,7 @@ class EcosystemModelsApi(ModuleApi):
 
         :param local: If True, return only models available locally for the instance.
         :type local: bool, optional
-        :return: List of model JSON dicts.
+        :returns: List of model JSON dicts.
         :rtype: List[dict]
         """
         method = "ecosystem.models.list"
@@ -168,7 +168,7 @@ class EcosystemModelsApi(ModuleApi):
         :type serve_module_id: int
         :param modality: Input modality.
         :type modality: Literal['images', 'videos'], optional
-        :return: Server response.
+        :returns: Server response.
         :rtype: dict
         """
         method = "ecosystem.models.add"
@@ -226,7 +226,7 @@ class EcosystemModelsApi(ModuleApi):
 
         :param model_id: Model id in the catalog.
         :type model_id: int
-        :return: Server response.
+        :returns: Server response.
         :rtype: dict
         """
         data = {

@@ -89,7 +89,7 @@ class Card(Widget):
                 - marginBottom: Margin bottom of the card.
             - showSlot: If True, the slot content will be displayed.
 
-        :return: Dictionary with widget data.
+        :returns: Dictionary with widget data.
         :rtype: Dict[str, Any]
         """
         return {
@@ -107,7 +107,7 @@ class Card(Widget):
             - disabled: True if card is disabled.
             - collapsed: True if card is collapsed.
 
-        :return: Dictionary with widget state.
+        :returns: Dictionary with widget state.
         :rtype: Dict[str, bool]
         """
         return {"disabled": self._disabled, "collapsed": self._collapsed}
@@ -154,7 +154,7 @@ class Card(Widget):
     def is_locked(self) -> bool:
         """Returns True if the card is locked, False otherwise.
 
-        :return: True if the card is locked, False otherwise.
+        :returns: True if the card is locked, False otherwise.
         :rtype: bool
         """
         return self._disabled["disabled"]
@@ -163,7 +163,7 @@ class Card(Widget):
     def description(self) -> Optional[str]:
         """Description of the card.
 
-        :return: Description of the card.
+        :returns: Description of the card.
         :rtype: Optional[str]
         """
         return self._description

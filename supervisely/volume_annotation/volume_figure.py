@@ -139,7 +139,7 @@ class VolumeFigure(VideoFigure):
         """
         Get a parent VolumeObject object of volume figure.
 
-        :return: Parent VolumeObject object of volume figure.
+        :returns: Parent VolumeObject object of volume figure.
         :rtype: VolumeObject
 
         :Usage Example:
@@ -173,7 +173,7 @@ class VolumeFigure(VideoFigure):
         """
         Get a parent VolumeObject object of volume figure.
 
-        :return: VolumeObject object
+        :returns: VolumeObject object
         :rtype: VolumeObject
 
         :Usage Example:
@@ -208,7 +208,7 @@ class VolumeFigure(VideoFigure):
         """
         Get a slice index of volume figure.
 
-        :return: :py:class:`Slice<supervisely.volume_annotation.slice.Slice>` index of volume figure.
+        :returns: :py:class:`Slice<supervisely.volume_annotation.slice.Slice>` index of volume figure.
         :rtype: int
 
         :Usage Example:
@@ -237,7 +237,7 @@ class VolumeFigure(VideoFigure):
         """
         Get a plane name of volume figure.
 
-        :return: Plane name of volume figure.
+        :returns: Plane name of volume figure.
         :rtype: str
 
         :Usage Example:
@@ -266,7 +266,7 @@ class VolumeFigure(VideoFigure):
         """
         Get a normal vector associated with a plane name.
 
-        :return: Dictionary with normal vector associated with a plane name.
+        :returns: Dictionary with normal vector associated with a plane name.
         :rtype: dict
 
         :Usage Example:
@@ -297,7 +297,7 @@ class VolumeFigure(VideoFigure):
         """
         Get custom data associated with the VolumeFigure.
 
-        :return: Custom data associated with the VolumeFigure.
+        :returns: Custom data associated with the VolumeFigure.
         :rtype: dict
 
         :Usage Example:
@@ -347,7 +347,7 @@ class VolumeFigure(VideoFigure):
         :param _auto_correct: Correct the geometry of a shape if it is out of bounds or not.
         :type _auto_correct: bool, optional
         :raises: :class:`OutOfImageBoundsException<supervisely.video_annotation.video_figure.OutOfImageBoundsException>`, if figure is out of image bounds
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -408,7 +408,7 @@ class VolumeFigure(VideoFigure):
         :type created_at: str, optional
         :param custom_data: Custom data associated with the VolumeFigure.
         :type custom_data: dict, optional
-        :return: VolumeFigure object
+        :returns: VolumeFigure object
         :rtype: :class:`VolumeFigure`
 
         :Usage Example:
@@ -471,7 +471,7 @@ class VolumeFigure(VideoFigure):
         """
         Get a dictionary with metadata associated with volume figure.
 
-        :return: Dictionary with metadata associated with volume figure.
+        :returns: Dictionary with metadata associated with volume figure.
         :rtype: dict
 
         :Usage Example:
@@ -522,7 +522,7 @@ class VolumeFigure(VideoFigure):
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
         :raises: :class:`RuntimeError`, if volume object ID and volume object key are None, if volume object key and key_id_map are None, if volume object with given id not found in key_id_map
-        :return: VolumeFigure object
+        :returns: VolumeFigure object
         :rtype: :class:`VolumeFigure`
 
         :Usage Example:
@@ -609,7 +609,7 @@ class VolumeFigure(VideoFigure):
         :type key_id_map: KeyIdMap, optional
         :param save_meta: Save frame index or not.
         :type save_meta: bool, optional
-        :return: Json format as a dict
+        :returns: Json format as a dict
         :rtype: :class:`dict`
 
         :Usage Example:
@@ -685,7 +685,7 @@ class VolumeFigure(VideoFigure):
         :type created_at: str, optional
         :param custom_data: Custom data associated with the VolumeFigure.
         :type custom_data: dict, optional
-        :return: A VolumeFigure object created from Mask3D geometry.
+        :returns: A VolumeFigure object created from Mask3D geometry.
         :rtype: VolumeFigure
         """
         if isinstance(geometry_data, str):

@@ -27,7 +27,7 @@ class PointcloudTagApi(TagApi):
         :type pointcloud_id: int
         :param value: possible_values from TagMeta, defaults to None
         :type value: Optional[Union[str, int]], optional
-        :return: ID of the tag assigned to the point cloud
+        :returns: ID of the tag assigned to the point cloud
         :rtype: int
         """
         request_body = {
@@ -89,7 +89,7 @@ class PointcloudObjectTagApi(TagApi):
         :type value: Optional[Union[str, int]], optional
         :param frame_range: array of 2 frame numbers in point cloud episodes, defaults to None
         :type frame_range: Optional[List[int]], optional
-        :return: ID of the tag assigned to the object
+        :returns: ID of the tag assigned to the object
         :rtype: int
         """
         request_body = {

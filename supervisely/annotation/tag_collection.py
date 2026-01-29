@@ -142,7 +142,7 @@ class TagCollection(MultiKeyIndexedCollection):
         """
         Convert the TagCollection to a list of json dicts. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
-        :return: List of dicts in json format
+        :returns: List of dicts in json format
         :rtype: :class:`List[dict]`
 
         :Usage Example:
@@ -185,7 +185,7 @@ class TagCollection(MultiKeyIndexedCollection):
         :type data: List[dict]
         :param tag_meta_collection: Input TagMetaCollection object.
         :type tag_meta_collection: TagMetaCollection
-        :return: TagCollection object
+        :returns: TagCollection object
         :rtype: :class:`TagCollection<TagCollection>`
 
         :Usage Example:
@@ -239,7 +239,7 @@ class TagCollection(MultiKeyIndexedCollection):
         :type tag_meta_collection: TagMetaCollection
         :param id_to_tagmeta: Mapping of tag IDs to tag metadata.
         :type id_to_tagmeta: Optional[Dict[int, TagMeta]]
-        :return: TagCollection object.
+        :returns: TagCollection object.
         :rtype: TagCollection
 
         :Usage Example:

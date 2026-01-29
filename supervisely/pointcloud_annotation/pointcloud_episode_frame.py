@@ -83,7 +83,7 @@ class PointcloudEpisodeFrame(Frame):
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
         :raises: :class:`ValueError` if frame index < 0 and if frame index > number of frames in point cloud
-        :return: PointcloudEpisodeFrame object
+        :returns: PointcloudEpisodeFrame object
         :rtype: :class:`PointcloudEpisodeFrame`
 
         :Usage Example:

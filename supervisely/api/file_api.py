@@ -198,7 +198,7 @@ class FileApi(ModuleApiBase):
         :type recursive: bool
         :param return_type: The specified value between 'dict' or 'fileinfo'. By default: 'dict'.
         :type return_type: str
-        :return: List of all Files with information. See classes info_sequence and FileInfo
+        :returns: List of all Files with information. See classes info_sequence and FileInfo
         :rtype: class List[Union[Dict, FileInfo]]
 
         :Usage Example:
@@ -311,7 +311,7 @@ class FileApi(ModuleApiBase):
         :type path: str
         :param recursive: If True return all FileInfos recursively.
         :type recursive: bool
-        :return: List of all Files with information. See class info_sequence
+        :returns: List of all Files with information. See class info_sequence
         :rtype: class List[FileInfo]
 
         :Usage Example:
@@ -356,7 +356,7 @@ class FileApi(ModuleApiBase):
         :type path: str
         :param recursive: If True return all paths recursively.
         :type recursive: bool
-        :return: List of paths
+        :returns: List of paths
         :rtype: :class:`List[str]`
 
         :Usage Example:
@@ -392,7 +392,7 @@ class FileApi(ModuleApiBase):
         :type team_id: int
         :param path: Path to Directory.
         :type path: str
-        :return: Directory size in the Team Files
+        :returns: Directory size in the Team Files
         :rtype: :class:`int`
 
         :Usage Example:
@@ -488,7 +488,7 @@ class FileApi(ModuleApiBase):
         :type cache: FileCache, optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -591,7 +591,7 @@ class FileApi(ModuleApiBase):
         :type local_save_path: str
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -801,7 +801,7 @@ class FileApi(ModuleApiBase):
         :type dst: str
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
-        :return: Information about File. See :class:`info_sequence<info_sequence>`
+        :returns: Information about File. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`FileInfo`
 
         :Usage Example:
@@ -840,7 +840,7 @@ class FileApi(ModuleApiBase):
         :type dst: List[str]
         :param progress_cb: Function for tracking upload progress.
         :type progress_cb: tqdm or callable, optional
-        :return: Information about Files. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Files. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[FileInfo]`
 
         :Usage Example:
@@ -952,7 +952,7 @@ class FileApi(ModuleApiBase):
         :type old_name: str
         :param new_name: New File name.
         :type new_name: str
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -991,7 +991,7 @@ class FileApi(ModuleApiBase):
         :type team_id: int
         :param path: Path in Team Files.
         :type path: str
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -1026,7 +1026,7 @@ class FileApi(ModuleApiBase):
         :type team_id: int
         :param path: Path to File in Team Files.
         :type path: str
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -1063,7 +1063,7 @@ class FileApi(ModuleApiBase):
         :param silent: Ignore if directory not exists.
         :type silent: bool
 
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -1107,7 +1107,7 @@ class FileApi(ModuleApiBase):
         :type progress_cb: tqdm or callable, optional
         :param batch_size: Number of files to remove in one request. Default is 1000. Maximum is 20000.
         :type batch_size: int
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -1162,7 +1162,7 @@ class FileApi(ModuleApiBase):
         :type remote_path: str
         :param recursive: If True makes more checks and slower, if False makes less checks and faster.
         :type recursive: bool
-        :return: True if file exists, otherwise False
+        :returns: True if file exists, otherwise False
         :rtype: :class:`bool`
 
         :Usage Example:
@@ -1195,7 +1195,7 @@ class FileApi(ModuleApiBase):
         :type remote_path: str
         :param recursive: If True makes more checks and slower, if False makes less checks and faster.
         :type recursive: bool
-        :return: True if directory exists, otherwise False
+        :returns: True if directory exists, otherwise False
         :rtype: :class:`bool`
 
         :Usage Example:
@@ -1225,7 +1225,7 @@ class FileApi(ModuleApiBase):
         :type team_id: int
         :param path: Remote path to file in Team Files.
         :type path: str
-        :return: New File name with suffix at the end
+        :returns: New File name with suffix at the end
         :rtype: :class:`str`
 
         :Usage Example:
@@ -1269,7 +1269,7 @@ class FileApi(ModuleApiBase):
 
         :param file_id: File ID in Supervisely.
         :type file_id: int
-        :return: File URL
+        :returns: File URL
         :rtype: :class:`str`
 
         :Usage Example:
@@ -1298,7 +1298,7 @@ class FileApi(ModuleApiBase):
         :type team_id: int
         :param remote_path: Remote path to file in Team Files.
         :type remote_path: str
-        :return: Information about File. See :class:`info_sequence<info_sequence>`
+        :returns: Information about File. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`FileInfo`
 
         :Usage Example:
@@ -1354,7 +1354,7 @@ class FileApi(ModuleApiBase):
 
         :param id: File ID in Supervisely.
         :type id: int
-        :return: Information about File. See :class:`info_sequence<info_sequence>`
+        :returns: Information about File. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`FileInfo`
 
         :Usage Example:
@@ -1396,7 +1396,7 @@ class FileApi(ModuleApiBase):
         :type team_id: int
         :param dir_path: Path to Directory in Team Files.
         :type dir_path: str
-        :return: New Directory name with suffix at the end
+        :returns: New Directory name with suffix at the end
         :rtype: :class:`str`
 
         :Usage Example:
@@ -1454,7 +1454,7 @@ class FileApi(ModuleApiBase):
         :type change_name_if_conflict: bool, optional
         :param progress_size_cb: Function for tracking download progress.
         :type progress_size_cb: Progress, optional
-        :return: Path to Directory in Team Files
+        :returns: Path to Directory in Team Files
         :rtype: :class:`str`
 
         :Usage Example:
@@ -1569,7 +1569,7 @@ class FileApi(ModuleApiBase):
         :type remote_path: str
         :param download: If True, download file in temp dir to get content.
         :type download: bool, optional
-        :return: JSON file content
+        :returns: JSON file content
         :rtype: :class:`dict` or :class:`NoneType`
 
         :Usage Example:
@@ -1647,7 +1647,7 @@ class FileApi(ModuleApiBase):
         :type progress_cb: tqdm or callable, optional
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "size".
         :type progress_cb_type: Literal["number", "size"], optional
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
         """
         api_method = "file-storage.download"
@@ -1720,7 +1720,7 @@ class FileApi(ModuleApiBase):
         :type progress_cb: tqdm or callable, optional
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "size".
         :type progress_cb_type: Literal["number", "size"], optional
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -1829,7 +1829,7 @@ class FileApi(ModuleApiBase):
         :type progress_cb: tqdm or callable, optional
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "size".
         :type progress_cb_type: Literal["number", "size"], optional
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -1912,7 +1912,7 @@ class FileApi(ModuleApiBase):
         :type semaphore: asyncio.Semaphore
         :param show_progress: If True show download progress.
         :type show_progress: bool
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -2135,7 +2135,7 @@ class FileApi(ModuleApiBase):
         :type progress_cb: tqdm or callable, optional
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "size".
         :type progress_cb_type: Literal["number", "size"], optional
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -2222,7 +2222,7 @@ class FileApi(ModuleApiBase):
         :type progress_cb_type: Literal["number", "size"], optional
         :param enable_fallback: If True, the method will fallback to synchronous upload if an error occurs.
         :type enable_fallback: bool, optional
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -2323,7 +2323,7 @@ class FileApi(ModuleApiBase):
         :type replace_if_conflict: bool, optional
         :param enable_fallback: If True, the method will fallback to synchronous upload if an error occurs.
         :type enable_fallback: bool, optional
-        :return: Path to Directory in Team Files
+        :returns: Path to Directory in Team Files
         :rtype: :class:`str`
 
         :Usage Example:
@@ -2418,7 +2418,7 @@ class FileApi(ModuleApiBase):
         :type replace_if_conflict: bool, optional
         :param enable_fallback: If True, the method will fallback to synchronous upload if an error occurs.
         :type enable_fallback: bool, optional
-        :return: Path to Directory in Team Files
+        :returns: Path to Directory in Team Files
         :rtype: :class:`str`
         """
         coroutine = self.upload_directory_async(
@@ -2462,7 +2462,7 @@ class FileApi(ModuleApiBase):
         :type progress_cb_type: Literal["number", "size"], optional
         :param enable_fallback: If True, the method will fallback to synchronous upload if an error occurs.
         :type enable_fallback: bool, optional
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
         """
         coroutine = self.upload_bulk_async(

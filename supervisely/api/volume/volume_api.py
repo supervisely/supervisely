@@ -205,7 +205,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         """
         Get list of all :class:`VolumeInfo<VolumeInfo>` field names.
 
-        :return: List of :class:`VolumeInfo<VolumeInfo>` field names.`
+        :returns: List of :class:`VolumeInfo<VolumeInfo>` field names.`
         :rtype: :class:`list`
         """
 
@@ -238,7 +238,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         """
         Get string name of :class:`VolumeInfo<VolumeInfo>` NamedTuple.
 
-        :return: NamedTuple name.
+        :returns: NamedTuple name.
         :rtype: :class:`str`
         """
 
@@ -268,7 +268,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :type sort: :class:`str`
         :param sort_order: Order in which to sort the list. The default is "asc". Valid values are "asc" (ascending) and "desc" (descending).
         :type sort_order: :class:`str`
-        :return: List of information about volumes in given dataset.
+        :returns: List of information about volumes in given dataset.
         :rtype: :class:`List[VolumeInfo]`
 
         :Usage Example:
@@ -312,7 +312,7 @@ class VolumeApi(RemoveableBulkModuleApi):
 
         :param id: Volume ID in Supervisely.
         :type id: int
-        :return: Information about Volume. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Volume. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`VolumeInfo`
 
         :Usage Example:
@@ -394,7 +394,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :type hash: str
         :param meta: A dictionary containing data associated with the volume.
         :type meta: dict
-        :return: Information about Volume. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Volume. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`VolumeInfo`
 
         :Usage Example:
@@ -492,7 +492,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :type progress_cb: tqdm or callable, optional
         :param metas: Volumes metadata.
         :type metas: List[dict], optional
-        :return: List with information about Volumes. See :class:`info_sequence<info_sequence>`
+        :returns: List with information about Volumes. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[VolumeInfo]`
 
         :Usage Example:
@@ -608,7 +608,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :type meta: dict, optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
-        :return: Information about Volume. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Volume. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`VolumeInfo`
 
         :Usage Example:
@@ -742,7 +742,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :type log_progress: bool, optional
         :param anonymize: Determine whether to hide PatientID and PatientName fields.
         :type anonymize: bool, optional
-        :return: Information about Volume. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Volume. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`VolumeInfo`
 
         :Usage Example:
@@ -794,7 +794,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :type items: list
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
-        :return: List of responses
+        :returns: List of responses
         :rtype: list
         """
 
@@ -826,7 +826,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :type path: str
         :param log_progress: Determine if additional technical logs are displaying.
         :type log_progress: bool, optional
-        :return: Information about Volume. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Volume. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`VolumeInfo`
 
         :Usage Example:
@@ -875,7 +875,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :type id: int
         :param stream: Define, if you'd like to get the raw socket response from the server.
         :type stream: bool, optional
-        :return: Response object
+        :returns: Response object
         :rtype: :class:`Response`
         """
 
@@ -894,7 +894,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :type path: str
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
-        :return: Information about Volume. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Volume. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`VolumeInfo`
 
         :Usage Example:
@@ -962,7 +962,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :type log_progress: bool
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
-        :return: Information about Volume. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Volume. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`VolumeInfo`
 
         :Usage Example:
@@ -1017,7 +1017,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :type window_center: float
         :param window_width: Window width.
         :type window_width: int
-        :return: Information about Volume. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Volume. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`VolumeInfo`
 
         :Usage Example:
@@ -1082,7 +1082,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :type dataset_id: int
         :param names: List of names to check.
         :type names: List[str]
-        :return: List of free names.
+        :returns: List of free names.
         :rtype: List[str]
         """
 
@@ -1108,7 +1108,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :type names: List[str]
         :param message: Error message.
         :type message: str, optional
-        :return: None
+        :returns: None
         :rtype: None
         """
         volumes_in_dataset = self.get_list(dataset_id)
@@ -1140,7 +1140,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :type log_progress: bool
         :param change_name_if_conflict: Determine if names are changing if conflict.
         :type change_name_if_conflict: bool, optional
-        :return: List with information about Volumes. See :class:`info_sequence<info_sequence>`
+        :returns: List with information about Volumes. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[VolumeInfo]`
 
         :Usage Example:
@@ -1228,7 +1228,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :type log_progress: bool
         :param change_name_if_conflict: Determine if names are changing if conflict.
         :type change_name_if_conflict: bool, optional
-        :return: List with information about Volumes. See :class:`info_sequence<info_sequence>`
+        :returns: List with information about Volumes. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[VolumeInfo]`
 
         :Usage Example:
@@ -1290,7 +1290,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :type headers: dict, optional
         :param chunk_size: Size of chunk for downloading. Default is 1MB.
         :type chunk_size: int, optional
-        :return: Stream of bytes or response object.
+        :returns: Stream of bytes or response object.
         :rtype: AsyncGenerator
         """
         api_method_name = "volumes.download"
@@ -1350,7 +1350,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :type progress_cb: tqdm or callable, optional
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
         :type progress_cb_type: str, optional
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -1442,7 +1442,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
         :type progress_cb_type: str, optional
         :raises: :class:`ValueError` if len(ids) != len(paths)
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -1494,7 +1494,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :type id: int
         :param name: New Volume name.
         :type name: str
-        :return: Information about updated Volume.
+        :returns: Information about updated Volume.
         :rtype: :class:`VolumeInfo`
 
         :Usage Example:

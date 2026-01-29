@@ -187,7 +187,7 @@ class UserSession:
         """
         Validate server url.
 
-        :return: True if server url is valid, False otherwise.
+        :returns: True if server url is valid, False otherwise.
         """
         self.server_address = Api.normalize_server_address(self.server_address)
         if not self.server_address.startswith("https://"):
@@ -212,7 +212,7 @@ class UserSession:
 
         :param decoded_token: Decoded token.
         :type decoded_token: dict
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
         """
         for key, value in decoded_token.items():
@@ -234,7 +234,7 @@ class UserSession:
         :type login: str
         :param password: User password.
         :type password: str
-        :return: UserSession object
+        :returns: UserSession object
         :rtype: :class:`UserSession`
         """
         login_url = urljoin(self.server_address, "api/account")
@@ -435,7 +435,7 @@ class Api:
         :param check_instance_version: Check if the given version is lower or equal to the current
             version of the Supervisely instance.
         :type check_instance_version: bool or str, optional
-        :return: Api object
+        :returns: Api object
         :rtype: :class:`Api<supervisely.api.api.Api>`
 
         :Usage Example:
@@ -498,7 +498,7 @@ class Api:
         :param value: New value.
         :type value: str
         :raises: :class:`RuntimeError`, if key is already set
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
         """
         if key in self.headers:
@@ -516,7 +516,7 @@ class Api:
         :type key: str
         :param value: New value.
         :type value: str
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
         """
         self.additional_fields[key] = value
@@ -526,7 +526,7 @@ class Api:
         """Return Supervisely instance version, e.g. "6.9.13".
         If the version cannot be determined, return "unknown".
 
-        :return: Supervisely instance version or "unknown" if the version cannot be determined.
+        :returns: Supervisely instance version or "unknown" if the version cannot be determined.
         :rtype: str
 
         :Usage Example:
@@ -559,7 +559,7 @@ class Api:
 
         :param version: Version to check.
         :type version: Optional[str], e.g. "6.9.13"
-        :return: True if the given version is lower or equal to the current Supervisely
+        :returns: True if the given version is lower or equal to the current Supervisely
             instance version, otherwise False.
         :rtype: bool
 
@@ -672,7 +672,7 @@ class Api:
         :type stream: bool, optional
         :param raise_error: Define, if you'd like to raise error if connection is failed. Retries will be ignored.
         :type raise_error: bool, optional
-        :return: Response object
+        :returns: Response object
         :rtype: :class:`Response<Response>`
         """
         if not self._skip_https_redirect_check:
@@ -759,7 +759,7 @@ class Api:
         :type use_public_api: bool, optional
         :param data: Dictionary to send in the body of the :class:`Request`.
         :type data: dict, optional
-        :return: Response object
+        :returns: Response object
         :rtype: :class:`Response<Response>`
         """
         if not self._skip_https_redirect_check:
@@ -900,7 +900,7 @@ class Api:
         :type method: str, optional
         :param default_message: Message to user.
         :type method: str, optional
-        :return: Number of error and message about curren connection mistake
+        :returns: Number of error and message about curren connection mistake
         :rtype: :class:`int`, :class:`str`
         """
         ERROR_FIELD = "error"
@@ -987,7 +987,7 @@ class Api:
         :param check_instance_version: Check if the given version is lower or equal to the current
             version of the Supervisely instance.
         :type check_instance_version: bool or str, optional
-        :return: Api object
+        :returns: Api object
 
         :Usage Example:
 
@@ -1041,7 +1041,7 @@ class Api:
         """
         Get API server address.
 
-        :return: API server address.
+        :returns: API server address.
         :rtype: :class:`str`
 
         :Usage Example:
@@ -1093,7 +1093,7 @@ class Api:
         :type raise_error: bool, optional
         :param timeout: Overall timeout for the request.
         :type timeout: float, optional
-        :return: Response object
+        :returns: Response object
         :rtype: :class:`httpx.Response`
         """
         self._set_client()
@@ -1177,7 +1177,7 @@ class Api:
         :type use_public_api: bool, optional
         :param timeout: Overall timeout for the request.
         :type timeout: float, optional
-        :return: Response object
+        :returns: Response object
         :rtype: :class:`Response<Response>`
         """
         self._set_client()
@@ -1270,7 +1270,7 @@ class Api:
         :type use_public_api: bool, optional
         :param timeout: Overall timeout for the request.
         :type timeout: float, optional
-        :return: Generator object.
+        :returns: Generator object.
         :rtype: :class:`Generator`
         """
         self._set_client()
@@ -1425,7 +1425,7 @@ class Api:
         :type raise_error: bool, optional
         :param timeout: Overall timeout for the request.
         :type timeout: float, optional
-        :return: Response object
+        :returns: Response object
         :rtype: :class:`httpx.Response`
         """
         self._set_async_client()
@@ -1526,7 +1526,7 @@ class Api:
         :type use_public_api: bool, optional
         :param timeout: Overall timeout for the request.
         :type timeout: float, optional
-        :return: Async generator object.
+        :returns: Async generator object.
         :rtype: :class:`AsyncGenerator`
         """
         self._set_async_client()
@@ -1670,7 +1670,7 @@ class Api:
         If the environment variable is not set, the default value will be set based on the server address.
         Depending on the server address, the semaphore size will be set to 10 for HTTPS and 5 for HTTP.
 
-        :return: Semaphore object.
+        :returns: Semaphore object.
         :rtype: :class:`asyncio.Semaphore`
         """
         if self._semaphore is None:
@@ -1726,7 +1726,7 @@ class Api:
         """
         Get the global API semaphore for async requests.
 
-        :return: Semaphore object.
+        :returns: Semaphore object.
         :rtype: :class:`asyncio.Semaphore`
         """
         return self._semaphore

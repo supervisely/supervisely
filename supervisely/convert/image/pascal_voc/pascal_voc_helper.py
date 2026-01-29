@@ -320,7 +320,7 @@ def sly_ann_to_pascal_voc(ann: Annotation, image_name: str) -> Tuple[dict]:
     :type ann: :class:`Annotation<supervisely.annotation.annotation.Annotation>`
     :param image_name: Image name.
     :type image_name: :class:`str`
-    :return: Tuple with xml tree and instance and class masks in PIL.Image format.
+    :returns: Tuple with xml tree and instance and class masks in PIL.Image format.
     :rtype: :class:`Tuple`
 
     :Usage Example:
@@ -440,7 +440,7 @@ def sly_ds_to_pascal_voc(
     :type log_progress: :class:`str`, optional
     :param progress_cb: Progress callback.
     :type progress_cb: :class:`Callable`, optional
-    :return: None
+    :returns: None
     :rtype: NoneType
 
     :Usage Example:
@@ -649,7 +649,7 @@ def sly_project_to_pascal_voc(
     :type log_progress: :class:`bool`
     :param progress_cb: Function for tracking conversion progress (for all items in the project).
     :type progress_cb: callable, optional
-    :return: None
+    :returns: None
     :rtype: NoneType
 
     :Usage Example:
@@ -725,7 +725,7 @@ def to_pascal_voc(
     :type log_progress: :class:`bool`
     :param progress_cb: Function for tracking conversion progress (for all items in the project).
     :type progress_cb: callable, optional
-    :return: None
+    :returns: None
     :rtype: NoneType
 
     :Usage Example:

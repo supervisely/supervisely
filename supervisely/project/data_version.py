@@ -138,7 +138,7 @@ class DataVersion(ModuleApiBase):
         :type project_id: int
         :param filters: Filters
         :type filters: Optional[List]
-        :return: List of project versions
+        :returns: List of project versions
         :rtype: List[VersionInfo]
         """
         data = {ApiField.PROJECT_ID: project_id}
@@ -155,7 +155,7 @@ class DataVersion(ModuleApiBase):
         :type project_id: int
         :param version_num: Version number
         :type version_num: int
-        :return: Version ID
+        :returns: Version ID
         :rtype: int or None
         """
         filter = [
@@ -178,7 +178,7 @@ class DataVersion(ModuleApiBase):
         :type project_info: Union[ProjectInfo, int]
         :param do_initialization: Initialize project versions. Set to False for internal use.
         :type do_initialization: bool
-        :return: Project versions
+        :returns: Project versions
         :rtype: dict
         """
         if do_initialization:
@@ -201,7 +201,7 @@ class DataVersion(ModuleApiBase):
         :type project_info: Union[ProjectInfo, int]
         :param initialize: Initialize project versions. Set to False for internal use.
         :type initialize: bool
-        :return: None
+        :returns: None
         """
 
         if initialize:
@@ -237,7 +237,7 @@ class DataVersion(ModuleApiBase):
         :type version_title: Optional[str]
         :param version_description: Version description
         :type version_description: Optional[str]
-        :return: Version ID
+        :returns: Version ID
         :rtype: int
         """
         if isinstance(project_info, int):
@@ -318,7 +318,7 @@ class DataVersion(ModuleApiBase):
         :type title: Optional[str]
         :param description: Version description
         :type description: Optional[str]
-        :return: None
+        :returns: None
         """
         body = {
             ApiField.ID: version_id,
@@ -346,7 +346,7 @@ class DataVersion(ModuleApiBase):
         :type project_id: int
         :param retries: Number of attempts to reserve version
         :type retries: int
-        :return: Version ID and commit token
+        :returns: Version ID and commit token
         :rtype: Tuple[int, str]
         """
         retry_delay = 2  # seconds
@@ -396,7 +396,7 @@ class DataVersion(ModuleApiBase):
         :type version_id: int
         :param commit_token: Commit token
         :type commit_token: str
-        :return: True if reservation was cancelled, False otherwise
+        :returns: True if reservation was cancelled, False otherwise
         """
         response = self._api.post(
             "projects.versions.cancel-reservation",
@@ -424,7 +424,7 @@ class DataVersion(ModuleApiBase):
         :type version_num: Optional[int]
         :param skip_missed_entities: Skip missed Images
         :type skip_missed_entities: bool, default False
-        :return: ProjectInfo object of the restored project
+        :returns: ProjectInfo object of the restored project
         :rtype: ProjectInfo or None
         """
         if version_id is None and version_num is None:
@@ -490,7 +490,7 @@ class DataVersion(ModuleApiBase):
 
         :param path: Path to the version file
         :type path: str
-        :return: Binary IO object with extracted file
+        :returns: Binary IO object with extracted file
         :rtype: io.BytesIO
         """
         temp_dir = tempfile.mkdtemp()
@@ -529,7 +529,7 @@ class DataVersion(ModuleApiBase):
         Generate a path for the new version archive where it will be saved in the Team Files.
         Archive format: {timestamp}.tar.zst
 
-        :return: Path for the new version archive
+        :returns: Path for the new version archive
         :rtype: str
         """
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
@@ -552,7 +552,7 @@ class DataVersion(ModuleApiBase):
 
         :param changes: Changes between current and previous version
         :type changes: bool
-        :return: File info
+        :returns: File info
         :rtype: dict
         """
         temp_dir = tempfile.mkdtemp()

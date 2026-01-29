@@ -113,7 +113,7 @@ class ImageRotator:
 
         :param point: PointLocation object.
         :type point: PointLocation
-        :return: PointLocation object
+        :returns: PointLocation object
         :rtype: :class:`PointLocation<supervisely.geometry.point_location.PointLocation>`
 
         :Usage Example:
@@ -152,7 +152,7 @@ class ImageRotator:
         :type img: np.ndarray
         :param use_inter_nearest: If True uses `cv2.INTER_NEAREST <https://docs.opencv.org/3.4/da/d54/group__imgproc__transform.html#gga5bb5a1fea74ea38e1a5445ca803ff121aa5521d8e080972c762467c45f3b70e6c>`_ parameter in rotation, otherwise don't.
         :type use_inter_nearest: bool
-        :return: Rotated image
+        :returns: Rotated image
         :rtype: :class:`np.ndarray`
 
         :Usage Example:

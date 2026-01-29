@@ -47,7 +47,7 @@ class VideoFigureApi(FigureApi):
         :type meta: dict, optional
         :param status: Labeling status. Specifies if the VideoFigure was created by NN model, manually or created by NN and then manually corrected.
         :type status: LabelingStatus, optional
-        :return: New figure ID
+        :returns: New figure ID
         :rtype: :class:`int`
 
         :Usage Example:
@@ -93,7 +93,7 @@ class VideoFigureApi(FigureApi):
         :type figures: List[VideoFigure]
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -180,7 +180,7 @@ class VideoFigureApi(FigureApi):
         :type video_ids: List[int], optional
         :param skip_geometry: Skip the download of figure geometry. May be useful for a significant api request speed increase in the large datasets.
         :type skip_geometry: bool
-        :return: A dictionary where keys are video IDs and values are lists of figures.
+        :returns: A dictionary where keys are video IDs and values are lists of figures.
         :rtype: :class: `Dict[int, List[FigureInfo]]`
         """
         if kwargs.get("image_ids", False) is not False:

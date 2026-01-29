@@ -117,7 +117,7 @@ class Polygon(VectorGeometry):
 
         :param data: Polygon in json format as a dict.
         :type data: dict
-        :return: Polygon object
+        :returns: Polygon object
         :rtype: :class:`Polygon<Polygon>`
 
         :Usage Example:
@@ -169,7 +169,7 @@ class Polygon(VectorGeometry):
 
         :param rect: Rectangle object for crop.
         :type rect: Rectangle
-        :return: List of Polygon objects
+        :returns: List of Polygon objects
         :rtype: :class:`List[Polygon]<Polygon>`
 
         :Usage Example:
@@ -248,7 +248,7 @@ class Polygon(VectorGeometry):
         """
         Polygon area.
 
-        :return: Area of current Polygon object.
+        :returns: Area of current Polygon object.
         :rtype: :class:`float`
 
         :Usage Example:
@@ -277,7 +277,7 @@ class Polygon(VectorGeometry):
 
         :param epsilon: Specifying the approximation accuracy.
         :type epsilon: float
-        :return: Polygon object
+        :returns: Polygon object
         :rtype: :class:`Polygon<Polygon>`
 
         :Usage Example:

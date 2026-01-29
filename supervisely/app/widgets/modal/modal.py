@@ -84,7 +84,7 @@ class Modal(Widget):
             - title: Modal title
             - size: Modal size, one of: tiny, small, large, full
 
-        :return: Dictionary with widget data
+        :returns: Dictionary with widget data
         :rtype: Dict[str, str]
         """
         return {
@@ -98,7 +98,7 @@ class Modal(Widget):
         Dictionary contains the following fields:
             - visible: Modal visibility
 
-        :return: Dictionary with widget state
+        :returns: Dictionary with widget state
         :rtype: Dict[str, bool]
         """
         return {
@@ -126,7 +126,7 @@ class Modal(Widget):
     def is_opened(self) -> bool:
         """Returns whether the modal is currently open.
 
-        :return: True if modal is visible, False otherwise
+        :returns: True if modal is visible, False otherwise
         :rtype: bool
         """
         return StateJson()[self.widget_id]["visible"]
@@ -164,7 +164,7 @@ class Modal(Widget):
     def title(self) -> str:
         """Returns modal title.
 
-        :return: Modal title
+        :returns: Modal title
         :rtype: str
         """
         return self._title
@@ -184,7 +184,7 @@ class Modal(Widget):
     def widgets(self) -> List[Widget]:
         """Returns list of widgets inside the modal.
 
-        :return: List of widgets
+        :returns: List of widgets
         :rtype: List[Widget]
         """
         return self._widgets

@@ -177,7 +177,7 @@ class PointcloudDataset(VideoDataset):
 
         :param item_name: Pointcloud name
         :type item_name: :class:`str`
-        :return: Path to the given pointcloud
+        :returns: Path to the given pointcloud
         :rtype: :class:`str`
         :raises: :class:`RuntimeError` if item not found in the project
 
@@ -204,7 +204,7 @@ class PointcloudDataset(VideoDataset):
 
         :param item_name: Pointcloud name.
         :type item_name: str
-        :return: Pointcloud with information for the given Dataset
+        :returns: Pointcloud with information for the given Dataset
         :rtype: :class:`NamedTuple`
 
         :Usage Example:
@@ -225,7 +225,7 @@ class PointcloudDataset(VideoDataset):
 
         :param item_name: PointcloudAnnotation name.
         :type item_name: str
-        :return: Path to the given annotation
+        :returns: Path to the given annotation
         :rtype: :class:`str`
         :raises: :class:`RuntimeError` if item not found in the project
 
@@ -252,7 +252,7 @@ class PointcloudDataset(VideoDataset):
 
         :param item_name: Item name.
         :type item_name: :class:`str`
-        :return: True if successful, otherwise False
+        :returns: True if successful, otherwise False
         :rtype: :class:`bool`
 
         :Usage Example:
@@ -302,7 +302,7 @@ class PointcloudDataset(VideoDataset):
         :type _use_hardlink: :class:`bool`, optional
         :param item_info: PointcloudInfo object or PointcloudInfo object converted to dict or path to item info json file for copying to dataset item info directory.
         :type item_info: :class:`PointcloudInfo<supervisely.api.pointcloud.pointcloud_api.PointcloudInfo>` or :class:`dict` or :class:`str`, optional
-        :return: None
+        :returns: None
         :rtype: NoneType
         :raises: :class:`RuntimeError` if item_name already exists in dataset or item name has unsupported extension.
 
@@ -347,7 +347,7 @@ class PointcloudDataset(VideoDataset):
         :type ann: PointcloudAnnotation or str, optional
         :param item_info: NamedTuple PointcloudItemInfo containing information about Pointcloud.
         :type item_info: NamedTuple, optional
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
         :raises: :class:`Exception` if item_name already exists in dataset or item name has unsupported extension
 
@@ -470,7 +470,7 @@ class PointcloudDataset(VideoDataset):
         :type project_meta: ProjectMeta
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
-        :return: PointcloudAnnotation object
+        :returns: PointcloudAnnotation object
         :rtype: :class:`PointcloudAnnotation<supervisely.PointcloudAnnotation>`
         :raises: :class:`RuntimeError` if item not found in the project
 
@@ -521,7 +521,7 @@ class PointcloudDataset(VideoDataset):
         :type item_name: str
         :param img_name: Related image name.
         :type img_name: str
-        :return: List of figures from related image.
+        :returns: List of figures from related image.
         :rtype: List[Dict]
         :raises: :class:`RuntimeError` if item not found in the project
         """
@@ -583,7 +583,7 @@ class PointcloudProject(VideoProject):
         """
         Project type.
 
-        :return: Project type.
+        :returns: Project type.
         :rtype: :class:`str`
 
         :Usage Example:
@@ -612,7 +612,7 @@ class PointcloudProject(VideoProject):
         :param val_count: Number of val items.
         :type val_count: int
         :raises: :class:`ValueError` if total_count != train_count + val_count
-        :return: Tuple with lists of train items information and val items information
+        :returns: Tuple with lists of train items information and val items information
         :rtype: :class:`Tuple[List[PointcloudItemInfo], List[PointcloudItemInfo]]`
 
         :Usage Example:
@@ -671,7 +671,7 @@ class PointcloudProject(VideoProject):
         :param untagged: Actions in case of absence of train_tag_name and val_tag_name in project.
         :type untagged: str, optional
         :raises: :class:`ValueError` if untagged not in ["ignore", "train", "val"]
-        :return: Tuple with lists of train items information and val items information
+        :returns: Tuple with lists of train items information and val items information
         :rtype: :class:`Tuple[List[PointcloudItemInfo], List[PointcloudItemInfo]]`
 
         :Usage Example:
@@ -734,7 +734,7 @@ class PointcloudProject(VideoProject):
         :param val_datasets: List of val datasets names.
         :type val_datasets: List[str]
         :raises: :class:`KeyError` if dataset name not found in project
-        :return: Tuple with lists of train items information and val items information
+        :returns: Tuple with lists of train items information and val items information
         :rtype: :class:`Tuple[List[PointcloudItemInfo], List[PointcloudItemInfo]]`
 
         :Usage Example:
@@ -826,7 +826,7 @@ class PointcloudProject(VideoProject):
         :type log_progress: bool
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
-        :return: None
+        :returns: None
         :rtype: NoneType
 
         :Usage Example:
@@ -889,7 +889,7 @@ class PointcloudProject(VideoProject):
         :type log_progress: bool
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
-        :return: Project ID and name. It is recommended to check that returned project name coincides with provided project name.
+        :returns: Project ID and name. It is recommended to check that returned project name coincides with provided project name.
         :rtype: int, str
 
         :Usage Example:
@@ -989,7 +989,7 @@ def download_pointcloud_project(
     :param progress_cb: Function for tracking download progress.
     :type progress_cb: tqdm or callable, optional
 
-    :return: None.
+    :returns: None.
     :rtype: NoneType
 
     :Usage Example:
@@ -999,6 +999,7 @@ def download_pointcloud_project(
             import os
             from tqdm import tqdm
             from dotenv import load_dotenv
+
             import supervisely as sly
 
             # Load secrets and create API object from .env file (recommended)

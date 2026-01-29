@@ -92,7 +92,7 @@ class Field(Widget):
                 If icon is image:
                     - imageUrl: URL of the icon image
 
-            :return: JSON representation of the icon
+            :returns: JSON representation of the icon
             :rtype: Dict[str, Any]
             """
             res = {}
@@ -146,7 +146,7 @@ class Field(Widget):
                 - color: RGB color of the icon
                 - bgColor: RGB color of the icon background
 
-        :return: Dictionary with widget data
+        :returns: Dictionary with widget data
         :rtype: Dict[str, Any]
         """
         res = {

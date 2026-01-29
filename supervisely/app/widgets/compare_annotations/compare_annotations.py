@@ -75,7 +75,7 @@ class CompareAnnotations(GridGallery):
     def image_url(self) -> str:
         """Returns url of the image to show.
 
-        :return: url of the image to show
+        :returns: url of the image to show
         :rtype: str
         """
         return self._image_url
@@ -108,7 +108,7 @@ class CompareAnnotations(GridGallery):
     def is_empty(self) -> bool:
         """Returns True if there is no image to show, False otherwise.
 
-        :return: True if there is no image to show, False otherwise
+        :returns: True if there is no image to show, False otherwise
         :rtype: bool
         """
         return self._image_url is None or self._image_url == ""

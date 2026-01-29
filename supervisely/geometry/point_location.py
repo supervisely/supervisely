@@ -44,7 +44,7 @@ class PointLocation(JsonSerializable):
         """
         Position of PointLocation on height.
 
-        :return: Height of PointLocation
+        :returns: Height of PointLocation
         :rtype: :class:`int`
 
         :Usage Example:
@@ -61,7 +61,7 @@ class PointLocation(JsonSerializable):
         """
         Position of PointLocation on width.
 
-        :return: Width of PointLocation
+        :returns: Width of PointLocation
         :rtype: :class:`int`
 
         :Usage Example:
@@ -77,7 +77,7 @@ class PointLocation(JsonSerializable):
         """
         Convert the PointLocation to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
-        :return: Json format as a dict
+        :returns: Json format as a dict
         :rtype: :class:`dict`
 
         :Usage Example:
@@ -108,7 +108,7 @@ class PointLocation(JsonSerializable):
 
         :param data: PointLocation in json format as a dict.
         :type data: dict
-        :return: PointLocation object
+        :returns: PointLocation object
         :rtype: :class:`PointLocation<PointLocation>`
 
         :Usage Example:
@@ -144,7 +144,7 @@ class PointLocation(JsonSerializable):
 
         :param factor: Scale parameter.
         :type factor: float
-        :return: PointLocation object
+        :returns: PointLocation object
         :rtype: :class:`PointLocation<PointLocation>`
 
         :Usage Example:
@@ -164,7 +164,7 @@ class PointLocation(JsonSerializable):
         :type frow: float
         :param fcol: Scale parameter for width.
         :type fcol: float
-        :return: PointLocation object
+        :returns: PointLocation object
         :rtype: :class:`PointLocation<PointLocation>`
 
         :Usage Example:
@@ -184,7 +184,7 @@ class PointLocation(JsonSerializable):
         :type drow: int
         :param dcol: Vertical shift.
         :type dcol: int
-        :return: PointLocation object
+        :returns: PointLocation object
         :rtype: :class:`PointLocation<PointLocation>`
 
         :Usage Example:
@@ -202,7 +202,7 @@ class PointLocation(JsonSerializable):
 
         :param rotator: ImageRotator object for rotation.
         :type rotator: ImageRotator
-        :return: PointLocation object
+        :returns: PointLocation object
         :rtype: :class:`PointLocation<PointLocation>`
 
         :Usage Example:
@@ -226,7 +226,7 @@ class PointLocation(JsonSerializable):
         :type in_size: Tuple[int, int]
         :param out_size: Desired output image size (height, width) to which belongs :class:`PointLocation<PointLocation>` object.
         :type out_size: Tuple[int, int]
-        :return: PointLocation object
+        :returns: PointLocation object
         :rtype: :class:`PointLocation<PointLocation>`
 
         :Usage Example:
@@ -249,7 +249,7 @@ class PointLocation(JsonSerializable):
 
         :param img_size: Input image size (height, width) to which belongs :class:`PointLocation<PointLocation>` object.
         :type img_size: Tuple[int, int]
-        :return: PointLocation object
+        :returns: PointLocation object
         :rtype: :class:`PointLocation<PointLocation>`
 
         :Usage Example:
@@ -268,7 +268,7 @@ class PointLocation(JsonSerializable):
 
         :param img_size: Input image size (height, width) to which belongs :class:`PointLocation<PointLocation>` object.
         :type img_size: Tuple[int, int]
-        :return: PointLocation object
+        :returns: PointLocation object
         :rtype: :class:`PointLocation<PointLocation>`
 
         :Usage Example:
@@ -285,7 +285,7 @@ class PointLocation(JsonSerializable):
         """
         Makes a copy of the PointLocation object.
 
-        :return: PointLocation object
+        :returns: PointLocation object
         :rtype: :class:`PointLocation<PointLocation>`
 
         :Usage Example:
@@ -322,7 +322,7 @@ def points_to_row_col_list(
     :type points: List[PointLocation]
     :param flip_row_col_order: Flips row col coords if True.
     :type flip_row_col_order: bool, optional
-    :return: List of coords
+    :returns: List of coords
     :rtype: :class:`list`
 
         :Usage Example:
@@ -356,7 +356,7 @@ def row_col_list_to_points(
     :type flip_row_col_order: bool, optional
     :param do_round: Round PointLocation params if True.
     :type do_round: bool, optional
-    :return: List of PointLocation objects
+    :returns: List of PointLocation objects
     :rtype: :class:`List[PointLocation]`
 
         :Usage Example:

@@ -168,7 +168,7 @@ class LabelBase:
     def _validate_geometry(self):
         """
         The function checks the name of the Object for compliance.
-        :return: generate ValueError error if name is mismatch
+        :returns: generate ValueError error if name is mismatch
         """
         self._geometry.validate(
             self._obj_class.geometry_type.geometry_name(),
@@ -183,7 +183,7 @@ class LabelBase:
         """
         ObjClass of the current Label.
 
-        :return: ObjClass object
+        :returns: ObjClass object
         :rtype: :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>`
 
         :Usage Example:
@@ -210,7 +210,7 @@ class LabelBase:
         """
         Description of the current Label.
 
-        :return: Description
+        :returns: Description
         :rtype: :class:`str`
 
         :Usage Example:
@@ -230,7 +230,7 @@ class LabelBase:
         """
         Geometry of the current Label.
 
-        :return: Geometry object
+        :returns: Geometry object
         :rtype: :class:`Geometry<supervisely.geometry>`
 
         :Usage Example:
@@ -265,7 +265,7 @@ class LabelBase:
         """
         TagCollection of the current Label.
 
-        :return: TagCollection object
+        :returns: TagCollection object
         :rtype: :class:`TagCollection<supervisely.annotation.tag.TagCollection>`
 
         :Usage Example:
@@ -293,7 +293,7 @@ class LabelBase:
         """
         Convert the Label to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
-        :return: Json format as a dict
+        :returns: Json format as a dict
         :rtype: :class:`dict`
 
         :Usage Example:
@@ -362,7 +362,7 @@ class LabelBase:
         :type data: dict
         :param project_meta: Input ProjectMeta.
         :type project_meta: ProjectMeta
-        :return: Label object
+        :returns: Label object
         :rtype: :class:`Label<LabelBase>`
 
         :Usage Example:
@@ -434,7 +434,7 @@ class LabelBase:
         """Returns the unique identifier of the Label on Supervisely platform.
         NOTE: This can be None, when working with local project.
 
-        :return: Label unique identifier.
+        :returns: Label unique identifier.
         :rtype: :class:`int` or :class:`NoneType`
         """
         return self._sly_id
@@ -445,7 +445,7 @@ class LabelBase:
 
         :param tag: Tag to be added.
         :type tag: Tag
-        :return: Label object
+        :returns: Label object
         :rtype: :class:`Label<LabelBase>`
 
         :Usage Example:
@@ -474,7 +474,7 @@ class LabelBase:
 
         :param tags: List of Tags to be added.
         :type tags: List[Tag]
-        :return: Label object
+        :returns: Label object
         :rtype: :class:`Label<LabelBase>`
 
         :Usage Example:
@@ -529,7 +529,7 @@ class LabelBase:
         :type smart_tool_input: dict, optional
         :param status: Sets labeling status. Specifies if the label was created by NN model, manually or created by NN and then manually corrected.
         :type status: LabelingStatus, optional
-        :return: New instance of Label
+        :returns: New instance of Label
         :rtype: :class:`Label<LabelBase>`
 
         :Usage Example:
@@ -583,7 +583,7 @@ class LabelBase:
 
         :param rect: Rectangle object.
         :type rect: Rectangle
-        :return: List of Labels with new geometries
+        :returns: List of Labels with new geometries
         :rtype: :class:`List[Label]<LabelBase>`
         """
         if rect.contains(self.geometry.to_bbox()):
@@ -604,7 +604,7 @@ class LabelBase:
 
         :param rect: Rectangle object.
         :type rect: Rectangle
-        :return: List of Labels with new geometries
+        :returns: List of Labels with new geometries
         :rtype: :class:`List[Label]<LabelBase>`
         """
         return [self.clone(geometry=g) for g in self.geometry.relative_crop(rect)]
@@ -615,7 +615,7 @@ class LabelBase:
 
         :param rotator: ImageRotator object.
         :type rotator: ImageRotator
-        :return: New instance of Label with rotated geometry
+        :returns: New instance of Label with rotated geometry
         :rtype: :class:`Label<LabelBase>`
         """
         return self.clone(geometry=self.geometry.rotate(rotator))
@@ -628,7 +628,7 @@ class LabelBase:
         :type in_size: Tuple[int, int]
         :param out_size: Desired output image size (height, width) of the Annotation to which Label belongs.
         :type out_size: Tuple[int, int]
-        :return: New instance of Label with resized geometry
+        :returns: New instance of Label with resized geometry
         :rtype: :class:`Label<LabelBase>`
         """
         return self.clone(geometry=self.geometry.resize(in_size, out_size))
@@ -639,7 +639,7 @@ class LabelBase:
 
         :param factor: Scale factor.
         :type factor: float
-        :return: New instance of Label with scaled geometry
+        :returns: New instance of Label with scaled geometry
         :rtype: :class:`Label<LabelBase>`
         """
         return self.clone(geometry=self.geometry.scale(factor))
@@ -652,7 +652,7 @@ class LabelBase:
         :type drow: int
         :param dcol: Vertical shift.
         :type dcol: int
-        :return: New instance of Label with translated geometry
+        :returns: New instance of Label with translated geometry
         :rtype: :class:`Label<LabelBase>`
 
         :Usage Example:
@@ -699,7 +699,7 @@ class LabelBase:
 
         :param img_size: Input image size (height, width) of the Annotation to which Label belongs.
         :type img_size: Tuple[int, int]
-        :return: New instance of Label with flipped geometry
+        :returns: New instance of Label with flipped geometry
         :rtype: :class:`Label<LabelBase>`
         """
         return self.clone(geometry=self.geometry.fliplr(img_size))
@@ -710,7 +710,7 @@ class LabelBase:
 
         :param img_size: Input image size (height, width) of the Annotation to which Label belongs.
         :type img_size: Tuple[int, int]
-        :return: New instance of Label with flipped geometry
+        :returns: New instance of Label with flipped geometry
         :rtype: :class:`Label<LabelBase>`
         """
         return self.clone(geometry=self.geometry.flipud(img_size))
@@ -718,7 +718,7 @@ class LabelBase:
     def _get_font(self, img_size):
         """
         The function get size of font for image with given size
-        :return: font for drawing
+        :returns: font for drawing
         """
         return sly_font.get_font(font_size=sly_font.get_readable_font_size(img_size))
 
@@ -772,7 +772,7 @@ class LabelBase:
         :param class_name_font: Font of class name to be drawn, uses `FreeTypeFont <https://pillow.readthedocs.io/en/stable/reference/ImageFont.html#PIL.ImageFont.FreeTypeFont>`_ from `PIL <https://pillow.readthedocs.io/en/stable/index.html>`_.
         :type class_name_font: FreeTypeFont, optional
 
-        :return: :class:`None<None>`
+        :returns: :class:`None<None>`
         :rtype: :class:`NoneType<NoneType>`
         """
         effective_color = take_with_default(color, self.obj_class.color)
@@ -797,7 +797,7 @@ class LabelBase:
 
         :param img_size: size of the image (height, width)
         :type img_size: Tuple[int, int]
-        :return: 2D boolean mask of the Label
+        :returns: 2D boolean mask of the Label
         :rtype: np.ndarray
         """
         bitmap = np.zeros(img_size + (3,), dtype=np.uint8)
@@ -832,7 +832,7 @@ class LabelBase:
         :param class_name_font: Font of class name to be drawn, uses `FreeTypeFont <https://pillow.readthedocs.io/en/stable/reference/ImageFont.html#PIL.ImageFont.FreeTypeFont>`_ from `PIL <https://pillow.readthedocs.io/en/stable/index.html>`_.
         :type class_name_font: FreeTypeFont, optional
 
-        :return: :class:`None<None>`
+        :returns: :class:`None<None>`
         :rtype: :class:`NoneType<NoneType>`
         """
         effective_color = take_with_default(color, self.obj_class.color)
@@ -853,7 +853,7 @@ class LabelBase:
         """
         Label area.
 
-        :return: Area of current geometry in Label.
+        :returns: Area of current geometry in Label.
         :rtype: :class:`float`
 
         :Usage Example:
@@ -878,7 +878,7 @@ class LabelBase:
 
         :param new_obj_class: ObjClass with new geometry shape.
         :type new_obj_class: ObjClass
-        :return: List of Labels with converted geometries
+        :returns: List of Labels with converted geometries
         :rtype: :class:`List[Label]<LabelBase>`
 
         :Usage Example:
@@ -969,7 +969,7 @@ class LabelBase:
         :type data: :class:`dict`
         :param image_size: Image size in pixels (height, width).
         :type image_size: List[int]
-        :return: Json data with coordinates converted to pixel coordinate system.
+        :returns: Json data with coordinates converted to pixel coordinate system.
         :rtype: :class:`dict`
         """
         data = deepcopy(data)  # Avoid modifying the original data
@@ -990,7 +990,7 @@ class LabelBase:
 
         :param data: Label in json format.
         :type data: :class:`dict`
-        :return: Json data with coordinates converted to subpixel coordinate system.
+        :returns: Json data with coordinates converted to subpixel coordinate system.
         :rtype: :class:`dict`
         """
         data = deepcopy(data)  # Avoid modifying the original data
@@ -1008,7 +1008,7 @@ class LabelBase:
     #     which means that the coordinates of the geometry can have decimal values representing fractions of a pixel.
     #     However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
 
-    #     :return: New instance of Label with subpixel precision geometry
+    #     :returns: New instance of Label with subpixel precision geometry
     #     :rtype: :class:`Label<LabelBase>`
     #     """
     #     new_geometry = self.geometry._to_subpixel_coordinate_system()

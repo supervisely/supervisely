@@ -92,7 +92,7 @@ class BindedInputNumber(Widget):
     def value(self) -> Tuple[int, int]:
         """Returns the width and height of the image.
 
-        :return: Tuple with the width and height of the image.
+        :returns: Tuple with the width and height of the image.
         :rtype: Tuple[int, int]
         """
         return self._width, self._height
@@ -115,7 +115,7 @@ class BindedInputNumber(Widget):
     def get_value(self) -> Tuple[int, int]:
         """Returns the width and height of the image.
 
-        :return: Tuple with the width and height of the image.
+        :returns: Tuple with the width and height of the image.
         :rtype: Tuple[int, int]
         """
         width = StateJson()[self.widget_id]["value"]["width"]

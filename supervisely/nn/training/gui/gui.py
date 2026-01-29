@@ -76,7 +76,7 @@ class StepFlow:
         :param validation_text: Widget for displaying validation text (optional)
         :param validation_func: Validation function (optional)
         :param position: Step position in the sequence (starting from 0)
-        :return: Current StepFlow object for method chaining
+        :returns: Current StepFlow object for method chaining
         """
         self.steps[name] = {
             "card": card,
@@ -105,7 +105,7 @@ class StepFlow:
 
         :param step_name: Current step name
         :param next_steps: List of names of the next steps
-        :return: Current StepFlow object for method chaining
+        :returns: Current StepFlow object for method chaining
         """
         if step_name in self.steps:
             self.steps[step_name]["next_steps"] = next_steps
@@ -120,7 +120,7 @@ class StepFlow:
         :param step_name: Step name
         :param actions: List of functions to execute
         :param is_reselect: True if these are actions for reselection, otherwise False
-        :return: Current StepFlow object for method chaining
+        :returns: Current StepFlow object for method chaining
         """
         if step_name in self.steps:
             key = "on_reselect_click" if is_reselect else "on_select_click"
@@ -131,7 +131,7 @@ class StepFlow:
         """
         Creates wrappers for all steps based on established dependencies.
 
-        :return: Dictionary with created wrappers by step name
+        :returns: Dictionary with created wrappers by step name
         """
         valid_sequence = [s for s in self.step_sequence if s is not None and s in self.steps]
 
@@ -208,7 +208,7 @@ class StepFlow:
         """
         Performs the complete setup of the step system.
 
-        :return: Dictionary with created wrappers by step name
+        :returns: Dictionary with created wrappers by step name
         """
         wrappers = self.build_wrappers()
         self.setup_button_handlers()

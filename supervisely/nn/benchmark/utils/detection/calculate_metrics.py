@@ -51,7 +51,7 @@ def calculate_metrics(
     :type iouType: Literal["bbox", "segm"]
     :param progress_cb: Progress callback
     :type progress_cb: Optional[Callable]
-    :return: Results of the evaluation
+    :returns: Results of the evaluation
     :rtype: dict
     """
     if not pycocotools_installed:

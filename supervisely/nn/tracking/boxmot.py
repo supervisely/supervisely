@@ -54,7 +54,7 @@ def to_boxes(ann: Annotation, class_names: List[str]) -> np.ndarray:
     :type ann: Annotation
     :param class_names: model class names
     :type class_names: List[str]
-    :return: detections array N x (x, y, x, y, conf, label)
+    :returns: detections array N x (x, y, x, y, conf, label)
     :rtype: np.ndarray
     """
     # convert ann to N x (x, y, x, y, conf, cls) np.array

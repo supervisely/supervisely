@@ -1027,7 +1027,7 @@ class ModuleApiBase(_JsonConvertibleModule):
         :type method: str
         :param data: Data to pass to the API method.
         :type data: dict
-        :return: List of items.
+        :returns: List of items.
         :rtype: Tuple[int, List[NamedTuple]]
         """
 
@@ -1060,7 +1060,7 @@ class ModuleApiBase(_JsonConvertibleModule):
         :type pages_count: int, optional
         :param semaphore: Semaphore for limiting the number of simultaneous requests.
         :type semaphore: :class:`asyncio.Semaphore`, optional
-        :return: List of images in dataset.
+        :returns: List of images in dataset.
         :rtype: AsyncGenerator[List[ImageInfo]]
 
         :Usage Example:
@@ -1217,7 +1217,7 @@ class ModuleApi(ModuleApiBase):
         :type parent_id: int
         :param name: Name of the entity.
         :type name: str
-        :return: Returns True if entity exists, and False if not
+        :returns: Returns True if entity exists, and False if not
         :rtype: bool
 
         :Usage Example:
@@ -1254,7 +1254,7 @@ class ModuleApi(ModuleApiBase):
         :type parent_id: int
         :param name: Name of the entity.
         :type name: str
-        :return: Returns free name.
+        :returns: Returns free name.
         :rtype: str
 
         :Usage Example:
@@ -1357,7 +1357,7 @@ class CloneableModuleApi(ModuleApi):
         :type dst_workspace_id: int
         :param dst_name: Name of the cloned entity.
         :type dst_name: str
-        :return: Returns the ID of the task that is created to perform the cloning operation.
+        :returns: Returns the ID of the task that is created to perform the cloning operation.
         :rtype: int
 
         :Usage Example:
@@ -1407,7 +1407,7 @@ class CloneableModuleApi(ModuleApi):
         :type dst_workspace_id: int
         :param dst_name: Name of the cloned entity.
         :type dst_name: str
-        :return: Returns the ID of the task that is created to perform the cloning operation.
+        :returns: Returns the ID of the task that is created to perform the cloning operation.
         :rtype: int
         """
         return self._clone({ApiField.SHARED_LINK: shared_link}, dst_workspace_id, dst_name)
@@ -1422,7 +1422,7 @@ class CloneableModuleApi(ModuleApi):
         :type dst_workspace_id: int
         :param dst_name: Name of the cloned entity.
         :type dst_name: str
-        :return: Returns the ID of the task that is created to perform the cloning operation.
+        :returns: Returns the ID of the task that is created to perform the cloning operation.
         :rtype: int
         """
         return self._clone({ApiField.EXPLORE_PATH: explore_path}, dst_workspace_id, dst_name)

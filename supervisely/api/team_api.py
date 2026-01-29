@@ -220,7 +220,7 @@ class TeamApi(ModuleNoParent, UpdateableModule):
 
         :param filters: List of params to sort output Teams.
         :type filters: list, optional
-        :return: List of all Teams with information. See :class:`info_sequence<info_sequence>`
+        :returns: List of all Teams with information. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[TeamInfo]`
 
         :Usage Example:
@@ -281,7 +281,7 @@ class TeamApi(ModuleNoParent, UpdateableModule):
 
         :param id: Team ID in Supervisely.
         :type id: int
-        :return: Information about Team. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Team. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`TeamInfo`
 
         :Usage Example:
@@ -337,7 +337,7 @@ class TeamApi(ModuleNoParent, UpdateableModule):
         :type description: str
         :param change_name_if_conflict: Checks if given name already exists and adds suffix to the end of the name.
         :type change_name_if_conflict: bool, optional
-        :return: Information about Team. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Team. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`TeamInfo`
 
         :Usage Example:
@@ -410,7 +410,7 @@ class TeamApi(ModuleNoParent, UpdateableModule):
         :type labeler_id: int, optional
         :param review_status: Review status by which the activity will be filtered.
         :type review_status: str, optional, one of ['done', 'accepted', 'rejected']
-        :return: Team activity
+        :returns: Team activity
         :rtype: :class:`List[dict]`
 
         :Usage Example:

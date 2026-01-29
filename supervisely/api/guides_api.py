@@ -131,7 +131,7 @@ class GuidesApi(ModuleApiBase):
         :type team_id: int
         :param filters: List of parameters to filter Guides.
         :type filters: List[Dict[str, str]], optional
-        :return: List of information about Guides.
+        :returns: List of information about Guides.
         :rtype: :class:`List[GuideInfo]`
 
         :Usage Example:
@@ -180,7 +180,7 @@ class GuidesApi(ModuleApiBase):
 
         :param id: Guide ID in Supervisely.
         :type id: int
-        :return: Information about Guide.
+        :returns: Information about Guide.
         :rtype: :class:`GuideInfo`
 
         :Usage Example:

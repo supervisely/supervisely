@@ -185,7 +185,7 @@ class VideoInfo(NamedTuple):
         """
         Duration of the video in seconds.
 
-        :return: Duration of the video in seconds.
+        :returns: Duration of the video in seconds.
         :rtype: :class:`float`
         """
 
@@ -197,7 +197,7 @@ class VideoInfo(NamedTuple):
         """
         Duration of the video in "HH:MM:SS.nnn" format.
 
-        :return: Duration of the video in "HH:MM:SS.nnn" format.
+        :returns: Duration of the video in "HH:MM:SS.nnn" format.
         :rtype: :class:`str`
         """
 
@@ -208,7 +208,7 @@ class VideoInfo(NamedTuple):
         """
         String representation of the number of frames in the video. Used for converting large numbers into readable strings.
 
-        :return: Number of frames in the video represented in string format.
+        :returns: Number of frames in the video represented in string format.
         :rtype: :class:`str`
         """
 
@@ -219,7 +219,7 @@ class VideoInfo(NamedTuple):
         """
         URL to an image preview of the video.
 
-        :return: URL to an image preview of the video.
+        :returns: URL to an image preview of the video.
         :rtype: :class:`str`
         """
 
@@ -272,7 +272,7 @@ class VideoApi(RemoveableBulkModuleApi):
         """
         Get list of all :class:`VideoInfo<VideoInfo>` field names.
 
-        :return: List of :class:`VideoInfo<VideoInfo>` field names.`
+        :returns: List of :class:`VideoInfo<VideoInfo>` field names.`
         :rtype: :class:`list`
         """
 
@@ -304,7 +304,7 @@ class VideoApi(RemoveableBulkModuleApi):
         """
         Get string name of :class:`VideoInfo<VideoInfo>` NamedTuple.
 
-        :return: NamedTuple name.
+        :returns: NamedTuple name.
         :rtype: :class:`str`
         """
 
@@ -320,7 +320,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type video_id: :class:`int`
         :param video_frame: Video frame index.
         :type video_frame: :class:`int`, optional
-        :return: Url of the video by dataset_id and video_id.
+        :returns: Url of the video by dataset_id and video_id.
         :rtype: :class:`str`
         """
 
@@ -363,7 +363,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type fields: List[str], optional
         :param force_metadata_for_links: Specify whether to force retrieving video metadata from the server.
         :type force_metadata_for_links: Optional[bool]
-        :return: List of information about videos in given dataset.
+        :returns: List of information about videos in given dataset.
         :rtype: :class:`List[VideoInfo]`
 
         :Usage Example:
@@ -445,7 +445,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type raise_error: bool
         :param force_metadata_for_links: Specify whether to force retrieving video metadata from the server.
         :type force_metadata_for_links: bool
-        :return: Information about Video. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Video. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`VideoInfo`
 
         :Usage Example:
@@ -525,7 +525,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type progress_cb: Optional[Union[tqdm, Callable]]
         :param force_metadata_for_links: Specify whether to force retrieving video metadata from the server.
         :type force_metadata_for_links: bool
-        :return: List of information about Videos. See :class:`info_sequence<info_sequence>`.
+        :returns: List of information about Videos. See :class:`info_sequence<info_sequence>`.
         :rtype: List[VideoInfo]
 
         :Usage Example:
@@ -602,7 +602,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type raise_error: bool
         :param force_metadata_for_links: Specify whether to force retrieving video metadata from the server.
         :type force_metadata_for_links: bool
-        :return: Information about Video. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Video. See :class:`info_sequence<info_sequence>`
         :rtype: dict
 
         :Usage Example:
@@ -687,7 +687,7 @@ class VideoApi(RemoveableBulkModuleApi):
 
         :param id: Video ID in Supervisely.
         :type id: int
-        :return: Project ID and dataset ID
+        :returns: Project ID and dataset ID
         :rtype: :class:`Tuple[int, int]`
 
         :Usage Example:
@@ -727,7 +727,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type stream_index: int, optional
         :param metadata: Video metadata.
         :type metadata: dict, optional
-        :return: Information about Video. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Video. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`VideoInfo`
 
         :Usage Example:
@@ -822,7 +822,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type metas: List[dict], optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
-        :return: List with information about Videos. See :class:`info_sequence<info_sequence>`
+        :returns: List with information about Videos. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[VideoInfo]`
 
         :Usage Example:
@@ -894,7 +894,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type id: int
         :param meta: Video metadata.
         :type meta: Optional[Dict]
-        :return: Information about Video. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Video. See :class:`info_sequence<info_sequence>`
         :rtype: VideoInfo
 
         :Usage Example:
@@ -940,7 +940,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type progress_cb: Optional[Union[tqdm, Callable]]
         :param infos: Videos information.
         :type infos: Optional[List[VideoInfo]]
-        :return: List with information about Videos. See :class:`info_sequence<info_sequence>`
+        :returns: List with information about Videos. See :class:`info_sequence<info_sequence>`
         :rtype: List[VideoInfo]
 
         :Usage Example:
@@ -1045,7 +1045,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type progress_cb: tqdm or callable, optional
         :raises: :class:`TypeError` if type of ids is not list
         :raises: :class:`ValueError` if videos ids are from the destination Dataset
-        :return: List with information about Videos. See :class:`info_sequence<info_sequence>`
+        :returns: List with information about Videos. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[VideoInfo]`
 
         :Usage Example:
@@ -1165,7 +1165,7 @@ class VideoApi(RemoveableBulkModuleApi):
 
         :param id: int
         :param is_stream: bool
-        :return: Response object containing video with given id
+        :returns: Response object containing video with given id
         """
 
         response = self._api.post("videos.download", {ApiField.ID: id}, stream=is_stream)
@@ -1183,7 +1183,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type path: str
         :param progress_cb: Function to check progress.
         :type progress_cb: tqdm or callable, optional
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -1267,7 +1267,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type frame_end: int
         :param is_stream: Use stream for video download or not.
         :type is_stream: bool, optional
-        :return: Response object
+        :returns: Response object
         :rtype: :class:`Response`
 
         :Usage Example:
@@ -1309,7 +1309,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type frame_end: int
         :param is_stream: Use stream for video download or not.
         :type is_stream: bool, optional
-        :return: Response object
+        :returns: Response object
         :rtype: :class:`Response`
 
         :Usage Example:
@@ -1353,7 +1353,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type frame_end: int
         :param save_path: Path to save video.
         :type save_path: str
-        :return: Full path to saved video
+        :returns: Full path to saved video
         :rtype: :class:`str`
 
         :Usage Example:
@@ -1401,7 +1401,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :param frame_end: int
         :param current: int
         :param total: int
-        :return: str
+        :returns: str
         """
 
         response = self._api.post(
@@ -1428,7 +1428,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :param track_id: int
         :param error: str
         :param message: str
-        :return: None
+        :returns: None
         """
 
         self._api.post(
@@ -1470,7 +1470,7 @@ class VideoApi(RemoveableBulkModuleApi):
 
         :param hashes: List of hashes.
         :type hashes: List[str]
-        :return: List of existing hashes
+        :returns: List of existing hashes
         :rtype: :class:`List[str]`
 
         :Usage Example:
@@ -1542,7 +1542,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type infos:
         :param item_progress:
         :type item_progress:
-        :return: List with information about Videos. See :class:`info_sequence<info_sequence>`
+        :returns: List with information about Videos. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[VideoInfo]`
 
         :Usage Example:
@@ -1677,7 +1677,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type meta: dict, optional
         :param item_progress:
         :type item_progress:
-        :return: List with information about Videos. See :class:`info_sequence<info_sequence>`
+        :returns: List with information about Videos. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`VideoInfo`
 
         :Usage Example:
@@ -1845,7 +1845,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type hash: str
         :param info: Uploading info.
         :type info: dict
-        :return: Return updating result
+        :returns: Return updating result
         :rtype: dict
 
         :Usage Example:
@@ -1881,7 +1881,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type hashes: str
         :param infos: Uploading info.
         :type infos: dict
-        :return: Return updating result
+        :returns: Return updating result
         :rtype: dict
 
         :Usage Example:
@@ -1956,7 +1956,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type progress_cb: tqdm or callable, optional
         :param force_metadata_for_links: Specify whether to force retrieving videos metadata from the server after upload
         :type force_metadata_for_links: Optional[bool]
-        :return: List with information about Videos. See :class:`info_sequence<info_sequence>`
+        :returns: List with information about Videos. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[VideoInfo]`
 
         :Usage Example:
@@ -2011,7 +2011,7 @@ class VideoApi(RemoveableBulkModuleApi):
             data in label tools. In case changing the metadata is necessary,
             make sure to include an "streams" field with its value in the request body.
         :type metas: dict
-        :return: Return updating result
+        :returns: Return updating result
         :rtype: dict
 
         :Usage Example:
@@ -2070,7 +2070,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type skip_download: Optional[bool]
         :param force_metadata_for_links: Specify whether to force retrieving video metadata from the server after upload
         :type force_metadata_for_links: Optional[bool]
-        :return: List with information about Video. See :class:`info_sequence<info_sequence>`
+        :returns: List with information about Video. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[VideoInfo]`
 
          .. code-block:: python
@@ -2181,7 +2181,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type video_info: VideoInfo
         :param name: Video name.
         :type name: str
-        :return: Information about Video. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Video. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`VideoInfo`
 
          .. code-block:: python
@@ -2276,7 +2276,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type ids: List[int]
         :param progress_cb: Function for tracking progress of removing.
         :type progress_cb: tqdm or callable, optional
-        :return: :class:`None<None>`
+        :returns: :class:`None<None>`
         :rtype: :class:`NoneType<NoneType>`
 
         :Usage Example:
@@ -2302,7 +2302,7 @@ class VideoApi(RemoveableBulkModuleApi):
 
         :param video_id: Videos ID in Supervisely.
         :type video_id: int
-        :return: :class:`None<None>`
+        :returns: :class:`None<None>`
         :rtype: :class:`NoneType<NoneType>`
 
         :Usage Example:
@@ -2330,7 +2330,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type dataset_id: int
         :param names: List of names to check.
         :type names: List[str]
-        :return: List of free names.
+        :returns: List of free names.
         :rtype: List[str]
         """
 
@@ -2357,7 +2357,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type names: List[str]
         :param message: Error message.
         :type message: str, optional
-        :return: None
+        :returns: None
         :rtype: None
         """
         videos_in_dataset = self.get_list(dataset_id, force_metadata_for_links=False)
@@ -2390,7 +2390,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type change_name_if_conflict: bool, optional
         :param progress_cb: Function for tracking upload progress.
         :type progress_cb: Optional[Union[tqdm, Callable]]
-        :return: List of uploaded videos infos
+        :returns: List of uploaded videos infos
         :rtype: List[VideoInfo]
         """
 
@@ -2429,7 +2429,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type change_name_if_conflict: bool, optional
         :param progress_cb: Function for tracking upload progress.
         :type progress_cb: Optional[Union[tqdm, Callable]]
-        :return: List of uploaded videos infos
+        :returns: List of uploaded videos infos
         :rtype: List[VideoInfo]
         """
 
@@ -2453,7 +2453,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type videos: List[int]
         :param links: List of new remote links.
         :type links: List[str]
-        :return: json-encoded content of a response.
+        :returns: json-encoded content of a response.
 
         :Usage Example:
 
@@ -2510,7 +2510,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type headers: dict, optional
         :param chunk_size: Size of chunk for partial download. Default is 1MB.
         :type chunk_size: int, optional
-        :return: Stream of bytes or response object.
+        :returns: Stream of bytes or response object.
         :rtype: AsyncGenerator
         """
         api_method_name = "videos.download"
@@ -2570,7 +2570,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type progress_cb: Optional[Union[tqdm, Callable]]
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
         :type progress_cb_type: Literal["number", "size"], optional
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -2661,7 +2661,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
         :type progress_cb_type: Literal["number", "size"], optional
         :raises: :class:`ValueError` if len(ids) != len(paths)
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -2713,7 +2713,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type id: int
         :param name: New Video name.
         :type name: str
-        :return: Information about updated Video.
+        :returns: Information about updated Video.
         :rtype: :class:`VideoInfo`
 
         :Usage Example:

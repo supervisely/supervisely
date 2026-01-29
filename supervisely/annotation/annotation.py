@@ -174,7 +174,7 @@ class Annotation:
         """
         Size of the image (height, width).
 
-        :return: Image size
+        :returns: Image size
         :rtype: :class:`Tuple[int, int]`
 
         :Usage Example:
@@ -193,7 +193,7 @@ class Annotation:
         """
         Id of the image.
 
-        :return: Image id
+        :returns: Image id
         :rtype: :class:`int`
 
         :Usage Example:
@@ -213,7 +213,7 @@ class Annotation:
         """
         Labels on annotation.
 
-        :return: Copy of list with image labels
+        :returns: Copy of list with image labels
         :rtype: :class:`List[Label]<supervisely.annotation.label.Label>`
 
         :Usage Example:
@@ -257,7 +257,7 @@ class Annotation:
         """
         Image description.
 
-        :return: Image description
+        :returns: Image description
         :rtype: :class:`str`
 
         :Usage Example:
@@ -275,7 +275,7 @@ class Annotation:
         """
         Image tags.
 
-        :return: TagCollection object
+        :returns: TagCollection object
         :rtype: :class:`TagCollection<supervisely.annotation.tag_collection.TagCollection>`
 
         :Usage Example:
@@ -303,7 +303,7 @@ class Annotation:
         """
         Convert the Annotation to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
-        :return: Json format as a dict
+        :returns: Json format as a dict
         :rtype: :class:`dict`
 
         :Usage Example:
@@ -376,7 +376,7 @@ class Annotation:
         :type data: dict
         :param project_meta: Input :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`.
         :type project_meta: ProjectMeta
-        :return: Annotation object
+        :returns: Annotation object
         :rtype: :class:`Annotation<Annotation>`
         :raises: :class:`Exception`
 
@@ -453,7 +453,7 @@ class Annotation:
         :type path: str
         :param project_meta: Input ProjectMeta object.
         :type project_meta: ProjectMeta
-        :return: Annotation object
+        :returns: Annotation object
         :rtype: :class:`Annotation<Annotation>`
 
         :Usage Example:
@@ -512,7 +512,7 @@ class Annotation:
         :param image_id: Id of the image.
         :type image_id: int, optional
 
-        :return: New instance of Annotation
+        :returns: New instance of Annotation
         :rtype: :class:`Annotation<Annotation>`
 
         :Usage Example:
@@ -556,7 +556,7 @@ class Annotation:
         The function _add_labels_impl extend list of the labels of the current Annotation object
         :param dest: destination list of the Label class objects
         :param labels: list of the Label class objects to be added to the destination list
-        :return: list of the Label class objects
+        :returns: list of the Label class objects
         """
         for label in labels:
             if self.img_size.count(None) == 0 and not isinstance(label.geometry, OrientedBBox):
@@ -583,7 +583,7 @@ class Annotation:
 
         :param label: Label to be added.
         :type label: Label
-        :return: New instance of Annotation
+        :returns: New instance of Annotation
         :rtype: :class:`Annotation<Annotation>`
 
         :Usage Example:
@@ -610,7 +610,7 @@ class Annotation:
 
         :param labels: List of Label objects to be added.
         :type labels: List[Label]
-        :return: New instance of Annotation
+        :returns: New instance of Annotation
         :rtype: :class:`Annotation<Annotation>`
 
         :Usage Example:
@@ -643,7 +643,7 @@ class Annotation:
         :param label: Label to be deleted.
         :type label: Label
         :raises: :class:`KeyError`, if there is no deleted Label in current Annotation object
-        :return: New instance of Annotation
+        :returns: New instance of Annotation
         :rtype: :class:`Annotation<Annotation>`
 
         :Usage Example:
@@ -686,7 +686,7 @@ class Annotation:
         """
         Add label to the pixelwise_scores_labels and return the copy of the current  Annotation object.
         :param label: Label class object to be added
-        :return: Annotation class object with the new list of the pixelwise_scores_labels
+        :returns: Annotation class object with the new list of the pixelwise_scores_labels
         """
         return self.add_pixelwise_score_labels([label])
 
@@ -695,7 +695,7 @@ class Annotation:
         Add_pixelwise_score_labels extend list of the labels of the pixelwise_scores_labels and return
         the copy of the current  Annotation object.
         :param labels: list of the Label class objects to be added
-        :return: Annotation class object with the new list of the pixelwise_scores_labels
+        :returns: Annotation class object with the new list of the pixelwise_scores_labels
         """
         new_labels = []
         self._add_labels_impl(new_labels, labels)
@@ -707,7 +707,7 @@ class Annotation:
 
         :param tag: Tag object to be added.
         :type tag: Tag
-        :return: New instance of Annotation
+        :returns: New instance of Annotation
         :rtype: :class:`Annotation<Annotation>`
 
         :Usage Example:
@@ -734,7 +734,7 @@ class Annotation:
 
         :param tags: List of Tags to be added.
         :type tags: List[Tag]
-        :return: New instance of Annotation
+        :returns: New instance of Annotation
         :rtype: :class:`Annotation<Annotation>`
 
         :Usage Example:
@@ -764,7 +764,7 @@ class Annotation:
 
         :param tag_names: List of Tags names to be deleted.
         :type tag_names: List[str]
-        :return: New instance of Annotation
+        :returns: New instance of Annotation
         :rtype: :class:`Annotation<Annotation>`
 
         :Usage Example:
@@ -798,7 +798,7 @@ class Annotation:
 
         :param tag_name: Tag name to be delete.
         :type tag_name: str
-        :return: New instance of Annotation
+        :returns: New instance of Annotation
         :rtype: :class:`Annotation<Annotation>`
 
         :Usage Example:
@@ -827,7 +827,7 @@ class Annotation:
 
         :param tags: List of Tags to be deleted.
         :type tags: List[Tag]
-        :return: New instance of Annotation
+        :returns: New instance of Annotation
         :rtype: :class:`Annotation<Annotation>`
 
         :Usage Example:
@@ -860,7 +860,7 @@ class Annotation:
 
         :param tag: Tag to be deleted.
         :type tag: Tag
-        :return: New instance of Annotation
+        :returns: New instance of Annotation
         :rtype: :class:`Annotation<Annotation>`
 
         :Usage Example:
@@ -895,7 +895,7 @@ class Annotation:
         Annotation object.
         :param label_transform_fn: function for transform labels
         :param new_size: new image size
-        :return: Annotation class object with new labels and image size
+        :returns: Annotation class object with new labels and image size
         """
 
         def _do_transform_labels(src_labels, label_transform_fn):
@@ -924,7 +924,7 @@ class Annotation:
 
         :param rect: Rectangle object for crop.
         :type rect: Rectangle
-        :return: New instance of Annotation
+        :returns: New instance of Annotation
         :rtype: :class:`Annotation<Annotation>`
 
         :Usage Example:
@@ -960,15 +960,15 @@ class Annotation:
                 # Draw Annotation on image after crop
                 cropped_ann.draw_pretty(new_img, thickness=3)
 
-                .. list-table::
+        .. list-table::
 
-                * - .. figure:: https://i.imgur.com/6huO1se.jpg
+            * - .. figure:: https://i.imgur.com/6huO1se.jpg
 
-                  Before
+                    Before
 
-                  - .. figure:: https://i.imgur.com/w2wR4h8.jpg
+              - .. figure:: https://i.imgur.com/w2wR4h8.jpg
 
-                  After
+                    After
         """
 
         def _crop_label(label):
@@ -982,7 +982,7 @@ class Annotation:
 
         :param rect: Rectangle object for crop.
         :type rect: Rectangle
-        :return: New instance of Annotation
+        :returns: New instance of Annotation
         :rtype: :class:`Annotation<Annotation>`
 
         :Usage Example:
@@ -1019,15 +1019,15 @@ class Annotation:
                 # Draw Annotation on image after relative crop
                 r_cropped_ann.draw_pretty(new_img, thickness=3)
 
-                .. list-table::
+        .. list-table::
 
-                * - .. figure:: https://i.imgur.com/23UuNdJ.png
+            * - .. figure:: https://i.imgur.com/23UuNdJ.png
 
-                  Before
+                    Before
 
-                  - .. figure:: https://i.imgur.com/8Z7xVxB.jpg
+              - .. figure:: https://i.imgur.com/8Z7xVxB.jpg
 
-                  After
+                    After
         """
 
         def _crop_label(label):
@@ -1041,7 +1041,7 @@ class Annotation:
 
         :param rotator: ImageRotator object.
         :type rotator: ImageRotator
-        :return: New instance of Annotation
+        :returns: New instance of Annotation
         :rtype: :class:`Annotation<Annotation>`
 
         :Usage Example:
@@ -1080,15 +1080,15 @@ class Annotation:
                 # Draw Annotation on image after rotation
                 rotated_ann.draw_pretty(new_img, thickness=3)
 
-                .. list-table::
+        .. list-table::
 
-                * - .. figure:: https://i.imgur.com/6huO1se.jpg
+            * - .. figure:: https://i.imgur.com/6huO1se.jpg
 
-                  Before
+                    Before
 
-                  - .. figure:: https://i.imgur.com/ZQ47cXN.jpg
+              - .. figure:: https://i.imgur.com/ZQ47cXN.jpg
 
-                  After
+                    After
         """
 
         def _rotate_label(label):
@@ -1105,7 +1105,7 @@ class Annotation:
         :param skip_empty_masks: Skip the raising of the error when you have got an empty label mask after a resizing procedure.
         :type skip_empty_masks: bool
 
-        :return: New instance of Annotation
+        :returns: New instance of Annotation
         :rtype: :class: Annotation
 
         :Usage Example:
@@ -1142,15 +1142,15 @@ class Annotation:
                 # Draw Annotation on image after resize
                 resized_ann.draw_pretty(new_img, thickness=3)
 
-                .. list-table::
+        .. list-table::
 
-                * - .. figure:: https://i.imgur.com/6huO1se.jpg
+            * - .. figure:: https://i.imgur.com/6huO1se.jpg
 
-                  Before
+                    Before
 
-                  - .. figure:: https://i.imgur.com/RrvNMoV.jpg
+              - .. figure:: https://i.imgur.com/RrvNMoV.jpg
 
-                  After
+                    After
         """
 
         def _resize_label(label):
@@ -1170,7 +1170,7 @@ class Annotation:
 
         :param factor: Scale size.
         :type factor: float
-        :return: New instance of Annotation
+        :returns: New instance of Annotation
         :rtype: :class:`Annotation<Annotation>`
 
         :Usage Example:
@@ -1207,15 +1207,15 @@ class Annotation:
                 # Draw Annotation on image after rescale
                 rescaled_ann.draw_pretty(new_img, thickness=3)
 
-                .. list-table::
+        .. list-table::
 
-                * - .. figure:: https://i.imgur.com/6huO1se.jpg
+            * - .. figure:: https://i.imgur.com/6huO1se.jpg
 
-                  Before
+                    Before
 
-                  - .. figure:: https://i.imgur.com/Ze6uqZ8.jpg
+              - .. figure:: https://i.imgur.com/Ze6uqZ8.jpg
 
-                  After
+                    After
         """
 
         def _scale_label(label):
@@ -1231,7 +1231,7 @@ class Annotation:
         """
         Flips the current Annotation horizontally.
 
-        :return: New instance of Annotation
+        :returns: New instance of Annotation
         :rtype: :class:`Annotation<Annotation>`
 
         :Usage Example:
@@ -1268,15 +1268,15 @@ class Annotation:
                 # Draw Annotation on image after horizontal flip
                 fliplr_ann.draw_pretty(new_img, thickness=3)
 
-                .. list-table::
+        .. list-table::
 
-                * - .. figure:: https://i.imgur.com/6huO1se.jpg
+            * - .. figure:: https://i.imgur.com/6huO1se.jpg
 
-                  Before
+                    Before
 
-                  - .. figure:: https://i.imgur.com/AQSuqIN.jpg
+              - .. figure:: https://i.imgur.com/AQSuqIN.jpg
 
-                  After
+                    After
         """
 
         def _fliplr_label(label):
@@ -1288,7 +1288,7 @@ class Annotation:
         """
         Flips the current Annotation vertically.
 
-        :return: New instance of Annotation
+        :returns: New instance of Annotation
         :rtype: :class:`Annotation<Annotation>`
 
         :Usage Example:
@@ -1325,15 +1325,15 @@ class Annotation:
                 # Draw Annotation on image after vertical flip
                 flipud_ann.draw_pretty(new_img, thickness=3)
 
-                .. list-table::
+        .. list-table::
 
-                * - .. figure:: https://i.imgur.com/6huO1se.jpg
+            * - .. figure:: https://i.imgur.com/6huO1se.jpg
 
-                  Before
+                    Before
 
-                  - .. figure:: https://i.imgur.com/NVhvPDb.jpg
+              - .. figure:: https://i.imgur.com/NVhvPDb.jpg
 
-                  After
+                    After
         """
 
         def _flipud_label(label):
@@ -1350,7 +1350,7 @@ class Annotation:
     def _get_font(self):
         """
         The function get size of font for image with given size
-        :return: font for drawing
+        :returns: font for drawing
         """
         return sly_font.get_font(font_size=sly_font.get_readable_font_size(self.img_size))
 
@@ -1393,7 +1393,7 @@ class Annotation:
         :param draw_class_names: Determines whether to draw class names on bitmap or not.
         :type draw_class_names: int, optional
 
-        :return: :class:`None<None>`
+        :returns: :class:`None<None>`
         :rtype: :class:`NoneType<NoneType>`
 
         :Usage Example:
@@ -1470,7 +1470,7 @@ class Annotation:
         :type thickness: int, optional
         :param draw_tags: Determines whether to draw tags on bitmap or not.
         :type draw_tags: bool, optional
-        :return: :class:`None<None>`
+        :returns: :class:`None<None>`
         :rtype: :class:`NoneType<NoneType>`
 
         :Usage Example:
@@ -1523,7 +1523,7 @@ class Annotation:
 
         :param img_path: Path to the input image.
         :type img_path: str
-        :return: Annotation
+        :returns: Annotation
         :rtype: :class:`Annotation<Annotation>`
 
         :Usage Example:
@@ -1552,7 +1552,7 @@ class Annotation:
         :type names: List[str]
         :param colors: List of :class:`[R, G, B]` colors.
         :type colors: List[List[int, int, int]]
-        :return: Colors area representation on the given render
+        :returns: Colors area representation on the given render
         :rtype: :class:`dict`
         :raises: :class:`RuntimeError` if len(names) != len(colors)
 
@@ -1644,7 +1644,7 @@ class Annotation:
 
         :param class_names: List of classes names.
         :type class_names: List[str], optional
-        :return: Number of each class in Annotation and total number of classes
+        :returns: Number of each class in Annotation and total number of classes
         :rtype: :class:`defaultdict`
 
         :Usage Example:
@@ -1745,7 +1745,7 @@ class Annotation:
         :type filter_operator: operator
         :param classes: List of Labels names to apply filter.
         :type classes: List[str]
-        :return: New instance of Annotation
+        :returns: New instance of Annotation
         :rtype: :class:`Annotation<Annotation>`
 
         :Usage Example:
@@ -1777,15 +1777,15 @@ class Annotation:
                 # Draw filtered Annotation on image
                 filtered_ann.draw(img)
 
-                .. list-table::
+        .. list-table::
 
-                * - .. figure:: https://i.imgur.com/6huO1se.jpg
+            * - .. figure:: https://i.imgur.com/6huO1se.jpg
 
-                  Before
+                    Before
 
-                  - .. figure:: https://i.imgur.com/uunTbPR.jpg
+              - .. figure:: https://i.imgur.com/uunTbPR.jpg
 
-                  After
+                    After
         """
 
         def filter(label):
@@ -1805,7 +1805,7 @@ class Annotation:
 
         :param sly_id: Label ID from Supervisely server.
         :type sly_id: int
-        :return: Label or None
+        :returns: Label or None
         :rtype: :class:`Label<supervisely.annotation.label.Label>` or :class:`NoneType`
 
         :Usage Example:
@@ -1868,7 +1868,7 @@ class Annotation:
 
         :param other: Annotation to merge.
         :type other: Annotation
-        :return: New instance of Annotation
+        :returns: New instance of Annotation
         :rtype: :class:`Annotation<Annotation>`
 
          .. code-block:: python
@@ -1932,7 +1932,7 @@ class Annotation:
         :type draw_tags: bool, optional
         :param output_path: Saves modified image to the given path.
         :type output_path: str, optional
-        :return: :class:`None<None>`
+        :returns: :class:`None<None>`
         :rtype: :class:`NoneType<NoneType>`
 
          .. code-block:: python
@@ -1989,7 +1989,7 @@ class Annotation:
 
         :param mapping: Dict with ObjClasses for mapping.
         :type mapping: Dict[ObjClass, ObjClass]
-        :return: New instance of Annotation
+        :returns: New instance of Annotation
         :rtype: :class:`Annotation<Annotation>`
 
         .. code-block:: python
@@ -2218,7 +2218,7 @@ class Annotation:
         :type palette: Available palettes are WEB or ADAPTIVE, optional
         :param colors: Number of colors to use for the ADAPTIVE palette.
         :type colors: int, optional
-        :return: :class:`None<None>`
+        :returns: :class:`None<None>`
         :rtype: :class:`NoneType<NoneType>`
         """
         mask = np.zeros((self.img_size[0], self.img_size[1], 3), dtype=np.uint8)
@@ -2250,7 +2250,7 @@ class Annotation:
         """
         Convert Annotation classes by joining labels with same object classes to one label. Applies to Bitmap only.
 
-        :return: New instance of Annotation
+        :returns: New instance of Annotation
         :rtype: :class:`Annotation<Annotation>`
 
          .. code-block:: python
@@ -2395,7 +2395,7 @@ class Annotation:
         Convert Annotation classes geometries according to mapping dict and checking nonoverlapping masks.
         Converting possible only to Bitmap or Rectangle.
 
-        :return: New instance of Annotation
+        :returns: New instance of Annotation
         :rtype: :class:`Annotation<Annotation>`
 
          .. code-block:: python
@@ -2667,7 +2667,7 @@ class Annotation:
 
         :param class_to_index: Dict matching class name to index.
         :type class_to_index: dict
-        :return: SegmentationMapsOnImage, otherwise :class:`None`
+        :returns: SegmentationMapsOnImage, otherwise :class:`None`
         :rtype: :class:`SegmentationMapsOnImage` or :class:`NoneType`
         """
         try:
@@ -2699,7 +2699,7 @@ class Annotation:
         """
         Convert current annotation objects boxes to BoundingBoxesOnImage format.
 
-        :return: BoundingBoxesOnImage, otherwise :class:`None`
+        :returns: BoundingBoxesOnImage, otherwise :class:`None`
         :rtype: :class:`BoundingBoxesOnImage` or :class:`NoneType`
         """
         try:
@@ -2752,7 +2752,7 @@ class Annotation:
         :type meta: ProjectMeta, optional
         :raises: :class:`ValueError`, if ia_boxes or ia_masks and meta is None
         :raises: :class:`KeyError`, if processed ObjClass not found in meta
-        :return: Annotation object
+        :returns: Annotation object
         :rtype: :class:`Annotation<Annotation>`
         """
         if ((ia_boxes is not None) or (ia_masks is not None)) and meta is None:
@@ -2806,7 +2806,7 @@ class Annotation:
 
         :param keep_classes: List with classes names.
         :type keep_classes: List[str]
-        :return: New instance of Annotation
+        :returns: New instance of Annotation
         :rtype: :class:`Annotation<Annotation>`
 
          .. code-block:: python
@@ -2937,7 +2937,7 @@ class Annotation:
     def get_bindings(self) -> Dict[str, List[Label]]:
         """Returns dictionary with bindings keys as keys and list of labels as values.
 
-        :return: Dictionary with bindings keys as keys and list of labels as values.
+        :returns: Dictionary with bindings keys as keys and list of labels as values.
         :rtype: Dict[str, List[Label]]
         """
         d = defaultdict(list)
@@ -2962,7 +2962,7 @@ class Annotation:
 
         :param data: Label in json format.
         :type data: :class:`dict`
-        :return: Json data with coordinates converted to pixel coordinate system.
+        :returns: Json data with coordinates converted to pixel coordinate system.
         :rtype: :class:`dict`
         """
         data = deepcopy(data)  # Avoid modifying the original data
@@ -2994,7 +2994,7 @@ class Annotation:
 
         :param data: Label in json format.
         :type data: dict
-        :return: Json data with coordinates converted to subpixel coordinate system.
+        :returns: Json data with coordinates converted to subpixel coordinate system.
         :rtype: :class:`dict`
         """
         data = deepcopy(data)  # Avoid modifying the original data
@@ -3019,7 +3019,7 @@ class Annotation:
     #     which means that the coordinates of the geometry can have decimal values representing fractions of a pixel.
     #     However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
 
-    #     :return: New instance of Annotation with labels in subpixel precision.
+    #     :returns: New instance of Annotation with labels in subpixel precision.
     #     :rtype: :class:`Annotation<Annotation>`
     #     """
     #     new_ann = self.clone()
@@ -3049,7 +3049,7 @@ class Annotation:
         :type last_label_id: int, optional
         :param coco_captions: COCO captions in dictionary or list format to append new captions.
         :type coco_captions: Union[Dict, List], optional
-        :return: Tuple with list of COCO objects and list of COCO captions.
+        :returns: Tuple with list of COCO objects and list of COCO captions.
         :rtype: :class:`tuple`
 
         :Usage Example:
@@ -3112,7 +3112,7 @@ class Annotation:
         :type class_names: List[str]
         :param task_type: Task type, one of "detection", "segmentation", "pose".
         :type task_type: str
-        :return: List of objects in YOLO format.
+        :returns: List of objects in YOLO format.
         :rtype: :class:`list`
 
         :Usage Example:
@@ -3141,7 +3141,7 @@ class Annotation:
         :type ann: :class:`Annotation<supervisely.annotation.annotation.Annotation>`
         :param image_name: Image name.
         :type image_name: :class:`str`
-        :return: Tuple with xml tree and instance and class masks in PIL.Image format.
+        :returns: Tuple with xml tree and instance and class masks in PIL.Image format.
         :rtype: :class:`Tuple`
 
         :Usage Example:

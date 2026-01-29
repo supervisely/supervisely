@@ -62,7 +62,7 @@ class Badge(Widget):
             - isDot: If True, the badge will be displayed as a dot.
             - hidden: If True, the badge will be hidden.
 
-        :return: Dictionary with widget data.
+        :returns: Dictionary with widget data.
         :rtype: Dict[str, Union[int, float, bool]]
         """
         res = {}
@@ -77,7 +77,7 @@ class Badge(Widget):
         Dictionary contains the following fields:
             - value: Value to be displayed on the badge.
 
-        :return: Dictionary with widget state.
+        :returns: Dictionary with widget state.
         :rtype: Dict[str, Union[str, int, float]]
         """
         return {"value": self._value}
@@ -95,7 +95,7 @@ class Badge(Widget):
     def get_value(self) -> Union[str, int, float]:
         """Returns value to be displayed on the badge.
 
-        :return: Value to be displayed on the badge.
+        :returns: Value to be displayed on the badge.
         :rtype: Union[str, int, float]
         """
         if "value" not in StateJson()[self.widget_id].keys():

@@ -77,7 +77,7 @@ class ElementTagsList(Widget):
         def text(self) -> str:
             """Returns tag text.
 
-            :return: tag text
+            :returns: tag text
             :rtype: str
             """
             return self._text
@@ -86,7 +86,7 @@ class ElementTagsList(Widget):
         def type(self) -> str:
             """Returns tag type.
 
-            :return: tag type
+            :returns: tag type
             :rtype: str
             """
             return self._type
@@ -95,7 +95,7 @@ class ElementTagsList(Widget):
         def hit(self) -> bool:
             """Returns True if tag is highlighted, False otherwise.
 
-            :return: True if tag is highlighted, False otherwise
+            :returns: True if tag is highlighted, False otherwise
             :rtype: bool
             """
             return self._hit
@@ -104,7 +104,7 @@ class ElementTagsList(Widget):
         def color(self) -> str:
             """Returns tag color.
 
-            :return: tag color
+            :returns: tag color
             :rtype: str
             """
             return self._color
@@ -120,7 +120,7 @@ class ElementTagsList(Widget):
                 - closable: If True, tag will be closable
                 - close_transition: If True, tag will be closable with transition
 
-            :return: dictionary with tag data
+            :returns: dictionary with tag data
             :rtype: Dict[str, Union[str, bool]]
             """
             return {
@@ -138,7 +138,7 @@ class ElementTagsList(Widget):
 
             :param tag_json: JSON representation of tag
             :type tag_json: Dict[str, Union[str, bool]]
-            :return: tag
+            :returns: tag
             :rtype: ElementTagsList.Tag
             """
             return cls(
@@ -179,7 +179,7 @@ class ElementTagsList(Widget):
         The dictionary contains the following fields:
             - tags: List of JSON representations of tags
 
-        :return: dictionary with widget state
+        :returns: dictionary with widget state
         :rtype: Dict[str, List[Dict[str, Union[str, bool]]]]
         """
         return {"tags": [tag.to_json() for tag in self._tags]}
@@ -200,7 +200,7 @@ class ElementTagsList(Widget):
     def get_tags(self) -> List[Tag]:
         """Returns current tags.
 
-        :return: current tags
+        :returns: current tags
         :rtype: List[Tag]
         """
         return [ElementTagsList.Tag.from_json(tag) for tag in StateJson()[self.widget_id]["tags"]]
@@ -223,7 +223,7 @@ class ElementTagsList(Widget):
 
         :param func: Function that will be called when tag is closed
         :type func: Callable[[List[Tag]], Any]
-        :return: Decorated function
+        :returns: Decorated function
         :rtype: Callable[[], None]
         """
         route_path = self.get_route_path(ElementTagsList.Routes.CLOSE)

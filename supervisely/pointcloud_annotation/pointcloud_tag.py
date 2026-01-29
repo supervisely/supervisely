@@ -88,7 +88,7 @@ class PointcloudTag(Tag):
         """
         Get string with information about PointcloudTag name and value.
 
-        :return: Information about PointcloudTag object
+        :returns: Information about PointcloudTag object
         :rtype: :class:`str`
 
         :Usage Example:
@@ -111,7 +111,7 @@ class PointcloudTag(Tag):
 
         :param other: PointcloudTag object.
         :type other: :class:`PointcloudTag<PointcloudTag>`
-        :return: True if comparable objects are equal, otherwise False
+        :returns: True if comparable objects are equal, otherwise False
         :rtype: :class:`bool`
 
         :Usage Example:
@@ -146,7 +146,7 @@ class PointcloudTag(Tag):
 
         :param other: PointcloudTag object.
         :type other: :class:`PointcloudTag<PointcloudTag>`
-        :return: True if comparable objects are not equal, otherwise False
+        :returns: True if comparable objects are not equal, otherwise False
         :rtype: :class:`bool`
 
         :Usage Example:
@@ -179,7 +179,7 @@ class PointcloudTag(Tag):
         """
         Get PointcloudTag key value.
 
-        :return: PointcloudTag key value
+        :returns: PointcloudTag key value
         :rtype: uuid.UUID
 
         :Usage Example:
@@ -206,7 +206,7 @@ class PointcloudTag(Tag):
 
         :param key_id_map: KeyIdMap object.
         :type key_id_map: :class:`KeyIdMap<supervisely.video_annotation.key_id_map.KeyIdMap>`, optional
-        :return: Json format as a dict
+        :returns: Json format as a dict
         :rtype: :class:`dict`
 
         :Usage Example:
@@ -254,7 +254,7 @@ class PointcloudTag(Tag):
         :type tag_meta_collection: :class:`TagMetaCollection<supervisely.annotation.tag_meta_collection.TagMetaCollection>`: TagMetaCollection
         :param key_id_map: KeyIdMap object.
         :type key_id_map: :class:`KeyIdMap<supervisely.video_annotation.key_id_map.KeyIdMap>`, optional
-        :return: PointcloudTag object
+        :returns: PointcloudTag object
         :rtype: :class:`PointcloudTag<PointcloudTag>`
 
         :Usage Example:
@@ -312,7 +312,7 @@ class PointcloudTag(Tag):
         :type updated_at: :class:`str`, optional
         :param created_at: Date and Time when Pointcloud Tag was created. Date Format is the same as in "updated_at" parameter.
         :type created_at: :class:`str`, optional
-        :return: New instance of Pointcloud Tag
+        :returns: New instance of Pointcloud Tag
         :rtype: :class:`PointcloudTag<PointcloudTag>`
         :raises: :class:`ValueError`, If PointcloudTag value is incompatible to :class:`TagMeta<supervisely.annotation.tag_meta.TagMeta>` value type.
 

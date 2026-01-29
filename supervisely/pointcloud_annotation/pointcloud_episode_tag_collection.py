@@ -165,7 +165,7 @@ class PointcloudEpisodeTagCollection(PointcloudTagCollection):
         :type tag_meta_collection: TagMetaCollection
         :param id_to_tagmeta: Mapping of tag IDs to tag metadata.
         :type id_to_tagmeta: Optional[Dict[int, TagMeta]]
-        :return: PointcloudEpisodeTagCollection object.
+        :returns: PointcloudEpisodeTagCollection object.
         :rtype: PointcloudEpisodeTagCollection
 
         :Usage Example:
@@ -231,7 +231,7 @@ class PointcloudEpisodeTagCollection(PointcloudTagCollection):
         :type tag_meta_collection: :class:`TagMetaCollection<supervisely.annotation.tag_meta_collection.TagMetaCollection>`
         :param key_id_map: KeyIdMap object.
         :type key_id_map: :class:`KeyIdMap<supervisely.video_annotation.key_id_map.KeyIdMap>`, optional
-        :return: TagCollection object.
+        :returns: TagCollection object.
         :rtype: :class:`PointcloudEpisodeTagCollection<PointcloudEpisodeTagCollection>`
 
         :Usage Example:

@@ -90,7 +90,7 @@ class PluginApi(ModuleApi):
         :type team_id: int
         :param filters: List of params to sort output Plugins.
         :type filters: List[dict], optional
-        :return: List of Plugins with information. See :class:`info_sequence<info_sequence>`
+        :returns: List of Plugins with information. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[NamedTuple]`
 
         :Usage Example:
@@ -121,7 +121,7 @@ class PluginApi(ModuleApi):
         :type team_id: int
         :param plugin_id: Plugin ID in Supervisely.
         :type plugin_id: int
-        :return: Information about Plugin. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Plugin. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`NamedTuple`
 
         :Usage Example:

@@ -119,7 +119,7 @@ class ActivityFeed(Widget):
     def get_json_data(self) -> Dict:
         """Returns dictionary with widget data.
 
-        :return: Dictionary with items data
+        :returns: Dictionary with items data
         :rtype: Dict
         """
         return {
@@ -129,7 +129,7 @@ class ActivityFeed(Widget):
     def get_json_state(self) -> Dict:
         """Returns dictionary with widget state (empty for this widget).
 
-        :return: Empty dictionary
+        :returns: Empty dictionary
         :rtype: Dict
         """
         return {}
@@ -206,7 +206,7 @@ class ActivityFeed(Widget):
 
         :param number: Number of the item. Starts from 1.
         :type number: int
-        :return: Status of the item
+        :returns: Status of the item
         :rtype: str
         """
         for item in self._items:
@@ -217,7 +217,7 @@ class ActivityFeed(Widget):
     def get_items(self) -> List[ActivityFeed.Item]:
         """Get all items in the activity feed.
 
-        :return: List of all items
+        :returns: List of all items
         :rtype: List[ActivityFeed.Item]
         """
         return self._items

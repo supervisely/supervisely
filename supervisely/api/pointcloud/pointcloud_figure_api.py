@@ -34,7 +34,7 @@ class PointcloudFigureApi(FigureApi):
         :type geometry_type: str
         :param track_id: int, optional.
         :type track_id: int, optional
-        :return: New figure ID
+        :returns: New figure ID
         :rtype: :class:`int`
 
         :Usage Example:
@@ -73,7 +73,7 @@ class PointcloudFigureApi(FigureApi):
         :type figures: List[PointcloudFigure]
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -211,7 +211,7 @@ class PointcloudFigureApi(FigureApi):
         :param skip_geometry: Skip the download of figure geometry. May be useful for a significant api request speed increase in the large datasets.
         :type skip_geometry: bool
 
-        :return: A dictionary where keys are pointcloud IDs and values are lists of figures.
+        :returns: A dictionary where keys are pointcloud IDs and values are lists of figures.
         :rtype: :class: `Dict[int, List[FigureInfo]]`
         """
         if kwargs.get("image_ids", False) is not False:

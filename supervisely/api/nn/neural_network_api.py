@@ -59,7 +59,7 @@ class NeuralNetworkApi:
         :param agent_id: Agent ID, if not present will be defined automatically.
         :type agent_id: Optional[int]
         :param kwargs: Additional parameters for deployment.
-        :return: A :class:`ModelAPI` object for the deployed model.
+        :returns: A :class:`ModelAPI` object for the deployed model.
         :rtype: ModelAPI
 
         :Usage Example:
@@ -151,7 +151,7 @@ class NeuralNetworkApi:
         :type team_id: Optional[int]
         :param workspace_id: Workspace ID to filter the results. If None, the workspace ID from the environment will be used.
         :type workspace_id: Optional[int]
-        :return: A list of dictionaries containing information about the deployed models.
+        :returns: A list of dictionaries containing information about the deployed models.
         :rtype: List[Dict]
 
         :Usage Example:
@@ -242,7 +242,7 @@ class NeuralNetworkApi:
 
         :param task_id: the task_id of a finished training task in the Supervisely platform.
         :type task_id: int
-        :return: an :class:`ExperimentInfo` object with information about the training, model, and results.
+        :returns: an :class:`ExperimentInfo` object with information about the training, model, and results.
         :rtype: ExperimentInfo
         """
         from supervisely.nn.experiments import ExperimentInfo
@@ -267,7 +267,7 @@ class NeuralNetworkApi:
 
         :param task_id: the task_id of a running Serving App session in the Supervisely platform.
         :type task_id: int
-        :return: a :class:`~supervisely.nn.model.model_api.ModelAPI` object
+        :returns: a :class:`~supervisely.nn.model.model_api.ModelAPI` object
         :rtype: ModelAPI
         """
         from supervisely.nn.model.model_api import ModelAPI

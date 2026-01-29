@@ -209,7 +209,7 @@ class PointcloudAnnotation(VideoAnnotation):
         """
         Get PointcloudObjectCollection object from annotation figures.
 
-        :return: PointcloudObjectCollection object from annotation figures.
+        :returns: PointcloudObjectCollection object from annotation figures.
         :rtype: PointcloudObjectCollection
 
         :Usage Example:
@@ -248,7 +248,7 @@ class PointcloudAnnotation(VideoAnnotation):
         """
         Convert PointcloudAnnotation to json format.
 
-        :return: PointcloudAnnotation in json format
+        :returns: PointcloudAnnotation in json format
         :rtype: Dict
 
         :Usage Example:
@@ -294,7 +294,7 @@ class PointcloudAnnotation(VideoAnnotation):
         :type data: Dict
         :param project_meta: Project metadata.
         :type project_meta: ProjectMeta
-        :return: PointcloudAnnotation object.
+        :returns: PointcloudAnnotation object.
         :rtype: PointcloudAnnotation
 
         :Usage Example:
@@ -355,7 +355,7 @@ class PointcloudAnnotation(VideoAnnotation):
         :type project_meta: ProjectMeta
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
-        :return: PointcloudAnnotation object
+        :returns: PointcloudAnnotation object
         :rtype: :class:`PointcloudAnnotation<PointcloudAnnotation>`
 
         :Usage Example:
@@ -406,7 +406,7 @@ class PointcloudAnnotation(VideoAnnotation):
         :type tags: PointcloudTagCollection
         :param description: Description text
         :type description: str
-        :return: PointcloudAnnotation class object
+        :returns: PointcloudAnnotation class object
 
         :Usage Example:
 

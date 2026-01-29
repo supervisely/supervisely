@@ -169,7 +169,7 @@ class TreemapChart(Apexchart):
         :type index: int
         :raises TypeError: if index is not int
         :raises IndexError: if index is out of range
-        :return: series data by given index
+        :returns: series data by given index
         :rtype: Dict[str, Union[int, float]]
         """
 
@@ -201,7 +201,7 @@ class TreemapChart(Apexchart):
         """Returns clicked datapoint as a ClickedDataPoint object, which is a namedtuple with fields:
         series_index, data_index and data. If click was outside of the cells, None will be returned.
 
-        :return: clicked datapoint as a ClickedDataPoint object or None if click was outside of the cells
+        :returns: clicked datapoint as a ClickedDataPoint object or None if click was outside of the cells
         :rtype: Union[ClickedDataPoint, None]
         """
         value = self.get_clicked_value()

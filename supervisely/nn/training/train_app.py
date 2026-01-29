@@ -350,7 +350,7 @@ class TrainApp:
         """
         Returns the ID of the team.
 
-        :return: Team ID.
+        :returns: Team ID.
         :rtype: int
         """
         return self.gui.team_id
@@ -360,7 +360,7 @@ class TrainApp:
         """
         Returns the ID of the workspace.
 
-        :return: Workspace ID.
+        :returns: Workspace ID.
         :rtype: int
         """
         return self.gui.workspace_id
@@ -370,7 +370,7 @@ class TrainApp:
         """
         Returns the ID of the project.
 
-        :return: Project ID.
+        :returns: Project ID.
         :rtype: int
         """
         return self.gui.project_id
@@ -380,7 +380,7 @@ class TrainApp:
         """
         Returns the name of the project.
 
-        :return: Project name.
+        :returns: Project name.
         :rtype: str
         """
         return self.gui.project_info.name
@@ -390,7 +390,7 @@ class TrainApp:
         """
         Returns :class:`~supervisely.api.project_api.ProjectInfo` object, which contains information about the project.
 
-        :return: ProjectInfo object.
+        :returns: ProjectInfo object.
         :rtype: :class:`~supervisely.api.project_api.ProjectInfo`
         """
         return self.gui.project_info
@@ -400,7 +400,7 @@ class TrainApp:
         """
         Returns the project metadata.
 
-        :return: Project metadata.
+        :returns: Project metadata.
         :rtype: :class:`~supervisely.project.project_meta.ProjectMeta`
         """
         return self.gui.project_meta
@@ -413,7 +413,7 @@ class TrainApp:
         """
         Return whether the model is pretrained or custom.
 
-        :return: Model source.
+        :returns: Model source.
         :rtype: str
         """
         return self.gui.model_selector.get_model_source()
@@ -423,7 +423,7 @@ class TrainApp:
         """
         Returns the name of the model.
 
-        :return: Model name.
+        :returns: Model name.
         :rtype: str
         """
         return self.gui.model_selector.get_model_name()
@@ -433,7 +433,7 @@ class TrainApp:
         """
         Returns a selected row from the models table in dict format.
 
-        :return: Model configuration dict.
+        :returns: Model configuration dict.
         :rtype: dict
         """
         return self.gui.model_selector.get_model_info()
@@ -443,7 +443,7 @@ class TrainApp:
         """
         Returns the task type of the model.
 
-        :return: Task type.
+        :returns: Task type.
         :rtype: :class:`~supervisely.nn.task_type.TaskType`
         """
         return self.gui.model_selector.get_selected_task_type()
@@ -453,7 +453,7 @@ class TrainApp:
         """
         Returns the selected device for training.
 
-        :return: Device name.
+        :returns: Device name.
         :rtype: str
         """
         return self.gui.training_process.get_device()
@@ -478,7 +478,7 @@ class TrainApp:
         """
         Returns the selected classes names for training.
 
-        :return: List of selected classes names.
+        :returns: List of selected classes names.
         :rtype: List[str]
         """
         if not self._has_classes_selector:
@@ -492,7 +492,7 @@ class TrainApp:
         """
         Returns the number of selected classes for training.
 
-        :return: Number of selected classes.
+        :returns: Number of selected classes.
         :rtype: int
         """
         if not self._has_classes_selector:
@@ -524,7 +524,7 @@ class TrainApp:
         """
         Returns the selected hyperparameters for training in dict format.
 
-        :return: Hyperparameters in dict format.
+        :returns: Hyperparameters in dict format.
         :rtype: Dict[str, Any]
         """
         return yaml.safe_load(self.hyperparameters_yaml)
@@ -534,7 +534,7 @@ class TrainApp:
         """
         Returns the selected hyperparameters for training in raw format as a string.
 
-        :return: Hyperparameters in raw format.
+        :returns: Hyperparameters in raw format.
         :rtype: str
         """
         return self.gui.hyperparameters_selector.get_hyperparameters()
@@ -545,7 +545,7 @@ class TrainApp:
         """
         Returns the main progress bar widget.
 
-        :return: Main progress bar widget.
+        :returns: Main progress bar widget.
         :rtype: :class:`~supervisely.app.widgets.Progress`
         """
         return self.gui.training_logs.progress_bar_main
@@ -555,7 +555,7 @@ class TrainApp:
         """
         Returns the secondary progress bar widget.
 
-        :return: Secondary progress bar widget.
+        :returns: Secondary progress bar widget.
         :rtype: :class:`~supervisely.app.widgets.Progress`
         """
         return self.gui.training_logs.progress_bar_secondary
@@ -565,7 +565,7 @@ class TrainApp:
         """
         Checks if model benchmarking is enabled based on application options and GUI settings.
 
-        :return: True if model benchmarking is enabled, False otherwise.
+        :returns: True if model benchmarking is enabled, False otherwise.
         :rtype: bool
         """
         return (
@@ -617,7 +617,7 @@ class TrainApp:
         ``TrainApp`` handles data preparation and (after your function returns) validates outputs and
         uploads artifacts to Team Files.
 
-        :return: A decorator that registers a training function.
+        :returns: A decorator that registers a training function.
         :rtype: Callable
         """
 
@@ -814,7 +814,7 @@ class TrainApp:
         :type experiment_info: dict
         :param remote_dir: Remote directory.
         :type remote_dir: str
-        :return: Best checkpoint info.
+        :returns: Best checkpoint info.
         :rtype: :class:`~supervisely.api.file_api.FileInfo`
         """
         best_checkpoint_name = experiment_info.get("best_checkpoint")
@@ -850,7 +850,7 @@ class TrainApp:
 
         :param experiment_info: Experiment info.
         :type experiment_info: dict
-        :return: Application state.
+        :returns: Application state.
         :rtype: dict
         """
         # Prepare optional sections depending on what selectors are enabled in GUI
@@ -927,7 +927,7 @@ class TrainApp:
 
         :param paths: List of paths to files or directories to be copied to the output directory.
         :type paths: List[str]
-        :return: None
+        :returns: None
         :rtype: None
         """
 
@@ -977,7 +977,7 @@ class TrainApp:
 
         :param hyperparameters: Path to hyperparameters file.
         :type hyperparameters: str
-        :return: Hyperparameters in dict format.
+        :returns: Hyperparameters in dict format.
         :rtype: dict
         """
         if not isinstance(hyperparameters, str):
@@ -1019,7 +1019,7 @@ class TrainApp:
 
         :param path: Path to the YAML file.
         :type path: str
-        :return: YAML file contents.
+        :returns: YAML file contents.
         :rtype: dict
         """
         with open(path, "r") as file:
@@ -1499,7 +1499,7 @@ class TrainApp:
 
         :param experiment_info: Information about the experiment results.
         :type experiment_info: dict
-        :return: Experiment info with task_type key.
+        :returns: Experiment info with task_type key.
         :rtype: dict
         """
         task_type = experiment_info.get("task_type", None)
@@ -1527,7 +1527,7 @@ class TrainApp:
 
         :param experiment_info: Information about the experiment results.
         :type experiment_info: dict
-        :return: Tuple of success status and reason for failure.
+        :returns: Tuple of success status and reason for failure.
         :rtype: tuple
         """
         if not isinstance(experiment_info, dict):
@@ -1595,7 +1595,7 @@ class TrainApp:
 
         :param project_id: ID of the ground truth project for model benchmark. Provide only when cv task convertion is required.
         :type project_id: Optional[int]
-        :return: Splits data.
+        :returns: Splits data.
         :rtype: dict
         """
         val_dataset_ids = None
@@ -1872,7 +1872,7 @@ class TrainApp:
 
         :param task_type: CV task type of the trained model.
         :type task_type: str
-        :return: Model meta to be saved as ``model_meta.json``.
+        :returns: Model meta to be saved as ``model_meta.json``.
         :rtype: :class:`~supervisely.project.project_meta.ProjectMeta`
         """
         names_to_delete = [
@@ -2094,7 +2094,7 @@ class TrainApp:
         :type model_meta: ProjectMeta
         :param session_link_file_info: Artifacts directory link, used if report is not generated.
         :type session_link_file_info: FileInfo
-        :return: Output file info and experiment info.
+        :returns: Output file info and experiment info.
         :rtype: tuple
         """
         need_generate_report = self._app_options.get("generate_report", False)
@@ -2118,7 +2118,7 @@ class TrainApp:
         """
         Gets the train and val splits information for app_state.json.
 
-        :return: Train and val splits information based on selected split method.
+        :returns: Train and val splits information based on selected split method.
         :rtype: dict
         """
         if not self._has_splits_selector:
@@ -2372,7 +2372,7 @@ class TrainApp:
         :type model_meta: ProjectInfo
         :param gt_project_id: Ground truth project ID with converted shapes.
         :type gt_project_id: int
-        :return: Evaluation report, report ID and evaluation metrics.
+        :returns: Evaluation report, report ID and evaluation metrics.
         :rtype: tuple
         """
         lnk_file_info, report, report_id, eval_metrics, primary_metric_name = (
@@ -2854,7 +2854,7 @@ class TrainApp:
         This is useful for programmatic runs (e.g. training triggered by API or workflow execution)
         where you don't want to wait for a manual UI click.
 
-        :return: None
+        :returns: None
         :rtype: None
         """
         def auto_train():

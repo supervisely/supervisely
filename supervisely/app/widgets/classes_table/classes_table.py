@@ -116,7 +116,7 @@ class ClassesTable(Widget):
 
         :param func: Function to be called when the value of the widget changes.
         :type func: Callable[[List[str]], Any]
-        :return: Decorated function.
+        :returns: Decorated function.
         :rtype: Callable[[], None]
         """
         route_path = self.get_route_path(ClassesTable.Routes.CLASS_SELECTED)
@@ -325,7 +325,7 @@ class ClassesTable(Widget):
             - disabled: If True, the elements in the table will be disabled.
             - selectable: If True, user can select classes from table.
 
-        :return: Dictionary with widget data.
+        :returns: Dictionary with widget data.
         :rtype: Dict[str, Any]
         """
         return {
@@ -340,7 +340,7 @@ class ClassesTable(Widget):
     def allowed_types(self) -> List[Geometry]:
         """Returns list of allowed geometry types to be displayed in table.
 
-        :return: List of allowed geometry types to be displayed in table.
+        :returns: List of allowed geometry types to be displayed in table.
         :rtype: List[Geometry]
         """
         return self._allowed_types
@@ -349,7 +349,7 @@ class ClassesTable(Widget):
     def project_id(self) -> int:
         """Returns project id from which classes was taken.
 
-        :return: Project id from which classes was taken.
+        :returns: Project id from which classes was taken.
         :rtype: int
         """
         return self._project_id
@@ -358,7 +358,7 @@ class ClassesTable(Widget):
     def project_fs(self) -> int:
         """Returns project object from which classes was taken.
 
-        :return: Project object from which classes was taken.
+        :returns: Project object from which classes was taken.
         :rtype: sly.Project
         """
         return self._project_fs
@@ -367,7 +367,7 @@ class ClassesTable(Widget):
     def loading(self) -> bool:
         """Returns True if the widget is in loading state.
 
-        :return: True if the widget is in loading state.
+        :returns: True if the widget is in loading state.
         :rtype: bool
         """
         return self._loading
@@ -376,7 +376,7 @@ class ClassesTable(Widget):
     def project_meta(self) -> bool:
         """Returns project meta object from which classes was taken.
 
-        :return: Project meta object from which classes was taken.
+        :returns: Project meta object from which classes was taken.
         :rtype: sly.ProjectMeta
         """
         return self._project_meta
@@ -399,7 +399,7 @@ class ClassesTable(Widget):
             - global_checkbox: State of global checkbox.
             - checkboxes: List of checkboxes states.
 
-        :return: Dictionary with widget state.
+        :returns: Dictionary with widget state.
         :rtype: Dict[str, Any]
         """
         return {
@@ -410,7 +410,7 @@ class ClassesTable(Widget):
     def get_selected_classes(self) -> List[str]:
         """Returns list of selected classes.
 
-        :return: List of selected classes.
+        :returns: List of selected classes.
         :rtype: List[str]
         """
         classes = []

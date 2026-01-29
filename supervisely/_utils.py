@@ -68,12 +68,13 @@ def camel_to_snake(name):
 
 
 def snake_to_human(snake_str: str) -> str:
-    """Return a human-readable string from a snake_case string.
+    """
+    Return a human-readable string from a snake_case string.
     E.g. 'hello_world' -> 'Hello World'
 
     :param snake_str: snake_case string
     :type snake_str: str
-    :return: Human-readable string
+    :returns: Human-readable string
     :rtype: str
     """
     components = snake_str.split("_")
@@ -246,7 +247,7 @@ def compress_image_url(
     :type height: int, optional
     :param quality: Quality of the compressed image.
     :type quality: int, optional
-    :return: Full URL to a compressed image.
+    :returns: Full URL to a compressed image.
     :rtype: str
     """
     if width is None:
@@ -284,7 +285,7 @@ def resize_image_url(
     :type height: int, optional
     :param quality: Quality of the resized image.
     :type quality: int, optional
-    :return: Full URL to a resized image.
+    :returns: Full URL to a resized image.
     :rtype: str
 
     :Usage Example:
@@ -300,7 +301,7 @@ def resize_image_url(
             img_info = api.image.get_info_by_id(image_id)
 
             img_resized_url = resize_image_url(
-                img_info.full_storage_url, 
+                img_info.full_storage_url,
                 ext="jpeg",
                 method="fill",
                 width=512,
@@ -338,7 +339,7 @@ def get_storage_url(
     :type entity_id: int
     :param source_type: Type of source ("original" or "preview")
     :type source_type: Literal["original", "preview"]
-    :return: Storage URL
+    :returns: Storage URL
     :rtype: str
     """
     relative_url = f"/storage-resources/{entity_type}/{source_type}/{entity_id}"
@@ -355,7 +356,7 @@ def get_image_storage_url(image_id: int, source_type: Literal["original", "previ
     :type image_id: int
     :param source_type: Type of source ("original" or "preview")
     :type source_type: Literal["original", "preview"]
-    :return: Storage URL for image
+    :returns: Storage URL for image
     :rtype: str
     """
     return get_storage_url("dataset-entities", image_id, source_type)
@@ -371,7 +372,7 @@ def get_dataset_storage_url(
     :type dataset_id: int
     :param source_type: Type of source ("original", "preview", or "raw")
     :type source_type: Literal["original", "preview", "raw"]
-    :return: Storage URL for dataset
+    :returns: Storage URL for dataset
     :rtype: str
     """
     return get_storage_url("dataset", dataset_id, source_type)
@@ -387,7 +388,7 @@ def get_project_storage_url(
     :type project_id: int
     :param source_type: Type of source ("original", "preview", or "raw")
     :type source_type: Literal["original", "preview", "raw"]
-    :return: Storage URL for project
+    :returns: Storage URL for project
     :rtype: str
     """
     return get_storage_url("project", project_id, source_type)
@@ -399,7 +400,7 @@ def get_file_storage_url(file_id: int) -> str:
 
     :param file_id: ID of the file
     :type file_id: int
-    :return: Storage URL for file
+    :returns: Storage URL for file
     :rtype: str
     """
     return get_storage_url("file-storage", file_id, "raw")
@@ -427,7 +428,7 @@ def get_readable_datetime(value: str) -> str:
 def get_unix_timestamp() -> int:
     """Return the current Unix timestamp.
 
-    :return: Current Unix timestamp.
+    :returns: Current Unix timestamp.
     :rtype: int
     """
     return int(time.time())
@@ -515,7 +516,7 @@ def compare_dicts(
     :type data: Dict[Any, Any]
     :param strict: If True, the keys of the template and data dictionaries must match exactly.
     :type strict: bool, optional
-    :return: A tuple containing a list of missing fields and a list of extra fields.
+    :returns: A tuple containing a list of missing fields and a list of extra fields.
     :rtype: Tuple[List[str], List[str]]
     """
     missing_fields = []
@@ -552,7 +553,7 @@ def get_or_create_event_loop() -> asyncio.AbstractEventLoop:
     Get the current event loop or create a new one if it doesn't exist.
     Works for different Python versions and contexts.
 
-    :return: Event loop
+    :returns: Event loop
     :rtype: asyncio.AbstractEventLoop
     """
     try:
@@ -586,7 +587,7 @@ def run_coroutine(coroutine):
 
     :param coro: Asynchronous function.
     :type coro: Coroutine
-    :return: Result of the asynchronous function.
+    :returns: Result of the asynchronous function.
     :rtype: Any
 
     :Usage Example:
@@ -652,7 +653,7 @@ def removesuffix(string, suffix):
     :type string: str
     :param suffix: The suffix to remove.
     :type suffix: str
-    :return: The string without the suffix or the original string.
+    :returns: The string without the suffix or the original string.
     :rtype: str
 
     :Usage Example:
@@ -680,7 +681,7 @@ def remove_non_printable(text: str) -> str:
 
     :param text: Input string
     :type text: str
-    :return: String with non-printable characters removed
+    :returns: String with non-printable characters removed
     :rtype: str
     """
     return "".join(char for char in text if char.isprintable()).strip()
@@ -693,7 +694,7 @@ def get_latest_instance_version_from_json() -> Optional[str]:
     The versions.json file should contain a mapping of SDK versions to instance versions.
     This function returns the instance version from the last entry in the file.
 
-    :return: Latest instance version or None if not found
+    :returns: Latest instance version or None if not found
     :rtype: Optional[str]
     """
     import json

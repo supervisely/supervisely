@@ -202,7 +202,7 @@ class ClassicTable(Widget):
     def fixed_columns_num(self) -> int:
         """Returns number of fixed columns.
 
-        :return: Number of fixed columns.
+        :returns: Number of fixed columns.
         :rtype: int
         """
         return self._fix_columns
@@ -220,7 +220,7 @@ class ClassicTable(Widget):
     def to_json(self) -> Dict[str, Any]:
         """Returns table data in JSON format.
 
-        :return: Table data in JSON format.
+        :returns: Table data in JSON format.
         :rtype: Dict[str, Any]
         """
         return self._get_packed_data(self._parsed_data, dict)
@@ -228,7 +228,7 @@ class ClassicTable(Widget):
     def to_pandas(self) -> pd.DataFrame:
         """Returns table data in pandas DataFrame format.
 
-        :return: Table data in pandas DataFrame format.
+        :returns: Table data in pandas DataFrame format.
         :rtype: pd.DataFrame
         """
         return self._get_packed_data(self._parsed_data, pd.DataFrame)
@@ -272,7 +272,7 @@ class ClassicTable(Widget):
 
         :param index: Index of row to remove, defaults to -1.
         :type index: Optional[int], optional
-        :return: Removed row.
+        :returns: Removed row.
         :rtype: List[Any]
         """
         index = (
@@ -297,7 +297,7 @@ class ClassicTable(Widget):
 
         :param state: Dictionary with widget state.
         :type state: Dict[str, Dict]
-        :return: Dictionary with information about selected cell.
+        :returns: Dictionary with information about selected cell.
         :rtype: Dict[str, Any]
         """
         row_index = state[self.widget_id]["selected_row"].get("selectedRow")

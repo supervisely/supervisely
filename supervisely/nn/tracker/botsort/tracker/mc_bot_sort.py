@@ -142,7 +142,7 @@ class STrack(BaseTrack):
         :type new_track: STrack
         :type frame_id: int
         :type update_feature: bool
-        :return:
+        :returns:
         """
         self.frame_id = frame_id
         self.tracklet_len += 1

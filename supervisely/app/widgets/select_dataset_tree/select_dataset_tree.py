@@ -215,7 +215,7 @@ class SelectDatasetTree(Widget):
     def team_id(self) -> int:
         """The ID of the team selected in the widget.
 
-        :return: The ID of the team.
+        :returns: The ID of the team.
         :rtype: int
         """
         return self._team_id
@@ -235,7 +235,7 @@ class SelectDatasetTree(Widget):
     def get_selected_team_id(self) -> int:
         """Get the ID of the selected team.
 
-        :return: The ID of the selected team.
+        :returns: The ID of the selected team.
         :rtype: int
         """
         return self.team_id
@@ -252,7 +252,7 @@ class SelectDatasetTree(Widget):
     def workspace_id(self) -> int:
         """The ID of the workspace selected in the widget.
 
-        :return: The ID of the workspace.
+        :returns: The ID of the workspace.
         :rtype: int
         """
         return self._workspace_id
@@ -272,7 +272,7 @@ class SelectDatasetTree(Widget):
     def get_selected_workspace_id(self) -> int:
         """Get the ID of the selected workspace.
 
-        :return: The ID of the selected workspace.
+        :returns: The ID of the selected workspace.
         :rtype: int
         """
         return self.workspace_id
@@ -289,7 +289,7 @@ class SelectDatasetTree(Widget):
     def project_id(self) -> Optional[int]:
         """The ID of the project selected in the widget.
 
-        :return: The ID of the project.
+        :returns: The ID of the project.
         :rtype: Optional[int]
         """
         return self._project_id
@@ -309,7 +309,7 @@ class SelectDatasetTree(Widget):
     def get_selected_project_id(self) -> Optional[int]:
         """Get the ID of the selected project.
 
-        :return: The ID of the selected project.
+        :returns: The ID of the selected project.
         :rtype: Optional[int]
         """
         return self.project_id
@@ -360,7 +360,7 @@ class SelectDatasetTree(Widget):
 
         :param func: The callback function.
         :type func: Callable
-        :return: The callback function.
+        :returns: The callback function.
         :rtype: Callable
         """
 
@@ -537,7 +537,7 @@ class SelectDatasetTree(Widget):
         """Get the list of items for the team, workspace, and project selectors.
         Possible keyword arguments are 'team_id' and 'workspace_id'.
 
-        :return: The list of items.
+        :returns: The list of items.
         :rtype: List[Select.Item]
         """
         if not kwargs:
@@ -558,7 +558,7 @@ class SelectDatasetTree(Widget):
     def get_json_data(self) -> Dict:
         """Get the JSON data of the widget.
 
-        :return: The JSON data.
+        :returns: The JSON data.
         :rtype: Dict
         """
         return {}
@@ -566,7 +566,7 @@ class SelectDatasetTree(Widget):
     def get_json_state(self) -> Dict:
         """Get the JSON state of the widget.
 
-        :return: The JSON state.
+        :returns: The JSON state.
         :rtype: Dict
         """
         return {}
@@ -576,7 +576,7 @@ class SelectDatasetTree(Widget):
 
         :param project_id: The ID of the project.
         :type project_id: Optional[int]
-        :return: The list of TreeSelect.Item objects.
+        :returns: The list of TreeSelect.Item objects.
         :rtype: Optional[List[TreeSelect.Item]]
         """
         if not project_id:
@@ -590,7 +590,7 @@ class SelectDatasetTree(Widget):
 
             :param node: The current node in the tree (a tuple of DatasetInfo and its children).
             :param parent_id: The ID of the parent dataset, if any.
-            :return: A list of SelectDatasetTree.Item objects representing the tree.
+            :returns: A list of SelectDatasetTree.Item objects representing the tree.
             """
             result = []
             for dataset_info, children in node.items():
@@ -617,7 +617,7 @@ class SelectDatasetTree(Widget):
     def _get_selected(self) -> Optional[Union[List[int], int]]:
         """Get the ID of the selected dataset(s).
 
-        :return: The ID of the selected dataset(s).
+        :returns: The ID of the selected dataset(s).
         :rtype: Optional[Union[List[int], int]]
         """
         selected = self._select_dataset.get_selected()

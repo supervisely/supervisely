@@ -84,7 +84,7 @@ def is_valid_ext(ext: str) -> bool:
 
     :param ext: Image extention.
     :type ext: str
-    :return: True if image extention in list of supported images extensions, False - in otherwise
+    :returns: True if image extention in list of supported images extensions, False - in otherwise
     :rtype: :class:`bool`
 
     :Usage Example:
@@ -105,7 +105,7 @@ def has_valid_ext(path: str) -> bool:
 
     :param path: Path to file.
     :type path: str
-    :return: True if file extention in list of supported images extensions, False - in otherwise
+    :returns: True if file extention in list of supported images extensions, False - in otherwise
     :rtype: :class:`bool`
 
     :Usage Example:
@@ -126,7 +126,7 @@ def validate_ext(path: str) -> None:
 
     :param path: Path to file.
     :type path: str
-    :return: None
+    :returns: None
     :rtype: :class:`NoneType`
 
     :Usage Example:
@@ -159,7 +159,7 @@ def validate_format(path: str) -> None:
 
     :param path: Path to file.
     :type path: str
-    :return: None
+    :returns: None
     :rtype: :class:`NoneType`
 
     :Usage Example:
@@ -208,7 +208,7 @@ def is_valid_format(path: str) -> bool:
 
     :param path: Path to file.
     :type path: str
-    :return: True if file format in list of supported images formats, False - in otherwise
+    :returns: True if file format in list of supported images formats, False - in otherwise
     :rtype: :class:`bool`
 
     :Usage Example:
@@ -236,7 +236,7 @@ def read(path: str, remove_alpha_channel: Optional[bool] = True) -> np.ndarray:
     :type path: str
     :param remove_alpha_channel: Define remove alpha channel when reading file or not.
     :type remove_alpha_channel: bool, optional
-    :return: Numpy array
+    :returns: Numpy array
     :rtype: :class:`np.ndarray`
 
     :Usage Example:
@@ -285,7 +285,7 @@ def read_bytes(image_bytes: str, keep_alpha: Optional[bool] = False) -> np.ndarr
     :type image_bytes: str
     :param keep_alpha: Define consider alpha channel when reading bytes or not.
     :type keep_alpha: bool, optional
-    :return: Numpy array
+    :returns: Numpy array
     :rtype: :class:`np.ndarray`
 
     :Usage Example:
@@ -331,7 +331,7 @@ def write(path: str, img: np.ndarray, remove_alpha_channel: Optional[bool] = Tru
     :type img: np.ndarray
     :param remove_alpha_channel: Define remove alpha channel when writing file or not.
     :type remove_alpha_channel: bool, optional
-    :return: None
+    :returns: None
     :rtype: :class:`NoneType`
 
     :Usage Example:
@@ -392,7 +392,7 @@ def draw_text_sequence(
     :type font: ImageFont.FreeTypeFont, optional
     :param fill_background: Define fill text background or not.
     :type fill_background: bool, optional
-    :return: None
+    :returns: None
     :rtype: :class:`NoneType`
 
     :Usage Example:
@@ -403,15 +403,16 @@ def draw_text_sequence(
 
             sly.image.draw_text_sequence(image, ['some_text', 'another_text'], (10, 10))
 
-            .. list-table::
 
-            * - .. figure:: https://i.imgur.com/BHUALdv.jpg
+    .. list-table::
 
-                   Before
+        * - .. figure:: https://i.imgur.com/BHUALdv.jpg
 
-              - .. figure:: https://i.imgur.com/wIzrDuf.jpg
+                Before
 
-                   After
+          - .. figure:: https://i.imgur.com/wIzrDuf.jpg
+
+                After
     """
     col_offset = 0
 
@@ -465,7 +466,7 @@ def draw_text(
     :param max_text_height: The parameter is necessary to draw neatly the fill background of list of texts with different heights. See `self.draw_text_sequence` for details.
     :type max_text_height: bool, optional
 
-    :return: Height and width of text
+    :returns: Height and width of text
     :rtype: :class:`Tuple[int, int]`
 
     :Usage Example:
@@ -476,15 +477,15 @@ def draw_text(
 
             sly.image.draw_text(image, 'your text', (100, 50), color=(0, 0, 0, 255))
 
-            .. list-table::
+    .. list-table::
 
-            * - .. figure:: https://i.imgur.com/BHUALdv.jpg
+        * - .. figure:: https://i.imgur.com/BHUALdv.jpg
 
-                   Before
+                Before
 
-              - .. figure:: https://i.imgur.com/6Ptz8Tf.jpg
+          - .. figure:: https://i.imgur.com/6Ptz8Tf.jpg
 
-                   After
+                After
     """
     if not (isinstance(color, (list, tuple)) and len(color) in [3, 4]):
         raise TypeError("Color must be list or tuple of three or four elements")
@@ -540,7 +541,7 @@ def write_bytes(img: np.ndarray, ext: str) -> bytes:
     :type img: np.ndarray
     :param ext: File extension that defines the output format.
     :type ext: str
-    :return: Bytes object
+    :returns: Bytes object
     :rtype: :class:`bytes`
 
     :Usage Example:
@@ -585,7 +586,7 @@ def get_hash(img: np.ndarray, ext: str) -> str:
     :type img: np.ndarray
     :param ext: File extension that defines the output format.
     :type ext: str
-    :return: Hash string
+    :returns: Hash string
     :rtype: :class:`str`
 
     :Usage Example:
@@ -609,7 +610,7 @@ def crop(img: np.ndarray, rect: Rectangle) -> np.ndarray:
     :type img: np.ndarray
     :param rect: :class:`Rectangle<supervisely.geometry.rectangle.Rectangle>` object for crop.
     :type rect: Rectangle
-    :return: Cropped image in numpy format
+    :returns: Cropped image in numpy format
     :rtype: :class:`np.ndarray`
 
     :Usage Example:
@@ -626,15 +627,15 @@ def crop(img: np.ndarray, rect: Rectangle) -> np.ndarray:
             # Output: Rectangle for crop out of image area!
             crop_im = sly.image.crop(image_np, sly.Rectangle(0, 0, 500, 600))
 
-            .. list-table::
+    .. list-table::
 
-            * - .. figure:: https://i.imgur.com/BHUALdv.jpg
+        * - .. figure:: https://i.imgur.com/BHUALdv.jpg
 
-                   Before
+                Before
 
-              - .. figure:: https://i.imgur.com/4tNm2GS.jpg
+          - .. figure:: https://i.imgur.com/4tNm2GS.jpg
 
-                   After
+                After
     """
     img_rect = Rectangle.from_array(img)
     if not img_rect.contains(rect):
@@ -650,7 +651,7 @@ def crop_with_padding(img: np.ndarray, rect: Rectangle) -> np.ndarray:
     :type img: np.ndarray
     :param rect: :class:`Rectangle<supervisely.geometry.rectangle.Rectangle>` object for crop.
     :type rect: Rectangle
-    :return: Cropped image in numpy format
+    :returns: Cropped image in numpy format
     :rtype: :class:`np.ndarray`
 
     :Usage Example:
@@ -661,15 +662,15 @@ def crop_with_padding(img: np.ndarray, rect: Rectangle) -> np.ndarray:
 
             crop_with_padding_image = sly.image.crop_with_padding(image_np, sly.Rectangle(0, 0, 1000, 1200))
 
-            .. list-table::
+    .. list-table::
 
-            * - .. figure:: https://i.imgur.com/BHUALdv.jpg
+        * - .. figure:: https://i.imgur.com/BHUALdv.jpg
 
-                   Before
+                Before
 
-              - .. figure:: https://i.imgur.com/Nv1UinH.jpg
+          - .. figure:: https://i.imgur.com/Nv1UinH.jpg
 
-                   After
+                After
     """
     img_rect = Rectangle.from_array(img)
     if not img_rect.contains(rect):
@@ -709,7 +710,7 @@ def restore_proportional_size(
     :type fcol: float, optional
     :param f: Positive non zero scale factor.
     :type f: float, optional
-    :return: Height and width of image
+    :returns: Height and width of image
     :rtype: :class:`Tuple[int, int]`
     """
     if out_size is not None and (frow is not None or fcol is not None) and f is None:
@@ -762,7 +763,7 @@ def resize(
     :type frow: float, optional
     :param fcol: Height of output image.
     :type fcol: float, optional
-    :return: Resize image in numpy format
+    :returns: Resize image in numpy format
     :rtype: :class:`np.ndarray`
 
     :Usage Example:
@@ -773,15 +774,15 @@ def resize(
 
             resize_image = sly.image.resize(image_np, (300, 500))
 
-            .. list-table::
+    .. list-table::
 
-            * - .. figure:: https://i.imgur.com/BHUALdv.jpg
+        * - .. figure:: https://i.imgur.com/BHUALdv.jpg
 
-                   Before
+                Before
 
-              - .. figure:: https://i.imgur.com/Xya4yz0.jpg
+          - .. figure:: https://i.imgur.com/Xya4yz0.jpg
 
-                   After
+                After
     """
     result_height, result_width = restore_proportional_size(img.shape[:2], out_size, frow, fcol)
     return cv2.resize(img, (result_width, result_height), interpolation=cv2.INTER_CUBIC)
@@ -804,7 +805,7 @@ def resize_inter_nearest(
     :type frow: float, optional
     :param fcol: Height of output image.
     :type fcol: float, optional
-    :return: Resize image in numpy format
+    :returns: Resize image in numpy format
     :rtype: :class:`np.ndarray`
 
     :Usage Example:
@@ -815,15 +816,15 @@ def resize_inter_nearest(
 
             resize_image_nearest = sly.image.resize_inter_nearest(image_np, (300, 700))
 
-            .. list-table::
+    .. list-table::
 
-            * - .. figure:: https://i.imgur.com/BHUALdv.jpg
+        * - .. figure:: https://i.imgur.com/BHUALdv.jpg
 
-                   Before
+                Before
 
-              - .. figure:: https://i.imgur.com/0O6yMDH.jpg
+          - .. figure:: https://i.imgur.com/0O6yMDH.jpg
 
-                   After
+                After
     """
     import skimage.transform
 
@@ -842,7 +843,7 @@ def scale(img: np.ndarray, factor: float) -> np.ndarray:
     :type img: np.ndarray
     :param factor: Scale size.
     :type factor: float
-    :return: Resize image in numpy format
+    :returns: Resize image in numpy format
     :rtype: :class:`np.ndarray`
 
     :Usage Example:
@@ -853,15 +854,15 @@ def scale(img: np.ndarray, factor: float) -> np.ndarray:
 
             scale_image = sly.image.scale(image_np, 0.3)
 
-            .. list-table::
+    .. list-table::
 
-            * - .. figure:: https://i.imgur.com/BHUALdv.jpg
+        * - .. figure:: https://i.imgur.com/BHUALdv.jpg
 
-                   Before
+                Before
 
-              - .. figure:: https://i.imgur.com/NyP8tts.jpg
+          - .. figure:: https://i.imgur.com/NyP8tts.jpg
 
-                   After
+                After
     """
     return resize(img, (round(img.shape[0] * factor), round(img.shape[1] * factor)))
 
@@ -872,7 +873,7 @@ def fliplr(img: np.ndarray) -> np.ndarray:
 
     :param img: Image in numpy format(RGB).
     :type img: np.ndarray
-    :return: Flip image in numpy format
+    :returns: Flip image in numpy format
     :rtype: :class:`np.ndarray`
 
     :Usage Example:
@@ -883,15 +884,16 @@ def fliplr(img: np.ndarray) -> np.ndarray:
 
             fliplr_image = sly.image.fliplr(image_np)
 
-            .. list-table::
+    .. list-table::
 
-            * - .. figure:: https://i.imgur.com/BHUALdv.jpg
+        * - .. figure:: https://i.imgur.com/BHUALdv.jpg
 
-                   Before
+                Before
 
-              - .. figure:: https://i.imgur.com/1mqnuZU.jpg
+          - .. figure:: https://i.imgur.com/1mqnuZU.jpg
 
-                   After
+                After
+
     """
     return np.flip(img, 1)
 
@@ -902,7 +904,7 @@ def flipud(img: np.ndarray) -> np.ndarray:
 
     :param img: Image in numpy format(RGB).
     :type img: np.ndarray
-    :return: Flip image in numpy format
+    :returns: Flip image in numpy format
     :rtype: :class:`np.ndarray`
 
     :Usage Example:
@@ -913,15 +915,15 @@ def flipud(img: np.ndarray) -> np.ndarray:
 
             flipud_image = sly.image.flipud(image_np)
 
-            .. list-table::
+    .. list-table::
 
-            * - .. figure:: https://i.imgur.com/BHUALdv.jpg
+        * - .. figure:: https://i.imgur.com/BHUALdv.jpg
 
-                   Before
+                Before
 
-              - .. figure:: https://i.imgur.com/LDwRDvm.jpg
+          - .. figure:: https://i.imgur.com/LDwRDvm.jpg
 
-                   After
+                After
     """
     return np.flip(img, 0)
 
@@ -940,7 +942,7 @@ def rotate(
     :type degrees_angle: int
     :param mode: One of RotateMode enum values.
     :type mode: RotateMode, optional
-    :return: Rotate image in numpy format
+    :returns: Rotate image in numpy format
     :rtype: :class:`np.ndarray`
 
     :Usage Example:
@@ -956,23 +958,23 @@ def rotate(
             # origin_size mode
             rotate_im_origin_size = sly.image.rotate(image_np, 45, sly.image.RotateMode.SAVE_ORIGINAL_SIZE) * 255
 
-            .. list-table::
+    .. list-table::
 
-            * - .. figure:: https://i.imgur.com/BHUALdv.jpg
+        * - .. figure:: https://i.imgur.com/BHUALdv.jpg
 
-                   Before
+                Before
 
-              - .. figure:: https://i.imgur.com/VjiwV4O.jpg
+          - .. figure:: https://i.imgur.com/VjiwV4O.jpg
 
-                   After keep_black mode
+                After keep_black mode
 
-              - .. figure:: https://i.imgur.com/Rs34eMa.jpg
+          - .. figure:: https://i.imgur.com/Rs34eMa.jpg
 
-                   After crop_black mode
+                After crop_black mode
 
-              - .. figure:: https://i.imgur.com/ttDWfBE.jpg
+          - .. figure:: https://i.imgur.com/ttDWfBE.jpg
 
-                   After origin_size mode
+                After origin_size mode
     """
     import skimage.transform
 
@@ -1010,7 +1012,7 @@ def random_contrast(image: np.ndarray, min_factor: float, max_factor: float) -> 
     :type min_factor: float
     :param max_factor: Upper bound of contrast range.
     :type max_factor: float
-    :return: Image in numpy format with new contrast
+    :returns: Image in numpy format with new contrast
     :rtype: :class:`np.ndarray`
 
     :Usage Example:
@@ -1021,15 +1023,15 @@ def random_contrast(image: np.ndarray, min_factor: float, max_factor: float) -> 
 
             rand_contrast_im = sly.image.random_contrast(image_np, 1.1, 1.8)
 
-            .. list-table::
+    .. list-table::
 
-            * - .. figure:: https://i.imgur.com/BHUALdv.jpg
+        * - .. figure:: https://i.imgur.com/BHUALdv.jpg
 
-                   Before
+                Before
 
-              - .. figure:: https://i.imgur.com/4zSNuJU.jpg
+          - .. figure:: https://i.imgur.com/4zSNuJU.jpg
 
-                   After
+                After
     """
     _check_contrast_brightness_inputs(min_factor, max_factor)
     contrast_value = np.random.uniform(min_factor, max_factor)
@@ -1050,7 +1052,7 @@ def random_brightness(image: np.ndarray, min_factor: float, max_factor: float) -
     :type min_factor: float
     :param max_factor: Upper bound of brightness range.
     :type max_factor: float
-    :return: Image in numpy format with new brightness
+    :returns: Image in numpy format with new brightness
     :rtype: :class:`np.ndarray`
 
     :Usage Example:
@@ -1061,15 +1063,15 @@ def random_brightness(image: np.ndarray, min_factor: float, max_factor: float) -
 
             rand_brightness_im = sly.image.random_brightness(image_np, 1.5, 8.5)
 
-            .. list-table::
+    .. list-table::
 
-            * - .. figure:: https://i.imgur.com/BHUALdv.jpg
+        * - .. figure:: https://i.imgur.com/BHUALdv.jpg
 
-                   Before
+                Before
 
-              - .. figure:: https://i.imgur.com/bOYwwYH.jpg
+          - .. figure:: https://i.imgur.com/bOYwwYH.jpg
 
-                   After
+                After
     """
     _check_contrast_brightness_inputs(min_factor, max_factor)
     brightness_value = np.random.uniform(min_factor, max_factor)
@@ -1088,7 +1090,7 @@ def random_noise(image: np.ndarray, mean: float, std: float) -> np.ndarray:
     :type mean: float
     :param std: The standard deviation of noise distribution.
     :type std: float
-    :return: Image in numpy format with random noise
+    :returns: Image in numpy format with random noise
     :rtype: :class:`np.ndarray`
 
     :Usage Example:
@@ -1099,15 +1101,15 @@ def random_noise(image: np.ndarray, mean: float, std: float) -> np.ndarray:
 
             random_noise_im = sly.image.random_noise(image_np, 25, 19)
 
-            .. list-table::
+    .. list-table::
 
-            * - .. figure:: https://i.imgur.com/BHUALdv.jpg
+        * - .. figure:: https://i.imgur.com/BHUALdv.jpg
 
-                   Before
+                Before
 
-              - .. figure:: https://i.imgur.com/EzyEHeM.jpg
+          - .. figure:: https://i.imgur.com/EzyEHeM.jpg
 
-                   After
+                After
     """
     image = image.astype(np.float32)
     image += np.random.normal(mean, std, image.shape)
@@ -1125,7 +1127,7 @@ def random_color_scale(image: np.ndarray, min_factor: float, max_factor: float) 
     :type min_factor: float
     :param max_factor: Maximum scale factor.
     :type max_factor: float
-    :return: Image in numpy format with random color scale
+    :returns: Image in numpy format with random color scale
     :rtype: :class:`np.ndarray`
 
     :Usage Example:
@@ -1136,15 +1138,15 @@ def random_color_scale(image: np.ndarray, min_factor: float, max_factor: float) 
 
             random_color_scale_im = sly.image.random_color_scale(image_np, 0.5, 0.9)
 
-            .. list-table::
+    .. list-table::
 
-            * - .. figure:: https://i.imgur.com/BHUALdv.jpg
+        * - .. figure:: https://i.imgur.com/BHUALdv.jpg
 
-                   Before
+                Before
 
-              - .. figure:: https://i.imgur.com/GGUZqlA.jpg
+          - .. figure:: https://i.imgur.com/GGUZqlA.jpg
 
-                   After
+                After
     """
     image_float = image.astype(np.float64)
     scales = np.random.uniform(low=min_factor, high=max_factor, size=(1, 1, image.shape[2]))
@@ -1161,7 +1163,7 @@ def blur(image: np.ndarray, kernel_size: int) -> np.ndarray:
     :type image: np.ndarray
     :param kernel_size: Blurring kernel size.
     :type kernel_size: int
-    :return: Image in numpy format with blur
+    :returns: Image in numpy format with blur
     :rtype: :class:`np.ndarray`
 
     :Usage Example:
@@ -1172,15 +1174,15 @@ def blur(image: np.ndarray, kernel_size: int) -> np.ndarray:
 
             blur_im = sly.image.blur(image_np, 7)
 
-            .. list-table::
+    .. list-table::
 
-            * - .. figure:: https://i.imgur.com/BHUALdv.jpg
+        * - .. figure:: https://i.imgur.com/BHUALdv.jpg
 
-                   Before
+                Before
 
-              - .. figure:: https://i.imgur.com/wFnBaC6.jpg
+          - .. figure:: https://i.imgur.com/wFnBaC6.jpg
 
-                   After
+                After
     """
     return cv2.blur(image, (kernel_size, kernel_size))
 
@@ -1193,7 +1195,7 @@ def median_blur(image: np.ndarray, kernel_size: int) -> np.ndarray:
     :type image: np.ndarray
     :param kernel_size: Blurring kernel size(must be odd and greater than 1, for example: 3, 5, 7).
     :type kernel_size: int
-    :return: Image in numpy format with median blur
+    :returns: Image in numpy format with median blur
     :rtype: :class:`np.ndarray`
 
     :Usage Example:
@@ -1204,15 +1206,15 @@ def median_blur(image: np.ndarray, kernel_size: int) -> np.ndarray:
 
             median_blur_im = sly.image.median_blur(image_np, 5)
 
-            .. list-table::
+    .. list-table::
 
-            * - .. figure:: https://i.imgur.com/BHUALdv.jpg
+        * - .. figure:: https://i.imgur.com/BHUALdv.jpg
 
-                   Before
+                Before
 
-              - .. figure:: https://i.imgur.com/FQ977ON.jpg
+          - .. figure:: https://i.imgur.com/FQ977ON.jpg
 
-                   After
+                After
     """
     return cv2.medianBlur(image, kernel_size)
 
@@ -1227,7 +1229,7 @@ def gaussian_blur(image: np.ndarray, sigma_min: float, sigma_max: float) -> np.n
     :type sigma_min: float
     :param sigma_min: Upper bound of Gaussian kernel standard deviation range.
     :type sigma_max: float
-    :return: Image in numpy format with gaussian blur
+    :returns: Image in numpy format with gaussian blur
     :rtype: :class:`np.ndarray`
 
     :Usage Example:
@@ -1238,15 +1240,15 @@ def gaussian_blur(image: np.ndarray, sigma_min: float, sigma_max: float) -> np.n
 
             gaussian_blur_im = sly.image.gaussian_blur(image_np, 3.3, 7.5)
 
-            .. list-table::
+    .. list-table::
 
-            * - .. figure:: https://i.imgur.com/BHUALdv.jpg
+        * - .. figure:: https://i.imgur.com/BHUALdv.jpg
 
-                   Before
+                Before
 
-              - .. figure:: https://i.imgur.com/brs6Au0.jpg
+          - .. figure:: https://i.imgur.com/brs6Au0.jpg
 
-                    After
+                After
     """
     sigma_value = np.random.uniform(sigma_min, sigma_max)
     return cv2.GaussianBlur(image, (0, 0), sigma_value)
@@ -1258,7 +1260,7 @@ def drop_image_alpha_channel(img: np.ndarray) -> np.ndarray:
 
     :param img: Image in numpy format(RGBA).
     :type img: np.ndarray
-    :return: Image in numpy format(RGB)
+    :returns: Image in numpy format(RGB)
     :rtype: :class:`np.ndarray`
     """
     if img.shape[2] != 4:
@@ -1277,7 +1279,7 @@ def np_image_to_data_url(img: np.ndarray) -> str:
 
     :param img: Image in numpy format(RGBA or RGB).
     :type img: np.ndarray
-    :return: String with image url
+    :returns: String with image url
     :rtype: :class:`str`
 
     :Usage Example:
@@ -1303,7 +1305,7 @@ def data_url_to_numpy(data_url: str) -> np.ndarray:
 
     :param img: String with image url.
     :type img: str
-    :return: Image in numpy format(RGBA)
+    :returns: Image in numpy format(RGBA)
     :rtype: :class:`np.ndarray`
 
     :Usage Example:
@@ -1327,7 +1329,7 @@ def np_image_to_data_url_backup_rgb(img: np.ndarray) -> str:
 
     :param img: Image in numpy format(only RGB).
     :type img: np.ndarray
-    :return: String with image url
+    :returns: String with image url
     :rtype: :class:`str`
 
     :Usage Example:
@@ -1360,7 +1362,7 @@ def get_labeling_tool_url(
     :type dataset_id: int
     :param image_id: Image id.
     :type image_id: int
-    :return: Url to labeling tool.
+    :returns: Url to labeling tool.
     :rtype: str
     """
     res = f"/app/images/{team_id}/{workspace_id}/{project_id}/{dataset_id}#image-{image_id}"
@@ -1376,7 +1378,7 @@ def get_new_labeling_tool_url(dataset_id: int, image_id: int) -> str:
     :type dataset_id: int
     :param image_id: Image ID.
     :type image_id: int
-    :return: URL to the image in the new Image Labeling Toolbox (v2).
+    :returns: URL to the image in the new Image Labeling Toolbox (v2).
     :rtype: str
     """
     res = f"/app/images2/?datasetId={dataset_id}&imageId={image_id}"
@@ -1392,7 +1394,7 @@ def get_labeling_tool_link(url: str, name: Optional[str] = "open in labeling too
     :type url: str
     :param name: Name of the link in HTML, defaults to "open in labeling tool".
     :type name: Optional[str]
-    :return: HTML link to labeling tool.
+    :returns: HTML link to labeling tool.
     :rtype: str
     """
     return f'<a href="{url}" rel="noopener noreferrer" target="_blank">{name}<i class="zmdi zmdi-open-in-new" style="margin-left: 5px"></i></a>'
@@ -1404,7 +1406,7 @@ def get_size_from_bytes(data: bytes) -> Tuple[int, int]:
 
     :param data: Bytes of image.
     :type data: bytes
-    :return: Height and width of image
+    :returns: Height and width of image
     :rtype: :class:`Tuple[int, int]`
     """
     image = PILImage.open(io.BytesIO(data))

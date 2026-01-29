@@ -52,7 +52,7 @@ class AnnotationInfo(NamedTuple):
         """
         Convert AnnotationInfo to JSON format.
 
-        :return: AnnotationInfo in JSON format.
+        :returns: AnnotationInfo in JSON format.
         :rtype: :class:`Dict[str, Any]`
         """
         return {
@@ -142,7 +142,7 @@ class AnnotationApi(ModuleApi):
         :type filters: List[dict], optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
-        :return: Information about Annotations. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Annotations. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[AnnotationInfo]`
 
         :Usage Example:
@@ -220,7 +220,7 @@ class AnnotationApi(ModuleApi):
         :type filters: List[dict], optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
-        :return: Information about Annotations. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Annotations. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[AnnotationInfo]`
 
         :Usage Example:
@@ -303,7 +303,7 @@ class AnnotationApi(ModuleApi):
         :param force_metadata_for_links: Force metadata for links.
         :type force_metadata_for_links: bool, optional
 
-        :return: Information about Annotation. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Annotation. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`AnnotationInfo`
 
         :Usage Example:
@@ -385,7 +385,7 @@ class AnnotationApi(ModuleApi):
         :param force_metadata_for_links: Force metadata for links.
         :type force_metadata_for_links: bool, optional
 
-        :return: Annotation in json format
+        :returns: Annotation in json format
         :rtype: :class:`dict`
 
         :Usage Example:
@@ -440,7 +440,7 @@ class AnnotationApi(ModuleApi):
         :param force_metadata_for_links: Force metadata for links.
         :type force_metadata_for_links: bool, optional
 
-        :return: Information about Annotations. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Annotations. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[AnnotationInfo]`
 
         :Usage Example:
@@ -559,7 +559,7 @@ class AnnotationApi(ModuleApi):
         :param force_metadata_for_links: Force metadata for links.
         :type force_metadata_for_links: bool, optional
 
-        :return: Information about Annotations. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Annotations. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[Dict]`
 
         :Usage Example:
@@ -603,7 +603,7 @@ class AnnotationApi(ModuleApi):
         :type img_id: int
         :param ann_path: Path to annotation on host.
         :type ann_path: str
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -639,7 +639,7 @@ class AnnotationApi(ModuleApi):
         :type ann_paths: List[str]
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -694,7 +694,7 @@ class AnnotationApi(ModuleApi):
         :type img_id: int
         :param ann_json: Annotation in JSON format.
         :type ann_json: dict
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -729,7 +729,7 @@ class AnnotationApi(ModuleApi):
         :type ann_jsons: List[dict]
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -778,7 +778,7 @@ class AnnotationApi(ModuleApi):
         :type img_id: int
         :param ann: Annotation object.
         :type ann: Annotation
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -813,7 +813,7 @@ class AnnotationApi(ModuleApi):
         :type anns: List[Annotation]
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -873,7 +873,7 @@ class AnnotationApi(ModuleApi):
         :type progress_cb: tqdm or callable, optional
         :param skip_bounds_validation: Skip bounds validation.
         :type skip_bounds_validation: bool, optional
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
         """
         # img_ids from the same dataset
@@ -1039,7 +1039,7 @@ class AnnotationApi(ModuleApi):
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
         :raises: :class:`RuntimeError`, if len(src_image_ids) != len(dst_image_ids)
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -1047,8 +1047,9 @@ class AnnotationApi(ModuleApi):
             .. code-block:: python
 
                 import os
-                import supervisely as sly
                 from tqdm import tqdm
+
+                import supervisely as sly
 
                 os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
                 os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -1100,7 +1101,7 @@ class AnnotationApi(ModuleApi):
         :type src_image_id: int
         :param dst_image_id: Image ID in Supervisely.
         :type dst_image_id: int
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -1139,7 +1140,7 @@ class AnnotationApi(ModuleApi):
         :type src_image_ids: List[int]
         :param dst_image_ids: Images IDs in Supervisely.
         :type dst_image_ids: List[int]
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
         :raises: :class:`RuntimeError` if len(src_image_ids) != len(dst_image_ids)
 
@@ -1196,7 +1197,7 @@ class AnnotationApi(ModuleApi):
         :type image_id: int
         :param labels: List of labels to append.
         :type labels: List[Label]
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
         """
         if len(labels) == 0:
@@ -1246,7 +1247,7 @@ class AnnotationApi(ModuleApi):
         :type project_meta: ProjectMeta
         :param with_tags: If True, tags will be added to the Label object
         :type with_tags: bool, optional
-        :return: Supervisely Label object
+        :returns: Supervisely Label object
         :rtype: Label
 
         :Usage Example:
@@ -1287,7 +1288,7 @@ class AnnotationApi(ModuleApi):
 
         :param label_id: ID of the label to get tags
         :type label_id: int
-        :return: list of tags in JSON format
+        :returns: list of tags in JSON format
         :rtype: List[Dict[str, Any]]
 
         :Usage Example:
@@ -1414,7 +1415,7 @@ class AnnotationApi(ModuleApi):
         :type progress_cb: tqdm or callable, optional
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
         :type progress_cb_type: str, optional
-        :return: Information about Annotation. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Annotation. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`AnnotationInfo`
 
         :Usage Example:
@@ -1503,7 +1504,7 @@ class AnnotationApi(ModuleApi):
         :type progress_cb: tqdm or callable, optional
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
         :type progress_cb_type: str, optional
-        :return: Information about Annotations. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Annotations. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[AnnotationInfo]`
 
         :Usage Example:
@@ -1511,8 +1512,9 @@ class AnnotationApi(ModuleApi):
             .. code-block:: python
 
                 import os
-                import supervisely as sly
                 from tqdm import tqdm
+
+                import supervisely as sly
 
                 os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
                 os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -1585,7 +1587,7 @@ class AnnotationApi(ModuleApi):
         :type force_metadata_for_links: bool, optional
         :param semaphore: Semaphore for limiting the number of simultaneous downloads.
         :type semaphore: asyncio.Semaphore, optional
-        :return: Information about Annotations. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Annotations. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[AnnotationInfo]`
 
         :Usage Example:
@@ -1593,8 +1595,9 @@ class AnnotationApi(ModuleApi):
             .. code-block:: python
 
                 import os
-                import supervisely as sly
                 from tqdm import tqdm
+
+                import supervisely as sly
 
                 os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
                 os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -1713,7 +1716,7 @@ class AnnotationApi(ModuleApi):
         :type project_meta: ProjectMeta, optional
         :param group_name: Group name. Labels will be assigned by tag with this value.
         :type group_name: str, optional
-        :return: :class:`None<None>`
+        :returns: :class:`None<None>`
         :rtype: :class:`NoneType<NoneType>`
         :raises ValueError: if number of images and labels are not the same
 
@@ -1810,7 +1813,7 @@ class AnnotationApi(ModuleApi):
         :type log_progress: bool, optional
         :param semaphore: Semaphore to control concurrency level. If None, a default will be used.
         :type semaphore: asyncio.Semaphore, optional
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -2105,7 +2108,7 @@ class AnnotationApi(ModuleApi):
         :type dataset_id: int, optional
         :param log_progress: Whether to log progress information.
         :type log_progress: bool, optional
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:

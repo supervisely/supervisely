@@ -84,7 +84,7 @@ def set_download(local_path: str):
 
     :param local_path: path to the local file or directory, which will be uploaded to the teamfiles
     :type local_path: str
-    :return: FileInfo object
+    :returns: FileInfo object
     :rtype: FileInfo
     """
     if os.path.isdir(local_path):

@@ -103,7 +103,7 @@ def get_experiment_infos(api: Api, team_id: int, framework_name: str) -> List[Ex
     :type team_id: int
     :param framework_name: Name of the framework
     :type framework_name: str
-    :return: List of ExperimentInfo objects
+    :returns: List of ExperimentInfo objects
     :rtype: List[ExperimentInfo]
 
     :Usage Example:
@@ -189,7 +189,7 @@ def _fetch_experiment_data(api, team_id: int, experiment_path: str) -> Union[Exp
     :type team_id: int
     :param experiment_path: Path to the experiment data
     :type experiment_path: str
-    :return: ExperimentInfo object
+    :returns: ExperimentInfo object
     :rtype: Union[ExperimentInfo, None]
     """
     try:
@@ -244,7 +244,7 @@ def get_experiment_info_by_artifacts_dir(
     :type team_id: int
     :param artifacts_dir: Path to the directory with artifacts
     :type artifacts_dir: str
-    :return: ExperimentInfo object
+    :returns: ExperimentInfo object
     :rtype: Optional[ExperimentInfo]
 
     :Usage Example:

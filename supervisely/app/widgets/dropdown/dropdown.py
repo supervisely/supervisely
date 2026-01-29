@@ -81,7 +81,7 @@ class Dropdown(Widget):
                 - divided: If True, item will be divided from the next one
                 - command: Item command
 
-            :return: Dictionary with item data
+            :returns: Dictionary with item data
             :rtype: Dict[str, Union[str, bool, int]]
             """
             return {
@@ -123,7 +123,7 @@ class Dropdown(Widget):
             - hideOnClick: If True, dropdown menu will be hidden after click
             - header: Dropdown header text
 
-        :return: Dictionary with widget data
+        :returns: Dictionary with widget data
         :rtype: Dict[str, Union[str, Any]]
         """
         return {
@@ -140,7 +140,7 @@ class Dropdown(Widget):
         Dictionary contains the following fields:
             - clickedValue: current clicked value
 
-        :return: Dictionary with widget state
+        :returns: Dictionary with widget state
         :rtype: Dict[str, str]
         """
         return {"clickedValue": self._clicked_value}
@@ -148,7 +148,7 @@ class Dropdown(Widget):
     def get_value(self) -> str:
         """Returns current clicked value.
 
-        :return: current clicked value
+        :returns: current clicked value
         :rtype: str
         """
         return StateJson()[self.widget_id]["clickedValue"]
@@ -166,7 +166,7 @@ class Dropdown(Widget):
     def get_items(self) -> List[Dropdown.Item]:
         """Returns list of items in the dropdown menu.
 
-        :return: list of items in the dropdown menu
+        :returns: list of items in the dropdown menu
         :rtype: List[Dropdown.Item]
         """
         return DataJson()[self.widget_id]["items"]
@@ -200,7 +200,7 @@ class Dropdown(Widget):
     def get_header_text(self) -> str:
         """Returns dropdown header text.
 
-        :return: dropdown header text
+        :returns: dropdown header text
         :rtype: str
         """
         return DataJson()[self.widget_id]["header"]
@@ -222,7 +222,7 @@ class Dropdown(Widget):
 
         :param func: function to be called when the value is changed
         :type func: Callable[[str], Any]
-        :return: decorated function
+        :returns: decorated function
         :rtype: Callable[[], None]
         """
         route_path = self.get_route_path(Dropdown.Routes.VALUE_CHANGED)

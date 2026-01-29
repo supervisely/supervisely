@@ -152,7 +152,7 @@ class ClassBalance(Widget):
                 - selectable: If True, the widget will be selectable.
                 - height: Height of the rows in pixels.
 
-        :return: Dictionary with widget data.
+        :returns: Dictionary with widget data.
         :rtype: Dict[str, Any]
         """
         return {
@@ -179,7 +179,7 @@ class ClassBalance(Widget):
             - selectedRows: List of selected rows.
             - clickedItem: Name of the clicked item.
 
-        :return: Dictionary with widget state.
+        :returns: Dictionary with widget state.
         :rtype: Dict[str, Any]
         """
         return {"selectedRows": [], "clickedItem": None}
@@ -188,7 +188,7 @@ class ClassBalance(Widget):
     def is_selectable(self) -> bool:
         """Returns True if the widget is selectable, False otherwise.
 
-        :return: True if the widget is selectable, False otherwise.
+        :returns: True if the widget is selectable, False otherwise.
         :rtype: bool
         """
         self._selectable = DataJson()[self.widget_id]["options"]["selectable"]
@@ -198,7 +198,7 @@ class ClassBalance(Widget):
     def is_collapsable(self) -> bool:
         """Returns True if the widget is collapsable, False otherwise.
 
-        :return: True if the widget is collapsable, False otherwise.
+        :returns: True if the widget is collapsable, False otherwise.
         :rtype: bool
         """
         self._collapsable = DataJson()[self.widget_id]["options"]["collapsable"]
@@ -208,7 +208,7 @@ class ClassBalance(Widget):
     def is_clickable_name(self) -> bool:
         """Returns True if the widget is clickable by name, False otherwise.
 
-        :return: True if the widget is clickable by name, False otherwise.
+        :returns: True if the widget is clickable by name, False otherwise.
         :rtype: bool
         """
         self._clickable_name = DataJson()[self.widget_id]["options"]["clickableName"]
@@ -218,7 +218,7 @@ class ClassBalance(Widget):
     def is_clickable_segment(self) -> bool:
         """Returns True if the widget is clickable by segment, False otherwise.
 
-        :return: True if the widget is clickable by segment, False otherwise.
+        :returns: True if the widget is clickable by segment, False otherwise.
         :rtype: bool
         """
         self._clickable_segment = DataJson()[self.widget_id]["options"]["clickableSegment"]
@@ -227,7 +227,7 @@ class ClassBalance(Widget):
     def get_max_value(self) -> int:
         """Returns maximum value of the widget.
 
-        :return: Maximum value of the widget.
+        :returns: Maximum value of the widget.
         :rtype: int
         """
         self._max_value = DataJson()[self.widget_id]["content"]["maxValue"]
@@ -259,7 +259,7 @@ class ClassBalance(Widget):
     def get_max_height(self) -> int:
         """Returns maximum height of the widget.
 
-        :return: Maximum height of the widget in pixels.
+        :returns: Maximum height of the widget in pixels.
         :rtype: int
         """
         self._max_height = DataJson()[self.widget_id]["options"]["maxHeight"]
@@ -288,7 +288,7 @@ class ClassBalance(Widget):
     def get_segments(self) -> List[Dict]:
         """Returns list of segments to be displayed in the widget.
 
-        :return: List of segments to be displayed in the widget.
+        :returns: List of segments to be displayed in the widget.
         :rtype: List[Dict]
         """
         self._segments = DataJson()[self.widget_id]["content"]["segments"]
@@ -328,7 +328,7 @@ class ClassBalance(Widget):
     def get_rows_data(self) -> List[Dict]:
         """Returns list of rows to be displayed in the widget.
 
-        :return: List of rows to be displayed in the widget.
+        :returns: List of rows to be displayed in the widget.
         :rtype: List[Dict]
         """
         self._rows_data = DataJson()[self.widget_id]["content"]["rows"]
@@ -368,7 +368,7 @@ class ClassBalance(Widget):
     def get_slider_data(self) -> Dict[str, List]:
         """Returns dictionary of slider data to be displayed in the widget.
 
-        :return: Dictionary of slider data to be displayed in the widget.
+        :returns: Dictionary of slider data to be displayed in the widget.
         :rtype: Dict[str, List]
         """
         self._slider_data = DataJson()[self.widget_id]["imageSliderData"]
@@ -394,7 +394,7 @@ class ClassBalance(Widget):
     def get_selected_rows(self) -> List[str]:
         """Returns list of selected rows.
 
-        :return: List of selected rows.
+        :returns: List of selected rows.
         :rtype: List[str]
         """
         return StateJson()[self.widget_id]["selectedRows"]
@@ -404,7 +404,7 @@ class ClassBalance(Widget):
 
         :param func: Function to be called when the widget is clicked.
         :type func: Callable[[str], None]
-        :return: Decorated function.
+        :returns: Decorated function.
         :rtype: Callable[[], None]
         """
         route_path = self.get_route_path(ClassBalance.Routes.CLICK)

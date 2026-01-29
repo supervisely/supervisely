@@ -215,7 +215,7 @@ class ConfusionMatrix(Widget):
                 - verticalLabel: label for vertical axis
             - loading: if True, loading animation will be shown
 
-        :return: dictionary with widget data
+        :returns: dictionary with widget data
         :rtype: Dict[str, Any]
         """
 
@@ -235,7 +235,7 @@ class ConfusionMatrix(Widget):
         Dictionary contains the following fields:
             - selected_row: dictionary with empty dict
 
-        :return: dictionary with widget state
+        :returns: dictionary with widget state
         :rtype: Dict[str, Dict]
         """
         return {"selected_row": {}}
@@ -292,7 +292,7 @@ class ConfusionMatrix(Widget):
         :param validate_sizes: If True, sizes of data will be validated, defaults to True
         :type validate_sizes: Optional[bool], optional
         :raises TypeError: If input data type is not supported
-        :return: dictionary with unpacked data
+        :returns: dictionary with unpacked data
         :rtype: Dict[str, Any]
         """
         input_data_type = type(input_data)
@@ -322,7 +322,7 @@ class ConfusionMatrix(Widget):
     def to_json(self) -> Dict[str, Any]:
         """Returns dictionary with widget data in JSON format.
 
-        :return: dictionary with widget data in JSON format
+        :returns: dictionary with widget data in JSON format
         :rtype: Dict[str, Any]
         """
         return self._get_packed_data(self._parsed_data, dict)
@@ -330,7 +330,7 @@ class ConfusionMatrix(Widget):
     def to_pandas(self) -> pd.DataFrame:
         """Returns pandas DataFrame with widget data.
 
-        :return: pandas DataFrame with widget data
+        :returns: pandas DataFrame with widget data
         :rtype: pd.DataFrame
         """
         return self._get_packed_data(self._parsed_data, pd.DataFrame)
@@ -364,7 +364,7 @@ class ConfusionMatrix(Widget):
 
         :param state: dictionary with widget state
         :type state: Dict[str, Dict]
-        :return: dictionary with selected cell data
+        :returns: dictionary with selected cell data
         :rtype: Dict[str, Any]
         """
         row_index = state[self.widget_id]["selected_row"].get("row")
@@ -398,7 +398,7 @@ class ConfusionMatrix(Widget):
     def loading(self) -> bool:
         """Returns True if loading animation is shown, False otherwise.
 
-        :return: True if loading animation is shown, False otherwise
+        :returns: True if loading animation is shown, False otherwise
         :rtype: bool
         """
         return self._loading
@@ -418,7 +418,7 @@ class ConfusionMatrix(Widget):
 
         :param func: function that will be called when cell is clicked
         :type func: Callable[[ClickedDataPoint], Any]
-        :return: decorated function
+        :returns: decorated function
         :rtype: Callable[[], None]
         """
         route_path = self.get_route_path(ConfusionMatrix.Routes.CELL_CLICKED)

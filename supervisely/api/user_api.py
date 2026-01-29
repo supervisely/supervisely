@@ -114,7 +114,7 @@ class UserApi(ModuleApiBase):
 
         :param id: User ID in Supervisely.
         :type id: int
-        :return: Information about User. See :class:`info_sequence<info_sequence>`
+        :returns: Information about User. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`UserInfo`
 
         :Usage Example:
@@ -152,7 +152,7 @@ class UserApi(ModuleApiBase):
 
         :param login: User login in Supervisely.
         :type login: str
-        :return: Information about User. See :class:`info_sequence<info_sequence>`
+        :returns: Information about User. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`UserInfo`
 
         :Usage Example:
@@ -194,7 +194,7 @@ class UserApi(ModuleApiBase):
         :type team_id: int
         :param login: User login in Supervisely.
         :type login: str
-        :return: Information about User. See :class:`info_sequence<info_sequence>`
+        :returns: Information about User. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`UserInfo`
 
         :Usage Example:
@@ -240,7 +240,7 @@ class UserApi(ModuleApiBase):
         :type team_id: int
         :param user_id: User ID in Supervisely.
         :type user_id: int
-        :return: Information about User. See :class:`info_sequence<info_sequence>`
+        :returns: Information about User. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`UserInfo`
 
         :Usage Example:
@@ -284,7 +284,7 @@ class UserApi(ModuleApiBase):
 
         :param filters: List of params to sort output Users.
         :type filters: List[dict], optional
-        :return: List of information about Users. See :class:`info_sequence<info_sequence>`
+        :returns: List of information about Users. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[UserInfo]`
 
         :Usage Example:
@@ -338,7 +338,7 @@ class UserApi(ModuleApiBase):
         :type name: str, optional
         :param email: New User email.
         :type email: str, optional
-        :return: Information about new User. See :class:`info_sequence<info_sequence>`
+        :returns: Information about new User. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`UserInfo`
 
         :Usage Example:
@@ -394,7 +394,7 @@ class UserApi(ModuleApiBase):
 
         :param id: User ID in Supervisely.
         :type id: int
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -419,7 +419,7 @@ class UserApi(ModuleApiBase):
 
         :param id: User ID in Supervisely.
         :type id: int
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -447,7 +447,7 @@ class UserApi(ModuleApiBase):
 
         :param id: User ID in Supervisely.
         :type id: int
-        :return: List of teams in which the User with the given ID is located
+        :returns: List of teams in which the User with the given ID is located
         :rtype: :class:`List[UserInfo]`
 
         :Usage Example:
@@ -501,7 +501,7 @@ class UserApi(ModuleApiBase):
         :type team_id: int
         :param role_id: Role ID in Supervisely.
         :type role_id: int
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -538,7 +538,7 @@ class UserApi(ModuleApiBase):
         :type user_id: int
         :param team_id: Team ID in Supervisely.
         :type team_id: int
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -570,7 +570,7 @@ class UserApi(ModuleApiBase):
         :type password: str
         :param name: User name.
         :type name: str
-        :return: New information about User. See :class:`info_sequence<info_sequence>`
+        :returns: New information about User. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`UserInfo`
 
         :Usage Example:
@@ -622,7 +622,7 @@ class UserApi(ModuleApiBase):
         :type team_id: int
         :param role_id: Role ID in Supervisely.
         :type role_id: int
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -656,7 +656,7 @@ class UserApi(ModuleApiBase):
 
         :param team_id: Team ID in Supervisely.
         :type team_id: int
-        :return: List of information about Team Users
+        :returns: List of information about Team Users
         :rtype: :class:`List[UserInfo]`
 
         :Usage Example:
@@ -688,7 +688,7 @@ class UserApi(ModuleApiBase):
         :type user_id: int
         :param team_id: Team ID in Supervisely.
         :type team_id: int
-        :return: Information about Team :class:`Role<supervisely.api.role_api.RoleApi`
+        :returns: Information about Team :class:`Role<supervisely.api.role_api.RoleApi`
         :rtype: :class:`UserInfo`
 
         :Usage Example:
@@ -726,7 +726,7 @@ class UserApi(ModuleApiBase):
         :type user_id: int
         :param progress_cb: Function to check progress.
         :type progress_cb: tqdm or callable, optional
-        :return: Activity data as `pd.DataFrame <https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.html>`_
+        :returns: Activity data as `pd.DataFrame <https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.html>`_
         :rtype: :class:`pd.DataFrame`
 
         :Usage Example:
@@ -773,7 +773,7 @@ class UserApi(ModuleApiBase):
         :type team_id: int
         :param role_id: Role ID in Supervisely.
         :type role_id: int
-        :return: Information about new User in Team
+        :returns: Information about new User in Team
         :rtype: :class:`dict`
 
         :Usage Example:

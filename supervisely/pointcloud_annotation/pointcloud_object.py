@@ -63,7 +63,7 @@ class PointcloudObject(VideoObject):
         :type project_meta: ProjectMeta
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
-        :return: PointcloudObject object.
+        :returns: PointcloudObject object.
         :rtype: PointcloudObject
 
         :Usage Example:

@@ -37,7 +37,7 @@ class PointcloudEpisodeObjectCollection(PointcloudObjectCollection):
         :type project_meta: ProjectMeta
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
-        :return: PointcloudEpisodeObjectCollection object
+        :returns: PointcloudEpisodeObjectCollection object
         :rtype: :class:`PointcloudEpisodeObjectCollection`
 
         :Usage Example:

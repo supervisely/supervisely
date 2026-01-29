@@ -158,7 +158,7 @@ class Carousel(Widget):
         Dictionary contains the following fields:
             - clickedValue: Name of the item that was clicked.
 
-        :return: Dictionary with widget state.
+        :returns: Dictionary with widget state.
         :rtype: Dict[str, Any]
         """
         return {"clickedValue": self._clicked_value}
@@ -166,7 +166,7 @@ class Carousel(Widget):
     def get_active_item(self) -> int:
         """Returns index of the active item.
 
-        :return: Index of the active item.
+        :returns: Index of the active item.
         :rtype: int
         """
         return StateJson()[self.widget_id]["clickedValue"]
@@ -174,7 +174,7 @@ class Carousel(Widget):
     def get_items(self) -> List[Carousel.Item]:
         """Returns list of Carousel.Item objects.
 
-        :return: List of Carousel.Item objects.
+        :returns: List of Carousel.Item objects.
         :rtype: List[Carousel.Item]
         """
         return DataJson()[self.widget_id]["items"]
@@ -222,7 +222,7 @@ class Carousel(Widget):
     def get_initial_index(self) -> int:
         """Returns index of the item to be displayed at initialization.
 
-        :return: Index of the item to be displayed at initialization.
+        :returns: Index of the item to be displayed at initialization.
         :rtype: int
         """
         return DataJson()[self.widget_id]["initialIndex"]
@@ -245,7 +245,7 @@ class Carousel(Widget):
 
         :param func: Function to be called when the value of the carousel is changed.
         :type func: Callable[[str], Any]
-        :return: Decorated function.
+        :returns: Decorated function.
         :rtype: Callable[[], None]
         """
         route_path = self.get_route_path(Carousel.Routes.VALUE_CHANGED)

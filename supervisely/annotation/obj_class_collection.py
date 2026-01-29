@@ -169,7 +169,7 @@ class ObjClassCollection(KeyIndexedCollection, JsonSerializable):
         """
         Convert the ObjClassCollection to a list of json dicts. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
-        :return: List of dicts in json format
+        :returns: List of dicts in json format
         :rtype: :class:`List[dict]`
 
         :Usage Example:
@@ -212,7 +212,7 @@ class ObjClassCollection(KeyIndexedCollection, JsonSerializable):
 
         :param data: List with dicts in json format.
         :type data: List[dict]
-        :return: ObjClassCollection object
+        :returns: ObjClassCollection object
         :rtype: :class:`ObjClassCollection<ObjClassCollection>`
 
         :Usage Example:
@@ -247,7 +247,7 @@ class ObjClassCollection(KeyIndexedCollection, JsonSerializable):
 
         :param logger: Input logger.
         :type logger: logger, optional
-        :return: Notification if there are objects with the same colors, otherwise :class:`None`
+        :returns: Notification if there are objects with the same colors, otherwise :class:`None`
         :rtype: :class:`str` or :class:`NoneType`
 
         :Usage Example:
@@ -322,7 +322,7 @@ def make_renamed_classes(
     :type renamer: Renamer
     :param skip_missing: If True, missing classes will be skipped, otherwise KeyError will be raised.
     :type skip_missing: Optional[bool]
-    :return: New ObjClassCollection with renamed classes.
+    :returns: New ObjClassCollection with renamed classes.
     :rtype: ObjClassCollection
     :raises KeyError: If skip_missing is False and some classes could not be renamed.
     """

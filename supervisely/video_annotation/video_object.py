@@ -93,7 +93,7 @@ class VideoObject(KeyObject):
         """
         ObjClass of the current VideoObject.
 
-        :return: ObjClass object
+        :returns: ObjClass object
         :rtype: :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>`
 
         :Usage Example:
@@ -120,7 +120,7 @@ class VideoObject(KeyObject):
         """
         Object key.
 
-        :return: Object key
+        :returns: Object key
         :rtype: uuid.UUID
 
         :Usage Example:
@@ -143,7 +143,7 @@ class VideoObject(KeyObject):
         """
         VideoTagCollection of the current VideoObject.
 
-        :return: VideoTagCollection object
+        :returns: VideoTagCollection object
         :rtype: :class:`VideoTagCollection<supervisely.video_annotation.video_tag_collection.VideoTagCollection>`
 
         :Usage Example:
@@ -182,7 +182,7 @@ class VideoObject(KeyObject):
         """
         Object class ID.
 
-        :return: Object class ID.
+        :returns: Object class ID.
         :rtype: int
 
         :Usage Example:
@@ -204,7 +204,7 @@ class VideoObject(KeyObject):
 
         :param tag: VideoTag to be added.
         :type tag: VideoTag
-        :return: VideoObject object
+        :returns: VideoObject object
         :rtype: :class:`VideoObject<VideoObject>`
 
         :Usage Example:
@@ -246,7 +246,7 @@ class VideoObject(KeyObject):
 
         :param tag: List of VideoTags to be added.
         :type tag: List[VideoTag]
-        :return: VideoObject object
+        :returns: VideoObject object
         :rtype: :class:`VideoObject<VideoObject>`
 
         :Usage Example:
@@ -295,7 +295,7 @@ class VideoObject(KeyObject):
 
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
-        :return: Json format as a dict
+        :returns: Json format as a dict
         :rtype: :class:`dict`
 
         :Usage Example:
@@ -343,7 +343,7 @@ class VideoObject(KeyObject):
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
         :raises: :class:`RuntimeError`, if object class name is not found in the given project meta
-        :return: VideoObject object
+        :returns: VideoObject object
         :rtype: :class:`VideoObject`
 
         :Usage Example:
@@ -438,7 +438,7 @@ class VideoObject(KeyObject):
         :type updated_at: str, optional
         :param created_at: Date and Time when VideoObject was created. Date Format is the same as in "updated_at" parameter.
         :type created_at: str, optional
-        :return: VideoObject object
+        :returns: VideoObject object
         :rtype: :class:`VideoObject`
 
         :Usage Example:

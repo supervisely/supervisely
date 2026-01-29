@@ -398,7 +398,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type guide_id: int, optional
         :param allow_restore: If True, allows restoring a previously deleted labeling job with the same name in the same dataset.
         :type allow_restore: bool
-        :return: List of information about new Labeling Job. See :class:`info_sequence<info_sequence>`
+        :returns: List of information about new Labeling Job. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[LabelingJobInfo]`
 
         :Usage Example:
@@ -599,7 +599,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type queue_ids: Union[List, int], optional
         :param exclude_statuses: Exclude Labeling Jobs with given statuses.
         :type exclude_statuses: List[Literal["pending", "in_progress", "on_review", "completed"]], optional
-        :return: List of information about Labeling Jobs. See :class:`info_sequence<info_sequence>`
+        :returns: List of information about Labeling Jobs. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[LabelingJobInfo]`
 
         :Usage Example:
@@ -744,7 +744,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
 
         :param id: User ID in Supervisely.
         :type id: int
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -768,7 +768,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
 
         :param id: Labeling Job ID in Supervisely.
         :type id: int
-        :return: Information about Labeling Job. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Labeling Job. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`LabelingJobInfo`
 
         :Usage Example:
@@ -850,7 +850,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
 
         :param id: Labeling Job ID in Supervisely.
         :type id: int
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -874,7 +874,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
 
         :param id: Labeling job ID in Supervisely.
         :type id: int
-        :return: Labeling Job Status
+        :returns: Labeling Job Status
         :rtype: :class:`Status<supervisely.api.labeling_job_api.LabelingJobApi.Status>`
 
         :Usage Example:
@@ -918,7 +918,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :param wait_attempt_timeout_sec: Time between attempts.
         :type wait_attempt_timeout_sec: int, optional
         :raises: :class:`WaitingTimeExceeded`, if waiting time exceeded
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -951,7 +951,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
 
         :param id: Labeling Job ID in Supervisely.
         :type id: int
-        :return: Dict with information about given Labeling Job
+        :returns: Dict with information about given Labeling Job
         :rtype: :class:`dict`
 
         :Usage Example:
@@ -1146,7 +1146,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type job_id: int
         :param progress_cb: Function for tracking progress
         :type progress_cb: tqdm, optional
-        :return: Activity data as `pd.DataFrame <https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.html>`_
+        :returns: Activity data as `pd.DataFrame <https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.html>`_
         :rtype: :class:`pd.DataFrame`
 
         :Usage Example:
@@ -1190,7 +1190,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type id: int
         :param status: New Labeling Job status
         :type status: str
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -1214,7 +1214,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
 
         :param id: Labeling Job ID in Supervisely.
         :type id: int
-        :return: Project meta of the labeling job with given id.
+        :returns: Project meta of the labeling job with given id.
         :rtype: :class:`ProjectMeta`
         """
         job_info = self.get_info_by_id(id)
@@ -1257,7 +1257,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
                             If not provided, will be retrieved from the API.
                             Have higher priority than :param:`image_ids`.
         :type image_infos: List[ImageInfo], optional
-        :return: Annotation for given image id from labeling job with given id.
+        :returns: Annotation for given image id from labeling job with given id.
         :rtype: :class:`Annotation`
         """
 
@@ -1335,7 +1335,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type id: int
         :param mode: Reject mode. Can be "all" or "unmarked".
         :type mode: str, optional
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
         """
 
@@ -1354,7 +1354,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type entity_id: int
         :param status: New review status for entity
         :type status: str
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
         """
         self._api.post(
@@ -1380,7 +1380,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type reviewer_id: int, optional
         :param assignee_ids: List of User IDs to assign the job
         :type assignee_ids: List[int], optional
-        :return: List of information about Labeling Jobs. See :class:`info_sequence<info_sequence>`
+        :returns: List of information about Labeling Jobs. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[LabelingJobInfo]`
         """
         job_info = self.get_info_by_id(id)
@@ -1444,7 +1444,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type only_rejected_entities: bool, optional
         :param ignore_errors: If True, the job will not be restarted if there are errors in request data.
         :type ignore_errors: bool, optional
-        :return: List of dicts with information about created Labeling Jobs.
+        :returns: List of dicts with information about created Labeling Jobs.
         :rtype: :class:`List[dict]`
 
         :Usage Example:
@@ -1513,7 +1513,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
 
         :param id: Labeling Job ID in Supervisely.
         :type id: int
-        :return: Custom data of the job
+        :returns: Custom data of the job
         :rtype: :class:`dict`
 
         :Usage Example:
@@ -1548,7 +1548,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type custom_data: dict
         :param update: Whether to update existing custom data or replace it entirely.
         :type update: bool
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:

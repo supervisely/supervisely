@@ -431,7 +431,7 @@ class PointTracking(BaseTracking):
         :type settings: Dict[str, Any]
         :param start_object: point to track on the initial frame
         :type start_object: PredictionPoint
-        :return: predicted points for frame range (0, m]; `m-1` prediction in total
+        :returns: predicted points for frame range (0, m]; `m-1` prediction in total
         :rtype: List[PredictionPoint]
         """
         raise NotImplementedError
@@ -451,7 +451,7 @@ class PointTracking(BaseTracking):
         :type settings: Dict[str, Any]
         :param start_objects: points to track on the initial frame
         :type start_objects: List[PredictionPoint]
-        :return: predicted points for frame range (0, m]; `m-1` prediction in total
+        :returns: predicted points for frame range (0, m]; `m-1` prediction in total
         :rtype: List[List[PredictionPoint]]
         """
         raise NotImplementedError

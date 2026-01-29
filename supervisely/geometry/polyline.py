@@ -97,7 +97,7 @@ class Polyline(VectorGeometry):
 
         :param data: Polyline in json format as a dict.
         :type data: dict
-        :return: Polyline object
+        :returns: Polyline object
         :rtype: :class:`Polyline<Polyline>`
 
         :Usage Example:
@@ -139,7 +139,7 @@ class Polyline(VectorGeometry):
 
         :param rect: Rectangle object for crop.
         :type rect: Rectangle
-        :return: List of Polyline objects
+        :returns: List of Polyline objects
         :rtype: :class:`List[Polyline]<Polyline>`
 
         :Usage Example:
@@ -195,7 +195,7 @@ class Polyline(VectorGeometry):
         """
         Polyline area, always 0.0.
 
-        :return: Area of current Polyline
+        :returns: Area of current Polyline
         :rtype: :class:`float`
 
         :Usage Example:
@@ -213,7 +213,7 @@ class Polyline(VectorGeometry):
 
         :param epsilon: Specifying the approximation accuracy.
         :type epsilon: float
-        :return: Polyline object
+        :returns: Polyline object
         :rtype: :class:`Polyline<Polyline>`
 
         :Usage Example:

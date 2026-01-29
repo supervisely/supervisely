@@ -153,7 +153,7 @@ class Progress:
         """
         Logs a message with level INFO in logger. Message contain type of progress, subtask message, current and total number of iterations
 
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
         """
         self.print_progress()
@@ -205,7 +205,7 @@ class Progress:
         """
         Increments the current iteration counter by 1 and logs a message depending on current number of iterations.
 
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -243,7 +243,7 @@ class Progress:
 
         :param count: Counter.
         :type count: int
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -283,7 +283,7 @@ class Progress:
         :type value: int
         :param report: Defines whether to report to log or not.
         :type report: bool
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
         """
         if report is True:
@@ -301,7 +301,7 @@ class Progress:
         :type total: int, optional
         :param report: Defines whether to report to log or not.
         :type report: bool
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
         """
         self.total = total

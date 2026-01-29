@@ -40,7 +40,7 @@ def read_project(
 
     :param dir: Path to directory, which contains project folder.
     :type dir: :class: str
-    :return: Project class object of specific modality
+    :returns: Project class object of specific modality
     :rtype: :class: Project or VideoProject or VolumeProject or PointcloudProject or PointcloudEpisodeProject
 
     :Usage Example:

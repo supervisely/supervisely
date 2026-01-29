@@ -159,7 +159,7 @@ class BlobImageInfo:
         :param return_team_file_id: If True, return team file ID.
                                     Default is False to make size of the object smaller for pickling.
         :type return_team_file_id: bool
-        :return: BlobImageInfo object.
+        :returns: BlobImageInfo object.
         :rtype: BlobImageInfo
         """
         blob_info = BlobImageInfo(
@@ -190,7 +190,7 @@ class BlobImageInfo:
         :type file_path: str
         :param batch_size: Size of each batch. Default is 10000.
         :type batch_size: int
-        :return: Generator yielding batches of BlobImageInfo objects.
+        :returns: Generator yielding batches of BlobImageInfo objects.
         :rtype: Generator[List[BlobImageInfo], None, None]
         """
         try:
@@ -408,7 +408,7 @@ class ImageInfo(NamedTuple):
         """
         Get Image preview URL.
 
-        :return: Image preview URL.
+        :returns: Image preview URL.
         :rtype: :class:`str`
         """
         return resize_image_url(self.full_storage_url)
@@ -453,7 +453,7 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         Get list of all :class:`ImageInfo<ImageInfo>` field names.
 
-        :return: List of :class:`ImageInfo<ImageInfo>` field names.`
+        :returns: List of :class:`ImageInfo<ImageInfo>` field names.`
         :rtype: :class:`List[str]`
         """
         return [
@@ -489,7 +489,7 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         Get string name of :class:`ImageInfo<ImageInfo>` NamedTuple.
 
-        :return: NamedTuple name.
+        :returns: NamedTuple name.
         :rtype: :class:`str`
         """
         return "ImageInfo"
@@ -504,7 +504,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type meta: dict
         :param name: Name of the image. Used for improved debug logging.
         :type name: str, optional
-        :return: Updated meta.
+        :returns: Updated meta.
         :rtype: dict
         """
         sort_value = meta.get(self.sort_by, None)
@@ -574,7 +574,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type batch_size: int, optional
         :param project_id: :class:`Project<supervisely.project.project.Project>` ID in which the Images are located.
         :type project_id: :class:`int`
-        :return: Generator that yields lists of images in the given :class:`Dataset<supervisely.project.project.Dataset>` or :class:`Project<supervisely.project.project.Project>`.
+        :returns: Generator that yields lists of images in the given :class:`Dataset<supervisely.project.project.Dataset>` or :class:`Project<supervisely.project.project.Project>`.
 
         :Usage Example:
 
@@ -669,7 +669,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type ai_search_threshold_direction: str, optional
         :param extra_fields: List of extra fields to return. If None, returns no extra fields.
         :type extra_fields: List[str], optional
-        :return: Objects with image information from Supervisely.
+        :returns: Objects with image information from Supervisely.
         :rtype: :class:`List[ImageInfo]<ImageInfo>`
 
         :Usage Example:
@@ -814,7 +814,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type sort_order: :class:`str`, optional
         :param project_id: :class:`Project<supervisely.project.project.Project>` ID in which the Images are located.
         :type project_id: :class:`int`
-        :return: Objects with image information from Supervisely.
+        :returns: Objects with image information from Supervisely.
         :rtype: :class:`List[ImageInfo]<ImageInfo>`
 
         :Usage Example:
@@ -883,7 +883,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
         :param id: Image ID in Supervisely.
         :type id: int
-        :return: Object with image information from Supervisely.
+        :returns: Object with image information from Supervisely.
         :rtype: :class:`ImageInfo<ImageInfo>`
 
         :Usage Example:
@@ -926,7 +926,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type name: str
         :param force_metadata_for_links: If True, returns full_storage_url and path_original fields in ImageInfo.
         :type force_metadata_for_links: bool, optional
-        :return: Object with image information from Supervisely.
+        :returns: Object with image information from Supervisely.
         :rtype: :class:`ImageInfo<ImageInfo>`
         """
         return self._get_info_by_name(
@@ -951,7 +951,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type ids: List[int]
         :param progress_cb: Function for tracking the progress.
         :type progress_cb: tqdm or callable, optional
-        :return: Objects with image information from Supervisely.
+        :returns: Objects with image information from Supervisely.
         :rtype: :class:`List[ImageInfo]`
 
         :Usage Example:
@@ -1007,7 +1007,7 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         :param id: int
         :param is_stream: bool
-        :return: Response class object contain metadata of image with given id
+        :returns: Response class object contain metadata of image with given id
         """
         response = self._api.post("images.download", {ApiField.ID: id}, stream=is_stream)
         return response
@@ -1020,7 +1020,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type id: int
         :param keep_alpha: If True keeps alpha mask for image, otherwise don't.
         :type keep_alpha: bool, optional
-        :return: Image in RGB numpy matrix format
+        :returns: Image in RGB numpy matrix format
         :rtype: :class:`np.ndarray`
 
         :Usage Example:
@@ -1048,7 +1048,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type id: int
         :param path: Local save path for Image.
         :type path: str
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -1081,7 +1081,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type id: int
         :param path: Local save path for Image.
         :type path: str
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -1153,7 +1153,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
         :raises: :class:`ValueError` if len(ids) != len(paths)
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -1211,7 +1211,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type ids: List[int]
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
-        :return: List of Images in binary format
+        :returns: List of Images in binary format
         :rtype: :class:`List[bytes]`
 
         :Usage Example:
@@ -1256,7 +1256,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type progress_cb: tqdm or callable, optional
         :param keep_alpha: If True keeps alpha mask for Image, otherwise don't.
         :type keep_alpha: bool, optional
-        :return: List of Images in RGB numpy matrix format
+        :returns: List of Images in RGB numpy matrix format
         :rtype: :class:`List[np.ndarray]`
 
         :Usage Example:
@@ -1301,7 +1301,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type hashes: List[str]
         :param progress_cb: Function for tracking progress of checking.
         :type progress_cb: tqdm or callable, optional
-        :return: List of existing hashes
+        :returns: List of existing hashes
         :rtype: :class:`List[str]`
         :Usage Example: Checkout detailed example `here <https://app.supervisely.com/explore/notebooks/guide-10-check-existing-images-and-upload-only-the-new-ones-1545/overview>`_ (you must be logged into your Supervisely account)
 
@@ -1362,7 +1362,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type progress_cb: tqdm or callable, optional
         :param team_id: Team ID in Supervisely (will be used to get remote storage settings).
         :type team_id: int
-        :return: List of existing links
+        :returns: List of existing links
         :rtype: List[str]
         """
 
@@ -1395,7 +1395,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
         :param hash: Image hash in Supervisely.
         :type hash: str
-        :return: True if Image with given hash exist, otherwise False
+        :returns: True if Image with given hash exist, otherwise False
         :rtype: :class:`bool`
 
         :Usage Example:
@@ -1426,7 +1426,7 @@ class ImageApi(RemoveableBulkModuleApi):
         Expects unique images that aren't exist at server.
         :param func_item_to_byte_stream: converter for "item" to byte stream
         :param hashes_items_to_upload: list of pairs (hash, item)
-        :return: list of hashes for successfully uploaded items
+        :returns: list of hashes for successfully uploaded items
         """
         content_dict = {}
         for idx, (_, item) in enumerate(hashes_items_to_upload):
@@ -1564,7 +1564,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type use_strict_validation: bool, optional
         :param use_caching_for_validation: If True, uses caching for validation.
         :type use_caching_for_validation: bool, optional
-        :return: Information about Image. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Image. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`ImageInfo`
 
         :Usage Example:
@@ -1635,7 +1635,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param use_caching_for_validation: If True, uses caching for validation.
         :type use_caching_for_validation: bool, optional
         :raises: :class:`ValueError` if len(names) != len(paths)
-        :return: List with information about Images. See :class:`info_sequence<info_sequence>`
+        :returns: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
 
         :Usage Example:
@@ -1696,7 +1696,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type img: np.ndarray
         :param meta: Custom additional image info that contain image technical and/or user-generated data.
         :type meta: dict, optional
-        :return: Information about Image. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Image. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`ImageInfo`
 
         :Usage Example:
@@ -1749,7 +1749,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type metas: List[dict], optional
         :param conflict_resolution: The strategy to resolve upload conflicts. 'Replace' option will replace the existing images in the dataset with the new images. The images that are being deleted are logged. 'Skip' option will ignore the upload of new images that would result in a conflict. An original image's ImageInfo list will be returned instead. 'Rename' option will rename the new images to prevent any conflict.
         :type conflict_resolution: Optional[Literal["rename", "skip", "replace"]]
-        :return: List with information about Images. See :class:`info_sequence<info_sequence>`
+        :returns: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
 
         :Usage Example:
@@ -1822,7 +1822,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type meta: dict, optional
         :param force_metadata_for_links: Calculate metadata for link. If False, metadata will be empty.
         :type force_metadata_for_links: bool, optional
-        :return: Information about Image. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Image. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`ImageInfo`
 
         :Usage Example:
@@ -1890,7 +1890,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type skip_validation: bool, optional
         :param conflict_resolution: The strategy to resolve upload conflicts. 'Replace' option will replace the existing images in the dataset with the new images. The images that are being deleted are logged. 'Skip' option will ignore the upload of new images that would result in a conflict. An original image's ImageInfo list will be returned instead. 'Rename' option will rename the new images to prevent any conflict.
         :type conflict_resolution: Optional[Literal["rename", "skip", "replace"]]
-        :return: List with information about Images. See :class:`info_sequence<info_sequence>`
+        :returns: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
 
         :Usage Example:
@@ -1947,7 +1947,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type hash: str
         :param meta: Custom additional image info that contain image technical and/or user-generated data.
         :type meta: dict, optional
-        :return: Information about Image. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Image. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`ImageInfo`
 
         :Usage Example:
@@ -2044,7 +2044,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type use_strict_validation: bool, optional
         :param use_caching_for_validation: If True, uses caching for validation.
         :type use_caching_for_validation: bool, optional
-        :return: List with information about Images. See :class:`info_sequence<info_sequence>`
+        :returns: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
 
         :Usage Example:
@@ -2116,7 +2116,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type id: int
         :param meta: Custom additional image info that contain image technical and/or user-generated data.
         :type meta: dict, optional
-        :return: Information about Image. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Image. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`ImageInfo`
 
         :Usage Example:
@@ -2210,7 +2210,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type skip_validation: bool, optional
         :param conflict_resolution: The strategy to resolve upload conflicts. 'Replace' option will replace the existing images in the dataset with the new images. The images that are being deleted are logged. 'Skip' option will ignore the upload of new images that would result in a conflict. An original image's ImageInfo list will be returned instead. 'Rename' option will rename the new images to prevent any conflict.
         :type conflict_resolution: Optional[Literal["rename", "skip", "replace"]]
-        :return: List with information about Images. See :class:`info_sequence<info_sequence>`
+        :returns: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
 
         :Usage Example:
@@ -2321,7 +2321,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type use_strict_validation: bool, optional
         :param use_caching_for_validation: If True, uses caching for validation.
         :type use_caching_for_validation: bool, optional
-        :return: List with information about Images. See :class:`info_sequence<info_sequence>`
+        :returns: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
 
         :Usage Example:
@@ -2452,7 +2452,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type use_strict_validation: bool, optional
         :param use_caching_for_validation: If True, uses caching for validation.
         :type use_caching_for_validation: bool, optional
-        :return: Generator with information about Images. See :class:`ImageInfo`
+        :returns: Generator with information about Images. See :class:`ImageInfo`
         :rtype: :class:`Generator[ImageInfo, None, None]`
 
         :Usage Example:
@@ -2523,7 +2523,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type team_file_id: int
         :param progress_cb: Function for tracking the progress of downloading.
         :type progress_cb: tqdm or callable, optional
-        :return: Path to the file with blob images offsets in temporary directory.
+        :returns: Path to the file with blob images offsets in temporary directory.
         :rtype: str
 
         """
@@ -2810,7 +2810,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type progress_cb: tqdm or callable, optional
         :raises: :class:`TypeError` if type of ids is not list
         :raises: :class:`ValueError` if images ids are from the destination Dataset
-        :return: List with information about Images. See :class:`info_sequence<info_sequence>`
+        :returns: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
 
         :Usage Example:
@@ -2911,7 +2911,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param save_source_date: Save source annotation dates (creation and modification) or create a new date.
         :type save_source_date: bool, optional
         :raises: :class:`TypeError` if type of src_image_infos is not list
-        :return: List with information about Images. See :class:`info_sequence<info_sequence>`
+        :returns: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
 
         :Usage Example:
@@ -3004,7 +3004,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type progress_cb: tqdm or callable, optional
         :raises: :class:`TypeError` if type of ids is not list
         :raises: :class:`ValueError` if images ids are from the destination Dataset
-        :return: List with information about Images. See :class:`info_sequence<info_sequence>`
+        :returns: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
 
         :Usage Example:
@@ -3072,7 +3072,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param save_source_date: Save source annotation dates (creation and modification) or create a new date.
         :type save_source_date: bool, optional
         :raises: :class:`TypeError` if type of src_image_infos is not list
-        :return: List with information about Images. See :class:`info_sequence<info_sequence>`
+        :returns: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
 
         :Usage Example:
@@ -3125,7 +3125,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type change_name_if_conflict: bool, optional
         :param with_annotations: If True Image will be copied to Dataset with annotations, otherwise only Images without annotations.
         :type with_annotations: bool, optional
-        :return: Information about Image. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Image. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`ImageInfo`
 
         :Usage Example:
@@ -3164,7 +3164,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type change_name_if_conflict: bool, optional
         :param with_annotations: If True Image will be copied to Dataset with annotations, otherwise only Images without annotations.
         :type with_annotations: bool, optional
-        :return: Information about Image. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Image. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`ImageInfo`
 
         :Usage Example:
@@ -3206,7 +3206,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type dataset_id: int
         :param image_id: Image ID in Supervisely.
         :type image_id: int
-        :return: Image URL
+        :returns: Image URL
         :rtype: :class:`str`
 
         :Usage Example:
@@ -3249,7 +3249,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type hashes: List[str]
         :param retry_attemps: Number of attempts to download images.
         :type retry_attemps: int, optional
-        :return: Generator with images hashes, images data and verification status.
+        :returns: Generator with images hashes, images data and verification status.
         :rtype: :class:`Generator[Tuple[str, Any, bool], None, None]`
         """
 
@@ -3309,7 +3309,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
         :raises: :class:`ValueError` if len(hashes) != len(paths)
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -3379,7 +3379,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type hashes: List[str]
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
-        :return: List of images
+        :returns: List of images
         :rtype: :class: List[np.ndarray]
 
         :Usage Example:
@@ -3417,7 +3417,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
         :param image_id: Image ID in Supervisely.
         :type image_id: int
-        :return: Project ID where Image is located.
+        :returns: Project ID where Image is located.
         :rtype: :class:`int`
 
         :Usage Example:
@@ -3460,7 +3460,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
         :param path_original: Original Image path in Supervisely server.
         :type path_original: str
-        :return: Full Image URL link in Supervisely server
+        :returns: Full Image URL link in Supervisely server
         :rtype: :class:`str`
 
         :Usage Example:
@@ -3506,7 +3506,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type ext: str, optional
         :param method: Preview Image resize method, available values: "fit", "fill", "fill-down", "force", "auto".
         :type method: str, optional
-        :return: New URL with resized Image
+        :returns: New URL with resized Image
         :rtype: :class:`str`
 
         :Usage Example:
@@ -3537,7 +3537,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param meta: Custom additional image info that contain image technical and/or user-generated data.
         :type meta: dict
         :raises: :class:`TypeError` if meta type is not dict
-        :return: Image information in dict format with new meta
+        :returns: Image information in dict format with new meta
         :rtype: :class:`dict`
 
         :Usage Example:
@@ -3594,7 +3594,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type return_json: bool, optional
         :raises: :class:`ValueError` if at least one parameter is not set
         :raises: :class:`ValueError if meta parameter was set and it is not a dictionary
-        :return: Information about updated image as ImageInfo object or as dict if return_json is True
+        :returns: Information about updated image as ImageInfo object or as dict if return_json is True
         :rtype: :class:`ImageInfo` or :class:`dict`
 
         :Usage Example:
@@ -3640,7 +3640,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type id: int
         :param name: New Image name.
         :type name: str
-        :return: Information about updated Image.
+        :returns: Information about updated Image.
         :rtype: :class:`ImageInfo`
 
         :Usage Example:
@@ -3670,7 +3670,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type tag_id: int
         :param value: Tag value.
         :type value: int or str or None, optional
-        :return: :class:`None<None>`
+        :returns: :class:`None<None>`
         :rtype: :class:`NoneType<NoneType>`
 
         :Usage Example:
@@ -3715,7 +3715,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type batch_size: int, optional
         :param tag_meta: Tag Meta. Needed for value validation, omit to skip validation
         :type tag_meta: TagMeta, optional
-        :return: :class:`None<None>`
+        :returns: :class:`None<None>`
         :rtype: :class:`NoneType<NoneType>`
 
         :Usage Example:
@@ -3774,7 +3774,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type batch_size: int, optional
         :param tag_metas: Tag Metas. Needed for values validation, omit to skip validation
         :type tag_metas: TagMeta or List[TagMeta], optional
-        :return: List of tags IDs.
+        :returns: List of tags IDs.
         :rtype: List[int]
 
         :Usage Example:
@@ -3841,7 +3841,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type value: str or float
         :param project_meta: Project Meta.
         :type project_meta: ProjectMeta
-        :return: Information about updated tag.
+        :returns: Information about updated tag.
         :rtype: :class:`dict`
 
         :Usage Example:
@@ -3878,7 +3878,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type ids: List[int]
         :param progress_cb: Function for tracking progress of removing.
         :type progress_cb: tqdm or callable, optional
-        :return: :class:`None<None>`
+        :returns: :class:`None<None>`
         :rtype: :class:`NoneType<NoneType>`
 
         :Usage Example:
@@ -3905,7 +3905,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
         :param image_id: Images ID in Supervisely.
         :type image_id: int
-        :return: :class:`None<None>`
+        :returns: :class:`None<None>`
         :rtype: :class:`NoneType<NoneType>`
 
         :Usage Example:
@@ -3931,7 +3931,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type parent_id: int
         :param name: Image name in Supervisely.
         :type name: str
-        :return: True if image exists, False otherwise.
+        :returns: True if image exists, False otherwise.
         :rtype: bool"""
         return self.get_info_by_name(parent_id, name, force_metadata_for_links=False) is not None
 
@@ -3957,7 +3957,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type rgb_images: List[str], optional
         :param progress_cb: function for tracking upload progress
         :type progress_cb: tqdm or callable, optional
-        :return: list of uploaded images infos
+        :returns: list of uploaded images infos
         :rtype: List[ImageInfo]
 
         :Usage Example:
@@ -4051,7 +4051,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param force_metadata_for_links: Specifies whether to force retrieving metadata for images from links.
                                          If False, metadata fields in the response can be empty (if metadata has not been retrieved yet).
         :type force_metadata_for_links: Optional[bool]
-        :return: List of uploaded images infos
+        :returns: List of uploaded images infos
         :rtype: List[ImageInfo]
         :raises Exception: if tag does not exist in project or tag is not of type ANY_STRING
 
@@ -4160,7 +4160,7 @@ class ImageApi(RemoveableBulkModuleApi):
                                 If None, will use default 'multiview' tag name.
                                 If tag does not exist in project, will create it first.
         :type multiview_tag_name: str, optional
-        :return: :class:`None<None>`
+        :returns: :class:`None<None>`
 
         :rtype: :class:`NoneType<NoneType>`
         :raises ValueError: if tag is not of type ANY_STRING or not applicable to images
@@ -4300,7 +4300,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param progress_cb: Function for tracking upload progress.
         :type progress_cb: tqdm or callable, optional
 
-        :return: List of uploaded images infos.
+        :returns: List of uploaded images infos.
         :rtype: List[ImageInfo]
 
         :raises Exception: If tag does not exist in project or tag is not of type ANY_STRING
@@ -4311,8 +4311,8 @@ class ImageApi(RemoveableBulkModuleApi):
             .. code-block:: python
 
                 import os
-                from dotenv import load_dotenv
                 from tqdm import tqdm
+                from dotenv import load_dotenv
 
                 import supervisely as sly
 
@@ -4429,7 +4429,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type dataset_id: int
         :param names: List of names to check.
         :type names: List[str]
-        :return: List of free names.
+        :returns: List of free names.
         :rtype: List[str]
         """
 
@@ -4456,7 +4456,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type names: List[str]
         :param message: Error message.
         :type message: str, optional
-        :return: None
+        :returns: None
         :rtype: None
         """
         images_in_dataset = self.get_list(dataset_id)
@@ -4489,7 +4489,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type change_name_if_conflict: bool, optional
         :param progress_cb: Function for tracking upload progress.
         :type progress_cb: Optional[Union[tqdm, Callable]]
-        :return: List of uploaded images infos
+        :returns: List of uploaded images infos
         :rtype: List[ImageInfo]
         """
 
@@ -4530,7 +4530,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type change_name_if_conflict: bool, optional
         :param progress_cb: Function for tracking upload progress.
         :type progress_cb: Optional[Union[tqdm, Callable]]
-        :return: List of uploaded images infos
+        :returns: List of uploaded images infos
         :rtype: List[ImageInfo]
         """
 
@@ -4556,7 +4556,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
         :raises: :class:`ValueError` if both 'project_id' and 'dataset_id' are provided or none of them are provided.
-        :return: None
+        :returns: None
         :rtype: None
 
         """
@@ -4577,7 +4577,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type images: List[int]
         :param links: List of new remote links.
         :type links: List[str]
-        :return: json-encoded content of a response.
+        :returns: json-encoded content of a response.
 
         :Usage Example:
 
@@ -4629,7 +4629,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type id: int
         :param sort_value: Sort value.
         :type sort_value: str
-        :return: json-encoded content of a response.
+        :returns: json-encoded content of a response.
         :rtype: Dict[str, Any]
         """
         return self.set_custom_sort_bulk([id], [sort_value])
@@ -4646,7 +4646,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type ids: List[int]
         :param sort_values: List of custom sort values that will be set for images. It is stored as a key `customSort` value in the image `meta`.
         :type sort_values: List[str]
-        :return: json-encoded content of a response.
+        :returns: json-encoded content of a response.
         :rtype: Dict[str, Any]
         """
         if len(ids) != len(sort_values):
@@ -4688,7 +4688,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type headers: dict, optional
         :param chunk_size: Size of chunk for streaming. Default is 8 MB.
         :type chunk_size: int, optional
-        :return: Stream of bytes or response object.
+        :returns: Stream of bytes or response object.
         :rtype: AsyncGenerator
         """
         api_method_name = "images.download"
@@ -4734,7 +4734,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type progress_cb: tqdm or callable, optional
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
         :type progress_cb_type: Literal["number", "size"], optional
-        :return: Image in RGB numpy matrix format
+        :returns: Image in RGB numpy matrix format
         :rtype: :class:`np.ndarray`
 
         :Usage Example:
@@ -4794,7 +4794,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type progress_cb: tqdm or callable, optional
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
         :type progress_cb_type: Literal["number", "size"], optional
-        :return: List of Images in RGB numpy matrix format
+        :returns: List of Images in RGB numpy matrix format
         :rtype: :class:`List[np.ndarray]`
 
         :Usage Example:
@@ -4861,7 +4861,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type progress_cb: tqdm or callable, optional
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
         :type progress_cb_type: Literal["number", "size"], optional
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -4948,7 +4948,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
         :type progress_cb_type: Literal["number", "size"], optional
         :raises: :class:`ValueError` if len(ids) != len(paths)
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -5021,7 +5021,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type progress_cb: Optional[Union[tqdm, Callable]]
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
         :type progress_cb_type: Literal["number", "size"], optional
-        :return: Bytes of downloaded image.
+        :returns: Bytes of downloaded image.
         :rtype: :class:`bytes`
 
         :Usage Example:
@@ -5099,7 +5099,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type progress_cb: Optional[Union[tqdm, Callable]]
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
         :type progress_cb_type: Literal["number", "size"], optional
-        :return: List of bytes of downloaded images.
+        :returns: List of bytes of downloaded images.
         :rtype: :class:`List[bytes]`
 
         :Usage Example:
@@ -5163,7 +5163,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type progress_cb: Optional[Union[tqdm, Callable]]
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
         :type progress_cb_type: Literal["number", "size"], optional
-        :return: Tuple of Image ID and bytes of downloaded image.
+        :returns: Tuple of Image ID and bytes of downloaded image.
         :rtype: :class:`Tuple[int, bytes]`
 
         :Usage Example:
@@ -5256,7 +5256,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param semaphore: Semaphore for limiting the number of simultaneous requests.
         :type semaphore: :class:`asyncio.Semaphore`, optional
         :param kwargs: Additional arguments.
-        :return: List of images in dataset.
+        :returns: List of images in dataset.
         :rtype: AsyncGenerator[List[ImageInfo]]
 
         :Usage Example:
@@ -5338,7 +5338,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type meta: Dict[str, Any]
         :param custom_sort: Custom sort value.
         :type custom_sort: str
-        :return: Updated meta dictionary.
+        :returns: Updated meta dictionary.
         :rtype: Dict[str, Any]
         """
         meta_copy = copy.deepcopy(meta)
@@ -5366,7 +5366,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type progress_cb: tqdm or callable, optional
         :param chunk_size: Size of chunk for streaming. Default is 8 MB.
         :type chunk_size: int, optional
-        :return: Blob file content if path is None, otherwise None.
+        :returns: Blob file content if path is None, otherwise None.
         :rtype: bytes or None
 
         :Usage Example:
@@ -5454,7 +5454,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param return_image_infos_generator: If True, returns generator of ImageInfo objects. Otherwise, returns None.
         :type return_image_infos_generator: bool, optional
 
-        :return: Generator of ImageInfo objects if return_image_infos_generator is True, otherwise None.
+        :returns: Generator of ImageInfo objects if return_image_infos_generator is True, otherwise None.
         :rtype: Union[Generator[ImageInfo, None], None]
         """
         if isinstance(dataset, int):
@@ -5595,7 +5595,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param timestamps: List of timestamps in ISO format. If None, uses current time.
                             You could set timestamps to [None, ..., None] if you need to recreate embeddings for images.
         :type timestamps: List[str], optional
-        :return: None
+        :returns: None
         :rtype: NoneType
 
         :Usage Example:

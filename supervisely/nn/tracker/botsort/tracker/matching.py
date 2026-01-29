@@ -9,7 +9,7 @@ try:
     from cython_bbox import bbox_overlaps as bbox_ious
 except ImportError:
     logger.warning("scipy, lap, and cython_bbox are not installed, some tracker functionalities may not work.")
-    
+
 from . import kalman_filter
 
 def merge_matches(m1, m2, shape):
@@ -135,7 +135,7 @@ def embedding_distance(tracks, detections, metric='cosine'):
     :param tracks: list[STrack]
     :param detections: list[BaseTrack]
     :param metric:
-    :return: cost_matrix np.ndarray
+    :returns: cost_matrix np.ndarray
     """
 
     cost_matrix = np.zeros((len(tracks), len(detections)), dtype=float)

@@ -111,7 +111,7 @@ class PointcloudEpisodeTag(VideoTag):
         :type tag_meta_collection: TagMetaCollection
         :param key_id_map: Key ID Map object.
         :type key_id_map: KeyIdMap, optional
-        :return: PointcloudEpisodeTag object
+        :returns: PointcloudEpisodeTag object
         :rtype: :class:`PointcloudEpisodeTag<PointcloudEpisodeTag>`
 
         :Usage Example:

@@ -27,7 +27,7 @@ class VideoTagApi(TagApi):
 
         :param tag_id: VideoTag ID in Supervisely.
         :type tag_id: int
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -55,7 +55,7 @@ class VideoTagApi(TagApi):
         :type tag_id: int
         :param frame_range: New VideoTag frame range.
         :type frame_range: List[int]
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -85,7 +85,7 @@ class VideoTagApi(TagApi):
         :type tag_id: int
         :param tag_value: New VideoTag value.
         :type tag_value: str or int
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -128,7 +128,7 @@ class VideoTagApi(TagApi):
         :type is_finished: bool
         :param non_final_value: Specify if the tag value is non-final.
         :type non_final_value: bool
-        :return: None
+        :returns: None
         :rtype: dict
 
         :Usage Example:
@@ -171,7 +171,7 @@ class VideoTagApi(TagApi):
         :param tag: VideoTag j,ject.
         :type tag: VideoTag
         :param update_id_inplace: Specify if
-        :return: VideoTag ID in Supervisely
+        :returns: VideoTag ID in Supervisely
         :rtype: int
 
         :Usage Example:
@@ -240,7 +240,7 @@ class VideoTagApi(TagApi):
         :type id: int
         :param project_meta_tag_id: TagMeta ID in Supervisely.
         :type project_meta_tag_id: int
-        :return: All tags of the video in VideoTagCollection format
+        :returns: All tags of the video in VideoTagCollection format
         :rtype: VideoTagCollection
 
         :Usage Example:
@@ -284,7 +284,7 @@ class VideoTagApi(TagApi):
 
         :param VideoTag in Supervisely.
         :type tag: VideoTag
-        :return: None
+        :returns: None
         :rtype: :class:`NoneType`
 
         :Usage Example:
@@ -332,7 +332,7 @@ class VideoObjectTagApi(TagApi):
         :type value: Optional[Union[str, int]], optional
         :param frame_range: array of strictly 2 frame numbers, defaults to None
         :type frame_range: Optional[List[int]], optional
-        :return: ID of the tag assigned to the object
+        :returns: ID of the tag assigned to the object
         :rtype: int
         """
         request_body = {
@@ -414,7 +414,7 @@ class VideoObjectTagApi(TagApi):
         :type object_id: int, optional
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
-        :return: List of tags IDs
+        :returns: List of tags IDs
         :rtype: list
         """
 

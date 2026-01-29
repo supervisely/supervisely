@@ -10,7 +10,7 @@ import jsonschema
 class JsonSerializable:
     def to_json(self):
         """Serialize to JSON-compatible dict.
-        :return: dict
+        :returns: dict
         """
         raise NotImplementedError()
 
@@ -19,7 +19,7 @@ class JsonSerializable:
         """
         Deserialize from a JSON-compatible dict
         :param data: JSON-compatible dict
-        :return: Parsed object
+        :returns: Parsed object
         """
         raise NotImplementedError()
 

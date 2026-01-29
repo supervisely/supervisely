@@ -165,7 +165,7 @@ class FrameCollection(KeyIndexedCollection):
         :type key: str
         :param default: The value that is returned if there is no key in the collection.
         :type default:  Optional[Any]
-        :return: :class:`Frame<supervisely.video_annotation.frame.Frame>`, :class:`Slice<supervisely.volume_annotation.slice.Slice>` or :class:`PointcloudEpisodeFrame<supervisely.pointcloud_annotation.pointcloud_episode_frame.PointcloudEpisodeFrame>` object
+        :returns: :class:`Frame<supervisely.video_annotation.frame.Frame>`, :class:`Slice<supervisely.volume_annotation.slice.Slice>` or :class:`PointcloudEpisodeFrame<supervisely.pointcloud_annotation.pointcloud_episode_frame.PointcloudEpisodeFrame>` object
         :rtype: :class:`KeyObject<KeyObject>`
 
         :Usage Example:
@@ -213,7 +213,7 @@ class FrameCollection(KeyIndexedCollection):
 
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
-        :return: List of dicts in json format
+        :returns: List of dicts in json format
         :rtype: :class:`List[dict]`
 
         :Usage Example:
@@ -261,7 +261,7 @@ class FrameCollection(KeyIndexedCollection):
         :type frames_count: int, optional
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
-        :return: FrameCollection object
+        :returns: FrameCollection object
         :rtype: :class:`FrameCollection`
 
         :Usage Example:
@@ -299,7 +299,7 @@ class FrameCollection(KeyIndexedCollection):
         """
         Get figures from all frames in collection.
 
-        :return: List of figures from all frames in collection
+        :returns: List of figures from all frames in collection
         :rtype: :class:`List[VideoFigure]<supervisely.video_annotation.video_figure.VideoFigure>`
 
         :Usage Example:
@@ -336,7 +336,7 @@ class FrameCollection(KeyIndexedCollection):
 
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap
-        :return: Figures from all frames in collection in json format, keys from all figures in frames in collection
+        :returns: Figures from all frames in collection in json format, keys from all figures in frames in collection
         :rtype: :class:`Tuple[list, list]`
 
         :Usage Example:

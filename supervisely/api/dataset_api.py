@@ -206,7 +206,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :type parent_id: Union[int, None], optional
         :param include_custom_data: If True, the response will include the `custom_data` field for each Dataset.
         :type include_custom_data: bool, optional
-        :return: List of all Datasets with information for the given Project. See :class:`info_sequence<info_sequence>`
+        :returns: List of all Datasets with information for the given Project. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[DatasetInfo]`
 
         :Usage Example:
@@ -271,7 +271,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
 
         :param id: Dataset ID in Supervisely.
         :type id: int
-        :return: Information about Dataset. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Dataset. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`DatasetInfo`
 
         :Usage Example:
@@ -334,7 +334,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :type parent_id: Union[int, None]
         :param custom_data: Custom data to store in the Dataset.
         :type custom_data: Dict[Any, Any], optional
-        :return: Information about Dataset. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Dataset. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`DatasetInfo`
 
         :Usage Example:
@@ -396,7 +396,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :param parent_id: Parent Dataset ID. If set to None, then the Dataset will be created at
             the top level of the Project, otherwise the Dataset will be created in a specified Dataset.
         :type parent_id: Union[int, None]
-        :return: Information about Dataset. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Dataset. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`DatasetInfo`
 
         :Usage Example:
@@ -447,7 +447,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :type description: str, optional
         :param custom_data: New custom data.
         :type custom_data: Dict[Any, Any], optional
-        :return: Information about Dataset. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Dataset. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`DatasetInfo`
 
         :Usage Example:
@@ -488,7 +488,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :type id: int
         :param custom_data: New custom data.
         :type custom_data: Dict[Any, Any]
-        :return: Information about Dataset. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Dataset. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`DatasetInfo`
 
         :Usage Example:
@@ -537,7 +537,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :param with_annotations: If True copies Datasets with annotations, otherwise copies just items from Datasets without annotations.
         :type with_annotations: bool, optional
         :raises: :class:`RuntimeError` if can not match "ids" and "new_names" lists, len(ids) != len(new_names)
-        :return: Information about Datasets. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Datasets. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[DatasetInfo]`
 
         :Usage Example:
@@ -616,7 +616,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :type change_name_if_conflict: bool, optional
         :param with_annotations: If True copies Dataset with annotations, otherwise copies just items from Dataset without annotation.
         :type with_annotations: bool, optional
-        :return: Information about Dataset. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Dataset. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`DatasetInfo`
 
         :Usage Example:
@@ -667,7 +667,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :param with_annotations: If True moves Datasets with annotations, otherwise moves just items from Datasets without annotations.
         :type with_annotations: bool, optional
         :raises: :class:`RuntimeError` if can not match "ids" and "new_names" lists, len(ids) != len(new_names)
-        :return: Information about Datasets. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Datasets. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[DatasetInfo]`
 
         :Usage Example:
@@ -719,7 +719,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :type change_name_if_conflict: bool, optional
         :param with_annotations: If True moves Dataset with annotations, otherwise moves just items from Dataset without annotation.
         :type with_annotations: bool, optional
-        :return: Information about Dataset. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Dataset. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`DatasetInfo`
 
         :Usage Example:
@@ -801,7 +801,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :type batch_size: int, optional
         :param progress_cb: Function for control delete progress.
         :type progress_cb: Callable, optional
-        :return: A list of response content in JSON format for each API call.
+        :returns: A list of response content in JSON format for each API call.
         :rtype: List[dict]
         """
         if batch_size > 50:
@@ -856,7 +856,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :param include_custom_data: If True, the response will include the `custom_data` field for each Dataset.
         :type include_custom_data: bool, optional
 
-        :return: Search response information and 'DatasetInfo' of all datasets that are searched by a given criterion.
+        :returns: Search response information and 'DatasetInfo' of all datasets that are searched by a given criterion.
         :rtype: dict
 
         :Usage Example:
@@ -989,7 +989,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :type fields: List[str], optional
         :param parent_id: Parent Dataset ID. If the Dataset is not nested, then the value is None.
         :type parent_id: Union[int, None]
-        :return: Information about Dataset. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Dataset. See :class:`info_sequence<info_sequence>`
         :rtype: Union[DatasetInfo, None]
         """
         filters = [{"field": ApiField.NAME, "operator": "=", "value": name}]
@@ -1004,7 +1004,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
 
         :param project_id: Project ID for which the tree is built.
         :type project_id: int
-        :return: Dictionary of datasets and their children.
+        :returns: Dictionary of datasets and their children.
         :rtype: Dict[DatasetInfo, Dict]
 
         :Usage Example:
@@ -1054,12 +1054,12 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         Helper method for recursive tree traversal.
         Yields tuples of (path, dataset) for all datasets in the tree. For each node (dataset) at the current level,
         yields its (path, dataset) before recursively traversing and yielding from its children.
-        
+
         :param tree: Tree structure to yield from.
         :type tree: Dict[DatasetInfo, Dict]
         :param path: Current path (used for recursion).
         :type path: List[str]
-        :return: Generator of tuples of (path, dataset).
+        :returns: Generator of tuples of (path, dataset).
         :rtype: Generator[Tuple[List[str], DatasetInfo], None, None]
         """
         for dataset, children in tree.items():
@@ -1072,14 +1072,14 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         self, tree: Dict[DatasetInfo, Dict], target_id: int, path: List[str] = None
     ) -> Tuple[Optional[DatasetInfo], Optional[Dict], List[str]]:
         """Find a specific dataset in the tree and return its subtree and path.
-        
+
         :param tree: Tree structure to search in.
         :type tree: Dict[DatasetInfo, Dict]
         :param target_id: ID of the dataset to find.
         :type target_id: int
         :param path: Current path (used for recursion).
         :type path: List[str], optional
-        :return: Tuple of (found_dataset, its_subtree, path_to_dataset).
+        :returns: Tuple of (found_dataset, its_subtree, path_to_dataset).
         :rtype: Tuple[Optional[DatasetInfo], Optional[Dict], List[str]]
         """
         if path is None:
@@ -1107,7 +1107,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :param dataset_id: Optional Dataset ID to start the tree from. If provided, only yields
             the subtree starting from this dataset (including the dataset itself and all its children).
         :type dataset_id: Optional[int]
-        :return: Generator of tuples of (path, dataset).
+        :returns: Generator of tuples of (path, dataset).
         :rtype: Generator[Tuple[List[str], DatasetInfo], None, None]
 
         :Usage Example:
@@ -1165,7 +1165,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :param dataset_id: Dataset ID for which the nested datasets are returned.
         :type dataset_id: int
 
-        :return: List of nested datasets.
+        :returns: List of nested datasets.
         :rtype: List[DatasetInfo]
 
         :Usage Example:
@@ -1213,7 +1213,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :type name: str
         :param parent_id: Parent Dataset ID. If the Dataset is not nested, then the value is None.
         :type parent_id: Union[int, None]
-        :return: True if the dataset exists, False otherwise.
+        :returns: True if the dataset exists, False otherwise.
         :rtype: bool
         """
         return self.get_info_by_name(project_id, name, parent_id=parent_id) is not None

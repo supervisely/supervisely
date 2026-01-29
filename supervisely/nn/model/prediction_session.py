@@ -455,7 +455,7 @@ class PredictionSession:
         """
         Lazily fetch output :class:`~supervisely.project.project_meta.ProjectMeta` from the deployment.
 
-        :return: Model meta.
+        :returns: Model meta.
         :rtype: :class:`~supervisely.project.project_meta.ProjectMeta`
         """
         if self._model_meta is None:
@@ -480,7 +480,7 @@ class PredictionSession:
         """
         Check whether server-side inference is finished.
 
-        :return: True if finished.
+        :returns: True if finished.
         :rtype: bool
         :raises RuntimeError: If inference has not been started yet.
         """
@@ -494,7 +494,7 @@ class PredictionSession:
         """
         Return numeric progress of the current inference request.
 
-        :return: Progress value as returned by the backend.
+        :returns: Progress value as returned by the backend.
         :rtype: Any
         :raises RuntimeError: If inference has not been started yet.
         """
@@ -508,7 +508,7 @@ class PredictionSession:
         """
         Return raw status JSON for the current inference request.
 
-        :return: Status dict.
+        :returns: Status dict.
         :rtype: dict
         :raises RuntimeError: If inference has not been started yet.
         """

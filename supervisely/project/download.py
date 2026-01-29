@@ -52,7 +52,7 @@ def download(
     :param progress_cb: Function for tracking download progress.
     :type progress_cb: tqdm or callable, optional
 
-    :return: None.
+    :returns: None.
     :rtype: NoneType
 
     :Usage Example:
@@ -60,16 +60,16 @@ def download(
         .. code-block:: python
 
             import os
+            from tqdm import tqdm
             from dotenv import load_dotenv
 
-            from tqdm import tqdm
             import supervisely as sly
 
             # Load secrets and create API object from .env file (recommended)
             # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
             if sly.is_development():
                 load_dotenv(os.path.expanduser("~/supervisely.env"))
-            
+
             api = sly.Api.from_env()
 
             # Pass values into the API constructor (optional, not recommended)
@@ -327,7 +327,7 @@ def download_fast(
     :type project_info: :class:`ProjectInfo`, optional
     :param skip_create_readme: Skip creating README.md file. Default is False.
     :type skip_create_readme: bool, optional
-    :return: None
+    :returns: None
     :rtype: NoneType
 
     :Usage Example:
@@ -605,7 +605,7 @@ def download_to_cache(
     :type progress_cb: tqdm or callable, optional
     :param semaphore: Semaphore for limiting the number of concurrent downloads if using async download.
 
-    :return: Tuple where the first list contains names of downloaded datasets and the second list contains
+    :returns: Tuple where the first list contains names of downloaded datasets and the second list contains
     names of cached datasets
     :rtype: Tuple[List, List]
     """
@@ -683,7 +683,7 @@ def copy_from_cache(
     :param dataset_paths: List of dataset paths to copy. If not specified, all datasets will be copied.
     :type dataset_paths: list(str), optional
 
-    :return: None.
+    :returns: None.
     :rtype: NoneType
     """
     if not is_cached(project_id):
@@ -738,7 +738,7 @@ def download_using_cache(
     :param semaphore: Semaphore for limiting the number of concurrent downloads if using async download.
     :type semaphore: asyncio.Semaphore, optional
 
-    :return: None.
+    :returns: None.
     :rtype: NoneType
     """
     downloaded, cached = download_to_cache(
@@ -766,7 +766,7 @@ def read_from_cached_project(
     :param image_ids: List of image IDs.
     :type image_ids: list(int)
 
-    :return: List of tuples of image path and annotation path.
+    :returns: List of tuples of image path and annotation path.
     :rtype: list(str)
     """
     if not is_cached(project_id, dataset_name):

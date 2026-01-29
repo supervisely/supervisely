@@ -41,7 +41,7 @@ class MultichannelBitmap(BitmapBase):
         The function rotate render the bitmap within the full image canvas and rotate the whole canvas
         with a given rotator (ImageRotator class object contain size of image and angle to rotate)
         :param rotator: ImageRotator class object
-        :return: MultichannelBitmap class object
+        :returns: MultichannelBitmap class object
         """
         full_img_data = np.zeros(rotator.src_imsize + self.data.shape[2:], dtype=self.data.dtype)
         full_img_data[
@@ -57,7 +57,7 @@ class MultichannelBitmap(BitmapBase):
         """
         Crop the current MultichannelBitmap object with a given rectangle
         :param rect: Rectangle class object
-        :return: MultichannelBitmap class object
+        :returns: MultichannelBitmap class object
         """
         maybe_cropped_area = self.to_bbox().crop(rect)
         if len(maybe_cropped_area) == 0:
@@ -74,7 +74,7 @@ class MultichannelBitmap(BitmapBase):
         Resize the current MultichannelBitmap to match a certain size
         :param in_size: input image size
         :param out_size: output image size
-        :return: MultichannelBitmap class object
+        :returns: MultichannelBitmap class object
         """
         scaled_origin, scaled_data = resize_origin_and_bitmap(self._origin, self._data, in_size, out_size)
         return MultichannelBitmap(data=scaled_data, origin=scaled_origin)
@@ -95,7 +95,7 @@ class MultichannelBitmap(BitmapBase):
     @property
     def area(self):
         """
-        :return: area of current MultichannelBitmap object
+        :returns: area of current MultichannelBitmap object
         """
         return self.data.shape[0] * self.data.shape[1]
 
@@ -104,7 +104,7 @@ class MultichannelBitmap(BitmapBase):
         """
         The function base64_2_data convert base64 encoded string to numpy
         :param s: string
-        :return: numpy array
+        :returns: numpy array
         """
         saved_bytes = io.BytesIO(zlib.decompress(base64.b64decode(s)))
         return np.load(saved_bytes)
@@ -114,7 +114,7 @@ class MultichannelBitmap(BitmapBase):
         """
         he function data_2_base64 convert numpy array to base64 encoded string
         :param data: numpy array
-        :return: string
+        :returns: string
         """
         bytes_io = io.BytesIO()
         np.save(bytes_io, data, allow_pickle=False)
