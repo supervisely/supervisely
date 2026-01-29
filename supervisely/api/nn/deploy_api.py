@@ -12,6 +12,11 @@ from typing import Any, Dict, Literal, Optional, Tuple, Union
 import supervisely.io.env as env
 from supervisely._utils import get_valid_kwargs
 from supervisely.api.api import Api
+from supervisely.api.nn.utils import (
+    find_apps_by_framework,
+    find_team_by_path,
+    get_artifacts_dir_and_checkpoint_name,
+)
 from supervisely.io.fs import get_file_name_with_ext
 from supervisely.nn.experiments import ExperimentInfo
 from supervisely.nn.utils import RuntimeType
@@ -238,9 +243,9 @@ class DeployApi:
             RTDETR,
             Detectron2,
             MMClassification,
-            MMPretrain,
             MMDetection,
             MMDetection3,
+            MMPretrain,
             MMSegmentation,
             UNet,
             YOLOv5,
@@ -298,34 +303,7 @@ class DeployApi:
         return task_info
 
     def _find_team_by_path(self, path: str, team_id: int = None, raise_not_found=True):
-        if team_id is not None:
-            if self._api.file.exists(team_id, path) or self._api.file.dir_exists(
-                team_id, path, recursive=False
-            ):
-                return team_id
-            elif raise_not_found:
-                raise ValueError(f"Checkpoint '{path}' not found in team provided team")
-            else:
-                return None
-        team_id = env.team_id(raise_not_found=False)
-        if team_id is not None:
-            if self._api.file.exists(team_id, path) or self._api.file.dir_exists(
-                team_id, path, recursive=False
-            ):
-                return team_id
-        teams = self._api.team.get_list()
-        team_id = None
-        for team in teams:
-            if self._api.file.exists(team.id, path):
-                if team_id is not None:
-                    raise ValueError("Multiple teams have the same checkpoint")
-                team_id = team.id
-        if team_id is None:
-            if raise_not_found:
-                raise ValueError("Checkpoint not found")
-            else:
-                return None
-        return team_id
+        return find_team_by_path(self._api, path, team_id, raise_not_found)
 
     def deploy_custom_model_by_checkpoint(
         self,
@@ -361,7 +339,7 @@ class DeployApi:
         :rtype: Dict[str, Any]
         :raises ValueError: if validations fail.
         """
-        artifacts_dir, checkpoint_name = self._get_artifacts_dir_and_checkpoint_name(checkpoint)
+        artifacts_dir, checkpoint_name = get_artifacts_dir_and_checkpoint_name(checkpoint)
         return self.deploy_custom_model_by_artifacts_dir(
             artifacts_dir=artifacts_dir,
             checkpoint_name=checkpoint_name,
@@ -581,10 +559,8 @@ class DeployApi:
         logger.info("Model loaded successfully")
 
     def find_serving_app_by_framework(self, framework: str):
-        modules = self._api.app.get_list_ecosystem_modules(
-            categories=["serve", f"framework:{framework}"], categories_operation="and"
-        )
-        if len(modules) == 0:
+        modules = find_apps_by_framework(self._api, framework, ["serve"])
+        if not modules:
             return None
         return modules[0]
 
@@ -849,9 +825,9 @@ class DeployApi:
             RTDETR,
             Detectron2,
             MMClassification,
-            MMPretrain,
             MMDetection,
             MMDetection3,
+            MMPretrain,
             MMSegmentation,
             UNet,
             YOLOv5,
