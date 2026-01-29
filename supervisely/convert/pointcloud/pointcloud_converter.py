@@ -57,6 +57,10 @@ class PointcloudConverter(BaseConverter):
             """
             self._related_images.append(related_images)
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._supports_links = True
+
     @property
     def format(self):
         return self._converter.format
@@ -106,11 +110,11 @@ class PointcloudConverter(BaseConverter):
                 ann = self.to_supervisely(item, meta, renamed_classes, renamed_tags)
                 anns.append(ann)
 
-            pcd_infos = api.pointcloud.upload_paths(
-                dataset_id,
-                item_names,
-                item_paths,
+            upload_method = (
+                api.pointcloud.upload_links if self.upload_as_links else api.pointcloud.upload_paths
             )
+            pcd_infos = upload_method(dataset_id, item_names, item_paths)
+
             pcd_ids = [pcd_info.id for pcd_info in pcd_infos]
             pcl_to_rimg_figures: Dict[int, Dict[str, List[Dict]]] = {}
             pcl_to_hash_to_id: Dict[int, Dict[str, int]] = {}

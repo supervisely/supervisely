@@ -180,12 +180,14 @@ class ImageConverter(BaseConverter):
                     )
                 img_ids = [img_info.id for img_info in img_infos]
 
+                if self.upload_as_links and not self.supports_links:
+                    continue
+
                 anns = []
-                if not (self.upload_as_links and not self.supports_links):
-                    for info, item in zip(img_infos, valid_batch_items):
-                        if self._force_shape_for_links:
-                            item.set_shape((info.height, info.width))
-                        anns.append(self.to_supervisely(item, meta, renamed_classes, renamed_tags))
+                for info, item in zip(img_infos, valid_batch_items):
+                    if self._force_shape_for_links:
+                        item.set_shape((info.height, info.width))
+                    anns.append(self.to_supervisely(item, meta, renamed_classes, renamed_tags))
 
                 if len(anns) == len(img_ids):
                     api.annotation.upload_anns(

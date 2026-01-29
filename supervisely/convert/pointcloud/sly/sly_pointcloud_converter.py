@@ -46,6 +46,8 @@ class SLYPointcloudConverter(PointcloudConverter):
             return False
 
     def validate_format(self) -> bool:
+        if self.upload_as_links and self._supports_links:
+            self._download_remote_ann_files()
         pcd_list, ann_dict, rimg_dict, rimg_ann_dict = [], {}, {}, {}
         for root, _, files in os.walk(self._input_data):
             dir_name = os.path.basename(root)

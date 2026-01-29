@@ -1,27 +1,28 @@
-import numpy as np
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, Optional
+
+import numpy as np
 
 from supervisely import (
     Api,
     ObjClass,
     PointcloudAnnotation,
-    ProjectMeta,
-    logger,
-    is_development,
-    Progress,
     PointcloudObject,
+    Progress,
+    ProjectMeta,
     TagMeta,
     TagValueType,
+    TinyTimer,
+    is_development,
+    logger,
 )
-from supervisely.io import fs
+from supervisely.api.api import ApiField
 from supervisely.convert.base_converter import AvailablePointcloudConverters
+from supervisely.convert.pointcloud.lyft import lyft_helper
 from supervisely.convert.pointcloud.pointcloud_converter import PointcloudConverter
 from supervisely.geometry.cuboid_3d import Cuboid3d
-from supervisely.convert.pointcloud.lyft import lyft_helper
-from supervisely.api.api import ApiField
-from datetime import datetime
-from supervisely import TinyTimer
+from supervisely.io import fs
 from supervisely.pointcloud_annotation.pointcloud_annotation import (
     PointcloudFigure,
     PointcloudObjectCollection,
@@ -74,6 +75,9 @@ class LyftConverter(PointcloudConverter):
 
         def filter_fn(path):
             return all([(Path(path) / name).exists() for name in lyft_helper.FOLDER_NAMES])
+
+        if self.upload_as_links and self.supports_links:
+            self._download_remote_ann_files()
 
         input_paths = [d for d in fs.dirs_filter(self._input_data, filter_fn)]
         if len(input_paths) == 0:
@@ -230,6 +234,9 @@ class LyftConverter(PointcloudConverter):
         else:
             progress_cb = None
 
+        upload_fn = (
+            api.pointcloud.upload_link if self.upload_as_links else api.pointcloud.upload_path
+        )
         for item in self._items:
             # * Get the current dataset for the scene
             current_dataset = scene_name_to_dataset.get(item._scene_name, None)
@@ -249,7 +256,10 @@ class LyftConverter(PointcloudConverter):
 
             # * Upload pointcloud
             pcd_name = fs.get_file_name(pcd_path)
-            info = api.pointcloud.upload_path(current_dataset_id, pcd_name, pcd_path, {})
+            kwargs = {"dataset_id": current_dataset_id, "name": pcd_name, "path": pcd_path}
+            if self.upload_as_links:
+                kwargs["link"] = kwargs.pop("path")
+            info = upload_fn(current_dataset_id, pcd_name, pcd_path)
             pcd_id = info.id
 
             # * Convert annotation and upload
