@@ -1,5 +1,5 @@
 # coding: utf-8
-"""create/download/update :class:`Project<supervisely.project.project.Project>`"""
+"""Create, download, and update :class:`~supervisely.project.project.Project` objects."""
 
 # docs
 from __future__ import annotations
@@ -129,7 +129,7 @@ class ProjectInfo(NamedTuple):
 
 class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
     """
-    API for working with :class:`Project<supervisely.project.project.Project>`. :class:`ProjectApi<ProjectApi>` object is immutable.
+    API for working with projects. :class:`~supervisely.api.project_api.ProjectApi` object is immutable.
 
     :Usage Example:
 
@@ -161,35 +161,36 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         """
         NamedTuple ProjectInfo with API Fields containing information about Project.
 
-        :Example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            ProjectInfo(id=999,
-                        name='Cat_breeds',
-                        description='',
-                        size='861069',
-                        readme='',
-                        workspace_id=58,
-                        images_count=10,
-                        items_count=10,
-                        datasets_count=2,
-                        created_at='2020-11-17T17:44:28.158Z',
-                        updated_at='2021-03-01T10:51:57.545Z',
-                        type='images',
-                        reference_image_url='http://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg',
-                        custom_data={},
-                        backup_archive={},
-                        team_id=2,
-                        import_settings={}
-                        version={'id': 260, 'version': 3}
-                        created_by_id=7,
-                        embeddings_enabled=False,
-                        embeddings_updated_at=None,
-                        embeddings_in_progress=False,
-                        local_entities_count=10,
-                        remote_entities_count=0
-                        )
+                ProjectInfo(
+                    id=999,
+                    name="Cat_breeds",
+                    description="",
+                    size="861069",
+                    readme="",
+                    workspace_id=58,
+                    images_count=10,
+                    items_count=10,
+                    datasets_count=2,
+                    created_at="2020-11-17T17:44:28.158Z",
+                    updated_at="2021-03-01T10:51:57.545Z",
+                    type="images",
+                    reference_image_url="http://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg",
+                    custom_data={},
+                    backup_archive={},
+                    team_id=2,
+                    import_settings={},
+                    version={"id": 260, "version": 3},
+                    created_by_id=7,
+                    embeddings_enabled=False,
+                    embeddings_updated_at=None,
+                    embeddings_in_progress=False,
+                    local_entities_count=10,
+                    remote_entities_count=0,
+                )
         """
         return [
             ApiField.ID,

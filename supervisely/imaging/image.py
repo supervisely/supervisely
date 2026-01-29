@@ -1,5 +1,7 @@
 # coding: utf-8
 
+"""Image I/O and basic image processing utilities."""
+
 import base64
 import io
 import os.path
@@ -332,7 +334,7 @@ def write(path: str, img: np.ndarray, remove_alpha_channel: Optional[bool] = Tru
     :param remove_alpha_channel: Define remove alpha channel when writing file or not.
     :type remove_alpha_channel: bool, optional
     :returns: None
-    :rtype: :class:`NoneType`
+    :rtype: None
 
     :Usage Example:
 

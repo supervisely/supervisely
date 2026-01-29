@@ -1,5 +1,5 @@
 # coding: utf-8
-"""create or manipulate guides that can be assigned to labeling jobs and labeling queues"""
+"""Create and manage Guides for labeling jobs and labeling queues."""
 
 # docs
 from __future__ import annotations
@@ -52,7 +52,7 @@ class GuideInfo(NamedTuple):
 
 class GuidesApi(ModuleApiBase):
     """
-    API for working with Guides. :class:`GuidesApi<GuidesApi>` object is immutable.
+    API for working with Guides. :class:`~supervisely.api.guides_api.GuidesApi` object is immutable.
 
     :param api: API connection to the server.
     :type api: Api
@@ -82,23 +82,23 @@ class GuidesApi(ModuleApiBase):
         """
         NamedTuple GuideInfo information about Guide.
 
-        :Example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            GuideInfo(
-                id=1,
-                name='How to label objects',
-                description='Comprehensive guide on object labeling',
-                file_path='/path/to/guide.pdf',
-                created_at='2023-01-01T00:00:00.000Z',
-                updated_at='2025-11-17T18:21:10.217Z',
-                created_by_id=1,
-                team_id=1,
-                video_id=None,
-                disabled_by=None,
-                disabled_at=None
-            )
+                GuideInfo(
+                    id=1,
+                    name="How to label objects",
+                    description="Comprehensive guide on object labeling",
+                    file_path="/path/to/guide.pdf",
+                    created_at="2023-01-01T00:00:00.000Z",
+                    updated_at="2025-11-17T18:21:10.217Z",
+                    created_by_id=1,
+                    team_id=1,
+                    video_id=None,
+                    disabled_by=None,
+                    disabled_at=None,
+                )
         """
         return [
             ApiField.ID,
@@ -132,7 +132,7 @@ class GuidesApi(ModuleApiBase):
         :param filters: List of parameters to filter Guides.
         :type filters: List[Dict[str, str]], optional
         :returns: List of information about Guides.
-        :rtype: :class:`List[GuideInfo]`
+        :rtype: List[:class:`~supervisely.api.guides_api.GuideInfo`]
 
         :Usage Example:
 
@@ -181,7 +181,7 @@ class GuidesApi(ModuleApiBase):
         :param id: Guide ID in Supervisely.
         :type id: int
         :returns: Information about Guide.
-        :rtype: :class:`GuideInfo`
+        :rtype: :class:`~supervisely.api.guides_api.GuideInfo`
 
         :Usage Example:
 

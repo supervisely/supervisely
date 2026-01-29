@@ -1,4 +1,5 @@
 # coding: utf-8
+"""Work with video objects via the Supervisely API."""
 
 # docs
 from typing import List, Optional
@@ -11,7 +12,9 @@ from supervisely.video_annotation.video_object_collection import VideoObjectColl
 
 class VideoObjectApi(ObjectApi):
     """
-    :class:`VideoObject<supervisely.video_annotation.video_object.VideoObject>` for :class:`VideoAnnotation<supervisely.video_annotation.video_annotation.VideoAnnotation>`.
+    API for working with :class:`~supervisely.video_annotation.video_object.VideoObject` in
+    :class:`~supervisely.video_annotation.video_annotation.VideoAnnotation`.
+    :class:`~supervisely.api.video.video_object_api.VideoObjectApi` object is immutable.
     """
 
     def __init__(self, api):
@@ -41,11 +44,16 @@ class VideoObjectApi(ObjectApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
                 from supervisely.video_annotation.key_id_map import KeyIdMap
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 project_id = 17209

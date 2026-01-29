@@ -115,22 +115,22 @@ class EntitiesCollectionInfo(NamedTuple):
     """
     Object with entitites collection parameters from Supervisely.
 
-    :Example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        EntitiesCollectionInfo(
-            id=1,
-            team_id=2,
-            project_id=3,
-            name="collection_name",
-            created_at="2023-01-01T00:00:00Z",
-            updated_at="2023-01-02T00:00:00Z",
-            description="This is a collection",
-            options={"key": "value"},
-            type="default",
-            ai_search_key="search_key"
-        )
+            EntitiesCollectionInfo(
+                id=1,
+                team_id=2,
+                project_id=3,
+                name="collection_name",
+                created_at="2023-01-01T00:00:00Z",
+                updated_at="2023-01-02T00:00:00Z",
+                description="This is a collection",
+                options={"key": "value"},
+                type="default",
+                ai_search_key="search_key"
+            )
     """
 
     #: ID of the collection.
@@ -166,7 +166,8 @@ class EntitiesCollectionInfo(NamedTuple):
 
 class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
     """
-    API for working with Entities Collection. :class:`EntitiesCollectionApi<EntitiesCollectionApi>` object is immutable.
+    API for working with entities collections.
+    :class:`~supervisely.api.entities_collection_api.EntitiesCollectionApi` object is immutable.
 
     :Usage Example:
 
@@ -195,19 +196,19 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
         """
         NamedTuple EntitiesCollectionInfo information about Entities Collection.
 
-        :Example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-             EntitiesCollectionInfo(
-                id=2,
-                name='Enitites Collections #1',
-                team_id=4,
-                project_id=58,
-                description='',
-                created_at='2020-04-08T15:10:12.618Z',
-                updated_at='2020-04-08T15:10:19.833Z',
-            )
+                EntitiesCollectionInfo(
+                    id=2,
+                    name='Enitites Collections #1',
+                    team_id=4,
+                    project_id=58,
+                    description='',
+                    created_at='2020-04-08T15:10:12.618Z',
+                    updated_at='2020-04-08T15:10:19.833Z',
+                )
         """
         return [
             ApiField.ID,
@@ -305,10 +306,15 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 project_id = 123
@@ -397,10 +403,15 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 collections = api.entities_collection.get_list(4)
@@ -432,10 +443,15 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 collection = api.entities_collection.get_info_by_id(2)
@@ -476,12 +492,17 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
                 api = sly.Api.from_env()
+
                 project_id = 123
                 ai_search_key = "0ed6a5256433bbe32822949d563d476a"
 
@@ -542,11 +563,16 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
                 from supervisely.api.entities_collection_api import CollectionItem
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 collection_id = 2

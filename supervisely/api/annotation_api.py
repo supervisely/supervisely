@@ -1,5 +1,5 @@
 # coding: utf-8
-"""download/upload/edit :class:`Annotation<supervisely.annotation.annotation.Annotation>`"""
+"""Download, upload, and edit :class:`~supervisely.annotation.annotation.Annotation` objects."""
 
 # docs
 from __future__ import annotations
@@ -67,7 +67,7 @@ class AnnotationInfo(NamedTuple):
 
 class AnnotationApi(ModuleApi):
     """
-    Annotation for a single image. :class:`AnnotationApi<AnnotationApi>` object is immutable.
+    API for working with image annotations. :class:`~supervisely.api.annotation_api.AnnotationApi` object is immutable.
 
     :param api: API connection to the server.
     :type api: Api
@@ -100,15 +100,22 @@ class AnnotationApi(ModuleApi):
         """
         NamedTuple AnnotationInfo information about Annotation.
 
-        :Example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            AnnotationInfo(image_id=121236919,
-                           image_name='IMG_1836',
-                           annotation={'description': '', 'tags': [], 'size': {'height': 800, 'width': 1067}, 'objects': []},
-                           created_at='2019-12-19T12:06:59.435Z',
-                           updated_at='2021-02-06T11:07:26.080Z')
+                AnnotationInfo(
+                    image_id=121236919,
+                    image_name="IMG_1836",
+                    annotation={
+                        "description": "",
+                        "tags": [],
+                        "size": {"height": 800, "width": 1067},
+                        "objects": [],
+                    },
+                    created_at="2019-12-19T12:06:59.435Z",
+                    updated_at="2021-02-06T11:07:26.080Z",
+                )
         """
         return [
             ApiField.IMAGE_ID,
@@ -150,10 +157,15 @@ class AnnotationApi(ModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 dataset_id = 254737
@@ -228,10 +240,15 @@ class AnnotationApi(ModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 dataset_id = 254737
@@ -311,10 +328,15 @@ class AnnotationApi(ModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 image_id = 121236918
@@ -393,10 +415,15 @@ class AnnotationApi(ModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 image_id = 121236918
@@ -448,10 +475,15 @@ class AnnotationApi(ModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 dataset_id = 254737
@@ -567,10 +599,15 @@ class AnnotationApi(ModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 dataset_id = 254737
@@ -604,17 +641,22 @@ class AnnotationApi(ModuleApi):
         :param ann_path: Path to annotation on host.
         :type ann_path: str
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
 
         :Usage Example:
 
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 image_id = 121236918
@@ -640,17 +682,22 @@ class AnnotationApi(ModuleApi):
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
 
         :Usage Example:
 
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 img_ids = [121236918, 121236919]
@@ -695,17 +742,22 @@ class AnnotationApi(ModuleApi):
         :param ann_json: Annotation in JSON format.
         :type ann_json: dict
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
 
         :Usage Example:
 
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 image_id = 121236918
@@ -730,17 +782,22 @@ class AnnotationApi(ModuleApi):
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
 
         :Usage Example:
 
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 img_ids = [121236918, 121236919]
@@ -772,24 +829,29 @@ class AnnotationApi(ModuleApi):
         skip_bounds_validation: Optional[bool] = False,
     ) -> None:
         """
-        Loads an :class:`Annotation<supervisely.annotation.annotation.Annotation>` to a given image ID in the API.
+        Loads an :class:`~supervisely.annotation.annotation.Annotation` to a given image ID in the API.
 
         :param img_id: Image ID in Supervisely.
         :type img_id: int
         :param ann: Annotation object.
         :type ann: Annotation
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
 
         :Usage Example:
 
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 image_id = 121236918
@@ -805,7 +867,8 @@ class AnnotationApi(ModuleApi):
         skip_bounds_validation: Optional[bool] = False,
     ) -> None:
         """
-        Loads an :class:`Annotations<supervisely.annotation.annotation.Annotation>` to a given images IDs in the API. Images IDs must be from one dataset.
+        Loads :class:`~supervisely.annotation.annotation.Annotation` objects to given image IDs in the API.
+        Image IDs must be from one dataset.
 
         :param img_ids: Image ID in Supervisely.
         :type img_ids: List[int]
@@ -814,17 +877,22 @@ class AnnotationApi(ModuleApi):
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
 
         :Usage Example:
 
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 img_ids = [121236918, 121236919]
@@ -874,7 +942,7 @@ class AnnotationApi(ModuleApi):
         :param skip_bounds_validation: Skip bounds validation.
         :type skip_bounds_validation: bool, optional
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
         """
         # img_ids from the same dataset
         if len(img_ids) == 0:
@@ -1040,7 +1108,7 @@ class AnnotationApi(ModuleApi):
         :type progress_cb: tqdm or callable, optional
         :raises: :class:`RuntimeError`, if len(src_image_ids) != len(dst_image_ids)
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
 
         :Usage Example:
 
@@ -1048,11 +1116,15 @@ class AnnotationApi(ModuleApi):
 
                 import os
                 from tqdm import tqdm
+                from dotenv import load_dotenv
 
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 src_ids = [121236918, 121236919]
@@ -1102,17 +1174,22 @@ class AnnotationApi(ModuleApi):
         :param dst_image_id: Image ID in Supervisely.
         :type dst_image_id: int
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
 
         :Usage Example:
 
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 src_id = 121236918
@@ -1141,7 +1218,7 @@ class AnnotationApi(ModuleApi):
         :param dst_image_ids: Images IDs in Supervisely.
         :type dst_image_ids: List[int]
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
         :raises: :class:`RuntimeError` if len(src_image_ids) != len(dst_image_ids)
 
         :Usage Example:
@@ -1149,10 +1226,15 @@ class AnnotationApi(ModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 src_ids = [121236918, 121236919]
@@ -1198,7 +1280,7 @@ class AnnotationApi(ModuleApi):
         :param labels: List of labels to append.
         :type labels: List[Label]
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
         """
         if len(labels) == 0:
             return
@@ -1423,10 +1505,15 @@ class AnnotationApi(ModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 image_id = 121236918
@@ -1513,11 +1600,15 @@ class AnnotationApi(ModuleApi):
 
                 import os
                 from tqdm import tqdm
+                from dotenv import load_dotenv
 
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 dataset_id = 254737
@@ -1596,11 +1687,15 @@ class AnnotationApi(ModuleApi):
 
                 import os
                 from tqdm import tqdm
+                from dotenv import load_dotenv
 
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 dataset_id = 254737
@@ -1609,7 +1704,7 @@ class AnnotationApi(ModuleApi):
 
                 ann_infos = await api.annotation.download_bulk_async(dataset_id, image_ids, progress_cb=p)
 
-                Optimizing the download process by using the context to avoid redundant API calls.:
+                # Optimizing the download process by using the context to avoid redundant API calls:
                 # 1. Download the project meta
                 project_id = api.dataset.get_info_by_id(dataset_id).project_id
                 project_meta = api.project.get_meta(project_id)
@@ -1716,8 +1811,8 @@ class AnnotationApi(ModuleApi):
         :type project_meta: ProjectMeta, optional
         :param group_name: Group name. Labels will be assigned by tag with this value.
         :type group_name: str, optional
-        :returns: :class:`None<None>`
-        :rtype: :class:`NoneType<NoneType>`
+        :returns: None
+        :rtype: None
         :raises ValueError: if number of images and labels are not the same
 
         :Usage Example:
@@ -1725,10 +1820,15 @@ class AnnotationApi(ModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 dataset_id = 123456
@@ -1741,8 +1841,8 @@ class AnnotationApi(ModuleApi):
                 labels = [label1, label2]
                 labels_group_name = 'left_wheel'
 
-                # upload group of labels to corresponding multiview images
-                api.annotation.append_labels_group(image_ids, labels, labels_group_name)
+                # Upload group of labels to corresponding multiview images
+                api.annotation.append_labels_group(dataset_id, image_ids, labels, group_name=labels_group_name)
         """
 
         if len(image_ids) != len(labels):
@@ -1814,7 +1914,7 @@ class AnnotationApi(ModuleApi):
         :param semaphore: Semaphore to control concurrency level. If None, a default will be used.
         :type semaphore: asyncio.Semaphore, optional
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
 
         :Usage Example:
 
@@ -1822,10 +1922,15 @@ class AnnotationApi(ModuleApi):
 
                 import os
                 import asyncio
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 # Prepare your annotations and image IDs
@@ -1840,7 +1945,7 @@ class AnnotationApi(ModuleApi):
                         image_ids,
                         anns,
                         semaphore=asyncio.Semaphore(10)  # Control concurrency
-                    )
+                )
 
                 sly.run_coroutine(upload_annotations)
         """
@@ -2109,17 +2214,22 @@ class AnnotationApi(ModuleApi):
         :param log_progress: Whether to log progress information.
         :type log_progress: bool, optional
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
 
         :Usage Example:
 
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 dataset_id = 123456

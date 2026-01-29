@@ -1,4 +1,5 @@
 # coding: utf-8
+"""Work with volume annotations via the Supervisely API."""
 
 import asyncio
 import os
@@ -37,7 +38,8 @@ from supervisely.volume_annotation.volume_object_collection import (
 
 class VolumeAnnotationAPI(EntityAnnotationAPI):
     """
-    :class:`VolumeAnnotation<supervisely.volume_annotation.volume_annotation.VolumeAnnotation>` for a single volume. :class:`VolumeAnnotationAPI<VolumeAnnotationAPI>` object is immutable.
+    API for working with :class:`~supervisely.volume_annotation.volume_annotation.VolumeAnnotation`.
+    :class:`~supervisely.api.volume.volume_annotation_api.VolumeAnnotationAPI` object is immutable.
 
     :param api: API connection to the server.
     :type api: Api
@@ -45,8 +47,6 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
     :Usage Example:
 
         .. code-block:: python
-
-            import supervisely as sly
 
             import os
             from dotenv import load_dotenv
@@ -82,10 +82,15 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 volume_id = 19581134
@@ -143,17 +148,22 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
 
         :Usage Example:
 
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 volume_id = 19581134
@@ -195,7 +205,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         :type volume_ids: List[int]
         :param ann_paths: Paths to annotation files
         :type ann_paths: List[str]
-        :param project_meta: Input :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>` for VolumeAnnotations
+        :param project_meta: Input :class:`~supervisely.project.project_meta.ProjectMeta` for VolumeAnnotations
         :type project_meta: ProjectMeta
         :param interpolation_dirs: Paths to dirs with interpolation STL files
         :type interpolation_dirs: List[str], optional
@@ -204,17 +214,22 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         :param mask_dirs: Paths to dirs with Mask3D geometries
         :type mask_dirs: List[str], optional
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
 
         :Usage Example:
 
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 volume_ids = [121236918, 121236919]
@@ -490,10 +505,15 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 volume_id = 198702499
@@ -533,10 +553,15 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 volume_ids = [198702499, 198702500, 198702501]

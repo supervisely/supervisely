@@ -1,5 +1,7 @@
 # coding: utf-8
 
+"""Work with point cloud tags via the Supervisely API."""
+
 from supervisely.api.module_api import ApiField
 from supervisely.api.entity_annotation.tag_api import TagApi
 from typing import List, Optional, Union
@@ -7,7 +9,8 @@ from typing import List, Optional, Union
 
 class PointcloudTagApi(TagApi):
     """
-    :class:`PointcloudTag<supervisely.pointcloud_annotation.pointcloud_tag.PointcloudTag>` for point clouds. :class:`PointcloudTagApi<PointcloudTagApi>` object is immutable.
+    API for working with :class:`~supervisely.pointcloud_annotation.pointcloud_tag.PointcloudTag`.
+    :class:`~supervisely.api.pointcloud.pointcloud_tag_api.PointcloudTagApi` object is immutable.
     """
 
     _entity_id_field = ApiField.ENTITY_ID
@@ -21,8 +24,8 @@ class PointcloudTagApi(TagApi):
     ) -> int:
         """Add tag to point cloud.
 
-        :param tag_id: TagMeta ID in project `tag_metas`
-        :type tag_id: int
+        :param tag_meta_id: TagMeta ID in project `tag_metas`.
+        :type tag_meta_id: int
         :param pointcloud_id: Point cloud ID
         :type pointcloud_id: int
         :param value: possible_values from TagMeta, defaults to None
@@ -46,6 +49,8 @@ class PointcloudTagApi(TagApi):
 
         :param tag_id: tag ID of certain point cloud
         :type tag_id: int
+        :returns: None
+        :rtype: None
         """
         request_body = {ApiField.ID: tag_id}
         self._api.post("point-clouds.tags.remove", request_body)
@@ -58,6 +63,8 @@ class PointcloudTagApi(TagApi):
         :type tag_id: int
         :param value: possible_values from TagMeta
         :type value: Union[str, int]
+        :returns: None
+        :rtype: None
         """
         request_body = {
             ApiField.ID: tag_id,

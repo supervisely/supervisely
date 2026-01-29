@@ -1,5 +1,7 @@
 # coding: utf-8
 
+"""Work with point cloud episode annotations via the Supervisely API."""
+
 from supervisely.api.entity_annotation.entity_annotation_api import EntityAnnotationAPI
 from supervisely.api.module_api import ApiField
 from supervisely.pointcloud_annotation.pointcloud_episode_annotation import (
@@ -10,8 +12,8 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 
 class PointcloudEpisodeAnnotationAPI(EntityAnnotationAPI):
     """
-    :class:`PointcloudEpisodeAnnotation<supervisely.pointcloud_annotation.pointcloud_episode_annotation.PointcloudEpisodeAnnotation>` for a point clouds episodes.
-    :class:`PointcloudEpisodeAnnotationAPI<PointcloudEpisodeAnnotationAPI>` object is immutable.
+    API for working with :class:`~supervisely.pointcloud_annotation.pointcloud_episode_annotation.PointcloudEpisodeAnnotation`.
+    :class:`~supervisely.api.pointcloud.pointcloud_episode_annotation_api.PointcloudEpisodeAnnotationAPI` object is immutable.
 
     :param api: API connection to the server.
     :type api: Api
@@ -47,20 +49,25 @@ class PointcloudEpisodeAnnotationAPI(EntityAnnotationAPI):
         """
         Download information about PointcloudEpisodeAnnotation by dataset ID from API.
 
-        :param dataset_id: :class:`Dataset<supervisely.project.project.Dataset>` ID in Supervisely.
+        :param dataset_id: :class:`~supervisely.project.project.Dataset` ID in Supervisely.
         :type dataset_id: int
-        :returns: Dictionary woth information about PointcloudEpisodeAnnotation in json format
-        :rtype: :class:`dict`
+        :returns: Dictionary with information about PointcloudEpisodeAnnotation in json format.
+        :rtype: dict
 
         :Usage Example:
 
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 dataset_id = 62664
@@ -137,17 +144,22 @@ class PointcloudEpisodeAnnotationAPI(EntityAnnotationAPI):
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
 
         :Usage Example:
 
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 pcd_episodes_id = 198704259

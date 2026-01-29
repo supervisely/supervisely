@@ -1,4 +1,6 @@
 # coding: utf-8
+"""Control the Supervisely Image Annotation Tool UI via API."""
+
 from typing import Literal, Optional
 
 from supervisely.api.module_api import ApiField, ModuleApiBase

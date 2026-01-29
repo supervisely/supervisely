@@ -1,4 +1,6 @@
 # coding: utf-8
+"""Base classes and helpers for Supervisely API modules."""
+
 import asyncio
 from collections import namedtuple
 from copy import deepcopy
@@ -1068,10 +1070,15 @@ class ModuleApiBase(_JsonConvertibleModule):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 method = 'images.list'
@@ -1140,9 +1147,11 @@ class ModuleApi(ModuleApiBase):
                 token = 'Your Supervisely API Token'
                 api = sly.Api(address, token)
 
-                # Or you can use API from environment
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Or you can load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                from dotenv import load_dotenv
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
                 api = sly.Api.from_env()
 
 
@@ -1192,9 +1201,11 @@ class ModuleApi(ModuleApiBase):
                 token = 'Your Supervisely API Token'
                 api = sly.Api(address, token)
 
-                # Or you can use API from environment
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Or you can load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                from dotenv import load_dotenv
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
                 api = sly.Api.from_env()
 
                 dataset_id = 55832
@@ -1232,9 +1243,11 @@ class ModuleApi(ModuleApiBase):
                 token = 'Your Supervisely API Token'
                 api = sly.Api(address, token)
 
-                # Or you can use API from environment
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Or you can load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                from dotenv import load_dotenv
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
                 api = sly.Api.from_env()
 
                 name = "IMG_0315.jpeg"
@@ -1269,9 +1282,11 @@ class ModuleApi(ModuleApiBase):
                 token = 'Your Supervisely API Token'
                 api = sly.Api(address, token)
 
-                # Or you can use API from environment
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Or you can load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                from dotenv import load_dotenv
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
                 api = sly.Api.from_env()
 
                 name = "IMG_0315.jpeg"
@@ -1369,12 +1384,11 @@ class CloneableModuleApi(ModuleApi):
 
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-                load_dotenv(os.path.expanduser("~/supervisely.env"))
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 # ID of the entity to clone
@@ -1556,9 +1570,12 @@ class RemoveableBulkModuleApi(ModuleApi):
                 token = 'Your Supervisely API Token'
                 api = sly.Api(address, token)
 
-                # Or you can use API from environment
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Or you can load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                from dotenv import load_dotenv
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 image_ids = [19369645, 19369646, 19369647]
@@ -1591,9 +1608,12 @@ class RemoveableBulkModuleApi(ModuleApi):
                 token = 'Your Supervisely API Token'
                 api = sly.Api(address, token)
 
-                # Or you can use API from environment
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Or you can load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                from dotenv import load_dotenv
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 image_id = 19369643

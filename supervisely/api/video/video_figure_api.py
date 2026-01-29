@@ -1,4 +1,5 @@
 # coding: utf-8
+"""Work with video figures via the Supervisely API."""
 
 # docs
 from __future__ import annotations
@@ -14,7 +15,8 @@ from supervisely.annotation.label import LabelingStatus
 
 class VideoFigureApi(FigureApi):
     """
-    :class:`VideoFigure<supervisely.video_annotation.video_figure.VideoFigure>` for a single video.
+    API for working with :class:`~supervisely.video_annotation.video_figure.VideoFigure`.
+    :class:`~supervisely.api.video.video_figure_api.VideoFigureApi` object is immutable.
     """
 
     def create(
@@ -55,10 +57,15 @@ class VideoFigureApi(FigureApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 video_id = 198703211
@@ -94,17 +101,22 @@ class VideoFigureApi(FigureApi):
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
 
         :Usage Example:
 
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 project_id = 124976

@@ -1,5 +1,7 @@
 # coding: utf-8
 
+"""Logger for Supervisely."""
+
 import datetime
 import logging
 import os
@@ -9,9 +11,6 @@ from enum import Enum
 
 # import simplejson
 from pythonjsonlogger import jsonlogger
-
-###############################################################################
-
 
 class ServiceType(Enum):
     AGENT = 1
@@ -43,8 +42,9 @@ class EventType(Enum):
     APP_FINISHED = 21
 
 
-###############################################################################
-# predefined levels
+#####################
+# Predefined levels #
+#####################
 
 
 # level name: level, default exc_info, description
@@ -82,7 +82,9 @@ def _set_logging_levels(levels, the_logger):
         setattr(the_logger, lvl_name.lower(), bound_method)
 
 
-###############################################################################
+##########################
+# Default logging fields #
+##########################
 
 
 def _get_default_logging_fields():

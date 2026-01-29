@@ -1,6 +1,6 @@
 # coding: utf-8
+"""Work with point cloud annotations via the Supervisely API."""
 
-# docs
 import asyncio
 from typing import Callable, Dict, List, Optional, Union
 
@@ -18,7 +18,8 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 
 class PointcloudAnnotationAPI(EntityAnnotationAPI):
     """
-    :class:`PointcloudAnnotation<supervisely.pointcloud_annotation.pointcloud_annotation.PointcloudAnnotation>` for a single point cloud. :class:`PointcloudAnnotationAPI<PointcloudAnnotationAPI>` object is immutable.
+    API for working with :class:`~supervisely.pointcloud_annotation.pointcloud_annotation.PointcloudAnnotation`.
+    :class:`~supervisely.api.pointcloud.pointcloud_annotation_api.PointcloudAnnotationAPI` object is immutable.
 
     :param api: API connection to the server.
     :type api: Api
@@ -48,7 +49,7 @@ class PointcloudAnnotationAPI(EntityAnnotationAPI):
     _method_download_bulk = "point-clouds.annotations.bulk.info"
     _entity_ids_str = ApiField.POINTCLOUD_IDS
 
-    def download(self, pointcloud_id: int) -> List[Dict]:
+    def download(self, pointcloud_id: int) -> Dict:
         """
         Download information about PointcloudAnnotation by point cloud ID from API.
 
@@ -62,10 +63,15 @@ class PointcloudAnnotationAPI(EntityAnnotationAPI):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 pointcloud_id = 19618685
@@ -144,17 +150,22 @@ class PointcloudAnnotationAPI(EntityAnnotationAPI):
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
 
         :Usage Example:
 
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 pointcloud_id = 198704259
@@ -206,10 +217,15 @@ class PointcloudAnnotationAPI(EntityAnnotationAPI):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 pointcloud_id = 198702499
@@ -245,10 +261,15 @@ class PointcloudAnnotationAPI(EntityAnnotationAPI):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 pointcloud_ids = [198702499, 198702500, 198702501]

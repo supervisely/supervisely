@@ -1,4 +1,6 @@
 # coding: utf-8
+"""Work with volume tags via the Supervisely API."""
+
 from typing import Optional, Union
 
 from supervisely.annotation.tag_meta import TagMeta
@@ -9,7 +11,8 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 
 class VolumeTagApi(TagApi):
     """
-    :class:`VolumeTag<supervisely.volume_annotation.volume_tag.VolumeTag>` for a single volume. :class:`VolumeTagApi<VolumeTagApi>` object is immutable.
+    API for working with :class:`~supervisely.volume_annotation.volume_tag.VolumeTag`.
+    :class:`~supervisely.api.volume.volume_tag_api.VolumeTagApi` object is immutable.
     """
 
     _entity_id_field = ApiField.ENTITY_ID
@@ -22,17 +25,22 @@ class VolumeTagApi(TagApi):
         :param tag_id: VolumeTag ID in Supervisely.
         :type tag_id: int
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
 
         :Usage Example:
 
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 api.volume.tag.remove_from_volume(volume_tag_id)
@@ -49,17 +57,22 @@ class VolumeTagApi(TagApi):
         :param tag_value: New VolumeTag value.
         :type tag_value: str or int
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
 
         :Usage Example:
 
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 api.volume.tag.update_value(volume_tag_id, 'new_tag_value')
@@ -96,10 +109,15 @@ class VolumeTagApi(TagApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 volume_id = 19402023

@@ -105,15 +105,15 @@ class BlobImageInfo:
     """
     Object with image parameters that describes image in blob file.
 
-    :Example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        BlobImageInfo(
-            name='IMG_3861.jpeg',
-            offset_start=0,
-            offset_end=148388,
-        )
+            BlobImageInfo(
+                name="IMG_3861.jpeg",
+                offset_start=0,
+                offset_end=148388,
+            )
     """
 
     name: str
@@ -279,34 +279,34 @@ class ImageInfo(NamedTuple):
     """
     Object with image parameters from Supervisely.
 
-    :Example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        ImageInfo(
-            id=770915,
-            name='IMG_3861.jpeg',
-            link=None,
-            hash='ZdpMD+ZMJx0R8BgsCzJcqM7qP4M8f1AEtoYc87xZmyQ=',
-            mime='image/jpeg',
-            ext='jpeg',
-            size=148388,
-            width=1067,
-            height=800,
-            labels_count=4,
-            dataset_id=2532,
-            created_at='2021-03-02T10:04:33.973Z',
-            updated_at='2021-03-02T10:04:33.973Z',
-            meta={},
-            path_original='/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpg',
-            full_storage_url='http://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpg'),
-            tags=[],
-            created_by='admin'
-            related_data_id=None,
-            download_id=None,
-            offset_start=None,
-            offset_end=None,
-        )
+            ImageInfo(
+                id=770915,
+                name="IMG_3861.jpeg",
+                link=None,
+                hash="ZdpMD+ZMJx0R8BgsCzJcqM7qP4M8f1AEtoYc87xZmyQ=",
+                mime="image/jpeg",
+                ext="jpeg",
+                size=148388,
+                width=1067,
+                height=800,
+                labels_count=4,
+                dataset_id=2532,
+                created_at="2021-03-02T10:04:33.973Z",
+                updated_at="2021-03-02T10:04:33.973Z",
+                meta={},
+                path_original="/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpg",
+                full_storage_url="http://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpg",
+                tags=[],
+                created_by="admin",
+                related_data_id=None,
+                download_id=None,
+                offset_start=None,
+                offset_end=None,
+            )
     """
 
     #: :class:`int`: Image ID in Supervisely.
@@ -338,10 +338,10 @@ class ImageInfo(NamedTuple):
     #: :class:`int`: Image height.
     height: int
 
-    #: :class:`int`: Number of :class:`Labels<supervisely.annotation.label.Label>` in the Image.
+    #: :class:`int`: Number of :class:`~supervisely.annotation.label.Label` in the Image.
     labels_count: int
 
-    #: :class:`int`: :class:`Dataset<supervisely.project.project.Dataset>` ID in Supervisely.
+    #: :class:`int`: :class:`~supervisely.project.project.Dataset` ID in Supervisely.
     dataset_id: int
 
     #: :class:`str`: Image creation time. e.g. "2019-02-22T14:59:53.381Z".
@@ -367,7 +367,7 @@ class ImageInfo(NamedTuple):
     #: "http://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpg".
     full_storage_url: str
 
-    #: :class:`str`: Image :class:`Tags<supervisely.annotation.tag.Tag>` list.
+    #: :class:`str`: Image :class:`~supervisely.annotation.tag.Tag` list.
     #: e.g. "[{'entityId': 2836466, 'tagId': 345022, 'id': 2224609, 'labelerLogin': 'admin',
     #: 'createdAt': '2021-03-05T14:15:39.923Z', 'updatedAt': '2021-03-05T14:15:39.923Z'}, {...}]".
     tags: List[Dict]
@@ -397,7 +397,7 @@ class ImageInfo(NamedTuple):
     #: Format: "YYYY-MM-DDTHH:MM:SS.sssZ"
     embeddings_updated_at: Optional[str] = None
 
-    #: :class:`int`: :class:`Dataset<supervisely.project.project.Project>` ID in Supervisely.
+    #: :class:`int`: :class:`~supervisely.project.project.Project` ID in Supervisely.
     project_id: int = None
 
     # DO NOT DELETE THIS COMMENT
@@ -409,14 +409,14 @@ class ImageInfo(NamedTuple):
         Get Image preview URL.
 
         :returns: Image preview URL.
-        :rtype: :class:`str`
+        :rtype: str
         """
         return resize_image_url(self.full_storage_url)
 
 
 class ImageApi(RemoveableBulkModuleApi):
     """
-    API for working with :class:`Image<supervisely.imaging.image>`. :class:`ImageApi<ImageApi>` object is immutable.
+    API for working with images. :class:`~supervisely.api.image_api.ImageApi` object is immutable.
 
     :param api: API connection to the server
     :type api: Api
@@ -451,10 +451,10 @@ class ImageApi(RemoveableBulkModuleApi):
     @staticmethod
     def info_sequence():
         """
-        Get list of all :class:`ImageInfo<ImageInfo>` field names.
+        Get list of all :class:`~supervisely.api.image_api.ImageInfo` field names.
 
-        :returns: List of :class:`ImageInfo<ImageInfo>` field names.`
-        :rtype: :class:`List[str]`
+        :returns: List of :class:`~supervisely.api.image_api.ImageInfo` field names.
+        :rtype: List[str]
         """
         return [
             ApiField.ID,
@@ -556,9 +556,10 @@ class ImageApi(RemoveableBulkModuleApi):
         project_id: int = None,
     ) -> Iterator[List[ImageInfo]]:
         """
-        Returns a generator that yields lists of images in the given :class:`Dataset<supervisely.project.project.Dataset>` or :class:`Project<supervisely.project.project.Project>`.
+        Returns a generator that yields lists of images in the given
+        :class:`~supervisely.project.project.Dataset` or :class:`~supervisely.project.project.Project`.
 
-        :param dataset_id: :class:`Dataset<supervisely.project.project.Dataset>` ID in which the Images are located.
+        :param dataset_id: :class:`~supervisely.project.project.Dataset` ID in which the Images are located.
         :type dataset_id: :class:`int`
         :param filters: List of params to sort output Images.
         :type filters: :class:`List[Dict]`, optional
@@ -572,9 +573,10 @@ class ImageApi(RemoveableBulkModuleApi):
         :type force_metadata_for_links: bool, optional
         :param batch_size: Number of images to get in each request.
         :type batch_size: int, optional
-        :param project_id: :class:`Project<supervisely.project.project.Project>` ID in which the Images are located.
+        :param project_id: :class:`~supervisely.project.project.Project` ID in which the Images are located.
         :type project_id: :class:`int`
-        :returns: Generator that yields lists of images in the given :class:`Dataset<supervisely.project.project.Dataset>` or :class:`Project<supervisely.project.project.Project>`.
+        :returns: Generator that yields lists of images in the given
+            :class:`~supervisely.project.project.Dataset` or :class:`~supervisely.project.project.Project`.
 
         :Usage Example:
 
@@ -635,9 +637,9 @@ class ImageApi(RemoveableBulkModuleApi):
         extra_fields: Optional[List[str]] = None,
     ) -> List[ImageInfo]:
         """
-        List of Images in the given :class:`Dataset<supervisely.project.project.Dataset>`.
+        List of Images in the given :class:`~supervisely.project.project.Dataset`.
 
-        :param dataset_id: :class:`Dataset<supervisely.project.project.Dataset>` ID in which the Images are located.
+        :param dataset_id: :class:`~supervisely.project.project.Dataset` ID in which the Images are located.
         :type dataset_id: :class:`int`
         :param filters: List of params to sort output Images.
         :type filters: :class:`List[Dict]`, optional
@@ -651,7 +653,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type force_metadata_for_links: bool, optional
         :param return_first_response: If True, returns first response without waiting for all pages.
         :type return_first_response: bool, optional
-        :param project_id: :class:`Project<supervisely.project.project.Project>` ID in which the Images are located.
+        :param project_id: :class:`~supervisely.project.project.Project` ID in which the Images are located.
         :type project_id: :class:`int`
         :param only_labelled: If True, returns only images with labels.
         :type only_labelled: bool, optional
@@ -801,10 +803,10 @@ class ImageApi(RemoveableBulkModuleApi):
         project_id: int = None,
     ) -> List[ImageInfo]:
         """
-        List of filtered Images in the given :class:`Dataset<supervisely.project.project.Dataset>`.
+        List of filtered Images in the given :class:`~supervisely.project.project.Dataset`.
         Differs in a more flexible filter format from the get_list() method.
 
-        :param dataset_id: :class:`Dataset<supervisely.project.project.Dataset>` ID in which the Images are located.
+        :param dataset_id: :class:`~supervisely.project.project.Dataset` ID in which the Images are located.
         :type dataset_id: :class:`int`
         :param filters: List of params to sort output Images.
         :type filters: :class:`List[Dict]`, optional
@@ -812,7 +814,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type sort: :class:`str`, optional
         :param sort_order: Sort order. One of {'asc' (default), 'desc'}
         :type sort_order: :class:`str`, optional
-        :param project_id: :class:`Project<supervisely.project.project.Project>` ID in which the Images are located.
+        :param project_id: :class:`~supervisely.project.project.Project` ID in which the Images are located.
         :type project_id: :class:`int`
         :returns: Objects with image information from Supervisely.
         :rtype: :class:`List[ImageInfo]<ImageInfo>`
@@ -1302,39 +1304,48 @@ class ImageApi(RemoveableBulkModuleApi):
         :param progress_cb: Function for tracking progress of checking.
         :type progress_cb: tqdm or callable, optional
         :returns: List of existing hashes
-        :rtype: :class:`List[str]`
-        :Usage Example: Checkout detailed example `here <https://app.supervisely.com/explore/notebooks/guide-10-check-existing-images-and-upload-only-the-new-ones-1545/overview>`_ (you must be logged into your Supervisely account)
+        :rtype: List[str]
 
-         .. code-block:: python
+        :Usage Example:
 
-            # Helpful method when your uploading was interrupted
-            # You can check what images has been successfully uploaded by their hashes and what not
-            # And continue uploading the rest of the images from that point
+            .. code-block:: python
 
-            import supervisely as sly
+                # Helpful method when your uploading was interrupted
+                # You can check what images has been successfully uploaded by their hashes and what not
+                # And continue uploading the rest of the images from that point
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            # Find project
-            project = api.project.get_info_by_id(WORKSPACE_ID, PROJECT_ID)
+                import supervisely as sly
 
-            # Get paths of all images in a directory
-            images_paths = sly.fs.list_files('images_to_upload')
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            # Calculate hashes for all images paths
-            hash_to_image = {}
-            images_hashes = []
+                api = sly.Api.from_env()
 
-            for idx, item in enumerate(images_paths):
-                item_hash = sly.fs.get_file_hash(item)
-                images_hashes.append(item_hash)
-                hash_to_image[item_hash] = item
+                # See also: https://app.supervisely.com/explore/notebooks/guide-10-check-existing-images-and-upload-only-the-new-ones-1545/overview
 
-            # Get hashes that are already on server
-            remote_hashes = api.image.check_existing_hashes(images_hashes)
-            already_uploaded_images = {hh: hash_to_image[hh] for hh in remote_hashes}
+                # Find project
+                project = api.project.get_info_by_id(WORKSPACE_ID, PROJECT_ID)
+
+                # Get paths of all images in a directory
+                images_paths = sly.fs.list_files('images_to_upload')
+
+                # Calculate hashes for all images paths
+                hash_to_image = {}
+                images_hashes = []
+
+                for idx, item in enumerate(images_paths):
+                    item_hash = sly.fs.get_file_hash(item)
+                    images_hashes.append(item_hash)
+                    hash_to_image[item_hash] = item
+
+                # Get hashes that are already on server
+                remote_hashes = api.image.check_existing_hashes(images_hashes)
+                already_uploaded_images = {hh: hash_to_image[hh] for hh in remote_hashes}
         """
         results = []
         if len(hashes) == 0:

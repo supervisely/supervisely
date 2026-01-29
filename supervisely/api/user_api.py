@@ -1,5 +1,5 @@
 # coding: utf-8
-"""create and manipulate already existing users in your team"""
+"""Create and manage users in your Supervisely team."""
 
 # docs
 from __future__ import annotations
@@ -33,7 +33,7 @@ class UserInfo(NamedTuple):
 
 class UserApi(ModuleApiBase):
     """
-    API for working with :class:`Users<supervisely.user.user.UserRoleName>`. :class:`UserApi<UserApi>` object is immutable.
+    API for working with users. :class:`~supervisely.api.user_api.UserApi` object is immutable.
 
     :param api: API connection to the server.
     :type api: Api
@@ -67,21 +67,23 @@ class UserApi(ModuleApiBase):
         """
         NamedTuple UserInfo information about User.
 
-        :Example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            UserInfo(id=8,
-                     login='alex',
-                     role=None,
-                     role_id=None,
-                     name=None,
-                     email=None,
-                     logins=20,
-                     disabled=False,
-                     last_login='2021-03-24T15:06:26.804Z',
-                     created_at='2020-04-17T10:24:09.077Z',
-                     updated_at='2021-03-24T15:13:01.148Z')
+                UserInfo(
+                    id=8,
+                    login="alex",
+                    role=None,
+                    role_id=None,
+                    name=None,
+                    email=None,
+                    logins=20,
+                    disabled=False,
+                    last_login="2021-03-24T15:06:26.804Z",
+                    created_at="2020-04-17T10:24:09.077Z",
+                    updated_at="2021-03-24T15:13:01.148Z",
+                )
         """
         return [
             ApiField.ID,

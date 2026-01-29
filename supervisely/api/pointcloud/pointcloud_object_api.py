@@ -1,5 +1,7 @@
 # coding: utf-8
 
+"""Work with point cloud objects via the Supervisely API."""
+
 from typing import List
 
 from supervisely.api.entity_annotation.object_api import ObjectApi
@@ -12,7 +14,9 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 
 class PointcloudObjectApi(ObjectApi):
     """
-    :class:`PointcloudObject<supervisely.pointcloud_annotation.pointcloud_object.PointcloudObject>` for :class:`PointcloudAnnotation<supervisely.pointcloud_annotation.pointcloud_annotation.PointcloudAnnotation>`.
+    API for working with :class:`~supervisely.pointcloud_annotation.pointcloud_object.PointcloudObject` in
+    :class:`~supervisely.pointcloud_annotation.pointcloud_annotation.PointcloudAnnotation`.
+    :class:`~supervisely.api.pointcloud.pointcloud_object_api.PointcloudObjectApi` object is immutable.
     """
 
     def __init__(self, api):
@@ -45,11 +49,16 @@ class PointcloudObjectApi(ObjectApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
                 from supervisely.video_annotation.key_id_map import KeyIdMap
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 project_id = 19442
@@ -88,7 +97,7 @@ class PointcloudObjectApi(ObjectApi):
         """
         Add pointcloud objects to Dataset annotation objects.
 
-        :param dataset_id: :class:`Dataset<supervisely.project.project.Dataset>` ID in Supervisely.
+        :param dataset_id: :class:`~supervisely.project.project.Dataset` ID in Supervisely.
         :type dataset_id: int
         :param objects: Pointcloud objects collection.
         :type objects: PointcloudObjectCollection
@@ -102,12 +111,17 @@ class PointcloudObjectApi(ObjectApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
                 from supervisely.pointcloud_annotation.pointcloud_annotation import PointcloudObjectCollection
                 from supervisely.video_annotation.key_id_map import KeyIdMap
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 project_id = 19442

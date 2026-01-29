@@ -1,5 +1,5 @@
 # coding: utf-8
-"""list all user roles that are available on private supervisely instance"""
+"""List user roles available in a Supervisely instance."""
 
 # docs
 from __future__ import annotations
@@ -19,7 +19,7 @@ class RoleInfo(NamedTuple):
 
 class RoleApi(ModuleApiBase):
     """
-    API for working with Roles. :class:`RoleApi<RoleApi>` object is immutable.
+    API for working with roles. :class:`~supervisely.api.role_api.RoleApi` object is immutable.
 
     :param api: API connection to the server
     :type api: Api
@@ -62,14 +62,16 @@ class RoleApi(ModuleApiBase):
         """
         NamedTuple RoleInfo information about Role.
 
-        :Example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            RoleInfo(id=71,
-                     role='manager',
-                     created_at='2019-12-10T14:31:41.878Z',
-                     updated_at='2019-12-10T14:31:41.878Z')
+                RoleInfo(
+                    id=71,
+                    role='manager',
+                    created_at='2019-12-10T14:31:41.878Z',
+                    updated_at='2019-12-10T14:31:41.878Z'
+                )
         """
         return [ApiField.ID, ApiField.ROLE, ApiField.CREATED_AT, ApiField.UPDATED_AT]
 
@@ -94,10 +96,15 @@ class RoleApi(ModuleApiBase):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 roles = api.role.get_list()

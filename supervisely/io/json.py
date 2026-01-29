@@ -1,4 +1,7 @@
 # coding: utf-8
+
+"""JSON utilities for Supervisely."""
+
 import json
 import os
 from typing import Dict, Optional
@@ -248,7 +251,7 @@ async def dump_json_file_async(data: Dict, filename: str, indent: Optional[int] 
     :param indent: Json array elements and object members will be pretty-printed with that indent level.
     :type indent: int, optional
     :returns: None
-    :rtype: :class:`NoneType`
+    :rtype: None
 
     :Usage Example:
 

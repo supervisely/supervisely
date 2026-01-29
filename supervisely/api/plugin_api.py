@@ -1,5 +1,5 @@
 # coding: utf-8
-"""get list of plugins for supervisely team"""
+"""Get a list of plugins for a Supervisely team."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from supervisely.api.module_api import ApiField, ModuleApi
 
 class PluginApi(ModuleApi):
     """
-    API for working with plugins. :class:`PluginApi<PluginApi>` object is immutable.
+    API for working with plugins. :class:`~supervisely.api.plugin_api.PluginApi` object is immutable.
 
     :param api: API connection to the server
     :type api: Api
@@ -43,21 +43,23 @@ class PluginApi(ModuleApi):
         """
         NamedTuple PluginInfo information about Plugin.
 
-        :Example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            PluginInfo(id=3,
-                       name='DTL',
-                       description='Allows to combine datasets, to make class mapping, filter objects and images, apply auto augmentations and so on ...',
-                       type='dtl',
-                       default_version='latest',
-                       docker_image='docker.deepsystems.io/supervisely/five/dtl',
-                       readme='# Data Transformation Language (DTL)...',
-                       configs=[],
-                       versions=['lately', 'docs', ...],
-                       created_at='2020-03-30T09:17:36.000Z',
-                       updated_at='2020-04-23T06:26:29.000Z')
+                PluginInfo(
+                    id=3,
+                    name='DTL',
+                    description='Allows to combine datasets, to make class mapping, filter objects and images, apply auto augmentations and so on ...',
+                    type='dtl',
+                    default_version='latest',
+                    docker_image='docker.deepsystems.io/supervisely/five/dtl',
+                    readme='# Data Transformation Language (DTL)...',
+                    configs=[],
+                    versions=['lately', 'docs', ...],
+                    created_at='2020-03-30T09:17:36.000Z',
+                    updated_at='2020-04-23T06:26:29.000Z'
+                )
         """
         return [
             ApiField.ID,
@@ -98,10 +100,15 @@ class PluginApi(ModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser(\"~/supervisely.env\"))
+
                 api = sly.Api.from_env()
 
                 team_id = 8
@@ -129,10 +136,15 @@ class PluginApi(ModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser(\"~/supervisely.env\"))
+
                 api = sly.Api.from_env()
 
                 plugin_info = api.plugin.get_info_by_id(8, 3)

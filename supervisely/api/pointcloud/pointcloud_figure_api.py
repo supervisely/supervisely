@@ -1,5 +1,7 @@
 # coding: utf-8
 
+"""Work with point cloud figures via the Supervisely API."""
+
 from typing import Dict, List, Optional
 
 from supervisely.api.module_api import ApiField
@@ -10,7 +12,8 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 
 class PointcloudFigureApi(FigureApi):
     """
-    :class:`PointcloudFigure<supervisely.pointcloud_annotation.pointcloud_figure.PointcloudFigure>` for a single point cloud.
+    API for working with :class:`~supervisely.pointcloud_annotation.pointcloud_figure.PointcloudFigure`.
+    :class:`~supervisely.api.pointcloud.pointcloud_figure_api.PointcloudFigureApi` object is immutable.
     """
 
     def create(
@@ -42,10 +45,15 @@ class PointcloudFigureApi(FigureApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 pcd_id = 19618685
@@ -65,7 +73,7 @@ class PointcloudFigureApi(FigureApi):
         key_id_map: KeyIdMap,
     ) -> None:
         """
-        Add VideoFigures to given Video by ID.
+        Add PointcloudFigures to given point cloud by ID.
 
         :param pointcloud_id: Point cloud ID in Supervisely.
         :type pointcloud_id: int
@@ -74,17 +82,22 @@ class PointcloudFigureApi(FigureApi):
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
 
         :Usage Example:
 
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 project_id = 124976
@@ -117,7 +130,7 @@ class PointcloudFigureApi(FigureApi):
         """
         Add pointcloud figures to Dataset annotations.
 
-        :param dataset_id: :class:`Dataset<supervisely.project.project.Dataset>` ID in Supervisely.
+        :param dataset_id: :class:`~supervisely.project.project.Dataset` ID in Supervisely.
         :type dataset_id: int
         :param figures: List of point cloud figures.
         :type figures: List[PointcloudFigure]
@@ -125,23 +138,26 @@ class PointcloudFigureApi(FigureApi):
         :type entity_ids: List[int]
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
-        :rtype: :class:`NoneType`
-
-        :Usage Example:
+        :rtype: None
 
         :Usage Example:
 
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
                 from supervisely.geometry.cuboid_3d import Cuboid3d, Vector3d
                 from supervisely.pointcloud_annotation.pointcloud_annotation import PointcloudObjectCollection
                 from supervisely.pointcloud_annotation.pointcloud_figure import PointcloudFigure
                 from supervisely.video_annotation.key_id_map import KeyIdMap
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
 

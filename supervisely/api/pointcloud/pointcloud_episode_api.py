@@ -1,7 +1,8 @@
 # coding: utf-8
 
-# docs
-from typing import Dict
+"""Download, upload, and manage point cloud episodes in Supervisely."""
+
+from typing import Dict, Optional
 
 from supervisely._utils import batched
 from supervisely.api.module_api import ApiField
@@ -17,9 +18,9 @@ from supervisely.api.pointcloud.pointcloud_episode_object_api import (
 class PointcloudEpisodeApi(PointcloudApi):
     """
 
-    API for working with :class:`PointcloudEpisodes<supervisely.pointcloud_episodes.pointcloud_episodes>`.
-    :class:`PointcloudEpisodeApi<PointcloudEpisodeApi>` object is immutable.
-    Inherits from :class:`PointcloudApi<supervisely.api.pointcloud.PointcloudApi>`.
+    API for working with point cloud episodes.
+    :class:`~supervisely.api.pointcloud.pointcloud_episode_api.PointcloudEpisodeApi` object is immutable.
+    Inherits from :class:`~supervisely.api.pointcloud.pointcloud_api.PointcloudApi`.
 
     :param api: API connection to the server.
     :type api: Api
@@ -66,20 +67,25 @@ class PointcloudEpisodeApi(PointcloudApi):
         """
         Get a dictionary with frame_id and name of pointcloud by dataset id.
 
-        :param dataset_id: :class:`Dataset<supervisely.project.project.Dataset>` ID in Supervisely.
+        :param dataset_id: :class:`~supervisely.project.project.Dataset` ID in Supervisely.
         :type dataset_id: int
-        :returns: Dict with frame_id and name of pointcloud.
-        :rtype: Dict
+        :returns: Dictionary mapping frame index to point cloud name.
+        :rtype: Dict[int, str]
 
         :Usage Example:
 
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 dataset_id = 62664
@@ -110,7 +116,7 @@ class PointcloudEpisodeApi(PointcloudApi):
         pcd_ids: list,
         current: int,
         total: int,
-    ):
+    ) -> bool:
         """
         Send message to the Annotation Tool and return info if tracking was stopped
 
@@ -119,7 +125,8 @@ class PointcloudEpisodeApi(PointcloudApi):
         :param pcd_ids: list
         :param current: int
         :param total: int
-        :returns: str
+        :returns: True if tracking was stopped, False otherwise.
+        :rtype: bool
         """
 
         response = self._api.post(
@@ -136,29 +143,34 @@ class PointcloudEpisodeApi(PointcloudApi):
         )
         return response.json()[ApiField.STOPPED]
 
-    def get_max_frame_idx(self, dataset_id: int) -> int:
+    def get_max_frame_idx(self, dataset_id: int) -> Optional[int]:
         """
         Get max frame index for episode by dataset id.
         This method is useful for uploading pointclouds to the episode in parts.
 
-        :param dataset_id: :class:`Dataset<supervisely.project.project.Dataset>` ID in Supervisely.
+        :param dataset_id: :class:`~supervisely.project.project.Dataset` ID in Supervisely.
         :type dataset_id: int
-        :returns: Max frame index.
-        :rtype: int
+        :returns: Max frame index, or None if the dataset has no point clouds.
+        :rtype: Optional[int]
 
         :Usage Example:
 
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 dataset_id = 62664
-                max_frame = api.pointcloud_episode.get_max_frame(dataset_id)
+                max_frame = api.pointcloud_episode.get_max_frame_idx(dataset_id)
                 print(max_frame)
 
                 # Output: 1

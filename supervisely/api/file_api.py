@@ -1,5 +1,5 @@
 # coding: utf-8
-"""download/upload/manipulate files from/to Supervisely team files"""
+"""Download, upload, and manage files in Supervisely Team Files."""
 
 from __future__ import annotations
 
@@ -46,7 +46,7 @@ from supervisely.task.progress import Progress, tqdm_sly
 
 
 class FileInfo(NamedTuple):
-    """ """
+    """NamedTuple with file or folder information."""
 
     team_id: int
     id: int
@@ -66,7 +66,7 @@ class FileInfo(NamedTuple):
 
 class FileApi(ModuleApiBase):
     """
-    API for working with Files. :class:`FileApi<FileApi>` object is immutable.
+    API for working with files. :class:`~supervisely.api.file_api.FileApi` object is immutable.
 
     :param api: API connection to the server.
     :type api: Api
@@ -100,23 +100,25 @@ class FileApi(ModuleApiBase):
         """
         NamedTuple FileInfo information about File.
 
-        :Example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            FileInfo(team_id=8,
-                     id=7660,
-                     user_id=7,
-                     name='00135.json',
-                     hash='z7Hv9a7WIC5HIJrfX/69KVrvtDaLqucSprWHoCxyq0M=',
-                     path='/999_App_Test/ds1/00135.json',
-                     storage_path='/h5un6l2bnaz1vj8a9qgms4-public/teams_storage/8/y/P/rn/...json',
-                     mime='application/json',
-                     ext='json',
-                     sizeb=261,
-                     created_at='2021-01-11T09:04:17.959Z',
-                     updated_at='2021-01-11T09:04:17.959Z',
-                     full_storage_url='http://supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/teams_storage/8/y/P/rn/...json')
+                FileInfo(
+                    team_id=8,
+                    id=7660,
+                    user_id=7,
+                    name='00135.json',
+                    hash='z7Hv9a7WIC5HIJrfX/69KVrvtDaLqucSprWHoCxyq0M=',
+                    path='/999_App_Test/ds1/00135.json',
+                    storage_path='/h5un6l2bnaz1vj8a9qgms4-public/teams_storage/8/y/P/rn/...json',
+                    mime='application/json',
+                    ext='json',
+                    sizeb=261,
+                    created_at='2021-01-11T09:04:17.959Z',
+                    updated_at='2021-01-11T09:04:17.959Z',
+                    full_storage_url='http://supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/teams_storage/8/y/P/rn/...json'
+                )
         """
         return [
             ApiField.TEAM_ID,
@@ -489,7 +491,7 @@ class FileApi(ModuleApiBase):
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
 
         :Usage Example:
 
@@ -592,7 +594,7 @@ class FileApi(ModuleApiBase):
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
 
         :Usage Example:
 
@@ -801,18 +803,23 @@ class FileApi(ModuleApiBase):
         :type dst: str
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
-        :returns: Information about File. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`FileInfo`
+        :returns: Information about uploaded file.
+        :rtype: :class:`~supervisely.api.file_api.FileInfo`
 
         :Usage Example:
 
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 src_path = "/home/admin/Downloads/01587.json"
@@ -840,18 +847,23 @@ class FileApi(ModuleApiBase):
         :type dst: List[str]
         :param progress_cb: Function for tracking upload progress.
         :type progress_cb: tqdm or callable, optional
-        :returns: Information about Files. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[FileInfo]`
+        :returns: Information about uploaded files.
+        :rtype: List[:class:`~supervisely.api.file_api.FileInfo`]
 
         :Usage Example:
 
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 src_paths = ["/home/admin/Downloads/01587.json", "/home/admin/Downloads/01588.json","/home/admin/Downloads/01589.json"]
@@ -953,17 +965,22 @@ class FileApi(ModuleApiBase):
         :param new_name: New File name.
         :type new_name: str
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
 
         :Usage Example:
 
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 # NotImplementedError('Method is not supported')
@@ -992,17 +1009,22 @@ class FileApi(ModuleApiBase):
         :param path: Path in Team Files.
         :type path: str
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
 
         :Usage Example:
 
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 api.file.remove(8, "/999_App_Test/ds1/01587.json") # remove file
@@ -1027,17 +1049,22 @@ class FileApi(ModuleApiBase):
         :param path: Path to File in Team Files.
         :type path: str
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
 
         :Usage Example:
 
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 api.file.remove_file(8, "/999_App_Test/ds1/01587.json")
@@ -1064,17 +1091,22 @@ class FileApi(ModuleApiBase):
         :type silent: bool
 
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
 
         :Usage Example:
 
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 api.file.remove_dir(8, "/999_App_Test/ds1/")
@@ -1108,17 +1140,22 @@ class FileApi(ModuleApiBase):
         :param batch_size: Number of files to remove in one request. Default is 1000. Maximum is 20000.
         :type batch_size: int
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
 
         :Usage Example:
 
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 paths_to_del = [
@@ -1163,17 +1200,22 @@ class FileApi(ModuleApiBase):
         :param recursive: If True makes more checks and slower, if False makes less checks and faster.
         :type recursive: bool
         :returns: True if file exists, otherwise False
-        :rtype: :class:`bool`
+        :rtype: bool
 
         :Usage Example:
 
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 file = api.file.exists(8, "/999_App_Test/ds1/02163.json") # True
@@ -1196,17 +1238,22 @@ class FileApi(ModuleApiBase):
         :param recursive: If True makes more checks and slower, if False makes less checks and faster.
         :type recursive: bool
         :returns: True if directory exists, otherwise False
-        :rtype: :class:`bool`
+        :rtype: bool
 
         :Usage Example:
 
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 file = api.file.dir_exists(8, "/999_App_Test/")   # True
@@ -1233,10 +1280,15 @@ class FileApi(ModuleApiBase):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 file = api.file.get_free_name(8, "/999_App_Test/ds1/02163.json")
@@ -1277,14 +1329,19 @@ class FileApi(ModuleApiBase):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 file_id = 7660
-                file_url = sly.api.file.get_url(file_id)
+                file_url = api.file.get_url(file_id)
                 print(file_url)
                 # Output: http://supervisely.com/files/7660
         """
@@ -1298,18 +1355,23 @@ class FileApi(ModuleApiBase):
         :type team_id: int
         :param remote_path: Remote path to file in Team Files.
         :type remote_path: str
-        :returns: Information about File. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`FileInfo`
+        :returns: Information about file.
+        :rtype: :class:`~supervisely.api.file_api.FileInfo`
 
         :Usage Example:
 
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 file_path = "/999_App_Test/ds1/00135.json"
@@ -1354,18 +1416,23 @@ class FileApi(ModuleApiBase):
 
         :param id: File ID in Supervisely.
         :type id: int
-        :returns: Information about File. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`FileInfo`
+        :returns: Information about file.
+        :rtype: :class:`~supervisely.api.file_api.FileInfo`
 
         :Usage Example:
 
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 file_id = 7660
@@ -1404,10 +1471,15 @@ class FileApi(ModuleApiBase):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 new_dir_name = api.file.get_free_dir_name(9, "/My_App_Test")
@@ -1462,10 +1534,15 @@ class FileApi(ModuleApiBase):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 path_to_dir = "/My_App_Test/ds1"
@@ -1648,7 +1725,7 @@ class FileApi(ModuleApiBase):
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "size".
         :type progress_cb_type: Literal["number", "size"], optional
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
         """
         api_method = "file-storage.download"
 
@@ -1721,7 +1798,7 @@ class FileApi(ModuleApiBase):
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "size".
         :type progress_cb_type: Literal["number", "size"], optional
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
 
         :Usage Example:
 
@@ -1830,7 +1907,7 @@ class FileApi(ModuleApiBase):
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "size".
         :type progress_cb_type: Literal["number", "size"], optional
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
 
         :Usage Example:
 
@@ -1913,7 +1990,7 @@ class FileApi(ModuleApiBase):
         :param show_progress: If True show download progress.
         :type show_progress: bool
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
 
         :Usage Example:
 
@@ -2136,7 +2213,7 @@ class FileApi(ModuleApiBase):
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "size".
         :type progress_cb_type: Literal["number", "size"], optional
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
 
         :Usage Example:
 
@@ -2223,7 +2300,7 @@ class FileApi(ModuleApiBase):
         :param enable_fallback: If True, the method will fallback to synchronous upload if an error occurs.
         :type enable_fallback: bool, optional
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
 
         :Usage Example:
 
@@ -2463,7 +2540,7 @@ class FileApi(ModuleApiBase):
         :param enable_fallback: If True, the method will fallback to synchronous upload if an error occurs.
         :type enable_fallback: bool, optional
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
         """
         coroutine = self.upload_bulk_async(
             team_id=team_id,

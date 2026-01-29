@@ -1,4 +1,6 @@
 # coding: utf-8
+"""Work with volume figures via the Supervisely API."""
+
 import os
 import re
 import tempfile
@@ -23,7 +25,8 @@ from supervisely.volume_annotation.volume_figure import VolumeFigure
 
 class VolumeFigureApi(FigureApi):
     """
-    :class:`VolumeFigure<supervisely.volume_annotation.volume_figure.VolumeFigure>` for a single volume.
+    API for working with :class:`~supervisely.volume_annotation.volume_figure.VolumeFigure`.
+    :class:`~supervisely.api.volume.volume_figure_api.VolumeFigureApi` object is immutable.
     """
 
     def create(
@@ -44,7 +47,7 @@ class VolumeFigureApi(FigureApi):
         :type volume_id: int
         :param object_id: ID of the object to which the VolumeFigure belongs.
         :type object_id: int
-        :param plane_name: :py:class:`Plane<supervisely.volume_annotation.plane.Plane>` of the slice in volume.
+        :param plane_name: :class:`~supervisely.volume_annotation.plane.Plane` of the slice in volume.
         :type plane_name: str
         :param slice_index: Number of the slice to add VolumeFigure.
         :type slice_index: int
@@ -60,12 +63,17 @@ class VolumeFigureApi(FigureApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
                 from supervisely.volume_annotation.plane import Plane
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 volume_id = 19581134
@@ -116,19 +124,24 @@ class VolumeFigureApi(FigureApi):
         :param figures: List of VolumeFigure objects.
         :type figures: List[VolumeFigure]
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
 
         :Usage Example:
 
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
                 from supervisely.volume_annotation.plane import Plane
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 project_id = 19370
@@ -198,17 +211,22 @@ class VolumeFigureApi(FigureApi):
         :param paths: List of paths to download.
         :type paths: List[str]
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
 
         :Usage Example:
 
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 STORAGE_DIR = sly.app.get_data_dir()
@@ -256,17 +274,22 @@ class VolumeFigureApi(FigureApi):
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
 
         :Usage Example:
 
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 volume_id = 19371414
@@ -381,17 +404,22 @@ class VolumeFigureApi(FigureApi):
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
 
         :Usage Example:
 
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 volume_id = 19371414
@@ -501,7 +529,7 @@ class VolumeFigureApi(FigureApi):
         :param key_id_map: The KeyIdMap object (a dictionary with bidict values).
         :type key_id_map: KeyIdMap
         :returns: None
-        :rtype: NoneType
+        :rtype: None
 
         :Usage Example:
 
@@ -509,11 +537,16 @@ class VolumeFigureApi(FigureApi):
 
                 import os
                 import numpy as np
+                from dotenv import load_dotenv
+
                 import supervisely as sly
                 from supervisely.volume.nrrd_encoder import encode
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 volume_id = 23772225
@@ -575,17 +608,22 @@ class VolumeFigureApi(FigureApi):
         :param paths: List of paths to save the downloaded geometries.
         :type paths: List[str]
         :returns: None
-        :rtype: NoneType
+        :rtype: None
 
         :Usage Example:
 
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 STORAGE_DIR = sly.app.get_data_dir()

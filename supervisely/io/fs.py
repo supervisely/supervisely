@@ -1,6 +1,7 @@
 # coding: utf-8
 
-# docs
+"""File system utilities for Supervisely."""
+
 import base64
 import errno
 import hashlib
@@ -1510,7 +1511,7 @@ async def copy_file_async(
     :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "size".
     :type progress_cb_type: Literal["number", "size"], optional
     :returns: None
-    :rtype: :class:`NoneType`
+    :rtype: None
 
     :Usage Example:
 
@@ -1580,7 +1581,7 @@ async def unpack_archive_async(
     :param chunk_size_mb: Size of the chunk to read from the file. Default is 50Mb.
     :type chunk_size_mb: int
     :returns: None
-    :rtype: :class:`NoneType`
+    :rtype: None
 
     :Usage Example:
 
@@ -1633,7 +1634,7 @@ async def touch_async(path: str) -> None:
     :param path: Target file path.
     :type path: str
     :returns: None
-    :rtype: :class:`NoneType`
+    :rtype: None
 
     :Usage Example:
 

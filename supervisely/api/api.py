@@ -1,5 +1,5 @@
 # coding: utf-8
-"""api connection to the server which allows user to communicate with Supervisely"""
+"""Supervisely API client."""
 
 from __future__ import annotations
 
@@ -213,7 +213,7 @@ class UserSession:
         :param decoded_token: Decoded token.
         :type decoded_token: dict
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
         """
         for key, value in decoded_token.items():
             if key == "group":
@@ -436,22 +436,21 @@ class Api:
             version of the Supervisely instance.
         :type check_instance_version: bool or str, optional
         :returns: Api object
-        :rtype: :class:`Api<supervisely.api.api.Api>`
+        :rtype: :class:`~supervisely.api.api.Api`
 
         :Usage Example:
 
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-                api = sly.Api.from_env()
-
-                # alternatively you can store SERVER_ADDRESS and API_TOKEN
-                # in "~/supervisely.env" .env file
-                # Learn more here: https://developer.supervisely.com/app-development/basics/add-private-app#create-.env-file-supervisely.env-with-the-following-content-learn-more-here
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
                 api = sly.Api.from_env()
         """
@@ -499,7 +498,7 @@ class Api:
         :type value: str
         :raises: :class:`RuntimeError`, if key is already set
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
         """
         if key in self.headers:
             raise RuntimeError(
@@ -517,7 +516,7 @@ class Api:
         :param value: New value.
         :type value: str
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
         """
         self.additional_fields[key] = value
 

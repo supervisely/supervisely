@@ -1,4 +1,6 @@
 # coding: utf-8
+"""Create and manage annotation issues and comments in Supervisely."""
+
 from __future__ import annotations
 
 from typing import Dict, List, Literal, NamedTuple, Optional, Union
@@ -24,12 +26,14 @@ class CommentInfo(NamedTuple):
 
     @classmethod
     def from_json(cls, data: Dict) -> CommentInfo:
-        """Create an instance of the class from JSON data.
+        """
+        Create an instance of the class from JSON data.
 
         :param data: JSON data.
         :type data: Dict
         :returns: Instance of the class.
-        :rtype: CommentInfo"""
+        :rtype: CommentInfo
+        """
         return cls(
             id=data.get(ApiField.ID),
             issue_id=data.get(ApiField.ISSUE_ID),

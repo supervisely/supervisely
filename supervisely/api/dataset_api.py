@@ -1,5 +1,5 @@
 # coding: utf-8
-"""create/download/update :class:`Dataset<supervisely.project.project.Dataset>`"""
+"""Create, download, and update :class:`~supervisely.project.project.Dataset` objects."""
 
 # docs
 from __future__ import annotations
@@ -102,7 +102,7 @@ class DatasetInfo(NamedTuple):
 
 class DatasetApi(UpdateableModule, RemoveableModuleApi):
     """
-    API for working with :class:`Dataset<supervisely.project.project.Dataset>`. :class:`DatasetApi<DatasetApi>` object is immutable.
+    API for working with datasets. :class:`~supervisely.api.dataset_api.DatasetApi` object is immutable.
 
     :param api: API connection to the server.
     :type api: Api
@@ -135,22 +135,24 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         """
         NamedTuple DatasetInfo information about Dataset.
 
-        :Example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            DatasetInfo(id=452984,
-                        name='ds0',
-                        description='',
-                        size='3997776',
-                        project_id=118909,
-                        images_count=11,
-                        items_count=11,
-                        created_at='2021-03-03T15:54:08.802Z',
-                        updated_at='2021-03-16T09:31:37.063Z',
-                        reference_image_url='https://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/K/q/jf/...png'),
-                        team_id=1,
-                        workspace_id=2
+                DatasetInfo(
+                    id=452984,
+                    name="ds0",
+                    description="",
+                    size="3997776",
+                    project_id=118909,
+                    images_count=11,
+                    items_count=11,
+                    created_at="2021-03-03T15:54:08.802Z",
+                    updated_at="2021-03-16T09:31:37.063Z",
+                    reference_image_url="https://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/K/q/jf/...png",
+                    team_id=1,
+                    workspace_id=2,
+                )
         """
         return [
             ApiField.ID,

@@ -18,7 +18,8 @@ from supervisely.sly_logger import logger
 
 class StorageApi(FileApi):
     """
-    API for working with Files and Folders in Team Files and Cloud Storage. :class:`StorageApi<StorageApi>` object is immutable.
+    API for working with files and folders in Team Files and Cloud Storage.
+    :class:`~supervisely.api.storage_api.StorageApi` object is immutable.
 
     :param api: API connection to the server.
     :type api: Api
@@ -246,17 +247,22 @@ class StorageApi(FileApi):
         :param remote_path: Remote path to File in Team Files.
         :type remote_path: str
         :returns: True if file exists, otherwise False
-        :rtype: :class:`bool`
+        :rtype: bool
 
         :Usage Example:
 
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 file = api.storage.exists(8, "/999_App_Test/ds1/02163.json") # True
@@ -273,17 +279,22 @@ class StorageApi(FileApi):
         :param remote_path: Remote path to directory in Team Files.
         :type remote_path: str
         :returns: True if directory exists, otherwise False
-        :rtype: :class:`bool`
+        :rtype: bool
 
         :Usage Example:
 
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 file = api.storage.dir_exists(8, "/999_App_Test/")   # True
@@ -299,18 +310,23 @@ class StorageApi(FileApi):
         :type team_id: int
         :param remote_path: Remote path to file in Team Files.
         :type remote_path: str
-        :returns: Information about File. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`FileInfo`
+        :returns: Information about file.
+        :rtype: :class:`~supervisely.api.file_api.FileInfo`
 
         :Usage Example:
 
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 file_path = "/999_App_Test/ds1/00135.json"

@@ -1,5 +1,5 @@
 # coding: utf-8
-"""create or manipulate already existing labeling jobs"""
+"""Create and manage labeling jobs in Supervisely."""
 
 # docs
 from __future__ import annotations
@@ -94,7 +94,7 @@ class LabelingJobInfo(NamedTuple):
 
 class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
     """
-    API for working with Labeling Jobs. :class:`LabelingJobApi<LabelingJobApi>` object is immutable.
+    API for working with labeling jobs. :class:`~supervisely.api.labeling_job_api.LabelingJobApi` object is immutable.
 
     :param api: API connection to the server.
     :type api: Api
@@ -142,49 +142,51 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         """
         NamedTuple LabelingJobInfo information about Labeling Job.
 
-        :Example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-             LabelingJobInfo(id=2,
-                             name='Annotation Job (#1) (#1) (dataset_01)',
-                             readme='',
-                             description='',
-                             team_id=4,
-                             workspace_id=8,
-                             workspace_name='First Workspace',
-                             project_id=58,
-                             project_name='tutorial_project',
-                             dataset_id=54,
-                             dataset_name='dataset_01',
-                             created_by_id=4,
-                             created_by_login='anna',
-                             assigned_to_id=4,
-                             assigned_to_login='anna',
-                             reviewer_id=4,
-                             reviewer_login='anna',
-                             created_at='2020-04-08T15:10:12.618Z',
-                             started_at='2020-04-08T15:10:19.833Z',
-                             finished_at='2020-04-08T15:13:39.788Z',
-                             status='completed',
-                             disabled=False,
-                             labeling_queue_id=3,
-                             labeling_exam_id=None,
-                             images_count=3,
-                             finished_images_count=0,
-                             rejected_images_count=1,
-                             accepted_images_count=2,
-                             progress_images_count=2,
-                             classes_to_label=[],
-                             tags_to_label=[],
-                             images_range=(1, 5),
-                             objects_limit_per_image=None,
-                             tags_limit_per_image=None,
-                             filter_images_by_tags=[],
-                             include_images_with_tags=[],
-                             exclude_images_with_tags=[],
-                             entities=None,
-                             priority=2)
+                LabelingJobInfo(
+                    id=2,
+                    name='Annotation Job (#1) (#1) (dataset_01)',
+                    readme='',
+                    description='',
+                    team_id=4,
+                    workspace_id=8,
+                    workspace_name='First Workspace',
+                    project_id=58,
+                    project_name='tutorial_project',
+                    dataset_id=54,
+                    dataset_name='dataset_01',
+                    created_by_id=4,
+                    created_by_login='anna',
+                    assigned_to_id=4,
+                    assigned_to_login='anna',
+                    reviewer_id=4,
+                    reviewer_login='anna',
+                    created_at='2020-04-08T15:10:12.618Z',
+                    started_at='2020-04-08T15:10:19.833Z',
+                    finished_at='2020-04-08T15:13:39.788Z',
+                    status='completed',
+                    disabled=False,
+                    labeling_queue_id=3,
+                    labeling_exam_id=None,
+                    images_count=3,
+                    finished_images_count=0,
+                    rejected_images_count=1,
+                    accepted_images_count=2,
+                    progress_images_count=2,
+                    classes_to_label=[],
+                    tags_to_label=[],
+                    images_range=(1, 5),
+                    objects_limit_per_image=None,
+                    tags_limit_per_image=None,
+                    filter_images_by_tags=[],
+                    include_images_with_tags=[],
+                    exclude_images_with_tags=[],
+                    entities=None,
+                    priority=2
+                )
         """
         return [
             ApiField.ID,
@@ -406,10 +408,15 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 user_name = 'alex'
@@ -607,10 +614,15 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 label_jobs = api.labeling_job.get_list(4)
@@ -745,19 +757,23 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :param id: User ID in Supervisely.
         :type id: int
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
 
         :Usage Example:
 
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-                api = sly.Api.from_env()
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
+                api = sly.Api.from_env()
                 api.labeling_job.stop(9)
         """
         self._api.post("jobs.stop", {ApiField.ID: id})
@@ -776,10 +792,15 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 label_job_info = api.labeling_job.get_info_by_id(2)
@@ -851,17 +872,22 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :param id: Labeling Job ID in Supervisely.
         :type id: int
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
 
         :Usage Example:
 
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 api.labeling_job.archive(23)
@@ -875,17 +901,22 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :param id: Labeling job ID in Supervisely.
         :type id: int
         :returns: Labeling Job Status
-        :rtype: :class:`Status<supervisely.api.labeling_job_api.LabelingJobApi.Status>`
+        :rtype: :class:`~supervisely.api.labeling_job_api.LabelingJobApi.Status`
 
         :Usage Example:
 
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 job_status = api.labeling_job.get_status(4)
@@ -919,17 +950,22 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type wait_attempt_timeout_sec: int, optional
         :raises: :class:`WaitingTimeExceeded`, if waiting time exceeded
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
 
         :Usage Example:
 
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 api.labeling_job.wait(4, 'completed', wait_attempts=2, wait_attempt_timeout_sec=1)
@@ -959,10 +995,15 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 status = api.labeling_job.get_stats(3)
@@ -1154,10 +1195,15 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 activity = api.labeling_job.get_activity(3)
@@ -1191,17 +1237,22 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :param status: New Labeling Job status
         :type status: str
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
 
         :Usage Example:
 
             .. code-block:: python
 
-                import supervisely as sly
-                from supervisely.api.labeling_job_api.LabelingJobApi.Status import COMPLETED
+                import os
+                from dotenv import load_dotenv
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 api.labeling_job.set_status(id=9, status="completed")
@@ -1336,7 +1387,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :param mode: Reject mode. Can be "all" or "unmarked".
         :type mode: str, optional
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
         """
 
         data = {ApiField.ID: id, ApiField.MODE: mode}
@@ -1355,7 +1406,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :param status: New review status for entity
         :type status: str
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
         """
         self._api.post(
             "jobs.entities.update-review-status",
@@ -1452,10 +1503,15 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 job_info_list = api.labeling_job.restart(222)
@@ -1521,10 +1577,15 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 custom_data = api.labeling_job.get_custom_data(9)
@@ -1549,17 +1610,22 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :param update: Whether to update existing custom data or replace it entirely.
         :type update: bool
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
 
         :Usage Example:
 
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 api.labeling_job.set_custom_data(9, {"key": "value"})

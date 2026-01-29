@@ -1,3 +1,5 @@
+"""Download, upload, and manage point clouds in Supervisely."""
+
 # coding: utf-8
 
 # docs
@@ -43,32 +45,32 @@ from supervisely.imaging import image as sly_image
 
 class PointcloudInfo(NamedTuple):
     """
-    Object with :class:`Pointcloud<supervisely.pointcloud.pointcloud>` parameters from Supervisely.
+    Object with :class:`~supervisely.pointcloud.pointcloud.Pointcloud` parameters from Supervisely.
 
-    :Example:
+    :Usage Example:
 
-    .. code-block:: python
+        .. code-block:: python
 
-        PointcloudInfo(
-            id=19373403,
-            frame=None,
-            description='',
-            name='000063.pcd',
-            team_id=435,
-            workspace_id=687,
-            project_id=17231,
-            dataset_id=55875,
-            link=None,
-            hash='7EcJCyhq15V4NnZ8oiPrKQckmXXypO4saqFN7kgH08Y=',
-            path_original='/h5unms4-public/point_clouds/Z/h/bc/roHZP5nP2.pcd',
-            cloud_mime='image/pcd',
-            figures_count=4,
-            objects_count=4,
-            tags=[],
-            meta={},
-            created_at='2023-02-07T19:36:44.897Z',
-            updated_at='2023-02-07T19:36:44.897Z'
-        )
+            PointcloudInfo(
+                id=19373403,
+                frame=None,
+                description="",
+                name="000063.pcd",
+                team_id=435,
+                workspace_id=687,
+                project_id=17231,
+                dataset_id=55875,
+                link=None,
+                hash="7EcJCyhq15V4NnZ8oiPrKQckmXXypO4saqFN7kgH08Y=",
+                path_original="/h5unms4-public/point_clouds/Z/h/bc/roHZP5nP2.pcd",
+                cloud_mime="image/pcd",
+                figures_count=4,
+                objects_count=4,
+                tags=[],
+                meta={},
+                created_at="2023-02-07T19:36:44.897Z",
+                updated_at="2023-02-07T19:36:44.897Z",
+            )
     """
 
     #: :class:`int`: Point cloud ID in Supervisely.
@@ -83,16 +85,16 @@ class PointcloudInfo(NamedTuple):
     #: :class:`str`: Point cloud filename.
     name: str
 
-    #: :class:`int`: :class:`TeamApi<supervisely.api.team_api.TeamApi>` ID in Supervisely.
+    #: :class:`int`: :class:`~supervisely.api.team_api.TeamApi` ID in Supervisely.
     team_id: int
 
-    #: :class:`int`: :class:`WorkspaceApi<supervisely.api.workspace_api.WorkspaceApi>` ID in Supervisely.
+    #: :class:`int`: :class:`~supervisely.api.workspace_api.WorkspaceApi` ID in Supervisely.
     workspace_id: int
 
-    #: :class:`int`: :class:`Project<supervisely.project.project.Project>` ID in Supervisely.
+    #: :class:`int`: :class:`~supervisely.project.project.Project` ID in Supervisely.
     project_id: int
 
-    #: :class:`int`: :class:`Dataset<supervisely.project.project.Dataset>` ID in Supervisely.
+    #: :class:`int`: :class:`~supervisely.project.project.Dataset` ID in Supervisely.
     dataset_id: int
 
     #: :class:`str`: Link to point cloud.
@@ -115,7 +117,7 @@ class PointcloudInfo(NamedTuple):
     #: :class:`int`: Number of PointcloudObject objects in the point cloud
     objects_count: int
 
-    #: :class:`list`: Pointcloud :class:`PointcloudTag<supervisely.pointcloud_annotation.pointcloud_tag.PointcloudTag>` list.
+    #: :class:`list`: Pointcloud :class:`~supervisely.pointcloud_annotation.pointcloud_tag.PointcloudTag` list.
     tags: list
 
     #: :class:`dict`: A dictionary containing point cloud metadata.
@@ -130,8 +132,7 @@ class PointcloudInfo(NamedTuple):
 
 class PointcloudApi(RemoveableBulkModuleApi):
     """
-    API for working with :class:`Pointcloud<supervisely.pointcloud.pointcloud>`.
-    :class:`PointcloudApi<PointcloudApi>` object is immutable.
+    API for working with point clouds. :class:`~supervisely.api.pointcloud.pointcloud_api.PointcloudApi` object is immutable.
 
     :param api: API connection to the server.
     :type api: Api
@@ -172,10 +173,10 @@ class PointcloudApi(RemoveableBulkModuleApi):
     @staticmethod
     def info_sequence():
         """
-        Get list of all :class:`PointcloudInfo<PointcloudInfo>` field names.
+        Get list of all :class:`~supervisely.api.pointcloud.pointcloud_api.PointcloudInfo` field names.
 
-        :returns: List of :class:`PointcloudInfo<PointcloudInfo>` field names.`
-        :rtype: :class:`list`
+        :returns: List of :class:`~supervisely.api.pointcloud.pointcloud_api.PointcloudInfo` field names.
+        :rtype: List[str]
         """
 
         return [
@@ -203,10 +204,10 @@ class PointcloudApi(RemoveableBulkModuleApi):
     @staticmethod
     def info_tuple_name():
         """
-        Get string name of :class:`PointcloudInfo<PointcloudInfo>` NamedTuple.
+        Get string name of :class:`~supervisely.api.pointcloud.pointcloud_api.PointcloudInfo` NamedTuple.
 
         :returns: NamedTuple name.
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -237,12 +238,12 @@ class PointcloudApi(RemoveableBulkModuleApi):
         """
         Get list of information about all point cloud for a given dataset ID.
 
-        :param dataset_id: :class:`Dataset<supervisely.project.project.Dataset>` ID in Supervisely.
+        :param dataset_id: :class:`~supervisely.project.project.Dataset` ID in Supervisely.
         :type dataset_id: int
         :param filters: List of parameters to sort output Pointclouds. See: https://api.docs.supervisely.com/#tag/Point-Clouds/paths/~1point-clouds.list/get
         :type filters: List[Dict[str, str]], optional
-        :returns: List of the point clouds objects from the dataset with given id.
-        :rtype: :class:`List[PointcloudInfo]`
+        :returns: List of the point cloud objects from the dataset with the given ID.
+        :rtype: List[:class:`~supervisely.api.pointcloud.pointcloud_api.PointcloudInfo`]
 
         :Usage Example:
 
@@ -277,14 +278,14 @@ class PointcloudApi(RemoveableBulkModuleApi):
 
     def get_info_by_id(self, id: int) -> PointcloudInfo:
         """
-        Get point cloud information by ID in PointcloudInfo<PointcloudInfo> format.
+        Get point cloud information by ID in :class:`~supervisely.api.pointcloud.pointcloud_api.PointcloudInfo` format.
 
         :param id: Point cloud ID in Supervisely.
         :type id: int
         :param raise_error: Return an error if the point cloud info was not received.
         :type raise_error: bool
-        :returns: Information about point cloud. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`PointcloudInfo`
+        :returns: Information about point cloud. See :meth:`info_sequence`.
+        :rtype: :class:`~supervisely.api.pointcloud.pointcloud_api.PointcloudInfo`
 
         :Usage Example:
 
@@ -506,8 +507,8 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :type hash: str
         :param meta: Point cloud metadata.
         :type meta: dict, optional
-        :returns: Information about point cloud. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`PointcloudInfo`
+        :returns: Information about point cloud. See :meth:`info_sequence`.
+        :rtype: :class:`~supervisely.api.pointcloud.pointcloud_api.PointcloudInfo`
 
         :Usage Example:
 
@@ -577,8 +578,8 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :type metas: Optional[List[Dict]], optional
         :param progress_cb: Function for tracking upload progress.
         :type progress_cb: Progress, optional
-        :returns: List of informations about Pointclouds. See :class:`info_sequence<info_sequence>`
-        :rtype: List[:class:`PointcloudInfo`]
+        :returns: List of informations about Pointclouds. See :meth:`info_sequence`.
+        :rtype: List[:class:`~supervisely.api.pointcloud.pointcloud_api.PointcloudInfo`]
 
         :Usage Example:
 
@@ -636,27 +637,34 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :type metas: Optional[List[Dict]]
         :param progress_cb: Function for tracking upload progress.
         :type progress_cb: Optional[Callable]
-        :returns: List with information about Point clouds. See :class:`info_sequence<info_sequence>`
-        :rtype: List[:class:`PointcloudInfo`]
-        :Usage example:
+        :returns: List with information about Point clouds. See :meth:`info_sequence`.
+        :rtype: List[:class:`~supervisely.api.pointcloud.pointcloud_api.PointcloudInfo`]
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            dataset_id = 62693
-            names = ["scan1.pcd", "scan2.pcd", "scan3.pcd"]
-            links = [
-                "https://example.com/pointclouds/scan1.pcd",
-                "https://example.com/pointclouds/scan2.pcd",
-                "https://example.com/pointclouds/scan3.pcd"
-            ]
-            pcd_infos = api.pointcloud.upload_links(dataset_id, names, links)
-            print(pcd_infos)
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                dataset_id = 62693
+                names = ["scan1.pcd", "scan2.pcd", "scan3.pcd"]
+                links = [
+                    "https://example.com/pointclouds/scan1.pcd",
+                    "https://example.com/pointclouds/scan2.pcd",
+                    "https://example.com/pointclouds/scan3.pcd",
+                ]
+                pcd_infos = api.pointcloud.upload_links(dataset_id, names, links)
+                print(pcd_infos)
         """
 
         return self._upload_bulk_add(
@@ -686,24 +694,31 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :type name: str, optional
         :param meta: Point cloud metadata.
         :type meta: Dict, optional
-        :returns: Information about point cloud. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`PointcloudInfo`
-        :Usage example:
+        :returns: Information about point cloud. See :meth:`info_sequence`.
+        :rtype: :class:`~supervisely.api.pointcloud.pointcloud_api.PointcloudInfo`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            dataset_id = 62693
-            link = "https://example.com/pointclouds/scan1.pcd"
-            name = "scan1.pcd"
+                import supervisely as sly
 
-            pcd_info = api.pointcloud.upload_link(dataset_id, link, name)
-            print(pcd_info)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                dataset_id = 62693
+                link = "https://example.com/pointclouds/scan1.pcd"
+                name = "scan1.pcd"
+
+                pcd_info = api.pointcloud.upload_link(dataset_id, link, name)
+                print(pcd_info)
         """
 
         if name is None:
@@ -923,7 +938,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :param meta: Dictionary with metadata for point cloud.
         :type meta: Optional[Dict]
         :returns: Information about point cloud
-        :rtype: PointcloudInfo
+        :rtype: :class:`~supervisely.api.pointcloud.pointcloud_api.PointcloudInfo`
 
         :Usage Example:
 
@@ -968,8 +983,8 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :type progress_cb: Progress, optional
         :param metas: List of dictionary with metadata for point cloud.
         :type metas: Optional[List[Dict]]
-        :returns: List of informations about point clouds
-        :rtype: List[PointcloudInfo]
+        :returns: List of informations about point clouds.
+        :rtype: List[:class:`~supervisely.api.pointcloud.pointcloud_api.PointcloudInfo`]
 
         :Usage Example:
 
@@ -1156,7 +1171,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :param progress_cb: Function for tracking upload progress.
         :type progress_cb: Optional[Union[tqdm, Callable]]
         :returns: List of uploaded pointclouds infos
-        :rtype: List[PointcloudInfo]
+        :rtype: List[:class:`~supervisely.api.pointcloud.pointcloud_api.PointcloudInfo`]
         """
 
         if os.path.isdir(dir_path) is False:
@@ -1605,7 +1620,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :param name: New Pointcloud name.
         :type name: str
         :returns: Information about updated Pointcloud.
-        :rtype: :class:`PointcloudInfo`
+        :rtype: :class:`~supervisely.api.pointcloud.pointcloud_api.PointcloudInfo`
 
         :Usage Example:
 
