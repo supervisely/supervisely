@@ -104,6 +104,7 @@ class LiveTraining:
             'training_paused': self._is_paused,
             'ready_to_predict': self.ready_to_predict, 
             'initial_iters': self.initial_iters,
+            # TODO: add metric
         }
     
     def run(self):
@@ -251,9 +252,11 @@ class LiveTraining:
         model.eval()
         try:
             objects = self.predict(self.model, image_np=image_np, image_info=image_info)
+            if self.task_type in [TaskType.OBJECT_DETECTION, TaskType.INSTANCE_SEGMENTATION]:
+                objects_filtered = self.filter_predictions_by_conf(objects, conf)
             if self.evaluator:
                 image_shape = image_np.shape[:2]
-                self.evaluator.store_prediction(image_id, objects, image_shape)
+                self.evaluator.store_prediction(image_id, objects_raw, image_shape)
             return {
                 'objects': objects,
                 'image_id': image_id,
