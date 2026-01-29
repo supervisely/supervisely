@@ -1,5 +1,5 @@
 # coding: utf-8
-"""list/create teams and monitor their activity"""
+"""List and manage teams and monitor their activity."""
 
 # docs
 from __future__ import annotations
@@ -149,7 +149,7 @@ class TeamInfo(NamedTuple):
 
 class TeamApi(ModuleNoParent, UpdateableModule):
     """
-    API for working with Team. :class:`TeamApi<TeamApi>` object is immutable.
+    API for working with teams. :class:`~supervisely.api.team_api.TeamApi` object is immutable.
 
     :param api: API connection to the server
     :type api: Api
@@ -181,17 +181,19 @@ class TeamApi(ModuleNoParent, UpdateableModule):
         """
         NamedTuple TeamInfo containing information about Team.
 
-        :Example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            TeamInfo(id=1,
-                     name='Vehicle',
-                     description='',
-                     role='admin',
-                     created_at='2020-03-31T14:49:08.931Z',
-                     updated_at='2020-03-31T14:49:08.931Z',
-                     UsageInfo(plan='free')               )
+                TeamInfo(
+                    id=1,
+                    name='Vehicle',
+                    description='',
+                    role='admin',
+                    created_at='2020-03-31T14:49:08.931Z',
+                    updated_at='2020-03-31T14:49:08.931Z',
+                    usage=UsageInfo(plan='free')
+                )
         """
         return [
             ApiField.ID,
@@ -228,14 +230,19 @@ class TeamApi(ModuleNoParent, UpdateableModule):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                team_id = 8
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
+                team_id = 8
                 team_list = api.team.get_list(team_id)
                 print(team_list)
                 # Output: [TeamInfo(id=1,
@@ -289,10 +296,15 @@ class TeamApi(ModuleNoParent, UpdateableModule):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 team_info = api.team.get_info_by_id(8)
@@ -345,10 +357,15 @@ class TeamApi(ModuleNoParent, UpdateableModule):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 new_team = api.team.create("Flowers")
@@ -418,11 +435,16 @@ class TeamApi(ModuleNoParent, UpdateableModule):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
                 from supervisely.api.team_api import ActivityAction as aa
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 labeling_actions = [

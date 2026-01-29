@@ -1,5 +1,5 @@
 # coding: utf-8
-"""api for working with tasks"""
+"""Create, monitor, and manage Supervisely tasks."""
 
 import json
 import os
@@ -63,7 +63,7 @@ class TaskFinishedWithError(Exception):
 
 class TaskApi(ModuleApiBase, ModuleWithStatus):
     """
-    API for working with Tasks. :class:`TaskApi<TaskApi>` object is immutable.
+    API for working with tasks. :class:`~supervisely.api.task_api.TaskApi` object is immutable.
 
     :param api: API connection to the server.
     :type api: Api
@@ -154,16 +154,20 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                workspace_id = 23821
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
+                workspace_id = 23821
                 task_infos = api.task.get_list(workspace_id)
-
                 task_infos_filter = api.task.get_list(23821, filters=[{'field': 'id', 'operator': '=', 'value': 121230}])
                 print(task_infos_filter)
                 # Output: [
@@ -211,14 +215,19 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                task_id = 121230
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
+                task_id = 121230
                 task_info = api.task.get_info_by_id(task_id)
                 print(task_info)
                 # Output: {
@@ -274,14 +283,19 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                task_id = 121230
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
+                task_id = 121230
                 task_status = api.task.get_status(task_id)
                 print(task_status)
                 # Output: finished
@@ -296,7 +310,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         :param status: Status object.
         :type status: Status
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
         """
         if status is self.Status.ERROR:
             raise TaskFinishedWithError(f"Task finished with status {str(self.Status.ERROR)}")
@@ -353,14 +367,18 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                task_id = 121230
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
                 api = sly.Api.from_env()
 
+                task_id = 121230
                 context = api.task.get_context(task_id)
                 print(context)
                 # Output: {
@@ -451,7 +469,16 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
 
                 app_slug = "supervisely-ecosystem/export-to-supervisely-format"
                 module_id = api.app.get_ecosystem_module_id(app_slug)

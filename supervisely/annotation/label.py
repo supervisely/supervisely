@@ -1,5 +1,5 @@
 # coding: utf-8
-"""Labeling object for :class:`Annotation<supervisely.annotation.annotation.Annotation>`"""
+"""Labeling object for :class:`~supervisely.annotation.annotation.Annotation`."""
 
 # docs
 from __future__ import annotations
@@ -29,7 +29,7 @@ from supervisely.project.project_meta import ProjectMeta
 
 
 class LabelJsonFields:
-    """Json fields for :class:`Annotation<supervisely.annotation.label.Label>`"""
+    """JSON fields for :class:`~supervisely.annotation.label.Label`."""
 
     OBJ_CLASS_NAME = "classTitle"
     """"""
@@ -92,14 +92,15 @@ class LabelingStatus(StrEnum):
 
 class LabelBase:
     """
-    Labeling object for :class:`Annotation<supervisely.annotation.annotation.Annotation>`. :class:`Label<Label>` object is immutable.
+    Labeling object for :class:`~supervisely.annotation.annotation.Annotation`.
+    :class:`~supervisely.annotation.label.Label` object is immutable.
 
-    :param geometry: Label :class:`geometry<supervisely.geometry.geometry.Geometry>`.
-    :type geometry: Geometry
-    :param obj_class: Label :class:`class<supervisely.annotation.obj_class.ObjClass>`.
-    :type obj_class: ObjClass
-    :param tags: Label :class:`tags<supervisely.annotation.tag_collection.TagCollection>`.
-    :type tags: TagCollection or List[Tag]
+    :param geometry: Label geometry.
+    :type geometry: :class:`~supervisely.geometry.geometry.Geometry`
+    :param obj_class: Label class.
+    :type obj_class: :class:`~supervisely.project.project_meta.ObjClass`
+    :param tags: Label tags.
+    :type tags: :class:`~supervisely.tag.tag_collection.TagCollection` or List[:class:`~supervisely.tag.tag.Tag`]
     :param description: Label description.
     :type description: str, optional
     :param binding_key: Label binding key.
@@ -109,7 +110,7 @@ class LabelBase:
     :param sly_id: Label unique identifier.
     :type sly_id: int, optional
     :param status: Sets labeling status. Shows how label was created and corrected.
-    :type status: LabelingStatus, optional
+    :type status: :class:`~supervisely.annotation.label.LabelingStatus`, optional
 
     :Usage Example:
 
@@ -184,7 +185,7 @@ class LabelBase:
         ObjClass of the current Label.
 
         :returns: ObjClass object
-        :rtype: :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>`
+        :rtype: :class:`~supervisely.annotation.obj_class.ObjClass`
 
         :Usage Example:
 
@@ -231,7 +232,7 @@ class LabelBase:
         Geometry of the current Label.
 
         :returns: Geometry object
-        :rtype: :class:`Geometry<supervisely.geometry>`
+        :rtype: :class:`~supervisely.geometry.geometry.Geometry`
 
         :Usage Example:
 
@@ -266,7 +267,7 @@ class LabelBase:
         TagCollection of the current Label.
 
         :returns: TagCollection object
-        :rtype: :class:`TagCollection<supervisely.annotation.tag.TagCollection>`
+        :rtype: :class:`~supervisely.annotation.tag_collection.TagCollection`
 
         :Usage Example:
 
@@ -515,12 +516,12 @@ class LabelBase:
         """
         Makes a copy of Label with new fields, if fields are given, otherwise it will use fields of the original Label.
 
-        :param geometry: Label :class:`geometry<supervisely.geometry.geometry.Geometry>`.
-        :type geometry: Geometry
-        :param obj_class: Label :class:`class<supervisely.annotation.obj_class.ObjClass>`.
-        :type obj_class: ObjClass
-        :param tags: Label :class:`tags<supervisely.annotation.tag.TagCollection>`.
-        :type tags: TagCollection or List[Tag]
+        :param geometry: Label geometry.
+        :type geometry: :class:`~supervisely.geometry.geometry.Geometry`
+        :param obj_class: Label class.
+        :type obj_class: :class:`~supervisely.project.project_meta.ObjClass`
+        :param tags: Label tags.
+        :type tags: :class:`~supervisely.tag.tag_collection.TagCollection` or List[:class:`~supervisely.tag.tag.Tag`]
         :param description: Label description.
         :type description: str, optional
         :param binding_key: Label binding key.
@@ -579,7 +580,8 @@ class LabelBase:
 
     def crop(self, rect: Rectangle) -> List[LabelBase]:
         """
-        Clones the current Label and crops it. Mostly used for internal implementation. See usage example in :class:`Annotation<supervisely.annotation.annotation.Annotation.crop_labels>`.
+        Clones the current Label and crops it. Mostly used for internal implementation.
+        See usage example in :meth:`~supervisely.annotation.annotation.Annotation.crop_labels`.
 
         :param rect: Rectangle object.
         :type rect: Rectangle
@@ -600,7 +602,8 @@ class LabelBase:
 
     def relative_crop(self, rect: Rectangle) -> List[LabelBase]:
         """
-        Clones the current Label and crops it, but return results with coordinates relative to the given Rectangle. Mostly used for internal implementation. See usage example in :class:`Annotation<supervisely.annotation.annotation.Annotation.relative_crop>`.
+        Clones the current Label and crops it, but return results with coordinates relative to the given Rectangle.
+        Mostly used for internal implementation. See usage example in :meth:`~supervisely.annotation.annotation.Annotation.relative_crop`.
 
         :param rect: Rectangle object.
         :type rect: Rectangle
@@ -611,7 +614,8 @@ class LabelBase:
 
     def rotate(self, rotator: ImageRotator) -> LabelBase:
         """
-        Clones the current Label and rotates it. Mostly used for internal implementation. See usage example in :class:`Annotation<supervisely.annotation.annotation.Annotation.rotate>`.
+        Clones the current Label and rotates it. Mostly used for internal implementation.
+        See usage example in :meth:`~supervisely.annotation.annotation.Annotation.rotate`.
 
         :param rotator: ImageRotator object.
         :type rotator: ImageRotator
@@ -622,7 +626,8 @@ class LabelBase:
 
     def resize(self, in_size: Tuple[int, int], out_size: Tuple[int, int]) -> LabelBase:
         """
-        Clones the current Label and resizes it. Mostly used for internal implementation. See usage example in :class:`Annotation<supervisely.annotation.annotation.Annotation.resize>`.
+        Clones the current Label and resizes it. Mostly used for internal implementation.
+        See usage example in :meth:`~supervisely.annotation.annotation.Annotation.resize`.
 
         :param in_size: Input image size (height, width) of the Annotation to which Label belongs.
         :type in_size: Tuple[int, int]
@@ -635,7 +640,8 @@ class LabelBase:
 
     def scale(self, factor: float) -> LabelBase:
         """
-        Clones the current Label and scales it. Mostly used for internal implementation. See usage example in :class:`Annotation<supervisely.annotation.annotation.Annotation.scale>`.
+        Clones the current Label and scales it. Mostly used for internal implementation.
+        See usage example in :meth:`~supervisely.annotation.annotation.Annotation.scale`.
 
         :param factor: Scale factor.
         :type factor: float
@@ -695,7 +701,8 @@ class LabelBase:
 
     def fliplr(self, img_size: Tuple[int, int]) -> LabelBase:
         """
-        Clones the current Label and flips it horizontally. Mostly used for internal implementation. See usage example in :class:`Annotation<supervisely.annotation.annotation.Annotation.fliplr>`.
+        Clones the current Label and flips it horizontally. Mostly used for internal implementation.
+        See usage example in :meth:`~supervisely.annotation.annotation.Annotation.fliplr`.
 
         :param img_size: Input image size (height, width) of the Annotation to which Label belongs.
         :type img_size: Tuple[int, int]
@@ -706,7 +713,8 @@ class LabelBase:
 
     def flipud(self, img_size: Tuple[int, int]) -> LabelBase:
         """
-        Clones the current Label and flips it vertically. Mostly used for internal implementation. See usage example in :class:`Annotation<supervisely.annotation.annotation.Annotation.flipud>`.
+        Clones the current Label and flips it vertically. Mostly used for internal implementation.
+        See usage example in :meth:`~supervisely.annotation.annotation.Annotation.flipud`.
 
         :param img_size: Input image size (height, width) of the Annotation to which Label belongs.
         :type img_size: Tuple[int, int]
@@ -755,7 +763,8 @@ class LabelBase:
         class_name_font: Optional[FreeTypeFont] = None,
     ) -> None:
         """
-        Draws current Label on image. Modifies Mask. Mostly used for internal implementation. See usage example in :class:`Annotation<supervisely.annotation.annotation.Annotation.draw>`.
+        Draws current Label on image. Modifies Mask. Mostly used for internal implementation.
+        See usage example in :meth:`~supervisely.annotation.annotation.Annotation.draw`.
 
         :param bitmap: image.
         :type bitmap: np.ndarray
@@ -815,7 +824,8 @@ class LabelBase:
         class_name_font: Optional[FreeTypeFont] = None,
     ) -> None:
         """
-        Draws Label geometry contour on the given image. Modifies mask. Mostly used for internal implementation. See usage example in :class:`Annotation<supervisely.annotation.annotation.Annotation.draw_contour>`.
+        Draws Label geometry contour on the given image. Modifies mask. Mostly used for internal implementation.
+        See usage example in :meth:`~supervisely.annotation.annotation.Annotation.draw_contour`.
 
         :param bitmap: image.
         :type bitmap: np.ndarray

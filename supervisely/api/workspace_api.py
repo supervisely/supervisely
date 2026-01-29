@@ -1,5 +1,5 @@
 # coding: utf-8
-"""list/create supervisely workspaces"""
+"""List and manage Supervisely workspaces."""
 
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ class WorkspaceInfo(NamedTuple):
 
 class WorkspaceApi(ModuleApi, UpdateableModule):
     """
-    API for working with Workspace. :class:`WorkspaceApi<WorkspaceApi>` object is immutable.
+    API for working with workspaces. :class:`~supervisely.api.workspace_api.WorkspaceApi` object is immutable.
 
     :param api: API connection to the server.
     :type api: Api
@@ -53,16 +53,18 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
         """
         NamedTuple WorkspaceInfo containing information about Workspace.
 
-        :Example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            WorkspaceInfo(id=15,
-                          name='Cars',
-                          description='Workspace contains Project with annotated Cars',
-                          team_id=8,
-                          created_at='2020-04-15T10:50:41.926Z',
-                          updated_at='2020-04-15T10:50:41.926Z')
+                WorkspaceInfo(
+                    id=15,
+                    name='Cars',
+                    description='Workspace contains Project with annotated Cars',
+                    team_id=8,
+                    created_at='2020-04-15T10:50:41.926Z',
+                    updated_at='2020-04-15T10:50:41.926Z'
+                )
         """
         return [
             ApiField.ID,
@@ -102,10 +104,15 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 workspace_infos = api.workspace.get_list(8)
@@ -161,10 +168,15 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 workspace_info = api.workspace.get_info_by_id(58)
@@ -207,10 +219,15 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 new_workspace = api.workspace.create(8, "Vehicle Detection")
@@ -260,10 +277,15 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 api.workspace.change_visibility(58, False)

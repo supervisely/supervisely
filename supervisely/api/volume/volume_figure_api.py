@@ -376,7 +376,7 @@ class VolumeFigureApi(FigureApi):
 
         :param figure2bytes: Dictionary with figures IDs and geometries.
         :type figure2bytes: dict
-        :rtype: :class:`NoneType`
+        :rtype: None
         """
 
         for figure_id, figure_bytes in figure2bytes.items():
@@ -478,7 +478,7 @@ class VolumeFigureApi(FigureApi):
         :type key_id_map: KeyIdMap
         :param field_name: field name for request body
         :type field_name: str
-        :rtype: :class:`NoneType`
+        :rtype: None
         """
 
         if len(figures) == 0:
@@ -587,7 +587,7 @@ class VolumeFigureApi(FigureApi):
         :type geometries: list
         :param key_id_map: KeyIdMap object (dict with bidict values)
         :type key_id_map: KeyIdMap
-        :rtype: :class:`NoneType`
+        :rtype: None
         """
 
         for sf, geometry_bytes in zip(spatial_figures, geometries):
@@ -712,7 +712,7 @@ class VolumeFigureApi(FigureApi):
         :param update_strategy: Strategy to apply, either "replace" or "merge".
         :type update_strategy: Literal["replace", "merge"]
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
 
         """
         data = {

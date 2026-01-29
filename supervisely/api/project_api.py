@@ -296,14 +296,18 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                workspace_id = 58
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
                 api = sly.Api.from_env()
 
+                workspace_id = 58
                 project_list = api.project.get_list(workspace_id)
                 print(project_list)
                 # Output: [
@@ -438,14 +442,18 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                project_id = 1951
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
                 api = sly.Api.from_env()
 
+                project_id = 1951
                 project_info = api.project.get_info_by_id(project_id)
                 print(project_info)
                 # Output: ProjectInfo(id=861,
@@ -504,10 +512,15 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 project_info = api.project.get_info_by_name(58, "fruits_annotated")
@@ -606,8 +619,13 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                 import os
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                from dotenv import load_dotenv
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 project_meta = api.project.get_meta(project_id)
@@ -725,14 +743,18 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                workspace_id = 8
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
                 api = sly.Api.from_env()
 
+                workspace_id = 8
                 new_proj = api.project.create(workspace_id, "fruits_test", sly.ProjectType.IMAGES)
                 print(new_proj)
                 # Output: ProjectInfo(id=1993,
@@ -791,17 +813,21 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
 
                 lemons_proj_id = 1951
                 kiwis_proj_id = 1952
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-                api = sly.Api.from_env()
-
                 # Using ProjectMeta in JSON format
-
                 project_meta_json = api.project.get_meta(lemons_proj_id)
                 api.project.update_meta(kiwis_proj_id, project_meta_json)
 
@@ -887,14 +913,18 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                project_id = 454
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
                 api = sly.Api.from_env()
 
+                project_id = 454
                 project_ds_count = api.project.get_datasets_count(project_id)
                 print(project_ds_count)
                 # Output: 4
@@ -916,14 +946,18 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                project_id = 454
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
                 api = sly.Api.from_env()
 
+                project_id = 454
                 project_imgs_count = api.project.get_images_count(project_id)
                 print(project_imgs_count)
                 # Output: 24
@@ -951,15 +985,19 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 lemons_proj_id = 1951
                 kiwis_proj_id = 1980
-
                 merged_projects = api.project.merge_metas(lemons_proj_id, kiwis_proj_id)
         """
         if src_project_id == dst_project_id:
@@ -990,14 +1028,18 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                project_id = 1951
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
                 api = sly.Api.from_env()
 
+                project_id = 1951
                 project_activity = api.project.get_activity(project_id)
                 print(project_activity)
                 # Output:    userId               action  ... tagId             meta
@@ -1038,14 +1080,18 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                project_id = 1951
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
                 api = sly.Api.from_env()
 
+                project_id = 1951
                 project_stats = api.project.get_stats(project_id)
         """
         response = self._api.post("projects.stats", {ApiField.ID: id})
@@ -1065,14 +1111,18 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                project_id = 1951
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
                 api = sly.Api.from_env()
 
+                project_id = 1951
                 project_url = api.project.url(project_id)
                 print(project_url)
                 # Output: http://supervisely.com/projects/1951/datasets
@@ -1106,15 +1156,19 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
 
                 project_id = 1951
                 custom_data = {1:2}
-
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-                api = sly.Api.from_env()
-
                 new_info = api.project.update_custom_data(project_id, custom_data)
         """
         if type(data) is not dict:
@@ -1139,16 +1193,19 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 project_id = 123456
-
                 custom_data = api.project.get_custom_data(project_id)
-
                 print(custom_data) # Output: {'key': 'value'}
         """
         return self.get_info_by_id(id).custom_data
@@ -1168,16 +1225,19 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 project_id = 123456
-
                 system_custom_data = api.project._get_system_custom_data(project_id)
-
                 print(system_custom_data)
         """
         return self.get_info_by_id(id).custom_data.get(_METADATA_SYSTEM_KEY, {})
@@ -1203,16 +1263,19 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 project_id = 123456
-
                 validation_schema = api.project.get_validation_schema(project_id)
-
                 print(validation_schema) # Output: {'key': 'Description of the field'}
         """
         SCHEMA_DIFF_THRESHOLD = 60 * 60  # 1 hour
@@ -1255,16 +1318,19 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 project_id = 123456
-
                 schema = {'key': 'Description of the field'}
-
                 api.project._edit_validation_schema(project_id, schema) #Set new validation schema.
                 api.project._edit_validation_schema(project_id) #Remove validation schema.
         """
@@ -1294,16 +1360,19 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 project_id = 123456
-
                 schema = {'key': 'Description of the field'}
-
                 api.project.set_validation_schema(project_id, schema)
         """
         return self._edit_validation_schema(id, schema)
@@ -1321,14 +1390,18 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 project_id = 123456
-
                 api.project.remove_validation_schema(project_id)
         """
         return self._edit_validation_schema(id)
@@ -1366,10 +1439,15 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 project_id = 123456
@@ -1455,10 +1533,15 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 project_id = 8200
@@ -1690,22 +1773,26 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param workspace_id: Workspace ID the project will move in
         :type workspace_id: int
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
 
         :Usage Example:
 
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 workspace_id = 688
                 project_id = 17173
-
                 api.project.move(id=project_id, workspace_id=workspace_id)
         """
         self._api.post(
@@ -1725,22 +1812,26 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param ann_archive_urls: Shared URLs of annotations backup on Dropbox.
         :type ann_archive_urls: List[str], optional
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
 
         :Usage Example:
 
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
 
                 ids = [18464, 18461]
                 archive_urls = ['https://www.dropbox.com/...', 'https://www.dropbox.com/...']
-
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-                api = sly.Api.from_env()
-
                 api.project.archive_batch(ids, archive_urls, ann_archive_urls)
         """
         if len(ids) != len(archive_urls):
@@ -1770,22 +1861,26 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param ann_archive_url: Shared URL of annotations backup on Dropbox.
         :type ann_archive_url: str, optional
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
 
         :Usage Example:
 
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
 
                 id = 18464
                 archive_url = 'https://www.dropbox.com/...'
-
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-                api = sly.Api.from_env()
-
                 api.project.archive(id, archive_url, ann_archive_url)
         """
         if ann_archive_url is None:
@@ -1831,10 +1926,15 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 project_list = api.project.get_archivation_list()
@@ -1956,17 +2056,22 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param classes: New classes
         :type classes: :class: ObjClassCollection or List[ObjClass]
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
 
         :Usage Example:
 
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 proj_id = 28145
@@ -2000,7 +2105,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type label_group_tag_name: str
         :raises ValueError: if tag value type is not 'any_string'
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
         """
         meta = ProjectMeta.from_json(self.get_meta(id, with_settings=True))
         existing_tag_meta = meta.get_tag_meta(tag_name)
@@ -2048,14 +2153,12 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-                load_dotenv(os.path.expanduser("~/supervisely.env"))
-                api = sly.Api.from_env()
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
+                api = sly.Api.from_env()
                 api.project.set_multispectral_settings(project_id=123)
         """
 
@@ -2085,12 +2188,10 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-                load_dotenv(os.path.expanduser("~/supervisely.env"))
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
                 api = sly.Api.from_env()
 
                 # For images project - will enable grouping by tags
@@ -2123,7 +2224,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param sync: If True, enables synchronized playback across video views.
         :type sync: bool
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
         """
         meta = ProjectMeta.from_json(self.get_meta(project_id, with_settings=True))
 
@@ -2235,10 +2336,15 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 filter_1 = {
@@ -2372,7 +2478,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                        If False, ``updatedAt`` will be updated.
         :type silent: bool
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
         """
         self._api.post(
             "projects.editInfo",
@@ -2389,7 +2495,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                        If False, ``updatedAt`` will be updated.
         :type silent: bool
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
         """
         self._api.post(
             "projects.editInfo",
@@ -2422,7 +2528,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param error_message: Optional error message to provide additional context.
         :type error_message: Optional[str]
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
         """
         data = {ApiField.ID: id, ApiField.EMBEDDINGS_IN_PROGRESS: in_progress}
         if error_message is not None:
@@ -2463,7 +2569,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                        If False, ``updatedAt`` will be updated.
         :type silent: bool
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
 
         :Usage Example:
 
@@ -2471,10 +2577,15 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
                 project_id = 123
 
@@ -2506,10 +2617,15 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
                 project_id = 123
 
@@ -2574,10 +2690,15 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 project_id = 123
@@ -2678,20 +2799,25 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param id: Project ID
         :type id: int
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
 
         :Usage Example:
 
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-                api = sly.Api.from_env()
-                project_id = 123
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
+                api = sly.Api.from_env()
+
+                project_id = 123
                 # Calculate embeddings for the project
                 api.project.calculate_embeddings(project_id)
         """
@@ -2722,10 +2848,14 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
                 api = sly.Api.from_env()
 
@@ -2788,16 +2918,19 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
                 api = sly.Api.from_env()
 
                 src_project_id = 123
                 dst_project_name = "New Project"
-
                 infos = api.project.recreate_structure(src_project_id, dst_project_name=dst_project_name)
                 print(f"Recreated project {src_project_id}")
         """
@@ -2818,17 +2951,21 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param task_id: Task ID
         :type task_id: int
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
 
         :Usage Example:
 
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
                 api = sly.Api.from_env()
                 project_id = 123

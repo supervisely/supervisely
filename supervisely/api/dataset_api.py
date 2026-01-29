@@ -216,12 +216,17 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
                 project_id = 1951
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
                 ds = api.dataset.get_list(project_id)
 
@@ -281,12 +286,17 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
                 dataset_id = 384126
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 ds_info = api.dataset.get_info_by_id(dataset_id)
@@ -344,19 +354,24 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                project_id = 116482
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
-                ds_info = api.dataset.get_list(project_id)
-                print(len(ds_info)) # 1
+                project_id = 116482
+                ds_infos = api.dataset.get_list(project_id)
+                print(len(ds_infos)) # 1
 
                 new_ds = api.dataset.create(project_id, 'new_ds')
-                new_ds_info = api.dataset.get_list(project_id)
+                new_ds_infos = api.dataset.get_list(project_id)
                 print(len(new_ds_info)) # 2
         """
         effective_name = self._get_effective_new_name(
@@ -406,24 +421,29 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                project_id = 116482
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
-                ds_info = api.dataset.get_list(project_id)
-                print(len(ds_info)) # 1
+                project_id = 116482
+                ds_infos = api.dataset.get_list(project_id)
+                print(len(ds_infos)) # 1
 
                 api.dataset.get_or_create(project_id, 'ds1')
-                ds_info = api.dataset.get_list(project_id)
-                print(len(ds_info)) # 1
+                ds_infos = api.dataset.get_list(project_id)
+                print(len(ds_infos)) # 1
 
                 api.dataset.get_or_create(project_id, 'new_ds')
-                ds_info = api.dataset.get_list(project_id)
-                print(len(ds_info)) # 2
+                ds_infos = api.dataset.get_list(project_id)
+                print(len(ds_infos)) # 2
         """
         dataset_info = self.get_info_by_name(project_id, name, parent_id=parent_id)
         if dataset_info is None:
@@ -457,10 +477,15 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 dataset_id = 384126
@@ -498,10 +523,15 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 dataset_id = 384126
@@ -547,10 +577,15 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 dst_proj_id = 1980
@@ -626,19 +661,24 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 dst_proj_id = 1982
-                ds = api.dataset.get_list(dst_proj_id)
-                print(len(ds)) # 0
+                ds_infos = api.dataset.get_list(dst_proj_id)
+                print(len(ds_infos)) # 0
 
                 new_ds = api.dataset.copy(dst_proj_id, id=2540, new_name="banana", with_annotations=True)
-                ds = api.dataset.get_list(dst_proj_id)
-                print(len(ds)) # 1
+                ds_infos = api.dataset.get_list(dst_proj_id)
+                print(len(ds_infos)) # 1
         """
         new_datasets = self.copy_batch(
             dst_project_id, [id], [new_name], change_name_if_conflict, with_annotations
@@ -677,22 +717,27 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 dst_proj_id = 1978
-                ds = api.dataset.get_list(dst_proj_id)
-                print(len(ds)) # 0
+                ds_infos = api.dataset.get_list(dst_proj_id)
+                print(len(ds_infos)) # 0
 
                 ds_ids = [2545, 2560]
                 ds_names = ["banana_test", "mango_test"]
 
                 movied_datasets = api.dataset.move_batch(dst_proj_id, ids=ds_ids, new_names=ds_names, with_annotations=True)
-                ds = api.dataset.get_list(dst_proj_id)
-                print(len(ds)) # 2
+                ds_infos = api.dataset.get_list(dst_proj_id)
+                print(len(ds_infos)) # 2
         """
         new_datasets = self.copy_batch(
             dst_project_id, ids, new_names, change_name_if_conflict, with_annotations
@@ -729,10 +774,15 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 dst_proj_id = 1985
@@ -762,10 +812,15 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 dataset_id = 123
@@ -866,10 +921,15 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 filter_1 = {

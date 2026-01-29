@@ -1,5 +1,6 @@
 # coding: utf-8
 """Work with video annotations via the Supervisely API."""
+
 from __future__ import annotations
 
 import asyncio
@@ -269,7 +270,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
         """
         if len(video_ids) != len(anns):
             raise RuntimeError(
@@ -344,7 +345,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         :type progress_cb: tqdm or callable, optional
         :raises: :class:`RuntimeError`, if len(src_video_ids) != len(dst_video_ids)
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
 
         :Usage Example:
 
