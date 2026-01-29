@@ -1,5 +1,5 @@
 # coding: utf-8
-"""annotation for a single image"""
+"""Annotation for a single image."""
 
 # docs
 from __future__ import annotations
@@ -46,45 +46,46 @@ ANN_EXT = ".json"
 
 class AnnotationJsonFields:
     """
-    Json fields for :class:`Annotation<supervisely.annotation.annotation.Annotation>`
+    JSON fields for :class:`~supervisely.annotation.annotation.Annotation`
     """
 
     IMG_DESCRIPTION = "description"
-    """"""
+    """Image description."""
     IMG_SIZE = "size"
-    """"""
+    """Image size."""
     IMG_SIZE_WIDTH = "width"
-    """"""
+    """Image width."""
     IMG_SIZE_HEIGHT = "height"
-    """"""
+    """Image height."""
     IMG_TAGS = "tags"
-    """"""
+    """Tags that are associated with the image."""
     LABELS = "objects"
-    """"""
+    """Labels that are associated with the image."""
     CUSTOM_DATA = "customBigData"
-    """"""
+    """Annotation custom data."""
     PROBABILITY_CLASSES = "probabilityClasses"
-    """"""
+    """Probability classes."""
     PROBABILITY_LABELS = "probabilityLabels"
-    """"""
+    """Probability labels."""
     IMAGE_ID = "imageId"
-    """"""
+    """Image ID on Supervisely instance"""
 
 
 class Annotation:
     """
-    Annotation for a single image. :class:`Annotation<Annotation>` object is immutable.
+    Annotation for a single image. :class:`~supervisely.annotation.annotation.Annotation` object is immutable.
 
     :param img_size: Size of the image (height, width).
     :type img_size: Tuple[int, int] or List[int, int]
-    :param labels: List of Label objects.
-    :type labels: List[Label]
-    :param img_tags: TagCollection object or list of Tag objects.
-    :type img_tags: TagCollection or List[Tag]
+    :param labels: List of :class:`~supervisely.annotation.label.Label` objects.
+    :type labels: List[:class:`~supervisely.annotation.label.Label`]
+    :param img_tags: :class:`~supervisely.annotation.tag_collection.TagCollection` object or list of
+        :class:`~supervisely.annotation.tag.Tag` objects.
+    :type img_tags: :class:`~supervisely.annotation.tag_collection.TagCollection` or List[:class:`~supervisely.annotation.tag.Tag`]
     :param img_description: Image description.
     :type img_description: str, optional
-    :param pixelwise_scores_labels: List of Label objects.
-    :type pixelwise_scores_labels: List[Label]
+    :param pixelwise_scores_labels: List of :class:`~supervisely.annotation.label.Label` objects with pixel-wise scores.
+    :type pixelwise_scores_labels: List[:class:`~supervisely.annotation.label.Label`]
     :param custom_data: Custom data.
     :type custom_data: dict, optional
     :param image_id: Id of the image.
@@ -174,37 +175,18 @@ class Annotation:
         """
         Size of the image (height, width).
 
-        :returns: Image size
-        :rtype: :class:`Tuple[int, int]`
-
-        :Usage Example:
-
-            .. code-block:: python
-
-                height, width = 300, 400
-                ann = sly.Annotation((height, width))
-                print(ann.img_size)
-                # Output: (300, 400)
+        :returns: Image size (height, width).
+        :rtype: Tuple[int, int]
         """
         return deepcopy(self._img_size)
 
     @property
-    def image_id(self) -> int:
+    def image_id(self) -> Optional[int]:
         """
         Id of the image.
 
-        :returns: Image id
-        :rtype: :class:`int`
-
-        :Usage Example:
-
-            .. code-block:: python
-
-                height, width = 300, 400
-                image_id = 12345
-                ann = sly.Annotation((height, width), image_id=image_id)
-                print(ann.image_id)
-                # Output: 12345
+        :returns: Image ID (as stored on Supervisely instance), or None if annotation was created locally and not yet uploaded to Supervisely instance.
+        :rtype: Optional[int]
         """
         return self._image_id
 
@@ -213,43 +195,20 @@ class Annotation:
         """
         Labels on annotation.
 
-        :returns: Copy of list with image labels
-        :rtype: :class:`List[Label]<supervisely.annotation.label.Label>`
-
-        :Usage Example:
-
-            .. code-block:: python
-
-                # Create Labels and add them to Annotation
-                class_kiwi = sly.ObjClass('kiwi', sly.Rectangle)
-                label_kiwi = sly.Label(sly.Rectangle(0, 0, 300, 300), class_kiwi)
-
-                class_lemon = sly.ObjClass('lemon', sly.Rectangle)
-                label_lemon = sly.Label(sly.Rectangle(0, 0, 500, 600), class_lemon)
-
-                labels_arr = [label_kiwi, label_lemon]
-
-                height, width = 300, 400
-                ann = sly.Annotation((height, width), labels_arr)
-
-                # Note that ann.labels return a COPY of list with image labels
-                class_potato = sly.ObjClass('potato', sly.Rectangle)
-                label_potato = sly.Label(sly.Rectangle(0, 0, 200, 400), class_potato)
-
-                ann.labels.append(label_potato)
-                print(len(ann.labels))
-                # Output: 2
-
-                ann_arr = ann.labels
-                ann_arr.append(label_potato)
-                print(len(ann_arr))
-                # Output: 3
+        :returns: Copy of the list with image labels. Modifying the returned list does not affect this
+            annotation instance.
+        :rtype: List[:class:`~supervisely.annotation.label.Label`]
         """
         return self._labels.copy()
 
     @property
     def pixelwise_scores_labels(self):
-        """pixelwise_scores_labels"""
+        """
+        Labels with pixel-wise scores stored alongside the annotation.
+
+        :returns: Copy of the list with pixel-wise score labels.
+        :rtype: List[:class:`~supervisely.annotation.label.Label`]
+        """
         return self._pixelwise_scores_labels.copy()
 
     @property
@@ -257,16 +216,8 @@ class Annotation:
         """
         Image description.
 
-        :returns: Image description
-        :rtype: :class:`str`
-
-        :Usage Example:
-
-            .. code-block:: python
-
-                ann = sly.Annotation((500, 700), img_description='Annotation for this image is empty')
-                print(ann.img_description)
-                # Output: Annotation for this image is empty
+        :returns: Image description.
+        :rtype: str
         """
         return self._img_description
 
@@ -275,27 +226,8 @@ class Annotation:
         """
         Image tags.
 
-        :returns: TagCollection object
-        :rtype: :class:`TagCollection<supervisely.annotation.tag_collection.TagCollection>`
-
-        :Usage Example:
-
-            .. code-block:: python
-
-                # Create TagCollection
-                meta_weather = sly.TagMeta('weather', sly.TagValueType.ANY_STRING)
-                tag_weather = sly.Tag(meta_weather, 'cloudy')
-                tags = sly.TagCollection([tag_weather])
-
-                ann = sly.Annotation((300, 400), img_tags=tags)
-                print(ann.img_tags)
-                # Output:
-                #   Tags:
-                #   +----------------+------------+--------+
-                #   |      Name      | Value type | Value  |
-                #   +----------------+------------+--------+
-                #   |     weather    | any_string | cloudy |
-                #   +----------------+------------+--------+
+        :returns: Image tags.
+        :rtype: :class:`~supervisely.annotation.tag_collection.TagCollection`
         """
         return self._img_tags
 
@@ -374,10 +306,10 @@ class Annotation:
 
         :param data: Annotation in json format as a dict.
         :type data: dict
-        :param project_meta: Input :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`.
+        :param project_meta: Input :class:`~supervisely.project.project_meta.ProjectMeta`.
         :type project_meta: ProjectMeta
         :returns: Annotation object
-        :rtype: :class:`Annotation<Annotation>`
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
         :raises: :class:`Exception`
 
         :Usage Example:
@@ -451,10 +383,10 @@ class Annotation:
 
         :param path: Path to the json file.
         :type path: str
-        :param project_meta: Input ProjectMeta object.
+        :param project_meta: Input :class:`~supervisely.project.project_meta.ProjectMeta`.
         :type project_meta: ProjectMeta
         :returns: Annotation object
-        :rtype: :class:`Annotation<Annotation>`
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
 
@@ -513,7 +445,7 @@ class Annotation:
         :type image_id: int, optional
 
         :returns: New instance of Annotation
-        :rtype: :class:`Annotation<Annotation>`
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
 
@@ -584,7 +516,7 @@ class Annotation:
         :param label: Label to be added.
         :type label: Label
         :returns: New instance of Annotation
-        :rtype: :class:`Annotation<Annotation>`
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
 
@@ -611,7 +543,7 @@ class Annotation:
         :param labels: List of Label objects to be added.
         :type labels: List[Label]
         :returns: New instance of Annotation
-        :rtype: :class:`Annotation<Annotation>`
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
 
@@ -644,7 +576,7 @@ class Annotation:
         :type label: Label
         :raises: :class:`KeyError`, if there is no deleted Label in current Annotation object
         :returns: New instance of Annotation
-        :rtype: :class:`Annotation<Annotation>`
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
 
@@ -708,7 +640,7 @@ class Annotation:
         :param tag: Tag object to be added.
         :type tag: Tag
         :returns: New instance of Annotation
-        :rtype: :class:`Annotation<Annotation>`
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
 
@@ -735,7 +667,7 @@ class Annotation:
         :param tags: List of Tags to be added.
         :type tags: List[Tag]
         :returns: New instance of Annotation
-        :rtype: :class:`Annotation<Annotation>`
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
 
@@ -765,7 +697,7 @@ class Annotation:
         :param tag_names: List of Tags names to be deleted.
         :type tag_names: List[str]
         :returns: New instance of Annotation
-        :rtype: :class:`Annotation<Annotation>`
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
 
@@ -799,7 +731,7 @@ class Annotation:
         :param tag_name: Tag name to be delete.
         :type tag_name: str
         :returns: New instance of Annotation
-        :rtype: :class:`Annotation<Annotation>`
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
 
@@ -828,7 +760,7 @@ class Annotation:
         :param tags: List of Tags to be deleted.
         :type tags: List[Tag]
         :returns: New instance of Annotation
-        :rtype: :class:`Annotation<Annotation>`
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
 
@@ -861,7 +793,7 @@ class Annotation:
         :param tag: Tag to be deleted.
         :type tag: Tag
         :returns: New instance of Annotation
-        :rtype: :class:`Annotation<Annotation>`
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
 
@@ -925,7 +857,7 @@ class Annotation:
         :param rect: Rectangle object for crop.
         :type rect: Rectangle
         :returns: New instance of Annotation
-        :rtype: :class:`Annotation<Annotation>`
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
 
@@ -983,7 +915,7 @@ class Annotation:
         :param rect: Rectangle object for crop.
         :type rect: Rectangle
         :returns: New instance of Annotation
-        :rtype: :class:`Annotation<Annotation>`
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
 
@@ -1042,7 +974,7 @@ class Annotation:
         :param rotator: ImageRotator object.
         :type rotator: ImageRotator
         :returns: New instance of Annotation
-        :rtype: :class:`Annotation<Annotation>`
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
 
@@ -1171,7 +1103,7 @@ class Annotation:
         :param factor: Scale size.
         :type factor: float
         :returns: New instance of Annotation
-        :rtype: :class:`Annotation<Annotation>`
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
 
@@ -1232,7 +1164,7 @@ class Annotation:
         Flips the current Annotation horizontally.
 
         :returns: New instance of Annotation
-        :rtype: :class:`Annotation<Annotation>`
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
 
@@ -1289,7 +1221,7 @@ class Annotation:
         Flips the current Annotation vertically.
 
         :returns: New instance of Annotation
-        :rtype: :class:`Annotation<Annotation>`
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
 
@@ -1382,19 +1314,19 @@ class Annotation:
 
         :param bitmap: Image.
         :type bitmap: np.ndarray
-        :param color: Drawing color in :class:`[R, G, B]`.
+        :param color: Drawing color in ``[R, G, B]``.
         :type color: List[int, int, int], optional
         :param thickness: Thickness of the drawing figure.
         :type thickness: int, optional
         :param draw_tags: Determines whether to draw tags on bitmap or not.
         :type draw_tags: bool, optional
         :param fill_rectangles: Choose False if you want to draw only contours of bboxes. By default, True.
-        :type fill_rectangles: int, optional
+        :type fill_rectangles: bool, optional
         :param draw_class_names: Determines whether to draw class names on bitmap or not.
-        :type draw_class_names: int, optional
+        :type draw_class_names: bool, optional
 
-        :returns: :class:`None<None>`
-        :rtype: :class:`NoneType<NoneType>`
+        :returns: None
+        :rtype: None
 
         :Usage Example:
 
@@ -1464,14 +1396,14 @@ class Annotation:
 
         :param bitmap: Image.
         :type bitmap: np.ndarray
-        :param color: Drawing color in :class:`[R, G, B]`.
+        :param color: Drawing color in ``[R, G, B]``.
         :type color: List[int, int, int], optional
         :param thickness: Thickness of the drawing figure.
         :type thickness: int, optional
         :param draw_tags: Determines whether to draw tags on bitmap or not.
         :type draw_tags: bool, optional
-        :returns: :class:`None<None>`
-        :rtype: :class:`NoneType<NoneType>`
+        :returns: None
+        :rtype: None
 
         :Usage Example:
 
@@ -1524,7 +1456,7 @@ class Annotation:
         :param img_path: Path to the input image.
         :type img_path: str
         :returns: Annotation
-        :rtype: :class:`Annotation<Annotation>`
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
 
@@ -1550,7 +1482,7 @@ class Annotation:
         :type render: np.ndarray
         :param names: List of color names.
         :type names: List[str]
-        :param colors: List of :class:`[R, G, B]` colors.
+        :param colors: List of ``[R, G, B]`` colors.
         :type colors: List[List[int, int, int]]
         :returns: Colors area representation on the given render
         :rtype: :class:`dict`
@@ -1727,7 +1659,12 @@ class Annotation:
 
     @property
     def custom_data(self):
-        """custom_data"""
+        """
+        Custom annotation data (stored in ``customBigData`` in Supervisely JSON format).
+
+        :returns: Copy of custom data dict.
+        :rtype: dict
+        """
         return self._custom_data.copy()
 
     def filter_labels_by_min_side(
@@ -1746,7 +1683,7 @@ class Annotation:
         :param classes: List of Labels names to apply filter.
         :type classes: List[str]
         :returns: New instance of Annotation
-        :rtype: :class:`Annotation<Annotation>`
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
 
@@ -1806,7 +1743,7 @@ class Annotation:
         :param sly_id: Label ID from Supervisely server.
         :type sly_id: int
         :returns: Label or None
-        :rtype: :class:`Label<supervisely.annotation.label.Label>` or :class:`NoneType`
+        :rtype: :class:`~supervisely.annotation.label.Label` or None
 
         :Usage Example:
 
@@ -1869,7 +1806,7 @@ class Annotation:
         :param other: Annotation to merge.
         :type other: Annotation
         :returns: New instance of Annotation
-        :rtype: :class:`Annotation<Annotation>`
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
 
@@ -1924,7 +1861,7 @@ class Annotation:
 
         :param bitmap: Image.
         :type bitmap: np.ndarray
-        :param color: Drawing color in :class:`[R, G, B]`.
+        :param color: Drawing color in ``[R, G, B]``.
         :type color: List[int, int, int], optional
         :param thickness: Thickness of the drawing figure.
         :type thickness: int, optional
@@ -1934,18 +1871,19 @@ class Annotation:
         :type draw_tags: bool, optional
         :param output_path: Saves modified image to the given path.
         :type output_path: str, optional
-        :returns: :class:`None<None>`
-        :rtype: :class:`NoneType<NoneType>`
+        :returns: None
+        :rtype: None
 
         :Usage Example:
 
             .. code-block:: python
 
+                import os
                 import supervisely as sly
 
-                address = 'https://app.supervisely.com/'
-                token = 'Your Supervisely API Token'
-                api = sly.Api(address, token)
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com/'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
                 # Get image and annotation from API
                 project_id = 888
@@ -1992,197 +1930,200 @@ class Annotation:
         Create new annotation with non-overlapping labels masks. Convert classes to Bitmap or skip them.
 
         :param mapping: Dict with ObjClasses for mapping.
-        :type mapping: Dict[ObjClass, ObjClass]
+        :type mapping: Dict[:class:`~supervisely.annotation.obj_class.ObjClass`, :class:`~supervisely.annotation.obj_class.ObjClass`]
         :returns: New instance of Annotation
-        :rtype: :class:`Annotation<Annotation>`
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
-        .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                import os
+                import supervisely as sly
 
-            # Get image annotation from API
-            project_id = 7548
-            image_id = 2254937
-            meta_json = api.project.get_meta(project_id)
-            meta = sly.ProjectMeta.from_json(meta_json)
-            ann_info = api.annotation.download(image_id)
-            print(json.dumps(ann_info.annotation, indent=4))
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com/'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            # Output: {
-            #     "description": "",
-            #     "tags": [],
-            #     "size": {
-            #         "height": 800,
-            #         "width": 1067
-            #     },
-            #     "objects": [
-            #         {
-            #             "id": 56656282,
-            #             "classId": 122357,
-            #             "description": "",
-            #             "geometryType": "bitmap",
-            #             "labelerLogin": "alex",
-            #             "createdAt": "2021-10-15T11:01:40.805Z",
-            #             "updatedAt": "2021-10-15T11:01:40.805Z",
-            #             "tags": [],
-            #             "classTitle": "lemon",
-            #             "bitmap": {
-            #                 "data": "eJwBuwJE/YlQTkcNChoKAAAADUlIRFIAAAE3AAAApgEDAAAAhaFaIwAAAAZQTFRFAAAA...,
-            #                 "origin": [
-            #                     589,
-            #                     372
-            #                 ]
-            #             }
-            #         },
-            #         {
-            #             "id": 56656281,
-            #             "classId": 122356,
-            #             "description": "",
-            #             "geometryType": "polygon",
-            #             "labelerLogin": "alex",
-            #             "createdAt": "2021-10-15T13:22:58.178Z",
-            #             "updatedAt": "2021-10-15T13:22:58.178Z",
-            #             "tags": [],
-            #             "classTitle": "kiwi",
-            #             "points": {
-            #                 "exterior": [
-            #                     [
-            #                         719,
-            #                         115
-            #                     ],
-            #                   ...
-            #                     [
-            #                         732,
-            #                         123
-            #                     ]
-            #                 ],
-            #                 "interior": []
-            #             }
-            #         },
-            #         {
-            #             "id": 56656280,
-            #             "classId": 122356,
-            #             "description": "",
-            #             "geometryType": "polygon",
-            #             "labelerLogin": "alex",
-            #             "createdAt": "2021-10-15T13:22:58.178Z",
-            #             "updatedAt": "2021-10-15T13:22:58.178Z",
-            #             "tags": [],
-            #             "classTitle": "kiwi",
-            #             "points": {
-            #                 "exterior": [
-            #                     [
-            #                         250,
-            #                         216
-            #                     ],
-            #                   ...
-            #                     [
-            #                         278,
-            #                         212
-            #                     ]
-            #                 ],
-            #                 "interior": []
-            #             }
-            #         },
-            #         {
-            #             "id": 56656279,
-            #             "classId": 122356,
-            #             "description": "",
-            #             "geometryType": "polygon",
-            #             "labelerLogin": "alex",
-            #             "createdAt": "2021-10-15T13:22:58.177Z",
-            #             "updatedAt": "2021-10-15T13:22:58.177Z",
-            #             "tags": [],
-            #             "classTitle": "kiwi",
-            #             "points": {
-            #                 "exterior": [
-            #                     [
-            #                         554,
-            #                         581
-            #                     ],
-            #                   ...
-            #                     [
-            #                         560,
-            #                         587
-            #                     ]
-            #                 ],
-            #                 "interior": []
-            #             }
-            #         }
-            #     ]
-            # }
+                # Get image annotation from API
+                project_id = 7548
+                image_id = 2254937
+                meta_json = api.project.get_meta(project_id)
+                meta = sly.ProjectMeta.from_json(meta_json)
+                ann_info = api.annotation.download(image_id)
+                print(json.dumps(ann_info.annotation, indent=4))
 
-            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+                # Output: {
+                #     "description": "",
+                #     "tags": [],
+                #     "size": {
+                #         "height": 800,
+                #         "width": 1067
+                #     },
+                #     "objects": [
+                #         {
+                #             "id": 56656282,
+                #             "classId": 122357,
+                #             "description": "",
+                #             "geometryType": "bitmap",
+                #             "labelerLogin": "alex",
+                #             "createdAt": "2021-10-15T11:01:40.805Z",
+                #             "updatedAt": "2021-10-15T11:01:40.805Z",
+                #             "tags": [],
+                #             "classTitle": "lemon",
+                #             "bitmap": {
+                #                 "data": "eJwBuwJE/YlQTkcNChoKAAAADUlIRFIAAAE3AAAApgEDAAAAhaFaIwAAAAZQTFRFAAAA...,
+                #                 "origin": [
+                #                     589,
+                #                     372
+                #                 ]
+                #             }
+                #         },
+                #         {
+                #             "id": 56656281,
+                #             "classId": 122356,
+                #             "description": "",
+                #             "geometryType": "polygon",
+                #             "labelerLogin": "alex",
+                #             "createdAt": "2021-10-15T13:22:58.178Z",
+                #             "updatedAt": "2021-10-15T13:22:58.178Z",
+                #             "tags": [],
+                #             "classTitle": "kiwi",
+                #             "points": {
+                #                 "exterior": [
+                #                     [
+                #                         719,
+                #                         115
+                #                     ],
+                #                   ...
+                #                     [
+                #                         732,
+                #                         123
+                #                     ]
+                #                 ],
+                #                 "interior": []
+                #             }
+                #         },
+                #         {
+                #             "id": 56656280,
+                #             "classId": 122356,
+                #             "description": "",
+                #             "geometryType": "polygon",
+                #             "labelerLogin": "alex",
+                #             "createdAt": "2021-10-15T13:22:58.178Z",
+                #             "updatedAt": "2021-10-15T13:22:58.178Z",
+                #             "tags": [],
+                #             "classTitle": "kiwi",
+                #             "points": {
+                #                 "exterior": [
+                #                     [
+                #                         250,
+                #                         216
+                #                     ],
+                #                   ...
+                #                     [
+                #                         278,
+                #                         212
+                #                     ]
+                #                 ],
+                #                 "interior": []
+                #             }
+                #         },
+                #         {
+                #             "id": 56656279,
+                #             "classId": 122356,
+                #             "description": "",
+                #             "geometryType": "polygon",
+                #             "labelerLogin": "alex",
+                #             "createdAt": "2021-10-15T13:22:58.177Z",
+                #             "updatedAt": "2021-10-15T13:22:58.177Z",
+                #             "tags": [],
+                #             "classTitle": "kiwi",
+                #             "points": {
+                #                 "exterior": [
+                #                     [
+                #                         554,
+                #                         581
+                #                     ],
+                #                   ...
+                #                     [
+                #                         560,
+                #                         587
+                #                     ]
+                #                 ],
+                #                 "interior": []
+                #             }
+                #         }
+                #     ]
+                # }
 
-            # Create mapping. Let's check 'kiwi' classes and skip 'lemon' classes.
-            mapping = {}
-            for label in ann.labels:
-                if label.obj_class.name not in mapping:
-                    if label.obj_class.name == 'lemon':
-                        mapping[label.obj_class] = None
-                    else:
-                        new_obj_class = sly.ObjClass(label.obj_class.name, Bitmap)
-                        mapping[label.obj_class] = new_obj_class
-            nonoverlap_ann = ann.to_nonoverlapping_masks(mapping)
-            print(json.dumps(nonoverlap_ann.to_json(), indent=4))
+                ann = sly.Annotation.from_json(ann_info.annotation, meta)
 
-            # Output: {
-            #     "description": "",
-            #     "size": {
-            #         "height": 800,
-            #         "width": 1067
-            #     },
-            #     "tags": [],
-            #     "objects": [
-            #         {
-            #             "classTitle": "kiwi",
-            #             "description": "",
-            #             "tags": [],
-            #             "bitmap": {
-            #                 "origin": [
-            #                     187,
-            #                     396
-            #                 ],
-            #                 "data": "eJwBLALT/YlQTkcNChoKAAAADUlIRFIAAACuAAAAzgEDAAAAnTar9wAAAAZQTFRFAAAA...
-            #             },
-            #             "shape": "bitmap",
-            #             "geometryType": "bitmap"
-            #         },
-            #         {
-            #             "classTitle": "kiwi",
-            #             "description": "",
-            #             "tags": [],
-            #             "bitmap": {
-            #                 "origin": [
-            #                     365,
-            #                     385
-            #                 ],
-            #                 "data": "eJwB4gEd/olQTkcNChoKAAAADUlIRFIAAACbAAAAwgEDAAAAZC4i8AAAAAZQTFRFAAAA...
-            #             },
-            #             "shape": "bitmap",
-            #             "geometryType": "bitmap"
-            #         },
-            #         {
-            #             "classTitle": "kiwi",
-            #             "description": "",
-            #             "tags": [],
-            #             "bitmap": {
-            #                 "origin": [
-            #                     469,
-            #                     506
-            #                 ],
-            #                 "data": "eJwBHgLh/YlQTkcNChoKAAAADUlIRFIAAAC1AAAArQEDAAAAzBisHAAAAAZQTFRFAAAA...
-            #             },
-            #             "shape": "bitmap",
-            #             "geometryType": "bitmap"
-            #         }
-            #     ],
-            #     "customBigData": {}
-            # }
+                # Create mapping. Let's check 'kiwi' classes and skip 'lemon' classes.
+                mapping = {}
+                for label in ann.labels:
+                    if label.obj_class.name not in mapping:
+                        if label.obj_class.name == 'lemon':
+                            mapping[label.obj_class] = None
+                        else:
+                            new_obj_class = sly.ObjClass(label.obj_class.name, Bitmap)
+                            mapping[label.obj_class] = new_obj_class
+                nonoverlap_ann = ann.to_nonoverlapping_masks(mapping)
+                print(json.dumps(nonoverlap_ann.to_json(), indent=4))
+
+                # Output: {
+                #     "description": "",
+                #     "size": {
+                #         "height": 800,
+                #         "width": 1067
+                #     },
+                #     "tags": [],
+                #     "objects": [
+                #         {
+                #             "classTitle": "kiwi",
+                #             "description": "",
+                #             "tags": [],
+                #             "bitmap": {
+                #                 "origin": [
+                #                     187,
+                #                     396
+                #                 ],
+                #                 "data": "eJwBLALT/YlQTkcNChoKAAAADUlIRFIAAACuAAAAzgEDAAAAnTar9wAAAAZQTFRFAAAA...
+                #             },
+                #             "shape": "bitmap",
+                #             "geometryType": "bitmap"
+                #         },
+                #         {
+                #             "classTitle": "kiwi",
+                #             "description": "",
+                #             "tags": [],
+                #             "bitmap": {
+                #                 "origin": [
+                #                     365,
+                #                     385
+                #                 ],
+                #                 "data": "eJwB4gEd/olQTkcNChoKAAAADUlIRFIAAACbAAAAwgEDAAAAZC4i8AAAAAZQTFRFAAAA...
+                #             },
+                #             "shape": "bitmap",
+                #             "geometryType": "bitmap"
+                #         },
+                #         {
+                #             "classTitle": "kiwi",
+                #             "description": "",
+                #             "tags": [],
+                #             "bitmap": {
+                #                 "origin": [
+                #                     469,
+                #                     506
+                #                 ],
+                #                 "data": "eJwBHgLh/YlQTkcNChoKAAAADUlIRFIAAAC1AAAArQEDAAAAzBisHAAAAAZQTFRFAAAA...
+                #             },
+                #             "shape": "bitmap",
+                #             "geometryType": "bitmap"
+                #         }
+                #     ],
+                #     "customBigData": {}
+                # }
         """
         common_img = np.zeros(self.img_size, np.int32)  # size is (h, w)
         for idx, lbl in enumerate(self.labels, start=1):
@@ -2222,8 +2163,8 @@ class Annotation:
         :type palette: Available palettes are WEB or ADAPTIVE, optional
         :param colors: Number of colors to use for the ADAPTIVE palette.
         :type colors: int, optional
-        :returns: :class:`None<None>`
-        :rtype: :class:`NoneType<NoneType>`
+        :returns: None
+        :rtype: None
         """
         mask = np.zeros((self.img_size[0], self.img_size[1], 3), dtype=np.uint8)
         for label in self.labels:
@@ -2255,132 +2196,135 @@ class Annotation:
         Convert Annotation classes by joining labels with same object classes to one label. Applies to Bitmap only.
 
         :returns: New instance of Annotation
-        :rtype: :class:`Annotation<Annotation>`
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                import os
+                import supervisely as sly
 
-            # Get image annotation from API
-            project_id = 7473
-            image_id = 2223200
-            meta_json = api.project.get_meta(project_id)
-            meta = sly.ProjectMeta.from_json(meta_json)
-            ann_info = api.annotation.download(image_id)
-            print(json.dumps(ann_info.annotation, indent=4))
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com/'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
 
-            # Output: {
-            #     "description": "",
-            #     "tags": [],
-            #     "size": {
-            #         "height": 800,
-            #         "width": 1067
-            #     },
-            #     "objects": [
-            #         {
-            #             "id": 57388829,
-            #             "classId": 121405,
-            #             "description": "",
-            #             "geometryType": "bitmap",
-            #             "labelerLogin": "alex",
-            #             "createdAt": "2022-01-02T08:06:05.183Z",
-            #             "updatedAt": "2022-01-02T08:07:12.219Z",
-            #             "tags": [],
-            #             "classTitle": "kiwi",
-            #             "bitmap": {
-            #                 "data": "eJyNlWs4lHkYxv/z8qp5NZuYSZes1KZm6CDSTuP0mh2ZWYdmULakdBUzkRqRrDG8M1vZZg8W...,
-            #                 "origin": [
-            #                     481,
-            #                     543
-            #                 ]
-            #             }
-            #         },
-            #         {
-            #             "id": 57388831,
-            #             "classId": 121404,
-            #             "description": "",
-            #             "geometryType": "bitmap",
-            #             "labelerLogin": "alex",
-            #             "createdAt": "2022-01-02T08:06:59.133Z",
-            #             "updatedAt": "2022-01-02T08:07:12.219Z",
-            #             "tags": [],
-            #             "classTitle": "lemon",
-            #             "bitmap": {
-            #                 "data": "eJwdV388k/sXfzwmz3TVNm3l94z5saQoXFSG+c26tM1GYjWUISWKK201SchvIcq30tX2rD...,
-            #                 "origin": [
-            #                     523,
-            #                     119
-            #                 ]
-            #             }
-            #         },
-            #         {
-            #             "id": 57388832,
-            #             "classId": 121405,
-            #             "description": "",
-            #             "geometryType": "bitmap",
-            #             "labelerLogin": "alex",
-            #             "createdAt": "2022-01-02T08:07:12.104Z",
-            #             "updatedAt": "2022-01-02T08:07:12.104Z",
-            #             "tags": [],
-            #             "classTitle": "kiwi",
-            #             "bitmap": {
-            #                 "data": "eJw1VglQU8kWTWISHzH6AzwwIEsSCBr2AApBloAJhB0eCEIYDJFN2WHACC7sRghbIAiIMuKj...,
-            #                 "origin": [
-            #                     773,
-            #                     391
-            #                 ]
-            #             }
-            #         }
-            #     ]
-            # }
+                # Get image annotation from API
+                project_id = 7473
+                image_id = 2223200
+                meta_json = api.project.get_meta(project_id)
+                meta = sly.ProjectMeta.from_json(meta_json)
+                ann_info = api.annotation.download(image_id)
+                print(json.dumps(ann_info.annotation, indent=4))
 
-            ann = sly.Annotation.from_json(ann_info.annotation, meta)
-            segm_ann = ann.to_segmentation_task()
-            print(json.dumps(segm_ann.to_json(), indent=4))
+                # Output: {
+                #     "description": "",
+                #     "tags": [],
+                #     "size": {
+                #         "height": 800,
+                #         "width": 1067
+                #     },
+                #     "objects": [
+                #         {
+                #             "id": 57388829,
+                #             "classId": 121405,
+                #             "description": "",
+                #             "geometryType": "bitmap",
+                #             "labelerLogin": "alex",
+                #             "createdAt": "2022-01-02T08:06:05.183Z",
+                #             "updatedAt": "2022-01-02T08:07:12.219Z",
+                #             "tags": [],
+                #             "classTitle": "kiwi",
+                #             "bitmap": {
+                #                 "data": "eJyNlWs4lHkYxv/z8qp5NZuYSZes1KZm6CDSTuP0mh2ZWYdmULakdBUzkRqRrDG8M1vZZg8W...,
+                #                 "origin": [
+                #                     481,
+                #                     543
+                #                 ]
+                #             }
+                #         },
+                #         {
+                #             "id": 57388831,
+                #             "classId": 121404,
+                #             "description": "",
+                #             "geometryType": "bitmap",
+                #             "labelerLogin": "alex",
+                #             "createdAt": "2022-01-02T08:06:59.133Z",
+                #             "updatedAt": "2022-01-02T08:07:12.219Z",
+                #             "tags": [],
+                #             "classTitle": "lemon",
+                #             "bitmap": {
+                #                 "data": "eJwdV388k/sXfzwmz3TVNm3l94z5saQoXFSG+c26tM1GYjWUISWKK201SchvIcq30tX2rD...,
+                #                 "origin": [
+                #                     523,
+                #                     119
+                #                 ]
+                #             }
+                #         },
+                #         {
+                #             "id": 57388832,
+                #             "classId": 121405,
+                #             "description": "",
+                #             "geometryType": "bitmap",
+                #             "labelerLogin": "alex",
+                #             "createdAt": "2022-01-02T08:07:12.104Z",
+                #             "updatedAt": "2022-01-02T08:07:12.104Z",
+                #             "tags": [],
+                #             "classTitle": "kiwi",
+                #             "bitmap": {
+                #                 "data": "eJw1VglQU8kWTWISHzH6AzwwIEsSCBr2AApBloAJhB0eCEIYDJFN2WHACC7sRghbIAiIMuKj...,
+                #                 "origin": [
+                #                     773,
+                #                     391
+                #                 ]
+                #             }
+                #         }
+                #     ]
+                # }
 
-            # Output: {
-            #     "description": "",
-            #     "size": {
-            #         "height": 800,
-            #         "width": 1067
-            #     },
-            #     "tags": [],
-            #     "objects": [
-            #         {
-            #             "classTitle": "kiwi",
-            #             "description": "",
-            #             "tags": [],
-            #             "bitmap": {
-            #                 "origin": [
-            #                     481,
-            #                     391
-            #                 ],
-            #                 "data": "eJwBagSV+4lQTkcNChoKAAAADUlIRFIAAAHpAAABOQEDAAAAjj5K+wAAAAZQTFRFAAAA...
-            #             },
-            #             "shape": "bitmap",
-            #             "geometryType": "bitmap"
-            #         },
-            #         {
-            #             "classTitle": "lemon",
-            #             "description": "",
-            #             "tags": [],
-            #             "bitmap": {
-            #                 "origin": [
-            #                     523,
-            #                     119
-            #                 ],
-            #                 "data": "eJwBOAPH/IlQTkcNChoKAAAADUlIRFIAAAEsAAABCQEDAAAAFNKIswAAAAZQTFRFAAAA...
-            #             },
-            #             "shape": "bitmap",
-            #             "geometryType": "bitmap"
-            #         }
-            #     ],
-            #     "customBigData": {}
-            # }
+                ann = sly.Annotation.from_json(ann_info.annotation, meta)
+                segm_ann = ann.to_segmentation_task()
+                print(json.dumps(segm_ann.to_json(), indent=4))
+
+                # Output: {
+                #     "description": "",
+                #     "size": {
+                #         "height": 800,
+                #         "width": 1067
+                #     },
+                #     "tags": [],
+                #     "objects": [
+                #         {
+                #             "classTitle": "kiwi",
+                #             "description": "",
+                #             "tags": [],
+                #             "bitmap": {
+                #                 "origin": [
+                #                     481,
+                #                     391
+                #                 ],
+                #                 "data": "eJwBagSV+4lQTkcNChoKAAAADUlIRFIAAAHpAAABOQEDAAAAjj5K+wAAAAZQTFRFAAAA...
+                #             },
+                #             "shape": "bitmap",
+                #             "geometryType": "bitmap"
+                #         },
+                #         {
+                #             "classTitle": "lemon",
+                #             "description": "",
+                #             "tags": [],
+                #             "bitmap": {
+                #                 "origin": [
+                #                     523,
+                #                     119
+                #                 ],
+                #                 "data": "eJwBOAPH/IlQTkcNChoKAAAADUlIRFIAAAEsAAABCQEDAAAAFNKIswAAAAZQTFRFAAAA...
+                #             },
+                #             "shape": "bitmap",
+                #             "geometryType": "bitmap"
+                #         }
+                #     ],
+                #     "customBigData": {}
+                # }
         """
         class_mask = {}
         for label in self.labels:
@@ -2399,232 +2343,236 @@ class Annotation:
         Convert Annotation classes geometries according to mapping dict and checking nonoverlapping masks.
         Converting possible only to Bitmap or Rectangle.
 
+        :param mapping: Mapping between source and target object classes.
+        :type mapping: Dict[:class:`~supervisely.annotation.obj_class.ObjClass`, :class:`~supervisely.annotation.obj_class.ObjClass`]
         :returns: New instance of Annotation
-        :rtype: :class:`Annotation<Annotation>`
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                import supervisely as sly
 
-            # Get image annotation from API
-            project_id = 7548
-            image_id = 2254942
-            meta_json = api.project.get_meta(project_id)
-            meta = sly.ProjectMeta.from_json(meta_json)
-            ann_info = api.annotation.download(image_id)
-            print(json.dumps(ann_info.annotation, indent=4))
+                address = 'https://app.supervisely.com/'
+                token = 'Your Supervisely API Token'
+                api = sly.Api(address, token)
 
-            # Output: {
-            #     "description": "",
-            #     "tags": [],
-            #     "size": {
-            #         "height": 800,
-            #         "width": 1067
-            #     },
-            #     "objects": [
-            #         {
-            #             "id": 56656282,
-            #             "classId": 122357,
-            #             "description": "",
-            #             "geometryType": "bitmap",
-            #             "labelerLogin": "alex",
-            #             "createdAt": "2021-10-15T11:01:40.805Z",
-            #             "updatedAt": "2021-10-15T11:01:40.805Z",
-            #             "tags": [],
-            #             "classTitle": "lemon",
-            #             "bitmap": {
-            #                 "data": "eJwBuwJE/YlQTkcNChoKAAAADUlIRFIAAAE3AAAApgEDAAAAhaFaIwAAAAZQTFRFAAAA...,
-            #                 "origin": [
-            #                     589,
-            #                     372
-            #                 ]
-            #             }
-            #         },
-            #         {
-            #             "id": 56656281,
-            #             "classId": 122356,
-            #             "description": "",
-            #             "geometryType": "polygon",
-            #             "labelerLogin": "alex",
-            #             "createdAt": "2021-10-15T13:22:58.178Z",
-            #             "updatedAt": "2021-10-15T13:22:58.178Z",
-            #             "tags": [],
-            #             "classTitle": "kiwi",
-            #             "points": {
-            #                 "exterior": [
-            #                     [
-            #                         719,
-            #                         115
-            #                     ],
-            #                   ...
-            #                     [
-            #                         732,
-            #                         123
-            #                     ]
-            #                 ],
-            #                 "interior": []
-            #             }
-            #         },
-            #         {
-            #             "id": 56656280,
-            #             "classId": 122356,
-            #             "description": "",
-            #             "geometryType": "polygon",
-            #             "labelerLogin": "alex",
-            #             "createdAt": "2021-10-15T13:22:58.178Z",
-            #             "updatedAt": "2021-10-15T13:22:58.178Z",
-            #             "tags": [],
-            #             "classTitle": "kiwi",
-            #             "points": {
-            #                 "exterior": [
-            #                     [
-            #                         250,
-            #                         216
-            #                     ],
-            #                   ...
-            #                     [
-            #                         278,
-            #                         212
-            #                     ]
-            #                 ],
-            #                 "interior": []
-            #             }
-            #         },
-            #         {
-            #             "id": 56656279,
-            #             "classId": 122356,
-            #             "description": "",
-            #             "geometryType": "polygon",
-            #             "labelerLogin": "alex",
-            #             "createdAt": "2021-10-15T13:22:58.177Z",
-            #             "updatedAt": "2021-10-15T13:22:58.177Z",
-            #             "tags": [],
-            #             "classTitle": "kiwi",
-            #             "points": {
-            #                 "exterior": [
-            #                     [
-            #                         554,
-            #                         581
-            #                     ],
-            #                   ...
-            #                     [
-            #                         560,
-            #                         587
-            #                     ]
-            #                 ],
-            #                 "interior": []
-            #             }
-            #         }
-            #     ]
-            # }
+                # Get image annotation from API
+                project_id = 7548
+                image_id = 2254942
+                meta_json = api.project.get_meta(project_id)
+                meta = sly.ProjectMeta.from_json(meta_json)
+                ann_info = api.annotation.download(image_id)
+                print(json.dumps(ann_info.annotation, indent=4))
 
-            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+                # Output: {
+                #     "description": "",
+                #     "tags": [],
+                #     "size": {
+                #         "height": 800,
+                #         "width": 1067
+                #     },
+                #     "objects": [
+                #         {
+                #             "id": 56656282,
+                #             "classId": 122357,
+                #             "description": "",
+                #             "geometryType": "bitmap",
+                #             "labelerLogin": "alex",
+                #             "createdAt": "2021-10-15T11:01:40.805Z",
+                #             "updatedAt": "2021-10-15T11:01:40.805Z",
+                #             "tags": [],
+                #             "classTitle": "lemon",
+                #             "bitmap": {
+                #                 "data": "eJwBuwJE/YlQTkcNChoKAAAADUlIRFIAAAE3AAAApgEDAAAAhaFaIwAAAAZQTFRFAAAA...,
+                #                 "origin": [
+                #                     589,
+                #                     372
+                #                 ]
+                #             }
+                #         },
+                #         {
+                #             "id": 56656281,
+                #             "classId": 122356,
+                #             "description": "",
+                #             "geometryType": "polygon",
+                #             "labelerLogin": "alex",
+                #             "createdAt": "2021-10-15T13:22:58.178Z",
+                #             "updatedAt": "2021-10-15T13:22:58.178Z",
+                #             "tags": [],
+                #             "classTitle": "kiwi",
+                #             "points": {
+                #                 "exterior": [
+                #                     [
+                #                         719,
+                #                         115
+                #                     ],
+                #                   ...
+                #                     [
+                #                         732,
+                #                         123
+                #                     ]
+                #                 ],
+                #                 "interior": []
+                #             }
+                #         },
+                #         {
+                #             "id": 56656280,
+                #             "classId": 122356,
+                #             "description": "",
+                #             "geometryType": "polygon",
+                #             "labelerLogin": "alex",
+                #             "createdAt": "2021-10-15T13:22:58.178Z",
+                #             "updatedAt": "2021-10-15T13:22:58.178Z",
+                #             "tags": [],
+                #             "classTitle": "kiwi",
+                #             "points": {
+                #                 "exterior": [
+                #                     [
+                #                         250,
+                #                         216
+                #                     ],
+                #                   ...
+                #                     [
+                #                         278,
+                #                         212
+                #                     ]
+                #                 ],
+                #                 "interior": []
+                #             }
+                #         },
+                #         {
+                #             "id": 56656279,
+                #             "classId": 122356,
+                #             "description": "",
+                #             "geometryType": "polygon",
+                #             "labelerLogin": "alex",
+                #             "createdAt": "2021-10-15T13:22:58.177Z",
+                #             "updatedAt": "2021-10-15T13:22:58.177Z",
+                #             "tags": [],
+                #             "classTitle": "kiwi",
+                #             "points": {
+                #                 "exterior": [
+                #                     [
+                #                         554,
+                #                         581
+                #                     ],
+                #                   ...
+                #                     [
+                #                         560,
+                #                         587
+                #                     ]
+                #                 ],
+                #                 "interior": []
+                #             }
+                #         }
+                #     ]
+                # }
 
-            # Create mapping for classes converting. Let's convert classes to Rectangle.
-            mapping = {}
-            for label in ann.labels:
-                if label.obj_class.name not in mapping:
-                    new_obj_class = sly.ObjClass(label.obj_class.name, Rectangle)
-                    mapping[label.obj_class] = new_obj_class
+                ann = sly.Annotation.from_json(ann_info.annotation, meta)
 
-            det_ann = ann.to_detection_task(mapping)
-            print(json.dumps(det_ann.to_json(), indent=4))
+                # Create mapping for classes converting. Let's convert classes to Rectangle.
+                mapping = {}
+                for label in ann.labels:
+                    if label.obj_class.name not in mapping:
+                        new_obj_class = sly.ObjClass(label.obj_class.name, Rectangle)
+                        mapping[label.obj_class] = new_obj_class
 
-            # Output: {
-            #     "description": "",
-            #     "size": {
-            #         "height": 800,
-            #         "width": 1067
-            #     },
-            #     "tags": [],
-            #     "objects": [
-            #         {
-            #             "classTitle": "lemon",
-            #             "description": "",
-            #             "tags": [],
-            #             "points": {
-            #                 "exterior": [
-            #                     [
-            #                         589,
-            #                         372
-            #                     ],
-            #                     [
-            #                         899,
-            #                         537
-            #                     ]
-            #                 ],
-            #                 "interior": []
-            #             },
-            #             "geometryType": "rectangle",
-            #             "shape": "rectangle"
-            #         },
-            #         {
-            #             "classTitle": "kiwi",
-            #             "description": "",
-            #             "tags": [],
-            #             "points": {
-            #                 "exterior": [
-            #                     [
-            #                         612,
-            #                         110
-            #                     ],
-            #                     [
-            #                         765,
-            #                         282
-            #                     ]
-            #                 ],
-            #                 "interior": []
-            #             },
-            #             "geometryType": "rectangle",
-            #             "shape": "rectangle"
-            #         },
-            #         {
-            #             "classTitle": "kiwi",
-            #             "description": "",
-            #             "tags": [],
-            #             "points": {
-            #                 "exterior": [
-            #                     [
-            #                         196,
-            #                         212
-            #                     ],
-            #                     [
-            #                         352,
-            #                         380
-            #                     ]
-            #                 ],
-            #                 "interior": []
-            #             },
-            #             "geometryType": "rectangle",
-            #             "shape": "rectangle"
-            #         },
-            #         {
-            #             "classTitle": "kiwi",
-            #             "description": "",
-            #             "tags": [],
-            #             "points": {
-            #                 "exterior": [
-            #                     [
-            #                         425,
-            #                         561
-            #                     ],
-            #                     [
-            #                         576,
-            #                         705
-            #                     ]
-            #                 ],
-            #                 "interior": []
-            #             },
-            #             "geometryType": "rectangle",
-            #             "shape": "rectangle"
-            #         }
-            #     ],
-            #     "customBigData": {}
-            # }
+                det_ann = ann.to_detection_task(mapping)
+                print(json.dumps(det_ann.to_json(), indent=4))
+
+                # Output: {
+                #     "description": "",
+                #     "size": {
+                #         "height": 800,
+                #         "width": 1067
+                #     },
+                #     "tags": [],
+                #     "objects": [
+                #         {
+                #             "classTitle": "lemon",
+                #             "description": "",
+                #             "tags": [],
+                #             "points": {
+                #                 "exterior": [
+                #                     [
+                #                         589,
+                #                         372
+                #                     ],
+                #                     [
+                #                         899,
+                #                         537
+                #                     ]
+                #                 ],
+                #                 "interior": []
+                #             },
+                #             "geometryType": "rectangle",
+                #             "shape": "rectangle"
+                #         },
+                #         {
+                #             "classTitle": "kiwi",
+                #             "description": "",
+                #             "tags": [],
+                #             "points": {
+                #                 "exterior": [
+                #                     [
+                #                         612,
+                #                         110
+                #                     ],
+                #                     [
+                #                         765,
+                #                         282
+                #                     ]
+                #                 ],
+                #                 "interior": []
+                #             },
+                #             "geometryType": "rectangle",
+                #             "shape": "rectangle"
+                #         },
+                #         {
+                #             "classTitle": "kiwi",
+                #             "description": "",
+                #             "tags": [],
+                #             "points": {
+                #                 "exterior": [
+                #                     [
+                #                         196,
+                #                         212
+                #                     ],
+                #                     [
+                #                         352,
+                #                         380
+                #                     ]
+                #                 ],
+                #                 "interior": []
+                #             },
+                #             "geometryType": "rectangle",
+                #             "shape": "rectangle"
+                #         },
+                #         {
+                #             "classTitle": "kiwi",
+                #             "description": "",
+                #             "tags": [],
+                #             "points": {
+                #                 "exterior": [
+                #                     [
+                #                         425,
+                #                         561
+                #                     ],
+                #                     [
+                #                         576,
+                #                         705
+                #                     ]
+                #                 ],
+                #                 "interior": []
+                #             },
+                #             "geometryType": "rectangle",
+                #             "shape": "rectangle"
+                #         }
+                #     ],
+                #     "customBigData": {}
+                # }
         """
         aux_mapping = mapping.copy()
 
@@ -2757,7 +2705,7 @@ class Annotation:
         :raises: :class:`ValueError`, if ia_boxes or ia_masks and meta is None
         :raises: :class:`KeyError`, if processed ObjClass not found in meta
         :returns: Annotation object
-        :rtype: :class:`Annotation<Annotation>`
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
         """
         if ((ia_boxes is not None) or (ia_masks is not None)) and meta is None:
             raise ValueError("Project meta has to be provided")
@@ -2811,126 +2759,128 @@ class Annotation:
         :param keep_classes: List with classes names.
         :type keep_classes: List[str]
         :returns: New instance of Annotation
-        :rtype: :class:`Annotation<Annotation>`
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                import supervisely as sly
 
-            # Get image annotation from API
-            project_id = 7473
-            image_id = 2223200
-            meta_json = api.project.get_meta(project_id)
-            meta = sly.ProjectMeta.from_json(meta_json)
-            ann_info = api.annotation.download(image_id)
-            print(json.dumps(ann_info.annotation, indent=4))
+                address = 'https://app.supervisely.com/'
+                token = 'Your Supervisely API Token'
+                api = sly.Api(address, token)
 
-            # Output: {
-            #     "description": "",
-            #     "tags": [],
-            #     "size": {
-            #         "height": 800,
-            #         "width": 1067
-            #     },
-            #     "objects": [
-            #         {
-            #             "id": 57388829,
-            #             "classId": 121405,
-            #             "description": "",
-            #             "geometryType": "bitmap",
-            #             "labelerLogin": "alex",
-            #             "createdAt": "2022-01-02T08:06:05.183Z",
-            #             "updatedAt": "2022-01-02T08:07:12.219Z",
-            #             "tags": [],
-            #             "classTitle": "kiwi",
-            #             "bitmap": {
-            #                 "data": "eJyNlWs4lHkYxv/z8qp5NZuYSZes1KZm6CDSTuP0mh2ZWYdmULakdBUzkRqRrDG8M1vZZg8WIy...,
-            #                 "origin": [
-            #                     481,
-            #                     543
-            #                 ]
-            #             }
-            #         },
-            #         {
-            #             "id": 57388831,
-            #             "classId": 121404,
-            #             "description": "",
-            #             "geometryType": "bitmap",
-            #             "labelerLogin": "alex",
-            #             "createdAt": "2022-01-02T08:06:59.133Z",
-            #             "updatedAt": "2022-01-02T08:07:12.219Z",
-            #             "tags": [],
-            #             "classTitle": "lemon",
-            #             "bitmap": {
-            #                 "data": "eJwdV388k/sXfzwmz3TVNm3l94z5saQoXFSG+c26tM1GYjWUISWKK201SchvIcq30tX2rDuTdE...,
-            #                 "origin": [
-            #                     523,
-            #                     119
-            #                 ]
-            #             }
-            #         },
-            #         {
-            #             "id": 57388832,
-            #             "classId": 121405,
-            #             "description": "",
-            #             "geometryType": "bitmap",
-            #             "labelerLogin": "alex",
-            #             "createdAt": "2022-01-02T08:07:12.104Z",
-            #             "updatedAt": "2022-01-02T08:07:12.104Z",
-            #             "tags": [],
-            #             "classTitle": "kiwi",
-            #             "bitmap": {
-            #                 "data": "eJw1VglQU8kWTWISHzH6AzwwIEsSCBr2AApBloAJhB0eCEIYDJFN2WHACC7sRghbIAiIMuKj...,
-            #                 "origin": [
-            #                     773,
-            #                     391
-            #                 ]
-            #             }
-            #         }
-            #     ]
-            # }
+                # Get image annotation from API
+                project_id = 7473
+                image_id = 2223200
+                meta_json = api.project.get_meta(project_id)
+                meta = sly.ProjectMeta.from_json(meta_json)
+                ann_info = api.annotation.download(image_id)
+                print(json.dumps(ann_info.annotation, indent=4))
 
-            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+                # Output: {
+                #     "description": "",
+                #     "tags": [],
+                #     "size": {
+                #         "height": 800,
+                #         "width": 1067
+                #     },
+                #     "objects": [
+                #         {
+                #             "id": 57388829,
+                #             "classId": 121405,
+                #             "description": "",
+                #             "geometryType": "bitmap",
+                #             "labelerLogin": "alex",
+                #             "createdAt": "2022-01-02T08:06:05.183Z",
+                #             "updatedAt": "2022-01-02T08:07:12.219Z",
+                #             "tags": [],
+                #             "classTitle": "kiwi",
+                #             "bitmap": {
+                #                 "data": "eJyNlWs4lHkYxv/z8qp5NZuYSZes1KZm6CDSTuP0mh2ZWYdmULakdBUzkRqRrDG8M1vZZg8WIy...,
+                #                 "origin": [
+                #                     481,
+                #                     543
+                #                 ]
+                #             }
+                #         },
+                #         {
+                #             "id": 57388831,
+                #             "classId": 121404,
+                #             "description": "",
+                #             "geometryType": "bitmap",
+                #             "labelerLogin": "alex",
+                #             "createdAt": "2022-01-02T08:06:59.133Z",
+                #             "updatedAt": "2022-01-02T08:07:12.219Z",
+                #             "tags": [],
+                #             "classTitle": "lemon",
+                #             "bitmap": {
+                #                 "data": "eJwdV388k/sXfzwmz3TVNm3l94z5saQoXFSG+c26tM1GYjWUISWKK201SchvIcq30tX2rDuTdE...,
+                #                 "origin": [
+                #                     523,
+                #                     119
+                #                 ]
+                #             }
+                #         },
+                #         {
+                #             "id": 57388832,
+                #             "classId": 121405,
+                #             "description": "",
+                #             "geometryType": "bitmap",
+                #             "labelerLogin": "alex",
+                #             "createdAt": "2022-01-02T08:07:12.104Z",
+                #             "updatedAt": "2022-01-02T08:07:12.104Z",
+                #             "tags": [],
+                #             "classTitle": "kiwi",
+                #             "bitmap": {
+                #                 "data": "eJw1VglQU8kWTWISHzH6AzwwIEsSCBr2AApBloAJhB0eCEIYDJFN2WHACC7sRghbIAiIMuKj...,
+                #                 "origin": [
+                #                     773,
+                #                     391
+                #                 ]
+                #             }
+                #         }
+                #     ]
+                # }
 
-            # Let's filter 'lemon' class
-            keep_classes = ['lemon']
-            filter_ann = ann.filter_labels_by_classes(keep_classes)
-            print(json.dumps(filter_ann.to_json(), indent=4))
+                ann = sly.Annotation.from_json(ann_info.annotation, meta)
 
-            # Output: {
-            #     "description": "",
-            #     "size": {
-            #         "height": 800,
-            #         "width": 1067
-            #     },
-            #     "tags": [],
-            #     "objects": [
-            #         {
-            #             "classTitle": "lemon",
-            #             "description": "",
-            #             "tags": [],
-            #             "bitmap": {
-            #                 "origin": [
-            #                     523,
-            #                     119
-            #                 ],
-            #                 "data": "eJwBOAPH/IlQTkcNChoKAAAADUlIRFIAAAEsAAABCQEDAAAAFNKIswAAAAZQTFRFAAAA...,
-            #             },
-            #             "shape": "bitmap",
-            #             "geometryType": "bitmap",
-            #             "labelerLogin": "alex",
-            #             "updatedAt": "2022-01-02T08:07:12.219Z",
-            #             "createdAt": "2022-01-02T08:06:59.133Z",
-            #             "id": 57388831,
-            #             "classId": 121404
-            #         }
-            #     ],
-            #     "customBigData": {}
-            # }
+                # Let's filter 'lemon' class
+                keep_classes = ['lemon']
+                filter_ann = ann.filter_labels_by_classes(keep_classes)
+                print(json.dumps(filter_ann.to_json(), indent=4))
+
+                # Output: {
+                #     "description": "",
+                #     "size": {
+                #         "height": 800,
+                #         "width": 1067
+                #     },
+                #     "tags": [],
+                #     "objects": [
+                #         {
+                #             "classTitle": "lemon",
+                #             "description": "",
+                #             "tags": [],
+                #             "bitmap": {
+                #                 "origin": [
+                #                     523,
+                #                     119
+                #                 ],
+                #                 "data": "eJwBOAPH/IlQTkcNChoKAAAADUlIRFIAAAEsAAABCQEDAAAAFNKIswAAAAZQTFRFAAAA...,
+                #             },
+                #             "shape": "bitmap",
+                #             "geometryType": "bitmap",
+                #             "labelerLogin": "alex",
+                #             "updatedAt": "2022-01-02T08:07:12.219Z",
+                #             "createdAt": "2022-01-02T08:06:59.133Z",
+                #             "id": 57388831,
+                #             "classId": 121404
+                #         }
+                #     ],
+                #     "customBigData": {}
+                # }
         """
         new_labels = []
         for lbl in self.labels:
@@ -3024,7 +2974,7 @@ class Annotation:
     #     However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
 
     #     :returns: New instance of Annotation with labels in subpixel precision.
-    #     :rtype: :class:`Annotation<Annotation>`
+    #     :rtype: :class:`~supervisely.annotation.annotation.Annotation`
     #     """
     #     new_ann = self.clone()
     #     new_labels = [label._to_subpixel_coordinate_system() for label in new_ann.labels]
@@ -3141,12 +3091,10 @@ class Annotation:
         """
         Convert Supervisely annotation to Pascal VOC format annotation ("annotations" field).
 
-        :param ann: Supervisely annotation.
-        :type ann: :class:`Annotation<supervisely.annotation.annotation.Annotation>`
         :param image_name: Image name.
-        :type image_name: :class:`str`
+        :type image_name: str
         :returns: Tuple with xml tree and instance and class masks in PIL.Image format.
-        :rtype: :class:`Tuple`
+        :rtype: Tuple[List, List]
 
         :Usage Example:
 
