@@ -871,7 +871,9 @@ class AnnotationApi(ModuleApi):
         # use context to avoid redundant API calls
         image_info = self._api.image.get_info_by_id(img_ids[0], force_metadata_for_links=False)
         if image_info is None:
-            raise RuntimeError(f"Image with ID={img_ids[0]} not found")
+            raise RuntimeError(
+                f"Cannot get dataset ID from image info. Image with ID={img_ids[0]} not found."
+            )
         dataset_id = image_info.dataset_id
         context = self._api.optimization_context
         context_dataset_id = context.get("dataset_id")

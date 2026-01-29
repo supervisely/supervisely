@@ -168,13 +168,13 @@ class LiveTrainingGenerator(BaseGenerator):
 
     def _get_model_context(self) -> dict:
         """Model configuration info"""
-        classes = [cls.name for cls in self.model_meta.obj_classes]    
+        classes = [cls.name for cls in self.model_meta.obj_classes if cls.name != "_background_"]    
         display_name = self.model_config.get("display_name", self.model_config.get("model_name", "Unknown"))
 
         return {
             "name": display_name,
             "backbone": self.model_config.get("backbone", "N/A"),
-            "num_classes": self.model_config.get("num_classes", len(self.model_meta.obj_classes)),
+            "num_classes": len(classes),
             "classes": classes,
             "classes_short": classes[:3] + (["..."] if len(classes) > 3 else []),
             "config_file": self.model_config.get("config_file", "N/A"),
@@ -230,7 +230,6 @@ class LiveTrainingGenerator(BaseGenerator):
         return {
             "current_size": self.session_info.get("dataset_size", 0),
             "initial_samples": self.session_info.get("initial_samples", 0),
-            "samples_added": self.session_info.get("samples_added", 0),
         }
 
     def _get_training_plots_html(self) -> Optional[str]:
