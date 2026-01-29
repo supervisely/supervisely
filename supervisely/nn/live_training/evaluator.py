@@ -35,7 +35,6 @@ class Evaluator:
         self._predictions: Dict[Any, Tuple[list, Tuple[int, int]]] = {}
 
         self.ema_value: Optional[float] = None
-        self.sample_count: int = 0
 
     def store_prediction(self, image_id: Any, objects: list, image_shape: Tuple[int, int]):
         if image_id in self._predictions:
@@ -86,7 +85,7 @@ class Evaluator:
 
         project_meta = self._get_project_meta_stub()
         for obj in objects:
-            obj_class_title = obj.get('classTitle')
+            obj_class_title = obj['classTitle']
             if obj_class_title is None:
                 continue
 
@@ -171,7 +170,6 @@ class Evaluator:
         return sly.ProjectMeta(obj_classes=sly.ObjClassCollection(obj_classes))
 
     def _update_ema(self, new_value: float):
-        self.sample_count += 1
         if self.ema_value is None:
             self.ema_value = new_value
         else:
@@ -180,17 +178,14 @@ class Evaluator:
     def reset(self):
         self._predictions.clear()
         self.ema_value = None
-        self.sample_count = 0
 
     def state_dict(self) -> Dict:
         return {
             'task_type': self.task_type,
             'ema_alpha': self.ema_alpha,
             'ema_value': self.ema_value,
-            'sample_count': self.sample_count,
             'ignore_index': self.ignore_index
         }
 
     def load_state_dict(self, state: Dict):
         self.ema_value = state.get('ema_value')
-        self.sample_count = state.get('sample_count', 0)

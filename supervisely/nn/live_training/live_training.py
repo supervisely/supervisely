@@ -39,10 +39,12 @@ class LiveTraining:
             self,
             initial_samples: int = 2,
             filter_classes_by_task: bool = True,
+            score_thr: float = 0.3,
         ):
         from torch import nn  # pylint: disable=import-error
         self.initial_samples = initial_samples
         self.filter_classes_by_task = filter_classes_by_task
+        self.score_thr = score_thr 
         if self.task_type is None and self.filter_classes_by_task:
             raise ValueError("task_type must be set in subclass if filter_classes_by_task is set to True")
         if self.framework_name is None:
@@ -104,7 +106,7 @@ class LiveTraining:
             'training_paused': self._is_paused,
             'ready_to_predict': self.ready_to_predict, 
             'initial_iters': self.initial_iters,
-            # TODO: add metric
+            'ema_metric': self.ema_metric,
         }
     
     def run(self):
@@ -246,19 +248,21 @@ class LiveTraining:
     def _handle_predict(self, data: dict):
         image_np = data['image']
         image_id = data['image_id']
-        image_info = {'id': image_id}
+        score_thr = data['score_thr']
+        image_info = {'id': image_id}   
         model = self.model
         was_training = model.training
         model.eval()
         try:
-            objects = self.predict(self.model, image_np=image_np, image_info=image_info)
-            if self.task_type in [TaskType.OBJECT_DETECTION, TaskType.INSTANCE_SEGMENTATION]:
-                objects_filtered = self.filter_predictions_by_conf(objects, conf)
+            objects_raw = self.predict(self.model, image_np=image_np, image_info=image_info)
+
             if self.evaluator:
                 image_shape = image_np.shape[:2]
                 self.evaluator.store_prediction(image_id, objects_raw, image_shape)
+
+            objects_filtered = self.filter_predictions_by_conf(objects_raw, score_thr)
             return {
-                'objects': objects,
+                'objects': objects_filtered,
                 'image_id': image_id,
                 'status': self.status(),
             }
@@ -358,7 +362,19 @@ class LiveTraining:
     def register_dataset(self, dataset: IncrementalDataset):
         assert hasattr(dataset, 'add_or_update'), "Dataset must implement add_or_update method. Consider inheriting from IncrementalDataset."
         self.dataset = dataset
-    
+
+    def filter_predictions_by_conf(self, objects: list, score_thr: float = None) -> list:
+        if self.task_type not in [TaskType.OBJECT_DETECTION, TaskType.INSTANCE_SEGMENTATION]:
+            return objects
+        
+        filtered = []
+        for obj in objects:
+            confidence = obj.get('meta', {}).get('confidence', 1.0)
+            if confidence >= score_thr:
+                filtered.append(obj)
+        
+        return filtered
+
     def _load_checkpoint(self) -> tuple:
         """Resolve and configure checkpoint based on checkpoint_mode."""
         self._process_pending_requests() 
@@ -499,6 +515,7 @@ class LiveTraining:
             class2idx=self.class_map.class2idx,
             ema_alpha=0.1,
             ignore_index=255,
+            score_thr=0.3,
         )
     
     def _add_shutdown_callback(self):

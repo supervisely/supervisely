@@ -15,27 +15,40 @@ class DetectionMetrics:
             'fn': 0.0
         }
 
-    def _xyxy_to_xywh(self, boxes: np.ndarray) -> np.ndarray:
-        if len(boxes) == 0:
-            return np.zeros((0, 4), dtype=np.float32)
-        boxes = np.array(boxes)
-        xywh = np.zeros_like(boxes, dtype=np.float32)
-        xywh[:, 0] = boxes[:, 0]
-        xywh[:, 1] = boxes[:, 1]
-        xywh[:, 2] = boxes[:, 2] - boxes[:, 0]
-        xywh[:, 3] = boxes[:, 3] - boxes[:, 1]
-        return xywh
-
     def iou_matrix(self, pred_boxes: np.ndarray, gt_boxes: np.ndarray) -> np.ndarray:
-        """Compute IoU matrix between predicted and GT boxes."""
+        """Compute IoU matrix between predicted and GT boxes (XYXY format)."""
         if len(pred_boxes) == 0 or len(gt_boxes) == 0:
             return np.zeros((len(pred_boxes), len(gt_boxes)))
         
-        pred_xywh = self._xyxy_to_xywh(pred_boxes)
-        gt_xywh = self._xyxy_to_xywh(gt_boxes)
+        pred_boxes = np.array(pred_boxes, dtype=np.float32)
+        gt_boxes = np.array(gt_boxes, dtype=np.float32)
         
-        import pycocotools.mask as mask_utils 
-        return mask_utils.iou(pred_xywh, gt_xywh, [0]*len(gt_xywh))
+        # Expand for broadcasting: [N, 1, 4] and [1, M, 4]
+        pred_expanded = pred_boxes[:, np.newaxis, :]
+        gt_expanded = gt_boxes[np.newaxis, :, :]
+        
+        # Intersection coordinates
+        x1_inter = np.maximum(pred_expanded[:, :, 0], gt_expanded[:, :, 0])
+        y1_inter = np.maximum(pred_expanded[:, :, 1], gt_expanded[:, :, 1])
+        x2_inter = np.minimum(pred_expanded[:, :, 2], gt_expanded[:, :, 2])
+        y2_inter = np.minimum(pred_expanded[:, :, 3], gt_expanded[:, :, 3])
+        
+        # Intersection area
+        inter_w = np.maximum(0.0, x2_inter - x1_inter)
+        inter_h = np.maximum(0.0, y2_inter - y1_inter)
+        intersection = inter_w * inter_h
+        
+        # Box areas
+        pred_area = (pred_boxes[:, 2] - pred_boxes[:, 0]) * (pred_boxes[:, 3] - pred_boxes[:, 1])
+        gt_area = (gt_boxes[:, 2] - gt_boxes[:, 0]) * (gt_boxes[:, 3] - gt_boxes[:, 1])
+        
+        # Union = area1 + area2 - intersection
+        union = pred_area[:, np.newaxis] + gt_area[np.newaxis, :] - intersection
+        
+        # IoU with division by zero protection
+        iou = intersection / np.maximum(union, 1e-10)
+        
+        return iou
 
     def match_boxes(self, pred_boxes, pred_labels, gt_boxes, gt_labels, iou_threshold: float):
         """Match predictions to GT boxes using Hungarian algorithm."""

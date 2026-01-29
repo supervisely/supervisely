@@ -44,9 +44,10 @@ def create_api(app: FastAPI, request_queue: RequestQueue) -> FastAPI:
         sly_api = _api_from_request(request)
         state = request.state.state
         img_np = sly_api.image.download_np(state['image_id'])
+        score_thr = state.get('score_thr', None)
         future = request_queue.put(
             RequestType.PREDICT,
-            {'image': img_np, 'image_id': state['image_id']}
+            {'image': img_np, 'image_id': state['image_id'], 'score_thr': score_thr}
         )
         result = await _wait_for_result(future, response)
         return result
