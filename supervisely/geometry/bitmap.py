@@ -119,14 +119,10 @@ class Bitmap(BitmapBase):
             mask = img[:, :, 0].astype(bool) # Get 2-dimensional bool numpy array
             figure = sly.Bitmap(mask)
 
-            .. image:: https://i.imgur.com/2L3HRPs.jpg
+    .. image:: https://i.imgur.com/2L3HRPs.jpg
+        :width: 600
+        :height: 500
     """
-
-    @staticmethod
-    def geometry_name():
-        """geometry_name"""
-        return "bitmap"
-
     def __init__(
         self,
         data: np.ndarray,
@@ -182,6 +178,11 @@ class Bitmap(BitmapBase):
     def _impl_json_class_name(cls):
         """_impl_json_class_name"""
         return BITMAP
+
+    @staticmethod
+    def geometry_name():
+        """Returns the name of the geometry."""
+        return "bitmap"
 
     def rotate(self, rotator: ImageRotator) -> Bitmap:
         """

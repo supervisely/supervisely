@@ -1421,9 +1421,9 @@ class Annotation:
                 # Draw Annotation on image
                 ann.draw(img)
 
-                .. image:: https://i.imgur.com/1W1Nfl1.jpg
-                :width: 600
-                :height: 500
+        .. image:: https://i.imgur.com/1W1Nfl1.jpg
+            :width: 600
+            :height: 500
         """
         tags_font = None
         if draw_tags is True:
@@ -1498,9 +1498,9 @@ class Annotation:
                 # Draw Annotation contour on image
                 ann.draw_contour(img)
 
-                .. image:: https://i.imgur.com/F8KGZS4.jpg
-                :width: 600
-                :height: 500
+        .. image:: https://i.imgur.com/F8KGZS4.jpg
+            :width: 600
+            :height: 500
         """
         tags_font = None
         if draw_tags is True:
@@ -1716,9 +1716,9 @@ class Annotation:
                 name_to_index = {'lemon': 90, 'kiwi': 195}
                 ann.draw_class_idx_rgb(img, name_to_index)
 
-                .. image:: https://i.imgur.com/ACSaBgw.jpg
-                :width: 600
-                :height: 500
+        .. image:: https://i.imgur.com/ACSaBgw.jpg
+            :width: 600
+            :height: 500
         """
         for label in self._labels:
             class_idx = name_to_index[label.obj_class.name]
@@ -1871,36 +1871,38 @@ class Annotation:
         :returns: New instance of Annotation
         :rtype: :class:`Annotation<Annotation>`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            # Create annotation
-            meta_lemon = sly.TagMeta('lemon_tag', sly.TagValueType.ANY_STRING)
-            tag_lemon = sly.Tag(meta_lemon, 'lemon')
-            tags_lemon = sly.TagCollection([tag_lemon])
-            class_lemon = sly.ObjClass('lemon', sly.Rectangle)
-            label_lemon = sly.Label(sly.Rectangle(100, 100, 200, 200), class_lemon)
-            height, width = 300, 400
-            ann_lemon = sly.Annotation((height, width), [label_lemon], tags_lemon)
+                import supervisely as sly
 
-            # Create annotation to merge
-            meta_kiwi= sly.TagMeta('kiwi_tag', sly.TagValueType.ANY_STRING)
-            tag_kiwi = sly.Tag(meta_kiwi, 'kiwi')
-            tags_kiwi = sly.TagCollection([tag_kiwi])
-            class_kiwi = sly.ObjClass('kiwi', sly.Rectangle)
-            label_kiwi = sly.Label(sly.Rectangle(200, 100, 700, 200), class_kiwi)
-            height, width = 700, 500
-            ann_kiwi = sly.Annotation((height, width), [label_kiwi], tags_kiwi)
+                # Create annotation
+                meta_lemon = sly.TagMeta('lemon_tag', sly.TagValueType.ANY_STRING)
+                tag_lemon = sly.Tag(meta_lemon, 'lemon')
+                tags_lemon = sly.TagCollection([tag_lemon])
+                class_lemon = sly.ObjClass('lemon', sly.Rectangle)
+                label_lemon = sly.Label(sly.Rectangle(100, 100, 200, 200), class_lemon)
+                height, width = 300, 400
+                ann_lemon = sly.Annotation((height, width), [label_lemon], tags_lemon)
 
-            # Merge annotations
-            ann_merge = ann_lemon.merge(ann_kiwi)
+                # Create annotation to merge
+                meta_kiwi= sly.TagMeta('kiwi_tag', sly.TagValueType.ANY_STRING)
+                tag_kiwi = sly.Tag(meta_kiwi, 'kiwi')
+                tags_kiwi = sly.TagCollection([tag_kiwi])
+                class_kiwi = sly.ObjClass('kiwi', sly.Rectangle)
+                label_kiwi = sly.Label(sly.Rectangle(200, 100, 700, 200), class_kiwi)
+                height, width = 700, 500
+                ann_kiwi = sly.Annotation((height, width), [label_kiwi], tags_kiwi)
 
-            for label in ann_merge.labels:
-                print(label.obj_class.name)
+                # Merge annotations
+                ann_merge = ann_lemon.merge(ann_kiwi)
 
-            # Output: lemon
-            # Output: kiwi
+                for label in ann_merge.labels:
+                    print(label.obj_class.name)
+
+                # Output: lemon
+                # Output: kiwi
         """
         res = self.clone()
         res = res.add_labels(other.labels)
@@ -1935,28 +1937,30 @@ class Annotation:
         :returns: :class:`None<None>`
         :rtype: :class:`NoneType<NoneType>`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                import supervisely as sly
 
-            # Get image and annotation from API
-            project_id = 888
-            image_id = 555555
+                address = 'https://app.supervisely.com/'
+                token = 'Your Supervisely API Token'
+                api = sly.Api(address, token)
 
-            meta_json = api.project.get_meta(project_id)
-            meta = sly.ProjectMeta.from_json(meta_json)
+                # Get image and annotation from API
+                project_id = 888
+                image_id = 555555
 
-            ann_info = api.annotation.download(image_id)
-            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+                meta_json = api.project.get_meta(project_id)
+                meta = sly.ProjectMeta.from_json(meta_json)
 
-            img = api.image.download_np(image_id)
+                ann_info = api.annotation.download(image_id)
+                ann = sly.Annotation.from_json(ann_info.annotation, meta)
 
-            # Draw pretty Annotation on image
-            ann.draw_pretty(img, thickness=3)
+                img = api.image.download_np(image_id)
+
+                # Draw pretty Annotation on image
+                ann.draw_pretty(img, thickness=3)
 
         .. image:: https://i.imgur.com/6huO1se.jpg
             :width: 600
