@@ -352,8 +352,10 @@ class LiveTraining:
                     samples_needed=1,
                     max_wait_time=None,
                 )
+                logger.debug("New sample added, removing pause")
                 self._is_paused = False
                 self.loss_plateau_detector.reset()
+                logger.debug(f"Training resumed, next iteration will be {self.iter + 1}")
         self._process_pending_requests()
     
     def register_model(self, model: nn.Module):
