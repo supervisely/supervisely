@@ -204,6 +204,7 @@ class DeployModel(Widget):
             self.deploy_model = deploy_model
             self._model_api = None
             self._layout = self._create_layout()
+            self._lock = threading.Lock()
 
         @property
         def layout(self) -> ExperimentSelector:
@@ -224,16 +225,17 @@ class DeployModel(Widget):
             return self.experiment_table
 
         def refresh_experiments(self):
-            self.experiment_table.loading = True
-            frameworks = self.deploy_model.get_frameworks()
-            experiment_infos = []
-            for framework_name in frameworks:
-                experiment_infos.extend(
-                    get_experiment_infos(self.api, self.team_id, framework_name=framework_name)
-                )
+            with self._lock:
+                self.experiment_table.loading = True
+                frameworks = self.deploy_model.get_frameworks()
+                experiment_infos = []
+                for framework_name in frameworks:
+                    experiment_infos.extend(
+                        get_experiment_infos(self.api, self.team_id, framework_name=framework_name)
+                    )
 
-            self.experiment_table.set_experiment_infos(experiment_infos)
-            self.experiment_table.loading = False
+                self.experiment_table.set_experiment_infos(experiment_infos)
+                self.experiment_table.loading = False
 
         def get_deploy_parameters(self) -> Dict[str, Any]:
             experiment_info = self.experiment_table.get_selected_experiment_info()
@@ -256,12 +258,14 @@ class DeployModel(Widget):
 
         def load_from_json(self, data: Dict):
             if "experiment_info" in data:
-                experiment_info_json = data["experiment_info"]
-                experiment_info = ExperimentInfo(**experiment_info_json)  # pylint: disable=not-a-mapping
-                self.experiment_table.set_selected_row_by_experiment_info(experiment_info)
+                with self._lock:
+                    experiment_info_json = data["experiment_info"]
+                    experiment_info = ExperimentInfo(**experiment_info_json)  # pylint: disable=not-a-mapping
+                    self.experiment_table.set_selected_row_by_experiment_info(experiment_info)
             elif "train_task_id" in data:
-                task_id = data["train_task_id"]
-                self.experiment_table.set_selected_row_by_task_id(task_id)
+                with self._lock:
+                    task_id = data["train_task_id"]
+                    self.experiment_table.set_selected_row_by_task_id(task_id)
             else:
                 raise ValueError("Invalid data format for loading custom model.")
 
