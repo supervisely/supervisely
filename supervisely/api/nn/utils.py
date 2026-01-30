@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Type, TypedDict, Union, Unpack
+from typing import List, Optional, Tuple, Type
 
 import supervisely.io.env as env
-from supervisely._utils import get_valid_kwargs, logger
+from supervisely._utils import get_valid_kwargs
 from supervisely.api.agent_api import AgentInfo
 from supervisely.api.api import Api
 from supervisely.io.fs import get_file_name_with_ext
@@ -177,6 +177,8 @@ def run_app(
         agent_id=agent_id,
         module_id=module_id,
         workspace_id=workspace_id,
+        is_branch=True,
+        app_version="train-api-update",
         **kwargs,
     )
     ready = api.app.wait_until_ready_for_api_calls(
