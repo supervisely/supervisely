@@ -653,13 +653,20 @@ class PredictAppGui:
     def _run_images(self, run_parameters: Dict[str, Any] = None) -> List[Prediction]:
         if self.model_api is None:
             self.set_validator_text("Deploying model...", "info")
-            if run_parameters is not None and "model" in run_parameters:
-                model_params = run_parameters["model"]
-                self.model_selector.model.load_from_json(model_params)
             self.model_selector.model._deploy()
-            if isinstance(self.model_api, ModelAPI):
-                classes = self.model_api.get_classes()
-                self.classes_selector.set_classes(classes)
+            if isinstance(run_parameters, dict):
+                # Set classes from run_parameters
+                model_classes = self.model_api.get_classes()
+                classes = run_parameters.get("classes", [])
+                classes = set(classes) & set(model_classes)
+                self.classes_selector.set_classes(list(classes))
+
+                # Set inference settings from run_parameters
+                settings = run_parameters.get("settings", {})
+                inference_settings = settings.get("inference_settings")
+                if inference_settings:
+                    self.settings_selector.set_inference_settings(inference_settings)
+
         if self.model_api is None:
             logger.error("Model Deployed with an error")
             raise RuntimeError("Model Deployed with an error")
@@ -896,6 +903,7 @@ class PredictAppGui:
 
         # 2. Model selector
         self.model_selector.model.load_from_json(data.get("model", {}))
+        # TODO: deploy model here?
 
         # 3. Classes selector
         if self.classes_selector is not None:
