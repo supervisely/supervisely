@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Union
 
 import pandas as pd
 
@@ -105,7 +105,7 @@ class ClassesSelector:
     def set_project_meta(self, project_meta) -> None:
         self._update_meta(project_meta)
 
-    def load_from_json(self, data: Dict[str, Any] | List[str]) -> None:
+    def load_from_json(self, data: Union[Dict[str, Any], List[str]]) -> None:
         if isinstance(data, List):
             self.set_classes(data)
         elif isinstance(data, Dict) and "classes" in data:
