@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import List, Optional, Tuple, Type
 
 import supervisely.io.env as env
-from supervisely._utils import get_valid_kwargs
 from supervisely.api.agent_api import AgentInfo
 from supervisely.api.api import Api
 from supervisely.io.fs import get_file_name_with_ext
@@ -41,7 +40,7 @@ def find_agent(api: "Api", team_id: int = None, public=True, gpu=True) -> Option
         return max(agent_id_memory_map, key=agent_id_memory_map.get)
     if len(kubernetes_agents) > 0:
         return kubernetes_agents[0]
-    
+
 def get_framework_by_path(path: str) -> Type[BaseTrainArtifacts]:
     from supervisely.nn.artifacts import (
         RITM,
@@ -81,7 +80,7 @@ def get_framework_by_path(path: str) -> Type[BaseTrainArtifacts]:
     if f"/{parent}" in frameworks:
         return frameworks[f"/{parent}"]
 
-    
+
 def get_artifacts_dir_and_checkpoint_name(model: str) -> Tuple[str, str]:
     if not model.startswith("/"):
         raise ValueError(f"Path must start with '/'")
@@ -159,27 +158,43 @@ def find_apps_by_framework(api: "Api", framework: str, categories: List[str] = N
     return modules
 
 
-def run_app(
-    api: "Api", agent_id: int, module_id: int, timeout: int = 100, **kwargs
+def run_train_app(
+    api: "Api",
+    agent_id: int,
+    module_id: int,
+    workspace_id: int,
+    app_state: dict,
+    timeout: int = 100,
 ):
+    f"""
+    Run a training app.
+
+    :param api: Supervisely API client.
+    :type api: :class:`~supervisely.api.api.Api`
+    :param agent_id: Agent ID where the app task will run.
+    :type agent_id: int
+    :param module_id: Module ID of the training app.
+    :type module_id: int
+    :param workspace_id: Workspace ID where the app task will run.
+    :type workspace_id: int
+    :param app_state: App state to run the training app. Must include key state with app state inside: 'state': app_state"
+    :type app_state: dict
+    :param timeout: Timeout in seconds.
+    :type timeout: int
+    :return: Task information.
+    :rtype: dict
+    """
+
     _attempt_delay_sec = 1
     _attempts = timeout // _attempt_delay_sec
 
-    workspace_id = kwargs.pop("workspace_id", None)
-    if workspace_id is None:
-        workspace_id = env.workspace_id()
-    kwargs = get_valid_kwargs(
-        kwargs=kwargs,
-        func=api.task.start,
-        exclude=["self", "module_id", "agent_id"],
-    )
     task_info = api.task.start(
         agent_id=agent_id,
         module_id=module_id,
         workspace_id=workspace_id,
+        params=app_state,
         is_branch=True,
         app_version="train-api-update",
-        **kwargs,
     )
     ready = api.app.wait_until_ready_for_api_calls(
         task_info["id"], _attempts, _attempt_delay_sec
