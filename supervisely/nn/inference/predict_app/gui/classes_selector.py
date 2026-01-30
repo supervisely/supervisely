@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 import pandas as pd
 
@@ -105,8 +105,10 @@ class ClassesSelector:
     def set_project_meta(self, project_meta) -> None:
         self._update_meta(project_meta)
 
-    def load_from_json(self, data: Dict[str, Any]) -> None:
-        if "classes" in data:
+    def load_from_json(self, data: Dict[str, Any] | List[str]) -> None:
+        if isinstance(data, List):
+            self.set_classes(data)
+        elif isinstance(data, Dict) and "classes" in data:
             self.set_classes(data["classes"])
 
     def get_selected_classes(self) -> list:

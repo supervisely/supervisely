@@ -657,6 +657,9 @@ class PredictAppGui:
                 model_params = run_parameters["model"]
                 self.model_selector.model.load_from_json(model_params)
             self.model_selector.model._deploy()
+            if isinstance(self.model_api, ModelAPI):
+                classes = self.model_api.get_classes()
+                self.classes_selector.set_classes(classes)
         if self.model_api is None:
             logger.error("Model Deployed with an error")
             raise RuntimeError("Model Deployed with an error")
