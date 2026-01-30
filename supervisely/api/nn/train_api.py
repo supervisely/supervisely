@@ -13,7 +13,7 @@ from supervisely.api.nn.utils import (
     run_app,
 )
 from supervisely.nn.experiments import get_experiment_info_by_artifacts_dir
-
+from supervisely import ProjectMeta
 
 class Model:
     def __init__(
@@ -47,7 +47,6 @@ class Model:
             self.task_id = experiment_info.task_id
             self.framework = experiment_info.framework_name
 
-
     @classmethod
     def parse(cls, api: "Api", model: str) -> Model:
         checkpoint = None
@@ -68,19 +67,18 @@ class Model:
         if checkpoint is not None:
             artifacts_dir, checkpoint_name = get_artifacts_dir_and_checkpoint_name(checkpoint)
             return cls(
+                api=api,
                 source="Custom models",
                 artifacts_dir=artifacts_dir,
                 checkpoint_name=checkpoint_name,
-                team_id=team_id
+                team_id=team_id,
             )
         else:
             framework, model_name = pretrained.split("/", 1)
             return cls(
-                source="Pretrained models",
-                framework=framework,
-                model_name=model_name
+                api=api, source="Pretrained models", framework=framework, model_name=model_name
             )
-    
+
     def app_state(self):
         if self.source == "Pretrained models":
             return {
@@ -99,7 +97,7 @@ class _TrainValSplit:
     @abstractmethod
     def app_state(self) -> Dict[str, Any]:
         raise NotImplementedError()
-    
+
 
 class RandomSplit(_TrainValSplit):
     def __init__(self, percent: int = 80, split: str = "train"):
@@ -156,59 +154,62 @@ class TrainApi:
 
     def __init__(self, api: "Api"):
         self._api = api
-    
+
     def _get_app_state(
         self,
         project_id: int,
         model: Model,
         classes: List[str],
         train_val_split: _TrainValSplit,
-        experiment_name: str,
-        hyperparameters: str,
+        experiment_name: str = None,
+        hyperparameters: str = None,
         convert_class_shapes: bool = True,
         enable_benchmark: bool = True,
-        enable_speedtest: bool = True,
+        enable_speedtest: bool = False,
         cache_project: bool = True,
         export_onnx: bool = False,
         export_tensorrt: bool = False,
         autostart: bool = True,
     ):
         app_state = {
-            # 1. Project
-            "slyProjectId": project_id,
-            "guiState": {
-                # 2. Model
-                "model": model.app_state(),
-                # 3. Classes
-                "classes": classes,
-                # 4. Train/Val Split
-                "train_val_split": train_val_split.app_state(), # or latest train_xxx val_xxx collections
-                # 5. Hyperparameters
-                "hyperparameters": hyperparameters,  # yaml string
-                # 6. Options
-                "options": {
-                    "convert_class_shapes": convert_class_shapes,
-                    "model_benchmark": {
-                        "enable": enable_benchmark or enable_speedtest,
-                        "speed_test": enable_speedtest,
+            "state": {
+                # 1. Project
+                "slyProjectId": project_id,
+                "guiState": {
+                    # 2. Model
+                    "model": model.app_state(),
+                    # 3. Classes
+                    "classes": classes,
+                    # 4. Train/Val Split
+                    "train_val_split": train_val_split.app_state(),
+                    # 5. Hyperparameters
+                    "hyperparameters": hyperparameters,  # yaml string
+                    # 6. Options
+                    "options": {
+                        "convert_class_shapes": convert_class_shapes,
+                        "model_benchmark": {
+                            "enable": enable_benchmark or enable_speedtest,
+                            "speed_test": enable_speedtest,
+                        },
+                        "cache_project": cache_project,
+                        "export": {
+                            "enable": export_onnx or export_tensorrt,
+                            "ONNXRuntime": export_onnx,
+                            "TensorRT": export_tensorrt,
+                        },
                     },
-                    "cache_project": cache_project,
-                    "export": {
-                        "enable": export_onnx or export_tensorrt,
-                        "ONNXRuntime": export_onnx,
-                        "TensorRT": export_tensorrt,
-                    },
+                    # 7. Experiment Name
+                    "experiment_name": experiment_name,
+                    # 8. Start Training
+                    "start_training": autostart,  # Starts training automatically
                 },
-                # 7. Experiment Name
-                "experiment_name": experiment_name,
-                # 8. Start Training
-                "start_training": autostart,  # Starts training automatically
             },
         }
         return app_state
-    
+
     def run(
         self,
+        agent_id: int,
         project_id: int,
         model: str,
         hyperparameters: str = None,
@@ -222,7 +223,7 @@ class TrainApi:
         export_onnx: bool = False,
         export_tensorrt: bool = False,
         autostart: bool = True,
-        **kwargs
+        **kwargs,
     ):
         """
         Docstring for run
@@ -235,7 +236,7 @@ class TrainApi:
         model: Model = Model.parse(self._api, model)
 
         project_meta_json = self._api.project.get_meta(project_id)
-        project_meta = sly.ProjectMeta.from_json(project_meta_json)
+        project_meta = ProjectMeta.from_json(project_meta_json)
         if classes: # todo: warning if passed class not in project meta
             classes = [obj_class.name for obj_class in project_meta.obj_classes if obj_class.name in classes]
         else:
@@ -243,7 +244,7 @@ class TrainApi:
 
         if train_val_split is None:
             train_val_split = RandomSplit()
-        
+
         module = self.find_train_app_by_framework(model.framework)
         if module is None:
             raise ValueError(f"Failed to detect train app by framework: '{model.framework}'")
@@ -251,7 +252,7 @@ class TrainApi:
 
         if hyperparameters is None:
             pass
-        
+
         app_state = self._get_app_state(
             project_id=project_id,
             model=model,
@@ -271,18 +272,19 @@ class TrainApi:
             api=self._api,
             agent_id=agent_id,
             module_id=module_id,
+            timeout=100,
             workspace_id=workspace_id,
             params=app_state,
             **kwargs,
         )
         return task_info
-    
+
     def find_train_app_by_framework(self, framework: str):
         modules = find_apps_by_framework(self._api, framework, ["train"])
         if not modules:
             return None
         return modules[0]
-    
+
     def finetune(
         self,
         task_id: int,
@@ -299,11 +301,10 @@ class TrainApi:
         export_tensorrt: bool = False,
         autostart: bool = True
     ):
+        raise NotImplementedError("Finetuning is not implemented yet")
         # on best checkpoint
-        experiment_info = get_experiment_info_by_task_id()
-        self.run(
-            experiment_info.project_id,
-        )
+        # experiment_info = get_experiment_info_by_task_id()
+        # self.run(experiment_info.project_id)
 
     def run_new(
         self,
@@ -322,38 +323,4 @@ class TrainApi:
         autostart: bool = True
     ):
         # checkpoint that was used in this task
-        pass
-
-
-
-import os
-
-from dotenv import load_dotenv
-
-import supervisely as sly
-
-load_dotenv("local.env")
-load_dotenv(os.path.expanduser("~/supervisely.env"))
-
-
-api = sly.Api.from_env()
-agent_id = sly.env.agent_id()  # take from env or enter ID
-workspace_id = sly.env.workspace_id()  # take from env or enter ID
-project_id = sly.env.project_id()  # take from env or enter ID
-experiment_name = "My Experiment"
-
-# Read from yaml file for convenience
-# Example: https://github.com/supervisely-ecosystem/yolo/blob/master/supervisely_integration/train/hyperparameters.yaml
-hyperparameters_path = "hyperparameters.yaml"
-with open(hyperparameters_path, "r") as file:
-    hyperparameters = file.read()
-
-train = TrainApi(api)
-train.run(
-    project_id=project_id,
-    model="model",
-    experiment_name=experiment_name,
-    train_val_split=RandomSplit(),
-    hyperparameters=hyperparameters,
-)
-
+        raise NotImplementedError("Running from task is not implemented yet")

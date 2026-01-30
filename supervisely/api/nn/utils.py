@@ -165,9 +165,9 @@ def run_app(
     _attempt_delay_sec = 1
     _attempts = timeout // _attempt_delay_sec
 
-    if kwargs.get("workspace_id") is None:
+    workspace_id = kwargs.pop("workspace_id", None)
+    if workspace_id is None:
         workspace_id = env.workspace_id()
-        kwargs["workspace_id"] = workspace_id
     kwargs = get_valid_kwargs(
         kwargs=kwargs,
         func=api.task.start,

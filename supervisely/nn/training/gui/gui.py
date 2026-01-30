@@ -673,7 +673,6 @@ class TrainGUI:
         # Basic required keys always needed
         base_required = {
             "model": ["source"],
-            "hyperparameters": (dict, str),
         }
         if show_train_val:
             base_required["train_val_split"] = ["method"]
@@ -870,7 +869,7 @@ class TrainGUI:
             (self._init_classes, app_state.get("classes", []), "Classes Selector"),
             (self._init_tags, app_state.get("tags", []), "Tags Selector"),
             (self._init_train_val_splits, app_state.get("train_val_split", {}), "Train/Val Splits"),
-            (self._init_hyperparameters, app_state["hyperparameters"], "Hyperparameters"),
+            (self._init_hyperparameters, app_state.get("hyperparameters"), "Hyperparameters"),
         ]
 
         for idx, (init_fn, settings, step_name) in enumerate(_steps, start=1):
@@ -1128,7 +1127,7 @@ class TrainGUI:
 
     def _init_hyperparameters(
         self,
-        hyperparameters_settings: dict,
+        hyperparameters_settings: Union[dict, None],
         options: dict,
         click_cb: bool = True,
         validate: bool = True,
@@ -1137,7 +1136,7 @@ class TrainGUI:
         Initialize the hyperparameters selector with the given settings.
 
         :param hyperparameters_settings: The hyperparameters settings.
-        :type hyperparameters_settings: dict
+        :type hyperparameters_settings: Union[dict, None]
         :param options: The application options.
         :type options: dict
         :param click_cb: Click the callback function.
@@ -1145,7 +1144,8 @@ class TrainGUI:
         :param validate: Validate the step.
         :type validate: bool
         """
-        self.hyperparameters_selector.set_hyperparameters(hyperparameters_settings)
+        if hyperparameters_settings is not None:
+            self.hyperparameters_selector.set_hyperparameters(hyperparameters_settings)
 
         model_benchmark_settings = options.get("model_benchmark", None)
         if model_benchmark_settings is not None:
