@@ -45,11 +45,6 @@ jobs:
           echo "Timeout waiting for tag $TAG replication"
           exit 1
 
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-
       - name: Install build deps
         run: |
           python -m pip install --upgrade pip

@@ -15,6 +15,16 @@ jobs:
     name: Import SDK Check
     runs-on: gha-runner-supervisely
     steps:
+      - name: Install GitHub CLI
+        run: |
+          (type -p wget >/dev/null || (sudo apt update && sudo apt-get install wget -y)) \
+          && sudo mkdir -p -m 755 /etc/apt/keyrings \
+          && wget -qO- https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null \
+          && sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
+          && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
+          && sudo apt update \
+          && sudo apt install gh -y
+          
       - name: Skip check if requested
         if: github.event.inputs.skip_checks == 'skip'
         run: |
@@ -76,6 +86,15 @@ jobs:
       ERRORS_DETECTED: false
       GH_TOKEN: ${{ github.token }}
     steps:
+      - name: Install GitHub CLI
+        run: |
+          (type -p wget >/dev/null || (sudo apt update && sudo apt-get install wget -y)) \
+          && sudo mkdir -p -m 755 /etc/apt/keyrings \
+          && wget -qO- https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null \
+          && sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
+          && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
+          && sudo apt update \
+          && sudo apt install gh -y
 
       - name: Skip check if requested
         if: github.event.inputs.skip_checks == 'skip'
@@ -173,16 +192,6 @@ jobs:
           fi
         id: pylint
       
-      # - name: Install GitHub CLI
-      #   run: |
-      #     (type -p wget >/dev/null || (sudo apt update && sudo apt-get install wget -y)) \
-      #     && sudo mkdir -p -m 755 /etc/apt/keyrings \
-      #     && wget -qO- https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null \
-      #     && sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
-      #     && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
-      #     && sudo apt update \
-      #     && sudo apt install gh -y
-
       - name: Fail if pylint errors detected
         if: ${{ env.HAS_PYTHON_FILES == 'true' && env.ERRORS_DETECTED == 'true' }}
         run: |
