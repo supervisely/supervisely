@@ -34,31 +34,34 @@ jobs:
             -f context="Import SDK Check" \
             -f description="Check skipped by user request" \
             -f target_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          exit 0
         env:
           GH_TOKEN: ${{ github.token }}
 
       - name: Install dependencies
+        if: github.event.inputs.skip_checks != 'skip'
         run: |
           sudo apt-get update
           sudo apt-get install -y libgl1 libmagic1
 
       - name: Checkout Repository
+        if: github.event.inputs.skip_checks != 'skip'
         uses: actions/checkout@v6
         with:
           repository: ${{ github.repository }}
 
       - name: Add local bin to PATH
+        if: github.event.inputs.skip_checks != 'skip'
         run: echo "$HOME/.local/bin" >> $GITHUB_PATH
 
       - name: Import
+        if: github.event.inputs.skip_checks != 'skip'
         run: |
           python -m pip install --upgrade pip
           pip install .
           python -c "import supervisely"
       
       - name: Set status to failure
-        if: failure()
+        if: failure() && github.event.inputs.skip_checks != 'skip'
         run: |
           gh api -X POST \
             repos/${{ github.repository }}/statuses/${{ github.sha }} \
@@ -105,14 +108,15 @@ jobs:
             -f context="Checking modified files in PR with pylint" \
             -f description="Check skipped by user request" \
             -f target_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          exit 0
 
       - name: Install dependencies
+        if: github.event.inputs.skip_checks != 'skip'
         run: |
           sudo apt-get update
           sudo apt-get install -y libgl1 libmagic1
 
       - name: Checkout Repository
+        if: github.event.inputs.skip_checks != 'skip'
         uses: actions/checkout@v6
         with:
           repository: ${{ github.repository }}
@@ -120,20 +124,24 @@ jobs:
           fetch-depth: 0
       
       - name: Fetch master branch
+        if: github.event.inputs.skip_checks != 'skip'
         run: git fetch origin master
 
       - name: Get merge base
+        if: github.event.inputs.skip_checks != 'skip'
         id: merge-base
         run: |
           echo "BASE=$(git merge-base origin/master HEAD)" >> $GITHUB_ENV
 
       - name: Get changed files
+        if: github.event.inputs.skip_checks != 'skip'
         id: changed-files
         run: |
           git diff --name-only ${{ env.BASE }} HEAD > changed_files.txt
           cat changed_files.txt
         
       - name: Filter Python files
+        if: github.event.inputs.skip_checks != 'skip'
         id: filter-files
         run: |
           python_files=()
@@ -162,18 +170,18 @@ jobs:
           fi
 
       - name: Add local bin to PATH
-        if: ${{ env.HAS_PYTHON_FILES == 'true' }}
+        if: ${{ env.HAS_PYTHON_FILES == 'true' && github.event.inputs.skip_checks != 'skip' }}
         run: echo "$HOME/.local/bin" >> $GITHUB_PATH
         
       - name: Install dependencies
-        if: ${{ env.HAS_PYTHON_FILES == 'true' }}
+        if: ${{ env.HAS_PYTHON_FILES == 'true' && github.event.inputs.skip_checks != 'skip' }}
         run: |
           pip install --upgrade pip
           pip install pylint
           pip install .[extras,sdk-nn-plugins,aug]
 
       - name: Run check with pylint
-        if: ${{ env.HAS_PYTHON_FILES == 'true' }}
+        if: ${{ env.HAS_PYTHON_FILES == 'true' && github.event.inputs.skip_checks != 'skip' }}
         run: |
           python_files=()
           while IFS= read -r file; do
@@ -193,7 +201,7 @@ jobs:
         id: pylint
       
       - name: Fail if pylint errors detected
-        if: ${{ env.HAS_PYTHON_FILES == 'true' && env.ERRORS_DETECTED == 'true' }}
+        if: ${{ env.HAS_PYTHON_FILES == 'true' && env.ERRORS_DETECTED == 'true' && github.event.inputs.skip_checks != 'skip' }}
         run: |
           issue_body=$(cat pylint_errors.txt)
           echo "Pylint Errors: $issue_body"
@@ -201,7 +209,7 @@ jobs:
           exit 1
 
       - name: Set status to success
-        if: success()
+        if: success() && github.event.inputs.skip_checks != 'skip'
         run: |
           gh api -X POST \
             repos/${{ github.repository }}/statuses/${{ github.sha }} \
@@ -211,7 +219,7 @@ jobs:
             -f target_url="${{ github.event.pull_request.html_url }}"       
 
       - name: Set status to failure
-        if: failure()
+        if: failure() && github.event.inputs.skip_checks != 'skip'
         run: |
           gh api -X POST \
             repos/${{ github.repository }}/statuses/${{ github.sha }} \
