@@ -8,6 +8,7 @@ from supervisely.api.agent_api import AgentInfo
 from supervisely.api.api import Api
 from supervisely.io.fs import get_file_name_with_ext
 from supervisely.nn.artifacts.artifacts import BaseTrainArtifacts
+from supervisely.nn.experiments import ExperimentInfo
 
 
 def find_agent(api: "Api", team_id: int = None, public=True, gpu=True) -> Optional[AgentInfo]:
@@ -204,3 +205,41 @@ def run_train_app(
             f"Task {task_info['id']} is not ready for API calls after {timeout} seconds."
         )
     return task_info
+
+def get_experiment_info_by_task_id(api: "Api", task_id) -> Optional[ExperimentInfo]:
+    task_info = api.task.get_info_by_id(task_id)
+    experiment_data = task_info.get("meta", {}).get("output", {}).get("experiment")
+    if experiment_data is None:
+        return None
+    return ExperimentInfo(**experiment_data)
+
+def find_agent(api: "Api", team_id: int = None, public=True, gpu=True):
+    """
+    Find an agent in Supervisely with most available memory.
+
+    :param team_id: Team ID. If not provided, will be taken from the current context.
+    :type team_id: Optional[int]
+    :param public: If True, can find a public agent.
+    :type public: bool
+    :param gpu: If True, find an agent with GPU.
+    :type gpu: bool
+    :return: Agent ID
+    :rtype: int
+    """
+    if team_id is None:
+        team_id = env.team_id()
+    agents = api.agent.get_list_available(team_id, show_public=public, has_gpu=gpu)
+    if len(agents) == 0:
+        raise ValueError("No available agents found.")
+    agent_id_memory_map = {}
+    kubernetes_agents = []
+    for agent in agents:
+        if agent.type == "sly_agent":
+            # No multi-gpu support, always take the first one
+            agent_id_memory_map[agent.id] = agent.gpu_info["device_memory"][0]["available"]
+        elif agent.type == "kubernetes":
+            kubernetes_agents.append(agent.id)
+    if len(agent_id_memory_map) > 0:
+        return max(agent_id_memory_map, key=agent_id_memory_map.get)
+    if len(kubernetes_agents) > 0:
+        return kubernetes_agents[0]

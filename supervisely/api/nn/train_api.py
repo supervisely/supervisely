@@ -3,19 +3,21 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import Any, Dict, List, Literal, Union
+from typing import Any, Dict, List, Literal, Optional, Union
 
 import supervisely.io.env as env
+from supervisely import ProjectMeta
 from supervisely._utils import logger
 from supervisely.api.api import Api
 from supervisely.api.nn.utils import (
+    find_agent,
     find_apps_by_framework,
     find_team_by_path,
     get_artifacts_dir_and_checkpoint_name,
+    get_experiment_info_by_task_id,
     run_train_app,
 )
 from supervisely.nn.experiments import get_experiment_info_by_artifacts_dir
-from supervisely import ProjectMeta
 
 
 class Model:
@@ -367,7 +369,6 @@ class TrainApi:
 
     def run(
         self,
-        agent_id: int,
         project_id: int,
         model: str,
         hyperparameters: str = None,
@@ -381,6 +382,8 @@ class TrainApi:
         export_onnx: bool = False,
         export_tensorrt: bool = False,
         autostart: bool = True,
+        agent_id: int = None,
+        **kwargs,
     ):
         """
         Start a training application task for a project.
@@ -440,10 +443,46 @@ class TrainApi:
                 train = TrainApi(api)
                 train.run(agent_id, project_id, model="YOLO/YOLO26s-det")
         """
+        model: Model = Model.parse(self._api, model)
+        return self._run(
+            project_id=project_id,
+            model=model,
+            hyperparameters=hyperparameters,
+            experiment_name=experiment_name,
+            classes=classes,
+            train_val_split=train_val_split,
+            convert_class_shapes=convert_class_shapes,
+            enable_benchmark=enable_benchmark,
+            enable_speedtest=enable_speedtest,
+            cache_project=cache_project,
+            export_onnx=export_onnx,
+            export_tensorrt=export_tensorrt,
+            autostart=autostart,
+            agent_id=agent_id,
+            **kwargs
+        )
+    
+    def _run(
+        self,
+        project_id: int,
+        model: Model,
+        hyperparameters: str = None,
+        experiment_name: str = None,
+        classes: List[str] = None,
+        train_val_split: Union[RandomSplit, DatasetsSplit, TagsSplit, CollectionsSplit] = None,
+        convert_class_shapes: bool = True,
+        enable_benchmark: bool = True,
+        enable_speedtest: bool = True,
+        cache_project: bool = True,
+        export_onnx: bool = False,
+        export_tensorrt: bool = False,
+        autostart: bool = True,
+        agent_id: int = None,
+        **kwargs
+    ) -> Dict:
         project_info = self._api.project.get_info_by_id(project_id)
         workspace_id = project_info.workspace_id
-
-        model: Model = Model.parse(self._api, model)
+        team_id = project_info.team_id
 
         project_meta_json = self._api.project.get_meta(project_id)
         project_meta = ProjectMeta.from_json(project_meta_json)
@@ -459,6 +498,9 @@ class TrainApi:
         if module is None:
             raise ValueError(f"Failed to detect train app by framework: '{model.framework}'")
         module_id = module["id"]
+
+        if agent_id is None:
+            agent_id = find_agent(self._api, team_id)
 
         app_state = self._get_app_state(
             project_id=project_id,
@@ -502,38 +544,58 @@ class TrainApi:
         self,
         task_id: int,
         project_id: int = None,
-        hyperparameters: str = None,
-        experiment_name: str = None,
-        classes: List[str] = None,
-        train_val_split: Union[RandomSplit, DatasetsSplit, TagsSplit, CollectionsSplit] = None,
-        convert_class_shapes: bool = True,
-        enable_benchmark: bool = True,
-        enable_speedtest: bool = True,
-        cache_project: bool = True,
-        export_onnx: bool = False,
-        export_tensorrt: bool = False,
-        autostart: bool = True
-    ):
-        raise NotImplementedError("Finetuning is not implemented yet")
-        # on best checkpoint
-        # experiment_info = get_experiment_info_by_task_id()
-        # self.run(experiment_info.project_id)
+        agent_id: int = None
+    ) -> Dict:
+        experiment_info = get_experiment_info_by_task_id(self._api, task_id)
+        if experiment_info is None:
+            raise ValueError(f"Not found experiment data for task {task_id}")
+        module = self.find_train_app_by_framework(experiment_info.framework_name)
+        if module is None:
+            raise ValueError(f"Failed to detect train app by framework: '{experiment_info.framework_name}'")
+        if project_id is None:
+            project_id = experiment_info.project_id
+        project_info = self._api.project.get_info_by_id(project_id)
+        team_id = project_info.team_id
+        if agent_id is None:
+            agent_id = find_agent(self._api, team_id)
+        module_id = module["id"]
+        app_state = {"trainTaskId": task_id, "trainMode": "continue", "slyProjectId": project_id}
+        task_info = run_train_app(
+            api=self._api,
+            agent_id=agent_id,
+            module_id=module_id,
+            timeout=100,
+            workspace_id=project_info.workspace_id,
+            params=app_state,
+        )
+        return task_info
 
     def run_new(
         self,
         task_id: int,
         project_id: int = None,
-        hyperparameters: str = None,
-        experiment_name: str = None,
-        classes: List[str] = None,
-        train_val_split: Union[RandomSplit, DatasetsSplit, TagsSplit, CollectionsSplit] = None,
-        convert_class_shapes: bool = True,
-        enable_benchmark: bool = True,
-        enable_speedtest: bool = True,
-        cache_project: bool = True,
-        export_onnx: bool = False,
-        export_tensorrt: bool = False,
-        autostart: bool = True
+        agent_id: int = None
     ):
-        # checkpoint that was used in this task
-        raise NotImplementedError("Running from task is not implemented yet")
+        experiment_info = get_experiment_info_by_task_id(self._api, task_id)
+        if experiment_info is None:
+            raise ValueError(f"Not found experiment data for task {task_id}")
+        module = self.find_train_app_by_framework(experiment_info.framework_name)
+        if module is None:
+            raise ValueError(f"Failed to detect train app by framework: '{experiment_info.framework_name}'")
+        if project_id is None:
+            project_id = experiment_info.project_id
+        project_info = self._api.project.get_info_by_id(project_id)
+        team_id = project_info.team_id
+        if agent_id is None:
+            agent_id = find_agent(self._api, team_id)
+        module_id = module["id"]
+        app_state = {"trainTaskId": task_id, "trainMode": "new", "slyProjectId": project_id}
+        task_info = run_train_app(
+            api=self._api,
+            agent_id=agent_id,
+            module_id=module_id,
+            timeout=100,
+            workspace_id=project_info.workspace_id,
+            params=app_state,
+        )
+        return task_info
