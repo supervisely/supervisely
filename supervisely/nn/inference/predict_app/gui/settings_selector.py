@@ -774,11 +774,11 @@ class SettingsSelector:
         ]
 
     def set_inference_settings(self, settings: Dict[str, Any]):
-        settings = "# Inference settings\n" + settings
+        if isinstance(settings, dict):
+            settings = yaml.safe_dump(settings)
         if isinstance(settings, str):
+            settings = "# Inference settings\n" + settings
             self.inference_settings_editor.set_text(settings)
-        else:
-            self.inference_settings_editor.set_text(yaml.safe_dump(settings))
 
     def set_tracking_settings(self, settings: Dict[str, Any]):
         if self.input_selector.radio.get_value() != ProjectType.VIDEOS.value:
