@@ -229,7 +229,7 @@ async def process_retryable_request_async(
         user_message = "{}:  Retrying ({}/{}).".format(user_message, retry_idx, retry_limit)
     if verbose:
         external_logger.warn(
-            user_message, extra={"method": api_method_name, "url": url, "details": str(exc)}
+            user_message, extra={"method": api_method_name, "url": url, "details": repr(exc)}
         )
 
     if sleep_sec is not None:
@@ -256,7 +256,7 @@ def process_retryable_request(
         user_message = "{}:  Retrying ({}/{}).".format(user_message, retry_idx, retry_limit)
     if verbose:
         external_logger.warn(
-            user_message, extra={"method": api_method_name, "url": url, "details": str(exc)}
+            user_message, extra={"method": api_method_name, "url": url, "details": repr(exc)}
         )
 
     if sleep_sec is not None:
@@ -292,6 +292,6 @@ def process_invalid_request(external_logger, exc, response, verbose=True):
 
 
 def process_unhandled_request(external_logger, exc):
-    exc_str = str(exc)
+    exc_str = repr(exc)
     external_logger.error(traceback.format_exc(), exc_info=True, extra={"exc_str": exc_str})
-    raise RuntimeError(REQUEST_FAILED + "Last failure: {!r}".format(exc_str))
+    raise RuntimeError(REQUEST_FAILED + "Last failure: {}".format(exc_str))
