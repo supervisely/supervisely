@@ -203,8 +203,8 @@ class DeployModel(Widget):
             self._cache = deploy_model._cache
             self.deploy_model = deploy_model
             self._model_api = None
-            self._layout = self._create_layout()
             self._lock = threading.Lock()
+            self._layout = self._create_layout()
 
         @property
         def layout(self) -> ExperimentSelector:
