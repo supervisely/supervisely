@@ -5566,9 +5566,9 @@ async def _download_project_async(
 
     """
     # to switch between single and bulk download
-    switch_size = kwargs.get("switch_size", 1.28 * 1024 * 1024)
+    switch_size = kwargs.get("switch_size", 512 * 1024)
     # batch size for bulk download
-    batch_size = kwargs.get("batch_size", 100)
+    batch_size = kwargs.get("batch_size", 72)
     # control whether to download blob files
     download_blob_files = kwargs.get("download_blob_files", False)
     # control whether to create README file
