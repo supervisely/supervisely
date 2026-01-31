@@ -125,9 +125,12 @@ class KITTI3DConverter(PointcloudConverter):
         else:
             progress_cb = None
 
-        upload_fn = (
-            api.pointcloud.upload_link if self.upload_as_links else api.pointcloud.upload_path
-        )
+        # upload_fn = (
+        #     api.pointcloud.upload_link
+        #     if self.upload_as_links
+        #     else api.pointcloud.upload_path
+        # )
+        upload_fn = api.pointcloud.upload_path
         for item in self._items:
             # * Convert pointcloud from ".bin" to ".pcd"
             pcd_path = str(Path(item.path).with_suffix(".pcd"))
@@ -138,8 +141,9 @@ class KITTI3DConverter(PointcloudConverter):
             # * Upload pointcloud
             pcd_name = get_file_name_with_ext(pcd_path)
             kwargs = {"dataset_id": dataset_id, "name": pcd_name, "path": pcd_path}
-            if self.upload_as_links:
-                kwargs["link"] = kwargs.pop("path")
+            # if self.upload_as_links:
+            #     kwargs.pop("path")
+            #     kwargs["link"] = self.remote_files_map.get(os.path.relpath(pcd_path), pcd_path)
             info = upload_fn(**kwargs)
             pcd_id = info.id
 

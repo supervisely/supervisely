@@ -1,4 +1,5 @@
 from datetime import datetime
+from os import path as osp
 from pathlib import Path
 from typing import Dict, Optional
 
@@ -234,9 +235,12 @@ class LyftConverter(PointcloudConverter):
         else:
             progress_cb = None
 
-        upload_fn = (
-            api.pointcloud.upload_link if self.upload_as_links else api.pointcloud.upload_path
-        )
+        # upload_fn = (
+        #     api.pointcloud.upload_link
+        #     if self.upload_as_links
+        #     else api.pointcloud.upload_path
+        # )
+        upload_fn = api.pointcloud.upload_path
         for item in self._items:
             # * Get the current dataset for the scene
             current_dataset = scene_name_to_dataset.get(item._scene_name, None)
@@ -256,10 +260,17 @@ class LyftConverter(PointcloudConverter):
 
             # * Upload pointcloud
             pcd_name = fs.get_file_name(pcd_path)
-            kwargs = {"dataset_id": current_dataset_id, "name": pcd_name, "path": pcd_path}
-            if self.upload_as_links:
-                kwargs["link"] = kwargs.pop("path")
-            info = upload_fn(current_dataset_id, pcd_name, pcd_path)
+            kwargs = {
+                "dataset_id": current_dataset_id,
+                "name": pcd_name,
+                "path": pcd_path,
+            }
+            # if self.upload_as_links:
+            #     kwargs.pop("path")
+            #     kwargs["link"] = self.remote_files_map.get(
+            #         osp.relpath(pcd_path), pcd_path
+            #     )
+            info = upload_fn(**kwargs)
             pcd_id = info.id
 
             # * Convert annotation and upload

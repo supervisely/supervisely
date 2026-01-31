@@ -132,7 +132,10 @@ class ImportManager:
                 logger.info(f"Input data is a remote file: {input_data}. Scanning...")
                 return self._reproduce_remote_files(input_data)
             else:
-                if self._upload_as_links and str(self._modality) == ProjectType.VOLUMES.value:
+                if self._upload_as_links and str(self._modality) in [
+                    ProjectType.VOLUMES.value,
+                    ProjectType.POINT_CLOUDS.value,
+                ]:
                     self._scan_remote_files(input_data)
                 logger.info(f"Input data is a remote file: {input_data}. Downloading...")
                 return self._download_input_data(input_data)
@@ -144,7 +147,10 @@ class ImportManager:
                 logger.info(f"Input data is a remote directory: {input_data}. Scanning...")
                 return self._reproduce_remote_files(input_data, is_dir=True)
             else:
-                if self._upload_as_links and str(self._modality) == ProjectType.VOLUMES.value:
+                if self._upload_as_links and str(self._modality) in [
+                    ProjectType.VOLUMES.value,
+                    ProjectType.POINT_CLOUDS.value,
+                ]:
                     self._scan_remote_files(input_data, is_dir=True)
                 logger.info(f"Input data is a remote directory: {input_data}. Downloading...")
                 return self._download_input_data(input_data, is_dir=True)

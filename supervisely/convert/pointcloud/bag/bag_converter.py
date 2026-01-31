@@ -1,5 +1,6 @@
 import re
 from collections import defaultdict
+from os import path as osp
 from pathlib import Path
 from typing import Dict, Optional, Union
 
@@ -229,9 +230,12 @@ class BagConverter(PointcloudConverter):
         if is_episodes:
             upload_fn = api.pointcloud_episode.upload_path
         else:
-            upload_fn = (
-                api.pointcloud.upload_link if self.upload_as_links else api.pointcloud.upload_path
-            )
+            # upload_fn = (
+            #     api.pointcloud.upload_link
+            #     if self.upload_as_links
+            #     else api.pointcloud.upload_path
+            # )
+            upload_fn = api.pointcloud.upload_path
 
         for idx, item in enumerate(self._items):
             current_dataset = dataset_info if not multiple_items else datasets[idx]
@@ -259,8 +263,12 @@ class BagConverter(PointcloudConverter):
                     "path": pcd_path,
                     "meta": pcd_meta,
                 }
-                if not is_episodes and self.upload_as_links:
-                    kwargs["link"] = kwargs.pop("path")
+                # if not is_episodes and self.upload_as_links:
+                #     kwargs.pop("path")
+                #     kwargs["link"] = self.remote_files_map.get(
+                #         osp.relpath(pcd_path), pcd_path
+                #     )
+
                 info = upload_fn(**kwargs)
                 pcd_id = info.id
                 frame_to_pointcloud_ids[idx] = pcd_id

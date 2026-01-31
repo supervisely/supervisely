@@ -95,6 +95,11 @@ class PointcloudConverter(BaseConverter):
         else:
             progress_cb = None
 
+        upload_fn = (
+            api.pointcloud.upload_links
+            if self.upload_as_links
+            else api.pointcloud.upload_paths
+        )
         key_id_map = KeyIdMap()
         for batch in batched(self._items, batch_size=batch_size):
             item_names = []
@@ -105,15 +110,14 @@ class PointcloudConverter(BaseConverter):
                     existing_names, item.name, with_ext=True, extend_used_names=True
                 )
                 item_names.append(item.name)
-                item_paths.append(item.path)
+                item_paths.append(
+                    self.remote_files_map.get(os.path.relpath(item.path), item.path)
+                )
 
                 ann = self.to_supervisely(item, meta, renamed_classes, renamed_tags)
                 anns.append(ann)
 
-            upload_method = (
-                api.pointcloud.upload_links if self.upload_as_links else api.pointcloud.upload_paths
-            )
-            pcd_infos = upload_method(dataset_id, item_names, item_paths)
+            pcd_infos = upload_fn(dataset_id, item_names, item_paths)
 
             pcd_ids = [pcd_info.id for pcd_info in pcd_infos]
             pcl_to_rimg_figures: Dict[int, Dict[str, List[Dict]]] = {}

@@ -83,9 +83,12 @@ class NuscenesConverter(NuscenesEpisodesConverter, PointcloudConverter):
         scene_cnt = len(scene_names)
         total_sample_cnt = sum([scene["nbr_samples"] for scene in nuscenes.scene])
 
-        upload_fn = (
-            api.pointcloud.upload_link if self.upload_as_links else api.pointcloud.upload_path
-        )
+        # upload_fn = (
+        #     api.pointcloud.upload_link
+        #     if self.upload_as_links
+        #     else api.pointcloud.upload_path
+        # )
+        upload_fn = api.pointcloud.upload_path
 
         multiple_scenes = len(scene_names) > 1
         if multiple_scenes:
@@ -187,8 +190,11 @@ class NuscenesConverter(NuscenesEpisodesConverter, PointcloudConverter):
                     "meta": pcd_path,
                     "path": pcd_meta,
                 }
-                if self.upload_as_links:
-                    kwargs["link"] = kwargs.pop("path")
+                # if self.upload_as_links:
+                #     kwargs.pop("path")
+                #     kwargs["link"] = self.remote_files_map.get(
+                #         os.path.relpath(pcd_path), pcd_path
+                #     )
                 info = upload_fn(**kwargs)
                 fs.silent_remove(pcd_path)
 
