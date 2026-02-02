@@ -7,13 +7,21 @@ from supervisely.convert.base_converter import AvailablePointcloudEpisodesConver
 from supervisely.convert.pointcloud_episodes.pointcloud_episodes_converter import (
     PointcloudEpisodeConverter,
 )
+from supervisely.convert.utils import ProjectStructureUploader
 from supervisely.io.fs import JUNK_FILES, get_file_ext, get_file_name_with_ext
 from supervisely.io.json import load_json_file
 from supervisely.pointcloud.pointcloud import validate_ext as validate_pcd_ext
 
+_IGNORED_DATASET_PARTS = {
+    "datasets",
+    "pointcloud",
+    "ann",
+    "meta",
+    "related_images",
+}
+
 
 class SLYPointcloudEpisodesConverter(PointcloudEpisodeConverter):
-
     def __str__(self) -> str:
         return AvailablePointcloudEpisodesConverters.SLY
 
@@ -47,13 +55,40 @@ class SLYPointcloudEpisodesConverter(PointcloudEpisodeConverter):
         except Exception:
             return False
 
+    def _infer_dataset_name(self, pcd_path: str) -> str:
+        """
+        Turns pointcloud path into a full dataset name. Defaults to 'dataset' if no subfolder structure is found.
+        """
+        p = os.path.dirname(os.path.abspath(pcd_path))
+        root = os.path.abspath(self._input_data)
+
+        while True:
+            if os.path.basename(p) in _IGNORED_DATASET_PARTS:
+                parent = os.path.dirname(p)
+                if parent == p:
+                    break
+                p = parent
+                continue
+            break
+
+        rel_dir = os.path.relpath(p, root).replace(".", "")
+
+        dataset_names = []
+        for part in rel_dir.split(os.sep):
+            if part and part not in _IGNORED_DATASET_PARTS:
+                dataset_names.append(part)
+
+        return "/".join(dataset_names) if dataset_names else "dataset"
+
     def validate_format(self) -> bool:
+        input_root = self._input_data
+
         sly_ann_detected = False
         ann_path = None
         pcd_dict = {}
         frames_pcd_map = None
         rimg_dict, rimg_json_dict = {}, {}
-        for root, _, files in os.walk(self._input_data):
+        for root, _, files in os.walk(input_root):
             dir_name = os.path.basename(root)
             for file in files:
                 full_path = os.path.join(root, file)
@@ -108,6 +143,8 @@ class SLYPointcloudEpisodesConverter(PointcloudEpisodeConverter):
             return False
 
         self._items = []
+        project = {}
+        dataset_names_seen = set()
         updated_frames_pcd_map = {}
         if frames_pcd_map:
             list_of_pcd_names = list(frames_pcd_map.values())
@@ -130,9 +167,15 @@ class SLYPointcloudEpisodesConverter(PointcloudEpisodeConverter):
                             rimg_fig_path = None
                         item.set_related_images((rimg_path, rimg_ann_path, rimg_fig_path))
                 self._items.append(item)
+
+                ds_name = self._infer_dataset_name(item.path)
+                dataset_names_seen.add(ds_name)
+                ProjectStructureUploader.append_items(project, ds_name, [item])
             else:
                 logger.warning(f"Pointcloud file {pcd_name} not found. Skipping frame.")
                 continue
+
+        self._project_structure = project if len(dataset_names_seen) > 1 else None
         self._frame_pointcloud_map = updated_frames_pcd_map
         self._frame_count = len(self._frame_pointcloud_map)
 
@@ -157,3 +200,65 @@ class SLYPointcloudEpisodesConverter(PointcloudEpisodeConverter):
             return self._annotation
         else:
             return item.create_empty_annotation()
+
+    def upload_dataset(self, api, dataset_id: int, batch_size: int = 10, log_progress=True):
+        """
+        Upload converted data to Supervisely.
+        Mirrors MultiViewVideoConverter: if _project_structure is present -> create nested datasets.
+        """
+        if getattr(self, "_project_structure", None):
+            self._upload_project(api, dataset_id, batch_size, log_progress)
+        else:
+            return super().upload_dataset(
+                api, dataset_id, batch_size=batch_size, log_progress=log_progress
+            )
+
+    def _upload_project(self, api, dataset_id: int, batch_size: int = 10, log_progress=True):
+        from supervisely import is_development
+
+        dataset_info = api.dataset.get_info_by_id(dataset_id, raise_error=True)
+        project_id = dataset_info.project_id
+        existing_datasets = api.dataset.get_list(project_id, recursive=True)
+        existing_datasets = {ds.name for ds in existing_datasets}
+
+        if log_progress:
+            progress, progress_cb = self.get_progress(self.items_count, "Uploading project")
+        else:
+            progress, progress_cb = None, None
+
+        def _upload_single_dataset(_dataset_id: int, items: list):
+            # Prefer base implementation for episodes; fallback kept minimal.
+            try:
+                # Temporarily switch current items/map to only this dataset scope
+                prev_items = self._items
+                prev_map = getattr(self, "_frame_pointcloud_map", None)
+                prev_count = getattr(self, "_frame_count", None)
+                try:
+                    self._items = items
+                    # Rebuild local frame->pcd mapping for this dataset scope
+                    self._frame_pointcloud_map = {
+                        i: os.path.basename(it.path) for i, it in enumerate(items)
+                    }
+                    self._frame_count = len(self._frame_pointcloud_map)
+                    return super().upload_dataset(
+                        api, _dataset_id, batch_size=batch_size, log_progress=False
+                    )
+                finally:
+                    self._items = prev_items
+                    self._frame_pointcloud_map = prev_map
+                    self._frame_count = prev_count
+            except Exception:
+                # If base method is unavailable, just advance progress so UI doesn't freeze
+                if progress_cb:
+                    progress_cb(len(items))
+
+        ProjectStructureUploader(existing_datasets=existing_datasets).upload(
+            api=api,
+            project_id=project_id,
+            root_dataset_id=dataset_id,
+            project_structure=self._project_structure,
+            upload_items_cb=_upload_single_dataset,
+        )
+
+        if is_development() and progress is not None:
+            progress.close()
