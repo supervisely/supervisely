@@ -239,9 +239,9 @@ class CollectionsSplit(_TrainValSplit):
     :type val_collections: List[int]
     """
 
-    def __init__(self, train_collections: List[int], val_collecitons: List[int]):
+    def __init__(self, train_collections: List[int], val_collections: List[int]):
         self.train_collections = train_collections
-        self.val_collections = val_collecitons
+        self.val_collections = val_collections
 
     def app_state(self):
         """Serialize split settings for training UI."""
