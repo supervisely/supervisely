@@ -1465,6 +1465,9 @@ class Api:
                     self.logger.warning(
                         "API_TOKEN env variable is undefined. See more: https://developer.supervisely.com/getting-started/basics-of-authentication"
                     )
+
+                await self._recreate_client_if_needed(exc)
+
                 if raise_error:
                     raise exc
                 else:
@@ -1622,6 +1625,9 @@ class Api:
                     self.logger.warning(
                         "API_TOKEN env variable is undefined. See more: https://developer.supervisely.com/getting-started/basics-of-authentication"
                     )
+
+                await self._recreate_client_if_needed(e)
+
                 retry_range_start = total_streamed + (range_start or 0)
                 if total_streamed != 0:
                     retry_range_start += 1
@@ -1658,6 +1664,31 @@ class Api:
         """
         if self.httpx_client is None:
             self.httpx_client = httpx.Client(http2=True)
+
+    async def _recreate_client_if_needed(self, exc: Exception) -> None:
+        """
+        Check if httpx client should be recreated based on error type and recreate if needed.
+        Used to handle HTTP/2 connection errors and corrupted connection pools.
+
+        :param exc: Exception that was raised during request.
+        :type exc: Exception
+        """
+        should_recreate = False
+
+        # HTTP/2 specific protocol errors
+        if isinstance(exc, httpx.RemoteProtocolError):
+            should_recreate = True
+        # Connection errors that might benefit from fresh connection
+        elif isinstance(exc, (httpx.ConnectError, httpx.ReadError)):
+            error_msg = str(exc).lower()
+            critical_errors = ["broken pipe", "connection reset", "stream", "1999"]
+            should_recreate = any(err in error_msg for err in critical_errors)
+
+        if should_recreate and self.async_httpx_client is not None:
+            self.logger.warning(f"Recreating httpx client due to: {exc.__class__.__name__}")
+            await self.async_httpx_client.aclose()
+            self.async_httpx_client = None
+            self._set_async_client()
 
     def get_default_semaphore(self) -> asyncio.Semaphore:
         """
