@@ -158,7 +158,6 @@ def find_apps_by_framework(api: "Api", framework: str, categories: List[str] = N
     )
     return modules
 
-
 def run_train_app(
     api: "Api",
     agent_id: int,

@@ -441,7 +441,7 @@ class TrainApi:
                 project_id = sly.env.project_id()
 
                 train = TrainApi(api)
-                train.run(agent_id, project_id, model="YOLO/YOLO26s-det")
+                train.run(agent_id, project_id, model="YOLO/YOLO11n-det")
         """
         model: Model = Model.parse(self._api, model)
         return self._run(
@@ -461,7 +461,7 @@ class TrainApi:
             agent_id=agent_id,
             **kwargs
         )
-    
+
     def _run(
         self,
         project_id: int,
