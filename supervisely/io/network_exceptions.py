@@ -27,6 +27,36 @@ RETRY_STATUS_CODES = {
     599,  # Network connect timeout error
 }
 
+# Critical error patterns for connection errors that require client recreation
+CONNECTION_ERROR_PATTERNS = [
+    "broken pipe",
+    "connection reset",
+    "connection refused",
+    "connection aborted",
+    "stream",
+    "1999",  # HTTP/2 stream error code
+]
+
+# Critical error patterns for streaming errors wrapped in RetryableRequestException
+STREAMING_ERROR_PATTERNS = [
+    # httpx class names (will appear in repr)
+    "remoteprotocolerror",
+    "connecterror",
+    "readerror",
+    "writeerror",
+    "protocolerror",
+    "networkerror",
+    # OS-level error messages
+    "broken pipe",
+    "connection reset",
+    "connection refused",
+    "connection aborted",
+    # HTTP/2 specific
+    "stream",
+    "1999",  # HTTP/2 stream error code
+    "goaway",
+]
+
 
 class RetryableRequestException(Exception):
     """Exception that indicates that the request should be retried."""
