@@ -34,7 +34,9 @@ class Evaluator:
 
         self._predictions: Dict[Any, Tuple[list, Tuple[int, int]]] = {}
 
-        self.ema_value: Optional[float] = None
+        self.metrics_last: Dict[str, float] = {}
+        self.metrics_ema: Dict[str, float] = {}
+        self.metrics_history: Dict[str, list] = {}  
 
     def store_prediction(self, image_id: Any, objects: list, image_shape: Tuple[int, int]):
         if image_id in self._predictions:
@@ -43,25 +45,40 @@ class Evaluator:
 
     def evaluate(
         self, image_id: Any, ground_truth_annotation: sly.Annotation
-    ) -> Optional[Dict[str, float]]:
+    ) -> Optional[Dict[str, Dict[str, float]]]:
+        """
+        Returns:
+            Dict with structure:
+            {
+                'last': {'miou': 0.85, 'assistance_score': 0.92, ...},
+                'ema': {'miou': 0.83, 'assistance_score': 0.90, ...}
+            }
+        """
         if image_id not in self._predictions:
-            logger.warning(f"No prediction stored for image_id={image_id}. Skipping evaluation for this image")
+            logger.warning(f"No prediction stored for image_id={image_id}. Skipping evaluation")
             return None
 
-        objects, image_shape = self._predictions.pop(image_id)  
+        objects, image_shape = self._predictions.pop(image_id)
 
-        metric_value: Optional[float] = None
         if self.task_type == TaskType.SEMANTIC_SEGMENTATION:
-            metric_value = self._evaluate_segmentation(objects, ground_truth_annotation, image_shape)
+            miou = self._evaluate_segmentation(objects, ground_truth_annotation, image_shape)
+            self._update_metric('miou', miou)
+        
         elif self.task_type == TaskType.OBJECT_DETECTION:
-            metric_value = self._evaluate_detection(objects, ground_truth_annotation, image_shape)
+            metrics = self._evaluate_detection(objects, ground_truth_annotation, image_shape)
+            # Update all detection metrics
+            if metrics.get('assistance_score') is not None:
+                self._update_metric('assistance_score', metrics['assistance_score'])
+            if metrics.get('f1_score_iou_0.9') is not None:
+                self._update_metric('f1_score', metrics['f1_score_iou_0.9'])
+        
         else:
             raise ValueError(f"Unsupported task_type: {self.task_type}")
 
-        if metric_value is not None:
-            self._update_ema(metric_value)
-
-        return {'metric_value': metric_value, 'ema_value': self.ema_value}
+        return {
+            'last': self.metrics_last.copy(),
+            'ema': self.metrics_ema.copy()
+        }
 
     def _evaluate_segmentation(self, objects: list, gt_annotation: sly.Annotation, image_shape: Tuple[int,int]) -> float:
         pred_mask = self._pred_objects_to_mask(objects, image_shape)
@@ -76,7 +93,7 @@ class Evaluator:
         gt_boxes, gt_labels = self._gt_annotation_to_bboxes(gt_annotation)
         metrics_calc = DetectionMetrics()
         metrics = metrics_calc.all_metrics(pred_boxes, pred_labels, gt_boxes, gt_labels)
-        return metrics['assistance_score']
+        return metrics
     
     def _pred_objects_to_mask(self, objects: list, image_shape: Tuple[int,int]) -> np.ndarray:
         """Convert predicted objects to segmentation mask."""
@@ -168,24 +185,43 @@ class Evaluator:
     def _get_project_meta_stub(self) -> sly.ProjectMeta:
         obj_classes = [sly.ObjClass(class_name, sly.AnyGeometry) for class_name in self.class2idx.keys()]
         return sly.ProjectMeta(obj_classes=sly.ObjClassCollection(obj_classes))
-
+    
     def _update_ema(self, new_value: float):
         if self.ema_value is None:
             self.ema_value = new_value
         else:
             self.ema_value = self.ema_alpha * new_value + (1 - self.ema_alpha) * self.ema_value
 
+    def _update_metric(self, metric_name: str, value: float):
+        """Update last value, EMA, and history for any metric."""
+        self.metrics_last[metric_name] = value
+        
+        if metric_name not in self.metrics_ema:
+            self.metrics_ema[metric_name] = value
+        else:
+            self.metrics_ema[metric_name] = (
+                self.ema_alpha * value + (1 - self.ema_alpha) * self.metrics_ema[metric_name]
+            )
+        
+        if metric_name not in self.metrics_history:
+            self.metrics_history[metric_name] = []
+        self.metrics_history[metric_name].append(value)
+        
     def reset(self):
         self._predictions.clear()
-        self.ema_value = None
+        self.metrics_last.clear()
+        self.metrics_ema.clear()
+        self.metrics_history.clear()
 
     def state_dict(self) -> Dict:
         return {
             'task_type': self.task_type,
             'ema_alpha': self.ema_alpha,
-            'ema_value': self.ema_value,
+            'metrics_ema': self.metrics_ema.copy(),
+            'metrics_history': self.metrics_history.copy(),
             'ignore_index': self.ignore_index
         }
 
     def load_state_dict(self, state: Dict):
-        self.ema_value = state.get('ema_value')
+        self.metrics_ema = state.get('metrics_ema', {})
+        self.metrics_history = state.get('metrics_history', {})

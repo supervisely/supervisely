@@ -86,7 +86,8 @@ class LiveTraining:
 
         self.evaluator = self.init_evaluator()
 
-        self.ema_metric = None
+        self.metrics_last = {}  # last values after each prediction
+        self.metrics_ema = {}   # EMA values
 
         # from . import live_training_instance
         # live_training_instance = self  # for access from other modules
@@ -96,7 +97,7 @@ class LiveTraining:
         return self.iter > self.initial_iters
 
     def status(self):
-        return {
+        status = {
             'phase': self.phase,
             'samples_count': len(self.dataset) if self.dataset is not None else 0,
             'waiting_samples': self.initial_samples,
@@ -106,9 +107,16 @@ class LiveTraining:
             'training_paused': self._is_paused,
             'ready_to_predict': self.ready_to_predict, 
             'initial_iters': self.initial_iters,
-            'ema_metric': self.ema_metric,
         }
-    
+        
+        # Flatten metrics: miou_last, miou_ema, assistance_score_last, etc.
+        for metric_name, value in self.metrics_last.items():
+            status[f'{metric_name}_last'] = value
+        for metric_name, value in self.metrics_ema.items():
+            status[f'{metric_name}_ema'] = value
+        
+        return status
+
     def run(self):
         self.training_start_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self._add_shutdown_callback()
@@ -293,9 +301,14 @@ class LiveTraining:
         )
         if self.evaluator and self.phase!=Phase.WAITING_FOR_SAMPLES:
             result = self.evaluator.evaluate(image_id, sly_ann)
-            if result is not None:
-                self.ema_metric = result['ema_value']
-                logger.info(f"Image {image_id}: metric={result['metric_value']:.3f}, EMA={result['ema_value']:.3f}")
+        if result is not None:
+            self.metrics_last = result['last']
+            self.metrics_ema = result['ema']
+            
+            metrics_str = ', '.join([f"{k}={v:.3f}" for k, v in self.metrics_last.items()])
+            ema_str = ', '.join([f"{k}_ema={v:.3f}" for k, v in self.metrics_ema.items()])
+            logger.info(f"Image {image_id}: {metrics_str} | {ema_str}")
+
         if (len(self.dataset) >= self.initial_samples) and self.phase==Phase.WAITING_FOR_SAMPLES:
             self.phase = Phase.INITIAL_TRAINING
         return {
@@ -366,6 +379,8 @@ class LiveTraining:
         self.dataset = dataset
 
     def filter_predictions_by_conf(self, objects: list, score_thr: float = None) -> list:
+        score_thr = 0.3 if score_thr is None else score_thr
+        
         if self.task_type not in [TaskType.OBJECT_DETECTION, TaskType.INSTANCE_SEGMENTATION]:
             return objects
         
