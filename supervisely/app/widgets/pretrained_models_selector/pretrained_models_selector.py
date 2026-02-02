@@ -239,7 +239,7 @@ class PretrainedModelsSelector(Widget):
                             self.set_active_task_type(task_type)
                             self.set_active_arch_type(arch_type)
                             self.set_active_row(idx)
-                            logger.debug(f"Found model {name_from_info} == {model_name}", extra={"idx": idx, "task_type": task_type, "arch_type": arch_type, "row": self.get_selected_row()})
+                            logger.debug(f"Found model {name_from_info} == {model_name}, idx: {idx}", extra={"idx": idx, "task_type": task_type, "arch_type": arch_type, "row": self.get_selected_row()})
                             return
 
     def get_by_model_name(self, model_name: str) -> Union[Dict, None]:
