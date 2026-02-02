@@ -166,6 +166,7 @@ def run_train_app(
     workspace_id: int,
     app_state: dict,
     timeout: int = 100,
+    **kwargs
 ):
     f"""
     Run a training app.
@@ -194,8 +195,7 @@ def run_train_app(
         module_id=module_id,
         workspace_id=workspace_id,
         params=app_state,
-        is_branch=True,
-        app_version="train-api-update",
+        **kwargs
     )
     ready = api.app.wait_until_ready_for_api_calls(
         task_info["id"], _attempts, _attempt_delay_sec
@@ -208,7 +208,7 @@ def run_train_app(
 
 def get_experiment_info_by_task_id(api: "Api", task_id) -> Optional[ExperimentInfo]:
     task_info = api.task.get_info_by_id(task_id)
-    experiment_data = task_info.get("meta", {}).get("output", {}).get("experiment")
+    experiment_data = task_info.get("meta", {}).get("output", {}).get("experiment", {}).get("data")
     if experiment_data is None:
         return None
     return ExperimentInfo(**experiment_data)

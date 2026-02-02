@@ -524,6 +524,7 @@ class TrainApi:
             workspace_id=workspace_id,
             app_state=app_state,
             timeout=100,
+            **kwargs
         )
         return task_info
 
@@ -544,7 +545,8 @@ class TrainApi:
         self,
         task_id: int,
         project_id: int = None,
-        agent_id: int = None
+        agent_id: int = None,
+        **kwargs
     ) -> Dict:
         experiment_info = get_experiment_info_by_task_id(self._api, task_id)
         if experiment_info is None:
@@ -559,14 +561,15 @@ class TrainApi:
         if agent_id is None:
             agent_id = find_agent(self._api, team_id)
         module_id = module["id"]
-        app_state = {"trainTaskId": task_id, "trainMode": "continue", "slyProjectId": project_id}
+        app_state = {"state": {"trainTaskId": task_id, "trainMode": "continue", "slyProjectId": project_id}}
         task_info = run_train_app(
             api=self._api,
             agent_id=agent_id,
             module_id=module_id,
             timeout=100,
             workspace_id=project_info.workspace_id,
-            params=app_state,
+            app_state=app_state,
+            **kwargs
         )
         return task_info
 
@@ -574,7 +577,8 @@ class TrainApi:
         self,
         task_id: int,
         project_id: int = None,
-        agent_id: int = None
+        agent_id: int = None,
+        **kwargs
     ):
         experiment_info = get_experiment_info_by_task_id(self._api, task_id)
         if experiment_info is None:
@@ -589,13 +593,14 @@ class TrainApi:
         if agent_id is None:
             agent_id = find_agent(self._api, team_id)
         module_id = module["id"]
-        app_state = {"trainTaskId": task_id, "trainMode": "new", "slyProjectId": project_id}
+        app_state = {"state": {"trainTaskId": task_id, "trainMode": "new", "slyProjectId": project_id}}
         task_info = run_train_app(
             api=self._api,
             agent_id=agent_id,
             module_id=module_id,
             timeout=100,
             workspace_id=project_info.workspace_id,
-            params=app_state,
+            app_state=app_state,
+            **kwargs
         )
         return task_info
