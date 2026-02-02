@@ -33,8 +33,8 @@ CONNECTION_ERROR_PATTERNS = [
     "connection reset",
     "connection refused",
     "connection aborted",
-    "stream",
-    "1999",  # HTTP/2 stream error code
+    "connectionterminated",  # HTTP/2 connection closed (often due to max_concurrent_streams)
+    "goaway",  # HTTP/2 GOAWAY frame (server shutting down connection)
 ]
 
 # Critical error patterns for streaming errors wrapped in RetryableRequestException
@@ -51,10 +51,9 @@ STREAMING_ERROR_PATTERNS = [
     "connection reset",
     "connection refused",
     "connection aborted",
-    # HTTP/2 specific
-    "stream",
-    "1999",  # HTTP/2 stream error code
-    "goaway",
+    # HTTP/2 connection-level errors (not stream-level)
+    "connectionterminated",  # HTTP/2 connection closed (fatal, often max_concurrent_streams)
+    "goaway",  # HTTP/2 GOAWAY frame (server shutting down connection)
 ]
 
 
