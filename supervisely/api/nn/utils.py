@@ -167,7 +167,7 @@ def run_train_app(
     timeout: int = 100,
     **kwargs
 ):
-    f"""
+    """
     Run a training app.
 
     :param api: Supervisely API client.
