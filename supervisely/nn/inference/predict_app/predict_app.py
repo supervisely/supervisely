@@ -164,6 +164,8 @@ class PredictApp:
                 }
             """
             state = request.state.state
+            if isinstance(state, dict):
+                self.load_from_json(state)
             predictions = self.run(state)
             return [prediction.to_json() for prediction in predictions]
 
