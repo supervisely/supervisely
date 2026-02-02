@@ -401,6 +401,7 @@ class Api:
         self._instance_version = None
         self._version_check_completed = False
         self._version_check_lock = threading.Lock()
+        self._client_recreation_lock = None  # asyncio.Lock, created on first use
 
         if check_instance_version:
             self._check_version(None if check_instance_version is True else check_instance_version)
@@ -1665,10 +1666,28 @@ class Api:
         if self.httpx_client is None:
             self.httpx_client = httpx.Client(http2=True)
 
+    async def _close_client_gracefully(self, client: httpx.AsyncClient, delay: int = 30) -> None:
+        """
+        Close httpx client gracefully after a delay to allow active requests to finish.
+        Runs in background to avoid blocking current request.
+
+        :param client: The client to close.
+        :type client: httpx.AsyncClient
+        :param delay: Seconds to wait before closing. Default is 30.
+        :type delay: int
+        """
+        try:
+            await asyncio.sleep(delay)
+            await client.aclose()
+            self.logger.debug(f"Gracefully closed old httpx client after {delay}s")
+        except Exception as e:
+            self.logger.debug(f"Error during graceful client closure: {e}")
+
     async def _recreate_client_if_needed(self, exc: Exception) -> None:
         """
         Check if httpx client should be recreated based on error type and recreate if needed.
         Used to handle HTTP/2 connection errors and corrupted connection pools.
+        Thread-safe for concurrent async requests.
 
         :param exc: Exception that was raised during request.
         :type exc: Exception
@@ -1679,16 +1698,31 @@ class Api:
         if isinstance(exc, httpx.RemoteProtocolError):
             should_recreate = True
         # Connection errors that might benefit from fresh connection
-        elif isinstance(exc, (httpx.ConnectError, httpx.ReadError)):
+        elif isinstance(exc, (httpx.ConnectError, httpx.ReadError, httpx.WriteError)):
             error_msg = str(exc).lower()
             critical_errors = ["broken pipe", "connection reset", "stream", "1999"]
             should_recreate = any(err in error_msg for err in critical_errors)
 
-        if should_recreate and self.async_httpx_client is not None:
-            self.logger.warning(f"Recreating httpx client due to: {exc.__class__.__name__}")
-            await self.async_httpx_client.aclose()
-            self.async_httpx_client = None
-            self._set_async_client()
+        if not should_recreate:
+            return
+
+        # Initialize lock on first use (can't create in __init__ as event loop may not exist)
+        if self._client_recreation_lock is None:
+            self._client_recreation_lock = asyncio.Lock()
+
+        # Use lock to prevent concurrent recreation by parallel requests
+        async with self._client_recreation_lock:
+            # Check again inside lock - another request might have already recreated the client
+            if self.async_httpx_client is not None:
+                self.logger.warning(f"Recreating httpx client due to: {exc.__class__.__name__}")
+                # Save old client reference and replace with new one immediately
+                old_client = self.async_httpx_client
+                self.async_httpx_client = None
+                self._set_async_client()
+
+                # Schedule old client closure in background to avoid blocking
+                # This allows active requests to finish gracefully while preventing memory leaks
+                asyncio.create_task(self._close_client_gracefully(old_client))
 
     def get_default_semaphore(self) -> asyncio.Semaphore:
         """
