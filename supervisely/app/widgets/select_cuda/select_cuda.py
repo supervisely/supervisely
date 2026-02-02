@@ -1,6 +1,8 @@
 from __future__ import annotations
-from typing import List, Dict, Optional, Union, Callable
-from supervisely.app.widgets import Widget, Select, Button, Flexbox
+
+from typing import Callable, Dict, List, Optional, Union
+
+from supervisely.app.widgets import Button, Flexbox, Select, Widget
 from supervisely.sly_logger import logger
 
 
@@ -17,6 +19,8 @@ class SelectCudaDevice(Widget):
     :type sort_by_free_ram: bool, optional
     :param include_cpu_option: Whether to include an option to select the CPU in the device list.
     :type include_cpu_option: bool, optional
+    :param allow_multi: Whether to allow selecting multiple devices.
+    :type allow_multi: bool, optional
     """
 
     def __init__(
@@ -24,9 +28,11 @@ class SelectCudaDevice(Widget):
         get_list_on_init: Optional[bool] = True,
         sort_by_free_ram: Optional[bool] = False,
         include_cpu_option: Optional[bool] = False,
+        allow_multi: Optional[bool] = False,
         widget_id: str = None,
     ):
-        self._select = Select([])
+        self._multiple = bool(allow_multi)
+        self._select = Select([], multiple=self._multiple)
         self._refresh_button = Button(
             text="", button_type="text", button_size="large", icon="zmdi zmdi-refresh"
         )
@@ -149,25 +155,47 @@ class SelectCudaDevice(Widget):
 
         return value_cb
 
-    def get_device(self) -> Optional[str]:
-        """Gets the currently selected device.
+    def get_device(self) -> Optional[Union[str, List[str]]]:
+        """Gets the currently selected device(s).
         This method returns the value of the currently selected device.
 
-        :return: The value of the selected device (e.g. 'cuda:0', 'cpu', etc.), or None if no device is selected.
-        :rtype: Optional[str]
+        :return: The value of the selected device(s) (e.g. 'cuda:0', 'cpu', etc.), or None if no device is selected.
+        :rtype: Optional[Union[str, List[str]]]
         """
         return self._select.get_value()
 
-    def set_device(self, value: str) -> None:
-        """Sets the currently selected device.
+    def get_devices(self) -> List[str]:
+        """Gets the currently selected devices as a list.
 
-        This method updates the selector with the provided device value.
+        :return: List of selected devices.
+        :rtype: List[str]
+        """
+        value = self._select.get_value()
+        if value is None:
+            return []
+        if isinstance(value, list):
+            return value
+        return [value]
 
-        :param value: The value of the device to be selected (e.g. 'cuda:0', 'cpu', etc.).
-        :type value: str
+    def set_device(self, value: Union[str, List[str]]) -> None:
+        """Sets the currently selected device(s).
+
+        This method updates the selector with the provided device value(s).
+
+        :param value: The value(s) of the device(s) to be selected (e.g. 'cuda:0', 'cpu', etc.).
+        :type value: Union[str, List[str]]
         :return: None
         """
         return self._select.set_value(value)
+
+    def set_devices(self, values: List[str]) -> None:
+        """Sets the currently selected devices.
+
+        :param values: List of device values to be selected.
+        :type values: List[str]
+        :return: None
+        """
+        return self._select.set_value(values)
 
     def disable(self) -> None:
         """Disables the widget.

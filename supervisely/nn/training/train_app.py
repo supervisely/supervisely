@@ -5,6 +5,7 @@ This module contains the `TrainApp` class and related functionality to facilitat
 training workflows in a Supervisely application.
 """
 
+import os
 import shutil
 import subprocess
 import time
@@ -197,6 +198,8 @@ class TrainApp:
 
         self._onnx_supported = self._app_options.get("export_onnx_supported", False)
         self._tensorrt_supported = self._app_options.get("export_tensorrt_supported", False)
+        self._device_ids: List[int] = []
+        self._is_multi_gpu: bool = False
         if self._onnx_supported:
             self._convert_onnx_func = None
         if self._tensorrt_supported:
@@ -433,6 +436,26 @@ class TrainApp:
         return self.gui.training_process.get_device()
 
     @property
+    def devices(self) -> List[str]:
+        """
+        Returns all devices used for training in multi-GPU mode.
+
+        :return: List of device strings (e.g. ["cuda:0", "cuda:1"]).
+        :rtype: List[str]
+        """
+        return self.gui.training_process.get_devices()
+
+    @property
+    def is_multi_gpu(self) -> bool:
+        """
+        Returns True if multi-GPU mode is enabled.
+
+        :return: True if multi-GPU is enabled.
+        :rtype: bool
+        """
+        return self._is_multi_gpu
+
+    @property
     def base_checkpoint(self) -> str:
         """
         Returns the name of the base checkpoint.
@@ -641,6 +664,50 @@ class TrainApp:
 
         # Step 7. Download Model files
         self._download_model()
+
+    def _parse_device_ids(self, value) -> Optional[List[int]]:
+        if value is None:
+            return None
+        if isinstance(value, (list, tuple)):
+            ids = []
+            for v in value:
+                if isinstance(v, str) and v.startswith("cuda:"):
+                    v = v.split(":", 1)[1]
+                ids.append(int(v))
+            return ids
+        if isinstance(value, str):
+            raw = value.strip()
+            if not raw:
+                return None
+            raw = raw.replace("cuda:", "")
+            parts = [p.strip() for p in raw.split(",") if p.strip()]
+            return [int(p) for p in parts]
+        return None
+
+    def _get_multi_gpu_devices_from_env(self) -> Optional[List[int]]:
+        env_value = os.environ.get("CUDA_VISIBLE_DEVICES")
+        if env_value is None:
+            return None
+        return self._parse_device_ids(env_value)
+
+    def _configure_devices(self) -> None:
+        self._is_multi_gpu = False
+
+        device_ids = self._get_multi_gpu_devices_from_env()
+
+        if device_ids is None and self._app_options.get("multi_gpu", False):
+            try:
+                import torch
+
+                if torch.cuda.is_available() and torch.cuda.device_count() > 1:
+                    device_ids = list(range(torch.cuda.device_count()))
+            except Exception:
+                device_ids = None
+
+        if device_ids is not None and len(device_ids) > 1:
+            mapped_ids = sly_env.remap_gpu_devices(device_ids)
+            self._is_multi_gpu = True
+            logger.info(f"Multi-GPU enabled. Visible devices: {device_ids} -> {mapped_ids}")
 
     def _finalize(self, experiment_info: dict) -> None:
         """
@@ -2847,6 +2914,7 @@ class TrainApp:
                 raise ValueError("Train function is not defined")
             self._prepare_working_dir()
             self._init_logger()
+            self._configure_devices()
         except Exception as e:
             message = f"Error occurred during training initialization. {check_logs_text}"
             self._show_error(message, e)

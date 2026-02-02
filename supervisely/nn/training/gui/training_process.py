@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 # Safe optional import for torch to prevent pylint import-error when the library is absent.
 try:
@@ -99,6 +99,12 @@ class TrainingProcess:
         else:
             return "cuda:0"
 
+    def get_devices(self) -> List:
+        if self.app_options.get("device_selector", False):
+            return self.select_device.get_devices()
+        else:
+            return ["cuda:0"]
+
     def get_device_name(self) -> str:
         device = self.get_device()
 
@@ -108,6 +114,20 @@ class TrainingProcess:
             device_name = "CPU"
 
         return device_name
+
+    def get_device_names(self) -> List[str]:
+        devices = self.get_devices()
+        device_names = []
+        if torch is not None:
+            for device in devices:
+                if device.startswith("cuda"):
+                    device_name = torch.cuda.get_device_name(device)
+                else:
+                    device_name = "CPU"
+                device_names.append(device_name)
+        else:
+            device_names = ["CPU" for _ in devices]
+        return device_names
 
     def get_experiment_name(self) -> str:
         return self.experiment_name_input.get_value()
