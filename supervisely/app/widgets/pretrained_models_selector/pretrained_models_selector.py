@@ -236,10 +236,10 @@ class PretrainedModelsSelector(Widget):
                     name_from_info = _get_model_name(model)
                     if name_from_info is not None:
                         if name_from_info.lower() == model_name.lower():
-                            logger.debug(f"Found model {name_from_info} == {model_name}")
                             self.set_active_task_type(task_type)
                             self.set_active_arch_type(arch_type)
                             self.set_active_row(idx)
+                            logger.debug(f"Found model {name_from_info} == {model_name}", extra={"idx": idx, "task_type": task_type, "arch_type": arch_type, "row": self.get_selected_row()})
                             return
 
     def get_by_model_name(self, model_name: str) -> Union[Dict, None]:
