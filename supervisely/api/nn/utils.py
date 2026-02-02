@@ -11,18 +11,21 @@ from supervisely.nn.artifacts.artifacts import BaseTrainArtifacts
 from supervisely.nn.experiments import ExperimentInfo
 
 
-def find_agent(api: "Api", team_id: int = None, public=True, gpu=True) -> Optional[AgentInfo]:
+def find_agent(api: "Api", team_id: int = None, public=True, gpu=True) -> int:
     """
-    Find an agent in Supervisely with most available memory.
+    Find an agent in Supervisely with most available GPU memory.
 
+    :param api: Supervisely API client.
+    :type api: :class:`~supervisely.api.api.Api`
     :param team_id: Team ID. If not provided, will be taken from the current context.
-    :type team_id: Optional[int]
+    :type team_id: int, optional
     :param public: If True, can find a public agent.
     :type public: bool
     :param gpu: If True, find an agent with GPU.
     :type gpu: bool
-    :return: Agent info
-    :rtype: AgentInfo
+    :return: Agent ID.
+    :rtype: int
+    :raises ValueError: If no available agents found.
     """
     if team_id is None:
         team_id = env.team_id()
@@ -41,6 +44,7 @@ def find_agent(api: "Api", team_id: int = None, public=True, gpu=True) -> Option
         return max(agent_id_memory_map, key=agent_id_memory_map.get)
     if len(kubernetes_agents) > 0:
         return kubernetes_agents[0]
+
 
 def get_framework_by_path(path: str) -> Type[BaseTrainArtifacts]:
     from supervisely.nn.artifacts import (
@@ -209,34 +213,3 @@ def get_experiment_info_by_task_id(api: "Api", task_id) -> Optional[ExperimentIn
     if experiment_data is None:
         return None
     return ExperimentInfo(**experiment_data)
-
-def find_agent(api: "Api", team_id: int = None, public=True, gpu=True):
-    """
-    Find an agent in Supervisely with most available memory.
-
-    :param team_id: Team ID. If not provided, will be taken from the current context.
-    :type team_id: Optional[int]
-    :param public: If True, can find a public agent.
-    :type public: bool
-    :param gpu: If True, find an agent with GPU.
-    :type gpu: bool
-    :return: Agent ID
-    :rtype: int
-    """
-    if team_id is None:
-        team_id = env.team_id()
-    agents = api.agent.get_list_available(team_id, show_public=public, has_gpu=gpu)
-    if len(agents) == 0:
-        raise ValueError("No available agents found.")
-    agent_id_memory_map = {}
-    kubernetes_agents = []
-    for agent in agents:
-        if agent.type == "sly_agent":
-            # No multi-gpu support, always take the first one
-            agent_id_memory_map[agent.id] = agent.gpu_info["device_memory"][0]["available"]
-        elif agent.type == "kubernetes":
-            kubernetes_agents.append(agent.id)
-    if len(agent_id_memory_map) > 0:
-        return max(agent_id_memory_map, key=agent_id_memory_map.get)
-    if len(kubernetes_agents) > 0:
-        return kubernetes_agents[0]

@@ -1,6 +1,5 @@
 from typing import Dict, List, Literal, Union
 
-from supervisely._utils import logger
 from supervisely.api.api import Api
 from supervisely.app.content import DataJson, StateJson
 from supervisely.app.widgets import Widget

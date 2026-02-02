@@ -103,6 +103,7 @@ class Model:
         :raises ValueError: If the string cannot be parsed or required metadata cannot be resolved.
         """
         checkpoint = None
+        pretrained = model
         team_id = None
         if model.startswith("/"):
             checkpoint = model
