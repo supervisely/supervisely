@@ -134,19 +134,28 @@ class PointcloudConverter(BaseConverter):
                             raise ValueError("Related image meta not found in json file.")
                         if ApiField.NAME not in meta_json:
                             raise ValueError("Related image name not found in json file.")
-                        img_hash = api.pointcloud.upload_related_image(img_path)
+
+                        img_hash = None
+                        if not self.upload_as_links:
+                            img_hash = api.pointcloud.upload_related_image(img_path)
+
                         if "deviceId" not in meta_json[ApiField.META].keys():
                             camera_names.append(f"CAM_{str(img_ind).zfill(2)}")
                         else:
                             camera_names.append(meta_json[ApiField.META]["deviceId"])
-                        rimg_infos.append(
-                            {
-                                ApiField.ENTITY_ID: pcd_id,
-                                ApiField.NAME: meta_json[ApiField.NAME],
-                                ApiField.HASH: img_hash,
-                                ApiField.META: meta_json[ApiField.META],
-                            }
-                        )
+
+                        rimage_dict = {
+                            ApiField.ENTITY_ID: pcd_id,
+                            ApiField.NAME: meta_json[ApiField.NAME],
+                            ApiField.META: meta_json[ApiField.META],
+                        }
+                        if img_hash is not None:
+                            rimage_dict[ApiField.HASH] = img_hash
+                        else:
+                            rimage_dict[ApiField.LINK] = self.remote_files_map.get(
+                                os.path.abspath(img_path), img_path
+                            )
+                        rimg_infos.append(rimage_dict)
 
                         if fig_path is not None and os.path.isfile(fig_path):
                             try:
@@ -156,7 +165,7 @@ class PointcloudConverter(BaseConverter):
                                 logger.debug(f"Failed to read figures json '{fig_path}': {repr(e)}")
 
                     except Exception as e:
-                        logger.warn(
+                        logger.warning(
                             f"Failed to upload related image or add it to pointcloud: {repr(e)}"
                         )
                         continue

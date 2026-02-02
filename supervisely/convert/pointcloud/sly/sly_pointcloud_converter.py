@@ -74,7 +74,9 @@ class SLYPointcloudConverter(PointcloudConverter):
                         rimg_ann_dict[file] = full_path
                     else:
                         ann_dict[file] = full_path
-                elif imghdr.what(full_path):
+                elif imghdr.what(full_path) or (
+                    self.upload_as_links and ext not in self.allowed_exts
+                ):
                     if dir_name not in rimg_dict:
                         rimg_dict[dir_name] = []
                     rimg_dict[dir_name].append(full_path)
