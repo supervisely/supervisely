@@ -57,8 +57,6 @@ def get_framework_by_path(path: str) -> Type[BaseTrainArtifacts]:
         YOLOv5v2,
         YOLOv8,
     )
-    from supervisely.nn.artifacts.artifacts import BaseTrainArtifacts
-    from supervisely.nn.utils import ModelSource
 
     path_obj = Path(path)
     if len(path_obj.parts) < 2:
