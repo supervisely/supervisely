@@ -38,7 +38,7 @@ jobs:
       - name: Install twine
         run: |
           pip install twine
-          export PATH="$HOME/.local/bin:$PATH"
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
 
       - name: Publish package distributions to PyPI
         run: twine upload --skip-existing dist/*
