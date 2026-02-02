@@ -13,9 +13,10 @@ from supervisely import (
     is_development,
     logger,
 )
+from supervisely._utils import get_or_create_event_loop
 from supervisely.api.module_api import ApiField
 from supervisely.convert.base_converter import BaseConverter
-from supervisely.io.fs import get_file_ext, get_file_name_with_ext
+from supervisely.io.fs import get_file_ext, get_file_name_with_ext, silent_remove
 from supervisely.io.json import load_json_file
 from supervisely.pointcloud.pointcloud import ALLOWED_POINTCLOUD_EXTENSIONS
 from supervisely.pointcloud.pointcloud import validate_ext as validate_pcd_ext
@@ -26,7 +27,6 @@ CONVERTIBLE_EXTENSIONS = [".bin"]
 
 
 class PointcloudConverter(BaseConverter):
-    allowed_exts = ALLOWED_POINTCLOUD_EXTENSIONS + CONVERTIBLE_EXTENSIONS
     modality = "pointclouds"
 
     class Item(BaseConverter.BaseItem):
@@ -91,11 +91,11 @@ class PointcloudConverter(BaseConverter):
         else:
             progress_cb = None
 
+        use_links = self.upload_as_links and self.supports_links
+
         key_id_map = KeyIdMap()
         for batch in batched(self._items, batch_size=batch_size):
-            item_names = []
-            item_paths = []
-            anns = []
+            prepared_items = []
             for item in batch:
                 item.name = generate_free_name(
                     existing_names, item.name, with_ext=True, extend_used_names=True
@@ -104,6 +104,47 @@ class PointcloudConverter(BaseConverter):
                 item_paths.append(item.path)
 
                 ann = self.to_supervisely(item, meta, renamed_classes, renamed_tags)
+                is_converted = bool(item.custom_data.get("converted_bin"))
+                upload_as_link = use_links and not is_converted
+                if upload_as_link:
+                    remote_path = self.remote_files_map.get(
+                        os.path.abspath(item.path), self.remote_files_map.get(item.path)
+                    )
+                    if remote_path is None:
+                        upload_as_link = False
+                        path = item.path
+                    else:
+                        path = remote_path
+                else:
+                    path = item.path
+                prepared_items.append(
+                    {
+                        "item": item,
+                        "name": item.name,
+                        "path": path,
+                        "ann": ann,
+                        "upload_as_link": upload_as_link,
+                    }
+                )
+
+            def _upload_items(items, upload_fn):
+                if not items:
+                    return []
+                item_names = [i["name"] for i in items]
+                item_paths = [i["path"] for i in items]
+                pcd_infos = upload_fn(dataset_id, item_names, item_paths)
+                pcd_ids = [pcd_info.id for pcd_info in pcd_infos]
+                return list(zip(pcd_ids, [i["ann"] for i in items], [i["item"] for i in items]))
+
+            link_items = [i for i in prepared_items if i["upload_as_link"]]
+            file_items = [i for i in prepared_items if not i["upload_as_link"]]
+
+            uploaded = []
+            if file_items:
+                uploaded.extend(_upload_items(file_items, api.pointcloud.upload_paths))
+            if link_items:
+                uploaded.extend(_upload_items(link_items, api.pointcloud.upload_links))
+
                 anns.append(ann)
 
             pcd_infos = api.pointcloud.upload_paths(
@@ -114,7 +155,7 @@ class PointcloudConverter(BaseConverter):
             pcd_ids = [pcd_info.id for pcd_info in pcd_infos]
             pcl_to_rimg_figures: Dict[int, Dict[str, List[Dict]]] = {}
             pcl_to_hash_to_id: Dict[int, Dict[str, int]] = {}
-            for pcd_id, ann, item in zip(pcd_ids, anns, batch):
+            for pcd_id, ann, item in uploaded:
                 if ann is not None:
                     api.pointcloud.annotation.append(pcd_id, ann, key_id_map)
 
@@ -152,7 +193,7 @@ class PointcloudConverter(BaseConverter):
                                 logger.debug(f"Failed to read figures json '{fig_path}': {repr(e)}")
 
                     except Exception as e:
-                        logger.warn(
+                        logger.warning(
                             f"Failed to upload related image or add it to pointcloud: {repr(e)}"
                         )
                         continue
@@ -231,7 +272,7 @@ class PointcloudConverter(BaseConverter):
     def _collect_items_if_format_not_detected(self) -> Tuple[List[Item], bool, Set[str]]:
         only_modality_items = True
         unsupported_exts = set()
-        pcd_list, rimg_dict, rimg_ann_dict, rimg_fig_dict = [], {}, {}, {}
+        pcd_list, rimg_dict, rimg_ann_dict, rimg_fig_dict, to_convert = [], {}, {}, {}, []
         for root, _, files in os.walk(self._input_data):
             for file in files:
                 full_path = os.path.join(root, file)
@@ -254,34 +295,41 @@ class PointcloudConverter(BaseConverter):
                     if dir_name not in rimg_dict:
                         rimg_dict[dir_name] = []
                     rimg_dict[dir_name].append(full_path)
-                elif ext.lower() in self.allowed_exts:
-                    try:
-                        path = self._convert_to_pcd_if_needed(full_path, ext)
-                        if not path:
-                            continue
-                        pcd_list.append(path)
-                    except:
-                        pass
+                elif ext.lower() in ALLOWED_POINTCLOUD_EXTENSIONS:
+                    pcd_list.append(full_path)
+                elif ext.lower() in CONVERTIBLE_EXTENSIONS:
+                    to_convert.append(full_path)
                 else:
                     only_modality_items = False
                     unsupported_exts.add(ext)
 
+        if self.upload_as_links and to_convert:
+            to_convert = self._download_from_storage(to_convert)
+
+        converted_paths = []
+        for pcd_path in to_convert:
+            pcd_path = self._convert_to_pcd_if_needed(pcd_path, get_file_ext(pcd_path))
+            if pcd_path:
+                converted_paths.append(pcd_path)
         # create Items
         items = []
-        for pcd_path in pcd_list:
-            item = self.Item(pcd_path)
-            rimg_dir_name = item.name.replace(".pcd", "_pcd")
-            rimgs = rimg_dict.get(rimg_dir_name, [])
-            for rimg_path in rimgs:
-                rimg_ann_name = f"{get_file_name_with_ext(rimg_path)}.json"
-                if rimg_ann_name in rimg_ann_dict:
-                    rimg_ann_path = rimg_ann_dict[rimg_ann_name]
-                    rimg_fig_name = f"{get_file_name_with_ext(rimg_path)}.figures.json"
-                    rimg_fig_path = rimg_fig_dict.get(rimg_fig_name, None)
-                    if rimg_fig_path is not None and not os.path.exists(rimg_fig_path):
-                        rimg_fig_path = None
-                    item.set_related_images((rimg_path, rimg_ann_path, rimg_fig_path))
-            items.append(item)
+        for pcd_paths, converted in ((pcd_list, False), (converted_paths, True)):
+            for pcd_path in pcd_paths:
+                item = self.Item(pcd_path)
+                if converted:
+                    item.custom_data["converted_bin"] = True
+                rimg_dir_name = item.name.replace(".pcd", "_pcd")
+                rimgs = rimg_dict.get(rimg_dir_name, [])
+                for rimg_path in rimgs:
+                    rimg_ann_name = f"{get_file_name_with_ext(rimg_path)}.json"
+                    if rimg_ann_name in rimg_ann_dict:
+                        rimg_ann_path = rimg_ann_dict[rimg_ann_name]
+                        rimg_fig_name = f"{get_file_name_with_ext(rimg_path)}.figures.json"
+                        rimg_fig_path = rimg_fig_dict.get(rimg_fig_name, None)
+                        if rimg_fig_path is not None and not os.path.exists(rimg_fig_path):
+                            rimg_fig_path = None
+                        item.set_related_images((rimg_path, rimg_ann_path, rimg_fig_path))
+                items.append(item)
         return items, only_modality_items, unsupported_exts
 
     def _convert_to_pcd_if_needed(self, pcd_path: str, ext: str) -> Optional[str]:
@@ -297,6 +345,57 @@ class PointcloudConverter(BaseConverter):
             pcd_output_path = pcd_path.replace(".bin", ".pcd")
             self._convert_bin_to_pcd(pcd_path, pcd_output_path)
             return pcd_output_path
+
+    def _download_from_storage(self, remote_paths: List[str]) -> List[str]:
+        if not remote_paths:
+            return []
+
+        download_local_paths = []
+        download_remote_paths = []
+        resolved_paths: List[str] = []
+
+        for local_path in remote_paths:
+            abs_local_path = os.path.abspath(local_path)
+            remote_path = self._remote_files_map.get(
+                abs_local_path, self._remote_files_map.get(local_path)
+            )
+            if remote_path is None:
+                resolved_paths.append(local_path)
+                continue
+
+            resolved_paths.append(abs_local_path)
+            download_local_paths.append(abs_local_path)
+            download_remote_paths.append(remote_path)
+
+        if not download_remote_paths:
+            return resolved_paths
+
+        import asyncio
+
+        loop = get_or_create_event_loop()
+        _, progress_cb = self.get_progress(
+            len(download_remote_paths),
+            "Downloading pointclouds from remote storage",
+        )
+
+        for local_path in download_local_paths:
+            silent_remove(local_path)
+
+        download_coro = self._api.storage.download_bulk_async(
+            team_id=self._team_id,
+            remote_paths=download_remote_paths,
+            local_save_paths=download_local_paths,
+            progress_cb=progress_cb,
+            progress_cb_type="number",
+        )
+
+        if loop.is_running():
+            future = asyncio.run_coroutine_threadsafe(download_coro, loop=loop)
+            future.result()
+        else:
+            loop.run_until_complete(download_coro)
+
+        return resolved_paths
 
     def _validate_bin_pointcloud(self, bin_file: str) -> bool:
         try:
