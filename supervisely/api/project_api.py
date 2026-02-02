@@ -147,9 +147,6 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
             api = sly.Api.from_env()
 
-            # Or pass values into the API constructor (optional, not recommended)
-            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
-
             project_id = 1951
             project_info = api.project.get_info_by_id(project_id)
     """
@@ -617,9 +614,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             .. code-block:: python
 
                 import os
-                import supervisely as sly
-
                 from dotenv import load_dotenv
+
+                import supervisely as sly
 
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
@@ -1629,7 +1626,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-                load_dotenv(os.path.expanduser("~/supervisely.env"))
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 project_name = "my_project"
@@ -1682,7 +1681,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-                load_dotenv(os.path.expanduser("~/supervisely.env"))
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 project_id = 123
@@ -1748,7 +1749,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-                load_dotenv(os.path.expanduser("~/supervisely.env"))
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 project_id = 123
@@ -2036,9 +2039,6 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
                 api = sly.Api.from_env()
 
-                # Or pass values into the API constructor (optional, not recommended)
-                # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
-
                 response = check_imageset_backup(project_id)
                 archive_url = response['imagesArchiveUrl']
 
@@ -2192,6 +2192,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
                 if sly.is_development():
                     load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 # For images project - will enable grouping by tags
@@ -2587,9 +2588,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                     load_dotenv(os.path.expanduser("~/supervisely.env"))
 
                 api = sly.Api.from_env()
-                project_id = 123
 
                 # Set current time as embeddings update timestamp
+                project_id = 123
                 api.project.set_embeddings_updated_at(project_id)
 
                 # Set specific timestamp
@@ -2627,9 +2628,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                     load_dotenv(os.path.expanduser("~/supervisely.env"))
 
                 api = sly.Api.from_env()
-                project_id = 123
 
                 # Get embeddings updated timestamp
+                project_id = 123
                 updated_at = api.project.get_embeddings_updated_at(project_id)
                 print(updated_at)  # Output: "2025-06-01T10:30:45.123Z" or None
         """

@@ -123,9 +123,6 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
 
             api = sly.Api.from_env()
 
-            # Or pass values into the API constructor (optional, not recommended)
-            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
-
             project_id = 1951
             ds = api.dataset.get_list(project_id)
     """
@@ -220,14 +217,14 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
 
                 import supervisely as sly
 
-                project_id = 1951
-
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
                 if sly.is_development():
                     load_dotenv(os.path.expanduser("~/supervisely.env"))
 
                 api = sly.Api.from_env()
+
+                project_id = 1951
                 ds = api.dataset.get_list(project_id)
 
                 print(ds)
@@ -290,8 +287,6 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
 
                 import supervisely as sly
 
-                dataset_id = 384126
-
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
                 if sly.is_development():
@@ -299,6 +294,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
 
                 api = sly.Api.from_env()
 
+                dataset_id = 384126
                 ds_info = api.dataset.get_info_by_id(dataset_id)
         """
         info = self._get_info_by_id(id, "datasets.info")
@@ -357,7 +353,6 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
                 from dotenv import load_dotenv
 
                 import supervisely as sly
-
 
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
@@ -424,7 +419,6 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
                 from dotenv import load_dotenv
 
                 import supervisely as sly
-
 
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
@@ -1075,8 +1069,11 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
 
                 import os
                 from dotenv import load_dotenv
+
                 import supervisely as sly
 
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
                 if sly.is_development():
                     load_dotenv(os.path.expanduser("~/supervisely.env"))
 
@@ -1178,8 +1175,11 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
 
                 import os
                 from dotenv import load_dotenv
+
                 import supervisely as sly
 
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
                 if sly.is_development():
                     load_dotenv(os.path.expanduser("~/supervisely.env"))
 
@@ -1236,8 +1236,11 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
 
                 import os
                 from dotenv import load_dotenv
+
                 import supervisely as sly
 
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
                 if sly.is_development():
                     load_dotenv(os.path.expanduser("~/supervisely.env"))
 
@@ -1320,10 +1323,12 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
 
                 import os
                 from dotenv import load_dotenv
-                import supervisely as sly
-                from supervisely.project.project_meta import ProjectMeta
-                from supervisely.project.project_type import ProjectType
 
+                import supervisely as sly
+                from supervisely.project.project_meta import ProjectMeta, ProjectType
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
                 if sly.is_development():
                     load_dotenv(os.path.expanduser("~/supervisely.env"))
 

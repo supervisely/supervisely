@@ -66,7 +66,6 @@ class VolumeFigureApi(FigureApi):
                 from dotenv import load_dotenv
 
                 import supervisely as sly
-
                 from supervisely.volume_annotation.plane import Plane
 
                 # Load secrets and create API object from .env file (recommended)
@@ -134,7 +133,6 @@ class VolumeFigureApi(FigureApi):
                 from dotenv import load_dotenv
 
                 import supervisely as sly
-
                 from supervisely.volume_annotation.plane import Plane
 
                 # Load secrets and create API object from .env file (recommended)

@@ -29,10 +29,15 @@ class TagApi(ModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 info_sequence = api.video.tag.info_sequence()
@@ -61,10 +66,15 @@ class TagApi(ModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 tuple_name = api.video.tag.info_tuple_name()
@@ -190,10 +200,15 @@ class TagApi(ModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 img_id = 19373170
@@ -254,26 +269,22 @@ class TagApi(ModuleApi):
 
             .. code-block:: python
 
+                import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                api = sly.Api(server_address, token)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
 
                 tags_list = [
-                    {
-                        "tagId": 25926,
-                        "objectId": 652959,
-                        "value": None
-                    },
-                    {
-                        "tagId": 25927,
-                        "objectId": 652959,
-                        "value": "v1"
-                    },
-                    {
-                        "tagId": 25927,
-                        "objectId": 652958,
-                        "value": "v2"
-                    }
+                    {"tagId": 25926, "objectId": 652959, "value": None},
+                    {"tagId": 25927, "objectId": 652959, "value": "v1"},
+                    {"tagId": 25927, "objectId": 652958, "value": "v2"},
                 ]
                 response = api.video.tag.append_to_objects_json(12345, tags_list)
 
@@ -345,9 +356,17 @@ class TagApi(ModuleApi):
 
             .. code-block:: python
 
+                import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                api = sly.Api(server_address, token)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
 
                 tags_list = [
                     {
@@ -460,9 +479,17 @@ class TagApi(ModuleApi):
 
             .. code-block:: python
 
+                import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                api = sly.Api(server_address, token)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
 
                 tags_list = [
                     {
@@ -539,9 +566,17 @@ class TagApi(ModuleApi):
 
             .. code-block:: python
 
+                import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                api = sly.Api(server_address, token)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
 
                 project_id = 12345
 

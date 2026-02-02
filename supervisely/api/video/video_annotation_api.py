@@ -40,10 +40,8 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
             # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
             if sly.is_development():
                 load_dotenv(os.path.expanduser("~/supervisely.env"))
-            api = sly.Api.from_env()
 
-            # Pass values into the API constructor (optional, not recommended)
-            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
+            api = sly.Api.from_env()
 
             video_id = 186648102
             ann_info = api.video.annotation.download(video_id)

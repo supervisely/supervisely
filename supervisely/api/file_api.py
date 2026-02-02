@@ -87,9 +87,6 @@ class FileApi(ModuleApiBase):
 
             api = sly.Api.from_env()
 
-            # Or pass values into the API constructor (optional, not recommended)
-            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
-
             team_id = 8
             file_path = "/999_App_Test/"
             files = api.file.list(team_id, file_path)
@@ -219,9 +216,6 @@ class FileApi(ModuleApiBase):
 
                 api = sly.Api.from_env()
 
-                # Or pass values into the API constructor (optional, not recommended)
-                # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
-
                 team_id = 8
                 file_path = "/999_App_Test/"
 
@@ -332,9 +326,6 @@ class FileApi(ModuleApiBase):
 
                 api = sly.Api.from_env()
 
-                # Or pass values into the API constructor (optional, not recommended)
-                # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
-
                 team_id = 9
                 file_path = "/My_App_Test/"
                 files = api.file.list2(team_id, file_path)
@@ -367,8 +358,11 @@ class FileApi(ModuleApiBase):
 
                 import os
                 from dotenv import load_dotenv
+
                 import supervisely as sly
 
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
                 if sly.is_development():
                     load_dotenv(os.path.expanduser("~/supervisely.env"))
 
@@ -403,8 +397,11 @@ class FileApi(ModuleApiBase):
 
                 import os
                 from dotenv import load_dotenv
+
                 import supervisely as sly
 
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
                 if sly.is_development():
                     load_dotenv(os.path.expanduser("~/supervisely.env"))
 
@@ -499,8 +496,11 @@ class FileApi(ModuleApiBase):
 
                 import os
                 from dotenv import load_dotenv
+
                 import supervisely as sly
 
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
                 if sly.is_development():
                     load_dotenv(os.path.expanduser("~/supervisely.env"))
 
@@ -602,8 +602,11 @@ class FileApi(ModuleApiBase):
 
                 import os
                 from dotenv import load_dotenv
+
                 import supervisely as sly
 
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
                 if sly.is_development():
                     load_dotenv(os.path.expanduser("~/supervisely.env"))
 
@@ -676,6 +679,7 @@ class FileApi(ModuleApiBase):
 
                 import os
                 from dotenv import load_dotenv
+
                 import supervisely as sly
 
                 # Load secrets and create API object from .env file (recommended)
@@ -1601,8 +1605,11 @@ class FileApi(ModuleApiBase):
 
                 import os
                 from dotenv import load_dotenv
+
                 import supervisely as sly
 
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
                 if sly.is_development():
                     load_dotenv(os.path.expanduser("~/supervisely.env"))
 
@@ -1655,8 +1662,11 @@ class FileApi(ModuleApiBase):
 
                 import os
                 from dotenv import load_dotenv
+
                 import supervisely as sly
 
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
                 if sly.is_development():
                     load_dotenv(os.path.expanduser("~/supervisely.env"))
 
@@ -1806,8 +1816,11 @@ class FileApi(ModuleApiBase):
 
                 import os
                 from dotenv import load_dotenv
+
                 import supervisely as sly
 
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
                 if sly.is_development():
                     load_dotenv(os.path.expanduser("~/supervisely.env"))
 
@@ -1915,8 +1928,11 @@ class FileApi(ModuleApiBase):
 
                 import os
                 from dotenv import load_dotenv
+
                 import supervisely as sly
 
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
                 if sly.is_development():
                     load_dotenv(os.path.expanduser("~/supervisely.env"))
 
@@ -1998,8 +2014,11 @@ class FileApi(ModuleApiBase):
 
                 import os
                 from dotenv import load_dotenv
+
                 import supervisely as sly
 
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
                 if sly.is_development():
                     load_dotenv(os.path.expanduser("~/supervisely.env"))
 
@@ -2221,8 +2240,11 @@ class FileApi(ModuleApiBase):
 
                 import os
                 from dotenv import load_dotenv
+
                 import supervisely as sly
 
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
                 if sly.is_development():
                     load_dotenv(os.path.expanduser("~/supervisely.env"))
 
@@ -2308,11 +2330,13 @@ class FileApi(ModuleApiBase):
 
                 import os
                 from dotenv import load_dotenv
+
                 import supervisely as sly
 
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
                 if sly.is_development():
                     load_dotenv(os.path.expanduser("~/supervisely.env"))
-
 
                 api = sly.Api.from_env()
 
@@ -2409,8 +2433,11 @@ class FileApi(ModuleApiBase):
 
                 import os
                 from dotenv import load_dotenv
+
                 import supervisely as sly
 
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
                 if sly.is_development():
                     load_dotenv(os.path.expanduser("~/supervisely.env"))
 

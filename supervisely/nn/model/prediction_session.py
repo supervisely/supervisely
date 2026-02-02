@@ -56,13 +56,18 @@ class PredictionSession:
         .. code-block:: python
 
             import os
+            from dotenv import load_dotenv
+
             import supervisely as sly
             from supervisely.nn.model.prediction_session import PredictionSession
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
 
             api = sly.Api.from_env()
+
             session = PredictionSession(
                 url='https://app.supervisely.com/net/<sessionToken>',
                 image_id=123,

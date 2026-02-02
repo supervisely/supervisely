@@ -565,13 +565,18 @@ class Mask3D(Geometry):
 
             .. code-block:: python
 
-                import supervisely as sly
                 import os
-                import nrrd
+                from dotenv import load_dotenv
 
-                address = 'https://app.supervisely.com/'
-                token = 'Your Supervisely API Token'
-                api = sly.Api(address, token)
+                import nrrd
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
 
                 meta_json = api.project.get_meta(PROJECT_ID)
                 meta = sly.ProjectMeta.from_json(meta_json)

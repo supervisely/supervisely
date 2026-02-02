@@ -210,21 +210,30 @@ class Dataset(KeyObject):
         If dataset_id is specified then api must be specified as well.
     :type dataset_id: Optional[int]
     :param api: API object if the Dataset is opened in API mode.
-    :type api: Optional[:class:`Api<supervis
+    :type api: :class:`~supervisely.api.api.Api`, optional.
 
     :Usage Example:
 
         .. code-block:: python
 
+            import os
+            from dotenv import load_dotenv
+
             import supervisely as sly
+
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+            api = sly.Api.from_env()
 
             dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
 
-            # To open dataset locally in read mode
+            # Open Dataset locally in read mode
             ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
 
-            # To open dataset on API
-            api = sly.Api.from_env()
+            # Open Dataset with API
             ds = sly.Dataset(dataset_path, dataset_id=1, api=api)
     """
 
@@ -3515,24 +3524,23 @@ class Project:
 
             .. code-block:: python
 
-                    import os
-                    import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-                    # Local destination Project folder
-                    save_directory = "/home/admin/work/supervisely/source/project"
+                import supervisely as sly
 
-                    # Obtain server address and your api_token from environment variables
-                    # Edit those values if you run this notebook on your own PC
-                    address = os.environ['SERVER_ADDRESS']
-                    token = os.environ['API_TOKEN']
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-                    # Initialize API object
-                    api = sly.Api(address, token)
-                    project_id = 8888
+                api = sly.Api.from_env()
 
-                    # Download Project
-                    sly.Project.download(api, project_id, save_directory)
-                    project_fs = sly.Project(save_directory, sly.OpenMode.READ)
+                # Download Project
+                project_id = 8888
+                save_directory = "/home/admin/work/supervisely/source/project"
+                sly.Project.download(api, project_id, save_directory)
+                project_fs = sly.Project(save_directory, sly.OpenMode.READ)
         """
         download_project(
             api=api,
@@ -3598,23 +3606,22 @@ class Project:
 
             .. code-block:: python
 
-                    import os
-                    import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-                    # Local destination Project folder
-                    save_directory = "/home/admin/work/supervisely/source/project"
+                import supervisely as sly
 
-                    # Obtain server address and your api_token from environment variables
-                    # Edit those values if you run this notebook on your own PC
-                    address = os.environ['SERVER_ADDRESS']
-                    token = os.environ['API_TOKEN']
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-                    # Initialize API object
-                    api = sly.Api(address, token)
-                    project_id = 8888
+                api = sly.Api.from_env()
 
-                    # Download Project in binary format
-                    project_bin_path = sly.Project.download_bin(api, project_id, save_directory)
+                # Download Project in binary format
+                project_id = 8888
+                save_directory = "/home/admin/work/supervisely/source/project"
+                project_bin_path = sly.Project.download_bin(api, project_id, save_directory)
         """
         if dest_dir is None and not return_bytesio:
             raise ValueError(
@@ -3718,18 +3725,16 @@ class Project:
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                # Local folder with Project
-                project_path = "/home/admin/work/supervisely/source/project/222_ProjectName"
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-                # Obtain server address and your api_token from environment variables
-                # Edit those values if you run this notebook on your own PC
-                address = os.environ['SERVER_ADDRESS']
-                token = os.environ['API_TOKEN']
-
-                # Initialize API object
-                api = sly.Api(address, token)
+                api = sly.Api.from_env()
 
                 # Upload Project
                 project_dir = "/path/to/project/dir"
@@ -4035,20 +4040,19 @@ class Project:
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                # Local folder with Project
-                project_directory = "/home/admin/work/supervisely/source/project"
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-                # Obtain server address and your api_token from environment variables
-                # Edit those values if you run this notebook on your own PC
-                address = os.environ['SERVER_ADDRESS']
-                token = os.environ['API_TOKEN']
-
-                # Initialize API object
-                api = sly.Api(address, token)
+                api = sly.Api.from_env()
 
                 # Upload Project
+                project_directory = "/home/admin/work/supervisely/source/project"
                 project_id, project_name = sly.Project.upload(
                     project_directory,
                     api,
@@ -4133,11 +4137,16 @@ class Project:
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
                 from supervisely._utils import run_coroutine
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 project_id = 8888
@@ -4963,10 +4972,8 @@ def download_project(
             # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
             if sly.is_development():
                 load_dotenv(os.path.expanduser("~/supervisely.env"))
-            api = sly.Api.from_env()
 
-            # Pass values into the API constructor (optional, not recommended)
-            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
+            api = sly.Api.from_env()
 
             dest_dir = 'your/local/dest/dir'
 
@@ -5282,7 +5289,15 @@ def create_readme(
 
         .. code-block:: python
 
+            import os
+            from dotenv import load_dotenv
+
             import supervisely as sly
+
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
 
             api = sly.Api.from_env()
 
@@ -5290,7 +5305,6 @@ def create_readme(
             project_dir = "/path/to/project"
 
             readme_path = sly.create_readme(project_dir, project_id, api)
-
             print(f"README.md file was created at {readme_path}")
     """
     current_path = os.path.dirname(os.path.abspath(__file__))
@@ -5494,7 +5508,15 @@ def create_blob_readme(
 
         .. code-block:: python
 
+            import os
+            from dotenv import load_dotenv
+
             import supervisely as sly
+
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
 
             api = sly.Api.from_env()
 

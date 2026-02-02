@@ -118,11 +118,17 @@ class PointcloudAnnotation(VideoAnnotation):
 
             .. code-block:: python
 
+                import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                address = 'https://app.supervisely.com/'
-                token = 'Your Supervisely API Token'
-                api = sly.Api(address, token)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
 
                 project_id = 19441
                 project_meta_json = api.project.get_meta(project_id)
@@ -149,11 +155,17 @@ class PointcloudAnnotation(VideoAnnotation):
 
             .. code-block:: python
 
+                import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                address = 'https://app.supervisely.com/'
-                token = 'Your Supervisely API Token'
-                api = sly.Api(address, token)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
 
                 project_id = 19441
                 project_meta_json = api.project.get_meta(project_id)
@@ -180,11 +192,17 @@ class PointcloudAnnotation(VideoAnnotation):
 
             .. code-block:: python
 
+                import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                address = 'https://app.supervisely.com/'
-                token = 'Your Supervisely API Token'
-                api = sly.Api(address, token)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
 
                 project_id = 19441
                 project_meta_json = api.project.get_meta(project_id)
@@ -301,12 +319,18 @@ class PointcloudAnnotation(VideoAnnotation):
 
             .. code-block:: python
 
+                import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
                 from supervisely.video_annotation.key_id_map import KeyIdMap
 
-                address = 'https://app.supervisely.com/'
-                token = 'Your Supervisely API Token'
-                api = sly.Api(address, token)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
 
                 key_id_map = KeyIdMap()
                 pointcloud_id = pointcloud_id
@@ -362,11 +386,17 @@ class PointcloudAnnotation(VideoAnnotation):
 
             .. code-block:: python
 
+                import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                address = 'https://app.supervisely.com/'
-                token = 'Your Supervisely API Token'
-                api = sly.Api(address, token)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
 
                 team_name = 'Vehicle Detection'
                 workspace_name = 'Cities'
@@ -412,12 +442,18 @@ class PointcloudAnnotation(VideoAnnotation):
 
             .. code-block:: python
 
+                import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
                 from supervisely.video_annotation.key_id_map import KeyIdMap
 
-                address = 'https://app.supervisely.com/'
-                token = 'Your Supervisely API Token'
-                api = sly.Api(address, token)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
 
                 key_id_map = KeyIdMap()
                 pointcloud_id = 19481098

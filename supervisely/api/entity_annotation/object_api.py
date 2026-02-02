@@ -58,10 +58,15 @@ class ObjectApi(RemoveableBulkModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 tuple_name = api.video.object.info_tuple_name()
@@ -99,10 +104,15 @@ class ObjectApi(RemoveableBulkModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 dataset_id = 466642
@@ -260,12 +270,16 @@ class ObjectApi(RemoveableBulkModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-                api = sly.Api.from_env()
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
+                api = sly.Api.from_env()
 
                 object_ids = [19369645, 19369646, 19369647]
                 api.volume.object.remove_batch(object_ids)

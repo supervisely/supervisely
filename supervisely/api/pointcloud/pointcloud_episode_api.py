@@ -41,9 +41,6 @@ class PointcloudEpisodeApi(PointcloudApi):
 
             api = sly.Api.from_env()
 
-            # Pass values into the API constructor (optional, not recommended)
-            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
-
             pcd_epsodes_id = 19373295
             pcd_epsodes_info = api.pointcloud_episode.get_info_by_id(pcd_epsodes_id) # api usage example
     """

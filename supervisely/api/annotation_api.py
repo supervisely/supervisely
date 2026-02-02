@@ -88,9 +88,6 @@ class AnnotationApi(ModuleApi):
 
             api = sly.Api.from_env()
 
-            # Pass values into the API constructor (optional, not recommended)
-            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
-
             dataset_id = 254737
             ann_infos = api.annotation.get_list(dataset_id)
     """
@@ -1343,7 +1340,9 @@ class AnnotationApi(ModuleApi):
 
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-                load_dotenv(os.path.expanduser("~/supervisely.env"))
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 label_id = 121236918
@@ -1384,7 +1383,9 @@ class AnnotationApi(ModuleApi):
 
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-                load_dotenv(os.path.expanduser("~/supervisely.env"))
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 label_id = 121236918
@@ -1412,7 +1413,9 @@ class AnnotationApi(ModuleApi):
 
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-                load_dotenv(os.path.expanduser("~/supervisely.env"))
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 new_label: sly.Label
@@ -1451,7 +1454,8 @@ class AnnotationApi(ModuleApi):
 
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-                load_dotenv(os.path.expanduser("~/supervisely.env"))
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
                 api = sly.Api.from_env()
 

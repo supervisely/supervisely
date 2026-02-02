@@ -110,9 +110,19 @@ def get_experiment_infos(api: Api, team_id: int, framework_name: str) -> List[Ex
 
         .. code-block:: python
 
+            import os
+            from dotenv import load_dotenv
+
             import supervisely as sly
 
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv("local.env")
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
+
             api = sly.Api.from_env()
+
             team_id = sly.env.team_id()
             framework_name = "RT-DETRv2"
             experiment_infos = sly.nn.training.experiments.get_experiment_infos(api, team_id, framework_name)
@@ -251,9 +261,19 @@ def get_experiment_info_by_artifacts_dir(
 
         .. code-block:: python
 
+            import os
+            from dotenv import load_dotenv
+
             import supervisely as sly
 
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv("local.env")
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
+
             api = sly.Api.from_env()
+
             team_id = sly.env.team_id()
             artifacts_dir = "/experiments/27_Lemons (Rectangle)/265_RT-DETRv2/"
             experiment_info = sly.nn.training.experiments.get_experiment_info_by_artifacts_dir(api, team_id, artifacts_dir)

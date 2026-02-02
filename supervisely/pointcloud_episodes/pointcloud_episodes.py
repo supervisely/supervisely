@@ -30,9 +30,6 @@ def get_labeling_tool_url(dataset_id, pointcloud_id):
 
             api = sly.Api.from_env()
 
-            # Pass values into the API constructor (optional, not recommended)
-            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
-
             pointcloud_id = 19373403
             pcd_info = api.pointcloud_episodes.get_info_by_id(pointcloud_id)
             url = sly.pointcloud_episodes.get_labeling_tool_url(pcd_info.dataset_id, pcd_info.id)
@@ -72,17 +69,15 @@ def get_labeling_tool_link(url, name="open in labeling tool"):
             # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
             if sly.is_development():
                 load_dotenv(os.path.expanduser("~/supervisely.env"))
+
             api = sly.Api.from_env()
 
-            # Pass values into the API constructor (optional, not recommended)
-            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
-
             pointcloud_id = 19373403
-            pcd_info = api.pointcloud.get_info_by_id(pointcloud_id)
-            url = sly.pointcloud.get_labeling_tool_url(pcd_info.dataset_id, pcd_info.id)
+            pcd_info = api.pointcloud_episodes.get_info_by_id(pointcloud_id)
+            url = sly.pointcloud_episodes.get_labeling_tool_url(pcd_info.dataset_id, pcd_info.id)
             name = "my link"
 
-            link = sly.pointcloud.get_labeling_tool_link(url, name)
+            link = sly.pointcloud_episodes.get_labeling_tool_link(url, name)
 
             print(link)
             # Output:

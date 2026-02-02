@@ -33,9 +33,6 @@ class ObjectClassApi(ModuleApi):
 
             api = sly.Api.from_env()
 
-            # Pass values into the API constructor (optional, not recommended)
-            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
-
             project_id = 1951
             obj_class_infos = api.object_class.get_list(project_id)
     """

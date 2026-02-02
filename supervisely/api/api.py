@@ -117,6 +117,7 @@ class ApiContext:
             # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
             if sly.is_development():
                 load_dotenv(os.path.expanduser("~/supervisely.env"))
+
             api = sly.Api.from_env()
 
             with ApiContext(
@@ -293,8 +294,10 @@ class Api:
 
             api = sly.Api.from_env()
 
-            # Pass values into the API constructor (optional, not recommended)
-            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
+            # Or you can pass values into the API constructor (optional, not recommended)
+            server_address = "https://app.supervisely.com"
+            token = "4r47N...xaTatb"
+            api = sly.Api(server_address, token)
     """
 
     _checked_servers = set()
@@ -532,13 +535,20 @@ class Api:
 
             .. code-block:: python
 
-                    import os
-                    import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-                    api = sly.Api(server_address='https://app.supervisely.com', token='4r47N...xaTatb')
-                    print(api.instance_version)
-                    # Output:
-                    # '6.9.13'
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+                print(api.instance_version)
+                # Output:
+                # '6.9.13'
         """
         try:
             if self._instance_version is None:
@@ -1047,9 +1057,17 @@ class Api:
 
             .. code-block:: python
 
+                import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                api = sly.Api(server_address='https://app.supervisely.com', token='4r47N...xaTatb')
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
                 print(api.api_server_address)
                 # Output: 'https://app.supervisely.com/public/api'
         """

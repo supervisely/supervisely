@@ -266,10 +266,15 @@ def enable_advanced_debug(
         .. code-block:: python
 
             import os
+            from dotenv import load_dotenv
+
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
+
             api = sly.Api.from_env()
 
             # Ensure that the TEAM_ID environment variable is set.

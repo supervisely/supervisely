@@ -72,9 +72,6 @@ def download(
 
             api = sly.Api.from_env()
 
-            # Pass values into the API constructor (optional, not recommended)
-            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
-
             dest_dir = 'your/local/dest/dir'
 
             # Download image project
@@ -335,17 +332,21 @@ def download_fast(
         .. code-block:: python
 
             import os
+            from dotenv import load_dotenv
+
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
+
             api = sly.Api.from_env()
 
             project_id = 8888
             save_directory = "/path/to/save/projects"
 
             sly.download_fast(api, project_id, save_directory)
-
     """
 
     download_async_or_sync(

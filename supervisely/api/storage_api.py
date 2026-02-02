@@ -40,9 +40,6 @@ class StorageApi(FileApi):
 
             api = sly.Api.from_env()
 
-            # Pass values into the API constructor (optional, not recommended)
-            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
-
             team_id = 8
             file_path = "/999_App_Test/"
             files = api.storage.list(team_id, file_path)
@@ -111,6 +108,7 @@ class StorageApi(FileApi):
 
                 import os
                 from dotenv import load_dotenv
+
                 import supervisely as sly
 
                 # Load secrets and create API object from .env file (recommended)
@@ -119,9 +117,6 @@ class StorageApi(FileApi):
                     load_dotenv(os.path.expanduser("~/supervisely.env"))
 
                 api = sly.Api.from_env()
-
-                # Or pass values into the API constructor (optional, not recommended)
-                # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
                 team_id = 8
 

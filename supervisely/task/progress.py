@@ -39,12 +39,18 @@ class Progress:
 
         .. code-block:: python
 
+            import os
+            from dotenv import load_dotenv
+
             import supervisely as sly
             from supervisely.sly_logger import logger
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+            api = sly.Api.from_env()
 
             progress = sly.Progress("Images downloaded: ", len(img_infos), ext_logger=logger, is_size=True, need_info_log=True)
             api.image.download_paths(ds_id, image_ids, save_paths, progress_cb=progress.iters_done_report)

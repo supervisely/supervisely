@@ -392,11 +392,17 @@ class Annotation:
 
             .. code-block:: python
 
+                import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                address = 'https://app.supervisely.com/'
-                token = 'Your Supervisely API Token'
-                api = sly.Api(address, token)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
 
                 team_name = 'Vehicle Detection'
                 workspace_name = 'Cities'
@@ -863,11 +869,17 @@ class Annotation:
 
             .. code-block:: python
 
+                import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                address = 'https://app.supervisely.com/'
-                token = 'Your Supervisely API Token'
-                api = sly.Api(address, token)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
 
                 # Get image and annotation from API
                 project_id = 888
@@ -921,11 +933,17 @@ class Annotation:
 
             .. code-block:: python
 
+                import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                address = 'https://app.supervisely.com/'
-                token = 'Your Supervisely API Token'
-                api = sly.Api(address, token)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
 
                 # Get image and annotation from API
                 project_id = 888
@@ -980,12 +998,18 @@ class Annotation:
 
             .. code-block:: python
 
+                import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
                 from supervisely.geometry.image_rotator import ImageRotator
 
-                address = 'https://app.supervisely.com/'
-                token = 'Your Supervisely API Token'
-                api = sly.Api(address, token)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
 
                 # Get image and annotation from API
                 project_id = 888
@@ -1044,11 +1068,17 @@ class Annotation:
 
             .. code-block:: python
 
+                import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                address = 'https://app.supervisely.com/'
-                token = 'Your Supervisely API Token'
-                api = sly.Api(address, token)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
 
                 # Get image and annotation from API
                 project_id = 888
@@ -1109,11 +1139,17 @@ class Annotation:
 
             .. code-block:: python
 
+                import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                address = 'https://app.supervisely.com/'
-                token = 'Your Supervisely API Token'
-                api = sly.Api(address, token)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
 
                 # Get image and annotation from API
                 project_id = 888
@@ -1170,11 +1206,17 @@ class Annotation:
 
             .. code-block:: python
 
+                import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                address = 'https://app.supervisely.com/'
-                token = 'Your Supervisely API Token'
-                api = sly.Api(address, token)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
 
                 # Get image and annotation from API
                 project_id = 888
@@ -1227,11 +1269,17 @@ class Annotation:
 
             .. code-block:: python
 
+                import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                address = 'https://app.supervisely.com/'
-                token = 'Your Supervisely API Token'
-                api = sly.Api(address, token)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
 
                 # Get image and annotation from API
                 project_id = 888
@@ -1332,11 +1380,17 @@ class Annotation:
 
             .. code-block:: python
 
+                import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                address = 'https://app.supervisely.com/'
-                token = 'Your Supervisely API Token'
-                api = sly.Api(address, token)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
 
                 # Get image and annotation from API
                 project_id = 888
@@ -1409,11 +1463,17 @@ class Annotation:
 
             .. code-block:: python
 
+                import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                address = 'https://app.supervisely.com/'
-                token = 'Your Supervisely API Token'
-                api = sly.Api(address, token)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
 
                 # Get image and annotation from API
                 project_id = 888
@@ -1492,11 +1552,17 @@ class Annotation:
 
             .. code-block:: python
 
+                import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                address = 'https://app.supervisely.com/'
-                token = 'Your Supervisely API Token'
-                api = sly.Api(address, token)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
 
                 # Get image and annotation from API
                 project_id = 888
@@ -1626,11 +1692,17 @@ class Annotation:
 
             .. code-block:: python
 
+                import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                address = 'https://app.supervisely.com/'
-                token = 'Your Supervisely API Token'
-                api = sly.Api(address, token)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
 
                 # Get image and annotation from API
                 project_id = 888
@@ -1689,11 +1761,17 @@ class Annotation:
 
             .. code-block:: python
 
+                import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                address = 'https://app.supervisely.com/'
-                token = 'Your Supervisely API Token'
-                api = sly.Api(address, token)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
 
                 # Get image and annotation from API
                 project_id = 888
@@ -1749,11 +1827,17 @@ class Annotation:
 
             .. code-block:: python
 
+                import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                address = 'https://app.supervisely.com/'
-                token = 'Your Supervisely API Token'
-                api = sly.Api(address, token)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
 
                 # To get Label ID you must first access ProjectMeta
                 PROJECT_ID = 999
@@ -2367,11 +2451,17 @@ class Annotation:
 
             .. code-block:: python
 
+                import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                address = 'https://app.supervisely.com/'
-                token = 'Your Supervisely API Token'
-                api = sly.Api(address, token)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
 
                 # Get image annotation from API
                 project_id = 7548
@@ -2780,11 +2870,17 @@ class Annotation:
 
             .. code-block:: python
 
+                import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                address = 'https://app.supervisely.com/'
-                token = 'Your Supervisely API Token'
-                api = sly.Api(address, token)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
 
                 # Get image annotation from API
                 project_id = 7473

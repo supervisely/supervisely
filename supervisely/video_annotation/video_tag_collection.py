@@ -269,16 +269,15 @@ class VideoTagCollection(TagCollection):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                # You can connect to API directly
-                address = 'https://app.supervisely.com/'
-                token = 'Your Supervisely API Token'
-                api = sly.Api(address, token)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-                # Or you can use API from environment
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
                 api = sly.Api.from_env()
 
                 videos = api.video.get_list(dataset_id)
@@ -303,16 +302,15 @@ class VideoTagCollection(TagCollection):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                # You can connect to API directly
-                address = 'https://app.supervisely.com/'
-                token = 'Your Supervisely API Token'
-                api = sly.Api(address, token)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-                # Or you can use API from environment
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
                 api = sly.Api.from_env()
 
                 videos = api.video.get_list(dataset_id)
@@ -343,16 +341,15 @@ class VideoTagCollection(TagCollection):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                # You can connect to API directly
-                address = 'https://app.supervisely.com/'
-                token = 'Your Supervisely API Token'
-                api = sly.Api(address, token)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-                # Or you can use API from environment
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
                 api = sly.Api.from_env()
 
                 videos = api.video.get_list(dataset_id)

@@ -569,23 +569,24 @@ class PointcloudEpisodeProject(PointcloudProject):
 
             .. code-block:: python
 
-                    import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-                    # Local destination project folder
-                    save_directory = "/home/admin/work/supervisely/source/ptc_project"
+                import supervisely as sly
 
-                    # Obtain server address and your api_token from environment variables
-                    # Edit those values if you run this notebook on your own PC
-                    address = os.environ['SERVER_ADDRESS']
-                    token = os.environ['API_TOKEN']
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-                    # Initialize API object
-                    api = sly.Api(address, token)
-                    project_id = 8888
+                api = sly.Api.from_env()
 
-                    # Download Project
-                    sly.PointcloudEpisodeProject.download(api, project_id, save_directory)
-                    project_fs = sly.PointcloudEpisodeProject(save_directory, sly.OpenMode.READ)
+                project_id = 8888
+                # Local destination project folder
+                save_directory = "/home/admin/work/supervisely/source/ptc_project"
+                # Download Project
+                sly.PointcloudEpisodeProject.download(api, project_id, save_directory)
+                project_fs = sly.PointcloudEpisodeProject(save_directory, sly.OpenMode.READ)
         """
         download_pointcloud_episode_project(
             api=api,
@@ -633,19 +634,19 @@ class PointcloudEpisodeProject(PointcloudProject):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                # Local folder with Pointcloud Project
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                # Local folder with Pointcloud Episodes Project
                 project_directory = "/home/admin/work/supervisely/source/episodes_project"
-
-                # Obtain server address and your api_token from environment variables
-                # Edit those values if you run this notebook on your own PC
-                address = os.environ['SERVER_ADDRESS']
-                token = os.environ['API_TOKEN']
-
-                # Initialize API object
-                api = sly.Api(address, token)
-
                 # Upload Pointcloud Project
                 project_id, project_name = sly.PointcloudEpisodeProject.upload(
                     project_directory,
@@ -748,9 +749,6 @@ def download_pointcloud_episode_project(
 
             api = sly.Api.from_env()
 
-            # Pass values into the API constructor (optional, not recommended)
-            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
-
             dest_dir = 'your/local/dest/dir'
 
             # Download pointcloud episodes project
@@ -759,7 +757,7 @@ def download_pointcloud_episode_project(
             num_pointclouds_ep = project_info.items_count
 
             p = tqdm(desc="Downloading pointcloud project", total=num_pointclouds_ep)
-            sly.download_pointcloud_project(
+            sly.download_pointcloud_episode_project(
                 api,
                 project_id,
                 dest_dir,

@@ -49,12 +49,18 @@ def fliplr(img: np.ndarray, ann: Annotation) -> Tuple[np.ndarray, Annotation]:
 
         .. code-block:: python
 
+            import os
+            from dotenv import load_dotenv
+
             import supervisely as sly
             from supervisely.aug.aug import fliplr
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+            api = sly.Api.from_env()
 
             # Download image and annotation from API
             project_id = 116501
@@ -92,12 +98,18 @@ def flipud(img: np.ndarray, ann: Annotation) -> Tuple[np.ndarray, Annotation]:
 
         .. code-block:: python
 
+            import os
+            from dotenv import load_dotenv
+
             import supervisely as sly
             from supervisely.aug.aug import flipud
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+            api = sly.Api.from_env()
 
             # Download image and annotation from API
             project_id = 116501
@@ -151,12 +163,18 @@ def crop(
 
         .. code-block:: python
 
+            import os
+            from dotenv import load_dotenv
+
             import supervisely as sly
             from supervisely.aug.aug import crop
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+            api = sly.Api.from_env()
 
             # Download image and annotation from API
             project_id = 116501
@@ -216,12 +234,18 @@ def crop_fraction(
 
         .. code-block:: python
 
+            import os
+            from dotenv import load_dotenv
+
             import supervisely as sly
             from supervisely.aug.aug import crop_fraction
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+            api = sly.Api.from_env()
 
             # Download image and annotation from API
             project_id = 116501
@@ -281,12 +305,18 @@ def random_crop(
 
         .. code-block:: python
 
+            import os
+            from dotenv import load_dotenv
+
             import supervisely as sly
             from supervisely.aug.aug import random_crop
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+            api = sly.Api.from_env()
 
             # Download image and annotation from API
             project_id = 116501
@@ -352,12 +382,19 @@ def random_crop_fraction(
 
         .. code-block:: python
 
+
+            import os
+            from dotenv import load_dotenv
+
             import supervisely as sly
             from supervisely.aug.aug import random_crop_fraction
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+            api = sly.Api.from_env()
 
             # Download image and annotation from API
             project_id = 116501
@@ -471,12 +508,18 @@ def instance_crop(
 
         .. code-block:: python
 
+            import os
+            from dotenv import load_dotenv
+
             import supervisely as sly
             from supervisely.aug.aug import instance_crop
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+            api = sly.Api.from_env()
 
             # Download image and annotation from API
             project_id = 116501
@@ -554,12 +597,18 @@ def resize(
 
         .. code-block:: python
 
+            import os
+            from dotenv import load_dotenv
+
             import supervisely as sly
             from supervisely.aug.aug import resize
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+            api = sly.Api.from_env()
 
             # Download image and annotation from API
             project_id = 116501
@@ -619,12 +668,18 @@ def scale(
 
         .. code-block:: python
 
+            import os
+            from dotenv import load_dotenv
+
             import supervisely as sly
             from supervisely.aug.aug import scale
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+            api = sly.Api.from_env()
 
             # Download image and annotation from API
             project_id = 116501
@@ -682,12 +737,18 @@ def rotate(
 
         .. code-block:: python
 
+            import os
+            from dotenv import load_dotenv
+
             import supervisely as sly
             from supervisely.aug.aug import rotate
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+            api = sly.Api.from_env()
 
             # Download image and annotation from API
             project_id = 116501

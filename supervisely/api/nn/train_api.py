@@ -434,6 +434,8 @@ class TrainApi:
                 import supervisely as sly
                 from supervisely.api.nn.train_api import TrainApi
 
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
                 if sly.is_development():
                     load_dotenv("local.env")
                     load_dotenv(os.path.expanduser("~/supervisely.env"))

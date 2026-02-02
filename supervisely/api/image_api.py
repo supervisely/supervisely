@@ -437,9 +437,6 @@ class ImageApi(RemoveableBulkModuleApi):
 
             api = sly.Api.from_env()
 
-            # Pass values into the API constructor (optional, not recommended)
-            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
-
             image_info = api.image.get_info_by_id(image_id) # api usage example
     """
 
@@ -1126,9 +1123,9 @@ class ImageApi(RemoveableBulkModuleApi):
             .. code-block:: python
 
                 import os
-                import supervisely as sly
-
                 from dotenv import load_dotenv
+
+                import supervisely as sly
 
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
@@ -1203,9 +1200,9 @@ class ImageApi(RemoveableBulkModuleApi):
             .. code-block:: python
 
                 import os
-                import supervisely as sly
-
                 from dotenv import load_dotenv
+
+                import supervisely as sly
 
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
@@ -1266,9 +1263,9 @@ class ImageApi(RemoveableBulkModuleApi):
             .. code-block:: python
 
                 import os
-                import supervisely as sly
-
                 from dotenv import load_dotenv
+
+                import supervisely as sly
 
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
@@ -1316,9 +1313,9 @@ class ImageApi(RemoveableBulkModuleApi):
             .. code-block:: python
 
                 import os
-                import supervisely as sly
-
                 from dotenv import load_dotenv
+
+                import supervisely as sly
 
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
@@ -1469,9 +1466,9 @@ class ImageApi(RemoveableBulkModuleApi):
             .. code-block::
 
                 import os
-                import supervisely as sly
-
                 from dotenv import load_dotenv
+
+                import supervisely as sly
 
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
@@ -1643,9 +1640,9 @@ class ImageApi(RemoveableBulkModuleApi):
             .. code-block:: python
 
                 import os
-                import supervisely as sly
-
                 from dotenv import load_dotenv
+
+                import supervisely as sly
 
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
@@ -1719,9 +1716,9 @@ class ImageApi(RemoveableBulkModuleApi):
             .. code-block:: python
 
                 import os
-                import supervisely as sly
-
                 from dotenv import load_dotenv
+
+                import supervisely as sly
 
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
@@ -1785,9 +1782,9 @@ class ImageApi(RemoveableBulkModuleApi):
             .. code-block:: python
 
                 import os
-                import supervisely as sly
-
                 from dotenv import load_dotenv
+
+                import supervisely as sly
 
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
@@ -1925,7 +1922,6 @@ class ImageApi(RemoveableBulkModuleApi):
 
                 import supervisely as sly
 
-
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
                 if sly.is_development():
@@ -2061,7 +2057,6 @@ class ImageApi(RemoveableBulkModuleApi):
 
                 import supervisely as sly
 
-
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
                 if sly.is_development():
@@ -2164,7 +2159,6 @@ class ImageApi(RemoveableBulkModuleApi):
 
                 import supervisely as sly
 
-
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
                 if sly.is_development():
@@ -2241,7 +2235,6 @@ class ImageApi(RemoveableBulkModuleApi):
                 from dotenv import load_dotenv
 
                 import supervisely as sly
-
 
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
@@ -2341,7 +2334,6 @@ class ImageApi(RemoveableBulkModuleApi):
                 from dotenv import load_dotenv
 
                 import supervisely as sly
-
 
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
@@ -2454,13 +2446,18 @@ class ImageApi(RemoveableBulkModuleApi):
 
             .. code-block:: python
 
+                import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
                 from supervisely.api.module_api import ApiField
 
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-                server_address = 'https://app.supervisely.com'
-                api_token = 'Your Supervisely API Token'
-                api = sly.Api(server_address, api_token)
+                api = sly.Api.from_env()
 
                 dataset_id = 452984
                 names = ['lemon_1.jpg', 'lemon_1.jpg']
@@ -2589,7 +2586,6 @@ class ImageApi(RemoveableBulkModuleApi):
                 from dotenv import load_dotenv
 
                 import supervisely as sly
-
 
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
@@ -2953,7 +2949,6 @@ class ImageApi(RemoveableBulkModuleApi):
 
                 import supervisely as sly
 
-
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
                 if sly.is_development():
@@ -3060,7 +3055,6 @@ class ImageApi(RemoveableBulkModuleApi):
 
                 import supervisely as sly
 
-
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
                 if sly.is_development():
@@ -3159,7 +3153,6 @@ class ImageApi(RemoveableBulkModuleApi):
 
                 import supervisely as sly
 
-
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
                 if sly.is_development():
@@ -3233,7 +3226,6 @@ class ImageApi(RemoveableBulkModuleApi):
 
                 import supervisely as sly
 
-
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
                 if sly.is_development():
@@ -3292,7 +3284,6 @@ class ImageApi(RemoveableBulkModuleApi):
 
                 import supervisely as sly
 
-
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
                 if sly.is_development():
@@ -3336,7 +3327,6 @@ class ImageApi(RemoveableBulkModuleApi):
                 from dotenv import load_dotenv
 
                 import supervisely as sly
-
 
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
@@ -3384,7 +3374,6 @@ class ImageApi(RemoveableBulkModuleApi):
                 from dotenv import load_dotenv
 
                 import supervisely as sly
-
 
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
@@ -3494,7 +3483,6 @@ class ImageApi(RemoveableBulkModuleApi):
 
                 import supervisely as sly
 
-
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
                 if sly.is_development():
@@ -3570,7 +3558,6 @@ class ImageApi(RemoveableBulkModuleApi):
 
                 import supervisely as sly
 
-
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
                 if sly.is_development():
@@ -3613,7 +3600,6 @@ class ImageApi(RemoveableBulkModuleApi):
                 from dotenv import load_dotenv
 
                 import supervisely as sly
-
 
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
@@ -3662,7 +3648,6 @@ class ImageApi(RemoveableBulkModuleApi):
                 from dotenv import load_dotenv
 
                 import supervisely as sly
-
 
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
@@ -3715,7 +3700,6 @@ class ImageApi(RemoveableBulkModuleApi):
 
                 import supervisely as sly
 
-
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
                 if sly.is_development():
@@ -3752,7 +3736,6 @@ class ImageApi(RemoveableBulkModuleApi):
                 from dotenv import load_dotenv
 
                 import supervisely as sly
-
 
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
@@ -3901,7 +3884,6 @@ class ImageApi(RemoveableBulkModuleApi):
 
                 import supervisely as sly
 
-
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
                 if sly.is_development():
@@ -3951,7 +3933,6 @@ class ImageApi(RemoveableBulkModuleApi):
                 from dotenv import load_dotenv
 
                 import supervisely as sly
-
 
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
@@ -4016,7 +3997,6 @@ class ImageApi(RemoveableBulkModuleApi):
                 from dotenv import load_dotenv
 
                 import supervisely as sly
-
 
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
@@ -4089,7 +4069,6 @@ class ImageApi(RemoveableBulkModuleApi):
                 from dotenv import load_dotenv
 
                 import supervisely as sly
-
 
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
@@ -4165,7 +4144,6 @@ class ImageApi(RemoveableBulkModuleApi):
 
                 import supervisely as sly
 
-
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
                 if sly.is_development():
@@ -4220,6 +4198,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
                 import os
                 from dotenv import load_dotenv
+
                 import supervisely as sly
 
                 # Load secrets and create API object from .env file (recommended)
@@ -4426,9 +4405,6 @@ class ImageApi(RemoveableBulkModuleApi):
 
                 import supervisely as sly
 
-                # Option 1
-
-
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
                 if sly.is_development():
@@ -4436,6 +4412,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
                 api = sly.Api.from_env()
 
+                # Option 1
                 BATCH_SIZE = 6
                 image_ids = [2389126, 2389127, 2389128, 2389129, 2389130, 2389131, ...]
 
@@ -4444,17 +4421,6 @@ class ImageApi(RemoveableBulkModuleApi):
                     api.image.group_images_for_multiview(ids, group_name)
 
                 # Option 2 (with sly.ApiContext)
-                import os
-                from dotenv import load_dotenv
-                import supervisely as sly
-
-                # Load secrets and create API object from .env file (recommended)
-                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-                if sly.is_development():
-                    load_dotenv(os.path.expanduser("~/supervisely.env"))
-
-                api = sly.Api.from_env()
-
                 BATCH_SIZE = 6
                 image_ids = [2389126, 2389127, 2389128, 2389129, 2389130, 2389131, ...]
                 project_id = 111111 # change to your project id
@@ -4845,6 +4811,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
                 import os
                 from dotenv import load_dotenv
+
                 import supervisely as sly
 
                 # Load secrets and create API object from .env file (recommended)
@@ -5008,7 +4975,6 @@ class ImageApi(RemoveableBulkModuleApi):
 
                 import supervisely as sly
 
-
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
                 if sly.is_development():
@@ -5073,7 +5039,6 @@ class ImageApi(RemoveableBulkModuleApi):
 
                 import supervisely as sly
 
-
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
                 if sly.is_development():
@@ -5087,8 +5052,8 @@ class ImageApi(RemoveableBulkModuleApi):
                 img_ids = [image.id for image in images]
                 loop = sly.utils.get_or_create_event_loop()
                 results = loop.run_until_complete(
-                                api.image.download_nps_async(img_ids, semaphore)
-                            )
+                    api.image.download_nps_async(img_ids, semaphore)
+                )
 
         """
         if semaphore is None:
@@ -5146,7 +5111,6 @@ class ImageApi(RemoveableBulkModuleApi):
                 from dotenv import load_dotenv
 
                 import supervisely as sly
-
 
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
@@ -5239,7 +5203,6 @@ class ImageApi(RemoveableBulkModuleApi):
 
                 import supervisely as sly
 
-
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
                 if sly.is_development():
@@ -5317,7 +5280,6 @@ class ImageApi(RemoveableBulkModuleApi):
                 from dotenv import load_dotenv
 
                 import supervisely as sly
-
 
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
@@ -5403,7 +5365,6 @@ class ImageApi(RemoveableBulkModuleApi):
 
                 import supervisely as sly
 
-
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
                 if sly.is_development():
@@ -5472,7 +5433,6 @@ class ImageApi(RemoveableBulkModuleApi):
                 from dotenv import load_dotenv
 
                 import supervisely as sly
-
 
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
@@ -5570,7 +5530,6 @@ class ImageApi(RemoveableBulkModuleApi):
                     from dotenv import load_dotenv
 
                     import supervisely as sly
-
 
                     # Load secrets and create API object from .env file (recommended)
                     # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
@@ -5686,7 +5645,6 @@ class ImageApi(RemoveableBulkModuleApi):
                 from dotenv import load_dotenv
 
                 import supervisely as sly
-
 
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
@@ -5922,7 +5880,6 @@ class ImageApi(RemoveableBulkModuleApi):
                 from dotenv import load_dotenv
 
                 import supervisely as sly
-
 
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication

@@ -83,9 +83,6 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
 
             api = sly.Api.from_env()
 
-            # Or pass values into the API constructor (optional, not recommended)
-            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
-
             task_id = 121230
             task_info = api.task.get_info_by_id(task_id)
     """
@@ -158,7 +155,6 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
 
                 import supervisely as sly
 
-
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
                 if sly.is_development():
@@ -218,7 +214,6 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                 from dotenv import load_dotenv
 
                 import supervisely as sly
-
 
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
@@ -286,7 +281,6 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                 from dotenv import load_dotenv
 
                 import supervisely as sly
-
 
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication

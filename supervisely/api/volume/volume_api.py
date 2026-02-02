@@ -199,9 +199,6 @@ class VolumeApi(RemoveableBulkModuleApi):
 
             api = sly.Api.from_env()
 
-            # Pass values into the API constructor (optional, not recommended)
-            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
-
             volume_id = 19581134
             volume_info = api.volume.get_info_by_id(volume_id) # api usage example
     """
@@ -804,7 +801,6 @@ class VolumeApi(RemoveableBulkModuleApi):
 
                 api = sly.Api.from_env()
 
-
                 dicom_dir_name = "src/upload/MRHead_dicom/"
                 series_infos = sly.volume.inspect_dicom_series(root_dir=dicom_dir_name)
 
@@ -892,7 +888,6 @@ class VolumeApi(RemoveableBulkModuleApi):
                     load_dotenv(os.path.expanduser("~/supervisely.env"))
 
                 api = sly.Api.from_env()
-
 
                 local_path = "src/upload/nrrd/MRHead.nrrd"
 

@@ -54,9 +54,6 @@ def upload(
 
             api = sly.Api.from_env()
 
-            # Pass values into the API constructor (optional, not recommended)
-            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
-
             src_dir = '/your/local/source/dir'
 
             # Upload image project

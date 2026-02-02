@@ -203,10 +203,15 @@ class RemoteStorageApi(ModuleApiBase):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 provider = "s3" # can be one of ["s3", "google", "azure"]
@@ -270,10 +275,15 @@ class RemoteStorageApi(ModuleApiBase):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 provider = "s3"
@@ -312,9 +322,6 @@ class RemoteStorageApi(ModuleApiBase):
                     load_dotenv(os.path.expanduser("~/supervisely.env"))
 
                 api = sly.Api.from_env()
-
-                # Or pass values into the API constructor (optional, not recommended)
-                # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
                 team_id = 123
                 available_providers = api.remote_storage.get_list_available_providers(team_id)
@@ -374,9 +381,6 @@ class RemoteStorageApi(ModuleApiBase):
 
                 api = sly.Api.from_env()
 
-                # Or pass values into the API constructor (optional, not recommended)
-                # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
-
                 team_id = 123
                 supported_providers = api.remote_storage.get_list_supported_providers(team_id)
 
@@ -434,9 +438,6 @@ class RemoteStorageApi(ModuleApiBase):
 
                 api = sly.Api.from_env()
 
-                # Pass values into the API constructor (optional, not recommended)
-                # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
-
                 path = "s3://bucket/lemons/ds1/img/IMG_444.jpeg"
                 is_exist = api.remote_storage.is_path_exist(path)
 
@@ -489,9 +490,6 @@ class RemoteStorageApi(ModuleApiBase):
                     load_dotenv(os.path.expanduser("~/supervisely.env"))
 
                 api = sly.Api.from_env()
-
-                # Or pass values into the API constructor (optional, not recommended)
-                # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
                 path = "s3://bucket/lemons/ds1/img/IMG_444.jpeg"
                 team_id = 123

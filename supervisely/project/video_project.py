@@ -1173,21 +1173,20 @@ class VideoProject(Project):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                # Local destination Project folder
-                save_directory = "/home/admin/work/supervisely/source/video_project"
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-                # Obtain server address and your api_token from environment variables
-                # Edit those values if you run this notebook on your own PC
-                address = os.environ['SERVER_ADDRESS']
-                token = os.environ['API_TOKEN']
-
-                # Initialize API object
-                api = sly.Api(address, token)
-                project_id = 8888
+                api = sly.Api.from_env()
 
                 # Download Video Project
+                project_id = 8888
+                save_directory = "/home/admin/work/supervisely/source/video_project"
                 sly.VideoProject.download(api, project_id, save_directory)
                 project_fs = sly.VideoProject(save_directory, sly.OpenMode.READ)
         """
@@ -1233,27 +1232,26 @@ class VideoProject(Project):
 
             .. code-block:: python
 
-                    import os
-                    import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-                    # Local folder with Video Project
-                    project_directory = "/home/admin/work/supervisely/source/video_project"
+                import supervisely as sly
 
-                    # Obtain server address and your api_token from environment variables
-                    # Edit those values if you run this notebook on your own PC
-                    address = os.environ['SERVER_ADDRESS']
-                    token = os.environ['API_TOKEN']
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-                    # Initialize API object
-                    api = sly.Api(address, token)
+                api = sly.Api.from_env()
 
-                    # Upload Video Project
-                    project_id, project_name = sly.VideoProject.upload(
-                        project_directory,
-                        api,
-                        workspace_id=45,
-                        project_name="My Video Project"
-                    )
+                # Upload Video Project
+                project_directory = "/home/admin/work/supervisely/source/video_project"
+                project_id, project_name = sly.VideoProject.upload(
+                    project_directory,
+                    api,
+                    workspace_id=45,
+                    project_name="My Video Project"
+                )
         """
         return upload_video_project(
             dir=dir,
@@ -1310,11 +1308,16 @@ class VideoProject(Project):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
                 from supervisely._utils import run_coroutine
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 save_directory = "/home/admin/work/supervisely/source/video_project"
@@ -2089,9 +2092,6 @@ def download_video_project(
 
             api = sly.Api.from_env()
 
-            # Pass values into the API constructor (optional, not recommended)
-            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
-
             dest_dir = 'your/local/dest/dir'
 
             # Download video project
@@ -2428,13 +2428,15 @@ async def download_video_project_async(
         .. code-block:: python
 
             import os
-            from tqdm import tqdm
             from dotenv import load_dotenv
 
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
+
             api = sly.Api.from_env()
 
             dest_dir = 'your/local/dest/dir'

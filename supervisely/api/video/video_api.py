@@ -253,9 +253,6 @@ class VideoApi(RemoveableBulkModuleApi):
 
             api = sly.Api.from_env()
 
-            # Pass values into the API constructor (optional, not recommended)
-            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
-
             video_id = 19371139
             video_info = api.video.get_info_by_id(video_id) # api usage example
     """
@@ -1433,6 +1430,7 @@ class VideoApi(RemoveableBulkModuleApi):
                     load_dotenv(os.path.expanduser("~/supervisely.env"))
 
                 api = sly.Api.from_env()
+
                 video_id = 198835945
                 start_fr = 5
                 end_fr= 35
@@ -1626,7 +1624,6 @@ class VideoApi(RemoveableBulkModuleApi):
                 from dotenv import load_dotenv
 
                 import supervisely as sly
-
 
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
@@ -1988,7 +1985,6 @@ class VideoApi(RemoveableBulkModuleApi):
                     load_dotenv(os.path.expanduser("~/supervisely.env"))
 
                 api = sly.Api.from_env()
-
 
                 dataset_id = 56443
                 video_ids = [19388386, 19388387, 19388388]
@@ -2398,9 +2394,9 @@ class VideoApi(RemoveableBulkModuleApi):
             .. code-block:: python
 
                 import os
-                import supervisely as sly
-
                 from dotenv import load_dotenv
+
+                import supervisely as sly
 
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
@@ -2583,7 +2579,15 @@ class VideoApi(RemoveableBulkModuleApi):
 
             .. code-block:: python
 
+                import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
                 api = sly.Api.from_env()
 

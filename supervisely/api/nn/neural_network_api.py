@@ -70,7 +70,17 @@ class NeuralNetworkApi:
 
                 import supervisely as sly
 
-                api = sly.Api()
+                import os
+                from dotenv import load_dotenv
+
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
                 model = api.nn.deploy(model="RT-DETRv2/RT-DETRv2-M")
         """
 
@@ -160,9 +170,17 @@ class NeuralNetworkApi:
 
             .. code-block:: python
 
+                import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                api = sly.Api()
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
                 deployed_models = api.nn.list_deployed_models(framework="RT-DETRv2")
         """
         # 1. Define apps

@@ -153,10 +153,15 @@ class FigureApi(RemoveableBulkModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 tuple_name = api.video.figure.info_tuple_name()
@@ -179,14 +184,18 @@ class FigureApi(RemoveableBulkModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                figure_id = 588801373
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
                 api = sly.Api.from_env()
 
+                figure_id = 588801373
                 figure_info = api.video.figure.get_info_by_id(figure_id)
                 print(figure_info)
                 # Output: [
@@ -284,10 +293,15 @@ class FigureApi(RemoveableBulkModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 dataset_id = 466642
@@ -706,10 +720,15 @@ class FigureApi(RemoveableBulkModuleApi):
 
                 import os
                 import asyncio
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 figure_ids = [642155547, 642155548, 642155549]
@@ -759,22 +778,27 @@ class FigureApi(RemoveableBulkModuleApi):
 
             .. code-block:: python
 
-                impport os
+                import os
                 import asyncio
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 figure_ids = [642155547, 642155548, 642155549]
                 geometries = [{...}, {...}, {...}]  # Your geometry data
 
                 upload_coroutine = api.figure.upload_geometries_batch_async(
-                        figure_ids,
-                        geometries,
-                        semaphore=asyncio.Semaphore(10),
-                    )
+                    figure_ids,
+                    geometries,
+                    semaphore=asyncio.Semaphore(10),
+                )
                 sly.run_coroutine(upload_coroutine)
         """
         if semaphore is None:
@@ -854,10 +878,15 @@ class FigureApi(RemoveableBulkModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 dataset_id = 12345
@@ -1026,10 +1055,15 @@ class FigureApi(RemoveableBulkModuleApi):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 dataset_id = 12345

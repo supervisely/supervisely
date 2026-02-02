@@ -1274,7 +1274,9 @@ def parse_agent_id_and_path(remote_path: str) -> Tuple[int, str]:
 
             # Load secrets and create API object from .env file (recommended)
             # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
+
             api = sly.Api.from_env()
 
             # Parse agent id and path in agent folder from remote_path

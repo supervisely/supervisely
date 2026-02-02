@@ -170,9 +170,6 @@ class TeamApi(ModuleNoParent, UpdateableModule):
 
             api = sly.Api.from_env()
 
-            # Or pass values into the API constructor (optional, not recommended)
-            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
-
             team_info = api.team.get_info_by_id(team_id) # api usage example
     """
 
@@ -233,7 +230,6 @@ class TeamApi(ModuleNoParent, UpdateableModule):
                 from dotenv import load_dotenv
 
                 import supervisely as sly
-
 
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication

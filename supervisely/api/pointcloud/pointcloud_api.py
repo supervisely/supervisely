@@ -153,9 +153,6 @@ class PointcloudApi(RemoveableBulkModuleApi):
 
             api = sly.Api.from_env()
 
-            # Or pass values into the API constructor (optional, not recommended)
-            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
-
             pcd_id = 19618654
             pcd_info = api.pointcloud.get_info_by_id(pcd_id) # api usage example
     """
@@ -306,8 +303,6 @@ class PointcloudApi(RemoveableBulkModuleApi):
 
                 import supervisely as sly
 
-                from dotenv import load_dotenv
-
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
                 if sly.is_development():
@@ -376,8 +371,6 @@ class PointcloudApi(RemoveableBulkModuleApi):
 
                 import supervisely as sly
 
-                from dotenv import load_dotenv
-
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
                 if sly.is_development():
@@ -419,8 +412,6 @@ class PointcloudApi(RemoveableBulkModuleApi):
                 from dotenv import load_dotenv
 
                 import supervisely as sly
-
-                from dotenv import load_dotenv
 
                 # Load secrets and create API object from .env file (recommended)
                 # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication

@@ -42,9 +42,6 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
 
             api = sly.Api.from_env()
 
-            # Or pass values into the API constructor (optional, not recommended)
-            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
-
             workspace_info = api.workspace.get_info_by_id(workspace_id) # api usage example
     """
 

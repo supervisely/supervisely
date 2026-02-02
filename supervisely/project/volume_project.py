@@ -196,24 +196,23 @@ class VolumeProject(VideoProject):
 
             .. code-block:: python
 
-                    import os
-                    import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-                    # Local destination Volume Project folder
-                    save_directory = "/home/admin/work/supervisely/source/vlm_project"
+                import supervisely as sly
 
-                    # Obtain server address and your api_token from environment variables
-                    # Edit those values if you run this notebook on your own PC
-                    address = os.environ['SERVER_ADDRESS']
-                    token = os.environ['API_TOKEN']
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-                    # Initialize API object
-                    api = sly.Api(address, token)
-                    project_id = 8888
+                api = sly.Api.from_env()
 
-                    # Download Project
-                    sly.VolumeProject.download(api, project_id, save_directory)
-                    project_fs = sly.VolumeProject(save_directory, sly.OpenMode.READ)
+                # Download Project
+                project_id = 8888
+                save_directory = "/home/admin/work/supervisely/source/vlm_project"
+                sly.VolumeProject.download(api, project_id, save_directory)
+                project_fs = sly.VolumeProject(save_directory, sly.OpenMode.READ)
         """
         download_volume_project(
             api=api,
@@ -279,9 +278,16 @@ class VolumeProject(VideoProject):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                api = sly.Api(os.environ["SERVER_ADDRESS"], os.environ["API_TOKEN"])
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
 
                 # 1) Save snapshot to disk
                 out_path = sly.VolumeProject.download_bin(
@@ -446,20 +452,19 @@ class VolumeProject(VideoProject):
             .. code-block:: python
 
                 import os
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                # Local folder with Volume Project
-                project_directory = "/home/admin/work/supervisely/source/vlm_project"
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-                # Obtain server address and your api_token from environment variables
-                # Edit those values if you run this notebook on your own PC
-                address = os.environ['SERVER_ADDRESS']
-                token = os.environ['API_TOKEN']
-
-                # Initialize API object
-                api = sly.Api(address, token)
+                api = sly.Api.from_env()
 
                 # Upload Volume Project
+                project_directory = "/home/admin/work/supervisely/source/vlm_project"
                 project_id, project_name = sly.VolumeProject.upload(
                     project_directory,
                     api,
@@ -993,9 +998,6 @@ def download_volume_project(
                 load_dotenv(os.path.expanduser("~/supervisely.env"))
 
             api = sly.Api.from_env()
-
-            # Pass values into the API constructor (optional, not recommended)
-            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
             dest_dir = 'your/local/dest/dir'
 
