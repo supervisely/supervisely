@@ -388,6 +388,8 @@ class TrainApi:
         """
         Start a training application task for a project.
 
+        You can read more about the training API in the [Training API documentation](https://developer.supervisely.com/advanced-user-guide/automate-with-python-sdk-and-api/training-api).
+
         :param agent_id: Agent ID where the app task will run.
         :type agent_id: int
         :param project_id: Project ID to train on.
@@ -529,7 +531,8 @@ class TrainApi:
         return task_info
 
     def find_train_app_by_framework(self, framework: str):
-        """Find a training app module for the given framework.
+        """
+        Find a training app module for the given framework.
 
         :param framework: Framework name (e.g. "RT-DETRv2", "YOLO", "DEIM").
         :type framework: str
@@ -548,6 +551,43 @@ class TrainApi:
         agent_id: int = None,
         **kwargs
     ) -> Dict:
+        """
+        Finetune best checkpoint from a previous training task.
+
+        :param task_id: Task ID to finetune best checkpoint from.
+        :type task_id: int
+        :param project_id: Project ID to train on. If not provided, will use project ID from the provided Task ID
+        :type project_id: int
+        :param agent_id: Agent ID where the app task will run. If not provided, will use the most available agent from the current team.
+        :type agent_id: int
+        :returns: Task information dict for the created app task.
+        :rtype: Dict[str, Any]
+        :raises ValueError: If a suitable training app cannot be found for the detected framework.
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import os
+                from dotenv import load_dotenv
+
+                import supervisely as sly
+                from supervisely.api.nn.train_api import TrainApi
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv("local.env")
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                agent_id = sly.env.agent_id()
+                project_id = sly.env.project_id()
+
+                train = TrainApi(api)
+                train.finetune(agent_id, project_id, task_id=123)
+        """
         experiment_info = get_experiment_info_by_task_id(self._api, task_id)
         if experiment_info is None:
             raise ValueError(f"Not found experiment data for task {task_id}")
@@ -573,13 +613,46 @@ class TrainApi:
         )
         return task_info
 
-    def run_new(
-        self,
-        task_id: int,
-        project_id: int = None,
-        agent_id: int = None,
-        **kwargs
+    def rerun_from_task_id(
+        self, task_id: int, project_id: int = None, agent_id: int = None, **kwargs
     ):
+        """
+        Rerun a training application task from a previous task.
+
+        :param task_id: Task ID to rerun from.
+        :type task_id: int
+        :param project_id: Project ID to train on. If not provided, will use project ID from the provided Task ID
+        :type project_id: int
+        :param agent_id: Agent ID where the app task will run. If not provided, will use the most available agent from the current team.
+        :type agent_id: int
+        :returns: Task information dict for the created app task.
+        :rtype: Dict[str, Any]
+        :raises ValueError: If a suitable training app cannot be found for the detected framework.
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import os
+                from dotenv import load_dotenv
+
+                import supervisely as sly
+                from supervisely.api.nn.train_api import TrainApi
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv("local.env")
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                agent_id = sly.env.agent_id()
+                project_id = sly.env.project_id()
+
+                train = TrainApi(api)
+                train.rerun_from_task_id(agent_id, project_id, task_id=123)
+        """
         experiment_info = get_experiment_info_by_task_id(self._api, task_id)
         if experiment_info is None:
             raise ValueError(f"Not found experiment data for task {task_id}")
