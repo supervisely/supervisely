@@ -991,7 +991,6 @@ class TrainGUI:
         :param validate: Validate the step.
         :type validate: bool
         """
-        logger.debug("Init classes from app state", extra={"classes_settings": classes_settings})
         if self.classes_selector is None:
             return True  # Selector disabled by app options
 
