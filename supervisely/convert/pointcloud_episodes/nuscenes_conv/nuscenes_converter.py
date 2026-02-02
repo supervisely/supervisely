@@ -59,9 +59,6 @@ class NuscenesEpisodesConverter(PointcloudEpisodeConverter):
             logger.warning("Please, run 'pip install nuscenes-devkit' to import NuScenes data.")
             return False
 
-        if self.upload_as_links and self.supports_links:
-            self._download_remote_ann_files()
-
         table_json_filenames = [f"{name}.json" for name in helpers.TABLE_NAMES]
 
         def _contains_tables(dir_path: str) -> bool:

@@ -13,6 +13,10 @@ from supervisely.pointcloud.pointcloud import validate_ext as validate_pcd_ext
 
 class SLYPointcloudConverter(PointcloudConverter):
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._supports_links = True
+
     def __str__(self) -> str:
         return AvailablePointcloudConverters.SLY
 
@@ -46,7 +50,7 @@ class SLYPointcloudConverter(PointcloudConverter):
             return False
 
     def validate_format(self) -> bool:
-        if self.upload_as_links and self._supports_links:
+        if self.upload_as_links and self.supports_links:
             self._download_remote_ann_files()
         pcd_list, ann_dict, rimg_dict, rimg_ann_dict = [], {}, {}, {}
         for root, _, files in os.walk(self._input_data):

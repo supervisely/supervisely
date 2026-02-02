@@ -8,8 +8,10 @@ from tqdm import tqdm
 
 from supervisely._utils import batched, get_or_create_event_loop, is_production
 from supervisely.annotation.annotation import Annotation
+from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.tag_meta import TagValueType
 from supervisely.api.api import Api
+from supervisely.geometry.graph import GraphNodes
 from supervisely.io.env import team_id
 from supervisely.io.fs import (
     get_file_ext,
@@ -19,8 +21,6 @@ from supervisely.io.fs import (
     silent_remove,
     unpack_archive,
 )
-from supervisely.annotation.obj_class import ObjClass
-from supervisely.geometry.graph import GraphNodes
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_settings import LabelingInterface
 from supervisely.sly_logger import logger
@@ -267,8 +267,9 @@ class BaseConverter:
             if not converter.validate_labeling_interface():
                 continue
 
-            if self.upload_as_links and not converter.supports_links:
-                continue
+            if not str(converter) in AvailablePointcloudConverters.__dict__.values():
+                if self.upload_as_links and not converter.supports_links:
+                    continue
 
             if converter.validate_format():
                 logger.info(f"Detected format: {str(converter)}")

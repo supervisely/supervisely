@@ -57,6 +57,7 @@ class NuscenesConverter(NuscenesEpisodesConverter, PointcloudConverter):
         return PointcloudAnnotation(PointcloudObjectCollection(objs), figures)
 
     def upload_dataset(self, api: Api, dataset_id: int, batch_size: int = 1, log_progress=True):
+        self._validate_links_support()
         from nuscenes.nuscenes import NuScenes  # pylint: disable=import-error
 
         nuscenes: NuScenes = self._nuscenes
@@ -82,13 +83,6 @@ class NuscenesConverter(NuscenesEpisodesConverter, PointcloudConverter):
         scene_names = [scene["name"] for scene in nuscenes.scene]
         scene_cnt = len(scene_names)
         total_sample_cnt = sum([scene["nbr_samples"] for scene in nuscenes.scene])
-
-        # upload_fn = (
-        #     api.pointcloud.upload_link
-        #     if self.upload_as_links
-        #     else api.pointcloud.upload_path
-        # )
-        upload_fn = api.pointcloud.upload_path
 
         multiple_scenes = len(scene_names) > 1
         if multiple_scenes:
@@ -184,18 +178,7 @@ class NuscenesConverter(NuscenesEpisodesConverter, PointcloudConverter):
                     "location": log["location"],
                     "description": scene["description"],
                 }
-                kwargs = {
-                    "dataset_id": current_dataset_id,
-                    "name": pcd_name,
-                    "meta": pcd_path,
-                    "path": pcd_meta,
-                }
-                # if self.upload_as_links:
-                #     kwargs.pop("path")
-                #     kwargs["link"] = self.remote_files_map.get(
-                #         os.path.relpath(pcd_path), pcd_path
-                #     )
-                info = upload_fn(**kwargs)
+                info = api.pointcloud.upload_path(current_dataset_id, pcd_name, pcd_path, pcd_meta)
                 fs.silent_remove(pcd_path)
 
                 pcd_id = info.id

@@ -1,6 +1,5 @@
 import re
 from collections import defaultdict
-from os import path as osp
 from pathlib import Path
 from typing import Dict, Optional, Union
 
@@ -75,8 +74,6 @@ class BagConverter(PointcloudConverter):
 
     def validate_format(self) -> bool:
         import rosbag  # pylint: disable=import-error
-        if self.upload_as_links and self.supports_links:
-            self._download_remote_ann_files()
 
         def _filter_fn(file_path):
             return get_file_ext(file_path).lower() == self.key_file_ext
@@ -195,6 +192,7 @@ class BagConverter(PointcloudConverter):
         Converts and uploads bag files to Supervisely dataset.
         Note: This method is used by both the BagConverter and the BagEpisodeConverter.
         """
+        self._validate_links_support()
         obj_cls = ObjClass("object", Cuboid3d)
         self._meta = ProjectMeta(obj_classes=[obj_cls])
         meta, _, _ = self.merge_metas_with_conflicts(api, dataset_id)
@@ -226,17 +224,9 @@ class BagConverter(PointcloudConverter):
         else:
             progress_cb = None
 
-        upload_fn = None
-        if is_episodes:
-            upload_fn = api.pointcloud_episode.upload_path
-        else:
-            # upload_fn = (
-            #     api.pointcloud.upload_link
-            #     if self.upload_as_links
-            #     else api.pointcloud.upload_path
-            # )
-            upload_fn = api.pointcloud.upload_path
-
+        upload_fn = (
+            api.pointcloud_episode.upload_path if is_episodes else api.pointcloud.upload_path
+        )
         for idx, item in enumerate(self._items):
             current_dataset = dataset_info if not multiple_items else datasets[idx]
             current_dataset_id = current_dataset.id
@@ -256,20 +246,7 @@ class BagConverter(PointcloudConverter):
                 )
                 if is_episodes:
                     pcd_meta["frame"] = idx
-
-                kwargs = {
-                    "dataset_id": current_dataset_id,
-                    "name": pcd_name,
-                    "path": pcd_path,
-                    "meta": pcd_meta,
-                }
-                # if not is_episodes and self.upload_as_links:
-                #     kwargs.pop("path")
-                #     kwargs["link"] = self.remote_files_map.get(
-                #         osp.relpath(pcd_path), pcd_path
-                #     )
-
-                info = upload_fn(**kwargs)
+                info = upload_fn(current_dataset_id, pcd_name, pcd_path, pcd_meta)
                 pcd_id = info.id
                 frame_to_pointcloud_ids[idx] = pcd_id
 

@@ -1,5 +1,4 @@
 from datetime import datetime
-from os import path as osp
 from pathlib import Path
 from typing import Dict, Optional
 
@@ -76,9 +75,6 @@ class LyftConverter(PointcloudConverter):
 
         def filter_fn(path):
             return all([(Path(path) / name).exists() for name in lyft_helper.FOLDER_NAMES])
-
-        if self.upload_as_links and self.supports_links:
-            self._download_remote_ann_files()
 
         input_paths = [d for d in fs.dirs_filter(self._input_data, filter_fn)]
         if len(input_paths) == 0:
@@ -201,6 +197,7 @@ class LyftConverter(PointcloudConverter):
         return PointcloudAnnotation(PointcloudObjectCollection(objs), figures)
 
     def upload_dataset(self, api: Api, dataset_id: int, batch_size: int = 1, log_progress=True):
+        self._validate_links_support()
         unique_names = {name for item in self._items for name in item.ann_data["names"]}
         tag_names = {tag["name"] for tag in self._lyft.attribute}
         self._meta = ProjectMeta(
@@ -235,12 +232,6 @@ class LyftConverter(PointcloudConverter):
         else:
             progress_cb = None
 
-        # upload_fn = (
-        #     api.pointcloud.upload_link
-        #     if self.upload_as_links
-        #     else api.pointcloud.upload_path
-        # )
-        upload_fn = api.pointcloud.upload_path
         for item in self._items:
             # * Get the current dataset for the scene
             current_dataset = scene_name_to_dataset.get(item._scene_name, None)
@@ -260,17 +251,7 @@ class LyftConverter(PointcloudConverter):
 
             # * Upload pointcloud
             pcd_name = fs.get_file_name(pcd_path)
-            kwargs = {
-                "dataset_id": current_dataset_id,
-                "name": pcd_name,
-                "path": pcd_path,
-            }
-            # if self.upload_as_links:
-            #     kwargs.pop("path")
-            #     kwargs["link"] = self.remote_files_map.get(
-            #         osp.relpath(pcd_path), pcd_path
-            #     )
-            info = upload_fn(**kwargs)
+            info = api.pointcloud.upload_path(current_dataset_id, pcd_name, pcd_path, {})
             pcd_id = info.id
 
             # * Convert annotation and upload

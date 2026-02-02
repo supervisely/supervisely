@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 from typing import Optional
 
-from supervisely import PointcloudAnnotation, ProjectMeta, api, is_development, logger
+from supervisely import PointcloudAnnotation, ProjectMeta, is_development, logger
 from supervisely.api.api import Api, ApiField
 from supervisely.convert.base_converter import AvailablePointcloudConverters
 from supervisely.convert.pointcloud.kitti_3d import kitti_3d_helper
@@ -34,9 +34,6 @@ class KITTI3DConverter(PointcloudConverter):
         return ".txt"
 
     def validate_format(self) -> bool:
-        if self.upload_as_links and self._supports_links:
-            self._download_remote_ann_files()
-
         def _calib_file_filter_fn(file_path):
             return get_file_ext(file_path).lower() == self.ann_ext
 
@@ -118,6 +115,7 @@ class KITTI3DConverter(PointcloudConverter):
         return PointcloudAnnotation(PointcloudObjectCollection(objs), figures)
 
     def upload_dataset(self, api: Api, dataset_id: int, batch_size: int = 1, log_progress=True):
+        self._validate_links_support()
         meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)
 
         if log_progress:
@@ -125,12 +123,6 @@ class KITTI3DConverter(PointcloudConverter):
         else:
             progress_cb = None
 
-        # upload_fn = (
-        #     api.pointcloud.upload_link
-        #     if self.upload_as_links
-        #     else api.pointcloud.upload_path
-        # )
-        upload_fn = api.pointcloud.upload_path
         for item in self._items:
             # * Convert pointcloud from ".bin" to ".pcd"
             pcd_path = str(Path(item.path).with_suffix(".pcd"))
@@ -140,11 +132,7 @@ class KITTI3DConverter(PointcloudConverter):
 
             # * Upload pointcloud
             pcd_name = get_file_name_with_ext(pcd_path)
-            kwargs = {"dataset_id": dataset_id, "name": pcd_name, "path": pcd_path}
-            # if self.upload_as_links:
-            #     kwargs.pop("path")
-            #     kwargs["link"] = self.remote_files_map.get(os.path.relpath(pcd_path), pcd_path)
-            info = upload_fn(**kwargs)
+            info = api.pointcloud.upload_path(dataset_id, pcd_name, pcd_path, {})
             pcd_id = info.id
 
             # * Convert annotation and upload

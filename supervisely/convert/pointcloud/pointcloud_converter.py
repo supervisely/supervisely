@@ -57,10 +57,6 @@ class PointcloudConverter(BaseConverter):
             """
             self._related_images.append(related_images)
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._supports_links = True
-
     @property
     def format(self):
         return self._converter.format
@@ -95,11 +91,10 @@ class PointcloudConverter(BaseConverter):
         else:
             progress_cb = None
 
-        upload_fn = (
-            api.pointcloud.upload_links
-            if self.upload_as_links
-            else api.pointcloud.upload_paths
-        )
+        upload_fn = api.pointcloud.upload_paths
+        if self.upload_as_links and self.supports_links:
+            upload_fn = api.pointcloud.upload_links
+
         key_id_map = KeyIdMap()
         for batch in batched(self._items, batch_size=batch_size):
             item_names = []
@@ -117,8 +112,11 @@ class PointcloudConverter(BaseConverter):
                 ann = self.to_supervisely(item, meta, renamed_classes, renamed_tags)
                 anns.append(ann)
 
-            pcd_infos = upload_fn(dataset_id, item_names, item_paths)
-
+            pcd_infos = upload_fn(
+                dataset_id,
+                item_names,
+                item_paths,
+            )
             pcd_ids = [pcd_info.id for pcd_info in pcd_infos]
             pcl_to_rimg_figures: Dict[int, Dict[str, List[Dict]]] = {}
             pcl_to_hash_to_id: Dict[int, Dict[str, int]] = {}
@@ -297,6 +295,13 @@ class PointcloudConverter(BaseConverter):
         if ext == ".pcd":
             return pcd_path
         elif ext == ".bin":
+            if self.upload_as_links:
+                logger.warning(
+                    f"Uploading .bin pointcloud files as links is not supported. "
+                    f"Please convert .bin files to .pcd format before uploading. "
+                    f"Skipping conversion for: {pcd_path}"
+                )
+                return None
             if not self._validate_bin_pointcloud(pcd_path):
                 logger.warning(
                     f"The .bin pointcloud file '{pcd_path}' is not valid. Skipping conversion to .pcd."
@@ -370,6 +375,10 @@ class PointcloudConverter(BaseConverter):
         pc = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(points))
         pc.colors = o3d.utility.Vector3dVector(intensity_fake_rgb)
         o3d.io.write_point_cloud(pcd_file, pc)
-        pc = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(points))
-        pc.colors = o3d.utility.Vector3dVector(intensity_fake_rgb)
-        o3d.io.write_point_cloud(pcd_file, pc)
+
+    def _validate_links_support(self) -> None:
+        if self.upload_as_links and not self.supports_links:
+            logger.warning(
+                f"The converter '{self.__class__.__name__}' does not support uploading pointclouds as links. "
+                f"The point clouds will be uploaded regularly."
+            )
