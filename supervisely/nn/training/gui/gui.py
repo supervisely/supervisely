@@ -5,8 +5,8 @@ This module provides the `TrainGUI` class that handles the graphical user interf
 training workflows in Supervisely.
 """
 
-import os
 import json
+import os
 from os import environ, getenv
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
@@ -853,6 +853,7 @@ class TrainGUI:
             else:
                 app_state = json.loads(app_state)
 
+        logger.debug("Loading from app state", extra={"app_state": app_state})
         app_state = self.validate_app_state(app_state)
         options = app_state.get("options", {})
 
@@ -990,6 +991,7 @@ class TrainGUI:
         :param validate: Validate the step.
         :type validate: bool
         """
+        logger.debug("Init classes from app state", extra={"classes_settings": classes_settings})
         if self.classes_selector is None:
             return True  # Selector disabled by app options
 
