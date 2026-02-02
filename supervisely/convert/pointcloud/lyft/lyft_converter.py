@@ -197,7 +197,6 @@ class LyftConverter(PointcloudConverter):
         return PointcloudAnnotation(PointcloudObjectCollection(objs), figures)
 
     def upload_dataset(self, api: Api, dataset_id: int, batch_size: int = 1, log_progress=True):
-        self._validate_links_support()
         unique_names = {name for item in self._items for name in item.ann_data["names"]}
         tag_names = {tag["name"] for tag in self._lyft.attribute}
         self._meta = ProjectMeta(

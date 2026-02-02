@@ -375,10 +375,3 @@ class PointcloudConverter(BaseConverter):
         pc = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(points))
         pc.colors = o3d.utility.Vector3dVector(intensity_fake_rgb)
         o3d.io.write_point_cloud(pcd_file, pc)
-
-    def _validate_links_support(self) -> None:
-        if self.upload_as_links and not self.supports_links:
-            logger.warning(
-                f"The converter '{self.__class__.__name__}' does not support uploading pointclouds as links. "
-                f"The point clouds will be uploaded regularly."
-            )

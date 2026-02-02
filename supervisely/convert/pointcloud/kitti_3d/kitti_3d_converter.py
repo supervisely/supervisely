@@ -115,7 +115,6 @@ class KITTI3DConverter(PointcloudConverter):
         return PointcloudAnnotation(PointcloudObjectCollection(objs), figures)
 
     def upload_dataset(self, api: Api, dataset_id: int, batch_size: int = 1, log_progress=True):
-        self._validate_links_support()
         meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)
 
         if log_progress:

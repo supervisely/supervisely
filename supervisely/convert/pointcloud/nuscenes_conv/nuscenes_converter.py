@@ -57,7 +57,6 @@ class NuscenesConverter(NuscenesEpisodesConverter, PointcloudConverter):
         return PointcloudAnnotation(PointcloudObjectCollection(objs), figures)
 
     def upload_dataset(self, api: Api, dataset_id: int, batch_size: int = 1, log_progress=True):
-        self._validate_links_support()
         from nuscenes.nuscenes import NuScenes  # pylint: disable=import-error
 
         nuscenes: NuScenes = self._nuscenes

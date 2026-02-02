@@ -192,7 +192,6 @@ class BagConverter(PointcloudConverter):
         Converts and uploads bag files to Supervisely dataset.
         Note: This method is used by both the BagConverter and the BagEpisodeConverter.
         """
-        self._validate_links_support()
         obj_cls = ObjClass("object", Cuboid3d)
         self._meta = ProjectMeta(obj_classes=[obj_cls])
         meta, _, _ = self.merge_metas_with_conflicts(api, dataset_id)
