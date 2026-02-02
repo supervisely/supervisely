@@ -115,7 +115,7 @@ def rgb2hex(color: List[int, int, int]) -> str:
     :param color: List of existing colors in RGB format.
     :type color: List[int, int, int]
     :returns: HEX RGB string
-    :rtype: :class:`str`
+    :rtype: str
 
     :Usage Example:
 
@@ -184,9 +184,9 @@ def validate_channel_value(value: int) -> None:
 
     :param value: Input channel value.
     :type value: int
-    :raises: :class:`ValueError` if value not between 0 and 255.
+    :raises ValueError: if value not between 0 and 255.
     :returns: None
-    :rtype: :class:`NoneType`
+    :rtype: None
     """
     if 0 <= value <= 255:
         pass

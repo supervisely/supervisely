@@ -133,9 +133,9 @@ class Frame(KeyObject):
 
         :param img_size: Size of the image (height, width).
         :type img_size: Tuple[int, int], optional
-        :raises: :class:`OutOfImageBoundsException<supervisely.video_annotation.video_figure.OutOfImageBoundsException>`, if figure is out of image bounds
+        :raises OutOfImageBoundsException: if figure is out of image bounds
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
 
         :Usage Example:
 
@@ -166,7 +166,7 @@ class Frame(KeyObject):
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
         :returns: Json format as a dict
-        :rtype: :class:`dict`
+        :rtype: dict
 
         :Usage Example:
 
@@ -235,7 +235,7 @@ class Frame(KeyObject):
         :type frames_count: int, optional
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
-        :raises: :class:`ValueError` if frame index < 0 and if frame index > number of frames in video
+        :raises ValueError: if frame index < 0 and if frame index > number of frames in video
         :returns: Frame object
         :rtype: :class:`Frame`
 

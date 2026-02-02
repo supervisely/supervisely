@@ -58,7 +58,7 @@ class PointcloudEpisodeTagCollection(PointcloudTagCollection):
             tags.has_key(meta_moto.key())
             # Output: True
 
-            # Intersection, finds intersection of given list of instances with collection items
+            # Find intersection of given list of instances with collection items
             meta_bus = sly.TagMeta('bus', sly.TagValueType.NONE)
             tag_bus = sly.PointcloudEpisodeTag(meta_bus, frame_range=(0, 5))
 
@@ -84,7 +84,7 @@ class PointcloudEpisodeTagCollection(PointcloudTagCollection):
             #     }
             # ]
 
-            # Difference, finds difference between collection and given list of Tags or PointcloudEpisodeTagCollection
+            # Find difference between collection and given list of Tags or PointcloudEpisodeTagCollection
             meta_car = sly.TagMeta('car', sly.TagValueType.NONE)
             tag_car = sly.PointcloudEpisodeTag(meta_car, frame_range=(6, 11))
 
@@ -114,7 +114,7 @@ class PointcloudEpisodeTagCollection(PointcloudTagCollection):
             #     }
             # ]
 
-            # Merge, merges collection and given list of collections
+            # Merge collection and given list of collections
             tags_vehicles = sly.PointcloudEpisodeTagCollection([tag_car, tag_bicycle])
             tags_merge = sly.PointcloudEpisodeTagCollection([tag_pedestrian, tag_road])
 

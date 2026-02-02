@@ -17,7 +17,7 @@ class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
     """
     Collection with :class:`TagMeta<supervisely.annotation.tag_meta.TagMeta>` instances. :class:`TagMetaCollection<TagMetaCollection>` object is immutable.
 
-    :raises: :class:`DuplicateKeyError`, if instance with given name already exists
+    :raises :class:`~supervisely.collection.key_indexed_collection.DuplicateKeyError`: if instance with given name already exists
 
     :Usage Example:
 
@@ -254,8 +254,8 @@ class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
         :param raise_if_no_id: Raise ValueError if where is TagMetas without id.
         :type raise_if_no_id: bool, optional
         :returns: Json format as a dict
-        :rtype: :class:`dict`
-        :raises: :class:`KeyError`, if where is duplication of TagMetas id
+        :rtype: dict
+        :raises KeyError: if where is duplication of TagMetas id
         """
         res = {}
         without_id = []
@@ -314,7 +314,7 @@ class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
 
         :param other: TagMetaCollection object.
         :type other:  TagMetaCollection
-        :raises: :class:`ValueError` if item name from given collection is in TagMetaCollection but TagMetas in both are different
+        :raises ValueError: if item name from given collection is in TagMetaCollection but TagMetas in both are different
         :returns: TagMetaCollection object
         :rtype: :class:`TagMetaCollection<TagMetaCollection>`
 

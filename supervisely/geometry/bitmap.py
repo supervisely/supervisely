@@ -76,7 +76,7 @@ class Bitmap(BitmapBase):
     :type created_at: str, optional
     :param extra_validation: If True, additional validation is performed. Throws a ValueError if values of the data are not one of [0, 1], [0, 255], [True, False]. This option affects performance. If False, the mask is converted to dtype np.bool.
     :type extra_validation: bool, optional
-    :raises: :class:`ValueError`, if data is not bool or no pixels set to True in data
+    :raises ValueError, if data is not bool or no pixels set to True in data
 
     :Usage Example:
 
@@ -306,7 +306,7 @@ class Bitmap(BitmapBase):
         Bitmap area.
 
         :returns: Area of current Bitmap
-        :rtype: :class:`float`
+        :rtype: float
 
         :Usage Example:
 
@@ -376,7 +376,7 @@ class Bitmap(BitmapBase):
         :param mask: Bool numpy array.
         :type mask: np.ndarray
         :returns: Base64 encoded string
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -514,7 +514,7 @@ class Bitmap(BitmapBase):
         :param bit_op: Type of bitwise operation(and, or, not, xor), uses `numpy logic <https://numpy.org/doc/stable/reference/routines.logic.html>`_ functions.
         :type bit_op: `Numpy logical operation <https://numpy.org/doc/stable/reference/routines.logic.html#logical-operations>`_
         :returns: Bitmap object or empty list
-        :rtype: :class:`Bitmap<Bitmap>` or :class:`list`
+        :rtype: :class:`Bitmap<Bitmap>` or list
 
         :Usage Example:
 

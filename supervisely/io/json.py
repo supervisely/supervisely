@@ -37,7 +37,7 @@ def load_json_file(filename: str) -> Dict:
     :raises FileNotFoundError: If file with given filename was not found.
     :raises RuntimeError: If can not decode json file.
     :returns: Json format as a dict
-    :rtype: :class:`dict`
+    :rtype: dict
 
     :Usage Example:
 
@@ -150,7 +150,7 @@ def dump_json_file(data: Dict, filename: str, indent: Optional[int] = 4) -> None
     :param indent: Json array elements and object members will be pretty-printed with that indent level.
     :type indent: int, optional
     :returns: None
-    :rtype: :class:`NoneType`
+    :rtype: None
 
     :Usage Example:
 
@@ -173,7 +173,7 @@ def flatten_json(data: Dict, sep: Optional[str] = ".") -> Dict:
     :param sep: Nested records will generate names separated by sep.
     :type sep: str, optional
     :returns: Dict
-    :rtype: :class:`dict`
+    :rtype: dict
     """
     import pandas as pd
 
@@ -194,7 +194,7 @@ def modify_keys(
     :param suffix: Suffix which will be added to dict.
     :type suffix: str, optional
     :returns: New dict with prefix and suffix in keys
-    :rtype: :class:`dict`
+    :rtype: dict
 
     :Usage Example:
 
@@ -229,7 +229,7 @@ def validate_json(data: Dict, schema: Dict, raise_error: bool = False) -> bool:
     :param raise_error: If True, raise an error if data is invalid.
     :type raise_error: bool, optional
     :returns: True if data is valid, False otherwise.
-    :rtype: :class:`bool`
+    :rtype: bool
     """
     try:
         jsonschema.validate(instance=data, schema=schema)

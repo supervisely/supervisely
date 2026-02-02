@@ -149,24 +149,24 @@ class CustomUnpickler(pickle.Unpickler):
 
 # @TODO: rename img_path to item_path (maybe convert namedtuple to class and create fields and props)
 class ItemPaths(NamedTuple):
-    #: :class:`str`: Full image file path of item
+    #: str: Full image file path of item
     img_path: str
 
-    #: :class:`str`: Full annotation file path of item
+    #: str: Full annotation file path of item
     ann_path: str
 
 
 class ItemInfo(NamedTuple):
-    #: :class:`str`: Item's dataset name
+    #: str: Item's dataset name
     dataset_name: str
 
-    #: :class:`str`: Item name
+    #: str: Item name
     name: str
 
-    #: :class:`str`: Full image file path of item
+    #: str: Full image file path of item
     img_path: str
 
-    #: :class:`str`: Full annotation file path of item
+    #: str: Full annotation file path of item
     ann_path: str
 
 
@@ -175,13 +175,13 @@ class OpenMode(Enum):
     Defines the mode of using the :class:`Project<Project>` and :class:`Dataset<Dataset>`.
     """
 
-    #: :class:`int`: READ open mode.
+    #: int: READ open mode.
     #: Loads project from given project directory. Checks that item and annotation directories
     #: exist and dataset is not empty. Consistency checks. Checks that every image has
     #: an annotation and the correspondence is one to one.
     READ = 1
 
-    #: :class:`int`: CREATE open mode.
+    #: int: CREATE open mode.
     #: Creates a leaf directory and empty meta.json file. Generates error if
     #: project directory already exists and is not empty.
     CREATE = 2
@@ -320,7 +320,7 @@ class Dataset(KeyObject):
         Path to the project containing the dataset.
 
         :returns: Path to the project.
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -344,7 +344,7 @@ class Dataset(KeyObject):
         Use :attr:`short_name` to get only the name of the dataset.
 
         :returns: Dataset Name.
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -366,7 +366,7 @@ class Dataset(KeyObject):
         To get the full name of the dataset, use :attr:`name`.
 
         :returns: Dataset Name.
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -386,7 +386,7 @@ class Dataset(KeyObject):
         """Returns a relative local path to the dataset.
 
         :returns: Relative local path to the dataset.
-        :rtype: :class:`str`
+        :rtype: str
         """
         return self._get_dataset_path(self.short_name, self.parents)
 
@@ -395,7 +395,7 @@ class Dataset(KeyObject):
         """Returns a relative local path to the dataset.
 
         :param dataset_name: Dataset name.
-        :type dataset_name: :class:`str`
+        :type dataset_name: str
         """
         relative_path = os.path.sep.join(f"{parent}/datasets" for parent in parents)
         return os.path.join(relative_path, dataset_name)
@@ -410,7 +410,7 @@ class Dataset(KeyObject):
         Path to the dataset directory.
 
         :returns: Path to the dataset directory.
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -432,7 +432,7 @@ class Dataset(KeyObject):
         Path to the dataset items directory.
 
         :returns: Path to the dataset directory with items.
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -455,7 +455,7 @@ class Dataset(KeyObject):
         Property is alias of item_dir.
 
         :returns: Path to the dataset directory with images.
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -477,7 +477,7 @@ class Dataset(KeyObject):
         Path to the dataset annotations directory.
 
         :returns: Path to the dataset directory with annotations.
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -500,7 +500,7 @@ class Dataset(KeyObject):
         Property is alias of item_info_dir.
 
         :returns: Path to the dataset directory with images info.
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -522,7 +522,7 @@ class Dataset(KeyObject):
         Path to the dataset item info directory.
 
         :returns: Path to the dataset directory with items info.
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -544,7 +544,7 @@ class Dataset(KeyObject):
         Path to the dataset segmentation masks directory.
 
         :returns: Path to the dataset directory with masks.
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -566,7 +566,7 @@ class Dataset(KeyObject):
         Path to the dataset segmentation masks directory.
 
         :returns: Path to the dataset directory with masks.
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -684,7 +684,7 @@ class Dataset(KeyObject):
         """If the dataset is opened from the API, returns the list of ImageInfo objects.
         Otherwise raises an exception.
 
-        :raises: ValueError: If the dataset is opened in local mode.
+        :raises ValueError: If the dataset is opened in local mode.
         :returns: List of ImageInfo objects.
         :rtype: List[:class:`ImageInfo`]
         """
@@ -706,7 +706,7 @@ class Dataset(KeyObject):
         List of dataset item names.
 
         :returns: List of item names.
-        :rtype: :class:`list` [ :class:`str` ]
+        :rtype: list [ str ]
 
         :Usage Example:
 
@@ -727,9 +727,9 @@ class Dataset(KeyObject):
         Checks if given item name belongs to the dataset.
 
         :param item_name: Item name.
-        :type item_name: :class:`str`
+        :type item_name: str
         :returns: True if item exist, otherwise False.
-        :rtype: :class:`bool`
+        :rtype: bool
 
         :Usage Example:
 
@@ -750,10 +750,10 @@ class Dataset(KeyObject):
         Path to the given item.
 
         :param item_name: Item name.
-        :type item_name: :class:`str`
+        :type item_name: str
         :returns: Path to the given item.
-        :rtype: :class:`str`
-        :raises: :class:`RuntimeError` if item not found in the project
+        :rtype: str
+        :raises RuntimeError: if item not found in the project
 
         :Usage Example:
 
@@ -781,10 +781,10 @@ class Dataset(KeyObject):
         Method is alias of get_item_path(item_name).
 
         :param item_name: Image name.
-        :type item_name: :class:`str`
+        :type item_name: str
         :returns: Path to the given image.
-        :rtype: :class:`str`
-        :raises: :class:`RuntimeError` if item not found in the project.
+        :rtype: str
+        :raises RuntimeError: if item not found in the project.
 
         :Usage Example:
 
@@ -808,12 +808,12 @@ class Dataset(KeyObject):
         Read annotation of item from json.
 
         :param item_name: Item name.
-        :type item_name: :class:`str`
+        :type item_name: str
         :param project_meta: ProjectMeta object.
         :type project_meta: :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`
         :returns: Annotation object.
         :rtype: :class:`Annotation<supervisely.annotation.annotation.Annotation>`
-        :raises: :class:`RuntimeError` if item not found in the project
+        :raises RuntimeError: if item not found in the project
 
         :Usage Example:
 
@@ -850,10 +850,10 @@ class Dataset(KeyObject):
         Path to the given annotation json file.
 
         :param item_name: Item name.
-        :type item_name: :class:`str`
+        :type item_name: str
         :returns: Path to the given annotation json file.
-        :rtype: :class:`str`
-        :raises: :class:`RuntimeError` if item not found in the project
+        :rtype: str
+        :raises RuntimeError: if item not found in the project
 
         :Usage Example:
 
@@ -883,10 +883,10 @@ class Dataset(KeyObject):
         Method is alias of get_item_info_path(item_name).
 
         :param item_name: Image name.
-        :type item_name: :class:`str`
+        :type item_name: str
         :returns: Path to the given image info json file.
-        :rtype: :class:`str`
-        :raises: :class:`RuntimeError` if image not found in the project.
+        :rtype: str
+        :raises RuntimeError: if image not found in the project.
 
         :Usage Example:
 
@@ -910,10 +910,10 @@ class Dataset(KeyObject):
         Get path to the item info json file without checking if the file exists.
 
         :param item_name: Item name.
-        :type item_name: :class:`str`
+        :type item_name: str
         :returns: Path to the given item info json file.
-        :rtype: :class:`str`
-        :raises: :class:`RuntimeError` if item not found in the project.
+        :rtype: str
+        :raises RuntimeError: if item not found in the project.
 
         :Usage Example:
 
@@ -941,10 +941,10 @@ class Dataset(KeyObject):
         Get path to the item info json file without checking if the file exists.
 
         :param item_name: Item name.
-        :type item_name: :class:`str`
+        :type item_name: str
         :returns: Path to the given item info json file.
-        :rtype: :class:`str`
-        :raises: :class:`RuntimeError` if item not found in the project.
+        :rtype: str
+        :raises RuntimeError: if item not found in the project.
 
         :Usage Example:
 
@@ -970,7 +970,7 @@ class Dataset(KeyObject):
         Information for Item with given name.
 
         :param item_name: Item name.
-        :type item_name: :class:`str`
+        :type item_name: str
         :returns: ImageInfo object.
         :rtype: :class:`ImageInfo<supervisely.api.image_api.ImageInfo>`
 
@@ -1012,7 +1012,7 @@ class Dataset(KeyObject):
         Information for Item with given name.
 
         :param item_name: Item name.
-        :type item_name: :class:`str`
+        :type item_name: str
         :returns: ImageInfo object.
         :rtype: :class:`ImageInfo<supervisely.api.image_api.ImageInfo>`
 
@@ -1059,10 +1059,10 @@ class Dataset(KeyObject):
         to create segmentation masks from annotations in your project.
 
         :param item_name: Item name.
-        :type item_name: :class:`str`
+        :type item_name: str
         :returns: Path to the given png mask file.
-        :rtype: :class:`str`
-        :raises: :class:`RuntimeError` if item not found in the project.
+        :rtype: str
+        :raises RuntimeError: if item not found in the project.
 
         :Usage Example:
 
@@ -1099,22 +1099,22 @@ class Dataset(KeyObject):
         annotations directory. if ann is None, creates empty annotation file.
 
         :param item_name: Item name.
-        :type item_name: :class:`str`
+        :type item_name: str
         :param item_path: Path to the item.
-        :type item_path: :class:`str`
+        :type item_path: str
         :param ann: Annotation object or path to annotation json file.
-        :type ann: :class:`Annotation<supervisely.annotation.annotation.Annotation>` or :class:`str`, optional
+        :type ann: :class:`Annotation<supervisely.annotation.annotation.Annotation>` or str, optional
         :param _validate_item: Checks input files format.
-        :type _validate_item: :class:`bool`, optional
+        :type _validate_item: bool, optional
         :param _use_hardlink: If True creates a hardlink pointing to src named dst, otherwise don't.
-        :type _use_hardlink: :class:`bool`, optional
+        :type _use_hardlink: bool, optional
         :param item_info: ImageInfo object or ImageInfo object converted to dict or path to item info json file for copying to dataset item info directory.
-        :type item_info: :class:`ImageInfo<supervisely.api.image_api.ImageInfo>` or :class:`dict` or :class:`str`, optional
+        :type item_info: :class:`ImageInfo<supervisely.api.image_api.ImageInfo>` or dict or str, optional
         :param img_info: Deprecated version of item_info parameter. Can be removed in future versions.
-        :type img_info: :class:`ImageInfo<supervisely.api.image_api.ImageInfo>` or :class:`dict` or :class:`str`, optional
+        :type img_info: :class:`ImageInfo<supervisely.api.image_api.ImageInfo>` or dict or str, optional
         :returns: None
         :rtype: NoneType
-        :raises: :class:`RuntimeError` if item_name already exists in dataset or item name has unsupported extension.
+        :raises RuntimeError: if item_name already exists in dataset or item name has unsupported extension.
 
         :Usage Example:
 
@@ -1165,16 +1165,16 @@ class Dataset(KeyObject):
         Adds given numpy matrix as an image to dataset items directory, and adds given annotation to dataset ann directory. if ann is None, creates empty annotation file.
 
         :param item_name: Item name.
-        :type item_name: :class:`str`
+        :type item_name: str
         :param img: numpy Image matrix in RGB format.
         :type img: np.ndarray
         :param ann: Annotation object or path to annotation json file.
-        :type ann: :class:`Annotation<supervisely.annotation.annotation.Annotation>` or :class:`str`, optional
+        :type ann: :class:`Annotation<supervisely.annotation.annotation.Annotation>` or str, optional
         :param img_info: ImageInfo object or ImageInfo object converted to dict or path to item info json file for copying to dataset item info directory.
-        :type img_info: :class:`ImageInfo<supervisely.api.image_api.ImageInfo>` or :class:`dict` or :class:`str`, optional
+        :type img_info: :class:`ImageInfo<supervisely.api.image_api.ImageInfo>` or dict or str, optional
         :returns: None
         :rtype: NoneType
-        :raises: :class:`RuntimeError` if item_name already exists in dataset or item name has unsupported extension
+        :raises RuntimeError: if item_name already exists in dataset or item name has unsupported extension
 
         :Usage Example:
 
@@ -1209,16 +1209,16 @@ class Dataset(KeyObject):
         Adds given binary object as an image to dataset items directory, and adds given annotation to dataset ann directory. if ann is None, creates empty annotation file.
 
         :param item_name: Item name.
-        :type item_name: :class:`str`
+        :type item_name: str
         :param item_raw_bytes: Binary object.
-        :type item_raw_bytes: :class:`bytes`
+        :type item_raw_bytes: bytes
         :param ann: Annotation object or path to annotation json file.
-        :type ann: :class:`Annotation<supervisely.annotation.annotation.Annotation>` or :class:`str`, optional
+        :type ann: :class:`Annotation<supervisely.annotation.annotation.Annotation>` or str, optional
         :param img_info: ImageInfo object or ImageInfo object converted to dict or path to item info json file for copying to dataset item info directory.
-        :type img_info: :class:`ImageInfo<supervisely.api.image_api.ImageInfo>` or :class:`dict` or :class:`str`, optional
+        :type img_info: :class:`ImageInfo<supervisely.api.image_api.ImageInfo>` or dict or str, optional
         :returns: None
         :rtype: NoneType
-        :raises: :class:`RuntimeError` if item_name already exists in dataset or item name has unsupported extension
+        :raises RuntimeError: if item_name already exists in dataset or item name has unsupported extension
 
         :Usage Example:
 
@@ -1398,16 +1398,16 @@ class Dataset(KeyObject):
         If ann is None, creates empty annotation file.
 
         :param item_name: Item name.
-        :type item_name: :class:`str`
+        :type item_name: str
         :param item_raw_bytes: Binary object.
-        :type item_raw_bytes: :class:`bytes`
+        :type item_raw_bytes: bytes
         :param ann: Annotation object or path to annotation json file.
-        :type ann: :class:`Annotation<supervisely.annotation.annotation.Annotation>` or :class:`str`, optional
+        :type ann: :class:`Annotation<supervisely.annotation.annotation.Annotation>` or str, optional
         :param img_info: ImageInfo object or ImageInfo object converted to dict or path to item info json file for copying to dataset item info directory.
-        :type img_info: :class:`ImageInfo<supervisely.api.image_api.ImageInfo>` or :class:`dict` or :class:`str`, optional
+        :type img_info: :class:`ImageInfo<supervisely.api.image_api.ImageInfo>` or dict or str, optional
         :returns: None
         :rtype: NoneType
-        :raises: :class:`RuntimeError` if item_name already exists in dataset or item name has unsupported extension
+        :raises RuntimeError: if item_name already exists in dataset or item name has unsupported extension
 
         :Usage Example:
 
@@ -1440,9 +1440,9 @@ class Dataset(KeyObject):
         Generates full path to the given item.
 
         :param item_name: Item name.
-        :type item_name: :class:`str`
+        :type item_name: str
         :returns: Full path to the given item
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -1531,7 +1531,7 @@ class Dataset(KeyObject):
         Replaces given annotation for given item name to dataset annotations directory in json format.
 
         :param item_name: Item name.
-        :type item_name: :class:`str`
+        :type item_name: str
         :param ann: Annotation object.
         :type ann: :class:`Annotation<supervisely.annotation.annotation.Annotation>`
         :returns: None
@@ -1562,12 +1562,12 @@ class Dataset(KeyObject):
         Replaces given annotation json file for given item name to dataset annotations directory in json format.
 
         :param item_name: Item Name.
-        :type item_name: :class:`str`
+        :type item_name: str
         :param ann_path: Path to the :class:`Annotation<supervisely.annotation.annotation.Annotation>` json file.
-        :type ann_path: :class:`str`
+        :type ann_path: str
         :returns: None
         :rtype: NoneType
-        :raises: :class:`RuntimeError` if ann_path is not str
+        :raises RuntimeError: if ann_path is not str
 
         :Usage Example:
 
@@ -1591,12 +1591,12 @@ class Dataset(KeyObject):
         Replaces given annotation json for given item name to dataset annotations directory in json format.
 
         :param item_name: Item name.
-        :type item_name: :class:`str`
+        :type item_name: str
         :param ann: :class:`Annotation<supervisely.annotation.annotation.Annotation>` as a dict in json format.
-        :type ann: :class:`dict`
+        :type ann: dict
         :returns: None
         :rtype: NoneType
-        :raises: :class:`RuntimeError` if ann_path is not str
+        :raises RuntimeError: if ann_path is not str
 
         :Usage Example:
 
@@ -1628,7 +1628,7 @@ class Dataset(KeyObject):
         Generates :class:`ItemPaths<ItemPaths>` object with paths to item and annotation directories for item with given name.
 
         :param item_name: Item name.
-        :type item_name: :class:`str`
+        :type item_name: str
         :returns: ItemPaths object
         :rtype: :class:`ItemPaths<ItemPaths>`
 
@@ -1694,9 +1694,9 @@ class Dataset(KeyObject):
         Delete image, image info and annotation from :class:`Dataset<Dataset>`.
 
         :param item_name: Item name.
-        :type item_name: :class:`str`
+        :type item_name: str
         :returns: True if item was successfully deleted, False if item wasn't found in dataset.
-        :rtype: :class:`bool`
+        :rtype: bool
 
         :Usage Example:
 
@@ -1729,11 +1729,11 @@ class Dataset(KeyObject):
         Get URL to dataset items list in Supervisely.
 
         :param project_id: :class:`Project<Project>` ID in Supervisely.
-        :type project_id: :class:`int`
+        :type project_id: int
         :param dataset_id: :class:`Dataset<Dataset>` ID in Supervisely.
-        :type dataset_id: :class:`int`
+        :type dataset_id: int
         :returns: URL to dataset items list.
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -1758,12 +1758,12 @@ class Dataset(KeyObject):
         Replaces given annotation json file for given item name to dataset annotations directory in json format.
 
         :param item_name: Item Name.
-        :type item_name: :class:`str`
+        :type item_name: str
         :param ann_path: Path to the :class:`Annotation<supervisely.annotation.annotation.Annotation>` json file.
-        :type ann_path: :class:`str`
+        :type ann_path: str
         :returns: None
         :rtype: NoneType
-        :raises: :class:`RuntimeError` if ann_path is not str
+        :raises RuntimeError: if ann_path is not str
 
         :Usage Example:
 
@@ -1789,12 +1789,12 @@ class Dataset(KeyObject):
         Replaces given annotation json for given item name to dataset annotations directory in json format.
 
         :param item_name: Item name.
-        :type item_name: :class:`str`
+        :type item_name: str
         :param ann: :class:`Annotation<supervisely.annotation.annotation.Annotation>` as a dict in json format.
-        :type ann: :class:`dict`
+        :type ann: dict
         :returns: None
         :rtype: NoneType
-        :raises: :class:`RuntimeError` if ann_path is not str
+        :raises RuntimeError: if ann_path is not str
 
         :Usage Example:
 
@@ -1828,7 +1828,7 @@ class Dataset(KeyObject):
         Replaces given annotation for given item name to dataset annotations directory in json format.
 
         :param item_name: Item name.
-        :type item_name: :class:`str`
+        :type item_name: str
         :param ann: Annotation object.
         :type ann: :class:`Annotation<supervisely.annotation.annotation.Annotation>`
         :returns: None
@@ -1924,22 +1924,22 @@ class Dataset(KeyObject):
         If ann is None, creates empty annotation file.
 
         :param item_name: Item name.
-        :type item_name: :class:`str`
+        :type item_name: str
         :param item_path: Path to the item.
-        :type item_path: :class:`str`
+        :type item_path: str
         :param ann: Annotation object or path to annotation json file.
-        :type ann: :class:`Annotation<supervisely.annotation.annotation.Annotation>` or :class:`str`, optional
+        :type ann: :class:`Annotation<supervisely.annotation.annotation.Annotation>` or str, optional
         :param _validate_item: Checks input files format.
-        :type _validate_item: :class:`bool`, optional
+        :type _validate_item: bool, optional
         :param _use_hardlink: If True creates a hardlink pointing to src named dst, otherwise don't.
-        :type _use_hardlink: :class:`bool`, optional
+        :type _use_hardlink: bool, optional
         :param item_info: ImageInfo object or ImageInfo object converted to dict or path to item info json file for copying to dataset item info directory.
-        :type item_info: :class:`ImageInfo<supervisely.api.image_api.ImageInfo>` or :class:`dict` or :class:`str`, optional
+        :type item_info: :class:`ImageInfo<supervisely.api.image_api.ImageInfo>` or dict or str, optional
         :param img_info: Deprecated version of item_info parameter. Can be removed in future versions.
-        :type img_info: :class:`ImageInfo<supervisely.api.image_api.ImageInfo>` or :class:`dict` or :class:`str`, optional
+        :type img_info: :class:`ImageInfo<supervisely.api.image_api.ImageInfo>` or dict or str, optional
         :returns: None
         :rtype: NoneType
-        :raises: :class:`RuntimeError` if item_name already exists in dataset or item name has unsupported extension.
+        :raises RuntimeError: if item_name already exists in dataset or item name has unsupported extension.
 
         :Usage Example:
 
@@ -2003,19 +2003,19 @@ class Dataset(KeyObject):
         :param meta: Project meta information.
         :type meta: :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`
         :param return_type: Return type (`path` or `dict`).
-        :type return_type: :class:`str`, optional
+        :type return_type: str, optional
         :param dest_dir: Path to save COCO dataset.
-        :type dest_dir: :class:`str`, optional
+        :type dest_dir: str, optional
         :param copy_images: If True, copies images to the COCO dataset directory.
-        :type copy_images: :class:`bool`, optional
+        :type copy_images: bool, optional
         :param with_captions: If True, returns captions
-        :type with_captions: :class:`bool`, optional
+        :type with_captions: bool, optional
         :param log_progress: If True, log progress.
-        :type log_progress: :class:`str`, optional
+        :type log_progress: str, optional
         :param progress_cb: Progress callback.
         :type progress_cb: :class:`Callable`, optional
         :returns: COCO dataset in dictionary format.
-        :rtype: :class:`dict`
+        :rtype: dict
 
         :Usage Example:
 
@@ -2059,17 +2059,17 @@ class Dataset(KeyObject):
         :param meta: Project meta information.
         :type meta: :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`
         :param dest_dir: Path to save YOLO dataset.
-        :type dest_dir: :class:`str`, optional
+        :type dest_dir: str, optional
         :param task_type: Task type.
-        :type task_type: :class:`str`, optional
+        :type task_type: str, optional
         :param log_progress: If True, log progress.
-        :type log_progress: :class:`str`, optional
+        :type log_progress: str, optional
         :param progress_cb: Progress callback.
         :type progress_cb: :class:`Callable`, optional
         :param is_val: If True, the dataset is a validation dataset.
-        :type is_val: :class:`bool`, optional
+        :type is_val: bool, optional
         :returns: YOLO dataset in dictionary format.
-        :rtype: :class:`dict`
+        :rtype: dict
 
         :Usage Example:
 
@@ -2111,11 +2111,11 @@ class Dataset(KeyObject):
         :param meta: Project meta information.
         :type meta: :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`
         :param dest_dir: Destination directory.
-        :type dest_dir: :class:`str`, optional
+        :type dest_dir: str, optional
         :param train_val_split_coef: Coefficient for splitting images into train and validation sets.
-        :type train_val_split_coef: :class:`float`, optional
+        :type train_val_split_coef: float, optional
         :param log_progress: If True, log progress.
-        :type log_progress: :class:`str`, optional
+        :type log_progress: str, optional
         :param progress_cb: Progress callback.
         :type progress_cb: :class:`Callable`, optional
         :returns: None
@@ -2150,9 +2150,9 @@ class Dataset(KeyObject):
         Get image bytes from blob file.
 
         :param image_name: Image name with extension.
-        :type image_name: :class:`str`
+        :type image_name: str
         :returns: Bytes of the image.
-        :rtype: :class:`bytes`
+        :rtype: bytes
 
         :Usage Example:
 
@@ -2204,7 +2204,7 @@ class Dataset(KeyObject):
         Get image as numpy array from blob file.
 
         :param image_name: Image name with extension.
-        :type image_name: :class:`str`
+        :type image_name: str
         :returns: Numpy array of the image.
         :rtype: :class:`numpy.ndarray`
 
@@ -2230,7 +2230,7 @@ class Project:
     Project is a parent directory for dataset. Project object is immutable.
 
     :param directory: Path to project directory.
-    :type directory: :class:`str`
+    :type directory: str
     :param mode: Determines working mode for the given project.
     :type mode: :class:`OpenMode<OpenMode>`
 
@@ -2311,9 +2311,9 @@ class Project:
         Get URL to datasets list in Supervisely.
 
         :param id: :class:`Project<Project>` ID in Supervisely.
-        :type id: :class:`int`
+        :type id: int
         :returns: URL to datasets list.
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -2338,7 +2338,7 @@ class Project:
         Project parent directory.
 
         :returns: Path to project parent directory
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -2359,7 +2359,7 @@ class Project:
         Blobs are .tar files with images. Used for fast data transfer.
 
         :returns: Path to project blob directory
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -2379,7 +2379,7 @@ class Project:
         Project name.
 
         :returns: Project name.
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -2399,7 +2399,7 @@ class Project:
         Project type.
 
         :returns: Project type.
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -2473,7 +2473,7 @@ class Project:
         Path to the project directory.
 
         :returns: Path to the project directory
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -2493,7 +2493,7 @@ class Project:
         Total number of items in project.
 
         :returns: Total number of items in project
-        :rtype: :class:`int`
+        :rtype: int
 
         :Usage Example:
 
@@ -2513,7 +2513,7 @@ class Project:
         List of blob files.
 
         :returns: List of blob files
-        :rtype: :class:`list`
+        :rtype: list
 
         :Usage Example:
 
@@ -2553,7 +2553,7 @@ class Project:
         Adds blob file to the project.
 
         :param file_name: File name.
-        :type file_name: :class:`str`
+        :type file_name: str
         :returns: None
         :rtype: NoneType
 
@@ -2713,7 +2713,7 @@ class Project:
         to the collection of all datasets in the project.
 
         :param ds_name: Dataset name.
-        :type ds_name: :class:`str`
+        :type ds_name: str
         :returns: Dataset object
         :rtype: :class:`Dataset<Dataset>`
 
@@ -2759,13 +2759,13 @@ class Project:
         Makes a copy of the :class:`Project<Project>`.
 
         :param dst_directory: Path to project parent directory.
-        :type dst_directory: :class:`str`
+        :type dst_directory: str
         :param dst_name: Project name.
-        :type dst_name: :class:`str`, optional
+        :type dst_name: str, optional
         :param _validate_item: Checks input files format.
-        :type _validate_item: :class:`bool`, optional
+        :type _validate_item: bool, optional
         :param _use_hardlink: If True creates a hardlink pointing to src named dst, otherwise don't.
-        :type _use_hardlink: :class:`bool`, optional
+        :type _use_hardlink: bool, optional
         :returns: Project object.
         :rtype: :class:`Project<Project>`
 
@@ -2843,23 +2843,23 @@ class Project:
         You will able to get item's segmentation masks location by :class:`dataset.get_seg_path(item_name)<supervisely.project.project.Dataset.get_seg_path>` method.
 
         :param src_project_dir: Path to source project directory.
-        :type src_project_dir: :class:`str`
+        :type src_project_dir: str
         :param dst_project_dir: Path to destination project directory. Must be None If inplace=True.
-        :type dst_project_dir: :class:`str`, optional
+        :type dst_project_dir: str, optional
         :param inplace: Modifies source project If True. Must be False If dst_project_dir is specified.
-        :type inplace: :class:`bool`, optional
+        :type inplace: bool, optional
         :param target_classes: Classes list to include to destination project. If segmentation_type="semantic",
                                background class will be added automatically (by default "__bg__").
-        :type target_classes: :class:`list` [ :class:`str` ], optional
+        :type target_classes: list [ str ], optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
         :param segmentation_type: One of: {"semantic", "instance"}. If segmentation_type="semantic", background class
                                   will be added automatically (by default "__bg__") and instances will be converted to non overlapping semantic segmentation mask.
-        :type segmentation_type: :class:`str`
+        :type segmentation_type: str
         :param bg_name: Default background class name, used for semantic segmentation.
-        :type bg_name: :class:`str`, optional
+        :type bg_name: str, optional
         :param bg_color: Default background class color, used for semantic segmentation.
-        :type bg_color: :class:`list`, optional. Default is [0, 0, 0]
+        :type bg_color: list, optional. Default is [0, 0, 0]
         :returns: None
         :rtype: NoneType
 
@@ -2981,11 +2981,11 @@ class Project:
         :class:`project meta<supervisely.project.project_meta.ProjectMeta>`.
 
         :param src_project_dir: Path to source project directory.
-        :type src_project_dir: :class:`str`
+        :type src_project_dir: str
         :param dst_project_dir: Path to destination project directory. Must be None If inplace=True.
-        :type dst_project_dir: :class:`str`, optional
+        :type dst_project_dir: str, optional
         :param inplace: Modifies source project If True. Must be False If dst_project_dir is specified.
-        :type inplace: :class:`bool`, optional
+        :type inplace: bool, optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
         :returns: None
@@ -3055,11 +3055,11 @@ class Project:
         Removes classes from Project with the exception of some classes.
 
         :param project_dir: Path to project directory.
-        :type project_dir: :class:`str`
+        :type project_dir: str
         :param classes_to_keep: Classes to keep in project.
-        :type classes_to_keep: :class:`list` [ :class:`str` ], optional
+        :type classes_to_keep: list [ str ], optional
         :param inplace: Checkbox that determines whether to change the source data in project or not.
-        :type inplace: :class:`bool`, optional
+        :type inplace: bool, optional
         :returns: None
         :rtype: NoneType
 
@@ -3091,11 +3091,11 @@ class Project:
         Removes given classes from Project.
 
         :param project_dir: Path to project directory.
-        :type project_dir: :class:`str`
+        :type project_dir: str
         :param classes_to_remove: Classes to remove.
-        :type classes_to_remove: :class:`list` [ :class:`str` ], optional
+        :type classes_to_remove: list [ str ], optional
         :param inplace: Checkbox that determines whether to change the source data in project or not.
-        :type inplace: :class:`bool`, optional
+        :type inplace: bool, optional
         :returns: None
         :rtype: NoneType
 
@@ -3170,9 +3170,9 @@ class Project:
         Remove items(images and annotations) without objects from Project.
 
         :param project_dir: Path to project directory.
-        :type project_dir: :class:`str`
+        :type project_dir: str
         :param inplace: Checkbox that determines whether to change the source data in project or not.
-        :type inplace: :class:`bool`, optional
+        :type inplace: bool, optional
         :returns: None
         :rtype: NoneType
 
@@ -3192,9 +3192,9 @@ class Project:
         Remove items(images and annotations) without tags from Project.
 
         :param project_dir: Path to project directory.
-        :type project_dir: :class:`str`
+        :type project_dir: str
         :param inplace: Checkbox that determines whether to change the source data in project or not.
-        :type inplace: :class:`bool`, optional
+        :type inplace: bool, optional
         :returns: None
         :rtype: NoneType
 
@@ -3216,9 +3216,9 @@ class Project:
         Remove items(images and annotations) without objects and tags from Project.
 
         :param project_dir: Path to project directory.
-        :type project_dir: :class:`str`
+        :type project_dir: str
         :param inplace: Checkbox that determines whether to change the source data in project or not.
-        :type inplace: :class:`bool`, optional
+        :type inplace: bool, optional
         :returns: None
         :rtype: NoneType
 
@@ -3246,14 +3246,14 @@ class Project:
         Get train and val items information from project by given train and val counts.
 
         :param project_dir: Path to project directory.
-        :type project_dir: :class:`str`
+        :type project_dir: str
         :param train_count: Number of train items.
-        :type train_count: :class:`int`
+        :type train_count: int
         :param val_count: Number of val items.
-        :type val_count: :class:`int`
-        :raises: :class:`ValueError` if total_count != train_count + val_count
+        :type val_count: int
+        :raises ValueError: if total_count != train_count + val_count
         :returns: Tuple with lists of train items information and val items information
-        :rtype: :class:`list` [ :class:`ItemInfo<ItemInfo>` ], :class:`list` [ :class:`ItemInfo<ItemInfo>` ]
+        :rtype: list [ :class:`ItemInfo<ItemInfo>` ], list [ :class:`ItemInfo<ItemInfo>` ]
 
         :Usage Example:
 
@@ -3305,16 +3305,16 @@ class Project:
         Get train and val items information from project by given train and val tags names.
 
         :param project_dir: Path to project directory.
-        :type project_dir: :class:`str`
+        :type project_dir: str
         :param train_tag_name: Train tag name.
-        :type train_tag_name: :class:`str`
+        :type train_tag_name: str
         :param val_tag_name: Val tag name.
-        :type val_tag_name: :class:`str`
+        :type val_tag_name: str
         :param untagged: Actions in case of absence of train_tag_name and val_tag_name in project.
-        :type untagged: :class:`str`, optional
-        :raises: :class:`ValueError` if untagged not in ["ignore", "train", "val"]
+        :type untagged: str, optional
+        :raises ValueError: if untagged not in ["ignore", "train", "val"]
         :returns: Tuple with lists of train items information and val items information
-        :rtype: :class:`list` [ :class:`ItemInfo<ItemInfo>` ], :class:`list` [ :class:`ItemInfo<ItemInfo>` ]
+        :rtype: list [ :class:`ItemInfo<ItemInfo>` ], list [ :class:`ItemInfo<ItemInfo>` ]
 
         :Usage Example:
 
@@ -3370,14 +3370,14 @@ class Project:
         Get train and val items information from project by given train and val datasets names.
 
         :param project_dir: Path to project directory.
-        :type project_dir: :class:`str`
+        :type project_dir: str
         :param train_datasets: List of train datasets names.
-        :type train_datasets: :class:`list` [ :class:`str` ]
+        :type train_datasets: list [ str ]
         :param val_datasets: List of val datasets names.
-        :type val_datasets: :class:`list` [ :class:`str` ]
-        :raises: :class:`KeyError` if dataset name not found in project
+        :type val_datasets: list [ str ]
+        :raises KeyError: if dataset name not found in project
         :returns: Tuple with lists of train items information and val items information
-        :rtype: :class:`list` [ :class:`ItemInfo<ItemInfo>` ], :class:`list` [ :class:`ItemInfo<ItemInfo>` ]
+        :rtype: list [ :class:`ItemInfo<ItemInfo>` ], list [ :class:`ItemInfo<ItemInfo>` ]
 
         :Usage Example:
 
@@ -3424,18 +3424,18 @@ class Project:
         Get train and val items information from project by given train and val collections IDs.
 
         :param project_dir: Path to project directory.
-        :type project_dir: :class:`str`
+        :type project_dir: str
         :param train_collections: List of train collections IDs.
-        :type train_collections: :class:`list` [ :class:`int` ]
+        :type train_collections: list [ int ]
         :param val_collections: List of val collections IDs.
-        :type val_collections: :class:`list` [ :class:`int` ]
+        :type val_collections: list [ int ]
         :param project_id: Project ID.
-        :type project_id: :class:`int`
+        :type project_id: int
         :param api: Supervisely API address and token.
         :type api: :class:`Api<supervisely.api.api.Api>`
-        :raises: :class:`KeyError` if collection ID not found in project
+        :raises KeyError: if collection ID not found in project
         :returns: Tuple with lists of train items information and val items information
-        :rtype: :class:`list` [ :class:`ItemInfo<ItemInfo>` ], :class:`list` [ :class:`ItemInfo<ItemInfo>` ]
+        :rtype: list [ :class:`ItemInfo<ItemInfo>` ], list [ :class:`ItemInfo<ItemInfo>` ]
         """
         from supervisely.api.entities_collection_api import CollectionTypeFilter
 
@@ -3491,27 +3491,27 @@ class Project:
         :param api: Supervisely API address and token.
         :type api: :class:`Api<supervisely.api.api.Api>`
         :param project_id: Supervisely downloadable project ID.
-        :type project_id: :class:`int`
+        :type project_id: int
         :param dest_dir: Destination directory.
-        :type dest_dir: :class:`str`
+        :type dest_dir: str
         :param dataset_ids: Dataset IDs.
-        :type dataset_ids: :class:`list` [ :class:`int` ], optional
+        :type dataset_ids: list [ int ], optional
         :param log_progress: Show uploading progress bar.
-        :type log_progress: :class:`bool`
+        :type log_progress: bool
         :param batch_size: The number of images in the batch when they are loaded to a host.
-        :type batch_size: :class:`int`, optional
+        :type batch_size: int, optional
         :param cache: FileCache object.
         :type cache: :class:`FileCache<supervisely.io.fs_cache.FileCache>`, optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
         :param only_image_tags: Download project with only images tags (without objects tags).
-        :type only_image_tags: :class:`bool`, optional
+        :type only_image_tags: bool, optional
         :param save_image_info: Download images infos or not.
-        :type save_image_info: :class:`bool`, optional
+        :type save_image_info: bool, optional
         :param save_images: Download images or not.
-        :type save_images: :class:`bool`, optional
+        :type save_images: bool, optional
         :param save_image_meta: Download images metadata in JSON format or not.
-        :type save_image_meta: :class:`bool`, optional
+        :type save_image_meta: bool, optional
         :param download_blob_files: Default is False. It will download images in classic way.
                                 If True, it will download blob files, if they are present in the project, to optimize download process.
         :type download_blob_files: bool, optional
@@ -3586,21 +3586,21 @@ class Project:
         :param api: Supervisely API address and token.
         :type api: :class:`Api<supervisely.api.api.Api>`
         :param project_id: Project ID to download.
-        :type project_id: :class:`int`
+        :type project_id: int
         :param dest_dir: Destination path to local directory.
-        :type dest_dir: :class:`str`, optional
+        :type dest_dir: str, optional
         :param dataset_ids: Specified list of Dataset IDs which will be downloaded. If you want to download nested datasets, you should specify all nested IDs.
-        :type dataset_ids: :class:`list` [ :class:`int` ], optional
+        :type dataset_ids: list [ int ], optional
         :param batch_size: Size of a downloading batch.
-        :type batch_size: :class:`int`, optional
+        :type batch_size: int, optional
         :param log_progress: Show downloading logs in the output.
-        :type log_progress: :class:`bool`, optional
+        :type log_progress: bool, optional
         :param progress_cb: Function for tracking download progress. Has a higher priority than log_progress.
         :type progress_cb: :class:`tqdm` or :class:`callable`, optional
         :param return_bytesio: If True, returns BytesIO object instead of saving it to the disk.
-        :type return_bytesio: :class:`bool`, optional
+        :type return_bytesio: bool, optional
         :returns: Path to the binary file or BytesIO object.
-        :rtype: :class:`str` or :class:`BytesIO`
+        :rtype: str or :class:`BytesIO`
 
         :Usage Example:
 
@@ -3704,19 +3704,19 @@ class Project:
         :param api: Supervisely API address and token.
         :type api: :class:`Api<supervisely.api.api.Api>`
         :param file: Path to the binary file or BytesIO object.
-        :type file: :class:`str` or :class:`BytesIO`
+        :type file: str or :class:`BytesIO`
         :param workspace_id: Workspace ID, where project will be uploaded.
-        :type workspace_id: :class:`int`
+        :type workspace_id: int
         :param project_name: Name of the project in Supervisely. Can be changed if project with the same name is already exists.
-        :type project_name: :class:`str`, optional
+        :type project_name: str, optional
         :param with_custom_data: If True, custom data from source project will be added to a new project.
-        :type with_custom_data: :class:`bool`, optional
+        :type with_custom_data: bool, optional
         :param log_progress: Show uploading progress bar.
-        :type log_progress: :class:`bool`, optional
+        :type log_progress: bool, optional
         :param progress_cb: Function for tracking upload progress for datasets. Has a higher priority than log_progress.
         :type progress_cb: tqdm or callable, optional
         :param skip_missed: Skip missed images.
-        :type skip_missed: :class:`bool`, optional
+        :type skip_missed: bool, optional
         :returns: ProjectInfo object.
         :rtype: :class:`ProjectInfo<supervisely.api.project.ProjectInfo>`
 
@@ -4021,19 +4021,19 @@ class Project:
         Refer to the example section for usage details.
 
         :param dir: Path to project directory.
-        :type dir: :class:`str`
+        :type dir: str
         :param api: Supervisely API address and token.
         :type api: :class:`Api<supervisely.api.api.Api>`
         :param workspace_id: Workspace ID, where project will be uploaded.
-        :type workspace_id: :class:`int`
+        :type workspace_id: int
         :param project_name: Name of the project in Supervisely. Can be changed if project with the same name is already exists.
-        :type project_name: :class:`str`, optional
+        :type project_name: str, optional
         :param log_progress: Show uploading progress bar.
-        :type log_progress: :class:`bool`
+        :type log_progress: bool
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
         :returns: Project ID and name. It is recommended to check that returned project name coincides with provided project name.
-        :rtype: :class:`int`, :class:`str`
+        :rtype: int, str
 
         :Usage Example:
 
@@ -4104,29 +4104,29 @@ class Project:
         :param api: Supervisely API address and token.
         :type api: :class:`Api<supervisely.api.api.Api>`
         :param project_id: Supervisely downloadable project ID.
-        :type project_id: :class:`int`
+        :type project_id: int
         :param dest_dir: Destination directory.
-        :type dest_dir: :class:`str`
+        :type dest_dir: str
         :param dataset_ids: Filter datasets by IDs.
-        :type dataset_ids: :class:`list` [ :class:`int` ], optional
+        :type dataset_ids: list [ int ], optional
         :param log_progress: Show uploading progress bar.
-        :type log_progress: :class:`bool`
+        :type log_progress: bool
         :param semaphore: Semaphore to limit the number of concurrent downloads of items.
         :type semaphore: :class:`asyncio.Semaphore`, optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
         :param only_image_tags: Download project with only images tags (without objects tags).
-        :type only_image_tags: :class:`bool`, optional
+        :type only_image_tags: bool, optional
         :param save_image_info: Download images infos or not.
-        :type save_image_info: :class:`bool`, optional
+        :type save_image_info: bool, optional
         :param save_images: Download images or not.
-        :type save_images: :class:`bool`, optional
+        :type save_images: bool, optional
         :param save_image_meta: Download images metadata in JSON format or not.
-        :type save_image_meta: :class:`bool`, optional
+        :type save_image_meta: bool, optional
         :param images_ids: Filter images by IDs.
-        :type images_ids: :class:`list` [ :class:`int` ], optional
+        :type images_ids: list [ int ], optional
         :param resume_download: Resume download enables to download only missing files avoiding erase of existing files.
-        :type resume_download: :class:`bool`, optional
+        :type resume_download: bool, optional
         :param skip_create_readme: Skip creating README.md file. Default is False.
         :type skip_create_readme: bool, optional
         :returns: None
@@ -4190,13 +4190,13 @@ class Project:
         Convert Supervisely project to COCO format.
 
         :param dest_dir: Destination directory.
-        :type dest_dir: :class:`str`, optional
+        :type dest_dir: str, optional
         :param copy_images: Copy images to the destination directory.
-        :type copy_images: :class:`bool`
+        :type copy_images: bool
         :param with_captions: Return captions for images.
-        :type with_captions: :class:`bool`
+        :type with_captions: bool
         :param log_progress: Show uploading progress bar.
-        :type log_progress: :class:`bool`
+        :type log_progress: bool
         :param progress_cb: Function for tracking conversion progress (for all items in the project).
         :type progress_cb: callable, optional
         :returns: None
@@ -4242,18 +4242,18 @@ class Project:
         Convert Supervisely project to YOLO format.
 
         :param dest_dir: Destination directory.
-        :type dest_dir: :class:`str`, optional
+        :type dest_dir: str, optional
         :param task_type: Task type for YOLO format. Possible values: 'detection', 'segmentation', 'pose'.
-        :type task_type: :class:`str` or :class:`TaskType`, optional
+        :type task_type: str or :class:`TaskType`, optional
         :param log_progress: Show uploading progress bar.
-        :type log_progress: :class:`bool`
+        :type log_progress: bool
         :param progress_cb: Function for tracking conversion progress (for all items in the project).
         :type progress_cb: callable, optional
         :param val_datasets:    List of dataset names for validation.
                             Full dataset names are required (e.g., 'ds0/nested_ds1/ds3').
                             If specified, datasets from the list will be marked as val, others as train.
                             If not specified, the function will determine the validation datasets automatically.
-        :type val_datasets: :class:`list` [ :class:`str` ], optional
+        :type val_datasets: list [ str ], optional
         :returns: None
         :rtype: NoneType
 
@@ -4297,11 +4297,11 @@ class Project:
         Convert Supervisely project to Pascal VOC format.
 
         :param dest_dir: Destination directory.
-        :type dest_dir: :class:`str`, optional
+        :type dest_dir: str, optional
         :param train_val_split_coef: Coefficient for splitting images into train and validation sets.
-        :type train_val_split_coef: :class:`float`, optional
+        :type train_val_split_coef: float, optional
         :param log_progress: Show uploading progress bar.
-        :type log_progress: :class:`bool`
+        :type log_progress: bool
         :param progress_cb: Function for tracking conversion progress (for all items in the project).
         :type progress_cb: callable, optional
         :returns: None
@@ -4357,14 +4357,14 @@ def read_single_project(
     Read project from given directory or tries to find project directory in subdirectories.
 
     :param dir: Path to directory, which contains project folder or have project folder in any subdirectory.
-    :type dir: :class:`str`
+    :type dir: str
     :param project_class: Project object of arbitrary modality
     :type project_class: :class: `Project` or `VideoProject` or `VolumeProject` or `PointcloudProject` or `PointcloudEpisodeProject`, optional
 
     :returns: Project class object of arbitrary modality
     :rtype: :class: `Project` or `VideoProject` or `VolumeProject` or `PointcloudProject` or `PointcloudEpisodeProject`
-    :raises: RuntimeError if the given directory and it's subdirectories contains more than one valid project folder.
-    :raises: FileNotFoundError if the given directory or any of it's subdirectories doesn't contain valid project folder.
+    :raises RuntimeError: if the given directory and it's subdirectories contains more than one valid project folder.
+    :raises FileNotFoundError: if the given directory or any of it's subdirectories doesn't contain valid project folder.
 
     :Usage Example:
 

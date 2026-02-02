@@ -50,7 +50,7 @@ def get_file_name(path: str) -> str:
     :param path: Path to file.
     :type path: str
     :returns: File name without extension
-    :rtype: :class:`str`
+    :rtype: str
 
     :Usage Example:
 
@@ -73,7 +73,7 @@ def get_file_ext(path: str) -> str:
     :param path: Path to file.
     :type path: str
     :returns: File extension without name
-    :rtype: :class:`str`
+    :rtype: str
 
     :Usage Example:
 
@@ -95,7 +95,7 @@ def get_file_name_with_ext(path: str) -> str:
     :param path: Path to file.
     :type path: str
     :returns: File name with extension
-    :rtype: :class:`str`
+    :rtype: str
 
     :Usage Example:
 
@@ -307,7 +307,7 @@ def mkdir(dir: str, remove_content_if_exists: Optional[bool] = False) -> None:
     :remove_content_if_exists: Remove directory content if it exist.
     :remove_content_if_exists: bool
     :returns: None
-    :rtype: :class:`NoneType`
+    :rtype: None
 
     :Usage Example:
 
@@ -331,7 +331,7 @@ def ensure_base_path(path: str) -> None:
     :param path: Target dir path.
     :type path: str
     :returns: None
-    :rtype: :class:`NoneType`
+    :rtype: None
 
     :Usage Example:
 
@@ -355,7 +355,7 @@ def copy_file(src: str, dst: str) -> None:
     :param dst: Destination file path.
     :type dst: str
     :returns: None
-    :rtype: :class:`NoneType`
+    :rtype: None
 
     :Usage Example:
 
@@ -380,7 +380,7 @@ def hardlink_or_copy_file(src: str, dst: str) -> None:
     :param dst: Destination file path.
     :type dst: str
     :returns: None
-    :rtype: :class:`NoneType`
+    :rtype: None
 
     :Usage Example:
 
@@ -405,7 +405,7 @@ def hardlink_or_copy_tree(src: str, dst: str) -> None:
     :param dst: Destination dir path.
     :type dst: str
     :returns: None
-    :rtype: :class:`NoneType`
+    :rtype: None
 
     :Usage Example:
 
@@ -433,7 +433,7 @@ def dir_exists(dir: str) -> bool:
     :param dir: Target directory path.
     :type dir: str
     :returns: True if directory exists, False otherwise.
-    :rtype: :class:`bool`
+    :rtype: bool
 
     :Usage Example:
 
@@ -454,7 +454,7 @@ def dir_empty(dir: str) -> bool:
     :param dir: Target directory path.
     :type dir: str
     :returns: True if directory is empty, False otherwise.
-    :rtype: :class:`bool`
+    :rtype: bool
 
     :Usage Example:
 
@@ -476,7 +476,7 @@ def file_exists(path: str) -> bool:
     :param dir: Target file path.
     :type dir: str
     :returns: True if file exists, False otherwise.
-    :rtype: :class:`bool`
+    :rtype: bool
 
     :Usage Example:
 
@@ -499,7 +499,7 @@ def get_subdirs(dir_path: str, recursive: Optional[bool] = False) -> list:
     :param recursive: If True, all found subdirectories will be included in the result list.
     :type recursive: bool
     :returns: List containing directories names.
-    :rtype: :class:`list`
+    :rtype: list
 
     :Usage Example:
 
@@ -601,7 +601,7 @@ def global_to_relative(global_path: str, base_dir: str) -> str:
     :param base_dir: Base directory path.
     :type base_dir: str
     :returns: Relative path.
-    :rtype: :class:`str`
+    :rtype: str
 
     :Usage Example:
 
@@ -626,7 +626,7 @@ def clean_dir(dir_: str, ignore_errors: Optional[bool] = True) -> None:
     :ignore_errors: Ignore possible errors while removes directory content.
     :ignore_errors: bool
     :returns: None
-    :rtype: :class:`NoneType`
+    :rtype: None
 
     :Usage Example:
 
@@ -660,7 +660,7 @@ def remove_dir(dir_: str) -> None:
     :param dir_: Target directory path.
     :type dir_: str
     :returns: None
-    :rtype: :class:`NoneType`
+    :rtype: None
 
     :Usage Example:
 
@@ -680,7 +680,7 @@ def silent_remove(file_path: str) -> None:
     :param file_path: File path.
     :type file_path: str
     :returns: None
-    :rtype: :class:`NoneType`
+    :rtype: None
 
     :Usage Example:
 
@@ -704,7 +704,7 @@ def get_file_size(path: str) -> int:
     :param path: File path.
     :type path: str
     :returns: File size in bytes
-    :rtype: :class:`int`
+    :rtype: int
 
     :Usage Example:
 
@@ -724,7 +724,7 @@ def get_directory_size(dir_path: str) -> int:
     :param path: Target directory path.
     :type path: str
     :returns: Directory size in bytes
-    :rtype: :class:`int`
+    :rtype: int
 
     :Usage Example:
 
@@ -840,7 +840,7 @@ def unpack_archive(
     :param chunk_size_mb: Size of the chunk to read from the file. Default is 50Mb.
     :type chunk_size_mb: int
     :returns: None
-    :rtype: :class:`NoneType`
+    :rtype: None
 
     :Usage Example:
 
@@ -929,7 +929,7 @@ def get_file_hash(path: str) -> str:
     :param path: Target file path.
     :type path: str
     :returns: File hash
-    :rtype: :class:`str`
+    :rtype: str
 
     :Usage Example:
 
@@ -1000,7 +1000,7 @@ def tree(dir_path: str) -> str:
     :param dir_path: Target directory path.
     :type dir_path: str
     :returns: Tree with directory files and subdirectories
-    :rtype: :class:`str`
+    :rtype: str
 
     :Usage Example:
 
@@ -1079,7 +1079,7 @@ def log_tree(
     :type level: Logger level. Available levels: info, debug, warning, error. Default: info.
     :type level: Literal["info", "debug", "warning", "error"]
     :returns: None
-    :rtype: :class:`NoneType`
+    :rtype: None
 
     :Usage Example:
 
@@ -1113,7 +1113,7 @@ def touch(path: str) -> None:
     :param path: Target file path.
     :type path: str
     :returns: None
-    :rtype: :class:`NoneType`
+    :rtype: None
 
     :Usage Example:
 
@@ -1152,7 +1152,7 @@ def download(
     :param timeout: The maximum number of seconds to wait for a response from the server. If the server does not respond within the timeout period, a TimeoutError is raised.
     :type timeout: int, optional.
     :returns: Full path to downloaded image
-    :rtype: :class:`str`
+    :rtype: str
 
     :Usage Example:
 
@@ -1546,7 +1546,7 @@ async def get_file_hash_async(path: str) -> str:
     :param path: Target file path.
     :type path: str
     :returns: File hash
-    :rtype: :class:`str`
+    :rtype: str
 
     :Usage Example:
 

@@ -25,6 +25,7 @@ from supervisely.geometry.constants import (
     UPDATED_AT,
 )
 from supervisely.io.json import JsonSerializable
+from supervisely.geometry.image_rotator import ImageRotator
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
 
@@ -37,7 +38,7 @@ if TYPE_CHECKING:
 
 # @TODO: use properties instead of field if it makes sense
 class Geometry(JsonSerializable):
-    """ """
+    """Base class for all geometry classes."""
 
     def __init__(
         self,
@@ -54,7 +55,7 @@ class Geometry(JsonSerializable):
         self.class_id = class_id
 
     def _add_creation_info(self, d):
-        """ """
+        """Add creation information to the geometry."""
         if self.labeler_login is not None:
             d[LABELER_LOGIN] = self.labeler_login
         if self.updated_at is not None:
@@ -67,7 +68,7 @@ class Geometry(JsonSerializable):
             d[CLASS_ID] = self.class_id
 
     def _copy_creation_info_inplace(self, g):
-        """ """
+        """Copy creation information to the geometry."""
         self.labeler_login = g.labeler_login
         self.updated_at = g.updated_at
         self.created_at = g.created_at
@@ -75,7 +76,7 @@ class Geometry(JsonSerializable):
 
     @staticmethod
     def geometry_name():
-        """
+        """Get the name of the geometry.
         :returns: string with name of geometry
         """
         raise NotImplementedError()
@@ -83,41 +84,51 @@ class Geometry(JsonSerializable):
     @classmethod
     def name(cls):
         """
-        Same as geometry_name(), but shorter. In order to make the code more concise.
+        Get the name of the geometry.
+
+        Same as :meth:`geometry_name()<Geometry.geometry_name>`, but shorter. In order to make the code more concise.
 
         :returns: string with name of geometry
         """
         return cls.geometry_name()
 
-    def crop(self, rect):
+    def crop(self, rect: Rectangle) -> List[Geometry]:
         """
-        :param rect: Rectangle
+        Crop the geometry with given rectangle.
+
+        :param rect: Rectangle object for crop.
+        :type rect: Rectangle
         :returns: list of Geometry
         """
         raise NotImplementedError()
 
     def relative_crop(self, rect):
         """Crops object like "crop" method, but return results with coordinates relative to rect
-        :param rect:
-        :returns: list of Geometry
+        :param rect: Rectangle object for crop.
+        :type rect: Rectangle
+        :returns: List of Geometry objects
+        :rtype: List[Geometry]
         """
         return [geom.translate(drow=-rect.top, dcol=-rect.left) for geom in self.crop(rect)]
 
-    def rotate(self, rotator):
+    def rotate(self, rotator: ImageRotator) -> Geometry:
         """Rotates around image center -> New Geometry
         :param rotator: ImageRotator
-        :returns: Geometry
+        :returns: Geometry object
+        :rtype: :class:`~supervisely.geometry.geometry.Geometry`
         """
         raise NotImplementedError()
 
-    def resize(self, in_size, out_size):
+    def resize(self, in_size: Tuple[int, int], out_size: Tuple[int, int]) -> Geometry:
         """
         :param in_size: (rows, cols)
-        :param out_size:
+        :type in_size: Tuple[int, int]
+        :param out_size: Desired output image size (height, width) of the Annotation to which Label belongs.
+            (rows, cols)
             (128, 256)
-            (128, KEEP_ASPECT_RATIO)
-            (KEEP_ASPECT_RATIO, 256)
-        :returns: Geometry
+        :type out_size: Tuple[int, int]
+        :returns: Geometry object
+        :rtype: :class:`~supervisely.geometry.geometry.Geometry`
         """
         raise NotImplementedError()
 
@@ -309,11 +320,11 @@ class Geometry(JsonSerializable):
         However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
 
         :param data: Json data with geometry config.
-        :type data: :class:`dict`
+        :type data: dict
         :param image_size: Image size in pixels (height, width).
         :type image_size: List[int]
         :returns: Json data with coordinates converted to pixel coordinate system.
-        :rtype: :class:`dict`
+        :rtype: dict
         """
         data = deepcopy(data)  # Avoid modifying the original data
         height, width = image_size[:2]
@@ -370,9 +381,9 @@ class Geometry(JsonSerializable):
         However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
 
         :param data: Json data with geometry config.
-        :type data: :class:`dict`
+        :type data: dict
         :returns: Json data with coordinates converted to subpixel coordinate system.
-        :rtype: :class:`dict`
+        :rtype: dict
         """
         data = deepcopy(data)  # Avoid modifying the original data
 

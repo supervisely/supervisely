@@ -20,7 +20,7 @@ class ObjClassCollection(KeyIndexedCollection, JsonSerializable):
     """
     Collection with :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` instances. :class:`ObjClassCollection<ObjClassCollection>` object is immutable.
 
-    :raises: :class:`DuplicateKeyError` if instance with given name already exist
+    :raises :class:`~supervisely.collection.key_indexed_collection.DuplicateKeyError`: if instance with given name already exist
 
     :Usage Example:
 
@@ -247,8 +247,8 @@ class ObjClassCollection(KeyIndexedCollection, JsonSerializable):
 
         :param logger: Input logger.
         :type logger: logger, optional
-        :returns: Notification if there are objects with the same colors, otherwise :class:`None`
-        :rtype: :class:`str` or :class:`NoneType`
+        :returns: Notification if there are objects with the same colors, otherwise None
+        :rtype: str or None
 
         :Usage Example:
 

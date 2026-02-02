@@ -405,7 +405,7 @@ class AnnotationApi(ModuleApi):
         :type force_metadata_for_links: bool, optional
 
         :returns: Annotation in json format
-        :rtype: :class:`dict`
+        :rtype: dict
 
         :Usage Example:
 
@@ -1103,7 +1103,7 @@ class AnnotationApi(ModuleApi):
         :type dst_image_ids: List[int]
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
-        :raises: :class:`RuntimeError`, if len(src_image_ids) != len(dst_image_ids)
+        :raises RuntimeError: if len(src_image_ids) != len(dst_image_ids)
         :returns: None
         :rtype: None
 
@@ -1216,7 +1216,7 @@ class AnnotationApi(ModuleApi):
         :type dst_image_ids: List[int]
         :returns: None
         :rtype: None
-        :raises: :class:`RuntimeError` if len(src_image_ids) != len(dst_image_ids)
+        :raises RuntimeError: if len(src_image_ids) != len(dst_image_ids)
 
         :Usage Example:
 

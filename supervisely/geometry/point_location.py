@@ -45,7 +45,7 @@ class PointLocation(JsonSerializable):
         Position of PointLocation on height.
 
         :returns: Height of PointLocation
-        :rtype: :class:`int`
+        :rtype: int
 
         :Usage Example:
 
@@ -62,7 +62,7 @@ class PointLocation(JsonSerializable):
         Position of PointLocation on width.
 
         :returns: Width of PointLocation
-        :rtype: :class:`int`
+        :rtype: int
 
         :Usage Example:
 
@@ -78,7 +78,7 @@ class PointLocation(JsonSerializable):
         Convert the PointLocation to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :returns: Json format as a dict
-        :rtype: :class:`dict`
+        :rtype: dict
 
         :Usage Example:
 
@@ -323,7 +323,7 @@ def points_to_row_col_list(
     :param flip_row_col_order: Flips row col coords if True.
     :type flip_row_col_order: bool, optional
     :returns: List of coords
-    :rtype: :class:`list`
+    :rtype: list
 
         :Usage Example:
 

@@ -110,69 +110,69 @@ class VolumeInfo(NamedTuple):
             )
     """
 
-    #: :class:`int`: Volume ID in Supervisely.
+    #: int: Volume ID in Supervisely.
     id: int
 
-    #: :class:`str`: Volume filename.
+    #: str: Volume filename.
     name: str
 
-    #: :class:`str`: Link to volume.
+    #: str: Link to volume.
     link: str
 
-    #: :class:`str`: Volume hash obtained by base64(sha256(file_content)).
+    #: str: Volume hash obtained by base64(sha256(file_content)).
     #: Use hash for files that are expected to be stored at Supervisely or your deployed agent.
     hash: str
 
-    #: :class:`str`: MIME type of the volume.
+    #: str: MIME type of the volume.
     mime: str
 
-    #: :class:`str`: File extension of the volume.
+    #: str: File extension of the volume.
     ext: str
 
-    #: :class:`int`: Size of the volume in bytes.
+    #: int: Size of the volume in bytes.
     sizeb: int
 
-    #: :class:`str`: Volume creation time. e.g. "2019-02-22T14:59:53.381Z".
+    #: str: Volume creation time. e.g. "2019-02-22T14:59:53.381Z".
     created_at: str
 
-    #: :class:`str`: Time of last volume update. e.g. "2019-02-22T14:59:53.381Z".
+    #: str: Time of last volume update. e.g. "2019-02-22T14:59:53.381Z".
     updated_at: str
 
-    #: :class:`dict`: A dictionary containing metadata associated with the volume.
+    #: dict: A dictionary containing metadata associated with the volume.
     meta: dict
 
-    #: :class:`str`: Original path of the volume.
+    #: str: Original path of the volume.
     path_original: str
 
-    #: :class:`str`: Full storage URL of the volume.
+    #: str: Full storage URL of the volume.
     full_storage_url: str
 
-    #: :class:`list`: Volume :class:`~supervisely.volume_annotation.volume_tag.VolumeTag` list.
+    #: list: Volume :class:`~supervisely.volume_annotation.volume_tag.VolumeTag` list.
     #: e.g. "[{'entityId': 19581134, 'tagId': 385328, 'id': 12259702, 'value': 'some info}]"
     tags: list
 
-    #: :class:`int`: :class:`~supervisely.api.team_api.TeamApi` ID in Supervisely.
+    #: int: :class:`~supervisely.api.team_api.TeamApi` ID in Supervisely.
     team_id: int
 
-    #: :class:`int`: :class:`~supervisely.api.workspace_api.WorkspaceApi` ID in Supervisely.
+    #: int: :class:`~supervisely.api.workspace_api.WorkspaceApi` ID in Supervisely.
     workspace_id: int
 
-    #: :class:`int`: :class:`~supervisely.project.project.Project` ID in Supervisely.
+    #: int: :class:`~supervisely.project.project.Project` ID in Supervisely.
     project_id: int
 
-    #: :class:`int`: :class:`~supervisely.project.project.Dataset` ID in Supervisely.
+    #: int: :class:`~supervisely.project.project.Dataset` ID in Supervisely.
     dataset_id: int
 
-    #: :class:`dict`: A dictionary containing metadata about the volume file.
+    #: dict: A dictionary containing metadata about the volume file.
     file_meta: dict
 
-    #: :class:`int`: Number of figures in the volume.
+    #: int: Number of figures in the volume.
     figures_count: int
 
-    #: :class:`int`: Number of objects in the volume.
+    #: int: Number of objects in the volume.
     objects_count: int
 
-    #: :class:`str`: Path to the volume file on the server.
+    #: str: Path to the volume file on the server.
     processing_path: str
 
 
@@ -279,9 +279,9 @@ class VolumeApi(RemoveableBulkModuleApi):
         :param filters: List of parameters to sort output Volumes. See: https://api.docs.supervisely.com/#tag/Volumes/paths/~1volumes.list/get
         :type filters: List[Dict[str, str]], optional
         :param sort: Attribute to sort the list by. The default is "id". Valid values are "id", "name", "description", "createdAt", "updatedAt".
-        :type sort: :class:`str`
+        :type sort: str
         :param sort_order: Order in which to sort the list. The default is "asc". Valid values are "asc" (ascending) and "desc" (descending).
-        :type sort_order: :class:`str`
+        :type sort_order: str
         :returns: List of information about volumes in given dataset.
         :rtype: List[:class:`~supervisely.api.volume.volume_api.VolumeInfo`]
 
@@ -1516,7 +1516,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :type progress_cb: tqdm or callable, optional
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
         :type progress_cb_type: str, optional
-        :raises: :class:`ValueError` if len(ids) != len(paths)
+        :raises ValueError: if len(ids) != len(paths)
         :returns: None
         :rtype: None
 

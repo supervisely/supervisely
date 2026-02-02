@@ -78,7 +78,7 @@ class Point(Geometry):
         Position of Point height.
 
         :returns: Height of Point
-        :rtype: :class:`int`
+        :rtype: int
 
         :Usage Example:
 
@@ -95,7 +95,7 @@ class Point(Geometry):
         Position of Point width.
 
         :returns: Width of Point
-        :rtype: :class:`int`
+        :rtype: int
 
         :Usage Example:
 
@@ -329,7 +329,7 @@ class Point(Geometry):
         Point area.
 
         :returns: Area of current Point object, always 0.0
-        :rtype: :class:`float`
+        :rtype: float
 
         :Usage Example:
 
@@ -360,7 +360,7 @@ class Point(Geometry):
         Convert the Point to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :returns: Json format as a dict
-        :rtype: :class:`dict`
+        :rtype: dict
 
         :Usage Example:
 

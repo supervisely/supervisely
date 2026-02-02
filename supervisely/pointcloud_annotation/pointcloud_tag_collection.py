@@ -156,7 +156,7 @@ class PointcloudTagCollection(TagCollection):
     #     Get list of Pointcloud Tags with provided name.
 
     #     :param tag_name: Pointcloud Tag name.
-    #     :type tag_name: :class:`str`
+    #     :type tag_name: str
     #     :returns: List of Pointcloud Tags.
     #     :rtype: :class:`List[PointcloudTag]<supervisely.pointcloud_annotation.pointcloud_tag.PointcloudTag>`
     #     """
@@ -172,10 +172,10 @@ class PointcloudTagCollection(TagCollection):
     #     Method will raise error If collection contains more than 1 tag with provided name.
 
     #     :param tag_name: Pointcloud Tag name.
-    #     :type tag_name: :class:`str`
+    #     :type tag_name: str
     #     :returns: PointcloudTag object or :class:`None<None>` If no elements with provided name in collection.
     #     :rtype: :class:`PointcloudTag<supervisely.pointcloud_annotation.pointcloud_tag.PointcloudTag>` or :class:`NoneType<NoneType>`
-    #     :raises: :class:`ValueError`, If collection contains more than 1 tag with provided name.
+    #     :raises ValueError: If collection contains more than 1 tag with provided name.
     #     """
     #     res = []
     #     for tag in self:

@@ -147,7 +147,7 @@ class VolumeProject(VideoProject):
         Project type.
 
         :returns: Project type.
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -178,13 +178,13 @@ class VolumeProject(VideoProject):
         :param api: Supervisely API address and token.
         :type api: :class:`Api<supervisely.api.api.Api>`
         :param project_id: Supervisely downloadable project ID.
-        :type project_id: :class:`int`
+        :type project_id: int
         :param dest_dir: Destination directory.
-        :type dest_dir: :class:`str`
+        :type dest_dir: str
         :param dataset_ids: Dataset IDs.
-        :type dataset_ids: :class:`list` [ :class:`int` ], optional
+        :type dataset_ids: list [ int ], optional
         :param download_volumes: Download volume data files or not.
-        :type download_volumes: :class:`bool`, optional
+        :type download_volumes: bool, optional
         :param log_progress: Show uploading progress bar.
         :type log_progress: bool
         :param progress_cb: Function for tracking the download progress.
@@ -432,20 +432,20 @@ class VolumeProject(VideoProject):
         Uploads volume project to Supervisely from the given directory.
 
         :param directory: Path to project directory.
-        :type directory: :class:`str`
+        :type directory: str
         :param api: Supervisely API address and token.
         :type api: :class:`Api<supervisely.api.api.Api>`
         :param workspace_id: Workspace ID, where project will be uploaded.
-        :type workspace_id: :class:`int`
+        :type workspace_id: int
         :param project_name: Name of the project in Supervisely. Can be changed if project with the same name is already exists.
-        :type project_name: :class:`str`, optional
+        :type project_name: str, optional
         :param log_progress: Show uploading progress bar.
-        :type log_progress: :class:`bool`
+        :type log_progress: bool
         :param progress_cb: Function for tracking the download progress.
         :type progress_cb: tqdm or callable, optional
 
         :returns: Project ID and name. It is recommended to check that returned project name coincides with provided project name.
-        :rtype: :class:`int`, :class:`str`
+        :rtype: int, str
 
         :Usage Example:
 
@@ -896,7 +896,7 @@ class VolumeProject(VideoProject):
     def get_train_val_splits_by_count(project_dir: str, train_count: int, val_count: int) -> None:
         """
         Not available for VolumeProject class.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             "Static method 'get_train_val_splits_by_count()' is not supported for VolumeProject class now."
@@ -911,7 +911,7 @@ class VolumeProject(VideoProject):
     ) -> None:
         """
         Not available for VolumeProject class.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             "Static method 'get_train_val_splits_by_tag()' is not supported for VolumeProject class now."
@@ -923,7 +923,7 @@ class VolumeProject(VideoProject):
     ) -> None:
         """
         Not available for VolumeProject class.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Static method 'get_train_val_splits_by_tag()' is not supported for VolumeProject class now."
@@ -939,7 +939,7 @@ class VolumeProject(VideoProject):
     ) -> None:
         """
         Not available for VolumeProject class.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Static method 'get_train_val_splits_by_collections()' is not supported for VolumeProject class now."

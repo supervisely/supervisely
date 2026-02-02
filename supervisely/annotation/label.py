@@ -212,7 +212,7 @@ class LabelBase:
         Description of the current Label.
 
         :returns: Description
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -295,7 +295,7 @@ class LabelBase:
         Convert the Label to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :returns: Json format as a dict
-        :rtype: :class:`dict`
+        :rtype: dict
 
         :Usage Example:
 
@@ -442,7 +442,7 @@ class LabelBase:
         NOTE: This can be None, when working with local project.
 
         :returns: Label unique identifier.
-        :rtype: :class:`int` or :class:`NoneType`
+        :rtype: int or None
         """
         return self._sly_id
 
@@ -873,7 +873,7 @@ class LabelBase:
         Label area.
 
         :returns: Area of current geometry in Label.
-        :rtype: :class:`float`
+        :rtype: float
 
         :Usage Example:
 
@@ -985,11 +985,11 @@ class LabelBase:
         However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
 
         :param data: Label in json format.
-        :type data: :class:`dict`
+        :type data: dict
         :param image_size: Image size in pixels (height, width).
         :type image_size: List[int]
         :returns: Json data with coordinates converted to pixel coordinate system.
-        :rtype: :class:`dict`
+        :rtype: dict
         """
         data = deepcopy(data)  # Avoid modifying the original data
         if data[LabelJsonFields.GEOMETRY_TYPE] == Rectangle.geometry_name():
@@ -1008,9 +1008,9 @@ class LabelBase:
         However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
 
         :param data: Label in json format.
-        :type data: :class:`dict`
+        :type data: dict
         :returns: Json data with coordinates converted to subpixel coordinate system.
-        :rtype: :class:`dict`
+        :rtype: dict
         """
         data = deepcopy(data)  # Avoid modifying the original data
         if data[LabelJsonFields.GEOMETRY_TYPE] == Rectangle.geometry_name():

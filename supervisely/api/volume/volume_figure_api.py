@@ -56,7 +56,7 @@ class VolumeFigureApi(FigureApi):
         :param geometry_type: Type of VolumeFigure geometry.
         :type geometry_type: str
         :returns: New figure ID
-        :rtype: :class:`int`
+        :rtype: int
 
         :Usage Example:
 

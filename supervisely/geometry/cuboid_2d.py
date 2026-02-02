@@ -145,7 +145,7 @@ class Cuboid2d(GraphNodes):
         Copy of the dimensions of the Cuboid2d.
 
         :returns: Dimensions of the Cuboid2d
-        :rtype: :class:`dict`
+        :rtype: dict
         """
         if isinstance(self._dimensions, dict):
             return self._dimensions.copy()

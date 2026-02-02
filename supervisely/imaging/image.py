@@ -87,7 +87,7 @@ def is_valid_ext(ext: str) -> bool:
     :param ext: Image extention.
     :type ext: str
     :returns: True if image extention in list of supported images extensions, False - in otherwise
-    :rtype: :class:`bool`
+    :rtype: bool
 
     :Usage Example:
 
@@ -108,7 +108,7 @@ def has_valid_ext(path: str) -> bool:
     :param path: Path to file.
     :type path: str
     :returns: True if file extention in list of supported images extensions, False - in otherwise
-    :rtype: :class:`bool`
+    :rtype: bool
 
     :Usage Example:
 
@@ -129,7 +129,7 @@ def validate_ext(path: str) -> None:
     :param path: Path to file.
     :type path: str
     :returns: None
-    :rtype: :class:`NoneType`
+    :rtype: None
 
     :Usage Example:
 
@@ -162,7 +162,7 @@ def validate_format(path: str) -> None:
     :param path: Path to file.
     :type path: str
     :returns: None
-    :rtype: :class:`NoneType`
+    :rtype: None
 
     :Usage Example:
 
@@ -211,7 +211,7 @@ def is_valid_format(path: str) -> bool:
     :param path: Path to file.
     :type path: str
     :returns: True if file format in list of supported images formats, False - in otherwise
-    :rtype: :class:`bool`
+    :rtype: bool
 
     :Usage Example:
 
@@ -395,7 +395,7 @@ def draw_text_sequence(
     :param fill_background: Define fill text background or not.
     :type fill_background: bool, optional
     :returns: None
-    :rtype: :class:`NoneType`
+    :rtype: None
 
     :Usage Example:
 
@@ -544,7 +544,7 @@ def write_bytes(img: np.ndarray, ext: str) -> bytes:
     :param ext: File extension that defines the output format.
     :type ext: str
     :returns: Bytes object
-    :rtype: :class:`bytes`
+    :rtype: bytes
 
     :Usage Example:
 
@@ -589,7 +589,7 @@ def get_hash(img: np.ndarray, ext: str) -> str:
     :param ext: File extension that defines the output format.
     :type ext: str
     :returns: Hash string
-    :rtype: :class:`str`
+    :rtype: str
 
     :Usage Example:
 
@@ -1282,7 +1282,7 @@ def np_image_to_data_url(img: np.ndarray) -> str:
     :param img: Image in numpy format(RGBA or RGB).
     :type img: np.ndarray
     :returns: String with image url
-    :rtype: :class:`str`
+    :rtype: str
 
     :Usage Example:
 
@@ -1332,7 +1332,7 @@ def np_image_to_data_url_backup_rgb(img: np.ndarray) -> str:
     :param img: Image in numpy format(only RGB).
     :type img: np.ndarray
     :returns: String with image url
-    :rtype: :class:`str`
+    :rtype: str
 
     :Usage Example:
 

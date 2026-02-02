@@ -72,7 +72,7 @@ def is_valid_ext(ext: str) -> bool:
     :param ext: Volume file extension.
     :type ext: str
     :returns: True if extensions is in the list of supported extensions else False
-    :rtype: :class:`bool`
+    :rtype: bool
 
     :Usage Example:
 
@@ -97,7 +97,7 @@ def has_valid_ext(path: str) -> bool:
     :param path: Path to volume file.
     :type path: str
     :returns: True if Volume file has supported extension else False
-    :rtype: :class:`bool`
+    :rtype: bool
 
     :Usage Example:
 
@@ -118,9 +118,9 @@ def validate_format(path: str):
 
     :param path: Path to Volume file.
     :type path: str
-    :raises: :class:`UnsupportedVolumeFormat` if Volume file from given path couldn't be read or file extension is not supported.
+    :raises UnsupportedVolumeFormat: if Volume file from given path couldn't be read or file extension is not supported.
     :returns: None
-    :rtype: :class:`NoneType`
+    :rtype: None
 
     :Usage Example:
 
@@ -146,7 +146,7 @@ def is_valid_format(path: str) -> bool:
     :param path: Path to file.
     :type path: str
     :returns: True if file format in list of supported Volume formats, False - in otherwise
-    :rtype: :class:`bool`
+    :rtype: bool
 
     :Usage Example:
 

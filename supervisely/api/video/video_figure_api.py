@@ -50,7 +50,7 @@ class VideoFigureApi(FigureApi):
         :param status: Labeling status. Specifies if the VideoFigure was created by NN model, manually or created by NN and then manually corrected.
         :type status: LabelingStatus, optional
         :returns: New figure ID
-        :rtype: :class:`int`
+        :rtype: int
 
         :Usage Example:
 

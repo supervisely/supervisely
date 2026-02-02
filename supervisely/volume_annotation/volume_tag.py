@@ -107,7 +107,7 @@ class VolumeTag(Tag):
         :param key_id_map: Key ID Map object.
         :type key_id_map: KeyIdMap, optional
         :returns: Json format as a dict
-        :rtype: :class:`dict`
+        :rtype: dict
 
         :Usage Example:
 

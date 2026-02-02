@@ -47,7 +47,7 @@ class Polyline(VectorGeometry):
     :type updated_at: str, optional
     :param created_at: Date and Time when Polyline was created. Date Format is the same as in "updated_at" parameter.
     :type created_at: str, optional
-    :raises: :class:`ValueError`, field exterior must contain at least two points to create Polyline object
+    :raises ValueError: field exterior must contain at least two points to create Polyline object
 
     :Usage Example:
 
@@ -196,7 +196,7 @@ class Polyline(VectorGeometry):
         Polyline area, always 0.0.
 
         :returns: Area of current Polyline
-        :rtype: :class:`float`
+        :rtype: float
 
         :Usage Example:
 

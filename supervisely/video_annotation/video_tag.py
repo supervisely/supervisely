@@ -139,7 +139,7 @@ class VideoTag(Tag):
         VideoTag is finished or not (applicable for range tags).
 
         :returns: True if VideoTag is finished, otherwise False
-        :rtype: :class:`bool`
+        :rtype: bool
 
         :Usage Example:
 
@@ -155,7 +155,7 @@ class VideoTag(Tag):
         VideoTag value is final or not.
 
         :returns: True if VideoTag value is final, otherwise False
-        :rtype: :class:`bool`
+        :rtype: bool
 
         :Usage Example:
 
@@ -189,7 +189,7 @@ class VideoTag(Tag):
         :param key_id_map: Key ID Map object.
         :type key_id_map: KeyIdMap, optional
         :returns: Json format as a dict
-        :rtype: :class:`dict`
+        :rtype: dict
 
         :Usage Example:
 
@@ -289,7 +289,7 @@ class VideoTag(Tag):
         Get string with information about VideoTag: name, value and range of frames.
 
         :returns: Information about VideoTag object
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -318,7 +318,7 @@ class VideoTag(Tag):
         :param other: VideoTag object.
         :type other: VideoTag
         :returns: True if comparable objects are equal, otherwise False
-        :rtype: :class:`bool`
+        :rtype: bool
 
         :Usage Example:
 

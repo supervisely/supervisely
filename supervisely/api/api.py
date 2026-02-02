@@ -102,7 +102,7 @@ class ApiContext:
     :type dataset_id: int, optional
     :param project_meta: ProjectMeta object.
     :type project_meta: :class:`ProjectMeta`, optional
-    :raises: :class:`RuntimeError`, if api is None.
+    :raises RuntimeError: if api is None.
 
     :Usage Example:
 
@@ -166,7 +166,7 @@ class UserSession:
 
     :param server: Server url.
     :type server: str
-    :raises: :class:`RuntimeError`, if server url is invalid.
+    :raises RuntimeError: if server url is invalid.
     """
 
     def __init__(self, server_address: str):
@@ -276,7 +276,7 @@ class Api:
         "MINIMUM_INSTANCE_VERSION_FOR_SDK". If set to a string, will use this string as the version to check.
         If set to False, will skip the check.
     :type check_instance_version: bool or str, optional
-    :raises: :class:`ValueError`, if token is None or it length != 128
+    :raises ValueError: if token is None or it length != 128
 
     :Usage Example:
 
@@ -499,7 +499,7 @@ class Api:
         :type key: str
         :param value: New value.
         :type value: str
-        :raises: :class:`RuntimeError`, if key is already set
+        :raises RuntimeError: if key is already set
         :returns: None
         :rtype: None
         """
@@ -910,7 +910,7 @@ class Api:
         :param default_message: Message to user.
         :type method: str, optional
         :returns: Number of error and message about curren connection mistake
-        :rtype: :class:`int`, :class:`str`
+        :rtype: int, str
         """
         ERROR_FIELD = "error"
         MESSAGE_FIELD = "message"
@@ -1051,7 +1051,7 @@ class Api:
         Get API server address.
 
         :returns: API server address.
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 

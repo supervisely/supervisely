@@ -33,7 +33,7 @@ def is_valid_ext(ext: str) -> bool:
     :param ext: Pointcloud file extension.
     :type ext: str
     :returns: bool
-    :rtype: :class:`bool`
+    :rtype: bool
 
     :Usage Example:
 
@@ -55,7 +55,7 @@ def has_valid_ext(path: str) -> bool:
     :param path: Pointcloud file path.
     :type path: str
     :returns: bool
-    :rtype: :class:`bool`
+    :rtype: bool
 
     :Usage Example:
 
@@ -78,7 +78,7 @@ def validate_ext(ext: str) -> None:
     :param ext: Pointcloud file extension.
     :type ext: str
     :returns: None
-    :rtype: :class:`NoneType`
+    :rtype: None
 
     :Usage Example:
 
@@ -108,7 +108,7 @@ def validate_ext(ext: str) -> None:
 #     :param file_path: Path to the file.
 #     :type file_path: str
 #     :returns: True if the file is a valid PCD file, False otherwise.
-#     :rtype: :class:`bool`
+#     :rtype: bool
 #     :Usage Example:
 
 #          .. code-block:: python
@@ -155,7 +155,7 @@ def validate_format(path: str):
     :param path: Pointcloud file path.
     :type path: str
     :returns: None
-    :rtype: :class:`NoneType`
+    :rtype: None
 
     :Usage Example:
 
@@ -181,7 +181,7 @@ def is_valid_format(path: str) -> bool:
     :param path: Path to Pointcloud file.
     :type path: str
     :returns: True if file format in list of supported pointcloud formats, False - in otherwise
-    :rtype: :class:`bool`
+    :rtype: bool
 
     :Usage Example:
 

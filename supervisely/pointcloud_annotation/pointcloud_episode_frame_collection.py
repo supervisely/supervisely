@@ -168,7 +168,7 @@ class PointcloudEpisodeFrameCollection(FrameCollection):
             pcd_episodes_fr_collection.has_key(10) # True
             pcd_episodes_fr_collection.has_key(22) # False
 
-            # Intersection, finds intersection of given list of instances with collection items
+            # Find intersection of given list of instances with collection items
             frame_1 = sly.PointcloudEpisodeFrame(1)
             frame_2 = sly.PointcloudEpisodeFrame(2)
             pcd_episodes_fr_collection = sly.PointcloudEpisodeFrameCollection([frame_1, frame_2])
@@ -194,7 +194,7 @@ class PointcloudEpisodeFrameCollection(FrameCollection):
             # Output:
             # ValueError: Different values for the same key 2
 
-            # Difference, finds difference between collection and given list of PointcloudEpisodeFrame
+            # Find difference between collection and given list of PointcloudEpisodeFrame
             frames_difference = pcd_episodes_fr_collection.difference([frame_2])
             print(frames_difference.to_json())
             # Output: [
@@ -204,7 +204,7 @@ class PointcloudEpisodeFrameCollection(FrameCollection):
             #     }
             # ]
 
-            # Merge, merges collection and given list of PointcloudEpisodeFrameCollection
+            # Merge collection and given list of PointcloudEpisodeFrameCollection
             frame_3 = sly.PointcloudEpisodeFrame(3)
             frame_4 = sly.PointcloudEpisodeFrame(4)
             over_collection = sly.PointcloudEpisodeFrameCollection([frame_3, frame_4])

@@ -49,7 +49,7 @@ class OrientedBBox(Rectangle):
     :type updated_at: str, optional
     :param created_at: Date and Time when OrientedBBox was created. Date Format is the same as in "updated_at" parameter.
     :type created_at: str, optional
-    :raises: :class:`ValueError`. OrientedBBox top argument must have less or equal value then bottom, left argument must have less or equal value then right
+    :raises ValueError: OrientedBBox top argument must have less or equal value then bottom, left argument must have less or equal value then right
 
     :Usage Example:
 
@@ -122,7 +122,7 @@ class OrientedBBox(Rectangle):
         Convert the OrientedBBox to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :returns: Json format as a dict
-        :rtype: :class:`dict`
+        :rtype: dict
 
         :Usage Example:
 
@@ -641,11 +641,11 @@ class OrientedBBox(Rectangle):
         5   +---+---+---+---+---+
 
         :param data: Json data with geometry config.
-        :type data: :class:`dict`
+        :type data: dict
         :param image_size: Image size in pixels (height, width).
         :type image_size: List[int]
         :returns: Json data with coordinates converted to pixel coordinate system.
-        :rtype: :class:`dict`
+        :rtype: dict
         """
         data = deepcopy(data)  # Avoid modifying the original data
 
@@ -671,9 +671,9 @@ class OrientedBBox(Rectangle):
         However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
 
         :param data: Json data with geometry config.
-        :type data: :class:`dict`
+        :type data: dict
         :returns: Json data with coordinates converted to subpixel coordinate system.
-        :rtype: :class:`dict`
+        :rtype: dict
         """
         data = deepcopy(data)  # Avoid modifying the original data
 

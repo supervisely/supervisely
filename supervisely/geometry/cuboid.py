@@ -83,7 +83,7 @@ class CuboidFace:
         :type data: List[int, int, int, int]
         :returns: CuboidFace object
         :rtype: :class:`CuboidFace<CuboidFace>`
-        :raises: :class:`ValueError` if data have not 4 indices
+        :raises ValueError: if data have not 4 indices
 
         :Usage Example:
 
@@ -139,13 +139,13 @@ class Cuboid(Geometry):
     """
     Cuboid geometry for a single :class:`Label<supervisely.annotation.label.Label>`. :class:`Cuboid<Cuboid>` class object is immutable.
 
-    :param points: List or tuple of :class:`PointLocation<supervisely.geometry.point_location.PointLocation>` objects.
-    :type points: List[PointLocation] or Tuple[PointLocation]
-    :param faces: List or tuple of :class:`CuboidFace<CuboidFace>` objects.
-    :type faces: List[CuboidFace] or Tuple[CuboidFace]
+    :param points: List or tuple of :class:`~supervisely.geometry.point_location.PointLocation` objects.
+    :type points: List[~supervisely.geometry.point_location.PointLocation] or Tuple[~supervisely.geometry.point_location.PointLocation]
+    :param faces: List or tuple of :class:`~supervisely.geometry.cuboid.CuboidFace` objects.
+    :type faces: List[~supervisely.geometry.cuboid.CuboidFace] or Tuple[~supervisely.geometry.cuboid.CuboidFace]
     :param sly_id: Cuboid ID in Supervisely server.
     :type sly_id: int, optional
-    :param class_id: ID for :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which belongs Cuboid.
+    :param class_id: ID for :class:`~supervisely.annotation.obj_class.ObjClass` to which belongs Cuboid.
     :type class_id: int, optional
     :param labeler_login: Login of the user who created Cuboid.
     :type labeler_login: str, optional
@@ -153,7 +153,8 @@ class Cuboid(Geometry):
     :type updated_at: str, optional
     :param created_at: Date and Time when Cuboid was created. Date Format is the same as in "updated_at" parameter.
     :type created_at: str, optional
-    :raises: :class:`ValueError`, if len(:class:`faces<faces>`) != 3
+    :raises ValueError: if len(:class:`~supervisely.geometry.cuboid.CuboidFace` objects) != 3. A cuboid must have exactly 3 faces. Instead got {len(faces)} faces.
+    :raises ValueError: if point index is out of bounds for cuboid face. Got {len(points)!r} points, but the index is {point_idx!r}.
 
     :Usage Example:
 
@@ -234,7 +235,7 @@ class Cuboid(Geometry):
         Convert the Cuboid to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :returns: Json format as a dict
-        :rtype: :class:`dict`
+        :rtype: dict
 
         :Usage Example:
 
@@ -283,7 +284,7 @@ class Cuboid(Geometry):
         :type data: dict
         :returns: Cuboid object
         :rtype: :class:`Cuboid<Cuboid>`
-        :raises: :class:`ValueError` if json format is not correct
+        :raises ValueError: if json format is not correct
 
         :Usage Example:
 
@@ -595,7 +596,7 @@ class Cuboid(Geometry):
         Cuboid area.
 
         :returns: Area of current Cuboid
-        :rtype: :class:`float`
+        :rtype: float
 
         :Usage Example:
 

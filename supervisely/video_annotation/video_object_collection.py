@@ -99,8 +99,7 @@ class VideoObjectCollection(KeyIndexedCollection):
             #     }
             # ]
 
-            # Intersection, finds intersection of given list of instances with collection items
-
+            # Find intersection of given list of instances with collection items
             obj_intersections = obj_collection.intersection([obj_car])
             obj_intersections_json = obj_intersections.to_json()
             print(obj_intersections_json)
@@ -112,8 +111,7 @@ class VideoObjectCollection(KeyIndexedCollection):
             #     }
             # ]
 
-            # Difference, finds difference between collection and given list of VideoObject
-
+            # Find difference between collection and given list of VideoObject
             obj_diff = obj_collection.difference([obj_car])
             obj_diff_json = obj_diff.to_json()
             print(obj_diff_json)
@@ -125,7 +123,7 @@ class VideoObjectCollection(KeyIndexedCollection):
             #     }
             # ]
 
-            # Merge, merges collection and given list of VideoObjectCollection
+            # Merge collection and given list of VideoObjectCollection
 
             class_truck = sly.ObjClass('truck', sly.Rectangle)
             obj_truck = sly.VideoObject(class_truck)

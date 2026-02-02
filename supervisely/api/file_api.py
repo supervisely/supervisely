@@ -389,7 +389,7 @@ class FileApi(ModuleApiBase):
         :param path: Path to Directory.
         :type path: str
         :returns: Directory size in the Team Files
-        :rtype: :class:`int`
+        :rtype: int
 
         :Usage Example:
 
@@ -1277,7 +1277,7 @@ class FileApi(ModuleApiBase):
         :param path: Remote path to file in Team Files.
         :type path: str
         :returns: New File name with suffix at the end
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -1326,7 +1326,7 @@ class FileApi(ModuleApiBase):
         :param file_id: File ID in Supervisely.
         :type file_id: int
         :returns: File URL
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -1468,7 +1468,7 @@ class FileApi(ModuleApiBase):
         :param dir_path: Path to Directory in Team Files.
         :type dir_path: str
         :returns: New Directory name with suffix at the end
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -1531,7 +1531,7 @@ class FileApi(ModuleApiBase):
         :param progress_size_cb: Function for tracking download progress.
         :type progress_size_cb: Progress, optional
         :returns: Path to Directory in Team Files
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -1654,7 +1654,7 @@ class FileApi(ModuleApiBase):
         :param download: If True, download file in temp dir to get content.
         :type download: bool, optional
         :returns: JSON file content
-        :rtype: :class:`dict` or :class:`NoneType`
+        :rtype: dict or None
 
         :Usage Example:
 
@@ -2425,7 +2425,7 @@ class FileApi(ModuleApiBase):
         :param enable_fallback: If True, the method will fallback to synchronous upload if an error occurs.
         :type enable_fallback: bool, optional
         :returns: Path to Directory in Team Files
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -2523,7 +2523,7 @@ class FileApi(ModuleApiBase):
         :param enable_fallback: If True, the method will fallback to synchronous upload if an error occurs.
         :type enable_fallback: bool, optional
         :returns: Path to Directory in Team Files
-        :rtype: :class:`str`
+        :rtype: str
         """
         coroutine = self.upload_directory_async(
             team_id=team_id,

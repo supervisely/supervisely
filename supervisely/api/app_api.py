@@ -694,7 +694,7 @@ class AppApi(TaskApi):
             :param meta: Additional data for node customization.
             :type meta: Optional[Union[WorkflowMeta, dict]]
             :returns: Response from the API.
-            :rtype: :class:`dict`
+            :rtype: dict
             """
             try:
                 if project is None and version_id is None and version_num is None:
@@ -750,7 +750,7 @@ class AppApi(TaskApi):
             :param meta: Additional data for node customization.
             :type meta: Optional[Union[WorkflowMeta, dict]]
             :returns: Response from the API.
-            :rtype: :class:`dict`
+            :rtype: dict
             """
             try:
                 data_type = "dataset"
@@ -786,7 +786,7 @@ class AppApi(TaskApi):
             :param meta: Additional data for node customization.
             :type meta: Optional[Union[WorkflowMeta, dict]]
             :returns: Response from the API.
-            :rtype: :class:`dict`
+            :rtype: dict
             """
             try:
                 data = {}
@@ -832,7 +832,7 @@ class AppApi(TaskApi):
             :param meta: Additional data for node customization.
             :type meta: Optional[Union[WorkflowMeta, dict]]
             :returns: Response from the API.
-            :rtype: :class:`dict`
+            :rtype: dict
             """
             try:
                 from pathlib import Path
@@ -871,7 +871,7 @@ class AppApi(TaskApi):
             :param meta: Additional data for node customization.
             :type meta: Optional[Union[WorkflowMeta, dict]]
             :returns: Response from the API.
-            :rtype: :class:`dict`
+            :rtype: dict
             """
             try:
                 data_type = "task"
@@ -905,7 +905,7 @@ class AppApi(TaskApi):
             :param meta: Additional data for node customization.
             :type meta: Optional[Union[WorkflowMeta, dict]]
             :returns: Response from the API.
-            :rtype: :class:`dict`
+            :rtype: dict
             """
             try:
                 data_type = "job"
@@ -944,7 +944,7 @@ class AppApi(TaskApi):
             :param meta: Additional data for node customization.
             :type meta: Optional[Union[WorkflowMeta, dict]]
             :returns: Response from the API.
-            :rtype: :class:`dict`
+            :rtype: dict
             """
             try:
                 if project is None and version_id is None:
@@ -990,7 +990,7 @@ class AppApi(TaskApi):
             :param meta: Additional data for node customization.
             :type meta: Optional[Union[WorkflowMeta, dict]]
             :returns: Response from the API.
-            :rtype: :class:`dict`
+            :rtype: dict
             """
             try:
                 data_type = "dataset"
@@ -1026,7 +1026,7 @@ class AppApi(TaskApi):
             :param meta: Additional data for node customization.
             :type meta: Optional[Union[WorkflowMeta, dict]]
             :returns: Response from the API.
-            :rtype: :class:`dict`
+            :rtype: dict
             """
             try:
                 data_type = "file"
@@ -1062,7 +1062,7 @@ class AppApi(TaskApi):
             :param meta: Additional data for node customization.
             :type meta: Optional[Union[WorkflowMeta, dict]]
             :returns: Response from the API.
-            :rtype: :class:`dict`
+            :rtype: dict
             """
             try:
                 from pathlib import Path
@@ -1098,7 +1098,7 @@ class AppApi(TaskApi):
             :param meta: Additional data for node customization.
             :type meta: Optional[Union[WorkflowMeta, dict]]
             :returns: Response from the API.
-            :rtype: :class:`dict`
+            :rtype: dict
             """
             try:
                 data_type = "app_session"
@@ -1129,7 +1129,7 @@ class AppApi(TaskApi):
             :param meta: Additional data for node customization.
             :type meta: Optional[Union[WorkflowMeta, dict]]
             :returns: Response from the API.
-            :rtype: :class:`dict`
+            :rtype: dict
             """
             try:
                 data_type = "task"
@@ -1163,7 +1163,7 @@ class AppApi(TaskApi):
             :param meta: Additional data for node customization.
             :type meta: Optional[Union[WorkflowMeta, dict]]
             :returns: Response from the API.
-            :rtype: :class:`dict`
+            :rtype: dict
             """
             try:
                 data_type = "job"

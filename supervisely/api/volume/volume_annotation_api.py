@@ -73,7 +73,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         :param volume_id: Volume ID in Supervisely.
         :type volume_id: int
         :returns: Information about VolumeAnnotation in json format
-        :rtype: :class:`dict`
+        :rtype: dict
 
         :Usage Example:
 
@@ -496,7 +496,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
         :returns: Information about VolumeAnnotation in json format
-        :rtype: :class:`dict`
+        :rtype: dict
 
         :Usage Example:
 
@@ -544,7 +544,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
         :returns: Information about VolumeAnnotations in json format
-        :rtype: :class:`list`
+        :rtype: list
 
         :Usage Example:
 

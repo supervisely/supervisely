@@ -14,6 +14,6 @@ class AnyGeometry(Geometry):
         Geometry name.
 
         :returns: Geometry name
-        :rtype: :class:`str`
+        :rtype: str
         """
         return ANY_SHAPE

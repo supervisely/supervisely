@@ -46,7 +46,7 @@ class VideoAnnotation:
     :type description: str, optional
     :param key: UUID object.
     :type key: UUID, optional
-    :raises: :class:`TypeError`, if img_size is not tuple or list
+    :raises TypeError: if img_size is not tuple or list
 
     :Usage Example:
 
@@ -206,7 +206,7 @@ class VideoAnnotation:
         Number of frames.
 
         :returns: Frames count
-        :rtype: :class:`int`
+        :rtype: int
 
         :Usage Example:
 
@@ -416,7 +416,7 @@ class VideoAnnotation:
         Video description.
 
         :returns: Video description
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -437,7 +437,7 @@ class VideoAnnotation:
     #     Get all existing video tags from frame of video.
 
     #     :param frame_index: Video frame index.
-    #     :type frame_index: :class:`int`
+    #     :type frame_index: int
     #     :returns: Tags from the given frame.
     #     :rtype: :class:`VideoTagCollection<supervisely.video_annotation.video_tag_collection.VideoTagCollection>`
 
@@ -477,7 +477,7 @@ class VideoAnnotation:
     #     Get all existing video objects from frame of video.
 
     #     :param frame_index: Video frame index.
-    #     :type frame_index: :class:`int`
+    #     :type frame_index: int
     #     :returns: Objects from the given frame.
     #     :rtype: :class:`VideoObjectCollection<supervisely.video_annotation.video_object_collection.VideoObjectCollection>`
 
@@ -516,9 +516,9 @@ class VideoAnnotation:
         """
         Checks if image contains figures from all frames in collection.
 
-        :raises: :class:`OutOfImageBoundsException<supervisely.video_annotation.video_figure.OutOfImageBoundsException>`, if figure is out of image bounds
+        :raises OutOfImageBoundsException: if figure is out of image bounds
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
 
         :Usage Example:
 
@@ -551,7 +551,7 @@ class VideoAnnotation:
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
         :returns: Json format as a dict
-        :rtype: :class:`dict`
+        :rtype: dict
 
         :Usage Example:
 
@@ -741,7 +741,7 @@ class VideoAnnotation:
         :type tags: VideoTagCollection, optional
         :param description: Video description.
         :type description: str, optional
-        :raises: :class:`TypeError`, if img_size is not tuple or list
+        :raises TypeError: if img_size is not tuple or list
 
         :Usage Example:
 
@@ -791,7 +791,7 @@ class VideoAnnotation:
         Check whether video annotation contains objects or tags, or not.
 
         :returns: True if video annotation is empty, False otherwise.
-        :rtype: :class:`bool`
+        :rtype: bool
 
         :Usage Example:
 

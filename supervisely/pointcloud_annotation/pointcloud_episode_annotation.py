@@ -610,7 +610,7 @@ class PointcloudEpisodeAnnotation:
         Number of frames.
 
         :returns: Frames count
-        :rtype: :class:`int`
+        :rtype: int
 
         :Usage Example:
 
@@ -827,7 +827,7 @@ class PointcloudEpisodeAnnotation:
         Description text for PointcloudEpisodeAnnotation object.
 
         :returns: PointcloudEpisodeAnnotation description
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -847,7 +847,7 @@ class PointcloudEpisodeAnnotation:
         Check whether point cloud episodes annotation contains objects or tags, or not.
 
         :returns: True if point cloud episodes annotation  is empty, False otherwise.
-        :rtype: :class:`bool`
+        :rtype: bool
 
         :Usage Example:
 

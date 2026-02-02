@@ -38,7 +38,7 @@ class KeyIndexedCollection:
 
     :param items: List of :class:`ObjClassCollection<supervisely.annotation.obj_class_collection.ObjClassCollection>`, :class:`TagMetaCollection<supervisely.annotation.tag_meta_collection.TagMetaCollection>`  and :class:`TagCollection<supervisely.annotation.tag_collection.TagCollection>` objects.
     :type items: list, optional
-    :raises: :class:`DuplicateKeyError<supervisely.collection.key_indexed_collection.DuplicateKeyError>`, when trying to add object with already existing key
+    :raises :class:`~supervisely.collection.key_indexed_collection.DuplicateKeyError`, when trying to add object with already existing key
 
     :Usage Example:
 
@@ -73,7 +73,7 @@ class KeyIndexedCollection:
             dublicate_item = sly.ObjClass('cat', sly.Rectangle)
             new_collection = collection.add(dublicate_item)
             # Output:
-            # supervisely.collection.key_indexed_collection.DuplicateKeyError: "Key 'cat' already exists"
+            # DuplicateKeyError: "Key 'cat' already exists"
 
             # Add item with a key that not exist in the collection
             item_dog = sly.ObjClass('dog', sly.Rectangle)
@@ -330,7 +330,7 @@ class KeyIndexedCollection:
         :param key: The key to look for in the collection.
         :type key:  str
         :returns: Is the key in the collection or not
-        :rtype: :class:`bool`
+        :rtype: bool
 
         :Usage Example:
 
@@ -353,7 +353,7 @@ class KeyIndexedCollection:
 
         :param key: List of :class:`ObjClassCollection<supervisely.annotation.obj_class_collection.ObjClassCollection>`, :class:`TagMetaCollection<supervisely.annotation.tag_meta_collection.TagMetaCollection>` or :class:`TagCollection<supervisely.annotation.tag_collection.TagCollection>` objects.
         :type key:  List[KeyObject]
-        :raises: :class:`ValueError` if find items with same keys(item names)
+        :raises ValueError: if find items with same keys(item names)
         :returns: KeyIndexedCollection object
         :rtype: :class:`KeyIndexedCollection<KeyIndexedCollection>`
 
@@ -441,7 +441,7 @@ class KeyIndexedCollection:
 
         :param key: KeyIndexedCollection object.
         :type key:  KeyIndexedCollection
-        :raises: :class:`ValueError` if item name from given list is in collection but items in both are different
+        :raises ValueError: if item name from given list is in collection but items in both are different
         :returns: KeyIndexedCollection object
         :rtype: :class:`KeyIndexedCollection<KeyIndexedCollection>`
 
@@ -657,7 +657,7 @@ class MultiKeyIndexedCollection(KeyIndexedCollection):
         :param default: The value that is returned if there is no key in the collection.
         :type default: List, optional
         :returns: List of :class:`ObjClassCollection<supervisely.annotation.obj_class_collection.ObjClassCollection>`, :class:`TagMetaCollection<supervisely.annotation.tag_meta_collection.TagMetaCollection>` or :class:`TagCollection<supervisely.annotation.tag_collection.TagCollection>` objects or empty list
-        :rtype: :class:`List[KeyObject]` or :class:`list`
+        :rtype: :class:`List[KeyObject]` or list
 
         :Usage Example:
 
@@ -723,7 +723,7 @@ class MultiKeyIndexedCollection(KeyIndexedCollection):
 
         :param key: List of :class:`ObjClassCollection<supervisely.annotation.obj_class_collection.ObjClassCollection>`, :class:`TagMetaCollection<supervisely.annotation.tag_meta_collection.TagMetaCollection>` or :class:`TagCollection<supervisely.annotation.tag_collection.TagCollection>` objects.
         :type key:  List[KeyObject]
-        :raises: :class:`ValueError` if find items with same keys(item names)
+        :raises ValueError: if find items with same keys(item names)
         :returns: MultiKeyIndexedCollection object
         :rtype: :class:`MultiKeyIndexedCollection<MultiKeyIndexedCollection>`
 
@@ -843,7 +843,7 @@ class MultiKeyIndexedCollection(KeyIndexedCollection):
 
         :param key: MultiKeyIndexedCollection object.
         :type key:  MultiKeyIndexedCollection
-        :raises: :class:`ValueError` if item name from given MultiKeyIndexedCollection is in collection but items in both are different
+        :raises ValueError: if item name from given MultiKeyIndexedCollection is in collection but items in both are different
         :returns: MultiKeyIndexedCollection object
         :rtype: :class:`MultiKeyIndexedCollection<MultiKeyIndexedCollection>`
 

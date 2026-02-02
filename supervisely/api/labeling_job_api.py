@@ -941,11 +941,11 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type id: int
         :param target_status: Expected result status of Labeling Job.
         :type target_status: str
-        :param wait_attempts: Number of attempts to retry, when :class:`WaitingTimeExceeded` raises.
+        :param wait_attempts: Number of attempts to retry, when :class:`~supervisely.api.module_api.WaitingTimeExceeded` raises.
         :type wait_attempts: int, optional
         :param wait_attempt_timeout_sec: Time between attempts.
         :type wait_attempt_timeout_sec: int, optional
-        :raises: :class:`WaitingTimeExceeded`, if waiting time exceeded
+        :raises :class:`~supervisely.api.module_api.WaitingTimeExceeded`: if waiting time exceeded
         :returns: None
         :rtype: None
 
@@ -985,7 +985,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :param id: Labeling Job ID in Supervisely.
         :type id: int
         :returns: Dict with information about given Labeling Job
-        :rtype: :class:`dict`
+        :rtype: dict
 
         :Usage Example:
 
@@ -1567,7 +1567,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :param id: Labeling Job ID in Supervisely.
         :type id: int
         :returns: Custom data of the job
-        :rtype: :class:`dict`
+        :rtype: dict
 
         :Usage Example:
 

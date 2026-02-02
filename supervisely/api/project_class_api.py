@@ -43,6 +43,6 @@ class ProjectClassApi(ModuleApi):
         :param filters:
         :type filters: list
         :returns: List of classes.
-        :rtype: :class:`list`
+        :rtype: list
         """
         return self.get_list_all_pages('advanced.object_classes.list',  {ApiField.PROJECT_ID: project_id, "filter": filters or []})

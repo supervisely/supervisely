@@ -90,8 +90,7 @@ class Annotation:
     :type custom_data: dict, optional
     :param image_id: Id of the image.
     :type image_id: int, optional
-
-    :raises: :class:`TypeError`, if image size is not tuple or list
+    :raises TypeError: if image size is not tuple or list
 
     :Usage Example:
 
@@ -236,7 +235,7 @@ class Annotation:
         Convert the Annotation to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :returns: Json format as a dict
-        :rtype: :class:`dict`
+        :rtype: dict
 
         :Usage Example:
 
@@ -310,7 +309,7 @@ class Annotation:
         :type project_meta: ProjectMeta
         :returns: Annotation object
         :rtype: :class:`~supervisely.annotation.annotation.Annotation`
-        :raises: :class:`Exception`
+        :raises Exception: if failed to deserialize one of the label from JSON format annotation
 
         :Usage Example:
 
@@ -580,7 +579,7 @@ class Annotation:
 
         :param label: Label to be deleted.
         :type label: Label
-        :raises: :class:`KeyError`, if there is no deleted Label in current Annotation object
+        :raises KeyError: if there is no deleted Label in current Annotation object
         :returns: New instance of Annotation
         :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
@@ -1545,8 +1544,8 @@ class Annotation:
         :param colors: List of ``[R, G, B]`` colors.
         :type colors: List[List[int, int, int]]
         :returns: Colors area representation on the given render
-        :rtype: :class:`dict`
-        :raises: :class:`RuntimeError` if len(names) != len(colors)
+        :rtype: dict
+        :raises RuntimeError: if len(names) != len(colors)
 
         :Usage Example:
 
@@ -2724,8 +2723,8 @@ class Annotation:
 
         :param class_to_index: Dict matching class name to index.
         :type class_to_index: dict
-        :returns: SegmentationMapsOnImage, otherwise :class:`None`
-        :rtype: :class:`SegmentationMapsOnImage` or :class:`NoneType`
+        :returns: SegmentationMapsOnImage, otherwise None
+        :rtype: :class:`SegmentationMapsOnImage` or None
         """
         try:
             from imgaug.augmentables.segmaps import SegmentationMapsOnImage
@@ -2756,8 +2755,8 @@ class Annotation:
         """
         Convert current annotation objects boxes to BoundingBoxesOnImage format.
 
-        :returns: BoundingBoxesOnImage, otherwise :class:`None`
-        :rtype: :class:`BoundingBoxesOnImage` or :class:`NoneType`
+        :returns: BoundingBoxesOnImage, otherwise None
+        :rtype: :class:`BoundingBoxesOnImage` or None
         """
         try:
             from imgaug.augmentables.bbs import BoundingBox, BoundingBoxesOnImage
@@ -2807,8 +2806,8 @@ class Annotation:
         :type index_to_class: Dict[int, str], optional
         :param meta: ProjectMeta.
         :type meta: ProjectMeta, optional
-        :raises: :class:`ValueError`, if ia_boxes or ia_masks and meta is None
-        :raises: :class:`KeyError`, if processed ObjClass not found in meta
+        :raises ValueError: if ia_boxes or ia_masks and meta is None
+        :raises KeyError: if processed ObjClass not found in meta
         :returns: Annotation object
         :rtype: :class:`~supervisely.annotation.annotation.Annotation`
         """
@@ -2850,7 +2849,7 @@ class Annotation:
         Check whether annotation contains labels or tags, or not.
 
         :returns: True if annotation is empty, False otherwise.
-        :rtype: :class:`bool`
+        :rtype: bool
         """
         if len(self.labels) == 0 and len(self.img_tags) == 0:
             return True
@@ -3026,9 +3025,9 @@ class Annotation:
         However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
 
         :param data: Label in json format.
-        :type data: :class:`dict`
+        :type data: dict
         :returns: Json data with coordinates converted to pixel coordinate system.
-        :rtype: :class:`dict`
+        :rtype: dict
         """
         data = deepcopy(data)  # Avoid modifying the original data
         image_size = [
@@ -3060,7 +3059,7 @@ class Annotation:
         :param data: Label in json format.
         :type data: dict
         :returns: Json data with coordinates converted to subpixel coordinate system.
-        :rtype: :class:`dict`
+        :rtype: dict
         """
         data = deepcopy(data)  # Avoid modifying the original data
         new_labels = []
@@ -3115,7 +3114,7 @@ class Annotation:
         :param coco_captions: COCO captions in dictionary or list format to append new captions.
         :type coco_captions: Union[Dict, List], optional
         :returns: Tuple with list of COCO objects and list of COCO captions.
-        :rtype: :class:`tuple`
+        :rtype: tuple
 
         :Usage Example:
 
@@ -3178,7 +3177,7 @@ class Annotation:
         :param task_type: Task type, one of "detection", "segmentation", "pose".
         :type task_type: str
         :returns: List of objects in YOLO format.
-        :rtype: :class:`list`
+        :rtype: list
 
         :Usage Example:
 

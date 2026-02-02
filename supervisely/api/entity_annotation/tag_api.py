@@ -59,7 +59,7 @@ class TagApi(ModuleApi):
         Get string name of NamedTuple for class.
 
         :returns: NamedTuple name.
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 

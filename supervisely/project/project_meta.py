@@ -251,7 +251,7 @@ class ProjectMeta(JsonSerializable):
         Type of project. See possible value types in :class:`ProjectType<supervisely.project.project_type.ProjectType>`.
 
         :returns: Project type
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -324,7 +324,7 @@ class ProjectMeta(JsonSerializable):
         Convert the ProjectMeta to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :returns: Json format as a dict
-        :rtype: :class:`dict`
+        :rtype: dict
 
         :Usage Example:
 
@@ -478,7 +478,7 @@ class ProjectMeta(JsonSerializable):
         :type other: ProjectMeta
         :returns: New instance of ProjectMeta object
         :rtype: :class:`ProjectMeta<ProjectMeta>`
-        :raises: :class:`ValueError` Upon attempt to merge metas which contain the same obj class or tag meta
+        :raises ValueError: Upon attempt to merge metas which contain the same obj class or tag meta
 
         :Usage Example:
 

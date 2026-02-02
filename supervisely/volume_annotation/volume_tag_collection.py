@@ -101,7 +101,7 @@ class VolumeTagCollection(VideoTagCollection):
             #     },
             # ]
 
-            # Intersection, finds intersection of given list of VolumeTag instances with collection items
+            # Find intersection of given list of VolumeTag instances with collection items
             intersect_tags = tags.intersection([leg_tag])
             intersect_tags_json = intersect_tags.to_json()
             print(intersect_tags_json)
@@ -112,7 +112,7 @@ class VolumeTagCollection(VideoTagCollection):
             #     }
             # ]
 
-            # Difference, finds difference between collection and given list of VolumeTag
+            # Find difference between collection and given list of VolumeTag
             diff_tags = tags.difference([leg_tag, arm_tag, lang_tag])
             diff_tags_json = diff_tags.to_json()
             print(diff_tags_json)
@@ -130,7 +130,7 @@ class VolumeTagCollection(VideoTagCollection):
             #     }
             # ]
 
-            # Merge, merges collection and given list of VolumeTagCollection
+            # Merge collection and given list of VolumeTagCollection
             meta_leg = sly.TagMeta('leg_tag', sly.TagValueType.NONE)
             leg_tag = VolumeTag(meta_leg)
             meta_arm = sly.TagMeta('arm_tag', sly.TagValueType.ANY_NUMBER)

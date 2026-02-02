@@ -102,7 +102,7 @@ class VideoTagCollection(TagCollection):
             #     }
             # ]
 
-            # Intersection, finds intersection of given list of VideoTag instances with collection items
+            # Find intersection of given list of VideoTag instances with collection items
             intersect_tags = tags.intersection([bus_tag])
             intersect_tags_json = intersect_tags.to_json()
             print(intersect_tags_json)
@@ -114,7 +114,7 @@ class VideoTagCollection(TagCollection):
             #     }
             # ]
 
-            # Difference, finds difference between collection and given list of VideoTag
+            # Find difference between collection and given list of VideoTag
             diff_tags = tags.difference([bus_tag])
             diff_tags_json = diff_tags.to_json()
             print(diff_tags_json)
@@ -126,7 +126,7 @@ class VideoTagCollection(TagCollection):
             #     }
             # ]
 
-            # Merge, merges collection and given list of VideoTagCollection
+            # Merge collection and given list of VideoTagCollection
             meta_truck = sly.TagMeta('truck_tag', sly.TagValueType.NONE)
             truck_tag = VideoTag(meta_truck)
             meta_train = sly.TagMeta('train_tag', sly.TagValueType.ANY_NUMBER)

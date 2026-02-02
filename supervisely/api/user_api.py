@@ -853,7 +853,7 @@ class UserApi(ModuleApiBase):
         :param role_id: Role ID in Supervisely.
         :type role_id: int
         :returns: Information about new User in Team
-        :rtype: :class:`dict`
+        :rtype: dict
 
         :Usage Example:
 

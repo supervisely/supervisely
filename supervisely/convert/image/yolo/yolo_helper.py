@@ -634,22 +634,22 @@ def sly_project_to_yolo(
     Convert Supervisely project to YOLO format.
 
     :param project: Supervisely project or path to the directory with the project.
-    :type project: :class:`supervisely.project.project.Project` or :class:`str`
+    :type project: :class:`supervisely.project.project.Project` or str
     :param dest_dir: Destination directory.
-    :type dest_dir: :class:`str`, optional
+    :type dest_dir: str, optional
     :param task_type: Task type.
-    :type task_type: :class:`str`, optional
+    :type task_type: str, optional
     :param log_progress: Show uploading progress bar.
-    :type log_progress: :class:`bool`
+    :type log_progress: bool
     :param progress_cb: Function for tracking conversion progress (for all items in the project).
     :type progress_cb: callable, optional
     :param val_datasets:    List of dataset names for validation.
                             Full dataset names are required (e.g., 'ds0/nested_ds1/ds3').
                             If specified, datasets from the list will be marked as val, others as train.
                             If not specified, the function will determine the validation datasets automatically.
-    :type val_datasets: :class:`list`, optional
+    :type val_datasets: list, optional
     :returns: Path to the destination directory.
-    :rtype: :class:`str`
+    :rtype: str
 
     :Usage Example:
 
@@ -728,24 +728,24 @@ def to_yolo(
         - If the input_data is a Dataset, the meta and dest_dir parameters are required.
 
     :param input_data: Supervisely project or dataset, or path to the directory with the project/dataset.
-    :type input_data: :class:`supervisely.project.project.Project`, :class:`supervisely.project.dataset.Dataset`, or :class:`str`
+    :type input_data: :class:`supervisely.project.project.Project`, :class:`supervisely.project.dataset.Dataset`, or str
     :param dest_dir: Destination directory.
-    :type dest_dir: :class:`str`, optional
+    :type dest_dir: str, optional
     :param task_type: Task type.
-    :type task_type: :class:`str`, optional
+    :type task_type: str, optional
     :param meta: Project meta (required for Dataset conversion).
     :type meta: :class:`supervisely.project.project_meta.ProjectMeta`, optional
     :param log_progress: Show uploading progress bar.
-    :type log_progress: :class:`bool`
+    :type log_progress: bool
     :param progress_cb: Function for tracking conversion progress (for all items in the project).
     :type progress_cb: callable, optional
     :param val_datasets:    List of dataset names for validation.
                             Full dataset names are required (e.g., 'ds0/nested_ds1/ds3').
                             If specified, datasets from the list will be marked as val, others as train.
                             If not specified, the function will determine the validation datasets automatically.
-    :type val_datasets: :class:`list`, optional
+    :type val_datasets: list, optional
     :param is_val: Whether the dataset is for validation.
-    :type is_val: :class:`bool`, optional
+    :type is_val: bool, optional
     :returns: None, list of YOLO lines, or path to the destination directory.
     :rtype: NoneType, list, str
 

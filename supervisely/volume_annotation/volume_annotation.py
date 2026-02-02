@@ -389,9 +389,9 @@ class VolumeAnnotation:
         """
         Checks if all slices in each plane contains figures.
 
-        :raises: :class:`OutOfImageBoundsException<supervisely.video_annotation.video_figure.OutOfImageBoundsException>`, if figure is out of slices images bounds
+        :raises OutOfImageBoundsException: if figure is out of slices images bounds
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
 
         :Usage Example:
 
@@ -413,7 +413,7 @@ class VolumeAnnotation:
         Check whether volume annotation contains objects or tags, or not.
 
         :returns: True if volume annotation is empty, False otherwise.
-        :rtype: :class:`bool`
+        :rtype: bool
 
         :Usage exmaple:
 
@@ -715,7 +715,7 @@ class VolumeAnnotation:
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
 
         :Usage Example:
 

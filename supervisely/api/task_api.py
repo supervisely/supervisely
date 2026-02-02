@@ -328,7 +328,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         :param wait_attempt_timeout_sec: Number of seconds for intervals between attempts(raise error if waiting time exceeded).
         :type wait_attempt_timeout_sec: int, optional
         :returns: True if the desired status is reached, False otherwise
-        :rtype: :class:`bool`
+        :rtype: bool
         """
         wait_attempts = wait_attempts or self.MAX_WAIT_ATTEMPTS
         effective_wait_timeout = wait_attempt_timeout_sec or self.WAIT_ATTEMPT_TIMEOUT_SEC
@@ -354,7 +354,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         :param id: Task ID in Supervisely.
         :type id: int
         :returns: Context information in dict format
-        :rtype: :class:`dict`
+        :rtype: dict
 
         :Usage Example:
 

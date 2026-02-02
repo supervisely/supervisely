@@ -40,7 +40,7 @@ class VectorGeometry(Geometry):
     :type updated_at: str, optional
     :param created_at: Date and Time when VectorGeometry was created. Date Format is the same as in "updated_at" parameter.
     :type created_at: str, optional
-    :raises: :class:`TypeError`, if exterior or interior parameters are not a list of PointLocation objects
+    :raises TypeError: if exterior or interior parameters are not a list of PointLocation objects
 
     :Usage Example:
 
@@ -122,7 +122,7 @@ class VectorGeometry(Geometry):
         Convert the VectorGeometry to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :returns: Json format as a dict
-        :rtype: :class:`dict`
+        :rtype: dict
 
         :Usage Example:
 

@@ -225,7 +225,7 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
         Get string name of :class:`EntitiesCollectionInfo` NamedTuple.
 
         :returns: NamedTuple name.
-        :rtype: :class:`str`
+        :rtype: str
         """
         return "EntitiesCollectionInfo"
 

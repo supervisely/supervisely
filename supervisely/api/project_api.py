@@ -430,9 +430,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type raise_error: bool, optional
         :param extra_fields: List of extra fields to include in the response.
         :type extra_fields: list[str], optional
-        :raises: Error if type of project is not None and != expected type
-        :returns: Information about Project. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`ProjectInfo`
+        :returns: Information about Project. See :meth:`info_sequence<supervisely.api.project_api.ProjectApi.info_sequence()>`
+        :rtype: :class:`~supervisely.api.project_api.ProjectInfo`
 
         :Usage Example:
 
@@ -501,8 +500,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type expected_type: ProjectType, optional
         :param raise_error: If True raise error if given name is missing in the Project, otherwise skips missing names.
         :type raise_error: bool, optional
-        :returns: Information about Project. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`ProjectInfo`
+        :returns: Information about Project. See :meth:`info_sequence<supervisely.api.project_api.ProjectApi.info_sequence()>`
+        :rtype: :class:`~supervisely.api.project_api.ProjectInfo`
 
         :Usage Example:
 
@@ -607,7 +606,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type with_settings: bool
 
         :returns: ProjectMeta dict
-        :rtype: :class:`dict`
+        :rtype: dict
 
         :Usage Example:
 
@@ -903,7 +902,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param id: Project ID in Supervisely.
         :type id: int
         :returns: Number of Datasets in the given Project
-        :rtype: :class:`int`
+        :rtype: int
 
         :Usage Example:
 
@@ -936,7 +935,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param id: Project ID in Supervisely.
         :type id: int
         :returns: Number of images in the given Project
-        :rtype: :class:`int`
+        :rtype: int
 
         :Usage Example:
 
@@ -975,7 +974,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param dst_project_id: Destination Project ID.
         :type dst_project_id: int
         :returns: ProjectMeta dict
-        :rtype: :class:`dict`
+        :rtype: dict
 
         :Usage Example:
 
@@ -1070,7 +1069,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param id: Project ID in Supervisely.
         :type id: int
         :returns: Project statistics
-        :rtype: :class:`dict`
+        :rtype: dict
 
         :Usage Example:
 
@@ -1101,7 +1100,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param id: Project ID in Supervisely.
         :type id: int
         :returns: Project URL
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -1146,7 +1145,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                        If False, ``updatedAt`` will be updated.
         :type silent: bool
         :returns: Project information in dict format
-        :rtype: :class:`dict`
+        :rtype: dict
 
         :Usage Example:
 
@@ -1183,7 +1182,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param id: Project ID in Supervisely.
         :type id: int
         :returns: Custom data of the Project
-        :rtype: :class:`dict`
+        :rtype: dict
 
         :Usage Example:
 
@@ -1215,7 +1214,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param id: Project ID in Supervisely.
         :type id: int
         :returns: System custom data of the Project
-        :rtype: :class:`dict`
+        :rtype: dict
 
         :Usage Example:
 
@@ -1253,7 +1252,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             NOTE: This may lead to checks with outdated schema. Use with caution.
             And only in scenarios when the schema is not expected to change.
         :returns: Validation schema of the Project
-        :rtype: :class:`dict`
+        :rtype: dict
 
         :Usage Example:
 
@@ -1308,7 +1307,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param schema: Validation schema to set. If None, removes validation schema.
         :type schema: dict, optional
         :returns: Project information in dict format
-        :rtype: :class:`dict`
+        :rtype: dict
 
         :Usage Example:
 
@@ -1350,7 +1349,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param schema: Validation schema to set.
         :type schema: dict
         :returns: Project information in dict format
-        :rtype: :class:`dict`
+        :rtype: dict
 
         :Usage Example:
 
@@ -1380,7 +1379,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param id: Project ID in Supervisely.
         :type id: int
         :returns: Project information in dict format
-        :rtype: :class:`dict`
+        :rtype: dict
 
         :Usage Example:
 
@@ -2681,10 +2680,10 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type image_id_scope: Optional[List[int]]
         :param threshold: Threshold for similarity. If provided, only images with similarity above this threshold will be returned.
         :type threshold: Optional[float]
-        :returns: Entitites Collection ID of the search results, or None if no collection was created.
-        :rtype: Optional[int]
         :raises ValueError: Exactly one of ``prompt``, ``image_id`` or ``method`` must be provided.
                             If ``method`` is set, it must be one of the allowed values.
+        :returns: Entitites Collection ID of the search results, or None if no collection was created.
+        :rtype: Optional[int]
 
         :Usage Example:
 

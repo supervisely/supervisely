@@ -54,7 +54,7 @@ class ObjClass(KeyObject, JsonSerializable):
     :type sly_id: int, optional
     :param hotkey: Hotkey for ObjClass in annotation tool UI.
     :type hotkey: str, optional
-    :raises: :class:`ValueError`, if color is not list or tuple, or doesn't have exactly 3 values
+    :raises ValueError: if color is not list or tuple, or doesn't have exactly 3 values
 
     :Usage Example:
 
@@ -104,7 +104,7 @@ class ObjClass(KeyObject, JsonSerializable):
         Name.
 
         :returns: Name
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -122,7 +122,7 @@ class ObjClass(KeyObject, JsonSerializable):
         Description.
 
         :returns: Description
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -139,17 +139,17 @@ class ObjClass(KeyObject, JsonSerializable):
         Used as a key in ObjClassCollection (like key in dict)
 
         :returns: string name of the ObjectClass
-        :rtype: :class:`Str`
+        :rtype: str
         """
         return self.name
 
     @property
-    def geometry_type(self) -> type:
+    def geometry_type(self) -> Geometry:
         """
         Type of the geometry that is associated with ObjClass.
 
         :returns: Geometry type
-        :rtype: :class:`type`
+        :rtype: :class:`~supervisely.geometry.geometry.Geometry`
 
         :Usage Example:
 
@@ -196,7 +196,7 @@ class ObjClass(KeyObject, JsonSerializable):
         Class ID in Supervisely server.
 
          :returns: ID
-         :rtype: :class:`int`
+         :rtype: int
 
          :Usage Example:
 
@@ -214,7 +214,7 @@ class ObjClass(KeyObject, JsonSerializable):
         Hotkey for ObjClass in annotation tool UI..
 
         :returns: Hotkey
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -231,7 +231,7 @@ class ObjClass(KeyObject, JsonSerializable):
         Convert the ObjClass to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :returns: Json format as a dict
-        :rtype: :class:`dict`
+        :rtype: dict
 
         :Usage Example:
 
@@ -279,7 +279,7 @@ class ObjClass(KeyObject, JsonSerializable):
         :type data: dict
 
         :returns: ObjClass object
-        :rtype: :class:`ObjClass<ObjClass>`
+        :rtype: :class:`~supervisely.annotation.obj_class.ObjClass`
 
         :Usage Example:
 
@@ -335,7 +335,7 @@ class ObjClass(KeyObject, JsonSerializable):
         :param other: ObjClass object.
         :type other: ObjClass
         :returns: True if comparable objects are equal, otherwise False
-        :rtype: :class:`bool`
+        :rtype: bool
 
         :Usage Example:
 
@@ -371,7 +371,7 @@ class ObjClass(KeyObject, JsonSerializable):
         :param other: ObjClass object.
         :type other: ObjClass
         :returns: True if comparable objects are not equal, otherwise False
-        :rtype: :class:`bool`
+        :rtype: bool
 
         :Usage Example:
 

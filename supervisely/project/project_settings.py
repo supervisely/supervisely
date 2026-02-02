@@ -96,7 +96,7 @@ class ProjectSettings(JsonSerializable):
     :param labeling_interface: The interface for labeling images.
     :type labeling_interface: str, optional
 
-    :raises: :class:`ValidationError`, if settings schema is corrupted, the exception arises.
+    :raises ValidationError: if settings schema is corrupted, the exception arises.
 
     :Usage Example:
 

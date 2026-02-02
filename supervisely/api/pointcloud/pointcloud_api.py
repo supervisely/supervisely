@@ -73,60 +73,60 @@ class PointcloudInfo(NamedTuple):
             )
     """
 
-    #: :class:`int`: Point cloud ID in Supervisely.
+    #: int: Point cloud ID in Supervisely.
     id: int
 
-    #: :class:`int`: Number of frame in the point cloud
+    #: int: Number of frame in the point cloud
     frame: int
 
-    #: :class:`str`: Point cloud description.
+    #: str: Point cloud description.
     description: str
 
-    #: :class:`str`: Point cloud filename.
+    #: str: Point cloud filename.
     name: str
 
-    #: :class:`int`: :class:`~supervisely.api.team_api.TeamApi` ID in Supervisely.
+    #: int: :class:`~supervisely.api.team_api.TeamApi` ID in Supervisely.
     team_id: int
 
-    #: :class:`int`: :class:`~supervisely.api.workspace_api.WorkspaceApi` ID in Supervisely.
+    #: int: :class:`~supervisely.api.workspace_api.WorkspaceApi` ID in Supervisely.
     workspace_id: int
 
-    #: :class:`int`: :class:`~supervisely.project.project.Project` ID in Supervisely.
+    #: int: :class:`~supervisely.project.project.Project` ID in Supervisely.
     project_id: int
 
-    #: :class:`int`: :class:`~supervisely.project.project.Dataset` ID in Supervisely.
+    #: int: :class:`~supervisely.project.project.Dataset` ID in Supervisely.
     dataset_id: int
 
-    #: :class:`str`: Link to point cloud.
+    #: str: Link to point cloud.
     link: str
 
-    #: :class:`str`: Point cloud hash obtained by base64(sha256(file_content)).
+    #: str: Point cloud hash obtained by base64(sha256(file_content)).
     #: Use hash for files that are expected to be stored at Supervisely or your deployed agent.
     hash: str
 
-    #: :class:`str`: Relative storage URL to point cloud. e.g.
+    #: str: Relative storage URL to point cloud. e.g.
     #: "/h5un6l2bnaz1vms4-public/pointclouds/Z/d/HD/lfgipl...NXrg5vz.mp4".
     path_original: str
 
-    #: :class:`str`: MIME type of the point cloud.
+    #: str: MIME type of the point cloud.
     cloud_mime: str
 
-    #: :class:`int`: Number of PointcloudFigure objects in the point cloud
+    #: int: Number of PointcloudFigure objects in the point cloud
     figures_count: int
 
-    #: :class:`int`: Number of PointcloudObject objects in the point cloud
+    #: int: Number of PointcloudObject objects in the point cloud
     objects_count: int
 
-    #: :class:`list`: Pointcloud :class:`~supervisely.pointcloud_annotation.pointcloud_tag.PointcloudTag` list.
+    #: list: Pointcloud :class:`~supervisely.pointcloud_annotation.pointcloud_tag.PointcloudTag` list.
     tags: list
 
-    #: :class:`dict`: A dictionary containing point cloud metadata.
+    #: dict: A dictionary containing point cloud metadata.
     meta: dict
 
-    #: :class:`str`: Point cloud creation time. e.g. "2019-02-22T14:59:53.381Z".
+    #: str: Point cloud creation time. e.g. "2019-02-22T14:59:53.381Z".
     created_at: str
 
-    #: :class:`str`: Time of last point cloud update. e.g. "2019-02-22T14:59:53.381Z".
+    #: str: Time of last point cloud update. e.g. "2019-02-22T14:59:53.381Z".
     updated_at: str
 
 
@@ -1486,7 +1486,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :type progress_cb: Optional[Union[tqdm, Callable]]
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
         :type progress_cb_type: Literal["number", "size"], optional
-        :raises: :class:`ValueError` if len(ids) != len(paths)
+        :raises ValueError: if len(ids) != len(paths)
         :returns: None
         :rtype: None
 

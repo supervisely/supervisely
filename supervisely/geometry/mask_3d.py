@@ -70,7 +70,7 @@ class PointVolume(JsonSerializable):
         Position of PointVolume on X-axis.
 
         :returns: X of PointVolume
-        :rtype: :class:`int`
+        :rtype: int
 
         :Usage Example:
 
@@ -87,7 +87,7 @@ class PointVolume(JsonSerializable):
         Position of PointVolume on Y-axis.
 
         :returns: Y of PointVolume
-        :rtype: :class:`int`
+        :rtype: int
 
         :Usage Example:
 
@@ -104,7 +104,7 @@ class PointVolume(JsonSerializable):
         Position of PointVolume on Z-axis.
 
         :returns: Z of PointVolume
-        :rtype: :class:`int`
+        :rtype: int
 
         :Usage Example:
 
@@ -120,7 +120,7 @@ class PointVolume(JsonSerializable):
         Convert the PointVolume to a json dict.
 
         :returns: Json format as a dict
-        :rtype: :class:`dict`
+        :rtype: dict
 
         :Usage Example:
 
@@ -188,7 +188,7 @@ class Mask3D(Geometry):
     :type volume_header: dict, optional
     :param convert_to_ras: If True, converts the mask to RAS orientation. Default is True.
     :type convert_to_ras: bool, optional
-    :raises: :class:`ValueError`, if data is not bool or no pixels set to True in data
+    :raises ValueError: if data is not bool or no pixels set to True in data
 
     :Usage Example:
 
@@ -306,7 +306,7 @@ class Mask3D(Geometry):
         Get the space of the Mask3D.
 
         :returns: Space of the Mask3D.
-        :rtype: :class:`str`
+        :rtype: str
         """
         return self._space
 
@@ -422,7 +422,7 @@ class Mask3D(Geometry):
         Convert the Mask 3D to a json dict.
 
         :returns: Json format as a dict
-        :rtype: :class:`dict`
+        :rtype: dict
 
         :Usage Example:
 
@@ -559,7 +559,7 @@ class Mask3D(Geometry):
         :param mask: Bool numpy array.
         :type mask: np.ndarray
         :returns: Base64 encoded string
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 

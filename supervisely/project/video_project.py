@@ -65,19 +65,19 @@ class VideoDataset(Dataset):
             ds = sly.VideoDataset(dataset_path, sly.OpenMode.READ)
     """
 
-    #: :class:`str`: Items data directory name
+    #: str: Items data directory name
     item_dir_name = "video"
 
-    #: :class:`str`: Annotations directory name
+    #: str: Annotations directory name
     ann_dir_name = "ann"
 
-    #: :class:`str`: Items info directory name
+    #: str: Items info directory name
     item_info_dir_name = "video_info"
 
-    #: :class:`str`: Metadata directory name
+    #: str: Metadata directory name
     metadata_dir_name = "metadata"
 
-    #: :class:`str`: Segmentation masks directory name
+    #: str: Segmentation masks directory name
     seg_dir_name = None
 
     annotation_class = VideoAnnotation
@@ -91,7 +91,7 @@ class VideoDataset(Dataset):
         Path to the video project containing the video dataset.
 
         :returns: Path to the video project.
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -112,7 +112,7 @@ class VideoDataset(Dataset):
         Video Dataset name.
 
         :returns: Video Dataset Name.
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -133,7 +133,7 @@ class VideoDataset(Dataset):
         Path to the video dataset directory.
 
         :returns: Path to the video dataset directory.
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -155,7 +155,7 @@ class VideoDataset(Dataset):
         Path to the video dataset metadata directory.
 
         :return: Path to the video dataset metadata directory.
-        :rtype: :class:`str`
+        :rtype: str
         :Usage example:
          .. code-block:: python
 
@@ -174,7 +174,7 @@ class VideoDataset(Dataset):
         Path to the video dataset items directory.
 
         :returns: Path to the video dataset items directory.
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -194,7 +194,7 @@ class VideoDataset(Dataset):
     def img_dir(self) -> str:
         """
         Not available for VideoDataset class object.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Property 'img_dir' is not supported for {type(self).__name__} object."
@@ -206,7 +206,7 @@ class VideoDataset(Dataset):
         Path to the video dataset annotations directory.
 
         :returns: Path to the video dataset directory with annotations.
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -226,7 +226,7 @@ class VideoDataset(Dataset):
     def img_info_dir(self):
         """
         Not available for VideoDataset class object.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Property 'img_info_dir' is not supported for {type(self).__name__} object."
@@ -238,7 +238,7 @@ class VideoDataset(Dataset):
         Path to the video dataset item with items info.
 
         :returns: Path to the video dataset directory with items info.
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -258,7 +258,7 @@ class VideoDataset(Dataset):
     def seg_dir(self):
         """
         Not available for VideoDataset class object.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Property 'seg_dir' is not supported for {type(self).__name__} object."
@@ -278,7 +278,7 @@ class VideoDataset(Dataset):
         List of video dataset item names.
 
         :returns: List of item names.
-        :rtype: :class:`list` [ :class:`str` ]
+        :rtype: list [ str ]
 
         :Usage Example:
 
@@ -299,9 +299,9 @@ class VideoDataset(Dataset):
         Checks if given item name belongs to the video dataset.
 
         :param item_name: Item name.
-        :type item_name: :class:`str`
+        :type item_name: str
         :returns: True if item exist, otherwise False.
-        :rtype: :class:`bool`
+        :rtype: bool
 
         :Usage Example:
 
@@ -322,10 +322,10 @@ class VideoDataset(Dataset):
         Path to the given item.
 
         :param item_name: Item name.
-        :type item_name: :class:`str`
+        :type item_name: str
         :returns: Path to the given item.
-        :rtype: :class:`str`
-        :raises: :class:`RuntimeError` if item not found in the project
+        :rtype: str
+        :raises RuntimeError: if item not found in the project
 
         :Usage Example:
 
@@ -347,7 +347,7 @@ class VideoDataset(Dataset):
     def get_img_path(self, item_name: str) -> str:
         """
         Not available for VideoDataset class object.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Method 'get_img_path(item_name)' is not supported for {type(self).__name__} object."
@@ -360,14 +360,14 @@ class VideoDataset(Dataset):
         Read annotation of item from json.
 
         :param item_name: Item name.
-        :type item_name: :class:`str`
+        :type item_name: str
         :param project_meta: ProjectMeta object.
         :type project_meta: :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`
         :param key_id_map: KeyIdMap object.
         :type key_id_map: :class:`KeyIdMap<supervisely.video_annotation.key_id_map.KeyIdMap>`, optional
         :returns: VideoAnnotation object.
         :rtype: :class:`VideoAnnotation<supervisely.video_annotation.video_annotation.VideoAnnotation>`
-        :raises: :class:`RuntimeError` if item not found in the project
+        :raises RuntimeError: if item not found in the project
 
         :Usage Example:
 
@@ -409,10 +409,10 @@ class VideoDataset(Dataset):
         Path to the given annotation json file.
 
         :param item_name: Item name.
-        :type item_name: :class:`str`
+        :type item_name: str
         :returns: Path to the given annotation json file.
-        :rtype: :class:`str`
-        :raises: :class:`RuntimeError` if item not found in the project
+        :rtype: str
+        :raises RuntimeError: if item not found in the project
 
         :Usage Example:
 
@@ -434,7 +434,7 @@ class VideoDataset(Dataset):
     def get_img_info_path(self, img_name: str) -> str:
         """
         Not available for VideoDataset class object.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Method 'get_img_info_path(item_name)' is not supported for {type(self).__name__} object."
@@ -445,10 +445,10 @@ class VideoDataset(Dataset):
         Get path to the item info json file without checking if the file exists.
 
         :param item_name: Item name.
-        :type item_name: :class:`str`
+        :type item_name: str
         :returns: Path to the given item info json file.
-        :rtype: :class:`str`
-        :raises: :class:`RuntimeError` if item not found in the project.
+        :rtype: str
+        :raises RuntimeError: if item not found in the project.
 
         :Usage Example:
 
@@ -470,7 +470,7 @@ class VideoDataset(Dataset):
     def get_image_info(self, item_name: str) -> None:
         """
         Not available for VideoDataset class object.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Method 'get_image_info(item_name)' is not supported for {type(self).__name__} object."
@@ -481,7 +481,7 @@ class VideoDataset(Dataset):
         Information for Item with given name.
 
         :param item_name: Item name.
-        :type item_name: :class:`str`
+        :type item_name: str
         :returns: VideoInfo object.
         :rtype: :class:`VideoInfo<supervisely.api.video.video_api.VideoInfo>`
 
@@ -521,7 +521,7 @@ class VideoDataset(Dataset):
     def get_seg_path(self, item_name: str) -> str:
         """
         Not available for VideoDataset class object.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Method 'get_seg_path(item_name)' is not supported for {type(self).__name__} object."
@@ -541,20 +541,20 @@ class VideoDataset(Dataset):
         annotations directory. if ann is None, creates empty annotation file.
 
         :param item_name: Item name.
-        :type item_name: :class:`str`
+        :type item_name: str
         :param item_path: Path to the item.
-        :type item_path: :class:`str`
+        :type item_path: str
         :param ann: VideoAnnotation object or path to annotation json file.
-        :type ann: :class:`VideoAnnotation<supervisely.video_annotation.video_annotation.VideoAnnotation>` or :class:`str`, optional
+        :type ann: :class:`VideoAnnotation<supervisely.video_annotation.video_annotation.VideoAnnotation>` or str, optional
         :param _validate_item: Checks input files format.
-        :type _validate_item: :class:`bool`, optional
+        :type _validate_item: bool, optional
         :param _use_hardlink: If True creates a hardlink pointing to src named dst, otherwise don't.
-        :type _use_hardlink: :class:`bool`, optional
+        :type _use_hardlink: bool, optional
         :param item_info: VideoInfo object or VideoInfo object converted to dict or path to item info json file for copying to dataset item info directory.
-        :type item_info: :class:`VideoInfo<supervisely.api.video.video_api.VideoInfo>` or :class:`dict` or :class:`str`, optional
+        :type item_info: :class:`VideoInfo<supervisely.api.video.video_api.VideoInfo>` or dict or str, optional
         :returns: None
         :rtype: NoneType
-        :raises: :class:`RuntimeError` if item_name already exists in dataset or item name has unsupported extension.
+        :raises RuntimeError: if item_name already exists in dataset or item name has unsupported extension.
 
         :Usage Example:
 
@@ -582,7 +582,7 @@ class VideoDataset(Dataset):
     def add_item_np(self, item_name, img, ann=None, img_info=None):
         """
         Not available for VideoDataset class object.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Method 'add_item_np()' is not supported for {type(self).__name__} object."
@@ -591,7 +591,7 @@ class VideoDataset(Dataset):
     def add_item_raw_bytes(self, item_name, item_raw_bytes, ann=None, img_info=None):
         """
         Not available for VideoDataset class object.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Method 'add_item_raw_bytes()' is not supported for {type(self).__name__} object."
@@ -647,7 +647,7 @@ class VideoDataset(Dataset):
     def _add_item_raw_bytes(self, item_name, item_raw_bytes):
         """
         Not available for VideoDataset class object.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Method '_add_item_raw_bytes()' is not supported for {type(self).__name__} object."
@@ -656,7 +656,7 @@ class VideoDataset(Dataset):
     def _add_img_np(self, item_name, img):
         """
         Not available for VideoDataset class object.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Method '_add_img_np()' is not supported for {type(self).__name__} object."
@@ -681,7 +681,7 @@ class VideoDataset(Dataset):
         Replaces given annotation for given item name to dataset annotations directory in json format.
 
         :param item_name: Item name.
-        :type item_name: :class:`str`
+        :type item_name: str
         :param ann: VideoAnnotation object.
         :type ann: :class:`VideoAnnotation<supervisely.video_annotation.video_annotation.VideoAnnotation>`
         :param key_id_map: KeyIdMap object.
@@ -714,7 +714,7 @@ class VideoDataset(Dataset):
         Generates :class:`VideoItemPaths<VideoItemPaths>` object with paths to item and annotation directories for item with given name.
 
         :param item_name: Item name.
-        :type item_name: :class:`str`
+        :type item_name: str
         :returns: VideoItemPaths object
         :rtype: :class:`VideoItemPaths<VideoItemPaths>`
 
@@ -744,11 +744,11 @@ class VideoDataset(Dataset):
         Get URL to dataset items list in Supervisely.
 
         :param project_id: :class:`VideoProject<VideoProject>` ID in Supervisely.
-        :type project_id: :class:`int`
+        :type project_id: int
         :param dataset_id: :class:`VideoDataset<VideoDataset>` ID in Supervisely.
-        :type dataset_id: :class:`int`
+        :type dataset_id: int
         :returns: URL to dataset items list.
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -771,7 +771,7 @@ class VideoProject(Project):
     VideoProject is a parent directory for video dataset. VideoProject object is immutable.
 
     :param directory: Path to video project directory.
-    :type directory: :class:`str`
+    :type directory: str
     :param mode: Determines working mode for the given project.
     :type mode: :class:`OpenMode<supervisely.project.project.OpenMode>`
 
@@ -804,9 +804,9 @@ class VideoProject(Project):
         Get URL to video datasets list in Supervisely.
 
         :param id: :class:`VideoProject<VideoProject>` ID in Supervisely.
-        :type id: :class:`int`
+        :type id: int
         :returns: URL to datasets list.
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -861,7 +861,7 @@ class VideoProject(Project):
         Project type.
 
         :returns: Project type.
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -900,13 +900,13 @@ class VideoProject(Project):
         Makes a copy of the :class:`VideoProject<VideoProject>`.
 
         :param dst_directory: Path to video project parent directory.
-        :type dst_directory: :class:`str`
+        :type dst_directory: str
         :param dst_name: Video Project name.
-        :type dst_name: :class:`str`, optional
+        :type dst_name: str, optional
         :param _validate_item: Checks input files format.
-        :type _validate_item: :class:`bool`, optional
+        :type _validate_item: bool, optional
         :param _use_hardlink: If True creates a hardlink pointing to src named dst, otherwise don't.
-        :type _use_hardlink: :class:`bool`, optional
+        :type _use_hardlink: bool, optional
         :returns: VideoProject object.
         :rtype: :class:`VideoProject<VideoProject>`
 
@@ -975,7 +975,7 @@ class VideoProject(Project):
     ) -> None:
         """
         Not available for VideoProject class.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Static method 'to_segmentation_task()' is not supported for VideoProject class now."
@@ -990,7 +990,7 @@ class VideoProject(Project):
     ) -> None:
         """
         Not available for VideoProject class.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Static method 'to_detection_task()' is not supported for VideoProject class now."
@@ -1004,7 +1004,7 @@ class VideoProject(Project):
     ) -> None:
         """
         Not available for VideoProject class.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Static method 'remove_classes_except()' is not supported for VideoProject class now."
@@ -1018,7 +1018,7 @@ class VideoProject(Project):
     ) -> None:
         """
         Not available for VideoProject class.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Static method 'remove_classes()' is not supported for VideoProject class now."
@@ -1034,7 +1034,7 @@ class VideoProject(Project):
     ):
         """
         Not available for VideoProject class.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Static method '_remove_items()' is not supported for VideoProject class now."
@@ -1044,7 +1044,7 @@ class VideoProject(Project):
     def remove_items_without_objects(project_dir: str, inplace: Optional[bool] = False) -> None:
         """
         Not available for VideoProject class.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Static method 'remove_items_without_objects()' is not supported for VideoProject class now."
@@ -1054,7 +1054,7 @@ class VideoProject(Project):
     def remove_items_without_tags(project_dir: str, inplace: Optional[bool] = False) -> None:
         """
         Not available for VideoProject class.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Static method 'remove_items_without_tags()' is not supported for VideoProject class now."
@@ -1066,7 +1066,7 @@ class VideoProject(Project):
     ) -> None:
         """
         Not available for VideoProject class.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Static method 'remove_items_without_both_objects_and_tags()' is not supported for VideoProject class now."
@@ -1076,7 +1076,7 @@ class VideoProject(Project):
     def get_train_val_splits_by_count(project_dir: str, train_count: int, val_count: int) -> None:
         """
         Not available for VideoProject class.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Static method 'get_train_val_splits_by_count()' is not supported for VideoProject class now."
@@ -1091,7 +1091,7 @@ class VideoProject(Project):
     ) -> None:
         """
         Not available for VideoProject class.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Static method 'get_train_val_splits_by_tag()' is not supported for VideoProject class now."
@@ -1103,7 +1103,7 @@ class VideoProject(Project):
     ) -> None:
         """
         Not available for VideoProject class.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Static method 'get_train_val_splits_by_tag()' is not supported for VideoProject class now."
@@ -1119,7 +1119,7 @@ class VideoProject(Project):
     ) -> None:
         """
         Not available for VideoProject class.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Static method 'get_train_val_splits_by_collections()' is not supported for VideoProject class now."
@@ -1152,17 +1152,17 @@ class VideoProject(Project):
         :param api: Supervisely Api class object.
         :type api: :class:`Api<supervisely.api.api.Api>`
         :param project_id: Project ID in Supervisely.
-        :type project_id: :class:`int`
+        :type project_id: int
         :param dest_dir: Directory to download video project.
-        :type dest_dir: :class:`str`
+        :type dest_dir: str
         :param dataset_ids: Datasets IDs in Supervisely to download.
-        :type dataset_ids: :class:`list` [ :class:`int` ], optional
+        :type dataset_ids: list [ int ], optional
         :param download_videos: Download videos from Supervisely video project in dest_dir or not.
-        :type download_videos: :class:`bool`, optional
+        :type download_videos: bool, optional
         :param save_video_info: Save video infos or not.
-        :type save_video_info: :class:`bool`, optional
+        :type save_video_info: bool, optional
         :param log_progress: Log download progress or not.
-        :type log_progress: :class:`bool`
+        :type log_progress: bool
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: :class:`tqdm`, optional
         :returns: None
@@ -1226,7 +1226,7 @@ class VideoProject(Project):
         :param log_progress: Logging progress of download video project or not.
         :type log_progress: bool
         :returns: New video project ID in Supervisely and project name
-        :rtype: :class:`int`, :class:`str`
+        :rtype: int, str
 
         :Usage Example:
 
@@ -1283,23 +1283,23 @@ class VideoProject(Project):
         :param api: Supervisely Api class object.
         :type api: :class:`Api<supervisely.api.api.Api>`
         :param project_id: Project ID in Supervisely.
-        :type project_id: :class:`int`
+        :type project_id: int
         :param dest_dir: Directory to download video project.
-        :type dest_dir: :class:`str`
+        :type dest_dir: str
         :param semaphore: Semaphore to limit the number of concurrent downloads of items.
-        :type semaphore: :class:`asyncio.Semaphore` or :class:`int`, optional
+        :type semaphore: :class:`asyncio.Semaphore` or int, optional
         :param dataset_ids: Datasets IDs in Supervisely to download.
-        :type dataset_ids: :class:`list` [ :class:`int` ], optional
+        :type dataset_ids: list [ int ], optional
         :param download_videos: Download videos from Supervisely video project in dest_dir or not.
-        :type download_videos: :class:`bool`, optional
+        :type download_videos: bool, optional
         :param save_video_info: Save video infos or not.
-        :type save_video_info: :class:`bool`, optional
+        :type save_video_info: bool, optional
         :param log_progress: Log download progress or not.
-        :type log_progress: :class:`bool`
+        :type log_progress: bool
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: :class:`tqdm`, optional
         :param include_custom_data: Include custom data in the download.
-        :type include_custom_data: :class:`bool`, optional
+        :type include_custom_data: bool, optional
         :returns: None
         :rtype: NoneType
 

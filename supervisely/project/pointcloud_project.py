@@ -44,47 +44,47 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
 class PointcloudItemPaths(NamedTuple):
-    #: :class:`str`: Full pointcloud file path of item
+    #: str: Full pointcloud file path of item
     pointcloud_path: str
 
-    #: :class:`str`: Path to related images directory of item
+    #: str: Path to related images directory of item
     related_images_dir: str
 
-    #: :class:`str`: Full annotation file path of item
+    #: str: Full annotation file path of item
     ann_path: str
 
 
 class PointcloudItemInfo(NamedTuple):
-    #: :class:`str`: Item's dataset name
+    #: str: Item's dataset name
     dataset_name: str
 
-    #: :class:`str`: Item name
+    #: str: Item name
     name: str
 
-    #: :class:`str`: Full pointcloud file path of item
+    #: str: Full pointcloud file path of item
     pointcloud_path: str
 
-    #: :class:`str`: Path to related images directory of item
+    #: str: Path to related images directory of item
     related_images_dir: str
 
-    #: :class:`str`: Full annotation file path of item
+    #: str: Full annotation file path of item
     ann_path: str
 
 
 class PointcloudDataset(VideoDataset):
-    #: :class:`str`: Items data directory name
+    #: str: Items data directory name
     item_dir_name = "pointcloud"
 
-    #: :class:`str`: Annotations directory name
+    #: str: Annotations directory name
     ann_dir_name = "ann"
 
-    #: :class:`str`: Items info directory name
+    #: str: Items info directory name
     item_info_dir_name = "pointcloud_info"
 
-    #: :class:`str`: Related images directory name
+    #: str: Related images directory name
     related_images_dir_name = "related_images"
 
-    #: :class:`str`: Segmentation masks directory name
+    #: str: Segmentation masks directory name
     seg_dir_name = None
 
     annotation_class = PointcloudAnnotation
@@ -94,7 +94,7 @@ class PointcloudDataset(VideoDataset):
     def img_dir(self) -> str:
         """
         Not available for PointcloudDataset class object.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Property 'img_dir' is not supported for {type(self).__name__} object."
@@ -104,7 +104,7 @@ class PointcloudDataset(VideoDataset):
     def img_info_dir(self):
         """
         Not available for PointcloudDataset class object.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Property 'img_info_dir' is not supported for {type(self).__name__} object."
@@ -114,7 +114,7 @@ class PointcloudDataset(VideoDataset):
     def seg_dir(self):
         """
         Not available for PointcloudDataset class object.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Property 'seg_dir' is not supported for {type(self).__name__} object."
@@ -123,7 +123,7 @@ class PointcloudDataset(VideoDataset):
     def get_img_path(self, item_name: str) -> str:
         """
         Not available for PointcloudDataset class object.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Method 'get_img_path(item_name)' is not supported for {type(self).__name__} object."
@@ -132,7 +132,7 @@ class PointcloudDataset(VideoDataset):
     def get_img_info_path(self, img_name: str) -> str:
         """
         Not available for PointcloudDataset class object.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Method 'get_img_info_path(item_name)' is not supported for {type(self).__name__} object."
@@ -141,7 +141,7 @@ class PointcloudDataset(VideoDataset):
     def get_image_info(self, item_name: str) -> None:
         """
         Not available for PointcloudDataset class object.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Method 'get_image_info(item_name)' is not supported for {type(self).__name__} object."
@@ -150,7 +150,7 @@ class PointcloudDataset(VideoDataset):
     def get_seg_path(self, item_name: str) -> str:
         """
         Not available for PointcloudDataset class object.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Method 'get_seg_path(item_name)' is not supported for {type(self).__name__} object."
@@ -176,10 +176,10 @@ class PointcloudDataset(VideoDataset):
         Path to the given pointcloud.
 
         :param item_name: Pointcloud name
-        :type item_name: :class:`str`
+        :type item_name: str
         :returns: Path to the given pointcloud
-        :rtype: :class:`str`
-        :raises: :class:`RuntimeError` if item not found in the project
+        :rtype: str
+        :raises RuntimeError: if item not found in the project
 
         :Usage Example:
 
@@ -226,8 +226,8 @@ class PointcloudDataset(VideoDataset):
         :param item_name: PointcloudAnnotation name.
         :type item_name: str
         :returns: Path to the given annotation
-        :rtype: :class:`str`
-        :raises: :class:`RuntimeError` if item not found in the project
+        :rtype: str
+        :raises RuntimeError: if item not found in the project
 
         :Usage Example:
 
@@ -251,9 +251,9 @@ class PointcloudDataset(VideoDataset):
         Delete pointcloud, annotation, pointcloud info and related images from PointcloudDataset.
 
         :param item_name: Item name.
-        :type item_name: :class:`str`
+        :type item_name: str
         :returns: True if successful, otherwise False
-        :rtype: :class:`bool`
+        :rtype: bool
 
         :Usage Example:
 
@@ -291,20 +291,20 @@ class PointcloudDataset(VideoDataset):
         annotations directory. if ann is None, creates empty annotation file.
 
         :param item_name: Item name.
-        :type item_name: :class:`str`
+        :type item_name: str
         :param item_path: Path to the item.
-        :type item_path: :class:`str`
+        :type item_path: str
         :param ann: PointcloudAnnotation object or path to annotation json file.
-        :type ann: :class:`PointcloudAnnotation<supervisely.pointcloud_annotation.pointcloud_annotation.PointcloudAnnotation>` or :class:`str`, optional
+        :type ann: :class:`PointcloudAnnotation<supervisely.pointcloud_annotation.pointcloud_annotation.PointcloudAnnotation>` or str, optional
         :param _validate_item: Checks input files format.
-        :type _validate_item: :class:`bool`, optional
+        :type _validate_item: bool, optional
         :param _use_hardlink: If True creates a hardlink pointing to src named dst, otherwise don't.
-        :type _use_hardlink: :class:`bool`, optional
+        :type _use_hardlink: bool, optional
         :param item_info: PointcloudInfo object or PointcloudInfo object converted to dict or path to item info json file for copying to dataset item info directory.
-        :type item_info: :class:`PointcloudInfo<supervisely.api.pointcloud.pointcloud_api.PointcloudInfo>` or :class:`dict` or :class:`str`, optional
+        :type item_info: :class:`PointcloudInfo<supervisely.api.pointcloud.pointcloud_api.PointcloudInfo>` or dict or str, optional
         :returns: None
         :rtype: NoneType
-        :raises: :class:`RuntimeError` if item_name already exists in dataset or item name has unsupported extension.
+        :raises RuntimeError: if item_name already exists in dataset or item name has unsupported extension.
 
         :Usage Example:
 
@@ -348,8 +348,8 @@ class PointcloudDataset(VideoDataset):
         :param item_info: NamedTuple PointcloudItemInfo containing information about Pointcloud.
         :type item_info: NamedTuple, optional
         :returns: None
-        :rtype: :class:`NoneType`
-        :raises: :class:`Exception` if item_name already exists in dataset or item name has unsupported extension
+        :rtype: None
+        :raises Exception: if item_name already exists in dataset or item name has unsupported extension
 
         :Usage Example:
 
@@ -373,7 +373,7 @@ class PointcloudDataset(VideoDataset):
     def add_item_raw_bytes(self, item_name, item_raw_bytes, ann=None, img_info=None):
         """
         Not available for PointcloudDataset class object.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Method 'add_item_raw_bytes()' is not supported for {type(self).__name__} object."
@@ -382,7 +382,7 @@ class PointcloudDataset(VideoDataset):
     def _add_item_raw_bytes(self, item_name, item_raw_bytes):
         """
         Not available for PointcloudDataset class object.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Method '_add_item_raw_bytes()' is not supported for {type(self).__name__} object."
@@ -472,7 +472,7 @@ class PointcloudDataset(VideoDataset):
         :type key_id_map: KeyIdMap, optional
         :returns: PointcloudAnnotation object
         :rtype: :class:`PointcloudAnnotation<supervisely.PointcloudAnnotation>`
-        :raises: :class:`RuntimeError` if item not found in the project
+        :raises RuntimeError: if item not found in the project
 
         :Usage Example:
 
@@ -523,7 +523,7 @@ class PointcloudDataset(VideoDataset):
         :type img_name: str
         :returns: List of figures from related image.
         :rtype: List[Dict]
-        :raises: :class:`RuntimeError` if item not found in the project
+        :raises RuntimeError: if item not found in the project
         """
         results = []
         path = self.get_related_images_path(item_name)
@@ -544,7 +544,7 @@ class PointcloudProject(VideoProject):
     PointcloudProject is a parent directory for pointcloud datasets. PointcloudProject object is immutable.
 
     :param directory: Path to pointcloud project directory.
-    :type directory: :class:`str`
+    :type directory: str
     :param mode: Determines working mode for the given project.
     :type mode: :class:`OpenMode<supervisely.project.project.OpenMode>`
 
@@ -584,7 +584,7 @@ class PointcloudProject(VideoProject):
         Project type.
 
         :returns: Project type.
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -611,7 +611,7 @@ class PointcloudProject(VideoProject):
         :type train_count: int
         :param val_count: Number of val items.
         :type val_count: int
-        :raises: :class:`ValueError` if total_count != train_count + val_count
+        :raises ValueError: if total_count != train_count + val_count
         :returns: Tuple with lists of train items information and val items information
         :rtype: :class:`Tuple[List[PointcloudItemInfo], List[PointcloudItemInfo]]`
 
@@ -670,7 +670,7 @@ class PointcloudProject(VideoProject):
         :type val_tag_name: str
         :param untagged: Actions in case of absence of train_tag_name and val_tag_name in project.
         :type untagged: str, optional
-        :raises: :class:`ValueError` if untagged not in ["ignore", "train", "val"]
+        :raises ValueError: if untagged not in ["ignore", "train", "val"]
         :returns: Tuple with lists of train items information and val items information
         :rtype: :class:`Tuple[List[PointcloudItemInfo], List[PointcloudItemInfo]]`
 
@@ -733,7 +733,7 @@ class PointcloudProject(VideoProject):
         :type train_datasets: List[str]
         :param val_datasets: List of val datasets names.
         :type val_datasets: List[str]
-        :raises: :class:`KeyError` if dataset name not found in project
+        :raises KeyError: if dataset name not found in project
         :returns: Tuple with lists of train items information and val items information
         :rtype: :class:`Tuple[List[PointcloudItemInfo], List[PointcloudItemInfo]]`
 
@@ -783,7 +783,7 @@ class PointcloudProject(VideoProject):
     ) -> None:
         """
         Not available for PointcloudProject class.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Static method 'get_train_val_splits_by_collections()' is not supported for PointcloudProject class now."

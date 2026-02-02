@@ -119,7 +119,7 @@ class TagMeta(KeyObject, JsonSerializable):
     :type applicable_classes: List[str], optional
     :param target_type: Defines Tag target type (scope) - entities, frames or both.
     :type target_type: str, optional
-    :raises: :class:`ValueError`, if color is not list, or doesn't have exactly 3 values
+    :raises ValueError: if color is not list, or doesn't have exactly 3 values
 
     :Usage Example:
 
@@ -209,7 +209,7 @@ class TagMeta(KeyObject, JsonSerializable):
         Name.
 
         :returns: Name
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -230,7 +230,7 @@ class TagMeta(KeyObject, JsonSerializable):
         Value type. See possible value types in :class:`TagValueType<TagValueType>`.
 
         :returns: Value type
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -249,7 +249,7 @@ class TagMeta(KeyObject, JsonSerializable):
         """
         Possible values of object. This is a required field if object has "oneof_string" value type.
 
-        :raise: :class:`ValueError` if list of possible values is not defined or TagMeta value_type is not "oneof_string".
+        :raise ValueError: if list of possible values is not defined or TagMeta value_type is not "oneof_string".
         :returns: List of possible values
         :rtype: :class:`List[str]`
 
@@ -297,7 +297,7 @@ class TagMeta(KeyObject, JsonSerializable):
         Tag ID in Supervisely server.
 
         :returns: ID
-        :rtype: :class:`int`
+        :rtype: int
 
         :Usage Example:
 
@@ -316,7 +316,7 @@ class TagMeta(KeyObject, JsonSerializable):
         Hotkey for Tag in annotation tool UI.
 
         :returns: Hotkey
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -335,7 +335,7 @@ class TagMeta(KeyObject, JsonSerializable):
         Tag applicability to objects, images, or both.
 
         :returns: Applicability
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -378,7 +378,7 @@ class TagMeta(KeyObject, JsonSerializable):
         Tag target type (scope) - entities, frames or both.
 
         :returns: Target type
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -396,7 +396,7 @@ class TagMeta(KeyObject, JsonSerializable):
         Convert the TagMeta to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :returns: Json format as a dict
-        :rtype: :class:`dict`
+        :rtype: dict
 
         :Usage Example:
 
@@ -540,7 +540,7 @@ class TagMeta(KeyObject, JsonSerializable):
 
         :param value: New value that will be added to a list.
         :type value: str
-        :raises: :class:`ValueError`, if object's value type is not "oneof_string" or already exists in a list
+        :raises ValueError: if object's value type is not "oneof_string" or already exists in a list
         :returns: New instance of TagMeta
         :rtype: :class:`TagMeta<TagMeta>`
 
@@ -583,7 +583,7 @@ class TagMeta(KeyObject, JsonSerializable):
         :param value: Value to check.
         :type value: str
         :returns: True if value is supported, otherwise False
-        :rtype: :class:`bool`
+        :rtype: bool
 
         :Usage Example:
 
@@ -628,7 +628,7 @@ class TagMeta(KeyObject, JsonSerializable):
         :param other: TagMeta object.
         :type other: TagMeta
         :returns: True if comparable objects are equal, otherwise False
-        :rtype: :class:`bool`
+        :rtype: bool
 
         :Usage Example:
 
@@ -664,7 +664,7 @@ class TagMeta(KeyObject, JsonSerializable):
         :param other: TagMeta object.
         :type other: TagMeta
         :returns: True if comparable objects are not equal, otherwise False
-        :rtype: :class:`bool`
+        :rtype: bool
 
         :Usage Example:
 

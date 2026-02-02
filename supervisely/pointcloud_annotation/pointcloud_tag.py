@@ -18,18 +18,18 @@ class PointcloudTag(Tag):
     :param meta: General information about Pointcloud Tag.
     :type meta: :class:`TagMeta<supervisely.annotation.tag_meta.TagMeta>`
     :param value: Pointcloud Tag value. Depends on :class:`TagValueType<supervisely.annotation.tag_meta.TagValueType>` of :class:`TagMeta<supervisely.annotation.tag_meta.TagMeta>`.
-    :type value: :class:`str` or :class:`int` or :class:`float` or :class:`NoneType`, optional
+    :type value: str or int or float or None, optional
     :param key: uuid.UUID object.
     :type key: uuid.UUID, optional
     :param sly_id: Video Tag ID in Supervisely.
-    :type sly_id: :class:`int`, optional
+    :type sly_id: int, optional
     :param labeler_login: Login of user who created PointcloudTag.
-    :type labeler_login: :class:`str`, optional
+    :type labeler_login: str, optional
     :param updated_at: Date and Time when PointcloudTag was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
-    :type updated_at: :class:`str`, optional
+    :type updated_at: str, optional
     :param created_at: Date and Time when PointcloudTag was created. Date Format is the same as in "updated_at" parameter.
-    :type created_at: :class:`str`, optional
-    :raises: :class:`ValueError`, If PointcloudTag value is incompatible to :class:`TagMeta<supervisely.annotation.tag_meta.TagMeta>` value type.
+    :type created_at: str, optional
+    :raises ValueError: If PointcloudTag value is incompatible to :class:`TagMeta<supervisely.annotation.tag_meta.TagMeta>` value type.
 
     :Usage Example:
 
@@ -89,7 +89,7 @@ class PointcloudTag(Tag):
         Get string with information about PointcloudTag name and value.
 
         :returns: Information about PointcloudTag object
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -112,7 +112,7 @@ class PointcloudTag(Tag):
         :param other: PointcloudTag object.
         :type other: :class:`PointcloudTag<PointcloudTag>`
         :returns: True if comparable objects are equal, otherwise False
-        :rtype: :class:`bool`
+        :rtype: bool
 
         :Usage Example:
 
@@ -147,7 +147,7 @@ class PointcloudTag(Tag):
         :param other: PointcloudTag object.
         :type other: :class:`PointcloudTag<PointcloudTag>`
         :returns: True if comparable objects are not equal, otherwise False
-        :rtype: :class:`bool`
+        :rtype: bool
 
         :Usage Example:
 
@@ -207,7 +207,7 @@ class PointcloudTag(Tag):
         :param key_id_map: KeyIdMap object.
         :type key_id_map: :class:`KeyIdMap<supervisely.video_annotation.key_id_map.KeyIdMap>`, optional
         :returns: Json format as a dict
-        :rtype: :class:`dict`
+        :rtype: dict
 
         :Usage Example:
 
@@ -249,7 +249,7 @@ class PointcloudTag(Tag):
         Convert a json dict to VideoTag. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: PointcloudTag in json format as a dict.
-        :type data: :class:`dict`
+        :type data: dict
         :param tag_meta_collection: TagMetaCollection object.
         :type tag_meta_collection: :class:`TagMetaCollection<supervisely.annotation.tag_meta_collection.TagMetaCollection>`: TagMetaCollection
         :param key_id_map: KeyIdMap object.
@@ -301,20 +301,20 @@ class PointcloudTag(Tag):
         :param meta: TagMeta object.
         :type meta: :class:`TagMeta<supervisely.annotation.tag_meta.TagMeta>`, optional
         :param value: Pointcloud Tag value. Depends on :class:`TagValueType<supervisely.annotation.tag_meta.TagValueType>` of :class:`TagMeta<supervisely.annotation.tag_meta.TagMeta>`.
-        :type value: :class:`str` or :class:`int` or :class:`float` or :class:`NoneType`, optional
+        :type value: str or int or float or None, optional
         :param key: uuid.UUID object.
         :type key: uuid.UUID, optional
         :param sly_id: Pointcloud Tag ID in Supervisely server.
-        :type sly_id: :class:`int`, optional
+        :type sly_id: int, optional
         :param labeler_login: Login of user who created Pointcloud Tag.
-        :type labeler_login: :class:`str`, optional
+        :type labeler_login: str, optional
         :param updated_at: Date and Time when Pointcloud Tag was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
-        :type updated_at: :class:`str`, optional
+        :type updated_at: str, optional
         :param created_at: Date and Time when Pointcloud Tag was created. Date Format is the same as in "updated_at" parameter.
-        :type created_at: :class:`str`, optional
+        :type created_at: str, optional
         :returns: New instance of Pointcloud Tag
         :rtype: :class:`PointcloudTag<PointcloudTag>`
-        :raises: :class:`ValueError`, If PointcloudTag value is incompatible to :class:`TagMeta<supervisely.annotation.tag_meta.TagMeta>` value type.
+        :raises ValueError: If PointcloudTag value is incompatible to :class:`TagMeta<supervisely.annotation.tag_meta.TagMeta>` value type.
 
         :Usage Example:
 

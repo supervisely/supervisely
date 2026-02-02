@@ -346,9 +346,9 @@ class VolumeFigure(VideoFigure):
         :type img_size: Tuple[int, int]
         :param _auto_correct: Correct the geometry of a shape if it is out of bounds or not.
         :type _auto_correct: bool, optional
-        :raises: :class:`OutOfImageBoundsException<supervisely.video_annotation.video_figure.OutOfImageBoundsException>`, if figure is out of image bounds
+        :raises OutOfImageBoundsException: if figure is out of image bounds
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
 
         :Usage Example:
 
@@ -521,7 +521,7 @@ class VolumeFigure(VideoFigure):
         :type slice_index: int
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
-        :raises: :class:`RuntimeError`, if volume object ID and volume object key are None, if volume object key and key_id_map are None, if volume object with given id not found in key_id_map
+        :raises RuntimeError: if volume object ID and volume object key are None, if volume object key and key_id_map are None, if volume object with given id not found in key_id_map
         :returns: VolumeFigure object
         :rtype: :class:`VolumeFigure`
 
@@ -610,7 +610,7 @@ class VolumeFigure(VideoFigure):
         :param save_meta: Save frame index or not.
         :type save_meta: bool, optional
         :returns: Json format as a dict
-        :rtype: :class:`dict`
+        :rtype: dict
 
         :Usage Example:
 

@@ -47,7 +47,7 @@ class Tag(KeyObject):
     :type updated_at: str, optional
     :param created_at: Date and Time when Tag was created. Date Format is the same as in "updated_at" parameter.
     :type created_at: str, optional
-    :raises: :class:`ValueError`, if meta is None or if Tag has incompatible value against it's meta value type
+    :raises ValueError: if meta is None or if Tag has incompatible value against it's meta value type
 
     :Usage Example:
 
@@ -133,7 +133,7 @@ class Tag(KeyObject):
         Tag value. Return type depends on :class:`TagValueType<supervisely.annotation.tag_meta.TagValueType>`.
 
         :returns: Tag value
-        :rtype: :class:`str`, :class:`int` or :class:`float` or :class:`None`
+        :rtype: str, int or float or None
 
         :Usage Example:
 
@@ -161,7 +161,7 @@ class Tag(KeyObject):
         Name property.
 
         :returns: Name
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -203,7 +203,7 @@ class Tag(KeyObject):
         Convert the Tag to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :returns: Json format as a dict
-        :rtype: :class:`dict`
+        :rtype: dict
 
         :Usage Example:
 
@@ -304,7 +304,7 @@ class Tag(KeyObject):
         Displays information about Tag's name and value in string format.
 
         :returns: Name and value of the given Tag
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -329,7 +329,7 @@ class Tag(KeyObject):
         :param other: Tag object.
         :type other: Tag
         :returns: True if comparable objects are equal, otherwise False
-        :rtype: :class:`bool`
+        :rtype: bool
 
         :Usage Example:
 
@@ -363,7 +363,7 @@ class Tag(KeyObject):
         :param other: Tag object.
         :type other: Tag
         :returns: True if comparable objects are not equal, otherwise False
-        :rtype: :class:`bool`
+        :rtype: bool
 
         :Usage Example:
 

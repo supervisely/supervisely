@@ -95,7 +95,7 @@ class FrameCollection(KeyIndexedCollection):
             fr_collection.has_key(7)
             # Output: True
 
-            # Intersection, finds intersection of given list of instances with collection items
+            # Find intersection of given list of instances with collection items
             frame_1 = sly.Frame(7)
             frame_2 = sly.Frame(10)
             fr_collection = sly.FrameCollection([frame_1, frame_2])
@@ -119,7 +119,7 @@ class FrameCollection(KeyIndexedCollection):
             # Output:
             # ValueError: Different values for the same key 10
 
-            # Difference, finds difference between collection and given list of Frames
+            # Find difference between collection and given list of Frames
             frames_difference = fr_collection.difference([frame_2])
             print(frames_difference.to_json())
             # Output: [
@@ -129,7 +129,7 @@ class FrameCollection(KeyIndexedCollection):
             #     }
             # ]
 
-            # Merge, merges collection and given list of FrameCollection
+            # Merge collection and given list of FrameCollection
             frame_3 = sly.Frame(12)
             frame_4 = sly.Frame(15)
             over_collection = sly.FrameCollection([frame_3, frame_4])

@@ -41,7 +41,7 @@ def fliplr(img: np.ndarray, ann: Annotation) -> Tuple[np.ndarray, Annotation]:
     :type img: np.ndarray
     :param ann: Annotation object.
     :type ann: Annotation
-    :raises: :class:`RuntimeError` if Image shape does not match img_size in Annotation
+    :raises RuntimeError: if Image shape does not match img_size in Annotation
     :returns: Tuple containing flipped Image and Annotation
     :rtype: :class:`Tuple[np.ndarray, Annotation]`
 
@@ -90,7 +90,7 @@ def flipud(img: np.ndarray, ann: Annotation) -> Tuple[np.ndarray, Annotation]:
     :type img: np.ndarray
     :param ann: Annotation object.
     :type ann: Annotation
-    :raises: :class:`RuntimeError` if Image shape does not match img_size in Annotation
+    :raises RuntimeError: if Image shape does not match img_size in Annotation
     :returns: Tuple containing flipped Image and Annotation
     :rtype: :class:`Tuple[np.ndarray, Annotation]`
 
@@ -155,7 +155,7 @@ def crop(
     :type bottom_pad: int, optional
     :param right_pad: Right padding in pixels.
     :type right_pad: int, optional
-    :raises: :class:`RuntimeError` if Image shape does not match img_size in Annotation
+    :raises RuntimeError: if Image shape does not match img_size in Annotation
     :returns: Tuple containing cropped Image and Annotation
     :rtype: :class:`Tuple[np.ndarray, Annotation]`
 
@@ -226,7 +226,7 @@ def crop_fraction(
     :type bottom: int, optional
     :param right: Right padding in pixels.
     :type right: int, optional
-    :raises: :class:`ValueError` if fraction values not between 0 and 1
+    :raises ValueError: if fraction values not between 0 and 1
     :returns: Tuple containing cropped Image and Annotation
     :rtype: :class:`Tuple[np.ndarray, Annotation]`
 
@@ -297,7 +297,7 @@ def random_crop(
     :type height: int, optional
     :param width: Desired width of output crop.
     :type width: int, optional
-    :raises: :class:`RuntimeError` if Image shape does not match img_size in Annotation
+    :raises RuntimeError: if Image shape does not match img_size in Annotation
     :returns: Tuple containing cropped Image and Annotation
     :rtype: :class:`Tuple[np.ndarray, Annotation]`
 
@@ -374,7 +374,7 @@ def random_crop_fraction(
     :type height_fraction_range: Tuple[float, float]
     :param width_fraction_range: Range of relative values [0, 1] to select output width from.
     :type width_fraction_range: Tuple[float, float]
-    :raises: :class:`RuntimeError` if Image shape does not match img_size in Annotation
+    :raises RuntimeError: if Image shape does not match img_size in Annotation
     :returns: Tuple containing cropped Image and Annotation
     :rtype: :class:`Tuple[np.ndarray, Annotation]`
 
@@ -500,7 +500,7 @@ def instance_crop(
     :type save_other_classes_in_crop: bool, optional
     :param padding_config: Dict with padding.
     :type padding_config: dict, optional
-    :raises: :class:`ValueError` if padding size format is incorrect
+    :raises ValueError: if padding size format is incorrect
     :returns: List of cropped (image numpy array, Annotation) pairs
     :rtype: :class:`List[Tuple[np.ndarray, Annotation]]`
 
@@ -589,7 +589,7 @@ def resize(
     :type size: Tuple[int, int]
     :param skip_empty_masks: If True, skips resizing of empty masks in Annotation.
     :type skip_empty_masks: bool, optional
-    :raises: :class:`RuntimeError` if Image shape does not match img_size in Annotation
+    :raises RuntimeError: if Image shape does not match img_size in Annotation
     :returns: Tuple containing resized Image and Annotation
     :rtype: :class:`Tuple[np.ndarray, Annotation]`
 
@@ -660,7 +660,7 @@ def scale(
     :type fcol: float, optional
     :param f: Desired height and width scale values in one(positive).
     :type f: float, optional
-    :raises: :class:`RuntimeError` if Image shape does not match img_size in Annotation
+    :raises RuntimeError: if Image shape does not match img_size in Annotation
     :returns: Tuple containing scaled Image and Annotation
     :rtype: :class:`Tuple[np.ndarray, Annotation]`
 
@@ -729,7 +729,7 @@ def rotate(
     :type degrees: int
     :param mode: One of RotateMode enum values.
     :type mode: RotationModes, optional
-    :raises: :class:`RuntimeError` if Image shape does not match img_size in Annotation
+    :raises RuntimeError: if Image shape does not match img_size in Annotation
     :returns: Tuple containing rotated Image and Annotation
     :rtype: :class:`Tuple[np.ndarray, Annotation]`
 

@@ -34,7 +34,7 @@ def is_completed_desc() -> Tuple[str, str]:
 def is_completed(job_info: NamedTuple) -> bool:
     """
     :returns: True if Labeling Job is completed, otherwise None
-    :rtype: :class:`bool` or :class:`None`
+    :rtype: bool or None
     """
     if job_info.status == str(Status.COMPLETED):
         return True
@@ -51,7 +51,7 @@ def is_stopped_desc() -> Tuple[str, str]:
 def is_stopped(job_info: NamedTuple) -> bool:
     """
     :returns: True if Labeling Job is stopped, otherwise None
-    :rtype: :class:`bool` or :class:`None`
+    :rtype: bool or None
     """
     if job_info.status == str(Status.STOPPED):
         return True
@@ -68,7 +68,7 @@ def is_not_started_desc() -> Tuple[str, str]:
 def is_not_started(job_info: NamedTuple) -> bool:
     """
     :returns: True if Labeling Job is not started, otherwise None
-    :rtype: :class:`bool` or :class:`None`
+    :rtype: bool or None
     """
     if job_info.status == str(Status.PENDING):
         return True
@@ -85,7 +85,7 @@ def total_items_count_desc() -> Tuple[str, str]:
 def total_items_count(job_info: NamedTuple) -> int:
     """
     :returns: Number of total items count in Labeling Jobs
-    :rtype: :class:`int`
+    :rtype: int
     """
     return job_info.images_count
 
@@ -105,7 +105,7 @@ def labeled_items_count_desc() -> Tuple[str, str]:
 def labeled_items_count(job_info: NamedTuple) -> int:
     """
     :returns: Number of Images, that labeler marked as done
-    :rtype: :class:`int`
+    :rtype: int
     """
     if is_on_labeling(job_info):
         return job_info.finished_images_count
@@ -128,7 +128,7 @@ def reviewed_items_count_desc() -> Tuple[str, str]:
 def reviewed_items_count(job_info: NamedTuple) -> int:
     """
     :returns: Number of reviewed Images(accepted and rejected)
-    :rtype: :class:`int`
+    :rtype: int
     """
     return job_info.accepted_images_count + job_info.rejected_images_count
 
@@ -147,7 +147,7 @@ def accepted_items_count_desc() -> Tuple[str, str]:
 def accepted_items_count(job_info: NamedTuple) -> int:
     """
     :returns: Number of accepted images in all Labeling Jobs
-    :rtype: :class:`int`
+    :rtype: int
     """
     return job_info.accepted_images_count
 
@@ -166,7 +166,7 @@ def rejected_items_count_desc() -> Tuple[str, str]:
 def rejected_items_count(job_info: NamedTuple) -> int:
     """
     :returns: Number of rejected images in all Labeling Jobs
-    :rtype: :class:`int`
+    :rtype: int
     """
     return job_info.rejected_images_count
 
@@ -179,7 +179,7 @@ def is_on_labeling_desc() -> str:
 def is_on_labeling(job_info: NamedTuple) -> bool:
     """
     :returns: True if Labeling Job is in progress, False otherwise
-    :rtype: :class:`bool`
+    :rtype: bool
     """
     if job_info.status == str(Status.IN_PROGRESS):
         return True
@@ -201,7 +201,7 @@ def is_labeling_started_desc() -> Tuple[str, str]:
 def is_labeling_started(job_info: NamedTuple) -> bool:
     """
     :returns: True if Labeling Job is started, False otherwise
-    :rtype: :class:`bool`
+    :rtype: bool
     """
     if is_on_labeling(job_info) and labeled_items_count(job_info) != 0:
         return True
@@ -220,7 +220,7 @@ def is_on_review_desc() -> Tuple[str, str]:
 def is_on_review(job_info: NamedTuple) -> bool:
     """
     :returns: True if Labeling Job is in 'ON REVIEW' status , False otherwise
-    :rtype: :class:`bool`
+    :rtype: bool
     """
     if job_info.status == str(Status.ON_REVIEW):
         return True
@@ -242,7 +242,7 @@ def is_review_started_desc() -> Tuple[str, str]:
 def is_review_started(job_info: NamedTuple) -> bool:
     """
     :returns: True if Labeling Job is in 'review' status and there are Images that reviewer accepted or rejected, False otherwise
-    :rtype: :class:`bool`
+    :rtype: bool
     """
     if is_on_review(job_info) and reviewed_items_count(job_info) != 0:
         return True
@@ -274,7 +274,7 @@ def get_job_url(server_address: str, job: NamedTuple) -> str:
     :param job: Information about labeling job.
     :type job: NamedTuple
     :returns: Labeling job url
-    :rtype: :class:`str`
+    :rtype: str
 
     :Usage Example:
 

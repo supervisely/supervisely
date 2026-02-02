@@ -54,7 +54,7 @@ class PointcloudAnnotationAPI(EntityAnnotationAPI):
         :param pointcloud_id: Point cloud ID in Supervisely.
         :type pointcloud_id: int
         :returns: Information about PointcloudAnnotation in json format
-        :rtype: :class:`dict`
+        :rtype: dict
 
         :Usage Example:
 
@@ -208,7 +208,7 @@ class PointcloudAnnotationAPI(EntityAnnotationAPI):
         :param progress_cb: Progress callback to track download progress.
         :type progress_cb: Union[tqdm, Callable], optional
         :returns: Information about PointcloudAnnotation in json format
-        :rtype: :class:`dict`
+        :rtype: dict
 
         :Usage Example:
 
@@ -252,7 +252,7 @@ class PointcloudAnnotationAPI(EntityAnnotationAPI):
         :param progress_cb: Progress callback to track download progress.
         :type progress_cb: Union[tqdm, Callable], optional
         :returns: Information about PointcloudAnnotations in json format
-        :rtype: :class:`list`
+        :rtype: list
 
         :Usage Example:
 

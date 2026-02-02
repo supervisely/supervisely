@@ -90,7 +90,7 @@ class Node(JsonSerializable):
         Display the Node when drawing or not.
 
         :returns: Boolean
-        :rtype: :class:`bool`
+        :rtype: bool
         """
         return self._disabled
 
@@ -123,7 +123,7 @@ class Node(JsonSerializable):
         Convert the Node to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :returns: Json format as a dict
-        :rtype: :class:`dict`
+        :rtype: dict
 
         :Usage Example:
 
@@ -234,7 +234,7 @@ class GraphNodes(Geometry):
         Copy of GraphNodes nodes.
 
         :returns: GraphNodes nodes
-        :rtype: :class:`dict`
+        :rtype: dict
         """
         return self._nodes.copy()
 
@@ -285,7 +285,7 @@ class GraphNodes(Geometry):
         Convert the GraphNodes to list. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :returns: Json format as a dict
-        :rtype: :class:`dict`
+        :rtype: dict
 
         :Usage Example:
 
@@ -569,7 +569,7 @@ class GraphNodes(Geometry):
         GraphNodes area.
 
         :returns: Area of current GraphNodes, always 0.0
-        :rtype: :class:`float`
+        :rtype: float
 
         :Usage Example:
 

@@ -39,7 +39,7 @@ class AlphaMask(Bitmap):
     :type created_at: str, optional
     :param extra_validation: If True, additional validation is performed. Throws a ValueError if values of the data are not in the range [0, 255]. If True it will affect performance.
     :type extra_validation: bool, optional
-    :raises: :class:`ValueError`, if data values are not in the range [0, 255].
+    :raises ValueError, if data values are not in the range [0, 255].
 
     :Usage Example:
 
@@ -181,7 +181,7 @@ class AlphaMask(Bitmap):
         AlphaMask area.
 
         :returns: Area of current AlphaMask
-        :rtype: :class:`float`
+        :rtype: float
 
         :Usage Example:
 
@@ -200,7 +200,7 @@ class AlphaMask(Bitmap):
         :param mask: Bool numpy array.
         :type mask: np.ndarray
         :returns: Base64 encoded string
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 

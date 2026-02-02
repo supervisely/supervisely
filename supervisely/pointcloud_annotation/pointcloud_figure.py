@@ -149,7 +149,7 @@ class PointcloudFigure(VideoFigure):
         :type frame_index: int
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
-        :raises: :class:`RuntimeError`, if point cloudobject ID and pointcloud object key are None, if pointcloud object key and key_id_map are None, if pointcloud object with given id not found in key_id_map
+        :raises RuntimeError: if point cloudobject ID and pointcloud object key are None, if pointcloud object key and key_id_map are None, if pointcloud object with given id not found in key_id_map
         :returns: PointcloudFigure object
         :rtype: :class:`PointcloudFigure`
 

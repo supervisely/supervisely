@@ -48,7 +48,7 @@ class Rectangle(Geometry):
     :type updated_at: str, optional
     :param created_at: Date and Time when Rectangle was created. Date Format is the same as in "updated_at" parameter.
     :type created_at: str, optional
-    :raises: :class:`ValueError`. Rectangle top argument must have less or equal value then bottom, left argument must have less or equal value then right
+    :raises ValueError: Rectangle top argument must have less or equal value then bottom, left argument must have less or equal value then right
 
     :Usage Example:
 
@@ -109,7 +109,7 @@ class Rectangle(Geometry):
         Convert the Rectangle to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :returns: Json format as a dict
-        :rtype: :class:`dict`
+        :rtype: dict
 
         :Usage Example:
 
@@ -423,7 +423,7 @@ class Rectangle(Geometry):
         Rectangle area.
 
         :returns: Area of current Rectangle object
-        :rtype: :class:`float`
+        :rtype: float
 
         :Usage Example:
 
@@ -511,7 +511,7 @@ class Rectangle(Geometry):
         Minimal horizontal value of Rectangle.
 
         :returns: Minimal horizontal value
-        :rtype: :class:`int`
+        :rtype: int
 
         :Usage Example:
 
@@ -528,7 +528,7 @@ class Rectangle(Geometry):
         Maximal horizontal value of Rectangle.
 
         :returns: Maximal horizontal value
-        :rtype: :class:`int`
+        :rtype: int
 
         :Usage Example:
 
@@ -545,7 +545,7 @@ class Rectangle(Geometry):
         Minimal vertical value of Rectangle.
 
         :returns: Minimal vertical value
-        :rtype: :class:`int`
+        :rtype: int
 
         :Usage Example:
 
@@ -562,7 +562,7 @@ class Rectangle(Geometry):
         Maximal vertical value of Rectangle.
 
         :returns: Maximal vertical value
-        :rtype: :class:`int`
+        :rtype: int
 
         :Usage Example:
 
@@ -595,7 +595,7 @@ class Rectangle(Geometry):
         Width of Rectangle.
 
         :returns: Width
-        :rtype: :class:`int`
+        :rtype: int
 
         :Usage Example:
 
@@ -612,7 +612,7 @@ class Rectangle(Geometry):
         Height of Rectangle
 
         :returns: Height
-        :rtype: :class:`int`
+        :rtype: int
 
         :Usage Example:
 
@@ -630,7 +630,7 @@ class Rectangle(Geometry):
         :param rect: Rectangle object.
         :type rect: Rectangle
         :returns: True if Rectangle contains given Rectangle object, otherwise False
-        :rtype: :class:`bool`
+        :rtype: bool
 
         :Usage Example:
 
@@ -656,7 +656,7 @@ class Rectangle(Geometry):
         :param pt: PointLocation object.
         :type pt: PointLocation
         :returns: True if Rectangle contains given PointLocation object, otherwise False
-        :rtype: :class:`bool`
+        :rtype: bool
 
         :Usage Example:
 
@@ -714,7 +714,7 @@ class Rectangle(Geometry):
         :param rect: Rectangle object.
         :type rect: Rectangle
         :returns: True if given Rectangle object intersects with Rectangle, otherwise False
-        :rtype: :class:`bool`
+        :rtype: bool
 
         :Usage Example:
 
@@ -872,11 +872,11 @@ class Rectangle(Geometry):
         5   +---+---+---+---+---+
 
         :param data: Json data with geometry config.
-        :type data: :class:`dict`
+        :type data: dict
         :param image_size: Image size in pixels (height, width).
         :type image_size: List[int]
         :returns: Json data with coordinates converted to pixel coordinate system.
-        :rtype: :class:`dict`
+        :rtype: dict
         """
         data = deepcopy(data)  # Avoid modifying the original data
         height, width = image_size[:2]
@@ -903,9 +903,9 @@ class Rectangle(Geometry):
         However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
 
         :param data: Json data with geometry config.
-        :type data: :class:`dict`
+        :type data: dict
         :returns: Json data with coordinates converted to subpixel coordinate system.
-        :rtype: :class:`dict`
+        :rtype: dict
         """
         data = deepcopy(data)  # Avoid modifying the original data
 

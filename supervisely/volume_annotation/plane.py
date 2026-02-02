@@ -76,7 +76,7 @@ class Plane(FrameCollection):
         :param name: Name of the plane.
         :type name: Union[str, None]
 
-        :raises ValueError: If `name` is not one of "sagittal", "coronal", "axial", or None.
+        :raises ValueError: if `name` is not one of "sagittal", "coronal", "axial", or None.
 
         :Usage Example:
 
@@ -227,7 +227,7 @@ class Plane(FrameCollection):
         :type name: str
         :returns: A dictionary representing the normal vector of the plane.
         :rtype: dict
-        :raises ValueError: If `name` is not one of "sagittal", "coronal", or "axial".
+        :raises ValueError: if `name` is not one of "sagittal", "coronal", or "axial".
 
         :Usage Example:
 
@@ -285,7 +285,7 @@ class Plane(FrameCollection):
         :type volume_meta: dict
         :returns: The size of the image for the given plane.
         :rtype: List[int]
-        :raises ValueError: If `name` is not one of "sagittal", "coronal", or "axial".
+        :raises ValueError: if `name` is not one of "sagittal", "coronal", or "axial".
 
         :Usage Example:
 
@@ -328,7 +328,7 @@ class Plane(FrameCollection):
         :type volume_meta: dict
         :returns: Number of slices in the given plane.
         :rtype: int
-        :raises ValueError: If `name` is not one of "sagittal", "coronal", or "axial".
+        :raises ValueError: if `name` is not one of "sagittal", "coronal", or "axial".
 
         :Usage Example:
 
@@ -384,7 +384,7 @@ class Plane(FrameCollection):
         :returns: A new class:`Plane<Plane>` instance created from the JSON.
         :rtype: :py:class:`Plane<supervisely.volume_annotation.plane.Plane>`
 
-        :raises ValueError: If `plane_name` is not equal to the "name" field in "data", or if the "normal" field in "data" is not valid for the given plane, or if both `slices_count` and `volume_meta` are None.
+        :raises ValueError: if `plane_name` is not equal to the "name" field in "data", or if the "normal" field in "data" is not valid for the given plane, or if both `slices_count` and `volume_meta` are None.
 
         :Usage Example:
 
@@ -468,7 +468,7 @@ class Plane(FrameCollection):
         """
         Validates the figure bounds for all slices in the Plane.
 
-        :raises ValueError: If any of the slices in the `Plane` instance have invalid figure bounds.
+        :raises ValueError: if any of the slices in the `Plane` instance have invalid figure bounds.
         """
         for slice in self:
             slice: Slice

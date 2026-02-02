@@ -51,7 +51,7 @@ class Polygon(VectorGeometry):
     :type updated_at: str, optional
     :param created_at: Date and Time when Polygon was created. Date Format is the same as in "updated_at" parameter.
     :type created_at: str, optional
-    :raises: :class:`ValueError`, if len(exterior) < 3 or len(any element in interior list) < 3
+    :raises ValueError: if len(exterior) < 3 or len(any element in interior list) < 3
 
     :Usage Example:
 
@@ -249,7 +249,7 @@ class Polygon(VectorGeometry):
         Polygon area.
 
         :returns: Area of current Polygon object.
-        :rtype: :class:`float`
+        :rtype: float
 
         :Usage Example:
 

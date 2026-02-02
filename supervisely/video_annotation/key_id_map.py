@@ -359,7 +359,7 @@ class KeyIdMap:
         :param key: UUID object.
         :type key: UUID
         :returns: :class:`VideoObject<supervisely.video_annotation.video_object.VideoObject>` ID
-        :rtype: :class:`int`
+        :rtype: int
 
         :Usage Example:
 
@@ -377,7 +377,7 @@ class KeyIdMap:
         :param key: UUID object.
         :type key: UUID
         :returns: :class:`VideoTag<supervisely.video_annotation.video_tag.VideoTag>` ID
-        :rtype: :class:`int`
+        :rtype: int
 
         :Usage Example:
 
@@ -395,7 +395,7 @@ class KeyIdMap:
         :param key: UUID object.
         :type key: UUID
         :returns: :class:`VideoFigure<supervisely.video_annotation.video_figure.VideoFigure>` ID
-        :rtype: :class:`int`
+        :rtype: int
 
         :Usage Example:
 
@@ -413,7 +413,7 @@ class KeyIdMap:
         :param key: UUID object.
         :type key: UUID
         :returns: :class:`VideoAnnotation<supervisely.video_annotation.video_annotation.VideoAnnotation>` ID
-        :rtype: :class:`int`
+        :rtype: int
 
         :Usage Example:
 
@@ -501,7 +501,7 @@ class KeyIdMap:
         Convert the KeyIdMap to a dict(bidict values to dictionary with dict values).
 
         :returns: Json format as a dict
-        :rtype: :class:`dict`
+        :rtype: dict
 
         :Usage Example:
 
@@ -556,8 +556,8 @@ class KeyIdMap:
 
         :param path: Target file path.
         :type path: str
-        :returns: :class:`None`
-        :rtype: :class:`NoneType`
+        :returns: None
+        :rtype: None
 
         :Usage Example:
 
@@ -617,8 +617,8 @@ class KeyIdMap:
         :type key: List[UUID]
         :param id: List of :class:`VideoTag<supervisely.video_annotation.video_tag.VideoTag>` IDs.
         :type id: List[int]
-        :returns: :class:`None`
-        :rtype: :class:`NoneType`
+        :returns: None
+        :rtype: None
 
         :Usage Example:
 
@@ -644,8 +644,8 @@ class KeyIdMap:
         :type key: UUID
         :param id: :class:`VideoTag<supervisely.video_annotation.video_tag.VideoTag>` ID.
         :type id: int
-        :returns: :class:`None`
-        :rtype: :class:`NoneType`
+        :returns: None
+        :rtype: None
 
         :Usage Example:
 
@@ -669,8 +669,8 @@ class KeyIdMap:
         :type key: List[UUID]
         :param id: List of :class:`VideoObject<supervisely.video_annotation.video_object.VideoObject>` IDs.
         :type id: List[int]
-        :returns: :class:`None`
-        :rtype: :class:`NoneType`
+        :returns: None
+        :rtype: None
 
         :Usage Example:
 
@@ -696,8 +696,8 @@ class KeyIdMap:
         :type key: UUID
         :param id: :class:`VideoObject<supervisely.video_annotation.video_object.VideoObject>` ID.
         :type id: int
-        :returns: :class:`None`
-        :rtype: :class:`NoneType`
+        :returns: None
+        :rtype: None
 
         :Usage Example:
 
@@ -721,8 +721,8 @@ class KeyIdMap:
         :type key: List[UUID]
         :param id: List of :class:`VideoFigure<supervisely.video_annotation.video_figure.VideoFigure>` IDs.
         :type id: List[int]
-        :returns: :class:`None`
-        :rtype: :class:`NoneType`
+        :returns: None
+        :rtype: None
 
         :Usage Example:
 
@@ -748,8 +748,8 @@ class KeyIdMap:
         :type key: UUID
         :param id: :class:`VideoFigure<supervisely.video_annotation.video_figure.VideoFigure>` ID.
         :type id: int
-        :returns: :class:`None`
-        :rtype: :class:`NoneType`
+        :returns: None
+        :rtype: None
 
         :Usage Example:
 
@@ -773,8 +773,8 @@ class KeyIdMap:
         :type key: List[UUID]
         :param id: List of :class:`VideoAnnotation<supervisely.video_annotation.video_annotation.VideoAnnotation>` IDs.
         :type id: List[int]
-        :returns: :class:`None`
-        :rtype: :class:`NoneType`
+        :returns: None
+        :rtype: None
 
         :Usage Example:
 
@@ -800,8 +800,8 @@ class KeyIdMap:
         :type key: UUID
         :param id: :class:`VideoAnnotation<supervisely.video_annotation.video_annotation.VideoAnnotation>` ID.
         :type id: int
-        :returns: :class:`None`
-        :rtype: :class:`NoneType`
+        :returns: None
+        :rtype: None
 
         :Usage Example:
 
@@ -830,8 +830,8 @@ class KeyIdMap:
         :type key: List[UUID]
         :param id: List of :class:`VideoTag<supervisely.video_annotation.video_tag.VideoTag>` IDs.
         :type id: List[int]
-        :returns: :class:`None`
-        :rtype: :class:`NoneType`
+        :returns: None
+        :rtype: None
 
         :Usage Example:
 
@@ -865,8 +865,8 @@ class KeyIdMap:
         :type key: UUID
         :param id: :class:`VideoTag<supervisely.video_annotation.video_tag.VideoTag>` ID.
         :type id: int
-        :returns: :class:`None`
-        :rtype: :class:`NoneType`
+        :returns: None
+        :rtype: None
 
         :Usage Example:
 
@@ -897,8 +897,8 @@ class KeyIdMap:
         :type key: List[UUID]
         :param id: List of :class:`VideoObject<supervisely.video_annotation.video_object.VideoObject>` IDs.
         :type id: List[int]
-        :returns: :class:`None`
-        :rtype: :class:`NoneType`
+        :returns: None
+        :rtype: None
 
         :Usage Example:
 
@@ -932,8 +932,8 @@ class KeyIdMap:
         :type key: UUID
         :param id: :class:`VideoObject<supervisely.video_annotation.video_object.VideoObject>` ID.
         :type id: int
-        :returns: :class:`None`
-        :rtype: :class:`NoneType`
+        :returns: None
+        :rtype: None
 
         :Usage Example:
 
@@ -964,8 +964,8 @@ class KeyIdMap:
         :type key: List[UUID]
         :param id: List of :class:`VideoFigure<supervisely.video_annotation.video_figure.VideoFigure>` IDs.
         :type id: List[int]
-        :returns: :class:`None`
-        :rtype: :class:`NoneType`
+        :returns: None
+        :rtype: None
 
         :Usage Example:
 
@@ -999,8 +999,8 @@ class KeyIdMap:
         :type key: UUID
         :param id: :class:`VideoFigure<supervisely.video_annotation.video_figure.VideoFigure>` ID.
         :type id: int
-        :returns: :class:`None`
-        :rtype: :class:`NoneType`
+        :returns: None
+        :rtype: None
 
         :Usage Example:
 
@@ -1031,8 +1031,8 @@ class KeyIdMap:
         :type key: List[UUID]
         :param id: List of Video IDs.
         :type id: List[int]
-        :returns: :class:`None`
-        :rtype: :class:`NoneType`
+        :returns: None
+        :rtype: None
 
         :Usage Example:
 
@@ -1066,8 +1066,8 @@ class KeyIdMap:
         :type key: UUID
         :param id: Video ID.
         :type id: int
-        :returns: :class:`None`
-        :rtype: :class:`NoneType`
+        :returns: None
+        :rtype: None
 
         :Usage Example:
 

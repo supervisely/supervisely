@@ -228,7 +228,7 @@ class VideoFigure:
         Frame index of the current VideoFigure.
 
         :returns: Index of Frame to which VideoFigure belongs
-        :rtype: :class:`int`
+        :rtype: int
 
         :Usage Example:
 
@@ -323,7 +323,7 @@ class VideoFigure:
         :param save_meta: Save frame index or not.
         :type save_meta: bool, optional
         :returns: Json format as a dict
-        :rtype: :class:`dict`
+        :rtype: dict
 
         :Usage Example:
 
@@ -430,14 +430,14 @@ class VideoFigure:
         Convert a json dict to VideoFigure. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: Dict in json format.
-        :type data: :class:`dict`
+        :type data: dict
         :param objects: VideoObjectCollection object.
         :type objects: VideoObjectCollection
         :param frame_index: Index of Frame to which VideoFigure belongs.
         :type frame_index: int
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
-        :raises: :class:`RuntimeError`, if video object ID and video object key are None, if video object key and key_id_map are None, if video object with given id not found in key_id_map
+        :raises RuntimeError: if video object ID and video object key are None, if video object key and key_id_map are None, if video object with given id not found in key_id_map
         :returns: VideoFigure object
         :rtype: :class:`VideoFigure`
 
@@ -635,9 +635,9 @@ class VideoFigure:
         :type img_size: Tuple[int, int]
         :param _auto_correct: Correct the geometry of a shape if it is out of bounds or not.
         :type _auto_correct: bool, optional
-        :raises: :class:`OutOfImageBoundsException<supervisely.video_annotation.video_figure.OutOfImageBoundsException>`, if figure is out of image bounds
+        :raises OutOfImageBoundsException: if figure is out of image bounds
         :returns: None
-        :rtype: :class:`NoneType`
+        :rtype: None
 
         :Usage Example:
 

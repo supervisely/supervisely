@@ -40,7 +40,7 @@ def is_valid_ext(ext: str) -> bool:
     :param ext: Video file extension.
     :type ext: str
     :returns: bool
-    :rtype: :class:`bool`
+    :rtype: bool
 
     :Usage Example:
 
@@ -61,7 +61,7 @@ def has_valid_ext(path: str) -> bool:
     :param path: Path to Video file.
     :type path: str
     :returns: bool
-    :rtype: :class:`bool`
+    :rtype: bool
 
     :Usage Example:
 
@@ -81,9 +81,9 @@ def validate_ext(ext: str):
 
     :param ext: Video extension. Available extensions: avi, mp4, 3gp, flv, webm, wmv, mov, mkv.
     :type ext: str
-    :raises: :class:`UnsupportedVideoFormat` if given video with extension that is not supported.
+    :raises UnsupportedVideoFormat: if given video with extension that is not supported.
     :returns: None
-    :rtype: :class:`NoneType`
+    :rtype: None
 
     :Usage Example:
 
@@ -110,7 +110,7 @@ def get_image_size_and_frames_count(path: str) -> Tuple[Tuple[int, int], int]:
     :param path: Path to Video file.
     :type path: str
     :returns: Image size and number of Video frames.
-    :rtype: :class:`Tuple[Tuple[int, int], int]`
+    :rtype: Tuple[Tuple[int, int], int]
 
     :Usage Example:
 
@@ -144,9 +144,9 @@ def validate_format(path: str) -> None:
 
     :param path: Path to Video file.
     :type path: str
-    :raises: :class:`VideoReadException` if Video file from given path couldn't be read or file extension is not supported
+    :raises VideoReadException: if Video file from given path couldn't be read or file extension is not supported
     :returns: None
-    :rtype: :class:`NoneType`
+    :rtype: None
 
     :Usage Example:
 
@@ -177,7 +177,7 @@ def is_valid_format(path: str) -> bool:
     :param path: Path to Video file.
     :type path: str
     :returns: True if file format in list of supported video formats, False - in otherwise
-    :rtype: :class:`bool`
+    :rtype: bool
 
     :Usage Example:
 
@@ -227,7 +227,7 @@ def count_video_streams(all_streams: List[Dict]) -> int:
     :param all_streams: List of Video file audio and video streams.
     :type all_streams: List[dict]
     :returns: Number of video streams in Video file
-    :rtype: :class:`int`
+    :rtype: int
     """
     count = 0
     for stream_info in all_streams:
@@ -243,7 +243,7 @@ def get_video_streams(all_streams: List[Dict]) -> List:
     :param all_streams: List of Video file audio and video streams.
     :type all_streams: List[dict]
     :returns: List of video streams in Video file.
-    :rtype: :class:`list`
+    :rtype: list
     """
     video_streams = []
     for stream_info in all_streams:
@@ -261,7 +261,7 @@ def warn_video_requires_processing(file_name: str, logger: Optional[default_logg
     :param logger: Logger object.
     :type logger: logger
     :returns: None
-    :rtype: :class:`NoneType`
+    :rtype: None
     """
     if logger is None:
         logger = default_logger
@@ -304,9 +304,9 @@ def get_info(video_path: str, cpu_count: Optional[int] = None) -> Dict:
     :type video_path: str
     :param cpu_count: CPU count.
     :type cpu_count: int
-    :raises: :class:`ValueError` if no video streams found.
+    :raises ValueError: if no video streams found.
     :returns: Information about video
-    :rtype: :class:`Dict`
+    :rtype: Dict
 
     :Usage Example:
 

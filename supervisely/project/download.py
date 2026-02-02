@@ -288,38 +288,38 @@ def download_fast(
     :param api: Supervisely API address and token.
     :type api: :class:`Api<supervisely.api.api.Api>`
     :param project_id: Supervisely downloadable project ID.
-    :type project_id: :class:`int`
+    :type project_id: int
     :param dest_dir: Destination directory.
-    :type dest_dir: :class:`str`
+    :type dest_dir: str
     :param dataset_ids: Filter datasets by IDs.
-    :type dataset_ids: :class:`list` [ :class:`int` ], optional
+    :type dataset_ids: list [ int ], optional
     :param log_progress: Show uploading progress bar.
-    :type log_progress: :class:`bool`
+    :type log_progress: bool
     :param progress_cb: Function for tracking download progress.
     :type progress_cb: tqdm or callable, optional
     :param semaphore: Semaphore to limit the number of concurrent downloads of items.
     :type semaphore: :class:`asyncio.Semaphore`, optional
     :param only_image_tags: Download project with only images tags (without objects tags).
-    :type only_image_tags: :class:`bool`, optional
+    :type only_image_tags: bool, optional
     :param save_image_info: Download images infos or not.
-    :type save_image_info: :class:`bool`, optional
+    :type save_image_info: bool, optional
     :param save_images: Download images or not.
-    :type save_images: :class:`bool`, optional
+    :type save_images: bool, optional
     :param save_image_meta: Download images metadata in JSON format or not.
-    :type save_image_meta: :class:`bool`, optional
+    :type save_image_meta: bool, optional
     :param images_ids: Filter images by IDs.
-    :type images_ids: :class:`list` [ :class:`int` ], optional
+    :type images_ids: list [ int ], optional
     :param resume_download: Resume download enables to download only missing files avoiding erase of existing files.
-    :type resume_download: :class:`bool`, optional
+    :type resume_download: bool, optional
     :param switch_size: Size threshold that determines how an item will be downloaded.
                         Items larger than this size will be downloaded as single files, while smaller items will be downloaded as a batch.
                         Useful for projects with different item sizes and when you exactly know which size will perform better with batch download.
-    :type switch_size: :class:`int`, optional
+    :type switch_size: int, optional
     :param batch_size: Number of items to download in a single batch.
-    :type batch_size: :class:`int`, optional
+    :type batch_size: int, optional
     :param download_blob_files: Download project with Blob files in native format.
                                 If False - download project like a regular project in classic Supervisely format.
-    :type download_blob_files: :class:`bool`, optional
+    :type download_blob_files: bool, optional
     :param project_info: Project info object. To avoid additional API requests.
     :type project_info: :class:`ProjectInfo`, optional
     :param skip_create_readme: Skip creating README.md file. Default is False.

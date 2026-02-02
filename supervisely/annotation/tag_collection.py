@@ -60,7 +60,7 @@ class TagCollection(MultiKeyIndexedCollection):
             tags.has_key("cabbage")
             # Output: True
 
-            # Intersection, finds intersection of given list of instances with collection items
+            # Find intersection of given list of instances with collection items
             meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE)
             tag_dog = sly.Tag(meta_dog)
 
@@ -88,7 +88,7 @@ class TagCollection(MultiKeyIndexedCollection):
             #     }
             # ]
 
-            # Difference, finds difference between collection and given list of Tags or TagCollection
+            # Find difference between collection and given list of Tags or TagCollection
             meta_car = sly.TagMeta('car', sly.TagValueType.NONE)
             tag_car = sly.Tag(meta_car)
 
@@ -114,7 +114,7 @@ class TagCollection(MultiKeyIndexedCollection):
             #     }
             # ]
 
-            # Merge, merges collection and given list of TagMetas
+            # Merge collection and given list of TagMetas
             tags_vehicles = sly.TagMetaCollection([tag_car, tag_bicycle])
             tags_merge = sly.TagMetaCollection([tag_pedestrian, tag_road])
 

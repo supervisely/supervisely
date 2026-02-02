@@ -562,9 +562,9 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :type change_name_if_conflict: bool, optional
         :param with_annotations: If True copies Datasets with annotations, otherwise copies just items from Datasets without annotations.
         :type with_annotations: bool, optional
-        :raises: :class:`RuntimeError` if can not match "ids" and "new_names" lists, len(ids) != len(new_names)
+        :raises RuntimeError: if can not match "ids" and "new_names" lists, len(ids) != len(new_names)
         :returns: Information about Datasets. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[DatasetInfo]`
+        :rtype: List[:class:`~supervisely.api.dataset_api.DatasetInfo`]
 
         :Usage Example:
 
@@ -702,9 +702,9 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :type change_name_if_conflict: bool, optional
         :param with_annotations: If True moves Datasets with annotations, otherwise moves just items from Datasets without annotations.
         :type with_annotations: bool, optional
-        :raises: :class:`RuntimeError` if can not match "ids" and "new_names" lists, len(ids) != len(new_names)
+        :raises RuntimeError: if can not match "ids" and "new_names" lists, len(ids) != len(new_names)
         :returns: Information about Datasets. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[DatasetInfo]`
+        :rtype: List[:class:`~supervisely.api.dataset_api.DatasetInfo`]
 
         :Usage Example:
 

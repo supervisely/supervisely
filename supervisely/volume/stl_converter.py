@@ -23,10 +23,10 @@ def matrix_from_nrrd_header(header: Dict) -> np.ndarray:
     Creates matrix from NRRD header
 
     :param header: Dictionary containing the header fields and their corresponding parsed value
-    :type header: :class:`dict` (:class:`str`, :obj:`Object`)
+    :type header: dict (str, :obj:`Object`)
     :returns: Transformation matrix that maps voxel coordinates to world coordinates
     :rtype: np.ndarray
-    :raises IOError: Need "{}" field of header to determine the mapping from voxels to world coordinates
+    :raises IOError: if Need "{}" field of header to determine the mapping from voxels to world coordinates
     """
     try:
         space_directions = header["space directions"]

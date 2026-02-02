@@ -415,7 +415,7 @@ def sly_ann_to_coco(
     :param coco_captions: COCO captions in dictionary or list format to append new captions.
     :type coco_captions: Union[Dict, List], optional
     :returns: Tuple with list of COCO objects and list of COCO captions.
-    :rtype: :class:`tuple`
+    :rtype: tuple
 
 
     :Usage Example:
@@ -688,19 +688,19 @@ def sly_ds_to_coco(
                         If 'path', returns paths to COCO dataset files.
                         If 'dict', returns COCO dataset dictionaries.
     :param dest_dir: Destination path to save COCO dataset.
-    :type dest_dir: :class:`str`, optional
+    :type dest_dir: str, optional
     :param copy_images: If True, copies images to the destination directory.
-    :type copy_images: :class:`bool`, optional
+    :type copy_images: bool, optional
     :param with_captions: If True, returns COCO captions.
-    :type with_captions: :class:`bool`, optional
+    :type with_captions: bool, optional
     :param log_progress: If True, logs the progress of the conversion.
-    :type log_progress: :class:`bool`, optional
+    :type log_progress: bool, optional
     :param progress_cb: Callback function to track the progress of the conversion.
     :type progress_cb: :class:`Callable`, optional
     :returns:
             If return_type is 'path', returns paths to COCO dataset file or file (instances or instances and captions).
             If return_type is 'dict', returns COCO dataset dictionary or dictionaries (instances or instances and captions).
-    :rtype: :class:`tuple`
+    :rtype: tuple
 
     :Usage Example:
 
@@ -826,15 +826,15 @@ def sly_project_to_coco(
     Convert Supervisely project to COCO format.
 
     :param project: Supervisely project.
-    :type project: :class:`Project<supervisely.project.project.Project>` or :class:`str`
+    :type project: :class:`Project<supervisely.project.project.Project>` or str
     :param dest_dir: Destination directory.
-    :type dest_dir: :class:`str`, optional
+    :type dest_dir: str, optional
     :param copy_images: Copy images to destination directory.
-    :type copy_images: :class:`bool`, optional
+    :type copy_images: bool, optional
     :param with_captions: Return COCO captions.
-    :type with_captions: :class:`bool`, optional
+    :type with_captions: bool, optional
     :param log_progress: Show uploading progress bar.
-    :type log_progress: :class:`bool`
+    :type log_progress: bool
     :param progress_cb: Function for tracking conversion progress (for all items in the project).
     :type progress_cb: callable, optional
     :returns: None
@@ -905,19 +905,19 @@ def to_coco(
         - If the input_data is a Dataset, the meta and dest_dir parameters are required.
 
     :param input_data: Supervisely project, dataset, or path to the project or dataset.
-    :type input_data: :class:`Project<supervisely.project.project.Project>`, :class:`Dataset<supervisely.project.dataset.Dataset>` or :class:`str`
+    :type input_data: :class:`Project<supervisely.project.project.Project>`, :class:`Dataset<supervisely.project.dataset.Dataset>` or str
 
     # Project or Dataset conversion arguments:
     :param dest_dir: Destination directory to save project or dataset in COCO format.
-    :type dest_dir: :class:`str`, optional
+    :type dest_dir: str, optional
     :param meta: Project meta information (required for dataset conversion).
     :type meta: :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`, optional
     :param copy_images: Copy images to destination directory
-    :type copy_images: :class:`bool`, optional
+    :type copy_images: bool, optional
     :param with_captions: If True, returns COCO captions
-    :type with_captions: :class:`bool`, optional
+    :type with_captions: bool, optional
     :param log_progress: Show uploading progress bar
-    :type log_progress: :class:`bool`
+    :type log_progress: bool
     :param progress_cb: Function for tracking conversion progress (for all items in the project or dataset).
     :type progress_cb: callable, optional
 

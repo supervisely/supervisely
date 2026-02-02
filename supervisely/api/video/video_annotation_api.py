@@ -57,7 +57,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         :param video_id: Video ID in Supervisely.
         :type video_id: int
         :returns: Information about VideoAnnotation in json format
-        :rtype: :class:`dict`
+        :rtype: dict
 
         :Usage Example:
 
@@ -341,7 +341,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         :type dst_video_ids: List[int]
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
-        :raises: :class:`RuntimeError`, if len(src_video_ids) != len(dst_video_ids)
+        :raises RuntimeError, if len(src_video_ids) != len(dst_video_ids)
         :returns: None
         :rtype: None
 
@@ -423,7 +423,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         :param progress_cb: Progress callback to track download progress.
         :type progress_cb: Union[tqdm, Callable], optional
         :returns: Information about VideoAnnotation in json format
-        :rtype: :class:`dict`
+        :rtype: dict
 
         :Usage Example:
 
@@ -478,7 +478,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
         :returns: Information about VideoAnnotations in json format
-        :rtype: :class:`list`
+        :rtype: list
 
         :Usage Example:
 

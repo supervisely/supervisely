@@ -125,7 +125,7 @@ class ReportApi(ModuleApiBase):
         :param id: Report ID.
         :type id: int
         :returns: Report URL
-        :rtype: :class:`str`
+        :rtype: str
         """
         return urllib.parse.urljoin(self._api.server_address, "reports/{}".format(id))
 

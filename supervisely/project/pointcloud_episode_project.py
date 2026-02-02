@@ -36,47 +36,47 @@ KITTI_ITEM_DIR_NAME = "velodyne"
 
 
 class EpisodeItemPaths(NamedTuple):
-    #: :class:`str`: Full pointcloud file path of item
+    #: str: Full pointcloud file path of item
     pointcloud_path: str
 
-    #: :class:`str`: Path to related images directory of item
+    #: str: Path to related images directory of item
     related_images_dir: str
 
-    #: :class:`int`: Index of frame in episode annotation of dataset
+    #: int: Index of frame in episode annotation of dataset
     frame_index: int
 
 
 class EpisodeItemInfo(NamedTuple):
-    #: :class:`str`: Item's dataset name
+    #: str: Item's dataset name
     dataset_name: str
 
-    #: :class:`str`: Item name
+    #: str: Item name
     name: str
 
-    #: :class:`str`: Full pointcloud file path of item
+    #: str: Full pointcloud file path of item
     pointcloud_path: str
 
-    #: :class:`str`: Path to related images directory of item
+    #: str: Path to related images directory of item
     related_images_dir: str
 
-    #: :class:`int`: Index of frame in episode annotation of dataset
+    #: int: Index of frame in episode annotation of dataset
     frame_index: int
 
 
 class PointcloudEpisodeDataset(PointcloudDataset):
-    #: :class:`str`: Items data directory name
+    #: str: Items data directory name
     item_dir_name = "pointcloud"
 
-    #: :class:`str`: Annotations directory name
+    #: str: Annotations directory name
     ann_dir_name = "ann"
 
-    #: :class:`str`: Items info directory name
+    #: str: Items info directory name
     item_info_dir_name = "pointcloud_info"
 
-    #: :class:`str`: Related images directory name
+    #: str: Related images directory name
     related_images_dir_name = "related_images"
 
-    #: :class:`str`: Segmentation masks directory name
+    #: str: Segmentation masks directory name
     seg_dir_name = None
 
     item_info_type = PointcloudInfo
@@ -113,7 +113,7 @@ class PointcloudEpisodeDataset(PointcloudDataset):
         :type key_id_map: :class:`KeyIdMap<supervisely.video_annotation.key_id_map.KeyIdMap>`, optional
         :returns: PointcloudEpisodeAnnotation object
         :rtype: :class:`PointcloudEpisodeAnnotation<supervisely.PointcloudEpisodeAnnotation>`
-        :raises: :class:`RuntimeError` if item not found in the project
+        :raises RuntimeError: if item not found in the project
 
         :Usage Example:
 
@@ -204,8 +204,8 @@ class PointcloudEpisodeDataset(PointcloudDataset):
         :param item_info: NamedTuple ImageInfo containing information about pointcloud.
         :type item_info: NamedTuple, optional
         :returns: None
-        :rtype: :class:`NoneType`
-        :raises: :class:`Exception` if item_name already exists in dataset or item name has unsupported extension.
+        :rtype: None
+        :raises Exception: if item_name already exists in dataset or item name has unsupported extension.
 
         :Usage Example:
 
@@ -316,7 +316,7 @@ class PointcloudEpisodeProject(PointcloudProject):
         Project type.
 
         :returns: Project type.
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -343,7 +343,7 @@ class PointcloudEpisodeProject(PointcloudProject):
         :type train_count: int
         :param val_count: Number of val items.
         :type val_count: int
-        :raises: :class:`ValueError` if total_count != train_count + val_count
+        :raises ValueError: if total_count != train_count + val_count
         :returns: Tuple with lists of train items information and val items information
         :rtype: :class:`Tuple[List[EpisodeItemInfo], List[EpisodeItemInfo]]`
 
@@ -403,7 +403,7 @@ class PointcloudEpisodeProject(PointcloudProject):
         :type val_tag_name: str
         :param untagged: Actions in case of absence of train_tag_name and val_tag_name in project.
         :type untagged: str, optional
-        :raises: :class:`ValueError` if untagged not in ["ignore", "train", "val"]
+        :raises ValueError: if untagged not in ["ignore", "train", "val"]
         :returns: Tuple with lists of train items information and val items information
         :rtype: :class:`Tuple[List[EpisodeItemInfo], List[EpisodeItemInfo]]`
 
@@ -468,7 +468,7 @@ class PointcloudEpisodeProject(PointcloudProject):
         :type train_datasets: List[str]
         :param val_datasets: List of val datasets names.
         :type val_datasets: List[str]
-        :raises: :class:`KeyError` if dataset name not found in project
+        :raises KeyError: if dataset name not found in project
         :returns: Tuple with lists of train items information and val items information
         :rtype: :class:`Tuple[List[EpisodeItemInfo], List[EpisodeItemInfo]]`
 
@@ -519,7 +519,7 @@ class PointcloudEpisodeProject(PointcloudProject):
     ) -> None:
         """
         Not available for PointcloudEpisodeProject class.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Static method 'get_train_val_splits_by_collections()' is not supported for PointcloudEpisodeProject class now."
@@ -545,21 +545,21 @@ class PointcloudEpisodeProject(PointcloudProject):
         :param api: Supervisely API address and token.
         :type api: :class:`Api<supervisely.api.api.Api>`
         :param project_id: Supervisely downloadable project ID.
-        :type project_id: :class:`int`
+        :type project_id: int
         :param dest_dir: Destination directory.
-        :type dest_dir: :class:`str`
+        :type dest_dir: str
         :param dataset_ids: Dataset IDs.
-        :type dataset_ids: :class:`list` [ :class:`int` ], optional
+        :type dataset_ids: list [ int ], optional
         :param download_pointclouds: Download pointcloud data files or not.
-        :type download_pointclouds: :class:`bool`, optional
+        :type download_pointclouds: bool, optional
         :param download_related_images: Download related images or not.
-        :type download_related_images: :class:`bool`, optional
+        :type download_related_images: bool, optional
         :param download_pointclouds_info: Download pointcloud info .json files or not.
-        :type download_pointclouds_info: :class:`bool`, optional
+        :type download_pointclouds_info: bool, optional
         :param batch_size: The number of images in the batch when they are loaded to a host.
-        :type batch_size: :class:`int`, optional
+        :type batch_size: int, optional
         :param log_progress: Show uploading progress bar.
-        :type log_progress: :class:`bool`
+        :type log_progress: bool
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: :class:`tqdm` or callable, optional
         :returns: None

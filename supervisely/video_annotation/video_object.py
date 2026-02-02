@@ -296,7 +296,7 @@ class VideoObject(KeyObject):
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
         :returns: Json format as a dict
-        :rtype: :class:`dict`
+        :rtype: dict
 
         :Usage Example:
 
@@ -342,7 +342,7 @@ class VideoObject(KeyObject):
         :type project_meta: ProjectMeta
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
-        :raises: :class:`RuntimeError`, if object class name is not found in the given project meta
+        :raises RuntimeError: if object class name is not found in the given project meta
         :returns: VideoObject object
         :rtype: :class:`VideoObject`
 

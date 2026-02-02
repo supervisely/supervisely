@@ -319,7 +319,7 @@ def sly_ann_to_pascal_voc(ann: Annotation, image_name: str) -> Tuple[dict]:
     :param ann: Supervisely annotation.
     :type ann: :class:`Annotation<supervisely.annotation.annotation.Annotation>`
     :param image_name: Image name.
-    :type image_name: :class:`str`
+    :type image_name: str
     :returns: Tuple with xml tree and instance and class masks in PIL.Image format.
     :rtype: :class:`Tuple`
 
@@ -433,11 +433,11 @@ def sly_ds_to_pascal_voc(
     :param meta: Project meta information.
     :type meta: :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`
     :param dest_dir: Destination directory.
-    :type dest_dir: :class:`str`, optional
+    :type dest_dir: str, optional
     :param train_val_split_coef: Coefficient for splitting images into train and validation sets.
-    :type train_val_split_coef: :class:`float`, optional
+    :type train_val_split_coef: float, optional
     :param log_progress: If True, log progress.
-    :type log_progress: :class:`str`, optional
+    :type log_progress: str, optional
     :param progress_cb: Progress callback.
     :type progress_cb: :class:`Callable`, optional
     :returns: None
@@ -642,11 +642,11 @@ def sly_project_to_pascal_voc(
     Converts Supervisely project to Pascal VOC format.
 
     :param dest_dir: Destination directory.
-    :type dest_dir: :class:`str`, optional
+    :type dest_dir: str, optional
     :param train_val_split_coef: Coefficient for splitting images into train and validation sets.
-    :type train_val_split_coef: :class:`float`, optional
+    :type train_val_split_coef: float, optional
     :param log_progress: Show uploading progress bar.
-    :type log_progress: :class:`bool`
+    :type log_progress: bool
     :param progress_cb: Function for tracking conversion progress (for all items in the project).
     :type progress_cb: callable, optional
     :returns: None
@@ -714,15 +714,15 @@ def to_pascal_voc(
         - If the input_data is a Dataset, the meta and dest_dir parameters are required.
 
     :param input_data: Input data to convert (Project, Dataset, or path to the project/dataset directory).
-    :type input_data: :class:`Project<supervisely.project.project.Project>`, :class:`Dataset<supervisely.dataset.dataset.Dataset>`, or :class:`str`
+    :type input_data: :class:`Project<supervisely.project.project.Project>`, :class:`Dataset<supervisely.dataset.dataset.Dataset>`, or str
     :param dest_dir: Destination directory.
-    :type dest_dir: :class:`str`, optional
+    :type dest_dir: str, optional
     :param meta: Project meta information (required for Dataset conversion).
     :type meta: :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`, optional
     :param train_val_split_coef: Coefficient for splitting images into train and validation sets.
-    :type train_val_split_coef: :class:`float`, optional
+    :type train_val_split_coef: float, optional
     :param log_progress: Show uploading progress bar.
-    :type log_progress: :class:`bool`
+    :type log_progress: bool
     :param progress_cb: Function for tracking conversion progress (for all items in the project).
     :type progress_cb: callable, optional
     :returns: None

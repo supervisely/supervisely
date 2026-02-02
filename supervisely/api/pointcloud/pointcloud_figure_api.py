@@ -38,7 +38,7 @@ class PointcloudFigureApi(FigureApi):
         :param track_id: int, optional.
         :type track_id: int, optional
         :returns: New figure ID
-        :rtype: :class:`int`
+        :rtype: int
 
         :Usage Example:
 

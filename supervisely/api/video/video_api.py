@@ -116,32 +116,32 @@ class VideoInfo(NamedTuple):
             )
     """
 
-    #: :class:`int`: Video ID in Supervisely.
+    #: int: Video ID in Supervisely.
     id: int
 
-    #: :class:`str`: Video filename.
+    #: str: Video filename.
     name: str
 
-    #: :class:`str`: Video hash obtained by base64(sha256(file_content)).
+    #: str: Video hash obtained by base64(sha256(file_content)).
     #: Use hash for files that are expected to be stored at Supervisely or your deployed agent.
     hash: str
 
-    #: :class:`str`: Link to video.
+    #: str: Link to video.
     link: str
 
-    #: :class:`int`: :class:`~supervisely.api.team_api.TeamApi` ID in Supervisely.
+    #: int: :class:`~supervisely.api.team_api.TeamApi` ID in Supervisely.
     team_id: int
 
-    #: :class:`int`: :class:`~supervisely.api.workspace_api.WorkspaceApi` ID in Supervisely.
+    #: int: :class:`~supervisely.api.workspace_api.WorkspaceApi` ID in Supervisely.
     workspace_id: int
 
-    #: :class:`int`: :class:`~supervisely.project.project.Project` ID in Supervisely.
+    #: int: :class:`~supervisely.project.project.Project` ID in Supervisely.
     project_id: int
 
-    #: :class:`int`: :class:`~supervisely.project.project.Dataset` ID in Supervisely.
+    #: int: :class:`~supervisely.project.project.Dataset` ID in Supervisely.
     dataset_id: int
 
-    #: :class:`str`: Relative storage URL to video. e.g.
+    #: str: Relative storage URL to video. e.g.
     #: "/h5un6l2bnaz1vms4-public/videos/Z/d/HD/lfgipl...NXrg5vz.mp4".
     path_original: str
 
@@ -151,34 +151,34 @@ class VideoInfo(NamedTuple):
     #: :class: `int`: Number of frames in the video
     frames_count: int
 
-    #: :class:`int`: Video frames width in pixels.
+    #: int: Video frames width in pixels.
     frame_width: int
 
-    #: :class:`int`: Video frames height in pixels.
+    #: int: Video frames height in pixels.
     frame_height: int
 
-    #: :class:`str`: Video creation time. e.g. "2019-02-22T14:59:53.381Z".
+    #: str: Video creation time. e.g. "2019-02-22T14:59:53.381Z".
     created_at: str
 
-    #: :class:`str`: Time of last video update. e.g. "2019-02-22T14:59:53.381Z".
+    #: str: Time of last video update. e.g. "2019-02-22T14:59:53.381Z".
     updated_at: str
 
-    #: :class:`list`: Video :class:`~supervisely.video_annotation.video_tag.VideoTag` list.
+    #: list: Video :class:`~supervisely.video_annotation.video_tag.VideoTag` list.
     #: e.g. "[{'entityId': 19371139, 'tagId': 377141, 'id': 12241539, 'labelerLogin': 'admin',
     #: 'createdAt': '2023-02-07T19:35:01.808Z', 'updatedAt': '2023-02-07T19:35:01.808Z',
     #: 'frameRange': [244, 244]}, {...}]".
     tags: list
 
-    #: :class:`dict`: A dictionary containing metadata about the video file.
+    #: dict: A dictionary containing metadata about the video file.
     file_meta: dict
 
-    #: :class:`dict`: Video object meta information.
+    #: dict: Video object meta information.
     meta: dict
 
-    #: :class:`dict`: A dictionary containing custom data associated with the video.
+    #: dict: A dictionary containing custom data associated with the video.
     custom_data: dict
 
-    #: :class:`str`: Path to the video file on the server.
+    #: str: Path to the video file on the server.
     processing_path: str
 
     @property
@@ -187,7 +187,7 @@ class VideoInfo(NamedTuple):
         Duration of the video in seconds.
 
         :returns: Duration of the video in seconds.
-        :rtype: :class:`float`
+        :rtype: float
         """
 
         ndigits = 0
@@ -199,7 +199,7 @@ class VideoInfo(NamedTuple):
         Duration of the video in "HH:MM:SS.nnn" format.
 
         :returns: Duration of the video in "HH:MM:SS.nnn" format.
-        :rtype: :class:`str`
+        :rtype: str
         """
 
         return str(datetime.timedelta(seconds=self.duration))
@@ -210,7 +210,7 @@ class VideoInfo(NamedTuple):
         String representation of the number of frames in the video. Used for converting large numbers into readable strings.
 
         :returns: Number of frames in the video represented in string format.
-        :rtype: :class:`str`
+        :rtype: str
         """
 
         return numerize(self.frames_count)
@@ -221,7 +221,7 @@ class VideoInfo(NamedTuple):
         URL to an image preview of the video.
 
         :returns: URL to an image preview of the video.
-        :rtype: :class:`str`
+        :rtype: str
         """
 
         res = f"/previews/q/ext:jpeg/resize:fill:300:0:0/q:70/plain/image-converter/videoframe/33p/{self.processing_path}?videoStreamIndex=0"
@@ -313,13 +313,13 @@ class VideoApi(RemoveableBulkModuleApi):
         Get url of the video by dataset ID and video ID
 
         :param dataset_id: :class:`~supervisely.project.project.Dataset` ID in which the Video is located.
-        :type dataset_id: :class:`int`
+        :type dataset_id: int
         :param video_id: Video ID in Supervisely.
-        :type video_id: :class:`int`
+        :type video_id: int
         :param video_frame: Video frame index.
-        :type video_frame: :class:`int`, optional
+        :type video_frame: int, optional
         :returns: Url of the video by dataset_id and video_id.
-        :rtype: :class:`str`
+        :rtype: str
         """
 
         result = urllib.parse.urljoin(
@@ -1085,8 +1085,8 @@ class VideoApi(RemoveableBulkModuleApi):
         :type with_annotations: bool, optional
         :param progress_cb: Function for tracking the progress of copying.
         :type progress_cb: tqdm or callable, optional
-        :raises: :class:`TypeError` if type of ids is not list
-        :raises: :class:`ValueError` if videos ids are from the destination Dataset
+        :raises TypeError: if type of ids is not list
+        :raises ValueError: if videos ids are from the destination Dataset
         :returns: List with information about Videos. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[VideoInfo]`
 
@@ -1413,7 +1413,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :param save_path: Path to save video.
         :type save_path: str
         :returns: Full path to saved video
-        :rtype: :class:`str`
+        :rtype: str
 
         :Usage Example:
 
@@ -2793,7 +2793,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type progress_cb: Optional[Union[tqdm, Callable]]
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
         :type progress_cb_type: Literal["number", "size"], optional
-        :raises: :class:`ValueError` if len(ids) != len(paths)
+        :raises ValueError: if len(ids) != len(paths)
         :returns: None
         :rtype: None
 
