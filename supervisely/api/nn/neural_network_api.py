@@ -26,10 +26,12 @@ class NeuralNetworkApi:
     def __init__(self, api: "Api"):
         from supervisely.api.nn.deploy_api import DeployApi
         from supervisely.api.nn.ecosystem_models_api import EcosystemModelsApi
+        from supervisely.api.nn.train_api import TrainApi
 
         self._api = api
         self._deploy_api = DeployApi(api)
         self.ecosystem_models_api = EcosystemModelsApi(api)
+        self.train = TrainApi(api)
 
     def deploy(
         self,
