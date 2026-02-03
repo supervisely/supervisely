@@ -23,10 +23,6 @@ class ModelSelector:
         self.card = None
         # -------------------------------- #
 
-        # Init Step Widgets
-        self.model: DeployModel = None
-        # -------------------------------- #
-
         # Model Selector
         self.model = DeployModel(api=self.api, team_id=self.team_id)
         # Add widgets to display ------------ #
