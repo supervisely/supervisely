@@ -153,7 +153,7 @@ class YOLOConverter(ImageConverter):
             return False
 
     def validate_format(self) -> bool:
-        if self.upload_as_links:
+        if self.upload_as_links and self.supports_links:
             self._download_remote_ann_files()
 
         detected_ann_cnt = 0

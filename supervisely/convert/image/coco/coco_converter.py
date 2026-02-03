@@ -4,12 +4,11 @@ from typing import Dict, Optional, Union
 
 import supervisely.convert.image.coco.coco_helper as coco_helper
 from supervisely import Annotation, ProjectMeta
-from supervisely.sly_logger import logger
 from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.io.fs import JUNK_FILES, get_file_ext
 from supervisely.project.project_settings import LabelingInterface
-
+from supervisely.sly_logger import logger
 
 COCO_ANN_KEYS = ["images", "annotations"]
 
@@ -58,7 +57,7 @@ class COCOConverter(ImageConverter):
     def validate_format(self) -> bool:
         from pycocotools.coco import COCO  # pylint: disable=import-error
 
-        if self.upload_as_links:
+        if self.upload_as_links and self.supports_links:
             self._download_remote_ann_files()
         detected_ann_cnt = 0
         images_list, ann_paths = [], []
