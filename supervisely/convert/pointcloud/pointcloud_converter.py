@@ -105,7 +105,12 @@ class PointcloudConverter(BaseConverter):
                     existing_names, item.name, with_ext=True, extend_used_names=True
                 )
                 item_names.append(item.name)
-                item_paths.append(self.remote_files_map.get(os.path.abspath(item.path), item.path))
+                if self.upload_as_links:
+                    item_paths.append(
+                        self.remote_files_map.get(os.path.abspath(item.path), item.path)
+                    )
+                else:
+                    item_paths.append(item.path)
 
                 ann = self.to_supervisely(item, meta, renamed_classes, renamed_tags)
                 anns.append(ann)
