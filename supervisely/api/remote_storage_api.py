@@ -498,7 +498,7 @@ class RemoteStorageApi(ModuleApiBase):
             file_path = ""
             for part in path_folers:
                 file_path += part + "/"
-            file_path = file_path[:-1] if file_path.endswith("/") else file_path
+            file_path = file_path.rstrip("/")
             logger.warning(f"The file doesn't exist! Check the path: {file_path}")
             return None
 
