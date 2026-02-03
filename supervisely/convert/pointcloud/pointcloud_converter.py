@@ -117,7 +117,7 @@ class PointcloudConverter(BaseConverter):
             )
             pcd_ids = [pcd_info.id for pcd_info in pcd_infos]
             pcl_to_rimg_figures: Dict[int, Dict[str, List[Dict]]] = {}
-            pcl_to_hash_to_id: Dict[int, Dict[str, int]] = {}
+            pcl_to_rimg_to_id: Dict[int, Dict[str, int]] = {}
             for pcd_id, ann, item in zip(pcd_ids, anns, batch):
                 if ann is not None:
                     api.pointcloud.annotation.append(pcd_id, ann, key_id_map)
@@ -149,18 +149,19 @@ class PointcloudConverter(BaseConverter):
                             ApiField.NAME: meta_json[ApiField.NAME],
                             ApiField.META: meta_json[ApiField.META],
                         }
+                        link = None
                         if img_hash is not None:
                             rimage_dict[ApiField.HASH] = img_hash
                         else:
-                            rimage_dict[ApiField.LINK] = self.remote_files_map.get(
-                                os.path.abspath(img_path), img_path
-                            )
+                            link = self.remote_files_map.get(os.path.abspath(img_path), img_path)
+                            rimage_dict[ApiField.LINK] = link
+                        img_data = img_hash or link
                         rimg_infos.append(rimage_dict)
 
                         if fig_path is not None and os.path.isfile(fig_path):
                             try:
                                 figs_json = load_json_file(fig_path)
-                                pcl_to_rimg_figures.setdefault(pcd_id, {})[img_hash] = figs_json
+                                pcl_to_rimg_figures.setdefault(pcd_id, {})[img_data] = figs_json
                             except Exception as e:
                                 logger.debug(f"Failed to read figures json '{fig_path}': {repr(e)}")
 
@@ -176,14 +177,14 @@ class PointcloudConverter(BaseConverter):
                         uploaded_rimgs = api.pointcloud.add_related_images(rimg_infos, camera_names)
                         # build mapping hash->id
                         for info, uploaded in zip(rimg_infos, uploaded_rimgs):
-                            img_hash = info.get(ApiField.HASH)
+                            img_data = info.get(ApiField.HASH, info.get(ApiField.LINK, None))
                             img_id = (
                                 uploaded.get(ApiField.ID)
                                 if isinstance(uploaded, dict)
                                 else getattr(uploaded, "id", None)
                             )
-                            if img_hash is not None and img_id is not None:
-                                pcl_to_hash_to_id.setdefault(pcd_id, {})[img_hash] = img_id
+                            if img_data is not None and img_id is not None:
+                                pcl_to_rimg_to_id.setdefault(pcd_id, {})[img_data] = img_id
                     except Exception as e:
                         logger.debug(f"Failed to add related images to pointcloud: {repr(e)}")
 
@@ -195,15 +196,15 @@ class PointcloudConverter(BaseConverter):
 
                     figures_payload: List[Dict] = []
 
-                    for pcl_id, hash_to_figs in pcl_to_rimg_figures.items():
-                        hash_to_ids = pcl_to_hash_to_id.get(pcl_id, {})
-                        if len(hash_to_ids) == 0:
+                    for pcl_id, rimg_data_to_figs in pcl_to_rimg_figures.items():
+                        rimg_data_to_id = pcl_to_rimg_to_id.get(pcl_id, {})
+                        if len(rimg_data_to_id) == 0:
                             continue
 
-                        for img_hash, figs_json in hash_to_figs.items():
-                            if img_hash not in hash_to_ids:
+                        for img_data, figs_json in rimg_data_to_figs.items():
+                            if img_data not in rimg_data_to_id:
                                 continue
-                            rimg_id = hash_to_ids[img_hash]
+                            rimg_id = rimg_data_to_id[img_data]
                             for fig in figs_json:
                                 try:
                                     fig[ApiField.ENTITY_ID] = rimg_id
@@ -215,7 +216,7 @@ class PointcloudConverter(BaseConverter):
                                         )
                                 except Exception as e:
                                     logger.debug(
-                                        f"Failed to process figure json for img_hash={img_hash}: {repr(e)}"
+                                        f"Failed to process figure json for current image. Hash / link = {img_data}: {repr(e)}"
                                     )
                                     continue
 
