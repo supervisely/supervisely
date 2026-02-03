@@ -26,15 +26,16 @@ class NotificationType(StrEnum):
 # @TODO: standardise title/description/name and so on for everyone the same way
 class ReportApi(ModuleApiBase):
     """
-    API for working with Reports. :class:`ReportApi<ReportApi>` object is immutable.
+    API for working with Reports. :class:`ReportApi<~supervisely.api.report_api.ReportApi>` object is immutable.
 
     :param api: API connection to the server
-    :type api: Api
-    :Usage example:
+    :type api: :class:`~supervisely.api.api.Api`
 
-     .. code-block:: python
+    :Usage Example:
 
-        report = api.report
+        .. code-block:: python
+
+            report = api.report
     """
 
     def __init__(self, api):
@@ -55,11 +56,8 @@ class ReportApi(ModuleApiBase):
         :type widgets:
         :param layout:
         :type layout:
-        :return:
+        :returns:
         :rtype:
-        :Usage example:
-
-         .. code-block: python
         """
         data = {
             ApiField.TEAM_ID: team_id,
@@ -127,7 +125,7 @@ class ReportApi(ModuleApiBase):
         :param id: Report ID.
         :type id: int
         :returns: Report URL
-        :rtype: :class:`str`
+        :rtype: str
         """
         return urllib.parse.urljoin(self._api.server_address, "reports/{}".format(id))
 
@@ -139,7 +137,7 @@ class ReportApi(ModuleApiBase):
         :type report_id: int
         :param widget_id: Widget ID.
         :type widget_id: int
-        :returns: Report Widget
+        :returns: Report :class:`~supervisely.app.widgets.widget.Widget`
         :rtype:
         """
         response = self._api.post(
@@ -205,7 +203,7 @@ class ReportApi(ModuleApiBase):
         :param options:
         :type options:
 
-        :returns: Report Widget
+        :returns: Report :class:`~supervisely.app.widgets.widget.Widget`
         :rtype:
         """
         return self._change_widget(
@@ -250,8 +248,8 @@ class ReportApi(ModuleApiBase):
         :param options:
         :type options:
 
-        :returns: Report Widget
-        :rtype:
+        :returns: Report :class:`~supervisely.app.widgets.widget.Widget`
+        :rtype: dict
         """
         return self._change_widget(
             "reports.widgets.rewrite",

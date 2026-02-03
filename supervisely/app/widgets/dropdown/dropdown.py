@@ -13,7 +13,7 @@ class Dropdown(Widget):
         (including screenshots and examples).
 
     :param items: List of items in the dropdown menu
-    :type items: Optional[List[Dropdown.Item]]
+    :type items: Optional[List[:class:`~supervisely.app.widgets.dropdown.dropdown.Dropdown.Item`]]
     :param header: Dropdown header text
     :type header: Optional[str]
     :param trigger: Dropdown trigger type, one of: hover, click
@@ -25,22 +25,23 @@ class Dropdown(Widget):
     :param widget_id: An identifier of the widget.
     :type widget_id: str, optional
 
-    :Usage example:
-    .. code-block:: python
+    :Usage Example:
 
-        from supervisely.app.widgets import Dropdown
+        .. code-block:: python
 
-        dropdown = Dropdown(
-            items=[
-                Dropdown.Item(text="Item 1", command="item1"),
-                Dropdown.Item(text="Item 2", command="item2"),
-                Dropdown.Item(text="Item 3", command="item3"),
-            ],
-            header="Dropdown List",
-            trigger="click",
-            menu_align="end",
-            hide_on_click=True,
-        )
+            from supervisely.app.widgets import Dropdown
+
+            dropdown = Dropdown(
+                items=[
+                    Dropdown.Item(text="Item 1", command="item1"),
+                    Dropdown.Item(text="Item 2", command="item2"),
+                    Dropdown.Item(text="Item 3", command="item3"),
+                ],
+                header="Dropdown List",
+                trigger="click",
+                menu_align="end",
+                hide_on_click=True,
+            )
     """
 
     class Routes:
@@ -80,7 +81,7 @@ class Dropdown(Widget):
                 - divided: If True, item will be divided from the next one
                 - command: Item command
 
-            :return: Dictionary with item data
+            :returns: Dictionary with item data
             :rtype: Dict[str, Union[str, bool, int]]
             """
             return {
@@ -122,7 +123,7 @@ class Dropdown(Widget):
             - hideOnClick: If True, dropdown menu will be hidden after click
             - header: Dropdown header text
 
-        :return: Dictionary with widget data
+        :returns: Dictionary with widget data
         :rtype: Dict[str, Union[str, Any]]
         """
         return {
@@ -139,7 +140,7 @@ class Dropdown(Widget):
         Dictionary contains the following fields:
             - clickedValue: current clicked value
 
-        :return: Dictionary with widget state
+        :returns: Dictionary with widget state
         :rtype: Dict[str, str]
         """
         return {"clickedValue": self._clicked_value}
@@ -147,7 +148,7 @@ class Dropdown(Widget):
     def get_value(self) -> str:
         """Returns current clicked value.
 
-        :return: current clicked value
+        :returns: current clicked value
         :rtype: str
         """
         return StateJson()[self.widget_id]["clickedValue"]
@@ -165,8 +166,8 @@ class Dropdown(Widget):
     def get_items(self) -> List[Dropdown.Item]:
         """Returns list of items in the dropdown menu.
 
-        :return: list of items in the dropdown menu
-        :rtype: List[Dropdown.Item]
+        :returns: list of items in the dropdown menu
+        :rtype: List[:class:`~supervisely.app.widgets.dropdown.dropdown.Dropdown.Item`]
         """
         return DataJson()[self.widget_id]["items"]
 
@@ -176,7 +177,7 @@ class Dropdown(Widget):
         To add items to the dropdown menu, use :meth:`add_items` instead.
 
         :param value: list of items in the dropdown menu
-        :type value: List[Dropdown.Item]
+        :type value: List[:class:`~supervisely.app.widgets.dropdown.dropdown.Dropdown.Item`]
         """
         if not all(isinstance(item, Dropdown.Item) for item in value):
             raise TypeError("Items must be a list of Dropdown.Item")
@@ -190,7 +191,7 @@ class Dropdown(Widget):
         To overwrite all existing items, use :meth:`set_items` instead.
 
         :param value: list of items in the dropdown menu
-        :type value: List[Dropdown.Item]
+        :type value: List[:class:`~supervisely.app.widgets.dropdown.dropdown.Dropdown.Item`]
         """
         self._items.extend(value)
         DataJson()[self.widget_id]["items"] = self._set_items()
@@ -199,7 +200,7 @@ class Dropdown(Widget):
     def get_header_text(self) -> str:
         """Returns dropdown header text.
 
-        :return: dropdown header text
+        :returns: dropdown header text
         :rtype: str
         """
         return DataJson()[self.widget_id]["header"]
@@ -221,7 +222,7 @@ class Dropdown(Widget):
 
         :param func: function to be called when the value is changed
         :type func: Callable[[str], Any]
-        :return: decorated function
+        :returns: decorated function
         :rtype: Callable[[], None]
         """
         route_path = self.get_route_path(Dropdown.Routes.VALUE_CHANGED)

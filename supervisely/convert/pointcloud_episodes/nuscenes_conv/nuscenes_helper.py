@@ -185,7 +185,7 @@ class CamData:
 
         :param timestamp: The timestamp associated with the image
         :type timestamp: str
-        :return: A tuple containing the image path and a dictionary with image metadata.
+        :returns: A tuple containing the image path and a dictionary with image metadata.
         :rtype: tuple
         """
         sensors_to_skip = ["_intrinsic", "_extrinsic", "_imsize"]
@@ -229,7 +229,7 @@ class Sample:
         :type nuscenes: NuScenes
         :param boxes: A list of boxes to generate ground truth for
         :type boxes: List
-        :return: A generator that yields tuples containing the ground truth box, name, and instance token.
+        :returns: A generator that yields tuples containing the ground truth box, name, and instance token.
         :rtype: generator
         """
         from nuscenes.utils.data_classes import Box  # pylint: disable=import-error
@@ -250,7 +250,7 @@ class Sample:
         """
         Converts a LiDAR point cloud file to the Supervisely format and saves it as a .pcd file.
 
-        :return: The file path of the saved .pcd file.
+        :returns: The file path of the saved .pcd file.
         :rtype: str
         """
         import open3d as o3d  # pylint: disable=import-error

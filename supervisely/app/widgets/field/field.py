@@ -13,7 +13,7 @@ class Field(Widget):
         (including screenshots and examples).
 
     :param content: Widget to be placed inside the field
-    :type content: Widget
+    :type content: :class:`~supervisely.app.widgets.widget.Widget`
     :param title: Title of the field
     :type title: str
     :param description: Description of the field
@@ -27,14 +27,14 @@ class Field(Widget):
     :param widget_id: ID of the widget
     :type widget_id: Optional[str]
 
-    :Usage example:
-    .. code-block:: python
+    :Usage Example:
 
-        from supervisely.app.widgets import Field, Text
+        .. code-block:: python
 
-        text = Text("Hello, World!")
+            from supervisely.app.widgets import Field, Text
 
-        field = Field(text, "Title", "Description", icon=Field.Icon(zmdi_class="zmdi zmdi-bike"))
+            text = Text("Hello, World!")
+            field = Field(text, "Title", "Description", icon=Field.Icon(zmdi_class="zmdi zmdi-bike"))
     """
 
     class Icon:
@@ -92,7 +92,7 @@ class Field(Widget):
                 If icon is image:
                     - imageUrl: URL of the icon image
 
-            :return: JSON representation of the icon
+            :returns: JSON representation of the icon
             :rtype: Dict[str, Any]
             """
             res = {}
@@ -146,7 +146,7 @@ class Field(Widget):
                 - color: RGB color of the icon
                 - bgColor: RGB color of the icon background
 
-        :return: Dictionary with widget data
+        :returns: Dictionary with widget data
         :rtype: Dict[str, Any]
         """
         res = {

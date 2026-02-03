@@ -14,9 +14,9 @@ class DatasetThumbnail(Widget):
         (including screenshots and examples).
 
     :param project_info: project info
-    :type project_info: Optional[ProjectInfo]
+    :type project_info: Optional[:class:`~supervisely.api.project_api.ProjectInfo`]
     :param dataset_info: dataset info
-    :type dataset_info: Optional[DatasetInfo]
+    :type dataset_info: Optional[:class:`~supervisely.api.dataset_api.DatasetInfo`]
     :param show_project_name: if True, project name will be shown
     :type show_project_name: Optional[bool]
     :param remove_margins: if True, removes margins around the widget
@@ -26,15 +26,16 @@ class DatasetThumbnail(Widget):
     :param widget_id: An identifier of the widget.
     :type widget_id: str, optional
 
-    :Usage example:
-    .. code-block:: python
+    :Usage Example:
 
-            from supervisely.app.widgets import DatasetThumbnail
+        .. code-block:: python
 
-            dataset_thumbnail = DatasetThumbnail(
-                project_info=project_info,
-                dataset_info=dataset_info,
-            )
+                from supervisely.app.widgets import DatasetThumbnail
+
+                dataset_thumbnail = DatasetThumbnail(
+                    project_info=project_info,
+                    dataset_info=dataset_info,
+                )
     """
 
     def __init__(
@@ -74,7 +75,7 @@ class DatasetThumbnail(Widget):
             - project_name: project name
             - project_url: project url
 
-        :return: dictionary with widget data
+        :returns: dictionary with widget data
         :rtype: Dict[str, Union[int, str, bool]]
         """
         return {
@@ -122,9 +123,9 @@ class DatasetThumbnail(Widget):
         """Sets the data for the widget.
 
         :param project_info: project info
-        :type project_info: ProjectInfo
+        :type project_info: :class:`~supervisely.api.project_api.ProjectInfo`
         :param dataset_info: dataset info
-        :type dataset_info: DatasetInfo
+        :type dataset_info: :class:`~supervisely.api.dataset_api.DatasetInfo`
         :param show_project_name: if True, project name will be shown
         :type show_project_name: Optional[bool]
         """

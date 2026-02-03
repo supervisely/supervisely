@@ -144,7 +144,7 @@ class PieChart(Apexchart):
         :type index: int
         :raises TypeError: if index is not int
         :raises IndexError: if index is out of range
-        :return: series name ans data by given index
+        :returns: series name ans data by given index
         :rtype: Dict[str, Union[str, int, float]]
         """
 
@@ -180,7 +180,7 @@ class PieChart(Apexchart):
         """Returns clicked datapoint as a ClickedDataPoint object, which is a namedtuple with fields:
         series_index, data_index and data. If click was outside of the slices, None will be returned.
 
-        :return: clicked datapoint as a ClickedDataPoint object or None if click was outside of the slices
+        :returns: clicked datapoint as a ClickedDataPoint object or None if click was outside of the slices
         :rtype: Union[ClickedDataPoint, None]
         """
         value = self.get_clicked_value()

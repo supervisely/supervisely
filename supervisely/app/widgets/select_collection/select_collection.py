@@ -26,7 +26,7 @@ class SelectCollection(Widget):
     :param select_all_collections: Whether all collections should be selected by default.
     :type select_all_collections: bool
     :param allowed_project_types: The list of project types that are allowed to be selected.
-    :type allowed_project_types: Optional[List[ProjectType]]
+    :type allowed_project_types: Optional[List[:class:`~supervisely.project.project_type.ProjectType`]]
     :param team_is_selectable: Whether the team selector should be selectable.
     :type team_is_selectable: bool
     :param workspace_is_selectable: Whether the workspace selector should be selectable.
@@ -60,9 +60,10 @@ class SelectCollection(Widget):
     - `workspace_id`: The ID of the workspace selected in the widget.
     - `project_id`: The ID of the project selected in the widget.
 
-    :Usage example:
+    :Usage Example:
 
         .. code-block:: python
+
             from supervisely.app.widgets import SelectCollection
 
             project_id = 123
@@ -170,7 +171,7 @@ class SelectCollection(Widget):
     def team_id(self) -> int:
         """The ID of the team selected in the widget.
 
-        :return: The ID of the team.
+        :returns: The ID of the team.
         :rtype: int
         """
         return self._team_id
@@ -190,7 +191,7 @@ class SelectCollection(Widget):
     def get_selected_team_id(self) -> int:
         """Get the ID of the selected team.
 
-        :return: The ID of the selected team.
+        :returns: The ID of the selected team.
         :rtype: int
         """
         return self.team_id
@@ -207,7 +208,7 @@ class SelectCollection(Widget):
     def workspace_id(self) -> int:
         """The ID of the workspace selected in the widget.
 
-        :return: The ID of the workspace.
+        :returns: The ID of the workspace.
         :rtype: int
         """
         return self._workspace_id
@@ -227,7 +228,7 @@ class SelectCollection(Widget):
     def get_selected_workspace_id(self) -> int:
         """Get the ID of the selected workspace.
 
-        :return: The ID of the selected workspace.
+        :returns: The ID of the selected workspace.
         :rtype: int
         """
         return self.workspace_id
@@ -244,7 +245,7 @@ class SelectCollection(Widget):
     def project_id(self) -> Optional[int]:
         """The ID of the project selected in the widget.
 
-        :return: The ID of the project.
+        :returns: The ID of the project.
         :rtype: Optional[int]
         """
         return self._project_id
@@ -263,7 +264,7 @@ class SelectCollection(Widget):
     def get_selected_project_id(self) -> Optional[int]:
         """Get the ID of the selected project.
 
-        :return: The ID of the selected project.
+        :returns: The ID of the selected project.
         :rtype: Optional[int]
         """
         return self.project_id
@@ -303,7 +304,7 @@ class SelectCollection(Widget):
 
         :param func: The callback function.
         :type func: Callable
-        :return: The callback function.
+        :returns: The callback function.
         :rtype: Callable
         """
 
@@ -459,8 +460,8 @@ class SelectCollection(Widget):
         """Get the list of items for the team, workspace, and project selectors.
         Possible keyword arguments are 'team_id' and 'workspace_id'.
 
-        :return: The list of items.
-        :rtype: List[Select.Item]
+        :returns: The list of items.
+        :rtype: List[:class:`~supervisely.app.widgets.select.select.Select.Item`]
         """
         if not kwargs:
             items = self._api.team.get_list()
@@ -480,7 +481,7 @@ class SelectCollection(Widget):
     def get_json_data(self) -> Dict:
         """Get the JSON data of the widget.
 
-        :return: The JSON data.
+        :returns: The JSON data.
         :rtype: Dict
         """
         return {}
@@ -488,18 +489,18 @@ class SelectCollection(Widget):
     def get_json_state(self) -> Dict:
         """Get the JSON state of the widget.
 
-        :return: The JSON state.
+        :returns: The JSON state.
         :rtype: Dict
         """
         return {}
 
     def _read_collections(self, project_id: Optional[int]) -> Optional[List[Select.Item]]:
-        """Get the lisf of Select.Item objects representing the collection hierarchy.
+        """Get the list of items representing the collection hierarchy.
 
         :param project_id: The ID of the project.
         :type project_id: Optional[int]
-        :return: The list of Select.Item objects.
-        :rtype: Optional[List[Select.Item]]
+        :returns: The list of items.
+        :rtype: Optional[List[:class:`~supervisely.app.widgets.select.select.Select.Item`]]
         """
         self._fetch_collections(project_id)
 
@@ -514,7 +515,7 @@ class SelectCollection(Widget):
 
         :param project_id: The ID of the project.
         :type project_id: Optional[int]
-        :return: None
+        :returns: None
         :rtype: None
         """
         self._collections_names_map = {}
@@ -550,7 +551,7 @@ class SelectCollection(Widget):
     def _get_selected(self) -> Optional[Union[List[int], int]]:
         """Get the ID of the selected collection(s).
 
-        :return: The ID of the selected collection(s).
+        :returns: The ID of the selected collection(s).
         :rtype: Optional[Union[List[int], int]]
         """
         selected = self._select_collection.get_value()

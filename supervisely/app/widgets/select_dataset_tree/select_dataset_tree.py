@@ -27,7 +27,7 @@ class SelectDatasetTree(Widget):
     :param select_all_datasets: Whether all datasets should be selected by default.
     :type select_all_datasets: bool
     :param allowed_project_types: The list of project types that are allowed to be selected.
-    :type allowed_project_types: Optional[List[ProjectType]]
+    :type allowed_project_types: Optional[List[:class:`~supervisely.project.project_type.ProjectType`]]
     :param flat: Whether the dataset selector should be flat.
     :type flat: bool
     :param always_open: Whether the dataset selector should always be open.
@@ -63,9 +63,10 @@ class SelectDatasetTree(Widget):
     - `workspace_id`: The ID of the workspace selected in the widget.
     - `project_id`: The ID of the project selected in the widget.
 
-    :Usage example:
+    :Usage Example:
 
         .. code-block:: python
+
             from supervisely.app.widgets import SelectDatasetTree
 
             project_id = 123
@@ -75,7 +76,8 @@ class SelectDatasetTree(Widget):
                 default_id=dataset_id,
                 project_id=project_id,
                 multiselect=True,
-                flat=True)
+                flat=True
+            )
 
             @select_dataset_tree.value_changed
             def on_change(selected_ids):
@@ -213,7 +215,7 @@ class SelectDatasetTree(Widget):
     def team_id(self) -> int:
         """The ID of the team selected in the widget.
 
-        :return: The ID of the team.
+        :returns: The ID of the team.
         :rtype: int
         """
         return self._team_id
@@ -233,7 +235,7 @@ class SelectDatasetTree(Widget):
     def get_selected_team_id(self) -> int:
         """Get the ID of the selected team.
 
-        :return: The ID of the selected team.
+        :returns: The ID of the selected team.
         :rtype: int
         """
         return self.team_id
@@ -250,7 +252,7 @@ class SelectDatasetTree(Widget):
     def workspace_id(self) -> int:
         """The ID of the workspace selected in the widget.
 
-        :return: The ID of the workspace.
+        :returns: The ID of the workspace.
         :rtype: int
         """
         return self._workspace_id
@@ -270,7 +272,7 @@ class SelectDatasetTree(Widget):
     def get_selected_workspace_id(self) -> int:
         """Get the ID of the selected workspace.
 
-        :return: The ID of the selected workspace.
+        :returns: The ID of the selected workspace.
         :rtype: int
         """
         return self.workspace_id
@@ -287,7 +289,7 @@ class SelectDatasetTree(Widget):
     def project_id(self) -> Optional[int]:
         """The ID of the project selected in the widget.
 
-        :return: The ID of the project.
+        :returns: The ID of the project.
         :rtype: Optional[int]
         """
         return self._project_id
@@ -307,7 +309,7 @@ class SelectDatasetTree(Widget):
     def get_selected_project_id(self) -> Optional[int]:
         """Get the ID of the selected project.
 
-        :return: The ID of the selected project.
+        :returns: The ID of the selected project.
         :rtype: Optional[int]
         """
         return self.project_id
@@ -358,7 +360,7 @@ class SelectDatasetTree(Widget):
 
         :param func: The callback function.
         :type func: Callable
-        :return: The callback function.
+        :returns: The callback function.
         :rtype: Callable
         """
 
@@ -535,8 +537,8 @@ class SelectDatasetTree(Widget):
         """Get the list of items for the team, workspace, and project selectors.
         Possible keyword arguments are 'team_id' and 'workspace_id'.
 
-        :return: The list of items.
-        :rtype: List[Select.Item]
+        :returns: The list of items.
+        :rtype: List[:class:`~supervisely.app.widgets.select.select.Select.Item`]
         """
         if not kwargs:
             items = self._api.team.get_list()
@@ -556,7 +558,7 @@ class SelectDatasetTree(Widget):
     def get_json_data(self) -> Dict:
         """Get the JSON data of the widget.
 
-        :return: The JSON data.
+        :returns: The JSON data.
         :rtype: Dict
         """
         return {}
@@ -564,18 +566,18 @@ class SelectDatasetTree(Widget):
     def get_json_state(self) -> Dict:
         """Get the JSON state of the widget.
 
-        :return: The JSON state.
+        :returns: The JSON state.
         :rtype: Dict
         """
         return {}
 
     def _read_datasets(self, project_id: Optional[int]) -> Optional[List[TreeSelect.Item]]:
-        """Get the lisf of TreeSelect.Item objects representing the dataset hierarchy.
+        """Get the list of items representing the dataset hierarchy.
 
         :param project_id: The ID of the project.
         :type project_id: Optional[int]
-        :return: The list of TreeSelect.Item objects.
-        :rtype: Optional[List[TreeSelect.Item]]
+        :returns: The list of items.
+        :rtype: Optional[List[:class:`~supervisely.app.widgets.tree_select.tree_select.TreeSelect.Item`]]
         """
         if not project_id:
             return None
@@ -583,12 +585,12 @@ class SelectDatasetTree(Widget):
 
         def convert_tree_to_list(node, parent_id: Optional[int] = None):
             """
-            Recursively converts a tree of DatasetInfo objects into a list of
-                SelectDatasetTree.Item objects.
+            Recursively converts a tree of DatasetInfo objects into a list of items.
 
             :param node: The current node in the tree (a tuple of DatasetInfo and its children).
             :param parent_id: The ID of the parent dataset, if any.
-            :return: A list of SelectDatasetTree.Item objects representing the tree.
+            :returns: A list of items representing the tree.
+            :rtype: List[:class:`~supervisely.app.widgets.select_dataset_tree.select_dataset_tree.SelectDatasetTree.Item`]
             """
             result = []
             for dataset_info, children in node.items():
@@ -615,7 +617,7 @@ class SelectDatasetTree(Widget):
     def _get_selected(self) -> Optional[Union[List[int], int]]:
         """Get the ID of the selected dataset(s).
 
-        :return: The ID of the selected dataset(s).
+        :returns: The ID of the selected dataset(s).
         :rtype: Optional[Union[List[int], int]]
         """
         selected = self._select_dataset.get_selected()

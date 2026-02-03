@@ -24,7 +24,7 @@ class TrackedObject:
         det_id: Detection ID for mapping back to original annotation
         bbox: Bounding box coordinates in format [x1, y1, x2, y2]
         class_name: String class name
-        class_sly_id: Supervisely class ID (from ObjClass.sly_id)
+        class_sly_id: Supervisely class ID (from :meth:`~supervisely.annotation.obj_class.ObjClass.sly_id`)
         score: Confidence score of the detection/track
     """
     track_id: int

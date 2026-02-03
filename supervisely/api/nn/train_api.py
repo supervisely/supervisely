@@ -306,7 +306,7 @@ class TrainApi:
         :param project_id: Project id to train on.
         :type project_id: int
         :param model: Parsed model reference.
-        :type model: Model
+        :type model: str
         :param classes: Class names to train on (filtered to project meta upstream).
         :type classes: List[str]
         :param train_val_split: Train/Val split strategy for the GUI.
@@ -434,6 +434,8 @@ class TrainApi:
                 import supervisely as sly
                 from supervisely.api.nn.train_api import TrainApi
 
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
                 if sly.is_development():
                     load_dotenv("local.env")
                     load_dotenv(os.path.expanduser("~/supervisely.env"))

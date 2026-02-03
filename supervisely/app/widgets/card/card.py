@@ -19,9 +19,9 @@ class Card(Widget):
     :param collapsable: If True, the card will be collapsable in the UI.
     :type collapsable: Optional[bool]
     :param content: Widget to be displayed in the card.
-    :type content: Optional[Widget]
+    :type content: Optional[:class:`~supervisely.app.widgets.widget.Widget`]
     :param content_top_right: Widget to be displayed in the top right corner of the card.
-    :type content_top_right: Optional[Widget]
+    :type content_top_right: Optional[:class:`~supervisely.app.widgets.widget.Widget`]
     :param lock_message: Message to be displayed when the card is locked.
     :type lock_message: Optional[str]
     :param remove_padding: If True, padding will be removed from the card.
@@ -33,13 +33,14 @@ class Card(Widget):
     :param widget_id: Unique widget identifier.
     :type widget_id: str
 
-    :Usage example:
-    .. code-block:: python
+    :Usage Example:
 
-        from supervisely.app.widgets import Card, Text
+        .. code-block:: python
 
-        text = Text("Hello, world!")
-        card = Card(title="Card title", description="Card description", content=text)
+            from supervisely.app.widgets import Card, Text
+
+            text = Text("Hello, world!")
+            card = Card(title="Card title", description="Card description", content=text)
     """
 
     def __init__(
@@ -88,7 +89,7 @@ class Card(Widget):
                 - marginBottom: Margin bottom of the card.
             - showSlot: If True, the slot content will be displayed.
 
-        :return: Dictionary with widget data.
+        :returns: Dictionary with widget data.
         :rtype: Dict[str, Any]
         """
         return {
@@ -106,7 +107,7 @@ class Card(Widget):
             - disabled: True if card is disabled.
             - collapsed: True if card is collapsed.
 
-        :return: Dictionary with widget state.
+        :returns: Dictionary with widget state.
         :rtype: Dict[str, bool]
         """
         return {"disabled": self._disabled, "collapsed": self._collapsed}
@@ -153,7 +154,7 @@ class Card(Widget):
     def is_locked(self) -> bool:
         """Returns True if the card is locked, False otherwise.
 
-        :return: True if the card is locked, False otherwise.
+        :returns: True if the card is locked, False otherwise.
         :rtype: bool
         """
         return self._disabled["disabled"]
@@ -162,7 +163,7 @@ class Card(Widget):
     def description(self) -> Optional[str]:
         """Description of the card.
 
-        :return: Description of the card.
+        :returns: Description of the card.
         :rtype: Optional[str]
         """
         return self._description

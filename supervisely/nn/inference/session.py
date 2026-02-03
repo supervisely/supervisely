@@ -38,8 +38,8 @@ class SessionJSON:
 
         Note: Either a `task_id` or a `session_url` has to be passed as a parameter (not both).
 
-        :param api: initialized :class:`sly.Api` object.
-        :type api: sly.Api
+        :param api: initialized Api object.
+        :type api: :class:`~supervisely.api.api.Api`
         :param task_id: the task_id of a served model in the Supervisely platform. If None, the `session_url` will be used instead, defaults to None
         :type task_id: int, optional
         :param session_url: the url for direct connection to the served model. If None, the `task_id` will be used instead, defaults to None
@@ -48,18 +48,17 @@ class SessionJSON:
         :type inference_settings: Union[dict, str], optional
 
 
-        :Usage example:
-         .. code-block:: python
-            task_id = 27001
-            session = sly.nn.inference.SessionJSON(
-                api,
-                task_id=task_id,
-            )
-            print(session.get_session_info())
+        :Usage Example:
 
-            image_id = 17551748
-            pred = session.inference_image_id(image_id)
-            predicted_annotation = sly.Annotation.from_json(pred["annotation"], model_meta)
+            .. code-block:: python
+
+                task_id = 27001
+                session = sly.nn.inference.SessionJSON(api, task_id=task_id)
+                print(session.get_session_info())
+
+                image_id = 17551748
+                pred = session.inference_image_id(image_id)
+                predicted_annotation = sly.Annotation.from_json(pred["annotation"], model_meta)
 
         """
         assert not (
@@ -720,8 +719,8 @@ class Session(SessionJSON):
 
         Note: Either a `task_id` or a `session_url` has to be passed as a parameter (not both).
 
-        :param api: initialized :class:`sly.Api` object.
-        :type api: sly.Api
+        :param api: initialized Api object.
+        :type api: :class:`~supervisely.api.api.Api`
         :param task_id: the task_id of a served model in the Supervisely platform. If None, the `session_url` will be used instead, defaults to None
         :type task_id: int, optional
         :param session_url: the url for direct connection to the served model. If None, the `task_id` will be used instead, defaults to None
@@ -730,17 +729,16 @@ class Session(SessionJSON):
         :type inference_settings: Union[dict, str], optional
 
 
-        :Usage example:
-         .. code-block:: python
-            task_id = 27001
-            session = sly.nn.inference.Session(
-                api,
-                task_id=task_id,
-            )
-            print(session.get_session_info())
+        :Usage Example:
 
-            image_id = 17551748
-            predicted_annotation = session.inference_image_id(image_id)
+            .. code-block:: python
+
+                task_id = 27001
+                session = sly.nn.inference.Session(api, task_id=task_id)
+                print(session.get_session_info())
+
+                image_id = 17551748
+                predicted_annotation = session.inference_image_id(image_id)
 
         """
         super().__init__(api, task_id, session_url, inference_settings)

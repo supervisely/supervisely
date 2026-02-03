@@ -12,50 +12,51 @@ from supervisely.volume_annotation.constants import FIGURES, INDEX
 class Slice(Frame):
     """
     A class representing a single slice of a medical image.
-    Slice object for :class:`VolumeAnnotation<supervisely.volume_annotation.volume_annotation.VolumeAnnotation>`. :class:`Frame<Frame>` object is immutable.
+    Slice object for :class:`~supervisely.volume_annotation.volume_annotation.VolumeAnnotation`. :class:`~supervisely.video_annotation.frame.Frame` object is immutable.
 
-    :param index: Index of the Slice.
+    :param index: Index of the :class:`~supervisely.volume_annotation.slice.Slice`.
     :type index: int
-    :param figures: List of :class:`VolumeFigures<supervisely.volume_annotation.volume_figure.VolumeFigure>`.
-    :type figures: Optional[List[VolumeFigure]]
-    :Usage example:
+    :param figures: List of :class:`~supervisely.volume_annotation.volume_figure.VolumeFigure`.
+    :type figures: Optional[List[:class:`~supervisely.volume_annotation.volume_figure.VolumeFigure`]]
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        frame_index = 7
-        geometry = sly.Rectangle(0, 0, 100, 100)
-        class_car = sly.ObjClass('car', sly.Rectangle)
-        object_car = sly.VolumeObject(class_car)
-        figure_car = sly.VolumeFigure(object_car, geometry, frame_index)
+            import supervisely as sly
 
-        frame = sly.Slice(frame_index, figures=[figure_car])
-        print(frame.to_json())
-        # Output: {
-        #     "figures": [
-        #         {
-        #         "geometry": {
-        #             "points": {
-        #             "exterior": [
-        #                 [0, 0],
-        #                 [100, 100]
-        #             ],
-        #             "interior": []
-        #             }
-        #         },
-        #         "geometryType": "rectangle",
-        #         "key": "eb0ab5f772054f70b6a9f5b583a47287",
-        #         "meta": {
-        #             "normal": { "x": 0, "y": 0, "z": 1 },
-        #             "planeName": "axial",
-        #             "sliceIndex": 7
-        #         },
-        #         "objectKey": "dbd236a6a6f440139fd0299905fcc46e"
-        #         }
-        #     ],
-        #     "index": 7
-        # }
+            frame_index = 7
+            geometry = sly.Rectangle(0, 0, 100, 100)
+            class_car = sly.ObjClass('car', sly.Rectangle)
+            object_car = sly.VolumeObject(class_car)
+            figure_car = sly.VolumeFigure(object_car, geometry, frame_index)
+
+            frame = sly.Slice(frame_index, figures=[figure_car])
+            print(frame.to_json())
+            # Output: {
+            #     "figures": [
+            #         {
+            #         "geometry": {
+            #             "points": {
+            #             "exterior": [
+            #                 [0, 0],
+            #                 [100, 100]
+            #             ],
+            #             "interior": []
+            #             }
+            #         },
+            #         "geometryType": "rectangle",
+            #         "key": "eb0ab5f772054f70b6a9f5b583a47287",
+            #         "meta": {
+            #             "normal": { "x": 0, "y": 0, "z": 1 },
+            #             "planeName": "axial",
+            #             "sliceIndex": 7
+            #         },
+            #         "objectKey": "dbd236a6a6f440139fd0299905fcc46e"
+            #         }
+            #     ],
+            #     "index": 7
+            # }
 
     """
 
@@ -77,38 +78,38 @@ class Slice(Frame):
         key_id_map: Optional[KeyIdMap] = None,
     ):
         """
-        Deserialize a `Slice` object from a JSON representation.
+        Deserialize a Slice object from a JSON representation.
 
-        :param data: The JSON representation of the `Slice`.
+        :param data: The JSON representation of the Slice.
         :type data: dict
         :param objects: A collection of objects in volume.
-        :type objects: VolumeObjectCollection
+        :type objects: :class:`~supervisely.volume_annotation.volume_object_collection.VolumeObjectCollection`
         :param plane_name: The name of the plane.
         :type plane_name: str
         :param slices_count: The total number of slices in the volume, if known.
         :type slices_count: Optional[int]
         :param key_id_map: A mapping of keys to IDs used for referencing objects.
-        :type key_id_map: Optional[KeyIdMap]
-        :return: The deserialized `Slice<Slice>` object.
-        :rtype: Slice
+        :type key_id_map: Optional[:class:`~supervisely.video_annotation.key_id_map.KeyIdMap`]
+        :returns: The deserialized Slice object.
+        :rtype: :class:`~supervisely.volume_annotation.slice.Slice`
         :raises ValueError: If the slice index is negative or greater than the total number of slices.
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
-            slice_index = 7
-            geometry = sly.Rectangle(0, 0, 100, 100)
-            class_car = sly.ObjClass('car', sly.Rectangle)
-            object_car = sly.VolumeObject(class_car)
-            objects = sly.VolumeObjectCollection([object_car])
-            figure_car = sly.VolumeFigure(object_car, geometry, sly.Plane.AXIAL, slice_index)
+                import supervisely as sly
+                slice_index = 7
+                geometry = sly.Rectangle(0, 0, 100, 100)
+                class_car = sly.ObjClass('car', sly.Rectangle)
+                object_car = sly.VolumeObject(class_car)
+                objects = sly.VolumeObjectCollection([object_car])
+                figure_car = sly.VolumeFigure(object_car, geometry, sly.Plane.AXIAL, slice_index)
 
-            slice = sly.Slice(slice_index, figures=[figure_car])
-            slice_json = slice.to_json()
+                slice = sly.Slice(slice_index, figures=[figure_car])
+                slice_json = slice.to_json()
 
-            new_slice = sly.Slice.from_json(slice_json, objects, sly.Plane.AXIAL)
+                new_slice = sly.Slice.from_json(slice_json, objects, sly.Plane.AXIAL)
         """
 
         index = data[INDEX]

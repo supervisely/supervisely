@@ -10,18 +10,19 @@ class CopyToClipboard(Widget):
         (including screenshots and examples).
 
     :param content: content to be copied
-    :type content: Union[Editor, Text, TextArea, Input, str]
+    :type content: Union[:class:`~supervisely.app.widgets.editor.editor.Editor`, :class:`~supervisely.app.widgets.text.text.Text`, :class:`~supervisely.app.widgets.textarea.textarea.TextArea`, :class:`~supervisely.app.widgets.input.input.Input`, str]
     :param widget_id: An identifier of the widget.
     :type widget_id: str, optional
-    :raises TypeError: if content is not str, Editor, Text, TextArea, or Input
+    :raises TypeError: if content is not str, :class:`~supervisely.app.widgets.editor.editor.Editor`, :class:`~supervisely.app.widgets.text.text.Text`, :class:`~supervisely.app.widgets.textarea.textarea.TextArea`, or :class:`~supervisely.app.widgets.input.input.Input`
 
-    :Usage example:
-    .. code-block:: python
+    :Usage Example:
 
-        from supervisely.app.widgets import CopyToClipboard, Text
+        .. code-block:: python
 
-        text = Text("Text to be copied")
-        copy_to_clipboard = CopyToClipboard(text)
+            from supervisely.app.widgets import CopyToClipboard, Text
+
+            text = Text("Text to be copied")
+            copy_to_clipboard = CopyToClipboard(text)
     """
 
     def __init__(
@@ -57,7 +58,7 @@ class CopyToClipboard(Widget):
             - content: content to be copied
             - curr_property: current property of the content widget
 
-        :return: dictionary with widget data
+        :returns: dictionary with widget data
         :rtype: Dict[str, Union[str, Dict]]
         """
         return {"content": self._content_value, "curr_property": self._curr_prop_name}
@@ -69,7 +70,7 @@ class CopyToClipboard(Widget):
             - content: content to be copied
             - curr_property: current property of the content widget
 
-        :return: dictionary with widget state
+        :returns: dictionary with widget state
         :rtype: Dict[str, Union[str, Dict]]
         """
         return {"content": self._content_value, "curr_property": self._curr_prop_name}
@@ -77,7 +78,7 @@ class CopyToClipboard(Widget):
     def get_content(self) -> Union[Editor, Input, Text, TextArea, str]:
         """Returns content of the widget.
 
-        :return: content of the widget
-        :rtype: Union[Editor, Input, Text, TextArea, str]
+        :returns: content of the widget
+        :rtype: Union[:class:`~supervisely.app.widgets.editor.editor.Editor`, :class:`~supervisely.app.widgets.input.input.Input`, :class:`~supervisely.app.widgets.text.text.Text`, :class:`~supervisely.app.widgets.textarea.textarea.TextArea`, str]
         """
         return self._content

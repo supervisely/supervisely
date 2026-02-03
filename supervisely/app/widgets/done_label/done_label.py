@@ -19,12 +19,13 @@ class DoneLabel(Widget):
     :param widget_id: An identifier of the widget.
     :type widget_id: str, optional
 
-    :Usage example:
-    .. code-block:: python
+    :Usage Example:
 
-        from supervisely.app.widgets import DoneLabel
+        .. code-block:: python
 
-        done_label = DoneLabel(text="Done!")
+            from supervisely.app.widgets import DoneLabel
+
+            done_label = DoneLabel(text="Done!")
     """
 
     def __init__(
@@ -41,7 +42,7 @@ class DoneLabel(Widget):
         Dictionary contains the following fields:
             - text: DoneLabel text
 
-        :return: Dictionary with widget data
+        :returns: Dictionary with widget data
         :rtype: Dict[str, str]
         """
         return {"text": self._text}
@@ -55,7 +56,7 @@ class DoneLabel(Widget):
     def text(self) -> str:
         """Returns DoneLabel text.
 
-        :return: DoneLabel text
+        :returns: DoneLabel text
         :rtype: str
         """
         return self._text

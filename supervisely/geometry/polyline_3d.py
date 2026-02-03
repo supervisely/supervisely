@@ -9,26 +9,26 @@ class Polyline3D(Geometry):
     Polyline3D geometry
 
     :param points: List of 3D point coordinates which define the polyline in 3D space.
-    :type points: List[List[int, int, int]]
+    :type points: List[:class:`~supervisely.geometry.cuboid_3d.Vector3d`]
     :param sly_id: Polyline ID in Supervisely server.
     :type sly_id: int, optional
-    :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which Polyline belongs.
+    :param class_id: ID of ObjClass to which Polyline belongs.
     :type class_id: int, optional
-    :param labeler_login: Login of the user who created Polyline.
+    :param labeler_login: Login of the user who created Polyline3D.
     :type labeler_login: str, optional
     :param updated_at: Date and Time when Polyline was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
     :type updated_at: str, optional
     :param created_at: Date and Time when Polyline was created. Date Format is the same as in "updated_at" parameter.
     :type created_at: str, optional
 
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
+            import supervisely as sly
 
-        points = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
-        figure = sly.Polyline(points)
+            points = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
+            figure = sly.Polyline(points)
     """
 
     @staticmethod
@@ -73,24 +73,25 @@ class Polyline3D(Geometry):
 
         :param data: Polyline3D in json format as a dict.
         :type data: dict
-        :return: Polyline3D object
-        :rtype: :class:`Polyline3D<Polyline3D>`
-        :Usage example:
+        :returns: Polyline3D from json.
+        :rtype: :class:`~supervisely.geometry.polyline_3d.Polyline3D`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            figure_json = {
-                "points": {
-                    [
-                        [1, 2, 3],
-                        [4, 5, 6],
-                        [7, 8, 9]
-                    ],
+                import supervisely as sly
+
+                figure_json = {
+                    "points": {
+                        [
+                            [1, 2, 3],
+                            [4, 5, 6],
+                            [7, 8, 9]
+                        ],
+                    }
                 }
-            }
-            figure = sly.Polyline3D.from_json(figure_json)
+                figure = sly.Polyline3D.from_json(figure_json)
         """
         if not data.get("points"):
             raise ValueError("Data dict must contain 'points' field!")

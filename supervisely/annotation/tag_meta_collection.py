@@ -1,5 +1,5 @@
 # coding: utf-8
-"""Collection with :class:`TagMeta<supervisely.annotation.tag_meta.TagMeta>` instances"""
+"""Collection with :class:`TagMeta<~supervisely.annotation.tag_meta.TagMeta>` instances"""
 
 # docs
 from __future__ import annotations
@@ -15,155 +15,156 @@ from supervisely.io.json import JsonSerializable
 
 class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
     """
-    Collection with :class:`TagMeta<supervisely.annotation.tag_meta.TagMeta>` instances. :class:`TagMetaCollection<TagMetaCollection>` object is immutable.
+    Collection with :class:`TagMeta<~supervisely.annotation.tag_meta.TagMeta>` instances. :class:`TagMetaCollection<~supervisely.annotation.tag_meta_collection.TagMetaCollection>` object is immutable.
 
-    :raises: :class:`DuplicateKeyError`, if instance with given name already exists
-    :Usage example:
+    :raises :class:`~supervisely.collection.key_indexed_collection.DuplicateKeyError`: if instance with given name already exists
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        # Create TagMetas
-        meta_weather = sly.TagMeta('Weather', sly.TagValueType.ANY_STRING)
+            import supervisely as sly
 
-        season_values = ["Winter", "Spring", "Summer", "Autumn"]
-        meta_season = sly.TagMeta('Season', sly.TagValueType.ONEOF_STRING, possible_values=season_values)
+            # Create TagMetas
+            meta_weather = sly.TagMeta('Weather', sly.TagValueType.ANY_STRING)
 
-        # Create TagMetaCollection from TagMetas
-        tag_metas = sly.TagMetaCollection([meta_weather, meta_season])
+            season_values = ["Winter", "Spring", "Summer", "Autumn"]
+            meta_season = sly.TagMeta('Season', sly.TagValueType.ONEOF_STRING, possible_values=season_values)
 
-        # Add items to TagMetaCollection
-        meta_potato = sly.TagMeta('potato', sly.TagValueType.NONE)
+            # Create TagMetaCollection from TagMetas
+            tag_metas = sly.TagMetaCollection([meta_weather, meta_season])
 
-        # Remember that TagMetaCollection is immutable, and we need to assign new instance of TagMetaCollection to a new variable
-        tag_metas = tag_metas.add(meta_potato)
+            # Add items to TagMetaCollection
+            meta_potato = sly.TagMeta('potato', sly.TagValueType.NONE)
 
-        # You can also add multiple items to collection
-        meta_cabbage = sly.TagMeta('cabbage', sly.TagValueType.NONE)
-        meta_carrot = sly.TagMeta('carrot', sly.TagValueType.NONE)
-        meta_turnip = sly.TagMeta('turnip', sly.TagValueType.NONE)
+            # Remember that TagMetaCollection is immutable, and we need to assign new instance of TagMetaCollection to a new variable
+            tag_metas = tag_metas.add(meta_potato)
 
-        tag_metas = tag_metas.add_items([meta_cabbage, meta_carrot, meta_turnip])
+            # You can also add multiple items to collection
+            meta_cabbage = sly.TagMeta('cabbage', sly.TagValueType.NONE)
+            meta_carrot = sly.TagMeta('carrot', sly.TagValueType.NONE)
+            meta_turnip = sly.TagMeta('turnip', sly.TagValueType.NONE)
 
-        # Has key, checks if given key exist in collection
-        tag_metas.has_key("cabbage")
-        # Output: True
+            tag_metas = tag_metas.add_items([meta_cabbage, meta_carrot, meta_turnip])
 
-        # Intersection, finds intersection of given list of instances with collection items
-        meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE)
-        meta_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
-        meta_turtle = sly.TagMeta('turtle', sly.TagValueType.NONE)
+            # Has key, checks if given key exist in collection
+            tag_metas.has_key("cabbage")
+            # Output: True
 
-        tag_metas_animals = sly.TagMetaCollection([meta_dog, meta_cat, meta_turtle])
+            # Intersection, finds intersection of given list of instances with collection items
+            meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE)
+            meta_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
+            meta_turtle = sly.TagMeta('turtle', sly.TagValueType.NONE)
 
-        metas_intersections = tag_metas.intersection(tag_metas_animals)
-        print(metas_intersections.to_json())
-        # Output: []
+            tag_metas_animals = sly.TagMetaCollection([meta_dog, meta_cat, meta_turtle])
 
-        # Let's add the potato TagMeta from another collection and compare them again
-        tag_metas_animals = tag_metas_animals.add(meta_potato)
+            metas_intersections = tag_metas.intersection(tag_metas_animals)
+            print(metas_intersections.to_json())
+            # Output: []
 
-        metas_intersections = tag_metas.intersection(tag_metas_animals)
-        print(metas_intersections.to_json())
-        # Output: [
-        #     {
-        #         "name":"potato",
-        #         "value_type":"none",
-        #         "color":"#8A710F",
-        #         "hotkey":"",
-        #         "applicable_type":"all",
-        #         "classes":[]
-        #     }
-        # ]
+            # Let's add the potato TagMeta from another collection and compare them again
+            tag_metas_animals = tag_metas_animals.add(meta_potato)
 
-        # Difference, finds difference between collection and given list of TagMetas or TagMetaCollection
-        meta_car = sly.TagMeta('car', sly.TagValueType.NONE)
-        meta_bicycle = sly.TagMeta('bicycle', sly.TagValueType.NONE)
+            metas_intersections = tag_metas.intersection(tag_metas_animals)
+            print(metas_intersections.to_json())
+            # Output: [
+            #     {
+            #         "name":"potato",
+            #         "value_type":"none",
+            #         "color":"#8A710F",
+            #         "hotkey":"",
+            #         "applicable_type":"all",
+            #         "classes":[]
+            #     }
+            # ]
 
-        tag_metas_vehicles = sly.TagMetaCollection([meta_car, meta_bicycle])
+            # Difference, finds difference between collection and given list of TagMetas or TagMetaCollection
+            meta_car = sly.TagMeta('car', sly.TagValueType.NONE)
+            meta_bicycle = sly.TagMeta('bicycle', sly.TagValueType.NONE)
 
-        meta_pedestrian = sly.TagMeta('pedestrian', sly.TagValueType.NONE)
-        meta_road = sly.TagMeta('road', sly.TagValueType.NONE)
+            tag_metas_vehicles = sly.TagMetaCollection([meta_car, meta_bicycle])
 
-        difference = tag_metas_vehicles.difference([meta_pedestrian, meta_road])
-        print(difference.to_json())
-        # Output: [
-        #     {
-        #         "name":"car",
-        #         "value_type":"none",
-        #         "color":"#0F138A",
-        #         "hotkey":"",
-        #         "applicable_type":"all",
-        #         "classes":[]
-        #     },
-        #     {
-        #         "name":"bicycle",
-        #         "value_type":"none",
-        #         "color":"#0F8A25",
-        #         "hotkey":"",
-        #         "applicable_type":"all",
-        #         "classes":[]
-        #     }
-        # ]
+            meta_pedestrian = sly.TagMeta('pedestrian', sly.TagValueType.NONE)
+            meta_road = sly.TagMeta('road', sly.TagValueType.NONE)
 
-        # Merge, merges collection and given list of TagMetas
-        tag_metas_vehicles = sly.TagMetaCollection([meta_car, meta_bicycle])
-        tag_metas_merge = sly.TagMetaCollection([meta_pedestrian, meta_road])
+            difference = tag_metas_vehicles.difference([meta_pedestrian, meta_road])
+            print(difference.to_json())
+            # Output: [
+            #     {
+            #         "name":"car",
+            #         "value_type":"none",
+            #         "color":"#0F138A",
+            #         "hotkey":"",
+            #         "applicable_type":"all",
+            #         "classes":[]
+            #     },
+            #     {
+            #         "name":"bicycle",
+            #         "value_type":"none",
+            #         "color":"#0F8A25",
+            #         "hotkey":"",
+            #         "applicable_type":"all",
+            #         "classes":[]
+            #     }
+            # ]
 
-        merged_collections = tag_metas_vehicles.merge(tag_metas_merge)
-        print(merged_collections.to_json())
-        # Output: [
-        #     {
-        #         "name":"pedestrian",
-        #         "value_type":"none",
-        #         "color":"#698A0F",
-        #         "hotkey":"",
-        #         "applicable_type":"all",
-        #         "classes":[]
-        #     },
-        #     {
-        #         "name":"road",
-        #         "value_type":"none",
-        #         "color":"#0F8A59",
-        #         "hotkey":"",
-        #         "applicable_type":"all",
-        #         "classes":[]
-        #     },
-        #     {
-        #         "name":"car",
-        #         "value_type":"none",
-        #         "color":"#0F138A",
-        #         "hotkey":"",
-        #         "applicable_type":"all",
-        #         "classes":[]
-        #     },
-        #     {
-        #         "name":"bicycle",
-        #         "value_type":"none",
-        #         "color":"#0F8A25",
-        #         "hotkey":"",
-        #         "applicable_type":"all",
-        #         "classes":[]
-        #     }
-        # ]
+            # Merge, merges collection and given list of TagMetas
+            tag_metas_vehicles = sly.TagMetaCollection([meta_car, meta_bicycle])
+            tag_metas_merge = sly.TagMetaCollection([meta_pedestrian, meta_road])
 
-        # Merge will raise ValueError if item name from given list is in collection but items in both are different
-        meta_bicycle_1 = sly.TagMeta('bicycle', sly.TagValueType.NONE)
-        meta_bicycle_2 = sly.TagMeta('bicycle', sly.TagValueType.ANY_STRING)
+            merged_collections = tag_metas_vehicles.merge(tag_metas_merge)
+            print(merged_collections.to_json())
+            # Output: [
+            #     {
+            #         "name":"pedestrian",
+            #         "value_type":"none",
+            #         "color":"#698A0F",
+            #         "hotkey":"",
+            #         "applicable_type":"all",
+            #         "classes":[]
+            #     },
+            #     {
+            #         "name":"road",
+            #         "value_type":"none",
+            #         "color":"#0F8A59",
+            #         "hotkey":"",
+            #         "applicable_type":"all",
+            #         "classes":[]
+            #     },
+            #     {
+            #         "name":"car",
+            #         "value_type":"none",
+            #         "color":"#0F138A",
+            #         "hotkey":"",
+            #         "applicable_type":"all",
+            #         "classes":[]
+            #     },
+            #     {
+            #         "name":"bicycle",
+            #         "value_type":"none",
+            #         "color":"#0F8A25",
+            #         "hotkey":"",
+            #         "applicable_type":"all",
+            #         "classes":[]
+            #     }
+            # ]
 
-        tag_metas_1 = sly.TagMetaCollection([meta_bicycle_1])
-        tag_metas_2 = sly.TagMetaCollection([meta_bicycle_2])
+            # Merge will raise ValueError if item name from given list is in collection but items in both are different
+            meta_bicycle_1 = sly.TagMeta('bicycle', sly.TagValueType.NONE)
+            meta_bicycle_2 = sly.TagMeta('bicycle', sly.TagValueType.ANY_STRING)
 
-        test_merge = tag_metas_1.merge(tag_metas_2)
-        # Output: ValueError: Error during merge for key 'bicycle': values are different
+            tag_metas_1 = sly.TagMetaCollection([meta_bicycle_1])
+            tag_metas_2 = sly.TagMetaCollection([meta_bicycle_2])
 
-        # Let's try to create now a collection where TagMetas have identical names
-        meta_cow = sly.TagMeta('cow', sly.TagValueType.NONE)
-        meta_chicken = sly.TagMeta('cow', sly.TagValueType.NONE)
+            test_merge = tag_metas_1.merge(tag_metas_2)
+            # Output: ValueError: Error during merge for key 'bicycle': values are different
 
-        tag_metas = sly.TagMetaCollection([meta_cow, meta_chicken])
-        # Output: DuplicateKeyError: "Key 'cow' already exists"
+            # Let's try to create now a collection where TagMetas have identical names
+            meta_cow = sly.TagMeta('cow', sly.TagValueType.NONE)
+            meta_chicken = sly.TagMeta('cow', sly.TagValueType.NONE)
+
+            tag_metas = sly.TagMetaCollection([meta_cow, meta_chicken])
+            # Output: DuplicateKeyError: "Key 'cow' already exists"
     """
 
     item_type = TagMeta
@@ -172,35 +173,36 @@ class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
         """
         Convert the TagMetaCollection to a list of json dicts. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
-        :return: List of dicts in json format
+        :returns: List of dicts in json format
         :rtype: :class:`List[dict]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            tag_metas = tag_metas.to_json()
-            # Output:
-            # [
-            #   {
-            #    "name": "Weather",
-            #    "value_type": "any_string",
-            #    "color": "#8A620F",
-            #    "hotkey": "",
-            #    "applicable_type": "all",
-            #    "classes": []
-            #   },
-            #   {
-            #    "name": "Season",
-            #    "value_type": "oneof_string",
-            #    "color": "#700F8A",
-            #    "values": ["Winter", 'Spring", "Summer", "Autumn"],
-            #    "hotkey": "",
-            #    "applicable_type": "all",
-            #    "classes": []
-            #   }
-            # ]
+                import supervisely as sly
+
+                tag_metas = tag_metas.to_json()
+                # Output:
+                # [
+                #   {
+                #    "name": "Weather",
+                #    "value_type": "any_string",
+                #    "color": "#8A620F",
+                #    "hotkey": "",
+                #    "applicable_type": "all",
+                #    "classes": []
+                #   },
+                #   {
+                #    "name": "Season",
+                #    "value_type": "oneof_string",
+                #    "color": "#700F8A",
+                #    "values": ["Winter", 'Spring", "Summer", "Autumn"],
+                #    "hotkey": "",
+                #    "applicable_type": "all",
+                #    "classes": []
+                #   }
+                # ]
         """
         return [tag_meta.to_json() for tag_meta in self]
 
@@ -211,35 +213,36 @@ class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
 
         :param data: List with dicts in json format.
         :type data: List[dict]
-        :return: TagMetaCollection object
-        :rtype: :class:`TagMetaCollection<TagMetaCollection>`
-        :Usage example:
+        :returns: TagMetaCollection object
+        :rtype: :class:`TagMetaCollection<~supervisely.annotation.tag_meta_collection.TagMetaCollection>`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            data = [
-                {
-                    "name":"Weather",
-                    "value_type":"any_string",
-                    "color":"#8A620F",
-                    "hotkey":"",
-                    "applicable_type":"all",
-                    "classes":[]
-                },
-                {
-                    "name":"Season",
-                    "value_type": "oneof_string",
-                                  "color": "#700F8A",
-                                  "values": ["Winter", "Spring", "Summer", "Autumn"],
-                    "hotkey":"",
-                    "applicable_type":"all",
-                    "classes":[]
-            }
-            ]
+                import supervisely as sly
 
-            tag_metas = sly.TagMetaCollection.from_json(data)
+                data = [
+                    {
+                        "name":"Weather",
+                        "value_type":"any_string",
+                        "color":"#8A620F",
+                        "hotkey":"",
+                        "applicable_type":"all",
+                        "classes":[]
+                    },
+                    {
+                        "name":"Season",
+                        "value_type": "oneof_string",
+                                    "color": "#700F8A",
+                                    "values": ["Winter", "Spring", "Summer", "Autumn"],
+                        "hotkey":"",
+                        "applicable_type":"all",
+                        "classes":[]
+                    }
+                ]
+
+                tag_metas = sly.TagMetaCollection.from_json(data)
         """
         tags = [TagMeta.from_json(tag_meta_json) for tag_meta_json in data]
         return cls(tags)
@@ -250,9 +253,9 @@ class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
 
         :param raise_if_no_id: Raise ValueError if where is TagMetas without id.
         :type raise_if_no_id: bool, optional
-        :return: Json format as a dict
-        :rtype: :class:`dict`
-        :raises: :class:`KeyError`, if where is duplication of TagMetas id
+        :returns: Json format as a dict
+        :rtype: dict
+        :raises KeyError: if where is duplication of TagMetas id
         """
         res = {}
         without_id = []
@@ -278,7 +281,9 @@ class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
         """Update ids of TagMetas in collection from given collection.
 
         :param tags: TagMetaCollection to update ids from.
-        :type tags: TagMetaCollection
+        :type tags: :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection`
+        :returns: None
+        :rtype: None
         """
         for new_tag in tags:
             my_tag = self.get(new_tag.name)
@@ -291,8 +296,8 @@ class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
 
         :param tag_meta_id: TagMeta id to search for.
         :type tag_meta_id: int
-        :return: TagMeta with given id.
-        :rtype: TagMeta
+        :returns: TagMeta with given id.
+        :rtype: :class:`~supervisely.annotation.tag_meta.TagMeta`
         """
         for tag_meta in self:
             if tag_meta.sly_id == tag_meta_id:
@@ -310,53 +315,53 @@ class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
         Merge two TagMetaCollection objects.
 
         :param other: TagMetaCollection object.
-        :type other:  TagMetaCollection
-        :raises: :class:`ValueError` if item name from given collection is in TagMetaCollection but TagMetas in both are different
-        :return: TagMetaCollection object
-        :rtype: :class:`TagMetaCollection<TagMetaCollection>`
+        :type other:  :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection`
+        :raises ValueError: if item name from given collection is in :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection` but TagMetas in both are different
+        :returns: TagMetaCollection object
+        :rtype: :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection`
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
-            item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
-            collection = sly.TagMetaCollection([item_cat, item_turtle])
+                item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
+                item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
+                collection = sly.TagMetaCollection([item_cat, item_turtle])
 
-            item_dog = sly.TagMeta('dog', sly.TagValueType.NONE)
-            item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
-            other_collection = sly.TagMetaCollection([item_dog, item_turtle])
+                item_dog = sly.TagMeta('dog', sly.TagValueType.NONE)
+                item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
+                other_collection = sly.TagMetaCollection([item_dog, item_turtle])
 
-            merge = collection.merge(other_collection)
-            print(merge.to_json())
-            # Output: [
-            #     {
-            #         "name": "dog",
-            #         "value_type": "none",
-            #         "color": "#8A6C0F",
-            #         "hotkey": "",
-            #         "applicable_type": "all",
-            #         "classes": []
-            #     },
-            #     {
-            #         "name": "cat",
-            #         "value_type": "none",
-            #         "color": "#0F4A8A",
-            #         "hotkey": "",
-            #         "applicable_type": "all",
-            #         "classes": []
-            #     },
-            #     {
-            #         "name": "turtle",
-            #         "value_type": "any_string",
-            #         "color": "#4F0F8A",
-            #         "hotkey": "",
-            #         "applicable_type": "all",
-            #         "classes": []
-            #     }
-            # ]
+                merge = collection.merge(other_collection)
+                print(merge.to_json())
+                # Output: [
+                #     {
+                #         "name": "dog",
+                #         "value_type": "none",
+                #         "color": "#8A6C0F",
+                #         "hotkey": "",
+                #         "applicable_type": "all",
+                #         "classes": []
+                #     },
+                #     {
+                #         "name": "cat",
+                #         "value_type": "none",
+                #         "color": "#0F4A8A",
+                #         "hotkey": "",
+                #         "applicable_type": "all",
+                #         "classes": []
+                #     },
+                #     {
+                #         "name": "turtle",
+                #         "value_type": "any_string",
+                #         "color": "#4F0F8A",
+                #         "hotkey": "",
+                #         "applicable_type": "all",
+                #         "classes": []
+                #     }
+                # ]
         """
         new_tags = []
         for other_tag in other.items():
@@ -379,7 +384,17 @@ class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
 def make_renamed_tag_metas(
     src_tag_metas: TagMetaCollection, renamer: Renamer, skip_missing: bool = False
 ) -> TagMetaCollection:
-    """make_renamed_tag_metas"""
+    """Returns a new TagMetaCollection with renamed TagMetas.
+
+    :param src_tag_metas: TagMetaCollection to rename.
+    :type src_tag_metas: :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection`
+    :param renamer: Renamer object, which will handle renaming process.
+    :type renamer: :class:`~supervisely.annotation.renamer.Renamer`
+    :param skip_missing: If True, missing TagMetas will be skipped, otherwise KeyError will be raised.
+    :type skip_missing: bool, optional
+    :returns: New TagMetaCollection with renamed TagMetas.
+    :rtype: :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection`
+    """
     result_tags = []
     for src_tag in src_tag_metas:
         renamed_name = renamer.rename(src_tag.name)

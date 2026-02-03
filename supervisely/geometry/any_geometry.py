@@ -6,14 +6,14 @@ from supervisely.geometry.constants import ANY_SHAPE
 
 class AnyGeometry(Geometry):
     """
-    AnyGeometry for a single :class:`Label<supervisely.annotation.label.Label>`. :class:`AnyGeometry<AnyGeometry>` class object is immutable.
+    AnyGeometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.any_geometry.AnyGeometry` class object is immutable.
     """
     @staticmethod
     def geometry_name():
         """
         Geometry name.
 
-        :return: Geometry name
-        :rtype: :class:`str`
+        :returns: Geometry name
+        :rtype: str
         """
         return ANY_SHAPE

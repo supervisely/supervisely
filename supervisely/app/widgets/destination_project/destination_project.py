@@ -20,15 +20,16 @@ class DestinationProject(Widget):
     :param widget_id: An identifier of the widget.
     :type widget_id: str, optional
 
-    :Usage example:
-    .. code-block:: python
+    :Usage Example:
 
-            from supervisely.app.widgets import DestinationProject
+        .. code-block:: python
 
-            destination_project = DestinationProject(
-                workspace_id=1,
-                project_type="images",
-            )
+                from supervisely.app.widgets import DestinationProject
+
+                destination_project = DestinationProject(
+                    workspace_id=1,
+                    project_type="images",
+                )
 
     """
 
@@ -85,7 +86,7 @@ class DestinationProject(Widget):
             - dataset_name: dataset name
             - use_project_datasets_structure: if True, project structure will be used
 
-        :return: dictionary with widget state
+        :returns: dictionary with widget state
         :rtype: Dict[str, Union[str, int, bool]]
         """
 
@@ -105,7 +106,7 @@ class DestinationProject(Widget):
     def get_selected_project_id(self) -> int:
         """Returns selected project id.
 
-        :return: selected project id
+        :returns: selected project id
         :rtype: int
         """
         return StateJson()[self.widget_id]["project_id"]
@@ -113,7 +114,7 @@ class DestinationProject(Widget):
     def get_selected_dataset_id(self) -> int:
         """Returns selected dataset id.
 
-        :return: selected dataset id
+        :returns: selected dataset id
         :rtype: int
         """
         project_id = StateJson()[self.widget_id]["project_id"]
@@ -127,7 +128,7 @@ class DestinationProject(Widget):
     def get_project_name(self) -> str:
         """Returns selected project name.
 
-        :return: selected project name
+        :returns: selected project name
         :rtype: str
         """
         return StateJson()[self.widget_id]["project_name"]
@@ -135,7 +136,7 @@ class DestinationProject(Widget):
     def get_dataset_name(self) -> str:
         """Returns selected dataset name.
 
-        :return: selected dataset name
+        :returns: selected dataset name
         :rtype: str
         """
         return StateJson()[self.widget_id]["dataset_name"]
@@ -143,7 +144,7 @@ class DestinationProject(Widget):
     def use_project_datasets_structure(self) -> bool:
         """Returns True if project structure will be used.
 
-        :return: True if project structure will be used
+        :returns: True if project structure will be used
         :rtype: bool
         """
         return StateJson()[self.widget_id]["use_project_datasets_structure"]
@@ -151,7 +152,7 @@ class DestinationProject(Widget):
     def get_conflict_resolution(self):
         """Returns selected conflict resolution method.
 
-        :return: selected conflict resolution method.
+        :returns: selected conflict resolution method.
         :rtype: str
         """
         return StateJson()[self.widget_id]["conflict_resolution"]

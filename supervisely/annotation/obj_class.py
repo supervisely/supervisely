@@ -1,5 +1,5 @@
 # coding: utf-8
-"""General information about :class:`Label<supervisely.annotation.label.LabelBase>`"""
+"""General information about object class"""
 
 # docs
 from __future__ import annotations
@@ -20,7 +20,7 @@ from supervisely.sly_logger import logger
 
 
 class ObjClassJsonFields:
-    """Json fields for :class:`Annotation<supervisely.annotation.obj_class.ObjClass>`"""
+    """Json fields for :class:`Annotation<~supervisely.annotation.obj_class.ObjClass>`"""
 
     ID = "id"
     """"""
@@ -40,11 +40,11 @@ class ObjClassJsonFields:
 
 class ObjClass(KeyObject, JsonSerializable):
     """
-    General information about :class:`Label<supervisely.annotation.label.Label>`. :class:`ObjClass` object is immutable.
+    General information about object class. ObjClass object is immutable.
 
     :param name: Class name.
     :type name: str
-    :param geometry_type: Defines the shape of ObjClass: :class:`Bitmap<supervisely.geometry.bitmap.Bitmap>`, :class:`Cuboid<supervisely.geometry.cuboid.Cuboid>`, :class:`Graph<supervisely.geometry.graph.GraphNodes>`, :class:`Point<supervisely.geometry.point.Point>`, :class:`Polygon<supervisely.geometry.polygon.Polygon>`, :class:`Polyline<supervisely.geometry.polyline.Polyline>`, :class:`Rectangle<supervisely.geometry.rectangle.Rectangle>`.
+    :param geometry_type: Defines the shape of ObjClass: :class:`Bitmap<~supervisely.geometry.bitmap.Bitmap>`, :class:`Cuboid<~supervisely.geometry.cuboid.Cuboid>`, :class:`Graph<~supervisely.geometry.graph.GraphNodes>`, :class:`Point<~supervisely.geometry.point.Point>`, :class:`Polygon<~supervisely.geometry.polygon.Polygon>`, :class:`Polyline<~supervisely.geometry.polyline.Polyline>`, :class:`Rectangle<~supervisely.geometry.rectangle.Rectangle>`.
     :type geometry_type: dict, optional
     :param color: :class:`[R, G, B]`, generates random color by default.
     :type color: List[int, int, int], optional
@@ -54,18 +54,19 @@ class ObjClass(KeyObject, JsonSerializable):
     :type sly_id: int, optional
     :param hotkey: Hotkey for ObjClass in annotation tool UI.
     :type hotkey: str, optional
-    :raises: :class:`ValueError`, if color is not list or tuple, or doesn't have exactly 3 values
-    :Usage example:
+    :raises ValueError: if color is not list or tuple, or doesn't have exactly 3 values
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        # Simple ObjClass example
-        class_lemon = sly.ObjClass('lemon', sly.Rectangle)
+            import supervisely as sly
 
-        # More complex ObjClass example
-        class_cucumber = sly.ObjClass('cucumber', sly.Bitmap, color=[128, 0, 255], hotkey='d')
+            # Simple ObjClass example
+            class_lemon = sly.ObjClass('lemon', sly.Rectangle)
+
+            # More complex ObjClass example
+            class_cucumber = sly.ObjClass('cucumber', sly.Bitmap, color=[128, 0, 255], hotkey='d')
     """
 
     def __init__(
@@ -102,15 +103,16 @@ class ObjClass(KeyObject, JsonSerializable):
         """
         Name.
 
-        :return: Name
-        :rtype: :class:`str`
-        :Usage example:
+        :returns: Name
+        :rtype: str
 
-         .. code-block:: python
+        :Usage Example:
 
-            class_lemon = sly.ObjClass('lemon', sly.Rectangle)
-            print(class_lemon.name)
-            # Output: 'lemon'
+            .. code-block:: python
+
+                class_lemon = sly.ObjClass('lemon', sly.Rectangle)
+                print(class_lemon.name)
+                # Output: 'lemon'
         """
         return self._name
 
@@ -119,15 +121,16 @@ class ObjClass(KeyObject, JsonSerializable):
         """
         Description.
 
-        :return: Description
-        :rtype: :class:`str`
-        :Usage example:
+        :returns: Description
+        :rtype: str
 
-         .. code-block:: python
+        :Usage Example:
 
-            class_lemon = sly.ObjClass('lemon', sly.Rectangle)
-            print(class_lemon.description)
-            # Output: 'lemon class description'
+            .. code-block:: python
+
+                class_lemon = sly.ObjClass('lemon', sly.Rectangle)
+                print(class_lemon.description)
+                # Output: 'lemon class description'
         """
         return self._description
 
@@ -135,29 +138,30 @@ class ObjClass(KeyObject, JsonSerializable):
         """
         Used as a key in ObjClassCollection (like key in dict)
 
-        :return: string name of the ObjectClass
-        :rtype: :class:`Str`
+        :returns: string name of the ObjectClass
+        :rtype: str
         """
         return self.name
 
     @property
-    def geometry_type(self) -> type:
+    def geometry_type(self) -> Geometry:
         """
         Type of the geometry that is associated with ObjClass.
 
-        :return: Geometry type
-        :rtype: :class:`type`
-        :Usage example:
+        :returns: Geometry type
+        :rtype: :class:`~supervisely.geometry.geometry.Geometry`
 
-         .. code-block:: python
+        :Usage Example:
 
-            class_lemon = sly.ObjClass('lemon', sly.Rectangle)
-            print(class_lemon.geometry_type)
-            # Output: <class 'supervisely.geometry.rectangle.Rectangle'>
+            .. code-block:: python
 
-            class_kiwi = sly.ObjClass('kiwi', sly.Bitmap)
-            print(class_kiwi.geometry_type)
-            # Output: <class 'supervisely.geometry.bitmap.Bitmap'>
+                class_lemon = sly.ObjClass('lemon', sly.Rectangle)
+                print(class_lemon.geometry_type)
+                # Output: <class 'supervisely.geometry.rectangle.Rectangle'>
+
+                class_kiwi = sly.ObjClass('kiwi', sly.Bitmap)
+                print(class_kiwi.geometry_type)
+                # Output: <class 'supervisely.geometry.bitmap.Bitmap'>
         """
         return self._geometry_type
 
@@ -173,15 +177,16 @@ class ObjClass(KeyObject, JsonSerializable):
         """
         :class:`[R,G,B]` color.
 
-        :return: Color
+        :returns: Color
         :rtype: :class:`List[int, int, int]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            class_lemon = sly.ObjClass('lemon', sly.Rectangle, color=[255,120,0])
-            print(class_lemon.color)
-            # Output: [255,120,0]
+            .. code-block:: python
+
+                class_lemon = sly.ObjClass('lemon', sly.Rectangle, color=[255,120,0])
+                print(class_lemon.color)
+                # Output: [255,120,0]
         """
         return deepcopy(self._color)
 
@@ -190,15 +195,16 @@ class ObjClass(KeyObject, JsonSerializable):
         """
         Class ID in Supervisely server.
 
-         :return: ID
-         :rtype: :class:`int`
-         :Usage example:
+         :returns: ID
+         :rtype: int
 
-          .. code-block:: python
+         :Usage Example:
 
-             class_lemon = sly.ObjClass('lemon', sly.Rectangle, sly_id=38584)
-             print(class_lemon.sly_id)
-             # Output: 38584
+             .. code-block:: python
+
+                 class_lemon = sly.ObjClass('lemon', sly.Rectangle, sly_id=38584)
+                 print(class_lemon.sly_id)
+                 # Output: 38584
         """
         return self._sly_id
 
@@ -207,15 +213,16 @@ class ObjClass(KeyObject, JsonSerializable):
         """
         Hotkey for ObjClass in annotation tool UI..
 
-        :return: Hotkey
-        :rtype: :class:`str`
-        :Usage example:
+        :returns: Hotkey
+        :rtype: str
 
-         .. code-block:: python
+        :Usage Example:
 
-            class_lemon = sly.ObjClass('lemon', sly.Rectangle, hotkey='M')
-            print(class_lemon.hotkey)
-            # Output: 'M'
+            .. code-block:: python
+
+                class_lemon = sly.ObjClass('lemon', sly.Rectangle, hotkey='M')
+                print(class_lemon.hotkey)
+                # Output: 'M'
         """
         return self._hotkey
 
@@ -223,25 +230,26 @@ class ObjClass(KeyObject, JsonSerializable):
         """
         Convert the ObjClass to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
-        :return: Json format as a dict
-        :rtype: :class:`dict`
-        :Usage example:
+        :returns: Json format as a dict
+        :rtype: dict
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            class_lemon = sly.ObjClass('lemon', sly.Rectangle)
-            lemon_json = class_lemon.to_json()
+                import supervisely as sly
 
-            print(lemon_json)
-            # Output: {
-            #     "title": "lemon",
-            #     "shape": "rectangle",
-            #     "color": "#8A2F0F",
-            #     "geometry_config": {},
-            #     "hotkey": ""
-            # }
+                class_lemon = sly.ObjClass('lemon', sly.Rectangle)
+                lemon_json = class_lemon.to_json()
+
+                print(lemon_json)
+                # Output: {
+                #     "title": "lemon",
+                #     "shape": "rectangle",
+                #     "color": "#8A2F0F",
+                #     "geometry_config": {},
+                #     "hotkey": ""
+                # }
         """
         res = {
             ObjClassJsonFields.NAME: self.name,
@@ -270,22 +278,23 @@ class ObjClass(KeyObject, JsonSerializable):
         :param data: ObjClass in json format as a dict.
         :type data: dict
 
-        :return: ObjClass object
-        :rtype: :class:`ObjClass<ObjClass>`
-        :Usage example:
+        :returns: ObjClass object
+        :rtype: :class:`~supervisely.annotation.obj_class.ObjClass`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            data = {
-                "title": "lemon",
-                "shape": "rectangle",
-                "color": "#0F6E8A",
-                "hotkey": "Q"
-            }
+                import supervisely as sly
 
-            class_lemon = sly.ObjClass.from_json(data)
+                data = {
+                    "title": "lemon",
+                    "shape": "rectangle",
+                    "color": "#0F6E8A",
+                    "hotkey": "Q"
+                }
+
+                class_lemon = sly.ObjClass.from_json(data)
         """
         name = data[ObjClassJsonFields.NAME]
         geometry_type = GET_GEOMETRY_FROM_STR(data[ObjClassJsonFields.GEOMETRY_TYPE])
@@ -324,25 +333,26 @@ class ObjClass(KeyObject, JsonSerializable):
         Checks that 2 ObjClass objects are equal by comparing their name, geometry type and geometry config.
 
         :param other: ObjClass object.
-        :type other: ObjClass
-        :return: True if comparable objects are equal, otherwise False
-        :rtype: :class:`bool`
-        :Usage example:
+        :type other: :class:`~supervisely.annotation.obj_class.ObjClass`
+        :returns: True if comparable objects are equal, otherwise False
+        :rtype: bool
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            # Let's create 2 identical ObjClasses and 1 different ObjClass and compare them to each other
-            class_lemon_1 = sly.ObjClass('Lemon', sly.Rectangle)
-            class_lemon_2 = sly.ObjClass('Lemon', sly.Rectangle)
-            class_cucumber = sly.ObjClass('Cucumber', sly.Rectangle)
+                import supervisely as sly
 
-            # Compare identical ObjClasses
-            class_lemon_1 == class_lemon_2      # True
+                # Let's create 2 identical ObjClasses and 1 different ObjClass and compare them to each other
+                class_lemon_1 = sly.ObjClass('Lemon', sly.Rectangle)
+                class_lemon_2 = sly.ObjClass('Lemon', sly.Rectangle)
+                class_cucumber = sly.ObjClass('Cucumber', sly.Rectangle)
 
-            # Compare unidentical ObjClasses
-            class_lemon_1 == class_cucumber     # False
+                # Compare identical ObjClasses
+                class_lemon_1 == class_lemon_2      # True
+
+                # Compare unidentical ObjClasses
+                class_lemon_1 == class_cucumber     # False
         """
         return (
             isinstance(other, ObjClass)
@@ -359,27 +369,28 @@ class ObjClass(KeyObject, JsonSerializable):
         Checks that 2 ObjClass objects are opposite.
 
         :param other: ObjClass object.
-        :type other: ObjClass
-        :return: True if comparable objects are not equal, otherwise False
-        :rtype: :class:`bool`
-        :Usage example:
+        :type other: :class:`~supervisely.annotation.obj_class.ObjClass`
+        :returns: True if comparable objects are not equal, otherwise False
+        :rtype: bool
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            # Let's create 2 identical ObjClasses
-            class_lemon_1 = sly.ObjClass('Lemon', sly.Rectangle)
-            class_lemon_2 = sly.ObjClass('Lemon', sly.Rectangle)
+                import supervisely as sly
 
-            # and 1 different ObjClass and compare them to each other
-            class_cucumber = sly.ObjClass('Cucumber', sly.Rectangle)
+                # Let's create 2 identical ObjClasses
+                class_lemon_1 = sly.ObjClass('Lemon', sly.Rectangle)
+                class_lemon_2 = sly.ObjClass('Lemon', sly.Rectangle)
 
-            # Compare identical ObjClasses
-            class_lemon_1 != class_lemon_2      # False
+                # and 1 different ObjClass and compare them to each other
+                class_cucumber = sly.ObjClass('Cucumber', sly.Rectangle)
 
-            # Compare unidentical ObjClasses
-            class_lemon_1 != class_cucumber     # True
+                # Compare identical ObjClasses
+                class_lemon_1 != class_lemon_2      # False
+
+                # Compare unidentical ObjClasses
+                class_lemon_1 != class_cucumber     # True
         """
         return not self == other
 
@@ -423,7 +434,7 @@ class ObjClass(KeyObject, JsonSerializable):
 
         :param name: Class name.
         :type name: str
-        :param geometry_type: Defines the shape of ObjClass: :class:`Bitmap<supervisely.geometry.bitmap.Bitmap>`, :class:`Cuboid<supervisely.geometry.cuboid.Cuboid>`, :class:`Point<supervisely.geometry.point.Point>`, :class:`Polygon<supervisely.geometry.polygon.Polygon>`, :class:`Polyline<supervisely.geometry.polyline.Polyline>`, :class:`Rectangle<supervisely.geometry.rectangle.Rectangle>`.
+        :param geometry_type: Defines the shape of ObjClass: :class:`Bitmap<~supervisely.geometry.bitmap.Bitmap>`, :class:`Cuboid<~supervisely.geometry.cuboid.Cuboid>`, :class:`Point<~supervisely.geometry.point.Point>`, :class:`Polygon<~supervisely.geometry.polygon.Polygon>`, :class:`Polyline<~supervisely.geometry.polyline.Polyline>`, :class:`Rectangle<~supervisely.geometry.rectangle.Rectangle>`.
         :type geometry_type: type
         :param color: :class:`[R, G, B]`, generates random color by default.
         :type color: List[int, int, int], optional
@@ -435,27 +446,27 @@ class ObjClass(KeyObject, JsonSerializable):
         :type hotkey: str, optional
         :param description: Description of the class.
         :type description: str, optional
+        :returns: New instance of ObjClass object
+        :rtype: :class:`ObjClass<~supervisely.annotation.obj_class.ObjClass>`
 
-        :return: New instance of ObjClass
-        :rtype: :class:`ObjClass<ObjClass>`
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            class_lemon = sly.ObjClass('lemon', sly.Rectangle)
+                class_lemon = sly.ObjClass('lemon', sly.Rectangle)
 
-            # Let's clone our ObjClass, but with different name
-            # Remember that ObjClass object is immutable, and we need to assign new instance of ObjClass to a new variable
-            clone_lemon_1 = class_lemon.clone(name="lemon clone")
+                # Let's clone our ObjClass, but with different name
+                # Remember that ObjClass object is immutable, and we need to assign new instance of ObjClass to a new variable
+                clone_lemon_1 = class_lemon.clone(name="lemon clone")
 
-            # Let's clone our ObjClass, but with different color and hotkey
-            # Remember that ObjClass object is immutable, and we need to assign new instance of ObjClass to a new variable
-            clone_lemon_2 = class_lemon.clone(color=[128, 0, 64], hotkey='Q')
+                # Let's clone our ObjClass, but with different color and hotkey
+                # Remember that ObjClass object is immutable, and we need to assign new instance of ObjClass to a new variable
+                clone_lemon_2 = class_lemon.clone(color=[128, 0, 64], hotkey='Q')
 
-            #  Let's clone our ObjClass without new fields
-            clone_lemon_3 = class_lemon.clone()
+                #  Let's clone our ObjClass without new fields
+                clone_lemon_3 = class_lemon.clone()
         """
         return ObjClass(
             name=take_with_default(name, self.name),

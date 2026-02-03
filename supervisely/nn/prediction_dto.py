@@ -16,7 +16,7 @@ class PredictionMask(Prediction):
         """
         class_name: Name of the class.
         mask:       Numpy array with bool or binary ([0, 1] or [0, 255]) values.
-                    Will be converted to sly.Bitmap geometry.
+                    Will be converted to :class:`~supervisely.geometry.bitmap.Bitmap` geometry.
         score:      Confidence score.
         """
         super(PredictionMask, self).__init__(class_name=class_name)
@@ -52,7 +52,7 @@ class PredictionAlphaMask(Prediction):
         """
         class_name: Name of the class.
         mask:       Numpy array with values in range [0, 255].
-                    Will be converted to sly.AlphaMask geometry.
+                    Will be converted to :class:`~supervisely.geometry.alpha_mask.AlphaMask` geometry.
         """
         super(PredictionAlphaMask, self).__init__(class_name=class_name)
         self.mask = mask
@@ -63,7 +63,7 @@ class ProbabilityMask(Prediction):
         """
         class_name: Name of the class.
         mask:       Numpy array with values in range [0, 255].
-                    Will be converted to sly.AlphaMask geometry.
+                    Will be converted to :class:`~supervisely.geometry.alpha_mask.AlphaMask` geometry.
         """
         super(ProbabilityMask, self).__init__(class_name=class_name)
         self.mask = mask
@@ -87,7 +87,7 @@ class PredictionCuboid3d(Prediction):
     def __init__(self, class_name: str, cuboid_3d: Cuboid3d, score: Optional[float]):
         """
         :param class_name: Predicted class name.
-        :param cuboid_3d: Cuboid3d object.
+        :param cuboid_3d: :class:`~supervisely.geometry.cuboid_3d.Cuboid3d` object.
         :param score: Confidence score.
         """
         super(PredictionCuboid3d, self).__init__(class_name=class_name)

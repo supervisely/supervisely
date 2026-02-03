@@ -10,10 +10,10 @@ from supervisely.api.module_api import ApiField
 
 class ProjectClassApi(ModuleApi):
     """
-    API for working with classes in Project. :class:`ProjectClassApi<ProjectClassApi>` object is immutable.
+    API for working with classes in Project. :class:`ProjectClassApi<~supervisely.api.project_class_api.ProjectClassApi>` object is immutable.
 
     :param api: API connection to the server
-    :type api: Api
+    :type api: :class:`~supervisely.api.api.Api`
     """
     @staticmethod
     def info_sequence():
@@ -42,7 +42,7 @@ class ProjectClassApi(ModuleApi):
         :type project_id: int
         :param filters:
         :type filters: list
-        :return: List of classes.
-        :rtype: :class:`list`
+        :returns: List of classes.
+        :rtype: list
         """
         return self.get_list_all_pages('advanced.object_classes.list',  {ApiField.PROJECT_ID: project_id, "filter": filters or []})

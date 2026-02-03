@@ -10,7 +10,7 @@ class ReloadableArea(DynamicWidget):
     UI of the app. It can be used when the widgets are needed to be added or removed dynamically.
 
     :param content: a Widget to be set as content of the ReloadableArea. Defaults to None.
-    :type content: Widget, optional
+    :type content: :class:`~supervisely.app.widgets.widget.Widget`, optional
     :param widget_id: The id of the widget. Defaults to None.
     :type widget_id: str, optional
 
@@ -18,28 +18,29 @@ class ReloadableArea(DynamicWidget):
     reload(): Reloads the widget in UI.
     set_content(): Replaces content of the ReloadableArea with new widget.
 
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
-        from supervisely.app.widgets import ReloadableArea, Container, Button
+        .. code-block:: python
 
-        # Creating button, which will be added to widget at initialization.
-        button_plus = Button("plus")
-        buttons_container = Container(widgets=[button_plus])
+            from supervisely.app.widgets import ReloadableArea, Container, Button
 
-        # Initializing ReloadableArea with buttons_container as content.
-        reloadable_area = ReloadableArea(content=buttons_container)
+            # Creating button, which will be added to widget at initialization.
+            button_plus = Button("plus")
+            buttons_container = Container(widgets=[button_plus])
 
-        # Now we need to create new widget, after UI was initialized.
-        button_minus = Button("minus")
-        buttons_container._widgets.append(button_minus)
+            # Initializing ReloadableArea with buttons_container as content.
+            reloadable_area = ReloadableArea(content=buttons_container)
 
-        # Widget of new button was added to container, but it will not appear in UI
-        # until we reload the ReloadableArea.
+            # Now we need to create new widget, after UI was initialized.
+            button_minus = Button("minus")
+            buttons_container._widgets.append(button_minus)
 
-        reloadable_area.reload()
+            # Widget of new button was added to container, but it will not appear in UI
+            # until we reload the ReloadableArea.
 
-        # Now the new button will appear in UI.
+            reloadable_area.reload()
+
+            # Now the new button will appear in UI.
     """
 
     def __init__(self, content: Widget = None, widget_id: str = None):
@@ -60,7 +61,7 @@ class ReloadableArea(DynamicWidget):
         To reload the widget in UI use reload() function.
 
         :param content: new widget to be set as content
-        :type content: Widget
+        :type content: :class:`~supervisely.app.widgets.widget.Widget`
         """
         self._content = content
         DataJson().send_changes()
@@ -86,7 +87,7 @@ class ReloadableArea(DynamicWidget):
     def hide(self):
         """Hides the content of the ReloadableArea."""
         self._content.hide()
-        
+
     def show(self):
         """Shows the content of the ReloadableArea."""
         self._content.show()

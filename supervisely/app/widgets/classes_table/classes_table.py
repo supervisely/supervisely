@@ -35,13 +35,13 @@ class ClassesTable(Widget):
         (including screenshots and examples).
 
     :param project_meta: Project meta object from which classes will be taken.
-    :type project_meta: sly.ProjectMeta
+    :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
     :param project_id: Project id from which classes will be taken.
     :type project_id: int
-    :param project_fs: Project object from which classes will be taken.
-    :type project_fs: sly.Project
+    :param project_fs: Local supervisely project from which classes will be taken.
+    :type project_fs: :class:`~supervisely.project.project.Project`
     :param allowed_types: List of allowed geometry types to be displayed in table.
-    :type allowed_types: List[Geometry]
+    :type allowed_types: List[:class:`~supervisely.geometry.geometry.Geometry`]
     :param selectable: If True, user can select classes from table.
     :type selectable: bool
     :param disabled: If True, the elements in the table will be disabled.
@@ -50,12 +50,13 @@ class ClassesTable(Widget):
     :type widget_id: str
     :raises ValueError: If both project_id and project_fs parameters are provided.
 
-    :Usage example:
-    .. code-block:: python
+    :Usage Example:
 
-        from supervisely.app.widgets import ClassesTable
+        .. code-block:: python
 
-        classes_table = ClassesTable(project_id=123, selectable=True)
+            from supervisely.app.widgets import ClassesTable
+
+            classes_table = ClassesTable(project_id=123, selectable=True)
     """
 
     class Routes:
@@ -115,7 +116,7 @@ class ClassesTable(Widget):
 
         :param func: Function to be called when the value of the widget changes.
         :type func: Callable[[List[str]], Any]
-        :return: Decorated function.
+        :returns: Decorated function.
         :rtype: Callable[[], None]
         """
         route_path = self.get_route_path(ClassesTable.Routes.CLASS_SELECTED)
@@ -246,7 +247,7 @@ class ClassesTable(Widget):
         """Read project meta and update table data.
 
         :param project_meta: Project meta object from which classes will be taken.
-        :type project_meta: sly.ProjectMeta
+        :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
         """
         self.loading = True
         self._project_fs = None
@@ -266,8 +267,8 @@ class ClassesTable(Widget):
     def read_project(self, project_fs: sly.Project) -> None:
         """Read local project and update table data.
 
-        :param project_fs: Project object from which classes will be taken.
-        :type project_fs: sly.Project
+        :param project_fs: Local supervisely project object from which classes will be taken.
+        :type project_fs: :class:`~supervisely.project.project.Project`
         """
         self.loading = True
         self._project_fs = project_fs
@@ -324,7 +325,7 @@ class ClassesTable(Widget):
             - disabled: If True, the elements in the table will be disabled.
             - selectable: If True, user can select classes from table.
 
-        :return: Dictionary with widget data.
+        :returns: Dictionary with widget data.
         :rtype: Dict[str, Any]
         """
         return {
@@ -339,8 +340,8 @@ class ClassesTable(Widget):
     def allowed_types(self) -> List[Geometry]:
         """Returns list of allowed geometry types to be displayed in table.
 
-        :return: List of allowed geometry types to be displayed in table.
-        :rtype: List[Geometry]
+        :returns: List of allowed geometry types to be displayed in table.
+        :rtype: List[:class:`~supervisely.geometry.geometry.Geometry`]
         """
         return self._allowed_types
 
@@ -348,7 +349,7 @@ class ClassesTable(Widget):
     def project_id(self) -> int:
         """Returns project id from which classes was taken.
 
-        :return: Project id from which classes was taken.
+        :returns: Project id from which classes was taken.
         :rtype: int
         """
         return self._project_id
@@ -357,8 +358,8 @@ class ClassesTable(Widget):
     def project_fs(self) -> int:
         """Returns project object from which classes was taken.
 
-        :return: Project object from which classes was taken.
-        :rtype: sly.Project
+        :returns: Local supervisely project from which classes was taken.
+        :rtype: :class:`~supervisely.project.project.Project`
         """
         return self._project_fs
 
@@ -366,7 +367,7 @@ class ClassesTable(Widget):
     def loading(self) -> bool:
         """Returns True if the widget is in loading state.
 
-        :return: True if the widget is in loading state.
+        :returns: True if the widget is in loading state.
         :rtype: bool
         """
         return self._loading
@@ -375,8 +376,8 @@ class ClassesTable(Widget):
     def project_meta(self) -> bool:
         """Returns project meta object from which classes was taken.
 
-        :return: Project meta object from which classes was taken.
-        :rtype: sly.ProjectMeta
+        :returns: Project meta object from which classes was taken.
+        :rtype: :class:`~supervisely.project.project_meta.ProjectMeta`
         """
         return self._project_meta
 
@@ -398,7 +399,7 @@ class ClassesTable(Widget):
             - global_checkbox: State of global checkbox.
             - checkboxes: List of checkboxes states.
 
-        :return: Dictionary with widget state.
+        :returns: Dictionary with widget state.
         :rtype: Dict[str, Any]
         """
         return {
@@ -409,7 +410,7 @@ class ClassesTable(Widget):
     def get_selected_classes(self) -> List[str]:
         """Returns list of selected classes.
 
-        :return: List of selected classes.
+        :returns: List of selected classes.
         :rtype: List[str]
         """
         classes = []
@@ -437,7 +438,7 @@ class ClassesTable(Widget):
         """Sets project meta object from which classes will be taken.
 
         :param project_meta: Project meta object from which classes will be taken.
-        :type project_meta: sly.ProjectMeta
+        :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
         """
         self._update_meta(project_meta)
         self._project_meta = project_meta

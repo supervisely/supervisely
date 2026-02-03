@@ -15,8 +15,8 @@ class SelectUser(Widget):
     SelectUser is a dropdown widget for selecting users from a team.
     Extends the Select widget with user-specific functionality.
 
-    :param users: Initial list of UserInfo instances
-    :type users: Optional[List[UserInfo]]
+    :param users: Initial list of :class:`~supervisely.api.user_api.UserInfo` instances
+    :type users: Optional[List[:class:`~supervisely.api.user_api.UserInfo`]]
     :param team_id: Team ID to fetch users from
     :type team_id: Optional[int]
     :param roles: List of allowed user roles to filter by (e.g., ['admin', 'developer'])
@@ -32,31 +32,31 @@ class SelectUser(Widget):
     :param widget_id: Unique widget identifier
     :type widget_id: Optional[str]
 
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
-        from supervisely.app.widgets import SelectUser
+            import supervisely as sly
+            from supervisely.app.widgets import SelectUser
 
-        # Initialize with team_id and filter by roles
-        select_user = SelectUser(
-            team_id=123,
-            roles=['admin', 'developer'],
-            multiple=True
-        )
+            # Initialize with team_id and filter by roles
+            select_user = SelectUser(
+                team_id=123,
+                roles=['admin', 'developer'],
+                multiple=True
+            )
 
-        # Or initialize empty and set users later
-        select_user = SelectUser(roles=['annotator', 'reviewer'])
-        select_user.set_users(user_list)
+            # Or initialize empty and set users later
+            select_user = SelectUser(roles=['annotator', 'reviewer'])
+            select_user.set_users(user_list)
 
-        # Handle selection changes
-        @select_user.value_changed
-        def on_user_selected(users):
-            if isinstance(users, list):
-                print(f"Selected users: {[u.login for u in users]}")
-            else:
-                print(f"Selected user: {users.login}")
+            # Handle selection changes
+            @select_user.value_changed
+            def on_user_selected(users):
+                if isinstance(users, list):
+                    print(f"Selected users: {[u.login for u in users]}")
+                else:
+                    print(f"Selected user: {users.login}")
     """
 
     class Routes:
@@ -255,7 +255,7 @@ class SelectUser(Widget):
         The decorated function receives the selected UserInfo (or list of UserInfo if multiple=True).
 
         :param func: Function to be called when selection changes
-        :type func: Callable[[Union[UserInfo, List[UserInfo]]], None]
+        :type func: Callable[[Union[:class:`~supervisely.api.user_api.UserInfo`, List[:class:`~supervisely.api.user_api.UserInfo`]]], None]
         """
         route_path = self.get_route_path(SelectUser.Routes.VALUE_CHANGED)
         server = self._sly_app.get_server()

@@ -43,7 +43,7 @@ class SelectCudaDevice(Widget):
     def refresh(self) -> None:
         """Refreshes the list of available CUDA devices and updates the selector's items.
 
-        :return: None
+        :returns: None
         """
         cuda_devices = self._get_gpu_infos(self._sort_by_free_ram)
         if cuda_devices is None:
@@ -75,7 +75,7 @@ class SelectCudaDevice(Widget):
 
         :param sort_by_free_ram: Whether to sort the CUDA devices dictionary by device's available free RAM.
         :type sort_by_free_ram: bool, optional
-        :return: The dictionary with full device name as a key, and a dictionary with device's info as a value.
+        :returns: The dictionary with full device name as a key, and a dictionary with device's info as a value.
         :rtype: Optional[Dict[str, Dict[str, Union[str, int]]]]
         """
         try:
@@ -123,7 +123,7 @@ class SelectCudaDevice(Widget):
     def get_json_data(self) -> Dict:
         """Get the JSON data of the widget.
 
-        :return: The JSON data.
+        :returns: The JSON data.
         :rtype: Dict
         """
         return {}
@@ -131,7 +131,7 @@ class SelectCudaDevice(Widget):
     def get_json_state(self) -> Dict:
         """Get the JSON state of the widget.
 
-        :return: The JSON data.
+        :returns: The JSON data.
         :rtype: Dict
         """
         return {}
@@ -140,7 +140,7 @@ class SelectCudaDevice(Widget):
         """
         This decorator function allows to handle the value change event of the widget.
 
-        :return: Callable
+        :returns: Callable
         """
 
         @self._select.value_changed
@@ -153,7 +153,7 @@ class SelectCudaDevice(Widget):
         """Gets the currently selected device.
         This method returns the value of the currently selected device.
 
-        :return: The value of the selected device (e.g. 'cuda:0', 'cpu', etc.), or None if no device is selected.
+        :returns: The value of the selected device (e.g. 'cuda:0', 'cpu', etc.), or None if no device is selected.
         :rtype: Optional[str]
         """
         return self._select.get_value()
@@ -165,7 +165,7 @@ class SelectCudaDevice(Widget):
 
         :param value: The value of the device to be selected (e.g. 'cuda:0', 'cpu', etc.).
         :type value: str
-        :return: None
+        :returns: None
         """
         return self._select.set_value(value)
 
@@ -174,7 +174,7 @@ class SelectCudaDevice(Widget):
 
         This method disables the widget and grays out the selector.
 
-        :return: None
+        :returns: None
         """
         self._disabled = True
         self._select.disable()
@@ -185,7 +185,7 @@ class SelectCudaDevice(Widget):
 
         This method enables the widget and makes the selector clickable.
 
-        :return: None
+        :returns: None
         """
         self._disabled = False
         self._select.enable()

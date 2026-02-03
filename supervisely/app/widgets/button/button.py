@@ -43,11 +43,13 @@ class Button(Widget):
     :param icon_color: Color of the icon.
     :type icon_color: Optional[str]
 
-    :Usage example:
-    .. code-block:: python
-        from supervisely.app.widgets import Button
+    :Usage Example:
 
-        button = Button(text="Button", button_type="primary", button_size="large")
+        .. code-block:: python
+
+            from supervisely.app.widgets import Button
+
+            button = Button(text="Button", button_type="primary", button_size="large")
     """
 
     class Routes:
@@ -132,7 +134,7 @@ class Button(Widget):
     def text(self) -> str:
         """Returns the text to be displayed on the button.
 
-        :return: Text to be displayed on the button.
+        :returns: Text to be displayed on the button.
         :rtype: str
         """
         return self._text
@@ -152,7 +154,7 @@ class Button(Widget):
     def icon(self) -> str:
         """Returns the icon to be displayed on the button.
 
-        :return: Icon to be displayed on the button.
+        :returns: Icon to be displayed on the button.
         :rtype: str
         """
         return self._icon
@@ -175,7 +177,7 @@ class Button(Widget):
     def button_type(self) -> str:
         """Returns the type of the button.
 
-        :return: Type of the button.
+        :returns: Type of the button.
         :rtype: str
         """
         return self._button_type
@@ -197,7 +199,7 @@ class Button(Widget):
     def plain(self) -> bool:
         """Returns True if the button is plain, False otherwise.
 
-        :return: True if the button is plain, False otherwise.
+        :returns: True if the button is plain, False otherwise.
         :rtype: bool
         """
         return self._plain
@@ -217,7 +219,7 @@ class Button(Widget):
     def link(self) -> str:
         """Returns the link to be opened on button click.
 
-        :return: Link to be opened on button click.
+        :returns: Link to be opened on button click.
         :rtype: str
         """
         return self._link
@@ -237,7 +239,7 @@ class Button(Widget):
     def loading(self) -> bool:
         """Returns True if the button shows loading animation, False otherwise.
 
-        :return: True if the button shows loading animation, False otherwise.
+        :returns: True if the button shows loading animation, False otherwise.
         :rtype: bool
         """
         return self._loading
@@ -257,7 +259,7 @@ class Button(Widget):
     def show_loading(self) -> bool:
         """Returns True if the button shows loading animation, False otherwise.
 
-        :return: True if the button shows loading animation, False otherwise.
+        :returns: True if the button shows loading animation, False otherwise.
         :rtype: bool
         """
         return self._show_loading
@@ -266,20 +268,20 @@ class Button(Widget):
     def disabled(self) -> bool:
         """Returns True if the button is disabled, False otherwise.
 
-        :return: True if the button is disabled, False otherwise.
+        :returns: True if the button is disabled, False otherwise.
         :rtype: bool
         """
         return self._disabled
-    
+
     @property
     def style(self) -> Optional[str]:
         """Returns the CSS style applied to the button.
 
-        :return: CSS style applied to the button.
+        :returns: CSS style applied to the button.
         :rtype: Optional[str]
         """
         return self._style
-    
+
     @style.setter
     def style(self, value: Optional[str]) -> None:
         """Sets the CSS style to be applied to the button.
@@ -307,7 +309,7 @@ class Button(Widget):
 
         :param func: Function to be called on button click.
         :type func: Callable
-        :return: Decorated function.
+        :returns: Decorated function.
         :rtype: Callable
         """
         route_path = self.get_route_path(Button.Routes.CLICK)

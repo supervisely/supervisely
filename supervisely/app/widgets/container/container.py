@@ -10,7 +10,7 @@ class Container(Widget):
         (including screenshots and examples).
 
     :param widgets: list of widgets to be placed in the container
-    :type widgets: Optional[List[Widget]]
+    :type widgets: Optional[List[:class:`~supervisely.app.widgets.widget.Widget`]]
     :param direction: direction of the container, one of: vertical, horizontal
     :type direction: Optional[Literal["vertical", "horizontal"]]
     :param gap: gap between widgets in pixels
@@ -24,22 +24,23 @@ class Container(Widget):
     :param widget_id: An identifier of the widget.
     :type widget_id: str, optional
 
-    :Usage example:
-    .. code-block:: python
+    :Usage Example:
 
-        from supervisely.app.widgets import Container, Text
+        .. code-block:: python
 
-        container = Container(
-            widgets=[
-                Text("First widget"),
-                Text("Second widget"),
-            ],
-            direction="horizontal",
-            gap=10,
-            fractions=[1, 2],
-            overflow="scroll",
-            style="background-color: #f0f0f0; padding: 10px",
-        )
+            from supervisely.app.widgets import Container, Text
+
+            container = Container(
+                widgets=[
+                    Text("First widget"),
+                    Text("Second widget"),
+                ],
+                direction="horizontal",
+                gap=10,
+                fractions=[1, 2],
+                overflow="scroll",
+                style="background-color: #f0f0f0; padding: 10px",
+            )
     """
 
     def __init__(

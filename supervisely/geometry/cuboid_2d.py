@@ -43,33 +43,33 @@ CUBOID2D_EDGES_MAPPING = [
 
 class Cuboid2d(GraphNodes):
     """
-    Cuboid2d geometry for a single :class:`Label<supervisely.annotation.label.Label>`. :class:`Cuboid2d<Cuboid2d>` class object is immutable.
+    Cuboid2d geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.cuboid_2d.Cuboid2d` class object is immutable.
 
     :param nodes: Dict or List containing nodes of graph
     :type nodes: dict
     :param sly_id: Cuboid2d ID in Supervisely server.
     :type sly_id: int, optional
-    :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which Cuboid2d belongs.
+    :param class_id: ID of ObjClass to which Cuboid2d belongs.
     :type class_id: int, optional
-    :param labeler_login: Login of the user who created Cuboid2d.
+    :param labeler_login: Login of the user who created :class:`~supervisely.geometry.cuboid_2d.Cuboid2d`.
     :type labeler_login: str, optional
     :param updated_at: Date and Time when Cuboid2d was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
     :type updated_at: str, optional
     :param created_at: Date and Time when Cuboid2d was created. Date Format is the same as in "updated_at" parameter.
     :type created_at: str, optional
 
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
-        from supervisely.geometry.graph import Node, Cuboid2d
+            import supervisely as sly
+            from supervisely.geometry.graph import Node, Cuboid2d
 
-        vertex_1 = Node(sly.PointLocation(5, 5))
-        vertex_2 = Node(sly.PointLocation(100, 100))
-        vertex_3 = Node(sly.PointLocation(200, 250))
-        nodes = {0: vertex_1, 1: vertex_2, 2: vertex_3}
-        figure = Cuboid2d(nodes)
+            vertex_1 = Node(sly.PointLocation(5, 5))
+            vertex_2 = Node(sly.PointLocation(100, 100))
+            vertex_3 = Node(sly.PointLocation(200, 250))
+            nodes = {0: vertex_1, 1: vertex_2, 2: vertex_3}
+            figure = Cuboid2d(nodes)
     """
 
     items_json_field = VERTICES
@@ -112,7 +112,7 @@ class Cuboid2d(GraphNodes):
         """
         Copy of Cuboid2d vertices.
 
-        :return: Cuboid2d vertices
+        :returns: Cuboid2d vertices
         :rtype: Optional[Dict]
         """
         return self.nodes
@@ -122,7 +122,7 @@ class Cuboid2d(GraphNodes):
         """
         Copy of the position of the Cuboid2d.
 
-        :return: Position of the Cuboid2d
+        :returns: Position of the :class:`~supervisely.geometry.cuboid_2d.Cuboid2d`
         :rtype: Optional[Dict]
         """
         if isinstance(self._position, dict):
@@ -133,7 +133,7 @@ class Cuboid2d(GraphNodes):
         """
         Copy of the rotation of the Cuboid2d.
 
-        :return: Rotation of the Cuboid2d
+        :returns: Rotation of the :class:`~supervisely.geometry.cuboid_2d.Cuboid2d`
         :rtype: Optional[Dict]
         """
         if isinstance(self._rotation, dict):
@@ -144,8 +144,8 @@ class Cuboid2d(GraphNodes):
         """
         Copy of the dimensions of the Cuboid2d.
 
-        :return: Dimensions of the Cuboid2d
-        :rtype: :class:`dict`
+        :returns: Dimensions of the :class:`~supervisely.geometry.cuboid_2d.Cuboid2d`
+        :rtype: dict
         """
         if isinstance(self._dimensions, dict):
             return self._dimensions.copy()
@@ -155,7 +155,7 @@ class Cuboid2d(GraphNodes):
         """
         Copy of the face of the Cuboid2d.
 
-        :return: Face of the Cuboid2d
+        :returns: Face of the :class:`~supervisely.geometry.cuboid_2d.Cuboid2d`
         :rtype: Optional[List[str]]
         """
         if isinstance(self._face, list):
@@ -168,44 +168,39 @@ class Cuboid2d(GraphNodes):
 
         :param data: Cuboid2d in json format as a dict.
         :type data: Dict[str, Dict]
-        :return: Cuboid2d object
-        :rtype: :class:`Cuboid2d<Cuboid2d>`
-        :Usage example:
+        :returns: Cuboid2d from json.
+        :rtype: :class:`~supervisely.geometry.cuboid_2d.Cuboid2d`
 
-         .. code-block:: python
+        :Usage Example:
 
-            figure_json = {
-                "vertices": {
-                    "0": {
-                        "loc": [5, 5]
-                    },
-                    "1": {
-                        "loc": [100, 100]
-                    },
-                    "2": {
-                        "loc": [250, 200]
-                    },
-                    "position": {
-                        "x": 0.0657651107620552,
-                        "y": -0.05634319555373257,
-                        "z": 0.7267282757573887
-                    },
-                    "rotation": { "x": 0, "y": 0, "z": 0 },
-                    "dimensions": {
-                        "x": 0.1425456564648202,
-                        "y": 0.1,
-                        "z": 0.36738880874660756
-                    },
-                    "face": [
-                        "face2-topleft",
-                        "face2-topright",
-                        "face2-bottomright",
-                        "face2-bottomleft"
-                    ]
+            .. code-block:: python
+
+                figure_json = {
+                    "vertices": {
+                        "0": {"loc": [5, 5]},
+                        "1": {"loc": [100, 100]},
+                        "2": {"loc": [250, 200]},
+                        "position": {
+                            "x": 0.0657651107620552,
+                            "y": -0.05634319555373257,
+                            "z": 0.7267282757573887
+                        },
+                        "rotation": { "x": 0, "y": 0, "z": 0 },
+                        "dimensions": {
+                            "x": 0.1425456564648202,
+                            "y": 0.1,
+                            "z": 0.36738880874660756
+                        },
+                        "face": [
+                            "face2-topleft",
+                            "face2-topright",
+                            "face2-bottomright",
+                            "face2-bottomleft"
+                        ]
+                    }
                 }
-            }
-            from supervisely.geometry.graph import Cuboid2d
-            figure = Cuboid2d.from_json(figure_json)
+                from supervisely.geometry.graph import Cuboid2d
+                figure = Cuboid2d.from_json(figure_json)
         """
         nodes = {
             node_id: Node.from_json(node_json)
@@ -237,53 +232,54 @@ class Cuboid2d(GraphNodes):
         """
         Convert the Cuboid2d to list. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
-        :return: Json format as a dict
+        :returns: Json format as a dict
         :rtype: Dict[str, Dict]
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            from supervisely.geometry.graph import Node, Cuboid2d
+            .. code-block:: python
 
-            vertex_1 = Node(sly.PointLocation(5, 5))
-            vertex_2 = Node(sly.PointLocation(100, 100))
-            vertex_3 = Node(sly.PointLocation(200, 250))
-            nodes = {0: vertex_1, 1: vertex_2, 2: vertex_3}
-            figure = Cuboid2d(nodes)
+                import supervisely as sly
+                from supervisely.geometry.graph import Node, Cuboid2d
 
-            figure_json = figure.to_json()
-            print(figure_json)
-            # Output: {
-            #    "nodes": {
-            #        "0": {
-            #            "loc": [5, 5]
-            #        },
-            #        "1": {
-            #            "loc": [100, 100]
-            #        },
-            #        "2": {
-            #            "loc": [250, 200]
-            #        }
-            #    },
-            #    "position": {
-            #         "x": 0.0657651107620552,
-            #         "y": -0.05634319555373257,
-            #         "z": 0.7267282757573887
-            #     },
-            #     "rotation": { "x": 0, "y": 0, "z": 0 },
-            #     "dimensions": {
-            #         "x": 0.1425456564648202,
-            #         "y": 0.1,
-            #         "z": 0.36738880874660756
-            #     },
-            #     "face": [
-            #         "face2-topleft",
-            #         "face2-topright",
-            #         "face2-bottomright",
-            #         "face2-bottomleft"
-            #     ],
-            # }
+                vertex_1 = Node(sly.PointLocation(5, 5))
+                vertex_2 = Node(sly.PointLocation(100, 100))
+                vertex_3 = Node(sly.PointLocation(200, 250))
+                nodes = {0: vertex_1, 1: vertex_2, 2: vertex_3}
+                figure = Cuboid2d(nodes)
+
+                figure_json = figure.to_json()
+                print(figure_json)
+                # Output: {
+                #    "nodes": {
+                #        "0": {
+                #            "loc": [5, 5]
+                #        },
+                #        "1": {
+                #            "loc": [100, 100]
+                #        },
+                #        "2": {
+                #            "loc": [250, 200]
+                #        }
+                #    },
+                #    "position": {
+                #         "x": 0.0657651107620552,
+                #         "y": -0.05634319555373257,
+                #         "z": 0.7267282757573887
+                #     },
+                #     "rotation": { "x": 0, "y": 0, "z": 0 },
+                #     "dimensions": {
+                #         "x": 0.1425456564648202,
+                #         "y": 0.1,
+                #         "z": 0.36738880874660756
+                #     },
+                #     "face": [
+                #         "face2-topleft",
+                #         "face2-topright",
+                #         "face2-bottomright",
+                #         "face2-bottomleft"
+                #     ],
+                # }
         """
         res = {
             self.items_json_field: {
@@ -321,7 +317,7 @@ class Cuboid2d(GraphNodes):
         Transform colors of edges and nodes in graph template
         :param config: dictionary(graph template)
         :param transform_fn: function to convert
-        :return: dictionary(graph template)
+        :returns: dictionary(graph template)
         """
         if config is None:
             return None
@@ -336,7 +332,7 @@ class Cuboid2d(GraphNodes):
         """
         Convert graph template from json format
         :param config: dictionary(graph template) in json format
-        :return: dictionary(graph template)
+        :returns: dictionary(graph template)
         """
 
         try:
@@ -353,7 +349,7 @@ class Cuboid2d(GraphNodes):
         """
         Convert graph template in json format
         :param config: dictionary(graph template)
-        :return: dictionary(graph template) in json format
+        :returns: dictionary(graph template) in json format
         """
         return Cuboid2d._transform_config_colors(config, rgb2hex)
 
@@ -370,7 +366,7 @@ class Cuboid2d(GraphNodes):
 
 class Cuboid2dTemplate(Cuboid2d, Geometry):
     """
-    Geometry Config Template for a single :class:`Cuboid2d<Cuboid2d>`. :class:`Cuboid2dTemplate<Cuboid2dTemplate>` class object is immutable.
+    Geometry Config Template for a single :class:`~supervisely.geometry.cuboid_2d.Cuboid2d`. :class:`~supervisely.geometry.cuboid_2d.Cuboid2dTemplate` class object is immutable.
     """
 
     def __init__(self, color: List[int]):
@@ -380,7 +376,7 @@ class Cuboid2dTemplate(Cuboid2d, Geometry):
 
     def _create_template(self, color: List[int]) -> Cuboid2dTemplate:
         """
-        Returns a template for a single :class:`Cuboid2d<Cuboid2d>`.
+        Returns a template for a single :class:`~supervisely.geometry.cuboid_2d.Cuboid2d`.
         """
         config = {VERTICES: {}, EDGES: []}
 

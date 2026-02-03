@@ -25,19 +25,20 @@ class CompareAnnotations(GridGallery):
     :param widget_id: An unique identifier of the widget.
     :type widget_id: str, optional
 
-    :Usage example:
-    .. code-block:: python
+    :Usage Example:
 
-        from supervisely.app.widgets import CompareAnnotations
+        .. code-block:: python
 
-        compare_annotations = CompareAnnotations(columns_number=2)
+            from supervisely.app.widgets import CompareAnnotations
 
-        # Setting the URL of the image to show
-        compare_annotations.set_image_url("https://i.imgur.com/2Yj2xYh.jpg")
+            compare_annotations = CompareAnnotations(columns_number=2)
 
-        # Adding annotations to the widget
-        compare_annotations.append(ann1, "Annotation 1")
-        compare_annotations.append(ann2, "Annotation 2")
+            # Setting the URL of the image to show
+            compare_annotations.set_image_url("https://i.imgur.com/2Yj2xYh.jpg")
+
+            # Adding annotations to the widget
+            compare_annotations.append(ann1, "Annotation 1")
+            compare_annotations.append(ann2, "Annotation 2")
 
     """
 
@@ -74,7 +75,7 @@ class CompareAnnotations(GridGallery):
     def image_url(self) -> str:
         """Returns url of the image to show.
 
-        :return: url of the image to show
+        :returns: url of the image to show
         :rtype: str
         """
         return self._image_url
@@ -96,7 +97,7 @@ class CompareAnnotations(GridGallery):
         """Adds annotation to the widget.
 
         :param annotation: annotation to add
-        :type annotation: Annotation, optional
+        :type annotation: :class:`~supervisely.annotation.annotation.Annotation`, optional
         :param title: title for the annotation
         :type title: str, optional
         :param column_index: index of the column to add annotation to
@@ -107,7 +108,7 @@ class CompareAnnotations(GridGallery):
     def is_empty(self) -> bool:
         """Returns True if there is no image to show, False otherwise.
 
-        :return: True if there is no image to show, False otherwise
+        :returns: True if there is no image to show, False otherwise
         :rtype: bool
         """
         return self._image_url is None or self._image_url == ""

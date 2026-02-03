@@ -33,13 +33,13 @@ from supervisely.geometry.vector_geometry import VectorGeometry
 
 class Polyline(VectorGeometry):
     """
-    Polyline geometry for a single :class:`Label<supervisely.annotation.label.Label>`. :class:`Polyline<Polyline>` class object is immutable.
+    Polyline geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.polyline.Polyline` object is immutable.
 
     :param exterior: List of exterior coordinates, the Polyline is defined with these points.
-    :type exterior: List[PointLocation], List[List[int, int]], List[Tuple[int, int]
+    :type exterior: List[:class:`~supervisely.geometry.point_location.PointLocation`], List[List[int, int]], List[Tuple[int, int]
     :param sly_id: Polyline ID in Supervisely server.
     :type sly_id: int, optional
-    :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which Polyline belongs.
+    :param class_id: ID of ObjClass to which Polyline belongs.
     :type class_id: int, optional
     :param labeler_login: Login of the user who created Polyline.
     :type labeler_login: str, optional
@@ -47,18 +47,18 @@ class Polyline(VectorGeometry):
     :type updated_at: str, optional
     :param created_at: Date and Time when Polyline was created. Date Format is the same as in "updated_at" parameter.
     :type created_at: str, optional
-    :raises: :class:`ValueError`, field exterior must contain at least two points to create Polyline object
+    :raises ValueError: field exterior must contain at least two points to create Polyline.
 
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
+            import supervisely as sly
 
-        exterior = [sly.PointLocation(730, 2104), sly.PointLocation(2479, 402), sly.PointLocation(1500, 780)]
-        # or exterior = [[730, 2104], [2479, 402], [1500, 780]]
-        # or exterior = [(730, 2104), (2479, 402), (1500, 780)]
-        figure = sly.Polyline(exterior)
+            exterior = [sly.PointLocation(730, 2104), sly.PointLocation(2479, 402), sly.PointLocation(1500, 780)]
+            # or exterior = [[730, 2104], [2479, 402], [1500, 780]]
+            # or exterior = [(730, 2104), (2479, 402), (1500, 780)]
+            figure = sly.Polyline(exterior)
     """
 
     @staticmethod
@@ -97,25 +97,26 @@ class Polyline(VectorGeometry):
 
         :param data: Polyline in json format as a dict.
         :type data: dict
-        :return: Polyline object
-        :rtype: :class:`Polyline<Polyline>`
-        :Usage example:
+        :returns: Polyline from json.
+        :rtype: :class:`~supervisely.geometry.polyline.Polyline`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            figure_json = {
-                "points": {
-                    "exterior": [
-                        [2104, 730],
-                        [402, 2479],
-                        [780, 1500]
-                    ],
-                    "interior": []
+                import supervisely as sly
+
+                figure_json = {
+                    "points": {
+                        "exterior": [
+                            [2104, 730],
+                            [402, 2479],
+                            [780, 1500]
+                        ],
+                        "interior": []
+                    }
                 }
-            }
-            figure = sly.Polyline.from_json(figure_json)
+                figure = sly.Polyline.from_json(figure_json)
         """
         validation.validate_geometry_points_fields(data)
         labeler_login = data.get(LABELER_LOGIN, None)
@@ -136,18 +137,18 @@ class Polyline(VectorGeometry):
         """
         Crops current Polyline.
 
-        :param rect: Rectangle object for crop.
-        :type rect: Rectangle
-        :return: List of Polyline objects
-        :rtype: :class:`List[Polyline]<Polyline>`
+        :param rect: Rectangle to crop Polyline from.
+        :type rect: :class:`~supervisely.geometry.rectangle.Rectangle`
+        :returns: List of Polygons from Rectangle.
+        :rtype: List[:class:`~supervisely.geometry.polyline.Polyline`]
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            crop_figures = figure.crop(sly.Rectangle(0, 0, 100, 200))
+                crop_figures = figure.crop(sly.Rectangle(0, 0, 100, 200))
         """
         try:
             clipping_window = [
@@ -194,15 +195,15 @@ class Polyline(VectorGeometry):
         """
         Polyline area, always 0.0.
 
-        :return: Area of current Polyline
-        :rtype: :class:`float`
+        :returns: Area of current Polyline, always 0.0
+        :rtype: float
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            print(figure.area)
-            # Output: 0.0
+                print(figure.area)
+                # Output: 0.0
         """
         return 0.0
 
@@ -212,15 +213,15 @@ class Polyline(VectorGeometry):
 
         :param epsilon: Specifying the approximation accuracy.
         :type epsilon: float
-        :return: Polyline object
-        :rtype: :class:`Polyline<Polyline>`
+        :returns: Approximated Polyline.
+        :rtype: :class:`~supervisely.geometry.polyline.Polyline`
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            # Remember that Polyline class object is immutable, and we need to assign new instance of Polyline to a new variable
-            approx_figure = figure.approx_dp(0.75)
+                # Remember that Polyline class object is immutable, and we need to assign new instance of Polyline to a new variable
+                approx_figure = figure.approx_dp(0.75)
         """
         exterior_np = self._approx_ring_dp(self.exterior_np, epsilon, closed=True).tolist()
         exterior = row_col_list_to_points(exterior_np, do_round=True)

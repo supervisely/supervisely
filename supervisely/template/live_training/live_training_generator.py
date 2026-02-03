@@ -58,7 +58,7 @@ class LiveTrainingGenerator(BaseGenerator):
             "object detection": "supervisely-ecosystem/live-training---object-detection",
         }
         self.slug = self._slug_map[task_type] 
-        
+
         # Validate required fields
         self._validate_session_info()
 
@@ -83,7 +83,7 @@ class LiveTrainingGenerator(BaseGenerator):
             "widgets": self._get_widgets_context(), 
             "resources": self._get_resources_context(),
         }
-    
+
     def _get_env_context(self) -> dict:
         """Environment info"""
         return {
@@ -95,11 +95,11 @@ class LiveTrainingGenerator(BaseGenerator):
         project_id = self.session_info["project_id"]
         artifacts_dir = self.session_info.get("artifacts_dir", "")
         task_id = self.session_info.get("task_id", session_id)
-        
+
         project_info = self.api.project.get_info_by_id(project_id)
         project_url = f"{self.api.server_address}/projects/{project_id}/datasets"
         artifacts_url = f"{self.api.server_address}/files/?path={artifacts_dir}" if artifacts_dir else None
-        
+
         return {
             "id": session_id,
             "task_id": task_id,
@@ -116,54 +116,54 @@ class LiveTrainingGenerator(BaseGenerator):
             },
             "status": self.session_info.get("status", "running"),
         }
-    
+
     @staticmethod
     def parse_hyperparameters(config_path: str) -> dict:
         """
         Parse hyperparameters from MMEngine config file.
-        
+
         :param config_path: Path to config.py
-        :return: Dict with extracted hyperparameters
+        :returns: Dict with extracted hyperparameters
         """
         # TODO: only basic parsing for segmentation
         hyperparams = {}
-        
+
         if not os.path.exists(config_path):
             return hyperparams
-        
+
         with open(config_path, 'r') as f:
             content = f.read()
-        
+
         # Extract crop_size
         match = re.search(r'crop_size\s*=\s*\((\d+),\s*(\d+)\)', content)
         if match:
             hyperparams['crop_size'] = f"({match.group(1)}, {match.group(2)})"
-        
+
         # Extract learning rate
         match = re.search(r'lr=([0-9.e-]+)', content)
         if match:
             hyperparams['learning_rate'] = float(match.group(1))
-        
+
         # Extract batch_size
         match = re.search(r'batch_size=(\d+)', content)
         if match:
             hyperparams['batch_size'] = int(match.group(1))
-        
+
         # Extract max_epochs
         match = re.search(r'max_epochs\s*=\s*(\d+)', content)
         if match:
             hyperparams['max_epochs'] = int(match.group(1))
-        
+
         # Extract weight_decay
         match = re.search(r'weight_decay=([0-9.e-]+)', content)
         if match:
             hyperparams['weight_decay'] = float(match.group(1))
-        
+
         # Extract optimizer
         match = re.search(r"optimizer=dict\(type='(\w+)'", content)
         if match:
             hyperparams['optimizer'] = match.group(1)
-        
+
         return hyperparams
 
     def _get_model_context(self) -> dict:
@@ -187,7 +187,7 @@ class LiveTrainingGenerator(BaseGenerator):
         logs_url = None
         if logs_path:
             logs_url = f"{self.api.server_address}/files/?path={logs_path}"
-        
+
         checkpoints = []
         artifacts_dir = self.session_info.get("artifacts_dir", "")
         for ckpt in self.session_info.get("checkpoints", []):
@@ -198,7 +198,7 @@ class LiveTrainingGenerator(BaseGenerator):
                 "url": f"{self.api.server_address}/files/?path={artifacts_dir}/checkpoints/{ckpt['name']}",
             }
             checkpoints.append(checkpoint)
-        
+
         # Get total iterations from loss_history or checkpoints
         loss_history = self.session_info.get("loss_history", [])
         # Handle both old (list) and new (dict) formats
@@ -212,8 +212,7 @@ class LiveTrainingGenerator(BaseGenerator):
             ) if loss_history else 0
         else:
             total_iterations = max([c["iteration"] for c in self.session_info.get("checkpoints", [])]) if self.session_info.get("checkpoints") else 0
-            
-        
+
         return {
             "total_iterations": total_iterations,
             "device": self.session_info.get("device", "N/A"),
@@ -224,7 +223,7 @@ class LiveTrainingGenerator(BaseGenerator):
                 "url": logs_url,
             },
         }
-     
+
     def _get_dataset_context(self) -> dict:
         """Dataset info"""
         return {
@@ -310,7 +309,7 @@ class LiveTrainingGenerator(BaseGenerator):
         checkpoints_table = self._generate_checkpoints_table()
         training_plot = self._generate_training_plot()
         classes = self._generate_classes_table()
-        
+
         return {
             "tables": {
                 "checkpoints": checkpoints_table,
@@ -324,25 +323,25 @@ class LiveTrainingGenerator(BaseGenerator):
         # Get training context to access checkpoints with URLs
         training_ctx = self._get_training_context()
         checkpoints = training_ctx.get("checkpoints", [])
-        
+
         if not checkpoints:
             return None
-        
+
         html = ['<table class="table">']
         html.append("<thead><tr><th>Checkpoint Name</th><th>Iteration</th><th>Loss</th><th>Actions</th></tr></thead>")
         html.append("<tbody>")
-        
+
         for checkpoint in checkpoints:
             name = checkpoint.get("name", "N/A")
             iteration = checkpoint.get("iteration", "N/A")
             loss = checkpoint.get("loss")
             url = checkpoint.get("url", "")
             loss_str = f"{loss:.6f}" if loss is not None else "N/A"
-            
+
             download_link = f'<a href="{url}" target="_blank" class="download-link">Download</a>' if url else ""
-            
+
             html.append(f"<tr><td>{name}</td><td>{iteration}</td><td>{loss_str}</td><td>{download_link}</td></tr>")
-        
+
         html.append("</tbody>")
         html.append("</table>")
         return "\n".join(html)
@@ -350,36 +349,36 @@ class LiveTrainingGenerator(BaseGenerator):
     def _generate_training_plot(self) -> str:
         """Generate training plots grid (like Experiments)"""
         loss_history = self.session_info.get("loss_history", {})
-        
+
         if not loss_history or not isinstance(loss_history, dict):
             return "<p>No training data available yet.</p>"
-        
+
         # Get all metrics
         metrics = list(loss_history.keys())
         n_metrics = len(metrics)
-        
+
         if n_metrics == 0:
             return "<p>No training data available yet.</p>"
-        
+
         # Calculate grid size (like in Experiments)
         side = min(4, max(2, math.ceil(math.sqrt(n_metrics))))
         cols = side
         rows = math.ceil(n_metrics / cols)
-        
+
         # Create subplots
         fig = make_subplots(rows=rows, cols=cols, subplot_titles=metrics)
-        
+
         for idx, metric in enumerate(metrics, start=1):
             data = loss_history[metric]
             if not data:
                 continue
-                
+
             steps = [item["step"] for item in data]
             values = [item["value"] for item in data]
-            
+
             row = (idx - 1) // cols + 1
             col = (idx - 1) % cols + 1
-            
+
             fig.add_trace(
                 go.Scatter(
                     x=steps,
@@ -391,31 +390,31 @@ class LiveTrainingGenerator(BaseGenerator):
                 row=row,
                 col=col,
             )
-            
+
             # Special formatting for training rate
             if metric.startswith("lr"):
                 fig.update_yaxes(tickformat=".0e", row=row, col=col)
-        
+
         fig.update_layout(
             height=300 * rows,
             width=400 * cols,
             showlegend=False,
         )
-        
+
         # Save as PNG
         data_dir = os.path.join(self.output_dir, "data")
         os.makedirs(data_dir, exist_ok=True)
         img_path = os.path.join(data_dir, "training_plots_grid.png")
-        
+
         try:
             fig.write_image(img_path, engine="kaleido")
         except Exception as e:
             logger.warning(f"Failed to save training plot: {e}")
             return "<p>Failed to generate training plot</p>"
-        
+
         # Return Vue image component
         return f'<sly-iw-image src="/data/training_plots_grid.png" :template-base-path="templateBasePath" :options="{{ style: {{ width: \'70%\', height: \'auto\' }} }}" />'
-  
+
     def _get_online_training_app_info(self):
         """Get online training app info from ecosystem"""
         try:
@@ -441,7 +440,7 @@ class LiveTrainingGenerator(BaseGenerator):
     def _get_resources_context(self):
         """Return apps module IDs for buttons"""
         online_training_app = self._get_online_training_app_info()
-        
+
         return {
             "apps": {
                 "online_training": online_training_app,
@@ -452,7 +451,7 @@ class LiveTrainingGenerator(BaseGenerator):
         """Get report URL after upload"""
         if self._report_file_info is None:
             raise RuntimeError("Report not uploaded yet. Call upload_to_artifacts() first.")
-        
+
         # self._report_file_info is file_id (int), not FileInfo object
         file_id = self._report_file_info if isinstance(self._report_file_info, int) else self._report_file_info.id
         return self._report_url(self.api.server_address, file_id)

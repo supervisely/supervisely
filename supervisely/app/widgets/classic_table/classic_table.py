@@ -88,35 +88,36 @@ class ClassicTable(Widget):
     :param widget_id: The ID of the widget.
     :type widget_id: Optional[str]
 
-    :Usage example:
-    :Usage example:
-    .. code-block:: python
+    :Usage Example:
 
-        from supervisely.app.widgets import ClassicTable
+        .. code-block:: python
 
-        # Usage example 1: Pandas DataFrame
-        table_data = pd.DataFrame(
-            data=[
-                ["row_1_column_1", "row_1_column_2", "row_1_column_3"],
-                ["row_2_column_1", "row_2_column_2", "row_2_column_3"],
-                ["row_3_column_1", "row_3_column_2", "row_3_column_3"],
-            ], columns=["col_name_1", "col_name_2", "col_name_3"]
-        )
+            from supervisely.app.widgets import ClassicTable
 
-        classic_table = ClassicTable(data=table_data)
+            # Usage example 1: Pandas DataFrame
+            table_data = pd.DataFrame(
+                data=[
+                    ["row_1_column_1", "row_1_column_2", "row_1_column_3"],
+                    ["row_2_column_1", "row_2_column_2", "row_2_column_3"],
+                    ["row_3_column_1", "row_3_column_2", "row_3_column_3"],
+                ], 
+                columns=["col_name_1", "col_name_2", "col_name_3"]
+            )
 
-        # Usage example 2: Python dict
-        table_data =  {
-            "columns_names": ["col_name_1", "col_name_2"],
-            "values_by_rows": [
-        ["row_1_column_1", "row_1_column_2"],
-        ["row_2_column_1", "row_2_column_2"],
-            ]
-        }
+            classic_table = ClassicTable(data=table_data)
 
-        columns = ["col_name_1", "col_name_2"]
+            # Usage example 2: Python dict
+            table_data =  {
+                "columns_names": ["col_name_1", "col_name_2"],
+                "values_by_rows": [
+                    ["row_1_column_1", "row_1_column_2"],
+                    ["row_2_column_1", "row_2_column_2"],
+                ]
+            }
 
-        classic_table = ClassicTable(data=table_data, columns=columns)
+            columns = ["col_name_1", "col_name_2"]
+
+            classic_table = ClassicTable(data=table_data, columns=columns)
 
     """
 
@@ -201,7 +202,7 @@ class ClassicTable(Widget):
     def fixed_columns_num(self) -> int:
         """Returns number of fixed columns.
 
-        :return: Number of fixed columns.
+        :returns: Number of fixed columns.
         :rtype: int
         """
         return self._fix_columns
@@ -219,7 +220,7 @@ class ClassicTable(Widget):
     def to_json(self) -> Dict[str, Any]:
         """Returns table data in JSON format.
 
-        :return: Table data in JSON format.
+        :returns: Table data in JSON format.
         :rtype: Dict[str, Any]
         """
         return self._get_packed_data(self._parsed_data, dict)
@@ -227,7 +228,7 @@ class ClassicTable(Widget):
     def to_pandas(self) -> pd.DataFrame:
         """Returns table data in pandas DataFrame format.
 
-        :return: Table data in pandas DataFrame format.
+        :returns: Table data in pandas DataFrame format.
         :rtype: pd.DataFrame
         """
         return self._get_packed_data(self._parsed_data, pd.DataFrame)
@@ -271,7 +272,7 @@ class ClassicTable(Widget):
 
         :param index: Index of row to remove, defaults to -1.
         :type index: Optional[int], optional
-        :return: Removed row.
+        :returns: Removed row.
         :rtype: List[Any]
         """
         index = (
@@ -296,7 +297,7 @@ class ClassicTable(Widget):
 
         :param state: Dictionary with widget state.
         :type state: Dict[str, Dict]
-        :return: Dictionary with information about selected cell.
+        :returns: Dictionary with information about selected cell.
         :rtype: Dict[str, Any]
         """
         row_index = state[self.widget_id]["selected_row"].get("selectedRow")

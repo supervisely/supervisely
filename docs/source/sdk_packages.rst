@@ -330,7 +330,7 @@ API
 
 
 Neural Networks API
-------------
+-------------------
 **Neural Networks API**
 - API for working with videos in Supervisely.
 
@@ -359,7 +359,7 @@ Neural Networks API
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
-    ModelApi 
+    ModelAPI
 
 .. currentmodule:: supervisely.nn.model.prediction
 
@@ -371,8 +371,23 @@ Neural Networks API
     Prediction
 
 
+Training
+--------
+**Training**
+- High-level wrappers and helpers for building training applications (GUI, data prep, artifacts upload, benchmarking).
+
+.. currentmodule:: supervisely.nn.training.train_app
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    TrainApp
+
+
 Video API
-------------
+---------
 **Video API**
 - API for working with videos in Supervisely.
 
@@ -433,7 +448,7 @@ Video API
     VideoTagApi
 
 Volume API
-------------
+----------
 **Volume API**
 - API for working with volumes in Supervisely.
 

@@ -64,8 +64,8 @@ class SelectClass(Widget):
     SelectClass is a compact dropdown widget for selecting object classes with an option to create
     new classes on the fly.
 
-    :param classes: Initial list of ObjClass instances
-    :type classes: Optional[Union[List[ObjClass], ObjClassCollection]]
+    :param classes: Initial list of obj class instances
+    :type classes: Optional[Union[List[:class:`~supervisely.annotation.obj_class.ObjClass`], :class:`~supervisely.annotation.obj_class_collection.ObjClassCollection`]]
     :param filterable: Enable search/filter functionality in dropdown
     :type filterable: Optional[bool]
     :param placeholder: Placeholder text when no class is selected
@@ -79,36 +79,36 @@ class SelectClass(Widget):
     :param widget_id: Unique widget identifier
     :type widget_id: Optional[str]
 
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
-        from supervisely.app.widgets import SelectClass
+            import supervisely as sly
+            from supervisely.app.widgets import SelectClass
 
-        # Create some initial classes
-        class_car = sly.ObjClass('car', sly.Rectangle, color=[255, 0, 0])
-        class_person = sly.ObjClass('person', sly.Polygon, color=[0, 255, 0])
+            # Create some initial classes
+            class_car = sly.ObjClass('car', sly.Rectangle, color=[255, 0, 0])
+            class_person = sly.ObjClass('person', sly.Polygon, color=[0, 255, 0])
 
-        # Create SelectClass widget
-        select_class = SelectClass(
-            classes=[class_car, class_person],
-            filterable=True,
-            show_add_new_class=True
-        )
+            # Create SelectClass widget
+            select_class = SelectClass(
+                classes=[class_car, class_person],
+                filterable=True,
+                show_add_new_class=True
+            )
 
-        # Handle selection changes
-        @select_class.value_changed
-        def on_class_selected(class_name):
-            print(f"Selected class: {class_name}")
-            selected_class = select_class.get_selected_class()
-            print(f"Class object: {selected_class}")
+            # Handle selection changes
+            @select_class.value_changed
+            def on_class_selected(class_name):
+                print(f"Selected class: {class_name}")
+                selected_class = select_class.get_selected_class()
+                print(f"Class object: {selected_class}")
 
-        # Handle new class creation
-        @select_class.class_created
-        def on_class_created(new_class: sly.ObjClass):
-            print(f"New class created: {new_class.name}")
-            # Optionally update your project meta or perform other actions
+            # Handle new class creation
+            @select_class.class_created
+            def on_class_created(new_class: sly.ObjClass):
+                print(f"New class created: {new_class.name}")
+                # Optionally update your project meta or perform other actions
     """
 
     class Routes:
@@ -293,7 +293,7 @@ class SelectClass(Widget):
         The decorated function receives the selected ObjClass (or list of ObjClass if multiple=True).
 
         :param func: Function to be called when selection changes
-        :type func: Callable[[Union[ObjClass, List[ObjClass]]], None]
+        :type func: Callable[[Union[:class:`~supervisely.annotation.obj_class.ObjClass`, List[:class:`~supervisely.annotation.obj_class.ObjClass`]]], None]
         """
         route_path = self.get_route_path(SelectClass.Routes.VALUE_CHANGED)
         server = self._sly_app.get_server()
@@ -357,7 +357,7 @@ class SelectClass(Widget):
         The decorated function receives the newly created ObjClass.
 
         :param func: Function to be called when a new class is created
-        :type func: Callable[[ObjClass], None]
+        :type func: Callable[[:class:`~supervisely.annotation.obj_class.ObjClass`], None]
         """
         self._class_created_callback = func
         return func

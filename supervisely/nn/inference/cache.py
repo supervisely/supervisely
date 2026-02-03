@@ -646,7 +646,7 @@ class InferenceImageCache:
         Run cache_task in new thread.
 
         :param api: supervisely api
-        :type api: sly.Api
+        :type api: :class:`~supervisely.api.api.Api`
         :param list_of_ids_ranges_or_hashes: information abount images/frames need to be loaded;
         to download images, pass list of integer IDs (`dataset_id` requires)
         or list of hash strings (`dataset_id` could be None);

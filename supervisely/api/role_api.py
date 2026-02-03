@@ -1,5 +1,5 @@
 # coding: utf-8
-"""list all user roles that are available on private supervisely instance"""
+"""List user roles available in a Supervisely instance."""
 
 # docs
 from __future__ import annotations
@@ -19,29 +19,28 @@ class RoleInfo(NamedTuple):
 
 class RoleApi(ModuleApiBase):
     """
-    API for working with Roles. :class:`RoleApi<RoleApi>` object is immutable.
+    API for working with roles. :class:`~supervisely.api.role_api.RoleApi` object is immutable.
 
     :param api: API connection to the server
-    :type api: Api
-    :Usage example:
+    :type api: :class:`~supervisely.api.api.Api`
 
-     .. code-block:: python
+    :Usage Example:
 
-        import os
-        from dotenv import load_dotenv
+        .. code-block:: python
 
-        import supervisely as sly
+            import os
+            from dotenv import load_dotenv
 
-        # Load secrets and create API object from .env file (recommended)
-        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-        if sly.is_development():
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-        api = sly.Api.from_env()
+            import supervisely as sly
 
-        # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-        roles = api.role.get_list() # api usage example
+            api = sly.Api.from_env()
+
+            roles = api.role.get_list() # api usage example
     """
 
     class DefaultRole(IntEnum):
@@ -61,14 +60,16 @@ class RoleApi(ModuleApiBase):
         """
         NamedTuple RoleInfo information about Role.
 
-        :Example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            RoleInfo(id=71,
-                     role='manager',
-                     created_at='2019-12-10T14:31:41.878Z',
-                     updated_at='2019-12-10T14:31:41.878Z')
+                RoleInfo(
+                    id=71,
+                    role='manager',
+                    created_at='2019-12-10T14:31:41.878Z',
+                    updated_at='2019-12-10T14:31:41.878Z'
+                )
         """
         return [ApiField.ID, ApiField.ROLE, ApiField.CREATED_AT, ApiField.UPDATED_AT]
 
@@ -84,20 +85,27 @@ class RoleApi(ModuleApiBase):
         List of all roles that are available on private Supervisely instance.
 
         :param filters: List of params to sort output Roles.
-        :type filters: list
-        :return: List of all roles with information. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[RoleInfo]`
-        :Usage example:
+        :type filters: List[Dict[str, str]]
+        :returns: List of all roles with information.
+        :rtype: List[:class:`~supervisely.api.role_api.RoleInfo`]
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            roles = api.role.get_list()
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                roles = api.role.get_list()
         """
         return self.get_list_all_pages("roles.list", {ApiField.FILTER: filters or []})
 

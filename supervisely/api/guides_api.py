@@ -1,5 +1,5 @@
 # coding: utf-8
-"""create or manipulate guides that can be assigned to labeling jobs and labeling queues"""
+"""Create and manage Guides for labeling jobs and labeling queues."""
 
 # docs
 from __future__ import annotations
@@ -52,26 +52,29 @@ class GuideInfo(NamedTuple):
 
 class GuidesApi(ModuleApiBase):
     """
-    API for working with Guides. :class:`GuidesApi<GuidesApi>` object is immutable.
+    API for working with Guides. :class:`~supervisely.api.guides_api.GuidesApi` object is immutable.
 
     :param api: API connection to the server.
-    :type api: Api
-    :Usage example:
+    :type api: :class:`~supervisely.api.api.Api`
 
-     .. code-block:: python
+    :Usage Example:
 
-        import os
-        from dotenv import load_dotenv
+        .. code-block:: python
 
-        import supervisely as sly
+            import os
+            from dotenv import load_dotenv
 
-        # Load secrets and create API object from .env file (recommended)
-        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            import supervisely as sly
 
-        api = sly.Api.from_env()
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-        # Get list of guides in team
-        guides = api.guides.get_list(team_id=123)
+            api = sly.Api.from_env()
+
+            # Get list of guides in team
+            guides = api.guides.get_list(team_id=123)
     """
 
     @staticmethod
@@ -79,23 +82,23 @@ class GuidesApi(ModuleApiBase):
         """
         NamedTuple GuideInfo information about Guide.
 
-        :Example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            GuideInfo(
-                id=1,
-                name='How to label objects',
-                description='Comprehensive guide on object labeling',
-                file_path='/path/to/guide.pdf',
-                created_at='2023-01-01T00:00:00.000Z',
-                updated_at='2025-11-17T18:21:10.217Z',
-                created_by_id=1,
-                team_id=1,
-                video_id=None,
-                disabled_by=None,
-                disabled_at=None
-            )
+                GuideInfo(
+                    id=1,
+                    name="How to label objects",
+                    description="Comprehensive guide on object labeling",
+                    file_path="/path/to/guide.pdf",
+                    created_at="2023-01-01T00:00:00.000Z",
+                    updated_at="2025-11-17T18:21:10.217Z",
+                    created_by_id=1,
+                    team_id=1,
+                    video_id=None,
+                    disabled_by=None,
+                    disabled_at=None,
+                )
         """
         return [
             ApiField.ID,
@@ -128,40 +131,43 @@ class GuidesApi(ModuleApiBase):
         :type team_id: int
         :param filters: List of parameters to filter Guides.
         :type filters: List[Dict[str, str]], optional
-        :return: List of information about Guides.
-        :rtype: :class:`List[GuideInfo]`
-        :Usage example:
+        :returns: List of information about Guides.
+        :rtype: List[:class:`~supervisely.api.guides_api.GuideInfo`]
 
-         .. code-block:: python
+        :Usage Example:
 
-            import os
-            from dotenv import load_dotenv
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                import supervisely as sly
 
-            api = sly.Api.from_env()
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            team_id = 123
-            guides = api.guides.get_list(team_id)
-            print(guides)
-            # Output: [
-            #     GuideInfo(
-            #         id=1,
-            #         name='How to label objects',
-            #         description='Comprehensive guide on object labeling',
-            #         file_path='/path/to/guide.pdf',
-            #         created_at='2023-01-01T00:00:00.000Z',
-            #         updated_at='2025-11-17T18:21:10.217Z',
-            #         created_by_id=1,
-            #         team_id=1,
-            #         video_id=None,
-            #         disabled_by=None,
-            #         disabled_at=None
-            #     )
-            # ]
+                api = sly.Api.from_env()
+
+                team_id = 123
+                guides = api.guides.get_list(team_id)
+                print(guides)
+                # Output: [
+                #     GuideInfo(
+                #         id=1,
+                #         name='How to label objects',
+                #         description='Comprehensive guide on object labeling',
+                #         file_path='/path/to/guide.pdf',
+                #         created_at='2023-01-01T00:00:00.000Z',
+                #         updated_at='2025-11-17T18:21:10.217Z',
+                #         created_by_id=1,
+                #         team_id=1,
+                #         video_id=None,
+                #         disabled_by=None,
+                #         disabled_at=None
+                #     )
+                # ]
         """
         return self.get_list_all_pages(
             "guides.list",
@@ -174,37 +180,40 @@ class GuidesApi(ModuleApiBase):
 
         :param id: Guide ID in Supervisely.
         :type id: int
-        :return: Information about Guide.
-        :rtype: :class:`GuideInfo`
-        :Usage example:
+        :returns: Information about Guide.
+        :rtype: :class:`~supervisely.api.guides_api.GuideInfo`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import os
-            from dotenv import load_dotenv
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                import supervisely as sly
 
-            api = sly.Api.from_env()
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            guide_id = 1
-            guide_info = api.guides.get_info_by_id(guide_id)
-            print(guide_info)
-            # Output: GuideInfo(
-            #     id=1,
-            #     name='How to label objects',
-            #     description='Comprehensive guide on object labeling',
-            #     file_path='/path/to/guide.pdf',
-            #     created_at='2023-01-01T00:00:00.000Z',
-            #     updated_at='2025-11-17T18:21:10.217Z',
-            #     created_by_id=1,
-            #     team_id=1,
-            #     video_id=None,
-            #     disabled_by=None,
-            #     disabled_at=None
-            # )
+                api = sly.Api.from_env()
+
+                guide_id = 1
+                guide_info = api.guides.get_info_by_id(guide_id)
+                print(guide_info)
+                # Output: GuideInfo(
+                #     id=1,
+                #     name='How to label objects',
+                #     description='Comprehensive guide on object labeling',
+                #     file_path='/path/to/guide.pdf',
+                #     created_at='2023-01-01T00:00:00.000Z',
+                #     updated_at='2025-11-17T18:21:10.217Z',
+                #     created_by_id=1,
+                #     team_id=1,
+                #     video_id=None,
+                #     disabled_by=None,
+                #     disabled_at=None
+                # )
         """
         return self._get_info_by_id(id, "guides.info")

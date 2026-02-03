@@ -21,53 +21,54 @@ class ActivityFeed(Widget):
     Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/layouts-and-containers/activity-feed>`_
         (including screenshots and examples).
 
-    :param items: List of ActivityFeed.Item objects to display
-    :type items: Optional[List[ActivityFeed.Item]]
+    :param items: List of items to display
+    :type items: Optional[List[:class:`~supervisely.app.widgets.activity_feed.activity_feed.ActivityFeed.Item`]]
     :param widget_id: An identifier of the widget.
     :type widget_id: str, optional
 
-    :Usage example:
-    .. code-block:: python
+    :Usage Example:
 
-        from supervisely.app.widgets import ActivityFeed, Text
+        .. code-block:: python
 
-        # Create items with custom content
-        item1 = ActivityFeed.Item(
-            content=Text("Processing dataset"),
-            status="completed"
-        )
-        item2 = ActivityFeed.Item(
-            content=Text("Training model"),
-            status="in_progress",
-            number=2
-        )
-        item3 = ActivityFeed.Item(
-            content=Text("Generating report"),
-            status="pending"
-        )
+            from supervisely.app.widgets import ActivityFeed, Text
 
-        # Create activity feed
-        feed = ActivityFeed(items=[item1, item2, item3])
+            # Create items with custom content
+            item1 = ActivityFeed.Item(
+                content=Text("Processing dataset"),
+                status="completed"
+            )
+            item2 = ActivityFeed.Item(
+                content=Text("Training model"),
+                status="in_progress",
+                number=2
+            )
+            item3 = ActivityFeed.Item(
+                content=Text("Generating report"),
+                status="pending"
+            )
 
-        # Add item during runtime
-        new_item = ActivityFeed.Item(
-            content=Text("Deploy model"),
-            status="pending"
-        )
-        feed.add_item(new_item)
+            # Create activity feed
+            feed = ActivityFeed(items=[item1, item2, item3])
 
-        # Update status by item number
-        feed.set_status(2, "completed")
+            # Add item during runtime
+            new_item = ActivityFeed.Item(
+                content=Text("Deploy model"),
+                status="pending"
+            )
+            feed.add_item(new_item)
 
-        # Get item status
-        status = feed.get_status(2)
+            # Update status by item number
+            feed.set_status(2, "completed")
+
+            # Get item status
+            status = feed.get_status(2)
     """
 
     class Item:
         """Represents a single item in the ActivityFeed.
 
         :param content: Widget to display as the item content
-        :type content: Widget
+        :type content: :class:`~supervisely.app.widgets.widget.Widget`
         :param status: Status of the item (pending, in_progress, completed, failed)
         :type status: Literal["pending", "in_progress", "completed", "failed"]
         :param number: Position number in the feed (auto-assigned if not provided)
@@ -118,7 +119,7 @@ class ActivityFeed(Widget):
     def get_json_data(self) -> Dict:
         """Returns dictionary with widget data.
 
-        :return: Dictionary with items data
+        :returns: Dictionary with items data
         :rtype: Dict
         """
         return {
@@ -128,7 +129,7 @@ class ActivityFeed(Widget):
     def get_json_state(self) -> Dict:
         """Returns dictionary with widget state (empty for this widget).
 
-        :return: Empty dictionary
+        :returns: Empty dictionary
         :rtype: Dict
         """
         return {}
@@ -142,12 +143,12 @@ class ActivityFeed(Widget):
     ) -> None:
         """Add a new item to the activity feed.
 
-        You can either pass an ActivityFeed.Item object or provide content and status separately.
+        You can either pass an item object or provide content and status separately.
 
-        :param item: ActivityFeed.Item to add
-        :type item: Optional[ActivityFeed.Item]
+        :param item: Item to add
+        :type item: Optional[:class:`~supervisely.app.widgets.activity_feed.activity_feed.ActivityFeed.Item`]
         :param content: Widget content (used if item is not provided)
-        :type content: Optional[Widget]
+        :type content: Optional[:class:`~supervisely.app.widgets.widget.Widget`]
         :param status: Status of the item (used if item is not provided)
         :type status: Literal["pending", "in_progress", "completed", "failed"]
         :param number: Position number (auto-assigned if not provided)
@@ -205,7 +206,7 @@ class ActivityFeed(Widget):
 
         :param number: Number of the item. Starts from 1.
         :type number: int
-        :return: Status of the item
+        :returns: Status of the item
         :rtype: str
         """
         for item in self._items:
@@ -216,8 +217,8 @@ class ActivityFeed(Widget):
     def get_items(self) -> List[ActivityFeed.Item]:
         """Get all items in the activity feed.
 
-        :return: List of all items
-        :rtype: List[ActivityFeed.Item]
+        :returns: List of all items
+        :rtype: List[:class:`~supervisely.app.widgets.activity_feed.activity_feed.ActivityFeed.Item`]
         """
         return self._items
 
@@ -231,7 +232,7 @@ class ActivityFeed(Widget):
         """Replace all items in the activity feed.
 
         :param items: New list of items
-        :type items: List[ActivityFeed.Item]
+        :type items: List[:class:`~supervisely.app.widgets.activity_feed.activity_feed.ActivityFeed.Item`]
         """
         self._items = items
         self._auto_assign_numbers()

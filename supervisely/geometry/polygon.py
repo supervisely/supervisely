@@ -35,15 +35,15 @@ from supervisely.sly_logger import logger
 
 class Polygon(VectorGeometry):
     """
-    Polygon geometry for a single :class:`Label<supervisely.annotation.label.Label>`. :class:`Polygon<Polygon>` class object is immutable.
+    Polygon geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.polygon.Polygon` object is immutable.
 
     :param exterior: Exterior coordinates, object contour is defined with these points.
-    :type exterior: List[PointLocation], List[List[int, int]], List[Tuple[int, int]
+    :type exterior: List[:class:`~supervisely.geometry.point_location.PointLocation`], List[List[int, int]], List[Tuple[int, int]
     :param interior: Interior coordinates, object holes are defined with these points.
-    :type interior: List[List[PointLocation]], List[List[List[int, int]]], List[List[Tuple[int, int]]]
+    :type interior: List[List[:class:`~supervisely.geometry.point_location.PointLocation`]], List[List[List[int, int]]], List[List[Tuple[int, int]]]
     :param sly_id: Polygon ID in Supervisely server.
     :type sly_id: int, optional
-    :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which Polygon belongs.
+    :param class_id: ID of ObjClass to which Polygon belongs.
     :type class_id: int, optional
     :param labeler_login: Login of the user who created Polygon.
     :type labeler_login: str, optional
@@ -51,11 +51,11 @@ class Polygon(VectorGeometry):
     :type updated_at: str, optional
     :param created_at: Date and Time when Polygon was created. Date Format is the same as in "updated_at" parameter.
     :type created_at: str, optional
-    :raises: :class:`ValueError`, if len(exterior) < 3 or len(any element in interior list) < 3
+    :raises ValueError: if len(exterior) < 3 or len(any element in interior list) < 3
 
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
             import supervisely as sly
 
@@ -117,32 +117,33 @@ class Polygon(VectorGeometry):
 
         :param data: Polygon in json format as a dict.
         :type data: dict
-        :return: Polygon object
-        :rtype: :class:`Polygon<Polygon>`
-        :Usage example:
+        :returns: Polygon from json.
+        :rtype: :class:`~supervisely.geometry.polygon.Polygon`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            figure_json =  {
-                "points": {
-                    "exterior": [
-                        [2104, 730],
-                        [402, 2479],
-                        [1646, 3746]
-                    ],
-                    "interior": [
-                        [
-                            [1255, 1907],
-                            [875, 2468],
-                            [577, 2679]
+                import supervisely as sly
+
+                figure_json =  {
+                    "points": {
+                        "exterior": [
+                            [2104, 730],
+                            [402, 2479],
+                            [1646, 3746]
+                        ],
+                        "interior": [
+                            [
+                                [1255, 1907],
+                                [875, 2468],
+                                [577, 2679]
+                            ]
                         ]
-                    ]
+                    }
                 }
-            }
 
-            figure = sly.Polygon.from_json(figure_json)
+                figure = sly.Polygon.from_json(figure_json)
         """
         validation.validate_geometry_points_fields(data)
         labeler_login = data.get(LABELER_LOGIN, None)
@@ -166,18 +167,18 @@ class Polygon(VectorGeometry):
         """
         Crops current Polygon.
 
-        :param rect: Rectangle object for crop.
-        :type rect: Rectangle
-        :return: List of Polygon objects
-        :rtype: :class:`List[Polygon]<Polygon>`
+        :param rect: Rectangle to crop Polygon from.
+        :type rect: :class:`~supervisely.geometry.rectangle.Rectangle`
+        :returns: List of Polygons from Rectangle.
+        :rtype: List[:class:`~supervisely.geometry.polygon.Polygon`]
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            crop_figures = figure.crop(sly.Rectangle(1, 1, 300, 350))
+                crop_figures = figure.crop(sly.Rectangle(1, 1, 300, 350))
         """
         try:
             # points = [
@@ -247,15 +248,15 @@ class Polygon(VectorGeometry):
         """
         Polygon area.
 
-        :return: Area of current Polygon object.
-        :rtype: :class:`float`
+        :returns: Area of current Polygon.
+        :rtype: float
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            print(figure.area)
-            # Output: 7288.0
+                print(figure.area)
+                # Output: 7288.0
         """
         exterior_area = self._get_area_by_gauss_formula(
             self.exterior_np[:, 0], self.exterior_np[:, 1]
@@ -276,15 +277,15 @@ class Polygon(VectorGeometry):
 
         :param epsilon: Specifying the approximation accuracy.
         :type epsilon: float
-        :return: Polygon object
-        :rtype: :class:`Polygon<Polygon>`
+        :returns: Approximated Polygon.
+        :rtype: :class:`~supervisely.geometry.polygon.Polygon`
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            # Remember that Polygon class object is immutable, and we need to assign new instance of Polygon to a new variable
-            approx_figure = figure.approx_dp(0.75)
+                # Remember that Polygon class object is immutable, and we need to assign new instance of Polygon to a new variable
+                approx_figure = figure.approx_dp(0.75)
         """
         exterior_np = self._approx_ring_dp(self.exterior_np, epsilon, closed=True).tolist()
         interior_np = [

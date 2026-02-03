@@ -41,7 +41,7 @@ def validate_geometry_points_fields(json_obj: dict) -> None:
                 "interior": [[2,3]]
             }
         }
-    :return: None
+    :returns: None
     """
     if POINTS not in json_obj:
         raise ValueError("Input data must contain {} field.".format(POINTS))
