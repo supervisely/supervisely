@@ -291,7 +291,7 @@ class BaseConverter:
                     raise RuntimeError(
                         f"Not found any {self.modality} to upload. "  # pylint: disable=no-member
                         f"Unsupported file extensions detected: {unsupported_exts}. "
-                        f"Convert your data to one of the supported formats: {self.allowed_exts}"
+                        f"Convert your data to one of the supported formats: {self.allowed_exts}"  # pylint: disable=no-member
                     )
                 raise RuntimeError(
                     "Please refer to the app overview and documentation for annotation formats, "
