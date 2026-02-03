@@ -278,7 +278,7 @@ class VideoDataset(Dataset):
         List of video dataset item names.
 
         :returns: List of item names.
-        :rtype: list [ str ]
+        :rtype: List[str]
 
         :Usage Example:
 
@@ -1158,7 +1158,7 @@ class VideoProject(Project):
         :param dest_dir: Directory to download video project.
         :type dest_dir: str
         :param dataset_ids: Datasets IDs in Supervisely to download.
-        :type dataset_ids: list [ int ], optional
+        :type dataset_ids: List[int], optional
         :param download_videos: Download videos from Supervisely video project in dest_dir or not.
         :type download_videos: bool, optional
         :param save_video_info: Save video infos or not.
@@ -1291,7 +1291,7 @@ class VideoProject(Project):
         :param semaphore: Semaphore to limit the number of concurrent downloads of items.
         :type semaphore: :class:`asyncio.Semaphore` or int, optional
         :param dataset_ids: Datasets IDs in Supervisely to download.
-        :type dataset_ids: list [ int ], optional
+        :type dataset_ids: List[int], optional
         :param download_videos: Download videos from Supervisely video project in dest_dir or not.
         :type download_videos: bool, optional
         :param save_video_info: Save video infos or not.

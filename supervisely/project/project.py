@@ -706,7 +706,7 @@ class Dataset(KeyObject):
         List of dataset item names.
 
         :returns: List of item names.
-        :rtype: list [ str ]
+        :rtype: List[str]
 
         :Usage Example:
 
@@ -2861,7 +2861,7 @@ class Project:
         :type inplace: bool, optional
         :param target_classes: Classes list to include to destination project. If segmentation_type="semantic",
                                background class will be added automatically (by default "__bg__").
-        :type target_classes: list [ str ], optional
+        :type target_classes: List[str], optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
         :param segmentation_type: One of: {"semantic", "instance"}. If segmentation_type="semantic", background class
@@ -3066,7 +3066,7 @@ class Project:
         :param project_dir: Path to project directory.
         :type project_dir: str
         :param classes_to_keep: Classes to keep in project.
-        :type classes_to_keep: list [ str ], optional
+        :type classes_to_keep: List[str], optional
         :param inplace: Checkbox that determines whether to change the source data in project or not.
         :type inplace: bool, optional
         :returns: None
@@ -3102,7 +3102,7 @@ class Project:
         :param project_dir: Path to project directory.
         :type project_dir: str
         :param classes_to_remove: Classes to remove.
-        :type classes_to_remove: list [ str ], optional
+        :type classes_to_remove: List[str], optional
         :param inplace: Checkbox that determines whether to change the source data in project or not.
         :type inplace: bool, optional
         :returns: None
@@ -3262,7 +3262,7 @@ class Project:
         :type val_count: int
         :raises ValueError: if total_count != train_count + val_count
         :returns: Tuple with lists of train items information and val items information
-        :rtype: list [ :class:`~supervisely.project.project.ItemInfo` ], list [ :class:`~supervisely.project.project.ItemInfo` ]
+        :rtype: Tuple[List[:class:`~supervisely.project.project.ItemInfo`], List[:class:`~supervisely.project.project.ItemInfo`]]
 
         :Usage Example:
 
@@ -3323,7 +3323,7 @@ class Project:
         :type untagged: str, optional
         :raises ValueError: if untagged not in ["ignore", "train", "val"]
         :returns: Tuple with lists of train items information and val items information
-        :rtype: list [ :class:`~supervisely.project.project.ItemInfo` ], list [ :class:`~supervisely.project.project.ItemInfo` ]
+        :rtype: Tuple[List[:class:`~supervisely.project.project.ItemInfo`], List[:class:`~supervisely.project.project.ItemInfo`]]
 
         :Usage Example:
 
@@ -3381,12 +3381,12 @@ class Project:
         :param project_dir: Path to project directory.
         :type project_dir: str
         :param train_datasets: List of train datasets names.
-        :type train_datasets: list [ str ]
+        :type train_datasets: List[str]
         :param val_datasets: List of val datasets names.
-        :type val_datasets: list [ str ]
+        :type val_datasets: List[str]
         :raises KeyError: if dataset name not found in project
         :returns: Tuple with lists of train items information and val items information
-        :rtype: list [ :class:`ItemInfo<~supervisely.project.project.ItemInfo>` ], list [ :class:`ItemInfo<~supervisely.project.project.ItemInfo>` ]
+        :rtype: Tuple[List[:class:`~supervisely.project.project.ItemInfo`], List[:class:`~supervisely.project.project.ItemInfo`]]
 
         :Usage Example:
 
@@ -3504,7 +3504,7 @@ class Project:
         :param dest_dir: Destination directory.
         :type dest_dir: str
         :param dataset_ids: Dataset IDs.
-        :type dataset_ids: list [ int ], optional
+        :type dataset_ids: List[int], optional
         :param log_progress: Show uploading progress bar.
         :type log_progress: bool
         :param batch_size: The number of images in the batch when they are loaded to a host.
@@ -4133,7 +4133,7 @@ class Project:
         :param save_image_meta: Download images metadata in JSON format or not.
         :type save_image_meta: bool, optional
         :param images_ids: Filter images by IDs.
-        :type images_ids: list [ int ], optional
+        :type images_ids: List[int], optional
         :param resume_download: Resume download enables to download only missing files avoiding erase of existing files.
         :type resume_download: bool, optional
         :param skip_create_readme: Skip creating README.md file. Default is False.

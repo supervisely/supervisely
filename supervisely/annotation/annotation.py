@@ -1367,7 +1367,7 @@ class Annotation:
         """
         Draws current Annotation on image. Modifies mask.
 
-        :param bitmap: :class:`~supervisely.app.widgets.image.image.Image`.
+        :param bitmap: RGB Image.
         :type bitmap: np.ndarray
         :param color: Drawing color in ``[R, G, B]``.
         :type color: List[int, int, int], optional
@@ -1455,7 +1455,7 @@ class Annotation:
         """
         Draws geometry contour of Annotation on image. Modifies mask.
 
-        :param bitmap: :class:`~supervisely.app.widgets.image.image.Image`.
+        :param bitmap: RGB Image.
         :type bitmap: np.ndarray
         :param color: Drawing color in ``[R, G, B]``.
         :type color: List[int, int, int], optional

@@ -906,8 +906,6 @@ def to_coco(
 
     :param input_data: Supervisely project, dataset, or path to the project or dataset.
     :type input_data: :class:`~supervisely.project.project.Project`, :class:`~supervisely.project.project.Dataset` or str
-
-    # Project or Dataset conversion arguments:
     :param dest_dir: Destination directory to save project or dataset in COCO format.
     :type dest_dir: str, optional
     :param meta: Project meta information (required for dataset conversion).

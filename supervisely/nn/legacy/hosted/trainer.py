@@ -61,10 +61,10 @@ class SuperviselyModelTrainer:
     """
     Base class for train neural networks with Supervisely.
 
-    It is highly recommended that your train classes subclass this class.
+    It is highly recommended that your train classes inherit from this class.
 
-    Args:
-        default_config: Dict object containing default training config.
+    :param default_config: Dict object containing default training config.
+    :type default_config: Dict
     """
     def __init__(self, default_config):
         logger.info('Will init all required to train.')

@@ -1428,7 +1428,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type reviewer_id: int, optional
         :param assignee_ids: List of User IDs to assign the job
         :type assignee_ids: List[int], optional
-        :returns: List of information about Labeling Jobs. See :class:`info_sequence<info_sequence>`
+        :returns: List of information about Labeling Jobs.
         :rtype: :class:`List[LabelingJobInfo]`
         """
         job_info = self.get_info_by_id(id)

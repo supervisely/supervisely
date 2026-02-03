@@ -9,9 +9,10 @@ class EvalPlanner:
     """
     Helps determine whether to start validation in current train step or not.
 
-    Args:
-        epochs: Number of train epochs.
-        val_every:  Validation period by epoch (value 0.5 mean 2 validations per epoch).
+    :param epochs: Number of train epochs.
+    :type epochs: int
+    :param val_every: Validation period by epoch (value 0.5 mean 2 validations per epoch).
+    :type val_every: float
     """
     def __init__(self, epochs, val_every):
         self.epochs = epochs
@@ -37,10 +38,10 @@ class EvalPlanner:
         """
         Determines whether to start validation or not.
 
-        Args:
-            epoch_flt: Current train step.
-        Returns:
-            True if validation is needed in current ste, False otherwise.
+        :param epoch_flt: Current train step.
+        :type epoch_flt: float
+        :returns: True if validation is needed in current step, False otherwise.
+        :rtype: bool
         """
         req_val_cnt = self.validations_cnt(epoch_flt, self.val_every)
         need_val = req_val_cnt > self._val_cnt

@@ -33,8 +33,8 @@ class VideoObject(KeyObject):
     :type obj_class: :class:`~supervisely.annotation.obj_class.ObjClass`
     :param tags: VideoTagCollection object.
     :type tags: :class:`~supervisely.video_annotation.video_tag_collection.VideoTagCollection`, optional
-    :param key: KeyIdMap object.
-    :type key: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
+    :param key: UUID key associated with the object.
+    :type key: uuid.UUID
     :param class_id: ID of ObjClass to which VideoObject belongs.
     :type class_id: int, optional
     :param labeler_login: Login of the user who created VideoObject.
@@ -416,7 +416,7 @@ class VideoObject(KeyObject):
         self,
         obj_class: Optional[ObjClass] = None,
         tags: Optional[VideoTagCollection] = None,
-        key: Optional[KeyIdMap] = None,
+        key: Optional[uuid.UUID] = None,
         class_id: Optional[int] = None,
         labeler_login: Optional[str] = None,
         updated_at: Optional[str] = None,
@@ -429,8 +429,8 @@ class VideoObject(KeyObject):
         :type obj_class: :class:`~supervisely.annotation.obj_class.ObjClass`, optional
         :param tags: VideoTagCollection object.
         :type tags: :class:`~supervisely.video_annotation.video_tag_collection.VideoTagCollection`, optional
-        :param key: KeyIdMap object.
-        :type key: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
+        :param key: UUID key associated with the object.
+        :type key: uuid.UUID, optional
         :param class_id: ID of ObjClass to which VideoObject belongs.
         :type class_id: int, optional
         :param labeler_login: Login of the user who created VideoObject.

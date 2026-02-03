@@ -384,12 +384,12 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
         :param with_meta: If True, includes meta information in the response. Defaults to False.
         :type with_meta: bool, optional
         :param collection_type: Type of the collection.
-                    Defaults to :meth:`~supervisely.api.entities_collection_api.CollectionType.DEFAULT`.
+                    Defaults to :attr:`~supervisely.api.entities_collection_api.CollectionType.DEFAULT`.
 
                     Available types are:
-                     - :meth:`~supervisely.api.entities_collection_api.CollectionType.DEFAULT`
-                     - :meth:`~supervisely.api.entities_collection_api.CollectionType.AI_SEARCH`
-                     - :meth:`~supervisely.api.entities_collection_api.CollectionType.ALL`
+                     - :attr:`~supervisely.api.entities_collection_api.CollectionType.DEFAULT`
+                     - :attr:`~supervisely.api.entities_collection_api.CollectionType.AI_SEARCH`
+                     - :attr:`~supervisely.api.entities_collection_api.CollectionType.ALL`
         :type collection_type: :class:`~supervisely.api.entities_collection_api.CollectionType`
         :returns: List of information about Entities Collections.
         :rtype: :class:`List[EntitiesCollectionInfo]`
@@ -474,7 +474,7 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
         self, project_id: int, ai_search_key: str
     ) -> Optional[EntitiesCollectionInfo]:
         """
-        Get information about Entities Collection of type ``:meth:`~supervisely.api.entities_collection_api.CollectionType.AI_SEARCH``` with given AI search key.
+        Get information about Entities Collection of type :attr:`~supervisely.api.entities_collection_api.CollectionType.AI_SEARCH` with given AI search key.
 
         :param project_id: Project ID in Supervisely.
         :type project_id: int

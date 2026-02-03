@@ -1921,7 +1921,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type sort: Optional[Literal["id", "title", "size", "createdAt", "updatedAt"]]
         :param sort_order: Determines which value to list from.
         :type sort_order: Optional[Literal["asc", "desc"]]
-        :returns: List of all projects with information. See :class:`info_sequence<info_sequence>`
+        :returns: List of ProjectInfo objects.
         :rtype: :class:`List[ProjectInfo]`
 
         :Usage Example:
@@ -2329,7 +2329,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param extra_fields: List of additional fields to be included in the response.
         :type extra_fields: List[str], optional
 
-        :returns: Search response information and  ':class:`~supervisely.api.project_api.ProjectInfo`' of all projects that are searched by a given criterion.
+        :returns: Search response information and ':class:`~supervisely.api.project_api.ProjectInfo`' of all projects that are searched by a given criterion.
         :rtype: dict
 
         :Usage Example:

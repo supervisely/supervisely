@@ -146,7 +146,7 @@ class AnnotationApi(ModuleApi):
         :type filters: List[dict], optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
-        :returns: Information about Annotations. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Annotations.
         :rtype: :class:`List[AnnotationInfo]`
 
         :Usage Example:
@@ -229,7 +229,7 @@ class AnnotationApi(ModuleApi):
         :type filters: List[dict], optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
-        :returns: Information about Annotations. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Annotations.
         :rtype: :class:`List[AnnotationInfo]`
 
         :Usage Example:
@@ -317,7 +317,7 @@ class AnnotationApi(ModuleApi):
         :param force_metadata_for_links: Force metadata for links.
         :type force_metadata_for_links: bool, optional
 
-        :returns: Information about Annotation. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Annotation.
         :rtype: :class:`~supervisely.api.annotation_api.AnnotationInfo`
 
         :Usage Example:
@@ -464,7 +464,7 @@ class AnnotationApi(ModuleApi):
         :param force_metadata_for_links: Force metadata for links.
         :type force_metadata_for_links: bool, optional
 
-        :returns: Information about Annotations. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Annotations.
         :rtype: :class:`List[AnnotationInfo]`
 
         :Usage Example:
@@ -588,7 +588,7 @@ class AnnotationApi(ModuleApi):
         :param force_metadata_for_links: Force metadata for links.
         :type force_metadata_for_links: bool, optional
 
-        :returns: Information about Annotations. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Annotations.
         :rtype: :class:`List[Dict]`
 
         :Usage Example:
@@ -1503,7 +1503,7 @@ class AnnotationApi(ModuleApi):
         :type progress_cb: tqdm or callable, optional
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
         :type progress_cb_type: str, optional
-        :returns: Information about Annotation. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Annotation.
         :rtype: :class:`~supervisely.api.annotation_api.AnnotationInfo`
 
         :Usage Example:
@@ -1597,7 +1597,7 @@ class AnnotationApi(ModuleApi):
         :type progress_cb: tqdm or callable, optional
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
         :type progress_cb_type: str, optional
-        :returns: Information about Annotations. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Annotations.
         :rtype: :class:`List[AnnotationInfo]`
 
         :Usage Example:
@@ -1684,7 +1684,7 @@ class AnnotationApi(ModuleApi):
         :type force_metadata_for_links: bool, optional
         :param semaphore: Semaphore for limiting the number of simultaneous downloads.
         :type semaphore: asyncio.Semaphore, optional
-        :returns: Information about Annotations. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Annotations.
         :rtype: :class:`List[AnnotationInfo]`
 
         :Usage Example:

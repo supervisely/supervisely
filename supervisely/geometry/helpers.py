@@ -55,14 +55,15 @@ def geometry_to_bitmap(
     geometry: Geometry, radius: Optional[int] = 0, crop_image_shape: Optional[Tuple] = None
 ) -> List[Bitmap]:
     """
-    Args:
-        geometry: Geometry type which implemented 'draw', 'translate' and 'to_bbox` methods
-        radius: half of thickness of drawed vector elements
-        crop_image_shape: if not None - crop bitmap object by this shape (HxW)
-    Returns:
-        Bitmap (geometry) object
+    :param geometry: Geometry type which implemented 'draw', 'translate' and 'to_bbox` methods
+    :type geometry: Geometry
+    :param radius: half of thickness of drawed vector elements
+    :type radius: Optional[int]
+    :param crop_image_shape: if not None - crop bitmap object by this shape (HxW)
+    :type crop_image_shape: Optional[Tuple]
+    :returns: Bitmap (geometry) object
+    :rtype: List[:class:`~supervisely.geometry.bitmap.Bitmap`]
     """
-
     return _geometry_to_mask_base(Bitmap, geometry, radius, crop_image_shape)
 
 
@@ -70,12 +71,14 @@ def geometry_to_alpha_mask(
     geometry: Geometry, radius: Optional[int] = 0, crop_image_shape: Optional[Tuple] = None
 ) -> List[AlphaMask]:
     """
-    Args:
-        geometry: Geometry type which implemented 'draw', 'translate' and 'to_bbox` methods
-        radius: half of thickness of drawed vector elements
-        crop_image_shape: if not None - crop bitmap object by this shape (HxW)
-    Returns:
-        AlphaMask (geometry) object
+    :param geometry: Geometry type which implemented 'draw', 'translate' and 'to_bbox` methods
+    :type geometry: Geometry
+    :param radius: half of thickness of drawed vector elements
+    :type radius: Optional[int]
+    :param crop_image_shape: if not None - crop bitmap object by this shape (HxW)
+    :type crop_image_shape: Optional[Tuple]
+    :returns: AlphaMask (geometry) object
+    :rtype: List[:class:`~supervisely.geometry.alpha_mask.AlphaMask`]
     """
 
     return _geometry_to_mask_base(AlphaMask, geometry, radius, crop_image_shape)

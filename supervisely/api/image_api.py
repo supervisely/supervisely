@@ -1075,7 +1075,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
         :param id: Image ID in Supervisely.
         :type id: int
-        :param path: Local save path for :class:`~supervisely.app.widgets.image.image.Image`.
+        :param path: Local save path for image file.
         :type path: str
         :returns: None
         :rtype: None
@@ -1113,7 +1113,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
         :param id: Image ID in Supervisely.
         :type id: int
-        :param path: Local save path for :class:`~supervisely.app.widgets.image.image.Image`.
+        :param path: Local save path for image file.
         :type path: str
         :returns: None
         :rtype: None
@@ -1303,7 +1303,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type ids: List[int]
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
-        :param keep_alpha: If True keeps alpha mask for :class:`~supervisely.app.widgets.image.image.Image`, otherwise don't.
+        :param keep_alpha: If True keeps alpha mask for the image, otherwise don't.
         :type keep_alpha: bool, optional
         :returns: List of Images in RGB numpy matrix format
         :rtype: :class:`List[np.ndarray]`
@@ -1632,7 +1632,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type use_strict_validation: bool, optional
         :param use_caching_for_validation: If True, uses caching for validation.
         :type use_caching_for_validation: bool, optional
-        :returns: Information about Image. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Image.
         :rtype: :class:`~supervisely.api.image_api.ImageInfo`
 
         :Usage Example:
@@ -1708,7 +1708,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param use_caching_for_validation: If True, uses caching for validation.
         :type use_caching_for_validation: bool, optional
         :raises ValueError: if len(names) != len(paths)
-        :returns: List with information about Images. See :class:`info_sequence<info_sequence>`
+        :returns: List with information about Images.
         :rtype: List[:class:`~supervisely.api.image_api.ImageInfo`]
 
         :Usage Example:
@@ -1774,7 +1774,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type img: np.ndarray
         :param meta: Custom additional image info that contain image technical and/or user-generated data.
         :type meta: dict, optional
-        :returns: Information about Image. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Image.
         :rtype: :class:`~supervisely.api.image_api.ImageInfo`
 
         :Usage Example:
@@ -1832,7 +1832,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type metas: List[dict], optional
         :param conflict_resolution: The strategy to resolve upload conflicts. 'Replace' option will replace the existing images in the dataset with the new images. The images that are being deleted are logged. 'Skip' option will ignore the upload of new images that would result in a conflict. An original image's ImageInfo list will be returned instead. 'Rename' option will rename the new images to prevent any conflict.
         :type conflict_resolution: Optional[Literal["rename", "skip", "replace"]]
-        :returns: List with information about Images. See :class:`info_sequence<info_sequence>`
+        :returns: List with information about Images.
         :rtype: List[:class:`~supervisely.api.image_api.ImageInfo`]
 
         :Usage Example:
@@ -1983,7 +1983,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type skip_validation: bool, optional
         :param conflict_resolution: The strategy to resolve upload conflicts. 'Replace' option will replace the existing images in the dataset with the new images. The images that are being deleted are logged. 'Skip' option will ignore the upload of new images that would result in a conflict. An original image's ImageInfo list will be returned instead. 'Rename' option will rename the new images to prevent any conflict.
         :type conflict_resolution: Optional[Literal["rename", "skip", "replace"]]
-        :returns: List with information about Images. See :class:`info_sequence<info_sequence>`
+        :returns: List with information about Images.
         :rtype: List[:class:`~supervisely.api.image_api.ImageInfo`]
 
         :Usage Example:
@@ -2045,7 +2045,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type hash: str
         :param meta: Custom additional image info that contain image technical and/or user-generated data.
         :type meta: dict, optional
-        :returns: Information about Image. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Image.
         :rtype: :class:`~supervisely.api.image_api.ImageInfo`
 
         :Usage Example:
@@ -2147,7 +2147,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type use_strict_validation: bool, optional
         :param use_caching_for_validation: If True, uses caching for validation.
         :type use_caching_for_validation: bool, optional
-        :returns: List with information about Images. See :class:`info_sequence<info_sequence>`
+        :returns: List with information about Images.
         :rtype: :class:`List[ImageInfo]`
 
         :Usage Example:
@@ -2224,7 +2224,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type id: int
         :param meta: Custom additional image info that contain image technical and/or user-generated data.
         :type meta: dict, optional
-        :returns: Information about Image. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Image.
         :rtype: :class:`~supervisely.api.image_api.ImageInfo`
 
         :Usage Example:
@@ -2323,7 +2323,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type skip_validation: bool, optional
         :param conflict_resolution: The strategy to resolve upload conflicts. 'Replace' option will replace the existing images in the dataset with the new images. The images that are being deleted are logged. 'Skip' option will ignore the upload of new images that would result in a conflict. An original image's ImageInfo list will be returned instead. 'Rename' option will rename the new images to prevent any conflict.
         :type conflict_resolution: Optional[Literal["rename", "skip", "replace"]]
-        :returns: List with information about Images. See :class:`info_sequence<info_sequence>`
+        :returns: List with information about Images.
         :rtype: :class:`List[ImageInfo]`
 
         :Usage Example:
@@ -2439,7 +2439,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type use_strict_validation: bool, optional
         :param use_caching_for_validation: If True, uses caching for validation.
         :type use_caching_for_validation: bool, optional
-        :returns: List with information about Images. See :class:`info_sequence<info_sequence>`
+        :returns: List with information about Images.
         :rtype: :class:`List[ImageInfo]`
 
         :Usage Example:
@@ -2575,7 +2575,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type use_strict_validation: bool, optional
         :param use_caching_for_validation: If True, uses caching for validation.
         :type use_caching_for_validation: bool, optional
-        :returns: Generator with information about Images. See :class:`~supervisely.api.image_api.ImageInfo`
+        :returns: Generator with information about Images.
         :rtype: :class:`Generator[ImageInfo, None, None]`
 
         :Usage Example:
@@ -3027,7 +3027,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param src_dataset_id: Source Dataset ID in Supervisely.
         :type src_dataset_id: int
         :param src_image_infos: :class:`~supervisely.api.image_api.ImageInfo` objects of images to copy.
-        :type src_image_infos: List [ :class:`~supervisely.api.image_api.ImageInfo` ]
+        :type src_image_infos: List[:class:`~supervisely.api.image_api.ImageInfo`]
         :param dst_dataset_id: Destination Dataset ID in Supervisely.
         :type dst_dataset_id: int
         :param with_annotations: If True Image will be copied to Dataset with annotations, otherwise only Images without annotations.
@@ -3035,7 +3035,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param progress_cb: Function for tracking the progress of copying.
         :type progress_cb: tqdm or callable, optional
         :param dst_names: ImageInfo list with existing items in destination dataset.
-        :type dst_names: List [:class:`~supervisely.api.image_api.ImageInfo`], optional
+        :type dst_names: List[:class:`~supervisely.api.image_api.ImageInfo`], optional
         :param batch_size: Number of elements to copy for each request.
         :type batch_size: int, optional
         :param skip_validation: Flag for skipping additinal validations.
@@ -3316,7 +3316,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type change_name_if_conflict: bool, optional
         :param with_annotations: If True Image will be copied to Dataset with annotations, otherwise only Images without annotations.
         :type with_annotations: bool, optional
-        :returns: Information about Image. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Image.
         :rtype: :class:`~supervisely.api.image_api.ImageInfo`
 
         :Usage Example:

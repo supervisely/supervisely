@@ -332,7 +332,7 @@ class VolumeApi(RemoveableBulkModuleApi):
 
         :param id: Volume ID in Supervisely.
         :type id: int
-        :returns: Information about Volume. See :meth:`info_sequence`.
+        :returns: Information about Volume.
         :rtype: :class:`~supervisely.api.volume.volume_api.VolumeInfo`
 
         :Usage Example:
@@ -419,7 +419,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :type hash: str
         :param meta: A dictionary containing data associated with the volume.
         :type meta: dict
-        :returns: Information about Volume. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Volume.
         :rtype: :class:`~supervisely.api.volume.volume_api.VolumeInfo`
 
         :Usage Example:
@@ -522,7 +522,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :type progress_cb: tqdm or callable, optional
         :param metas: Volumes metadata.
         :type metas: List[dict], optional
-        :returns: List with information about Volumes. See :class:`info_sequence<info_sequence>`
+        :returns: List with information about Volumes.
         :rtype: List[:class:`~supervisely.api.volume.volume_api.VolumeInfo`]
 
         :Usage Example:
@@ -644,7 +644,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :type meta: dict, optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
-        :returns: Information about Volume. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Volume.
         :rtype: :class:`~supervisely.api.volume.volume_api.VolumeInfo`
 
         :Usage Example:
@@ -783,7 +783,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :type log_progress: bool, optional
         :param anonymize: Determine whether to hide PatientID and PatientName fields.
         :type anonymize: bool, optional
-        :returns: Information about Volume. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Volume.
         :rtype: :class:`~supervisely.api.volume.volume_api.VolumeInfo`
 
         :Usage Example:
@@ -871,7 +871,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :type path: str
         :param log_progress: Determine if additional technical logs are displaying.
         :type log_progress: bool, optional
-        :returns: Information about Volume. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Volume.
         :rtype: :class:`~supervisely.api.volume.volume_api.VolumeInfo`
 
         :Usage Example:
@@ -943,7 +943,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :type path: str
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
-        :returns: Information about Volume. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Volume.
         :rtype: :class:`~supervisely.api.volume.volume_api.VolumeInfo`
 
         :Usage Example:
@@ -1015,7 +1015,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :type log_progress: bool
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
-        :returns: Information about Volume. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Volume.
         :rtype: :class:`~supervisely.api.volume.volume_api.VolumeInfo`
 
         :Usage Example:
@@ -1203,7 +1203,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :type log_progress: bool
         :param change_name_if_conflict: Determine if names are changing if conflict.
         :type change_name_if_conflict: bool, optional
-        :returns: List with information about Volumes. See :class:`info_sequence<info_sequence>`
+        :returns: List with information about Volumes.
         :rtype: List[:class:`~supervisely.api.volume.volume_api.VolumeInfo`]
 
         :Usage Example:
@@ -1295,7 +1295,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :type log_progress: bool
         :param change_name_if_conflict: Determine if names are changing if conflict.
         :type change_name_if_conflict: bool, optional
-        :returns: List with information about Volumes. See :class:`info_sequence<info_sequence>`
+        :returns: List with information about Volumes.
         :rtype: List[:class:`~supervisely.api.volume.volume_api.VolumeInfo`]
 
         :Usage Example:

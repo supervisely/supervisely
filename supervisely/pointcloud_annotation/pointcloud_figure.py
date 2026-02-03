@@ -32,8 +32,8 @@ class PointcloudFigure(VideoFigure):
     :type geometry: :class:`~supervisely.geometry.geometry.Geometry`
     :param frame_index: Index of Frame to which PointcloudFigure belongs.
     :type frame_index: int
-    :param key: Key ID map.
-    :type key: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`
+    :param key: UUID key associated with the figure.
+    :type key: uuid.UUID
     :param class_id: ID of pointcloud object (or pointcloud episode object) to which PointcloudFigure belongs.
     :type class_id: int, optional
     :param labeler_login: Login of the user who created :class:`~supervisely.pointcloud_annotation.pointcloud_figure.PointcloudFigure`.
@@ -198,8 +198,8 @@ class PointcloudFigure(VideoFigure):
         :type geometry: :class:`~supervisely.geometry.geometry.Geometry`, optional
         :param frame_index: Index of Frame to which PointcloudFigure belongs.
         :type frame_index: int, optional
-        :param key: Key ID map.
-        :type key: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`
+        :param key: UUID key associated with the figure.
+        :type key: uuid.UUID
         :param class_id: ID of pointcloud object (or pointcloud episode object) to which PointcloudFigure belongs.
         :type class_id: int, optional
         :param labeler_login: Login of the user who created :class:`~supervisely.pointcloud_annotation.pointcloud_figure.PointcloudFigure`.

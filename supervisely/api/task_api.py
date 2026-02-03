@@ -968,7 +968,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         :type description: Optional[str]
         :param show_logs: If True, the link to the task logs will be displayed in the task output.
         :type show_logs: Optional[bool], default False
-        :param zmdi_icon: Icon class name from Material Design :class:`~supervisely.app.widgets.icons.icons.Icons` (ZMDI).
+        :param zmdi_icon: Icon class name from Material Design Icons set (ZMDI).
         :type zmdi_icon: Optional[str], default "zmdi-comment-alt-text"
         :param icon_color: Icon color in HEX format.
         :type icon_color: Optional[str], default "#33c94c" (nearest Duron Jolly Green)

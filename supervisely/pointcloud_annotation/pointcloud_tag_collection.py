@@ -173,7 +173,7 @@ class PointcloudTagCollection(TagCollection):
 
     #     :param tag_name: Pointcloud Tag name.
     #     :type tag_name: str
-    #     :returns: PointcloudTag object or :class:`None<None>` If no elements with provided name in collection.
+    #     :returns: PointcloudTag object or None If no elements with provided name in collection.
     #     :rtype: :class:`PointcloudTag<~supervisely.pointcloud_annotation.pointcloud_tag.PointcloudTag>` or :class:`NoneType<NoneType>`
     #     :raises ValueError: If collection contains more than 1 tag with provided name.
     #     """

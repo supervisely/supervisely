@@ -137,8 +137,8 @@ class ReportApi(ModuleApiBase):
         :type report_id: int
         :param widget_id: Widget ID.
         :type widget_id: int
-        :returns: Report :class:`~supervisely.app.widgets.widget.Widget`
-        :rtype:
+        :returns: Widget by report ID and widget ID.
+        :rtype: :class:`~supervisely.app.widgets.widget.Widget`
         """
         response = self._api.post(
             "reports.widgets.get", {"reportId": report_id, "widgetId": widget_id}
@@ -203,8 +203,8 @@ class ReportApi(ModuleApiBase):
         :param options:
         :type options:
 
-        :returns: Report :class:`~supervisely.app.widgets.widget.Widget`
-        :rtype:
+        :returns: Response JSON.
+        :rtype: dict
         """
         return self._change_widget(
             "reports.widgets.update",
@@ -248,7 +248,7 @@ class ReportApi(ModuleApiBase):
         :param options:
         :type options:
 
-        :returns: Report :class:`~supervisely.app.widgets.widget.Widget`
+        :returns: Response JSON.
         :rtype: dict
         """
         return self._change_widget(

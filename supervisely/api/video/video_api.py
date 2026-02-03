@@ -448,7 +448,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type raise_error: bool
         :param force_metadata_for_links: Specify whether to force retrieving video metadata from the server.
         :type force_metadata_for_links: bool
-        :returns: Information about Video. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Video.
         :rtype: :class:`~supervisely.api.video.video_api.VideoInfo`
 
         :Usage Example:
@@ -533,7 +533,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type progress_cb: Optional[Union[tqdm, Callable]]
         :param force_metadata_for_links: Specify whether to force retrieving video metadata from the server.
         :type force_metadata_for_links: bool
-        :returns: List of information about Videos. See info_sequence.
+        :returns: List of information about Videos.
         :rtype: List[:class:`~supervisely.api.video.video_api.VideoInfo`]
 
         :Usage Example:
@@ -615,7 +615,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type raise_error: bool
         :param force_metadata_for_links: Specify whether to force retrieving video metadata from the server.
         :type force_metadata_for_links: bool
-        :returns: Information about Video. See info_sequence.
+        :returns: Information about Video.
         :rtype: dict
 
         :Usage Example:
@@ -750,7 +750,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type stream_index: int, optional
         :param metadata: Video metadata.
         :type metadata: dict, optional
-        :returns: Information about Video. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Video.
         :rtype: :class:`~supervisely.api.video.video_api.VideoInfo`
 
         :Usage Example:
@@ -850,7 +850,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type metas: List[dict], optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
-        :returns: List with information about Videos. See :class:`info_sequence<info_sequence>`
+        :returns: List with information about Videos.
         :rtype: :class:`List[VideoInfo]`
 
         :Usage Example:
@@ -927,7 +927,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type id: int
         :param meta: Video metadata.
         :type meta: Optional[Dict]
-        :returns: Information about Video. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Video.
         :rtype: :class:`~supervisely.api.video.video_api.VideoInfo`
 
         :Usage Example:
@@ -1614,7 +1614,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type infos:
         :param item_progress:
         :type item_progress:
-        :returns: List with information about Videos. See :class:`info_sequence<info_sequence>`
+        :returns: List with information about Videos.
         :rtype: :class:`List[VideoInfo]`
 
         :Usage Example:
@@ -1754,7 +1754,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type meta: dict, optional
         :param item_progress:
         :type item_progress:
-        :returns: List with information about Videos. See :class:`info_sequence<info_sequence>`
+        :returns: List with information about Videos.
         :rtype: List[:class:`~supervisely.api.video.video_api.VideoInfo`]
 
         :Usage Example:
@@ -2047,7 +2047,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type progress_cb: tqdm or callable, optional
         :param force_metadata_for_links: Specify whether to force retrieving videos metadata from the server after upload
         :type force_metadata_for_links: Optional[bool]
-        :returns: List with information about Videos. See :class:`info_sequence<info_sequence>`
+        :returns: List with information about Videos.
         :rtype: :class:`List[VideoInfo]`
 
         :Usage Example:
@@ -2168,7 +2168,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type skip_download: Optional[bool]
         :param force_metadata_for_links: Specify whether to force retrieving video metadata from the server after upload
         :type force_metadata_for_links: Optional[bool]
-        :returns: List with information about Video. See :meth:`info_sequence`.
+        :returns: List with information about Video.
         :rtype: List[:class:`~supervisely.api.video.video_api.VideoInfo`]
 
         :Usage Example:
@@ -2285,7 +2285,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type video_info: :class:`~supervisely.api.video.video_api.VideoInfo`
         :param name: Video name.
         :type name: str
-        :returns: Information about Video. See :meth:`info_sequence`.
+        :returns: Information about Video.
         :rtype: :class:`~supervisely.api.video.video_api.VideoInfo`
 
         :Usage Example:
@@ -2387,8 +2387,8 @@ class VideoApi(RemoveableBulkModuleApi):
         :type ids: List[int]
         :param progress_cb: Function for tracking progress of removing.
         :type progress_cb: tqdm or callable, optional
-        :returns: :class:`None<None>`
-        :rtype: :class:`NoneType<NoneType>`
+        :returns: None
+        :rtype: None
 
         :Usage Example:
 
@@ -2418,8 +2418,8 @@ class VideoApi(RemoveableBulkModuleApi):
 
         :param video_id: Videos ID in Supervisely.
         :type video_id: int
-        :returns: :class:`None<None>`
-        :rtype: :class:`NoneType<NoneType>`
+        :returns: None
+        :rtype: None
 
         :Usage Example:
 

@@ -62,11 +62,12 @@ def get_font(
         font_file_name: Optional[str] = None, font_size: Optional[int] = 12
 ) -> ImageFont.FreeTypeFont:
     """
-    Args:
-        font_file_name: name of font file (example: 'DejaVuSansMono.ttf')
-        font_size: selected font size
-    Returns:
-        font for drawing
+    :param font_file_name: name of font file (example: 'DejaVuSansMono.ttf')
+    :type font_file_name: str
+    :param font_size: selected font size
+    :type font_size: int
+    :returns: Font object
+    :rtype: PIL.ImageFont.FreeTypeFont
     """
     if font_file_name is None:
         font_file_name = DEFAULT_FONT_FILE_NAME
@@ -80,8 +81,11 @@ def get_font(
 def get_readable_font_size(img_size: Tuple[int, int]) -> int:
     """
     Get size of font for image with given sizes
+
     :param img_size: size of image
+    :type img_size: Tuple[int, int]
     :returns: size of font
+    :rtype: int
     """
     minimal_font_size = 6
     base_font_size = 14

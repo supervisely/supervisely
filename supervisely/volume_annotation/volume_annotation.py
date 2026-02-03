@@ -447,15 +447,15 @@ class VolumeAnnotation:
 
         :param volume_meta: Metadata of the volume.
         :type volume_meta: dict
-        :param objects: :class:`~supervisely.volume_annotation.volume_object_collection.VolumeObjectCollection` object.
+        :param objects: VolumeObjectCollection object.
         :type objects: :class:`~supervisely.volume_annotation.volume_object_collection.VolumeObjectCollection`, optional
         :param plane_sagittal: Sagittal plane of the volume.
-        :type plane_sagittal: :py:class:`Plane<~supervisely.volume_annotation.plane.Plane>`, optional
+        :type plane_sagittal: Plane object, optional
         :param plane_coronal: Coronal plane of the volume.
-        :type plane_coronal: :py:class:`Plane<~supervisely.volume_annotation.plane.Plane>`, optional
+        :type plane_coronal: Plane object, optional
         :param plane_axial: Axial plane of the volume.
-        :type plane_axial: :py:class:`Plane<~supervisely.volume_annotation.plane.Plane>`, optional
-        :param tags: :class:`~supervisely.volume_annotation.volume_tag_collection.VolumeTagCollection` object.
+        :type plane_axial: Plane object, optional
+        :param tags: VolumeTagCollection object.
         :type tags: :class:`~supervisely.volume_annotation.volume_tag_collection.VolumeTagCollection`, optional
         :param spatial_figures: List of spatial figures associated with the volume.
         :type spatial_figures: List[:class:`~supervisely.volume_annotation.volume_figure.VolumeFigure`], optional
@@ -499,17 +499,17 @@ class VolumeAnnotation:
 
         :param data: Volume annotation in json format as a dict.
         :type data: dict
-        :param project_meta: Input :class:`ProjectMeta<~supervisely.project.project_meta.ProjectMeta>`.
+        :param project_meta: Input ProjectMeta object.
         :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
-        :param key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap` object.
+        :param key_id_map: KeyIdMap object.
         :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
         :param spatial_geometry_paths: Optional. Can be either:
             - a list of file paths to spatial geometry files, where each file name should match either the figure's id or the hex value of its key,
             - or a dict mapping figure ids (or keys) to their corresponding geometry file paths.
             Used to load 3D geometry for spatial figures.
         :type spatial_geometry_paths: list or dict, optional
-        :returns: :class:`~supervisely.volume_annotation.volume_annotation.VolumeAnnotation` object
-        :rtype: :class:`VolumeAnnotation<~supervisely.volume_annotation.volume_annotation.VolumeAnnotation>`
+        :returns: VolumeAnnotation object
+        :rtype: :class:`~supervisely.volume_annotation.volume_annotation.VolumeAnnotation`
 
         :Usage Example:
 
@@ -641,7 +641,7 @@ class VolumeAnnotation:
         """
         Convert the VolumeAnnotation to a json dict.
 
-        :param key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap` object.
+        :param key_id_map: KeyIdMap object.
         :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
         :returns: Volume annotation in json format as a dict.
         :rtype: dict
@@ -712,7 +712,7 @@ class VolumeAnnotation:
 
         :param path: Path to the json file.
         :type path: str
-        :param key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap` object.
+        :param key_id_map: KeyIdMap object.
         :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
         :returns: None
         :rtype: None
@@ -738,7 +738,7 @@ class VolumeAnnotation:
         Add new objects to a VolumeAnnotation object.
 
         :param objects: New volume objects.
-        :type objects: List[:class:`~supervisely.volume_annotation.volume_object.VolumeObject`] or :class:`~supervisely.volume_annotation.volume_object_collection.VolumeObjectCollection`
+        :type objects: List[VolumeObject] or VolumeObjectCollection
         :returns: A :class:`~supervisely.volume_annotation.volume_annotation.VolumeAnnotation` object containing the original and new volume objects.
         :rtype: :class:`~supervisely.volume_annotation.volume_annotation.VolumeAnnotation`
 
@@ -777,7 +777,7 @@ class VolumeAnnotation:
 
         :param keys: List of object keys or single object key.
         :type keys: List[uuid.UUID] or uuid.UUID
-        :returns: A :class:`~supervisely.volume_annotation.volume_annotation.VolumeAnnotation` object containing the original volume objects without the removed objects.
+        :returns: A VolumeAnnotation object containing the original volume objects without the removed objects.
         :rtype: :class:`~supervisely.volume_annotation.volume_annotation.VolumeAnnotation`
 
         :Usage Example:

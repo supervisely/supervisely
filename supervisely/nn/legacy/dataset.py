@@ -33,12 +33,14 @@ def samples_by_tags(required_tags, project):
 def ensure_samples_nonempty(samples, tag_name, project_meta):
     """
 
-    Args:
-        samples: list of pairs (image path, annotation path).
-        tag_name: tag name for messages.
-        project_meta: input project meta object.
-    Returns: None
-
+    :param samples: list of pairs (image path, annotation path).
+    :type samples: list
+    :param tag_name: tag name for messages.
+    :type tag_name: str
+    :param project_meta: input project meta object.
+    :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
+    :returns: None
+    :rtype: None
     """
     if len(samples) < 1:
         raise RuntimeError('There are no annotations with tag "{}"'.format(tag_name))

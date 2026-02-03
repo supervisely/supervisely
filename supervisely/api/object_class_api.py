@@ -85,7 +85,7 @@ class ObjectClassApi(ModuleApi):
         :type project_id: int
         :param filters: List of params to sort output ObjClasses.
         :type filters: List[dict], optional
-        :returns: List of ObjClasses with information from the given Project. See :meth:`info_sequence`.
+        :returns: List of ObjClasses with information from the given Project.
         :rtype: List[NamedTuple]
 
         :Usage Example:

@@ -121,8 +121,6 @@ def process_image_roi(func):
     Crops input image before inference if kwargs['state']['rectangle_crop'] provided
     and then scales annotation back to original image size.
 
-    Keyword arguments:
-
     :param image_np: Image in numpy.ndarray format (use image_path or image_np, not both)
     :type image_np: numpy.ndarray
     :param image_path: Path to image (use image_path or image_np, not both)

@@ -49,7 +49,7 @@ class PredictionSession:
 
     The session starts inference immediately during construction and becomes an iterator.
     Use it directly when you need streaming results or progress control, or use higher-level helpers
-    like :meth:`~supervisely.nn.model.model_api.ModelAPI.predict_detached`.
+    like :meth:`~supervisely.nn.model.model_api.ModelAPI.predict_detached` method.
 
     :Usage Example:
 

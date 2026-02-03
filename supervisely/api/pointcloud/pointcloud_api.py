@@ -291,7 +291,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :type id: int
         :param raise_error: Return an error if the point cloud info was not received.
         :type raise_error: bool
-        :returns: Information about point cloud. See :meth:`info_sequence`.
+        :returns: Information about point cloud.
         :rtype: :class:`~supervisely.api.pointcloud.pointcloud_api.PointcloudInfo`
 
         :Usage Example:
@@ -534,7 +534,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :type hash: str
         :param meta: Point cloud metadata.
         :type meta: dict, optional
-        :returns: Information about point cloud. See :meth:`info_sequence`.
+        :returns: Information about point cloud.
         :rtype: :class:`~supervisely.api.pointcloud.pointcloud_api.PointcloudInfo`
 
         :Usage Example:
@@ -610,7 +610,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :type metas: Optional[List[Dict]], optional
         :param progress_cb: Function for tracking upload progress.
         :type progress_cb: Progress, optional
-        :returns: List of informations about Pointclouds. See :meth:`info_sequence`.
+        :returns: List of informations about Pointclouds.
         :rtype: List[:class:`~supervisely.api.pointcloud.pointcloud_api.PointcloudInfo`]
 
         :Usage Example:
@@ -674,7 +674,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :type metas: Optional[List[Dict]]
         :param progress_cb: Function for tracking upload progress.
         :type progress_cb: Optional[Callable]
-        :returns: List with information about Point clouds. See :meth:`info_sequence`.
+        :returns: List with information about Point clouds.
         :rtype: List[:class:`~supervisely.api.pointcloud.pointcloud_api.PointcloudInfo`]
 
         :Usage Example:
@@ -731,7 +731,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :type name: str, optional
         :param meta: Point cloud metadata.
         :type meta: Dict, optional
-        :returns: Information about point cloud. See :meth:`info_sequence`.
+        :returns: Information about point cloud.
         :rtype: :class:`~supervisely.api.pointcloud.pointcloud_api.PointcloudInfo`
 
         :Usage Example:
@@ -828,7 +828,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
 
         :param path: Image path.
         :type path: str
-        :returns: Hash for image. See :class:`info_sequence<info_sequence>`
+        :returns: Hash for image.
         :rtype: str
 
         :Usage Example:
@@ -867,7 +867,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
 
         :param paths: Images pathes.
         :type paths: List[str]
-        :returns: List of hashes for images. See :class:`info_sequence<info_sequence>`
+        :returns: List of hashes for images.
         :rtype: List[str]
 
         :Usage Example:

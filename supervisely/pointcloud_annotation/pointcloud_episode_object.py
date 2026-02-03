@@ -15,8 +15,8 @@ class PointcloudEpisodeObject(PointcloudObject):
     :type obj_class: :class:`~supervisely.annotation.obj_class.ObjClass`
     :param tags: Pointcloud episode tags collection.
     :type tags: :class:`~supervisely.pointcloud_annotation.pointcloud_episode_tag_collection.PointcloudEpisodeTagCollection`
-    :param key: Key ID map.
-    :type key: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`
+    :param key: UUID key associated with the object.
+    :type key: uuid.UUID
     :param class_id: ID of ObjClass to which PointcloudEpisodeObject belongs.
     :type class_id: int
     :param labeler_login: Login of the user who created :class:`~supervisely.pointcloud_annotation.pointcloud_episode_object.PointcloudEpisodeObject`.

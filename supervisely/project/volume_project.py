@@ -182,7 +182,7 @@ class VolumeProject(VideoProject):
         :param dest_dir: Destination directory.
         :type dest_dir: str
         :param dataset_ids: Dataset IDs.
-        :type dataset_ids: list [ int ], optional
+        :type dataset_ids: List[int], optional
         :param download_volumes: Download volume data files or not.
         :type download_volumes: bool, optional
         :param log_progress: Show uploading progress bar.

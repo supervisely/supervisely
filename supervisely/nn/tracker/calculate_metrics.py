@@ -252,13 +252,14 @@ def evaluate(
     """
     Evaluate tracking predictions against ground truth.
 
-    Args:
-        gt_annotation: Ground-truth annotation, an object of class supervisely VideoAnnotation containing reference object tracks.
-        pred_annotation: Predicted annotation, an object of class supervisely VideoAnnotation to be compared against the ground truth.
-        iou_threshold: Minimum Intersection-over-Union required for a detection to be considered a valid match.
-
-    Returns:
-        dict: json with evaluation metrics.
+    :param gt_annotation: Ground-truth annotation, an object of class :class:`~supervisely.video_annotation.video_annotation.VideoAnnotation` containing reference object tracks.
+    :type gt_annotation: VideoAnnotation
+    :param pred_annotation: Predicted annotation, an object of class :class:`~supervisely.video_annotation.video_annotation.VideoAnnotation` to be compared against the ground truth.
+    :type pred_annotation: VideoAnnotation
+    :param iou_threshold: Minimum Intersection-over-Union required for a detection to be considered a valid match.
+    :type iou_threshold: float
+    :returns: Dictionary with evaluation metrics
+    :rtype: Dict[str, Union[float, int]]
     """
     evaluator = TrackingEvaluator(iou_threshold=iou_threshold)
     return evaluator.evaluate(gt_annotation, pred_annotation)

@@ -790,8 +790,8 @@ class LabelBase:
         :param class_name_font: Font of class name to be drawn, uses `FreeTypeFont <https://pillow.readthedocs.io/en/stable/reference/ImageFont.html#PIL.ImageFont.FreeTypeFont>`_ from `PIL <https://pillow.readthedocs.io/en/stable/index.html>`_.
         :type class_name_font: FreeTypeFont, optional
 
-        :returns: :class:`None<None>`
-        :rtype: :class:`NoneType<NoneType>`
+        :returns: None
+        :rtype: None
         """
         effective_color = take_with_default(color, self.obj_class.color)
         self.geometry.draw(
@@ -851,8 +851,8 @@ class LabelBase:
         :param class_name_font: Font of class name to be drawn, uses `FreeTypeFont <https://pillow.readthedocs.io/en/stable/reference/ImageFont.html#PIL.ImageFont.FreeTypeFont>`_ from `PIL <https://pillow.readthedocs.io/en/stable/index.html>`_.
         :type class_name_font: FreeTypeFont, optional
 
-        :returns: :class:`None<None>`
-        :rtype: :class:`NoneType<NoneType>`
+        :returns: None
+        :rtype: None
         """
         effective_color = take_with_default(color, self.obj_class.color)
         self.geometry.draw_contour(

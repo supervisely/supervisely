@@ -18,14 +18,21 @@ from supervisely.nn.tracker.botsort.tracker.mc_bot_sort import BoTSORT
 class TrackedObject:
     """
     Data class representing a tracked object in a single frame.
-    
-    Args:
-        track_id: Unique identifier for the track
-        det_id: Detection ID for mapping back to original annotation
-        bbox: Bounding box coordinates in format [x1, y1, x2, y2]
-        class_name: String class name
-        class_sly_id: Supervisely class ID (from :meth:`~supervisely.annotation.obj_class.ObjClass.sly_id`)
-        score: Confidence score of the detection/track
+
+    :param track_id: Unique identifier for the track
+    :type track_id: int
+    :param det_id: Detection ID for mapping back to original annotation
+    :type det_id: int
+    :param bbox: Bounding box coordinates in format [x1, y1, x2, y2]
+    :type bbox: List[float]
+    :param class_name: String class name
+    :type class_name: str
+    :param class_sly_id: Class ID on Supervisely instance. Can be obtained from :attr:`~supervisely.annotation.obj_class.ObjClass.sly_id` property.
+    :type class_sly_id: Optional[int]
+    :param score: Confidence score of the detection/track
+    :type score: float
+    :param original_label: Original label from annotation
+    :type original_label: Optional[sly.Label]
     """
     track_id: int
     det_id: int

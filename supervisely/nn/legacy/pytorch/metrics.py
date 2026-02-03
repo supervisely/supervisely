@@ -6,10 +6,12 @@ class MultiClassAccuracy:
     """
     Compute multi class accuracy for image segmentation task.
 
-    Args:
-        ignore_index: Specifies a target value that is ignored and does not contribute to the accuracy value.
-        squeeze_targets: Whether to squeeze targets array along 1st dimension.
-
+    :param ignore_index: Target value that is ignored and does not contribute to the accuracy value.
+    :type ignore_index: int
+    :param squeeze_targets: Whether to squeeze targets array along 1st dimension.
+    :type squeeze_targets: bool
+    :returns: Multi class accuracy
+    :rtype: float
     """
     def __init__(self, ignore_index: int=None, squeeze_targets: bool=True):
         self._ignore_index = ignore_index

@@ -205,7 +205,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :type parent_id: Union[int, None], optional
         :param include_custom_data: If True, the response will include the `custom_data` field for each :class:`~supervisely.project.project.Dataset`.
         :type include_custom_data: bool, optional
-        :returns: List of all Datasets with information for the given Project. See :class:`info_sequence<info_sequence>`
+        :returns: List of all Datasets with information for the given Project.
         :rtype: :class:`List[DatasetInfo]`
 
         :Usage Example:

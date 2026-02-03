@@ -4655,13 +4655,14 @@ def _filter_duplicated_predictions_from_ann_cpu(
     Filter out predicted labels whose bboxes have IoU > iou_threshold with any GT label.
     Uses Shapely for geometric operations.
 
-    Args:
-        pred_ann: Predicted annotation object
-        gt_ann: Ground truth annotation object
-        iou_threshold: IoU threshold for filtering
-
-    Returns:
-        New annotation with filtered labels
+    :param pred_ann: Predicted annotation object
+    :type pred_ann: :class:`~supervisely.annotation.annotation.Annotation`
+    :param gt_ann: Ground truth annotation object
+    :type gt_ann: :class:`~supervisely.annotation.annotation.Annotation`
+    :param iou_threshold: IoU threshold for filtering
+    :type iou_threshold: float
+    :returns: New annotation with filtered labels
+    :rtype: :class:`~supervisely.annotation.annotation.Annotation`
     """
     if not iou_threshold:
         return pred_ann

@@ -86,12 +86,11 @@ class TemplateRenderer:
     def _add_header_ids(self, content_html: str) -> str:
         """
         Add IDs to h2 and h3 header tags for table of contents generation.
-        
-        Args:
-            content_html: HTML content with h2 and h3 headers
-            
-        Returns:
-            HTML content with IDs added to headers
+
+        :param content_html: HTML content with h2 and h3 headers
+        :type content_html: str
+        :returns: HTML content with IDs added to headers
+        :rtype: str
         """
         def clean_title_for_id(title: str) -> str:
             """Convert header title to a clean ID format"""

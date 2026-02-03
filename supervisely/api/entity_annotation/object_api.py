@@ -96,7 +96,7 @@ class ObjectApi(RemoveableBulkModuleApi):
         :type dataset_id: int
         :param filters: List of parameters to sort output Objects.
         :type filters: List[dict], optional
-        :returns: Information about Objects. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Objects.
         :rtype: :class:`List[NamedTuple]`
 
         :Usage Example:

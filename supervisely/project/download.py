@@ -309,7 +309,7 @@ def download_fast(
     :param dest_dir: Destination directory.
     :type dest_dir: str
     :param dataset_ids: Filter datasets by IDs.
-    :type dataset_ids: list [ int ], optional
+    :type dataset_ids: List[int], optional
     :param log_progress: Show uploading progress bar.
     :type log_progress: bool
     :param progress_cb: Function for tracking download progress.
@@ -325,7 +325,7 @@ def download_fast(
     :param save_image_meta: Download images metadata in JSON format or not.
     :type save_image_meta: bool, optional
     :param images_ids: Filter images by IDs.
-    :type images_ids: list [ int ], optional
+    :type images_ids: List[int], optional
     :param resume_download: Resume download enables to download only missing files avoiding erase of existing files.
     :type resume_download: bool, optional
     :param switch_size: Size threshold that determines how an item will be downloaded.

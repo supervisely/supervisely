@@ -460,7 +460,7 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type show_disabled: bool, optional
         :param collection_id: Entities Collection ID in Supervisely.
         :type collection_id: int, optional
-        :returns: List of information about Labeling Queues. See :class:`info_sequence<info_sequence>`
+        :returns: List of information about Labeling Queues.
         :rtype: :class:`List[LabelingQueueInfo]`
 
         :Usage Example:
@@ -506,7 +506,7 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
 
         :param id: Labeling Queue ID in Supervisely.
         :type id: int
-        :returns: Information about Labeling Queue. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Labeling Queue.
         :rtype: :class:`~supervisely.api.labeling_queue_api.LabelingQueueInfo`
 
         :Usage Example:

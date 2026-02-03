@@ -123,21 +123,12 @@ def get_annotation_from_nii(path: str) -> Generator[Mask3D, None, None]:
 def get_scores_from_table(csv_file_path: str, plane: str) -> dict:
     """Get scores from CSV table and return nested dictionary structure.
 
-    Args:
-        csv_file_path: Path to the CSV file containing layer scores
-
-    Returns:
-        Nested dictionary with structure:
-        {
-            "label_index": {
-                "slice_index": {
-                    "127": {
-                        "score": float_value,
-                        "comment": ""
-                    }
-                }
-            }
-        }
+    :param csv_file_path: Path to the CSV file containing layer scores
+    :type csv_file_path: str
+    :param plane: Plane prefix
+    :type plane: str
+    :returns: Nested dictionary with structure:
+    :rtype: dict
     """
     import csv
 
