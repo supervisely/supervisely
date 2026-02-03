@@ -33,16 +33,15 @@ def resize_origin_and_bitmap(
     Change PointLocation and resize numpy array to match a certain size.
 
     :param origin: PointLocation to resize.
-    :type origin: PointLocation
+    :type origin: :class:`~supervisely.geometry.point_location.PointLocation`
     :param bitmap: Numpy array to resize.
     :type bitmap: np.ndarray
-    :param in_size: Input image size (height, width) to which belongs :class:`PointLocation<supervisely.geometry.point_location.PointLocation>` object and numpy array.
+    :param in_size: Input image size (height, width) to which belongs :class:`PointLocation<~supervisely.geometry.point_location.PointLocation>` object and numpy array.
     :type in_size: Tuple[int, int]
-    :param out_size: Desired output image size (height, width) to which belongs :class:`PointLocation<supervisely.geometry.point_location.PointLocation>` object and numpy array.
+    :param out_size: Desired output image size (height, width) to which belongs :class:`PointLocation<~supervisely.geometry.point_location.PointLocation>` object and numpy array.
     :type out_size: Tuple[int, int]
-
-    :returns: PointLocation object and numpy array
-    :rtype: :class:`PointLocation<supervisely.geometry.point_location.PointLocation>`, :class:`np.ndarray`
+    :returns: Point location and numpy array
+    :rtype: :class:`~supervisely.geometry.point_location.PointLocation`, :class:`np.ndarray`
 
     :Usage Example:
 
@@ -70,21 +69,21 @@ def resize_origin_and_bitmap(
 
 class BitmapBase(Geometry):
     """
-        BitmapBase is a base class of :class:`Bitmap<supervisely.geometry.bitmap.Bitmap>` geometry. :class:`BitmapBase<BitmapBase>` class object is immutable.
+        BitmapBase is a base class of :class:`~supervisely.geometry.bitmap.Bitmap` geometry. :class:`~supervisely.geometry.bitmap_base.BitmapBase` class object is immutable.
         
-        Example of creating and using see in :class:`Bitmap<supervisely.geometry.bitmap.Bitmap>`.
+        Example of creating and using see in :class:`~supervisely.geometry.bitmap.Bitmap`.
 
         :param data: Bitmap mask data.
         :type data: np.ndarray
-        :param origin: :class:`PointLocation<supervisely.geometry.point_location.PointLocation>`: top, left corner of Bitmap. Position of the Bitmap within image.
-        :type origin: PointLocation, optional
+        :param origin: :class:`~supervisely.geometry.point_location.PointLocation`: top, left corner of Bitmap. Position of the Bitmap within image.
+        :type origin: :class:`~supervisely.geometry.point_location.PointLocation`, optional
         :param expected_data_dims: Number of dimensions of data numpy array.
         :type expected_data_dims: int, optional
         :param sly_id: Bitmap ID in Supervisely server.
         :type sly_id: int, optional
-        :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which Bitmap belongs.
+        :param class_id: ID of ObjClass to which Bitmap belongs.
         :type class_id: int, optional
-        :param labeler_login: Login of the user who created Bitmap.
+        :param labeler_login: Login of the user who created :class:`~supervisely.geometry.bitmap.Bitmap`.
         :type labeler_login: str, optional
         :param updated_at: Date and Time when Bitmap was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
         :type updated_at: str, optional
@@ -192,8 +191,8 @@ class BitmapBase(Geometry):
 
         :param data: Bitmap in json format as a dict.
         :type data: dict
-        :returns: BitmapBase object
-        :rtype: :class:`BitmapBase<BitmapBase>`
+        :returns: Bitmap.
+        :rtype: :class:`~supervisely.geometry.bitmap_base.BitmapBase`
 
         :Usage Example:
 
@@ -250,8 +249,8 @@ class BitmapBase(Geometry):
         """
         Position of the Bitmap within image.
 
-        :returns: Top, left corner of Bitmap.
-        :rtype: :class:`PointLocation<supervisely.geometry.point_location.PointLocation>`
+        :returns: Top, left corner of :class:`~supervisely.geometry.bitmap.Bitmap`.
+        :rtype: :class:`~supervisely.geometry.point_location.PointLocation`
         """
         return self._origin.clone()
 
@@ -260,7 +259,7 @@ class BitmapBase(Geometry):
         """
         Get mask data of Bitmap.
 
-        :returns: Data of Bitmap.
+        :returns: Data of :class:`~supervisely.geometry.bitmap.Bitmap`.
         :rtype: :class:`np.ndarray`
         """
         return self._data.copy()
@@ -273,8 +272,8 @@ class BitmapBase(Geometry):
         :type drow: int
         :param dcol: Vertical shift.
         :type dcol: int
-        :returns: BitmapBase object
-        :rtype: :class:`BitmapBase<BitmapBase>`
+        :returns: Translated bitmap.
+        :rtype: :class:`~supervisely.geometry.bitmap_base.BitmapBase`
 
         :Usage Example:
 
@@ -290,10 +289,10 @@ class BitmapBase(Geometry):
         """
         Flip current Bitmap in horizontal.
 
-        :param img_size: :class:`Annotation.img_size<supervisely.annotation.annotation.Annotation.img_size>` which belongs Bitmap.
+        :param img_size: img_size which belongs Bitmap.
         :type img_size: Tuple[int, int]
-        :returns: BitmapBase object
-        :rtype: :class:`BitmapBase<BitmapBase>`
+        :returns: Flipped bitmap in horizontal.
+        :rtype: :class:`~supervisely.geometry.bitmap_base.BitmapBase`
 
         :Usage Example:
 
@@ -313,10 +312,10 @@ class BitmapBase(Geometry):
         """
         Flip current Bitmap in vertical.
 
-        :param img_size: :class:`Annotation.img_size<supervisely.annotation.annotation.Annotation.img_size>` which belongs Bitmap.
+        :param img_size: img_size which belongs Bitmap.
         :type img_size: Tuple[int, int]
-        :returns: BitmapBase object
-        :rtype: :class:`BitmapBase<BitmapBase>`
+        :returns: Flipped bitmap in vertical.
+        :rtype: :class:`~supervisely.geometry.bitmap_base.BitmapBase`
 
         :Usage Example:
 
@@ -338,8 +337,8 @@ class BitmapBase(Geometry):
 
         :param factor: Scale parameter.
         :type factor: float
-        :returns: BitmapBase object
-        :rtype: :class:`BitmapBase<BitmapBase>`
+        :returns: Scaled bitmap.
+        :rtype: :class:`~supervisely.geometry.bitmap_base.BitmapBase`
 
         :Usage Example:
 
@@ -361,10 +360,10 @@ class BitmapBase(Geometry):
 
     def to_bbox(self) -> Rectangle:
         """
-        Create :class:`Rectangle<supervisely.geometry.rectangle.Rectangle>` object from current Bitmap.
+        Create :class:`~supervisely.geometry.rectangle.Rectangle` object from current Bitmap.
 
-        :returns: Rectangle object
-        :rtype: :class:`Rectangle<supervisely.geometry.rectangle.Rectangle>`
+        :returns: Rectangle from bitmap.
+        :rtype: :class:`~supervisely.geometry.rectangle.Rectangle`
 
         :Usage Example:
 

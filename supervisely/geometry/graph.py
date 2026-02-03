@@ -38,10 +38,10 @@ COLOR = "color"
 
 class Node(JsonSerializable):
     """
-    Node for a single :class:`GraphNodes<GraphNodes>`.
+    Node for a single :class:`~supervisely.geometry.graph.GraphNodes`.
 
-    :param location: PointLocation object.
-    :type location: PointLocation
+    :param location: Location of Node.
+    :type location: :class:`~supervisely.geometry.point_location.PointLocation`
     :param disabled: Determines whether to display the Node when drawing or not.
     :type disabled: bool, optional
     :param label: str
@@ -79,8 +79,8 @@ class Node(JsonSerializable):
         """
         Location of Node.
 
-        :returns: PointLocation object
-        :rtype: :class:`PointLocation<supervisely.geometry.point_location.PointLocation>`
+        :returns: Location of Node.
+        :rtype: :class:`~supervisely.geometry.point_location.PointLocation`
         """
         return self._location
 
@@ -101,8 +101,8 @@ class Node(JsonSerializable):
 
         :param data: Node in json format as a dict.
         :type data: dict
-        :returns: Node object
-        :rtype: :class:`Node<Node>`
+        :returns: Node from json.
+        :rtype: :class:`~supervisely.geometry.graph.Node`
 
         :Usage Example:
 
@@ -122,7 +122,7 @@ class Node(JsonSerializable):
         """
         Convert the Node to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
-        :returns: Json format as a dict
+        :returns: Node in json format as a dict.
         :rtype: dict
 
         :Usage Example:
@@ -147,7 +147,8 @@ class Node(JsonSerializable):
     def transform_location(self, transform_fn):
         """
         :param transform_fn: function to convert location
-        :returns: Node class object with the changed location attribute using the given function
+        :returns: Node after transformation.
+        :rtype: :class:`~supervisely.geometry.graph.Node`
         """
         return Node(transform_fn(self._location), disabled=self.disabled)
 
@@ -155,8 +156,11 @@ class Node(JsonSerializable):
 def _maybe_transform_colors(elements, process_fn):
     """
     Function _maybe_transform_colors convert some list of parameters using the given function
-    :param elements: list of elements
+    :param elements: List of elements.
     :param process_fn: function to convert
+    :type process_fn: function
+    :returns: List of elements after transformation.
+    :rtype: List[Any]
     """
     for elem in elements:
         if COLOR in elem:
@@ -165,15 +169,15 @@ def _maybe_transform_colors(elements, process_fn):
 
 class GraphNodes(Geometry):
     """
-    GraphNodes geometry for a single :class:`Label<supervisely.annotation.label.Label>`. :class:`GraphNodes<GraphNodes>` class object is immutable.
+    GraphNodes geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.graph.GraphNodes` class object is immutable.
 
     :param nodes: Dict or List containing nodes of graph
     :type nodes: dict
     :param sly_id: GraphNodes ID in Supervisely server.
     :type sly_id: int, optional
-    :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which GraphNodes belongs.
+    :param class_id: ID of ObjClass to which GraphNodes belongs.
     :type class_id: int, optional
-    :param labeler_login: Login of the user who created GraphNodes.
+    :param labeler_login: Login of the user who created :class:`~supervisely.geometry.graph.GraphNodes`.
     :type labeler_login: str, optional
     :param updated_at: Date and Time when GraphNodes was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
     :type updated_at: str, optional
@@ -245,8 +249,8 @@ class GraphNodes(Geometry):
 
         :param data: GraphNodes in json format as a dict.
         :type data: dict
-        :returns: GraphNodes object
-        :rtype: :class:`GraphNodes<GraphNodes>`
+        :returns: GraphNodes from json.
+        :rtype: :class:`GraphNodes<~supervisely.geometry.graph.GraphNodes>`
 
         :Usage Example:
 
@@ -328,10 +332,10 @@ class GraphNodes(Geometry):
         """
         Crops current GraphNodes.
 
-        :param rect: Rectangle object for crop.
-        :type rect: Rectangle
-        :returns: List of GraphNodes objects
-        :rtype: :class:`List[GraphNodes]`
+        :param rect: Rectangle for crop.
+        :type rect: :class:`~supervisely.geometry.rectangle.Rectangle`
+        :returns: List of GraphNodes after crop.
+        :rtype: List[:class:`~supervisely.geometry.graph.GraphNodes`]
 
         :Usage Example:
 
@@ -350,10 +354,10 @@ class GraphNodes(Geometry):
         """
         Crops current GraphNodes with given rectangle and shifts it on value of rectangle left top angle.
 
-        :param rect: Rectangle object for crop.
-        :type rect: Rectangle
-        :returns: List of GraphNodes objects
-        :rtype: :class:`List[GraphNodes]<GraphNodes>`
+        :param rect: Rectangle for crop.
+        :type rect: :class:`~supervisely.geometry.rectangle.Rectangle`
+        :returns: List of GraphNodes after relative crop.
+        :rtype: List[:class:`~supervisely.geometry.graph.GraphNodes`]
 
         :Usage Example:
 
@@ -368,8 +372,10 @@ class GraphNodes(Geometry):
     def transform(self, transform_fn) -> GraphNodes:
         """
         :param transform_fn: Function to convert GraphNodes.
-        :returns: GraphNodes object
-        :rtype: :class:`GraphNodes<GraphNodes>`
+        :type transform_fn: function
+        :returns: GraphNodes after transformation.
+        :rtype: :class:`~supervisely.geometry.graph.GraphNodes`
+        :rtype: :class:`GraphNodes<~supervisely.geometry.graph.GraphNodes>`
         """
         return self.__class__(
             nodes={node_id: transform_fn(node) for node_id, node in self._nodes.items()}
@@ -378,8 +384,10 @@ class GraphNodes(Geometry):
     def transform_locations(self, transform_fn) -> GraphNodes:
         """
         :param transform_fn: Function to convert GraphNodes location.
-        :returns: GraphNodes object
-        :rtype: :class:`GraphNodes<GraphNodes>`
+        :type transform_fn: function
+        :returns: GraphNodes after transformation.
+        :rtype: :class:`~supervisely.geometry.graph.GraphNodes`
+        :rtype: :class:`GraphNodes<~supervisely.geometry.graph.GraphNodes>`
         """
         return self.transform(lambda kp: kp.transform_location(transform_fn))
 
@@ -387,12 +395,13 @@ class GraphNodes(Geometry):
         """
         Resizes current GraphNodes.
 
-        :param in_size: Input image size (height, width) to which belongs GraphNodes.
+        :param in_size: Input image size (height, width) to which belongs :class:`~supervisely.geometry.graph.GraphNodes`.
         :type in_size: Tuple[int, int]
-        :param out_size: Desired output image size (height, width) to which belongs GraphNodes.
+        :param out_size: Desired output image size (height, width) to which belongs :class:`~supervisely.geometry.graph.GraphNodes`.
         :type out_size: Tuple[int, int]
-        :returns: GraphNodes object
-        :rtype: :class:`GraphNodes<GraphNodes>`
+        :returns: GraphNodes after resize.
+        :rtype: :class:`~supervisely.geometry.graph.GraphNodes`
+        :rtype: :class:`GraphNodes<~supervisely.geometry.graph.GraphNodes>`
 
         :Usage Example:
 
@@ -411,8 +420,8 @@ class GraphNodes(Geometry):
 
         :param factor: Scale parameter.
         :type factor: float
-        :returns: GraphNodes object
-        :rtype: :class:`GraphNodes<GraphNodes>`
+        :returns: :class:`~supervisely.geometry.graph.GraphNodes` object
+        :rtype: :class:`~supervisely.geometry.graph.GraphNodes`
 
         :Usage Example:
 
@@ -431,8 +440,8 @@ class GraphNodes(Geometry):
         :type drow: int
         :param dcol: Vertical shift.
         :type dcol: int
-        :returns: GraphNodes object
-        :rtype: :class:`GraphNodes<GraphNodes>`
+        :returns: GraphNodes after translate.
+        :rtype: :class:`~supervisely.geometry.graph.GraphNodes`
 
         :Usage Example:
 
@@ -447,10 +456,10 @@ class GraphNodes(Geometry):
         """
         Rotates current GraphNodes.
 
-        :param rotator: ImageRotator object for rotation.
-        :type rotator: ImageRotator
-        :returns: GraphNodes object
-        :rtype: :class:`GraphNodes<GraphNodes>`
+        :param rotator: Class for image rotation.
+        :type rotator: :class:`~supervisely.geometry.image_rotator.ImageRotator`
+        :returns: GraphNodes after rotation.
+        :rtype: :class:`~supervisely.geometry.graph.GraphNodes`
 
         :Usage Example:
 
@@ -469,10 +478,10 @@ class GraphNodes(Geometry):
         """
         Flips current GraphNodes in horizontal.
 
-        :param img_size: Input image size (height, width) to which belongs GraphNodes.
+        :param img_size: Input image size (height, width) to which belongs :class:`~supervisely.geometry.graph.GraphNodes`.
         :type img_size: Tuple[int, int]
-        :returns: GraphNodes object
-        :rtype: :class:`GraphNodes<GraphNodes>`
+        :returns: GraphNodes after flip in horizontal.
+        :rtype: :class:`~supervisely.geometry.graph.GraphNodes`
 
         :Usage Example:
 
@@ -488,10 +497,10 @@ class GraphNodes(Geometry):
         """
         Flips current GraphNodes in vertical.
 
-        :param img_size: Input image size (height, width) to which belongs GraphNodes.
+        :param img_size: Input image size (height, width).
         :type img_size: Tuple[int, int]
-        :returns: GraphNodes object
-        :rtype: :class:`GraphNodes<GraphNodes>`
+        :returns: GraphNodes after flip in vertical.
+        :rtype: :class:`~supervisely.geometry.graph.GraphNodes`
 
         :Usage Example:
 
@@ -584,8 +593,8 @@ class GraphNodes(Geometry):
         """
         Create Rectangle object from current GraphNodes.
 
-        :returns: Rectangle object
-        :rtype: :class:`Rectangle<supervisely.geometry.rectangle.Rectangle>`
+        :returns: Rectangle from GraphNodes.
+        :rtype: :class:`~supervisely.geometry.rectangle.Rectangle`
 
         :Usage Example:
 
@@ -605,8 +614,8 @@ class GraphNodes(Geometry):
         """
         Makes a copy of the GraphNodes.
 
-        :returns: GraphNodes object
-        :rtype: :class:`GraphNodes<GraphNodes>`
+        :returns: Copy of GraphNodes.
+        :rtype: :class:`~supervisely.geometry.graph.GraphNodes`
 
         :Usage Example:
 
@@ -620,6 +629,11 @@ class GraphNodes(Geometry):
     def validate(self, name: str, settings: Dict) -> None:
         """
         Checks the graph for correctness and compliance with the template
+        :param name: Name of the geometry.
+        :type name: str
+        :param settings: Settings of the geometry.
+        :type settings: dict
+        :raises ValueError: if graph contains nodes not declared in the template
         """
         super().validate(name, settings)
         # TODO template self-consistency checks.
@@ -640,7 +654,9 @@ class GraphNodes(Geometry):
         Transform colors of edges and nodes in graph template
         :param config: dictionary(graph template)
         :param transform_fn: function to convert
-        :returns: dictionary(graph template)
+        :type transform_fn: function
+        :returns: dictionary(graph template) after transformation
+        :rtype: dict
         """
         if config is None:
             return None
@@ -655,7 +671,9 @@ class GraphNodes(Geometry):
         """
         Convert graph template from json format
         :param config: dictionary(graph template) in json format
-        :returns: dictionary(graph template)
+        :type config: dict
+        :returns: dictionary(graph template) in json format
+        :rtype: dict
         """
 
         try:
@@ -672,7 +690,9 @@ class GraphNodes(Geometry):
         """
         Convert graph template in json format
         :param config: dictionary(graph template)
+        :type config: dict
         :returns: dictionary(graph template) in json format
+        :rtype: dict
         """
         return GraphNodes._transform_config_colors(config, rgb2hex)
 
@@ -680,6 +700,8 @@ class GraphNodes(Geometry):
     def allowed_transforms(cls):
         """
         allowed_transforms
+        :returns: List of allowed transforms
+        :rtype: List[Type[Geometry]]
         """
         from supervisely.geometry.any_geometry import AnyGeometry
         from supervisely.geometry.rectangle import Rectangle

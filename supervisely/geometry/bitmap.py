@@ -28,7 +28,7 @@ if not hasattr(np, "bool"):
 
 class SkeletonizeMethod(Enum):
     """
-    Specifies possible skeletonization methods of :class:`Bitmap<Bitmap>`.
+    Specifies possible skeletonization methods of :class:`~supervisely.geometry.bitmap.Bitmap`.
     """
 
     SKELETONIZE = 0
@@ -58,17 +58,17 @@ def _find_mask_tight_bbox(raw_mask: np.ndarray) -> Rectangle:
 
 class Bitmap(BitmapBase):
     """
-    Bitmap geometry for a single :class:`Label<supervisely.annotation.label.Label>`. :class:`Bitmap<Bitmap>` object is immutable.
+    Bitmap geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.bitmap.Bitmap` object is immutable.
 
     :param data: Bitmap mask data. Must be a numpy array with only 2 unique values: [0, 1] or [0, 255] or [False, True].
     :type data: np.ndarray
-    :param origin: :class:`PointLocation<supervisely.geometry.point_location.PointLocation>`: top, left corner of Bitmap. Position of the Bitmap within image.
-    :type origin: PointLocation, optional
+    :param origin: :class:`~supervisely.geometry.point_location.PointLocation`: top, left corner of Bitmap. Position of the Bitmap within image.
+    :type origin: :class:`~supervisely.geometry.point_location.PointLocation`, optional
     :param sly_id: Bitmap ID in Supervisely server.
     :type sly_id: int, optional
-    :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which Bitmap belongs.
+    :param class_id: ID of ObjClass to which Bitmap belongs.
     :type class_id: int, optional
-    :param labeler_login: Login of the user who created Bitmap.
+    :param labeler_login: Login of the user who created :class:`~supervisely.geometry.bitmap.Bitmap`.
     :type labeler_login: str, optional
     :param updated_at: Date and Time when Bitmap was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
     :type updated_at: str, optional
@@ -188,10 +188,10 @@ class Bitmap(BitmapBase):
         """
         Rotates current Bitmap.
 
-        :param rotator: :class:`ImageRotator<supervisely.geometry.image_rotator.ImageRotator>` for Bitamp rotation.
-        :type rotator: ImageRotator
-        :returns: Bitmap object
-        :rtype: :class:`Bitmap<Bitmap>`
+        :param rotator: ImageRotator for Bitamp rotation.
+        :type rotator: :class:`~supervisely.geometry.image_rotator.ImageRotator`
+        :returns: :class:`~supervisely.geometry.bitmap.Bitmap` object
+        :rtype: :class:`~supervisely.geometry.bitmap.Bitmap`
 
         :Usage Example:
 
@@ -216,10 +216,10 @@ class Bitmap(BitmapBase):
         """
         Crops current Bitmap.
 
-        :param rect: Rectangle object for cropping.
-        :type rect: Rectangle
+        :param rect: :class:`~supervisely.geometry.rectangle.Rectangle` object for cropping.
+        :type rect: :class:`~supervisely.geometry.rectangle.Rectangle`
         :returns: List of Bitmaps
-        :rtype: :class:`List[Bitmap]<supervisely.geometry.bitmap.Bitmap>`
+        :rtype: List[:class:`~supervisely.geometry.bitmap.Bitmap`]
 
         :Usage Example:
 
@@ -253,8 +253,8 @@ class Bitmap(BitmapBase):
         :type in_size: Tuple[int, int]
         :param out_size: Output image size (height, width) to which Bitmap belongs.
         :type out_size: Tuple[int, int]
-        :returns: Bitmap object
-        :rtype: :class:`Bitmap<Bitmap>`
+        :returns: Resized bitmap.
+        :rtype: :class:`~supervisely.geometry.bitmap.Bitmap`
 
         :Usage Example:
 
@@ -305,7 +305,7 @@ class Bitmap(BitmapBase):
         """
         Bitmap area.
 
-        :returns: Area of current Bitmap
+        :returns: Area of current :class:`~supervisely.geometry.bitmap.Bitmap`
         :rtype: float
 
         :Usage Example:
@@ -325,7 +325,7 @@ class Bitmap(BitmapBase):
         :param s: Input base64 encoded string.
         :type s: str
         :returns: Bool numpy array
-        :rtype: :class:`np.ndarray`
+        :rtype: np.ndarray
 
         :Usage Example:
 
@@ -421,9 +421,9 @@ class Bitmap(BitmapBase):
         Compute the skeleton, medial axis transform or morphological thinning of Bitmap.
 
         :param method_id: Method to convert bool numpy array.
-        :type method_id: SkeletonizeMethod
-        :returns: Bitmap object
-        :rtype: :class:`Bitmap<Bitmap>`
+        :type method_id: :class:`~supervisely.geometry.bitmap.SkeletonizeMethod`
+        :returns: Skeletonized bitmap.
+        :rtype: :class:`~supervisely.geometry.bitmap.Bitmap`
 
         :Usage Example:
 
@@ -456,8 +456,8 @@ class Bitmap(BitmapBase):
         """
         Get list of contours in Bitmap.
 
-        :returns: List of Polygon objects
-        :rtype: :class:`List[Polygon]<supervisely.geometry.polygon.Polygon>`
+        :returns: List of polygons from bitmap.
+        :rtype: List[:class:`~supervisely.geometry.polygon.Polygon`]
 
         :Usage Example:
 
@@ -513,8 +513,8 @@ class Bitmap(BitmapBase):
         :type full_target_mask: np.ndarray
         :param bit_op: Type of bitwise operation(and, or, not, xor), uses `numpy logic <https://numpy.org/doc/stable/reference/routines.logic.html>`_ functions.
         :type bit_op: `Numpy logical operation <https://numpy.org/doc/stable/reference/routines.logic.html#logical-operations>`_
-        :returns: Bitmap object or empty list
-        :rtype: :class:`Bitmap<Bitmap>` or list
+        :returns: Bitmap or empty list.
+        :rtype: :class:`~supervisely.geometry.bitmap.Bitmap`
 
         :Usage Example:
 
@@ -583,8 +583,8 @@ class Bitmap(BitmapBase):
 
         :param path: Path to image
         :type path: str
-        :returns: Bitmap
-        :rtype: Bitmap
+        :returns: Bitmap from image.
+        :rtype: :class:`~supervisely.geometry.bitmap.Bitmap`
         """
         img = read(path)
         return Bitmap(img[:, :, 0])

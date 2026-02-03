@@ -38,13 +38,13 @@ if not hasattr(np, "bool"):
 class PointVolume(JsonSerializable):
     """
     PointVolume (x, y, z) determines position of Mask3D. It locates the first sample.
-    :class:`PointVolume<PointVolume>` object is immutable.
+    :class:`~supervisely.geometry.mask_3d.PointVolume` object is immutable.
 
-    :param x: Position of PointVolume object on X-axis.
+    :param x: Position of :class:`~supervisely.geometry.mask_3d.PointVolume` object on X-axis.
     :type x: int or float
-    :param y: Position of PointVolume object on Y-axis.
+    :param y: Position of :class:`~supervisely.geometry.mask_3d.PointVolume` object on Y-axis.
     :type y: int or float
-    :param z: Position of PointVolume object on Z-axis.
+    :param z: Position of :class:`~supervisely.geometry.mask_3d.PointVolume` object on Z-axis.
     :type z: int or float
 
     :Usage Example:
@@ -69,7 +69,7 @@ class PointVolume(JsonSerializable):
         """
         Position of PointVolume on X-axis.
 
-        :returns: X of PointVolume
+        :returns: X of :class:`~supervisely.geometry.mask_3d.PointVolume`
         :rtype: int
 
         :Usage Example:
@@ -86,7 +86,7 @@ class PointVolume(JsonSerializable):
         """
         Position of PointVolume on Y-axis.
 
-        :returns: Y of PointVolume
+        :returns: Y of :class:`~supervisely.geometry.mask_3d.PointVolume`
         :rtype: int
 
         :Usage Example:
@@ -103,7 +103,7 @@ class PointVolume(JsonSerializable):
         """
         Position of PointVolume on Z-axis.
 
-        :returns: Z of PointVolume
+        :returns: Z of :class:`~supervisely.geometry.mask_3d.PointVolume`
         :rtype: int
 
         :Usage Example:
@@ -148,8 +148,8 @@ class PointVolume(JsonSerializable):
 
         :param data: PointVolume in json format as a dict.
         :type data: dict
-        :returns: PointVolume object
-        :rtype: :class:`PointVolume<PointVolume>`
+        :returns: :class:`~supervisely.geometry.mask_3d.PointVolume` object
+        :rtype: :class:`~supervisely.geometry.mask_3d.PointVolume`
 
         :Usage Example:
 
@@ -170,13 +170,13 @@ class PointVolume(JsonSerializable):
 
 class Mask3D(Geometry):
     """
-    Mask 3D geometry for a single :class:`Label<supervisely.annotation.label.Label>`. :class:`Mask3D<Mask3D>` object is immutable.
+    Mask 3D geometry for a single :class:`Label<~supervisely.annotation.label.Label>`. :class:`Mask3D<~supervisely.geometry.mask_3d.Mask3D>` object is immutable.
 
     :param data: Mask 3D mask data. Must be a numpy array with only 2 unique values: [0, 1] or [0, 255] or [False, True].
     :type data: np.ndarray
     :param sly_id: Mask 3D ID in Supervisely server.
     :type sly_id: int, optional
-    :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which Mask 3D belongs.
+    :param class_id: ID of ObjClass to which Mask 3D belongs.
     :type class_id: int, optional
     :param labeler_login: Login of the user who created Mask 3D.
     :type labeler_login: str, optional
@@ -276,7 +276,7 @@ class Mask3D(Geometry):
         """
         Get the space origin of the Mask3D as a list of floats.
 
-        :returns: Space origin of the Mask3D.
+        :returns: Space origin of the :class:`~supervisely.geometry.mask_3d.Mask3D`.
         :rtype: List[float] or None
         """
         if self._space_origin is not None:
@@ -288,8 +288,8 @@ class Mask3D(Geometry):
         """
         Set the space origin of the Mask3D.
 
-        :param value: Space origin of the Mask3D. If provided as a list or array, it should contain 3 floats in the order [x, y, z].
-        :type value: :class:`PointVolume<PointVolume>` or List[float]
+        :param value: Space origin of the :class:`~supervisely.geometry.mask_3d.Mask3D`. If provided as a list or array, it should contain 3 floats in the order [x, y, z].
+        :type value: :class:`~supervisely.geometry.mask_3d.PointVolume` or List[float]
         """
         if isinstance(value, PointVolume):
             self._space_origin = value
@@ -305,7 +305,7 @@ class Mask3D(Geometry):
         """
         Get the space of the Mask3D.
 
-        :returns: Space of the Mask3D.
+        :returns: Space of the :class:`~supervisely.geometry.mask_3d.Mask3D`.
         :rtype: str
         """
         return self._space
@@ -315,7 +315,7 @@ class Mask3D(Geometry):
         """
         Set the space of the Mask3D.
 
-        :param value: Space of the Mask3D.
+        :param value: Space of the :class:`~supervisely.geometry.mask_3d.Mask3D`.
         :type value: str
         """
         if not isinstance(value, str):
@@ -327,8 +327,8 @@ class Mask3D(Geometry):
         """
         Get the space directions of the Mask3D.
 
-        :returns: Space directions of the Mask3D.
-        :rtype: :class:`List[List[float]]`
+        :returns: Space directions of the :class:`~supervisely.geometry.mask_3d.Mask3D`.
+        :rtype: List[List[float]]
         """
         return self._space_directions
 
@@ -337,7 +337,7 @@ class Mask3D(Geometry):
         """
         Set the space directions of the Mask3D.
 
-        :param value: Space directions of the Mask3D. Should be a 3x3 array-like structure.
+        :param value: Space directions of the :class:`~supervisely.geometry.mask_3d.Mask3D`. Should be a 3x3 array-like structure.
         :type value: List[List[float]] or np.ndarray
         """
         if isinstance(value, np.ndarray):
@@ -364,7 +364,7 @@ class Mask3D(Geometry):
         Load figure geometry from file.
 
         :param figure: Spatial figure
-        :type figure: VolumeFigure
+        :type figure: :class:`~supervisely.volume_annotation.volume_figure.VolumeFigure`
         :param file_path: Path to nrrd file with data
         :type file_path: str
         """
@@ -411,7 +411,7 @@ class Mask3D(Geometry):
         :param geometry_bytes: NRRD file represented as bytes.
         :type geometry_bytes: bytes
         :returns: A Mask3D geometry object.
-        :rtype: Mask3D
+        :rtype: :class:`~supervisely.geometry.mask_3d.Mask3D`
         """
         with tempfile.NamedTemporaryFile(delete=True, suffix=".nrrd") as temp_file:
             temp_file.write(geometry_bytes)
@@ -422,7 +422,7 @@ class Mask3D(Geometry):
         Convert the Mask 3D to a json dict.
 
         :returns: Json format as a dict
-        :rtype: dict
+        :rtype: Dict
 
         :Usage Example:
 
@@ -478,10 +478,10 @@ class Mask3D(Geometry):
         """
         Convert a json dict to Mask 3D.
 
-        :param data: Mask in json format as a dict.
-        :type data: dict
-        :returns: Mask3D object
-        :rtype: :class:`Mask3D<Mask3D>`
+        :param json_data: Mask in json format as a dict.
+        :type json_data: Dict
+        :returns: Mask3D from json.
+        :rtype: :class:`~supervisely.geometry.mask_3d.Mask3D`
 
         :Usage Example:
 
@@ -556,8 +556,8 @@ class Mask3D(Geometry):
         """
         Convert numpy array to base64 encoded string.
 
-        :param mask: Bool numpy array.
-        :type mask: np.ndarray
+        :param data: Bool numpy array.
+        :type data: np.ndarray
         :returns: Base64 encoded string
         :rtype: str
 
@@ -605,10 +605,10 @@ class Mask3D(Geometry):
         """
         Convert base64 encoded string to numpy array.
 
-        :param s: Input base64 encoded string.
-        :type s: str
+        :param encoded_string: Input base64 encoded string.
+        :type encoded_string: str
         :returns: Bool numpy array
-        :rtype: :class:`np.ndarray`
+        :rtype: np.ndarray
 
         :Usage Example:
 

@@ -86,7 +86,7 @@ def get_effective_nonoverlapping_masks(
 ) -> Tuple[List[Bitmap], np.ndarray]:
     """
     Find nonoverlapping objects from given list of geometries
-    :param geometries: list of geometry type objects(Point, Polygon, PolyLine, Bitmap etc.)
+    :param geometries: list of geometry type objects(:class:`~supervisely.geometry.point.Point`, :class:`~supervisely.geometry.polygon.Polygon`, PolyLine, Bitmap etc.)
     :param img_size: tuple or list of integers
     :returns: list of bitmaps, numpy array
     """
@@ -115,7 +115,7 @@ def deserialize_geometry(geometry_type_str: str, geometry_json: Dict) -> Geometr
     Get geometry from json format
     :param geometry_type_str: str
     :param geometry_json: geometry in json format
-    :returns: geometry type object(Point, Polygon, PolyLine, Bitmap etc.)
+    :returns: geometry type object(:class:`~supervisely.geometry.point.Point`, :class:`~supervisely.geometry.polygon.Polygon`, PolyLine, Bitmap etc.)
     """
     geometry_type = GET_GEOMETRY_FROM_STR(geometry_type_str)
     geometry = geometry_type.from_json(geometry_json)

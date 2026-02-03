@@ -51,7 +51,8 @@ class Vector3d:
         """
         The function from_json convert Vector3d from json format(dict) to Vector3d class object.
         :param data: Vector3d in json format(dict)
-        :returns: Vector3d class object
+        :returns: Vector3d from json.
+        :rtype: :class:`~supervisely.geometry.cuboid_3d.Vector3d`
         """
         x = data[X]
         y = data[Y]
@@ -79,9 +80,12 @@ class Cuboid3d(Geometry):
 
         """
 
-        :param position: Vector3d class object
-        :param rotation: Vector3d class object
-        :param dimensions: Vector3d class object
+        :param position: Vector3d.
+        :type position: :class:`~supervisely.geometry.cuboid_3d.Vector3d`
+        :param rotation: Vector3d.
+        :type rotation: :class:`~supervisely.geometry.cuboid_3d.Vector3d`
+        :param dimensions: Vector3d.
+        :type dimensions: :class:`~supervisely.geometry.cuboid_3d.Vector3d`
         """         
         super().__init__(sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
 
@@ -131,7 +135,8 @@ class Cuboid3d(Geometry):
         """
         The function from_json convert Cuboid3d from json format(dict) to Cuboid3d class object.
         :param data: Cuboid3d in json format(dict)
-        :returns: Cuboid3d class object
+        :returns: Cuboid3d from json.
+        :rtype: :class:`~supervisely.geometry.cuboid_3d.Cuboid3d`
         """
         position = Vector3d.from_json(data[POSITION])
         rotation = Vector3d.from_json(data[ROTATION])

@@ -43,15 +43,15 @@ CUBOID2D_EDGES_MAPPING = [
 
 class Cuboid2d(GraphNodes):
     """
-    Cuboid2d geometry for a single :class:`Label<supervisely.annotation.label.Label>`. :class:`Cuboid2d<Cuboid2d>` class object is immutable.
+    Cuboid2d geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.cuboid_2d.Cuboid2d` class object is immutable.
 
     :param nodes: Dict or List containing nodes of graph
     :type nodes: dict
     :param sly_id: Cuboid2d ID in Supervisely server.
     :type sly_id: int, optional
-    :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which Cuboid2d belongs.
+    :param class_id: ID of ObjClass to which Cuboid2d belongs.
     :type class_id: int, optional
-    :param labeler_login: Login of the user who created Cuboid2d.
+    :param labeler_login: Login of the user who created :class:`~supervisely.geometry.cuboid_2d.Cuboid2d`.
     :type labeler_login: str, optional
     :param updated_at: Date and Time when Cuboid2d was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
     :type updated_at: str, optional
@@ -122,7 +122,7 @@ class Cuboid2d(GraphNodes):
         """
         Copy of the position of the Cuboid2d.
 
-        :returns: Position of the Cuboid2d
+        :returns: Position of the :class:`~supervisely.geometry.cuboid_2d.Cuboid2d`
         :rtype: Optional[Dict]
         """
         if isinstance(self._position, dict):
@@ -133,7 +133,7 @@ class Cuboid2d(GraphNodes):
         """
         Copy of the rotation of the Cuboid2d.
 
-        :returns: Rotation of the Cuboid2d
+        :returns: Rotation of the :class:`~supervisely.geometry.cuboid_2d.Cuboid2d`
         :rtype: Optional[Dict]
         """
         if isinstance(self._rotation, dict):
@@ -144,7 +144,7 @@ class Cuboid2d(GraphNodes):
         """
         Copy of the dimensions of the Cuboid2d.
 
-        :returns: Dimensions of the Cuboid2d
+        :returns: Dimensions of the :class:`~supervisely.geometry.cuboid_2d.Cuboid2d`
         :rtype: dict
         """
         if isinstance(self._dimensions, dict):
@@ -155,7 +155,7 @@ class Cuboid2d(GraphNodes):
         """
         Copy of the face of the Cuboid2d.
 
-        :returns: Face of the Cuboid2d
+        :returns: Face of the :class:`~supervisely.geometry.cuboid_2d.Cuboid2d`
         :rtype: Optional[List[str]]
         """
         if isinstance(self._face, list):
@@ -168,8 +168,8 @@ class Cuboid2d(GraphNodes):
 
         :param data: Cuboid2d in json format as a dict.
         :type data: Dict[str, Dict]
-        :returns: Cuboid2d object
-        :rtype: :class:`Cuboid2d<Cuboid2d>`
+        :returns: Cuboid2d from json.
+        :rtype: :class:`~supervisely.geometry.cuboid_2d.Cuboid2d`
 
         :Usage Example:
 
@@ -366,7 +366,7 @@ class Cuboid2d(GraphNodes):
 
 class Cuboid2dTemplate(Cuboid2d, Geometry):
     """
-    Geometry Config Template for a single :class:`Cuboid2d<Cuboid2d>`. :class:`Cuboid2dTemplate<Cuboid2dTemplate>` class object is immutable.
+    Geometry Config Template for a single :class:`~supervisely.geometry.cuboid_2d.Cuboid2d`. :class:`~supervisely.geometry.cuboid_2d.Cuboid2dTemplate` class object is immutable.
     """
 
     def __init__(self, color: List[int]):
@@ -376,7 +376,7 @@ class Cuboid2dTemplate(Cuboid2d, Geometry):
 
     def _create_template(self, color: List[int]) -> Cuboid2dTemplate:
         """
-        Returns a template for a single :class:`Cuboid2d<Cuboid2d>`.
+        Returns a template for a single :class:`~supervisely.geometry.cuboid_2d.Cuboid2d`.
         """
         config = {VERTICES: {}, EDGES: []}
 

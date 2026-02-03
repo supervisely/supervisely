@@ -111,10 +111,10 @@ class ImageRotator:
         """
         Calculates new parameters of PointLocation after rotation.
 
-        :param point: PointLocation object.
-        :type point: PointLocation
-        :returns: PointLocation object
-        :rtype: :class:`PointLocation<supervisely.geometry.point_location.PointLocation>`
+        :param point: PointLocation to transform.
+        :type point: :class:`~supervisely.geometry.point_location.PointLocation`
+        :returns: PointLocation after transformation.
+        :rtype: :class:`~supervisely.geometry.point_location.PointLocation`
 
         :Usage Example:
 

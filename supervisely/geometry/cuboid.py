@@ -32,7 +32,7 @@ if not hasattr(np, "bool"):
 
 class CuboidFace:
     """
-    CuboidFace for a single :class:`Cuboid<supervisely.geometry.cuboid.Cuboid>`.
+    CuboidFace for a single :class:`~supervisely.geometry.cuboid.Cuboid`.
 
     :param a: Node of the CuboidFace.
     :type a: int
@@ -81,9 +81,9 @@ class CuboidFace:
 
         :param data: List of integers.
         :type data: List[int, int, int, int]
-        :returns: CuboidFace object
-        :rtype: :class:`CuboidFace<CuboidFace>`
         :raises ValueError: if data have not 4 indices
+        :returns: CuboidFace from json.
+        :rtype: :class:`~supervisely.geometry.cuboid.CuboidFace`
 
         :Usage Example:
 
@@ -137,17 +137,17 @@ class CuboidFace:
 
 class Cuboid(Geometry):
     """
-    Cuboid geometry for a single :class:`Label<supervisely.annotation.label.Label>`. :class:`Cuboid<Cuboid>` class object is immutable.
+    Cuboid geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.cuboid.Cuboid` class object is immutable.
 
     :param points: List or tuple of :class:`~supervisely.geometry.point_location.PointLocation` objects.
-    :type points: List[~supervisely.geometry.point_location.PointLocation] or Tuple[~supervisely.geometry.point_location.PointLocation]
+    :type points: List[:class:`~supervisely.geometry.point_location.PointLocation`] or Tuple[:class:`~supervisely.geometry.point_location.PointLocation`]
     :param faces: List or tuple of :class:`~supervisely.geometry.cuboid.CuboidFace` objects.
-    :type faces: List[~supervisely.geometry.cuboid.CuboidFace] or Tuple[~supervisely.geometry.cuboid.CuboidFace]
+    :type faces: List[:class:`~supervisely.geometry.cuboid.CuboidFace`] or Tuple[:class:`~supervisely.geometry.cuboid.CuboidFace`]
     :param sly_id: Cuboid ID in Supervisely server.
     :type sly_id: int, optional
-    :param class_id: ID for :class:`~supervisely.annotation.obj_class.ObjClass` to which belongs Cuboid.
+    :param class_id: ID for ObjClass to which belongs Cuboid.
     :type class_id: int, optional
-    :param labeler_login: Login of the user who created Cuboid.
+    :param labeler_login: Login of the user who created :class:`~supervisely.geometry.cuboid.Cuboid`.
     :type labeler_login: str, optional
     :param updated_at: Date and Time when Cuboid was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
     :type updated_at: str, optional
@@ -213,20 +213,20 @@ class Cuboid(Geometry):
     @property
     def points(self) -> List[PointLocation]:
         """
-        List of :class:`PointLocation<supervisely.geometry.point_location.PointLocation>` objects.
+        List of :class:`~supervisely.geometry.point_location.PointLocation` objects.
 
         :returns: Cuboid nodes
-        :rtype: :class:`List[PointLocation]`
+        :rtype: :class:`List[:class:`~supervisely.geometry.point_location.PointLocation`]`
         """
         return self._points.copy()
 
     @property
     def faces(self) -> List[CuboidFace]:
         """
-        List of :class:`CuboidFace<CuboidFace>` objects.
+        List of :class:`~supervisely.geometry.cuboid.CuboidFace` objects.
 
         :returns: Cuboid edges
-        :rtype: :class:`List[CuboidFace]`
+        :rtype: :class:`List[:class:`~supervisely.geometry.cuboid.CuboidFace`]`
         """
         return self._faces.copy()
 
@@ -281,9 +281,9 @@ class Cuboid(Geometry):
         Convert a json dict to Cuboid. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: Cuboid in json format as a dict.
-        :type data: dict
-        :returns: Cuboid object
-        :rtype: :class:`Cuboid<Cuboid>`
+        :type data: Dict[str, List[int]]
+        :returns: Cuboid from json.
+        :rtype: :class:`~supervisely.geometry.cuboid.Cuboid`
         :raises ValueError: if json format is not correct
 
         :Usage Example:
@@ -337,10 +337,10 @@ class Cuboid(Geometry):
         """
         Crops current Cuboid.
 
-        :param rect: Rectangle object for crop.
-        :type rect: Rectangle
-        :returns: List of Cuboid objects
-        :rtype: :class:`List[Cuboid]<Cuboid>`
+        :param rect: Rectangle for crop.
+        :type rect: :class:`~supervisely.geometry.rectangle.Rectangle`
+        :returns: List of Cuboids after crop.
+        :rtype: :class:`List[:class:`~supervisely.geometry.cuboid.Cuboid`]`
 
         :Usage Example:
 
@@ -370,10 +370,10 @@ class Cuboid(Geometry):
         """
         Rotates current Cuboid.
 
-        :param rotator: ImageRotator object for rotation.
-        :type rotator: ImageRotator
-        :returns: Cuboid object
-        :rtype: :class:`Cuboid<Cuboid>`
+        :param rotator: Class for image rotation.
+        :type rotator: :class:`~supervisely.geometry.image_rotator.ImageRotator`
+        :returns: Cuboid after rotation.
+        :rtype: :class:`~supervisely.geometry.cuboid.Cuboid`
 
         :Usage Example:
 
@@ -398,12 +398,12 @@ class Cuboid(Geometry):
         """
         Resize current Cuboid.
 
-        :param in_size: Input image size (height, width) to which belongs Cuboid object.
+        :param in_size: Input image size (height, width) to which belongs :class:`~supervisely.geometry.cuboid.Cuboid` object.
         :type in_size: Tuple[int, int]
-        :param out_size: Desired output image size (height, width) to which belongs Cuboid object.
+        :param out_size: Desired output image size (height, width) to which belongs :class:`~supervisely.geometry.cuboid.Cuboid` object.
         :type out_size: Tuple[int, int]
-        :returns: Cuboid object
-        :rtype: :class:`Cuboid<Cuboid>`
+        :returns: Cuboid after resize.
+        :rtype: :class:`Cuboid<~supervisely.geometry.cuboid.Cuboid>`
 
         :Usage Example:
 
@@ -430,8 +430,8 @@ class Cuboid(Geometry):
 
         :param factor: Scale parameter.
         :type factor: float
-        :returns: Cuboid object
-        :rtype: :class:`Cuboid<Cuboid>`
+        :returns: Cuboid after scale.
+        :rtype: :class:`~supervisely.geometry.cuboid.Cuboid`
 
         :Usage Example:
 
@@ -458,8 +458,8 @@ class Cuboid(Geometry):
         :type drow: int
         :param dcol: Vertical shift.
         :type dcol: int
-        :returns: Cuboid object
-        :rtype: :class:`Cuboid<Cuboid>`
+        :returns: Cuboid after translate.
+        :rtype: :class:`~supervisely.geometry.cuboid.Cuboid`
 
         :Usage Example:
 
@@ -482,10 +482,10 @@ class Cuboid(Geometry):
         """
         Flips current Cuboid in horizontal.
 
-        :param img_size: Image size (height, width) to which belongs Cuboid object.
+        :param img_size: Image size (height, width) to which belongs :class:`~supervisely.geometry.cuboid.Cuboid` object.
         :type img_size: Tuple[int, int]
-        :returns: Cuboid object
-        :rtype: :class:`Cuboid<Cuboid>`
+        :returns: Cuboid after flip in horizontal.
+        :rtype: :class:`~supervisely.geometry.cuboid.Cuboid`
 
         :Usage Example:
 
@@ -509,10 +509,10 @@ class Cuboid(Geometry):
         """
         Flips current Cuboid in vertical.
 
-        :param img_size: Image size (height, width) to which belongs Cuboid object.
+        :param img_size: Image size (height, width) to which belongs :class:`~supervisely.geometry.cuboid.Cuboid` object.
         :type img_size: Tuple[int, int]
-        :returns: Cuboid object
-        :rtype: :class:`Cuboid<Cuboid>`
+        :returns: Cuboid after flip in vertical.
+        :rtype: :class:`~supervisely.geometry.cuboid.Cuboid`
 
         :Usage Example:
 
@@ -558,8 +558,8 @@ class Cuboid(Geometry):
         """
         Create Rectangle object from current Cuboid.
 
-        :returns: Rectangle object
-        :rtype: :class:`Rectangle<supervisely.geometry.rectangle.Rectangle>`
+        :returns: Rectangle from cuboid.
+        :rtype: :class:`~supervisely.geometry.rectangle.Rectangle`
 
         :Usage Example:
 
@@ -595,7 +595,7 @@ class Cuboid(Geometry):
         """
         Cuboid area.
 
-        :returns: Area of current Cuboid
+        :returns: Area of current Cuboid.
         :rtype: float
 
         :Usage Example:
