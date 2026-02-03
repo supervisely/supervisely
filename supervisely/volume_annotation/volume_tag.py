@@ -10,13 +10,13 @@ from supervisely.volume_annotation.constants import ID, KEY
 
 class VolumeTag(Tag):
     """
-    VolumeTag object for :class:`VolumeAnnotation<supervisely.volume_annotation.volume_annotation.VolumeAnnotation>`. :class:`VolumeTag<VolumeTag>` object is immutable.
+    VolumeTag object for :class:`~supervisely.volume_annotation.volume_annotation.VolumeAnnotation`. :class:`~supervisely.volume_annotation.volume_tag.VolumeTag` object is immutable.
 
     :param meta: General information about Volume Tag.
-    :type meta: TagMeta
-    :param value: Volume Tag value. Depends on :class:`TagValueType<TagValueType>` of :class:`TagMeta<TagMeta>`.
+    :type meta: :class:`~supervisely.annotation.tag_meta.TagMeta`
+    :param value: Volume Tag value. Depends on TagValueType of TagMeta.
     :type value: Optional[Union[str, int, float]]
-    :param key: uuid.UUID object.
+    :param key: The UUID key associated with the :class:`~supervisely.volume_annotation.volume_figure.VolumeFigure`.
     :type key: uuid.UUID, optional
     :param sly_id: Volume Tag ID in Supervisely.
     :type sly_id: int, optional
@@ -105,7 +105,7 @@ class VolumeTag(Tag):
         Convert the VolumeTag to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param key_id_map: Key ID Map object.
-        :type key_id_map: KeyIdMap, optional
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
         :returns: Json format as a dict
         :rtype: dict
 
@@ -148,12 +148,12 @@ class VolumeTag(Tag):
 
         :param data: VolumeTag in json format as a dict.
         :type data: dict
-        :param tag_meta_collection: :class:`TagMetaCollection<supervisely.annotation.tag_meta_collection.TagMetaCollection>` object.
-        :type tag_meta_collection: TagMetaCollection
+        :param tag_meta_collection: TagMetaCollection object.
+        :type tag_meta_collection: :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection`
         :param key_id_map: Key ID Map object.
-        :type key_id_map: KeyIdMap, optional
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
         :returns: VolumeTag object
-        :rtype: :class:`VolumeTag<VolumeTag>`
+        :rtype: :class:`~supervisely.volume_annotation.volume_tag.VolumeTag`
 
         :Usage Example:
 
@@ -199,10 +199,10 @@ class VolumeTag(Tag):
         Makes a copy of VolumeTag with new fields, if fields are given, otherwise it will use fields of the original VolumeTag.
 
         :param meta: General information about VolumeTag.
-        :type meta: VolumeTag, optional
-        :param value: VolumeTag value. Depends on :class:`TagValueType<TagValueType>` of :class:`TagMeta<TagMeta>`.
+        :type meta: :class:`~supervisely.annotation.tag_meta.TagMeta`, optional
+        :param value: VolumeTag value. Depends on TagValueType of TagMeta.
         :type value: str or int or float or None, optional
-        :param key: uuid.UUID object.
+        :param key: The UUID key associated with the :class:`~supervisely.volume_annotation.volume_figure.VolumeFigure`.
         :type key: uuid.UUID, optional
         :param sly_id: VolumeTag ID in Supervisely.
         :type sly_id: int, optional

@@ -15,7 +15,7 @@ from supervisely.video_annotation.video_tag import VideoTag
 
 class VideoTagCollection(TagCollection):
     """
-    Collection with :class:`VideoTag<supervisely.video_annotation.video_tag.VideoTag>` instances. :class:`VideoTagCollection<VideoTagCollection>` object is immutable.
+    Collection with :class:`~supervisely.video_annotation.video_tag.VideoTag` instances. :class:`~supervisely.video_annotation.video_tag_collection.VideoTagCollection` object is immutable.
 
     :Usage Example:
 
@@ -167,9 +167,9 @@ class VideoTagCollection(TagCollection):
         Convert the VideoTagCollection to a list of json dicts. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
         :returns: List of dicts in json format
-        :rtype: :class:`List[dict]`
+        :rtype: List[dict]
 
         :Usage Example:
 
@@ -213,12 +213,12 @@ class VideoTagCollection(TagCollection):
 
         :param data: List with dicts in json format.
         :type data: List[dict]
-        :param project_meta: Input TagMetaCollection object.
-        :type project_meta: TagMetaCollection
+        :param project_meta: TagMetaCollection object.
+        :type project_meta: :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection`
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
         :returns: VideoTagCollection object
-        :rtype: :class:`VideoTagCollection`
+        :rtype: :class:`~supervisely.video_annotation.video_tag_collection.VideoTagCollection`
 
         :Usage Example:
 
@@ -257,12 +257,12 @@ class VideoTagCollection(TagCollection):
 
         :param data: API response data.
         :type data: List[Dict]
-        :param tag_meta_collection: _description_
-        :type tag_meta_collection: TagMetaCollection
+        :param tag_meta_collection: TagMetaCollection object.
+        :type tag_meta_collection: :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection`
         :param id_to_tagmeta: Mapping of tag IDs to tag metadata.
-        :type id_to_tagmeta: Optional[Dict[int, TagMeta]]
+        :type id_to_tagmeta: Optional[Dict[int, :class:`~supervisely.annotation.tag_meta.TagMeta`]]
         :returns: VideoTagCollection object.
-        :rtype: VideoTagCollection
+        :rtype: :class:`~supervisely.video_annotation.video_tag_collection.VideoTagCollection`
 
         :Usage Example:
 
@@ -295,7 +295,7 @@ class VideoTagCollection(TagCollection):
         :param tag_name: Name of the tags to get.
         :type tag_name: str
         :returns:  List of VideoTag objects with the specified name.
-        :rtype: List[VideoTag]
+        :rtype: List[:class:`~supervisely.video_annotation.video_tag.VideoTag`]
 
         :Usage Example:
 
@@ -334,7 +334,7 @@ class VideoTagCollection(TagCollection):
         :param tag_name: Name of the tag to get.
         :type tag_name: str
         :returns: VideoTag object with the specified name.
-        :rtype: VideoTag
+        :rtype: :class:`~supervisely.video_annotation.video_tag.VideoTag`
 
         :Usage Example:
 

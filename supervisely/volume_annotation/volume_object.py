@@ -13,25 +13,25 @@ from supervisely.volume_annotation.volume_tag_collection import VolumeTagCollect
 
 class VolumeObject(VideoObject):
     """
-    VolumeObject object for :class:`VolumeAnnotation<supervisely.volume_annotation.volume_annotation.VolumeAnnotation>`. :class:`VolumeObject<VolumeObject>` object is immutable.
+    VolumeObject object for :class:`VolumeAnnotation<~supervisely.volume_annotation.volume_annotation.VolumeAnnotation>`. :class:`VolumeObject<~supervisely.volume_annotation.volume_object.VolumeObject>` object is immutable.
 
-    :param obj_class: VolumeObject :class:`class<supervisely.annotation.obj_class.ObjClass>`.
-    :type obj_class: ObjClass
-    :param tags: VolumeObject :class:`tags<supervisely.volume_annotation.volume_tag_collection.VolumeTagCollection>`.
-    :type tags: VolumeTagCollection, optional
-    :param key: The UUID key associated with the VolumeFigure.
+    :param obj_class: ObjClass object.
+    :type obj_class: :class:`~supervisely.annotation.obj_class.ObjClass`
+    :param tags: VolumeTagCollection object.
+    :type tags: :class:`~supervisely.volume_annotation.volume_tag_collection.VolumeTagCollection`, optional
+    :param key: The UUID key associated with the :class:`~supervisely.volume_annotation.volume_figure.VolumeFigure`.
     :type key: UUID, optional
-    :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which VolumeObject belongs.
+    :param class_id: ID of ObjClass to which VolumeObject belongs.
     :type class_id: int, optional
-    :param labeler_login: Login of the user who created VolumeObject.
+    :param labeler_login: Login of the user who created :class:`~supervisely.volume_annotation.volume_object.VolumeObject`.
     :type labeler_login: str, optional
     :param updated_at: Date and Time when VolumeObject was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
     :type updated_at: str, optional
     :param created_at: Date and Time when VolumeObject was created. Date Format is the same as in "updated_at" parameter.
     :type created_at: str, optional
     :param mask_3d: Path for local geometry file, array with geometry data or Mask3D geometry object
-    :type mask_3d: Union[str, ndarray, Mask3D], optional
-    :param custom_data: Custom data associated with the VolumeObject.
+    :type mask_3d: Union[str, ndarray, :class:`~supervisely.geometry.mask_3d.Mask3D`], optional
+    :param custom_data: Custom data associated with the :class:`~supervisely.volume_annotation.volume_object.VolumeObject`.
     :type custom_data: dict, optional
 
     :Usage Example:

@@ -6,7 +6,7 @@ from supervisely.volume_annotation.volume_tag import VolumeTag
 
 class VolumeTagCollection(VideoTagCollection):
     """
-    Collection with :class:`VolumeTag<supervisely.volume_annotation.volume_tag.VolumeTag>` instances. :class:`VolumeTagCollection<VolumeTagCollection>` object is immutable.
+    Collection with :class:`~supervisely.volume_annotation.volume_tag.VolumeTag` instances. :class:`~supervisely.volume_annotation.volume_tag_collection.VolumeTagCollection` object is immutable.
 
     :Usage Example:
 

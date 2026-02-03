@@ -27,15 +27,15 @@ from supervisely.video_annotation.video_tag_collection import VideoTagCollection
 
 class VideoObject(KeyObject):
     """
-    VideoObject object for :class:`VideoAnnotation<supervisely.video_annotation.video_annotation.VideoAnnotation>`. :class:`VideoObject<VideoObject>` object is immutable.
+    VideoObject object for VideoAnnotation. VideoObject object is immutable.
 
-    :param obj_class: VideoObject :class:`class<supervisely.annotation.obj_class.ObjClass>`.
-    :type obj_class: ObjClass
-    :param tags: VideoObject :class:`tags<supervisely.video_annotation.video_tag_collection.VideoTagCollection>`.
-    :type tags: VideoTagCollection, optional
+    :param obj_class: ObjClass object.
+    :type obj_class: :class:`~supervisely.annotation.obj_class.ObjClass`
+    :param tags: VideoTagCollection object.
+    :type tags: :class:`~supervisely.video_annotation.video_tag_collection.VideoTagCollection`, optional
     :param key: KeyIdMap object.
-    :type key: KeyIdMap, optional
-    :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which VideoObject belongs.
+    :type key: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
+    :param class_id: ID of ObjClass to which VideoObject belongs.
     :type class_id: int, optional
     :param labeler_login: Login of the user who created VideoObject.
     :type labeler_login: str, optional
@@ -94,7 +94,7 @@ class VideoObject(KeyObject):
         ObjClass of the current VideoObject.
 
         :returns: ObjClass object
-        :rtype: :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>`
+        :rtype: :class:`~supervisely.annotation.obj_class.ObjClass`
 
         :Usage Example:
 
@@ -121,6 +121,7 @@ class VideoObject(KeyObject):
         Object key.
 
         :returns: Object key
+        :rtype: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`
         :rtype: uuid.UUID
 
         :Usage Example:
@@ -144,7 +145,7 @@ class VideoObject(KeyObject):
         VideoTagCollection of the current VideoObject.
 
         :returns: VideoTagCollection object
-        :rtype: :class:`VideoTagCollection<supervisely.video_annotation.video_tag_collection.VideoTagCollection>`
+        :rtype: :class:`~supervisely.video_annotation.video_tag_collection.VideoTagCollection`
 
         :Usage Example:
 
@@ -203,9 +204,9 @@ class VideoObject(KeyObject):
         Adds VideoTag to the current VideoObject.
 
         :param tag: VideoTag to be added.
-        :type tag: VideoTag
+        :type tag: :class:`~supervisely.video_annotation.video_tag.VideoTag`
         :returns: VideoObject object
-        :rtype: :class:`VideoObject<VideoObject>`
+        :rtype: :class:`~supervisely.video_annotation.video_object.VideoObject`
 
         :Usage Example:
 
@@ -245,9 +246,9 @@ class VideoObject(KeyObject):
         Adds VideoTags to the current VideoObject.
 
         :param tag: List of VideoTags to be added.
-        :type tag: List[VideoTag]
+        :type tag: List[:class:`~supervisely.video_annotation.video_tag.VideoTag`]
         :returns: VideoObject object
-        :rtype: :class:`VideoObject<VideoObject>`
+        :rtype: :class:`~supervisely.video_annotation.video_object.VideoObject`
 
         :Usage Example:
 
@@ -294,7 +295,7 @@ class VideoObject(KeyObject):
         Convert the VideoObject to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
         :returns: Json format as a dict
         :rtype: dict
 
@@ -338,13 +339,13 @@ class VideoObject(KeyObject):
 
         :param data: Dict in json format.
         :type data: dict
-        :param project_meta: Input :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`.
-        :type project_meta: ProjectMeta
+        :param project_meta: Input ProjectMeta object.
+        :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
         :raises RuntimeError: if object class name is not found in the given project meta
         :returns: VideoObject object
-        :rtype: :class:`VideoObject`
+        :rtype: :class:`~supervisely.video_annotation.video_object.VideoObject`
 
         :Usage Example:
 
@@ -424,13 +425,13 @@ class VideoObject(KeyObject):
         """
         Makes a copy of VideoObject with new fields, if fields are given, otherwise it will use fields of the original VideoObject.
 
-        :param obj_class: VideoObject :class:`class<supervisely.annotation.obj_class.ObjClass>`.
-        :type obj_class: ObjClass, optional
-        :param tags: VideoObject :class:`tags<supervisely.video_annotation.video_tag_collection.VideoTagCollection>`.
-        :type tags: VideoTagCollection, optional
+        :param obj_class: ObjClass object.
+        :type obj_class: :class:`~supervisely.annotation.obj_class.ObjClass`, optional
+        :param tags: VideoTagCollection object.
+        :type tags: :class:`~supervisely.video_annotation.video_tag_collection.VideoTagCollection`, optional
         :param key: KeyIdMap object.
-        :type key: KeyIdMap, optional
-        :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which VideoObject belongs.
+        :type key: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
+        :param class_id: ID of ObjClass to which VideoObject belongs.
         :type class_id: int, optional
         :param labeler_login: Login of the user who created VideoObject.
         :type labeler_login: str, optional
@@ -439,7 +440,7 @@ class VideoObject(KeyObject):
         :param created_at: Date and Time when VideoObject was created. Date Format is the same as in "updated_at" parameter.
         :type created_at: str, optional
         :returns: VideoObject object
-        :rtype: :class:`VideoObject`
+        :rtype: :class:`~supervisely.video_annotation.video_object.VideoObject`
 
         :Usage Example:
 

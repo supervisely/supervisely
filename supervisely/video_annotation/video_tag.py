@@ -18,11 +18,11 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 
 class VideoTag(Tag):
     """
-    VideoTag object for :class:`VideoAnnotation<supervisely.video_annotation.video_annotation.VideoAnnotation>`. :class:`VideoTag<VideoTag>` object is immutable.
+    VideoTag object for :class:`~supervisely.video_annotation.video_annotation.VideoAnnotation`. :class:`~supervisely.video_annotation.video_tag.VideoTag` object is immutable.
 
-    :param meta: General information about Video Tag.
-    :type meta: TagMeta
-    :param value: Video Tag value. Depends on :class:`TagValueType<TagValueType>` of :class:`TagMeta<TagMeta>`.
+    :param meta: General information about Video.
+    :type meta: :class:`~supervisely.annotation.tag_meta.TagMeta`
+    :param value: Video Tag value. Depends on TagValueType of TagMeta.
     :type value: str or int or float or None, optional
     :param frame_range: Video Tag frame range.
     :type frame_range: Tuple[int, int] or List[int, int], optional
@@ -187,7 +187,7 @@ class VideoTag(Tag):
         Convert the VideoTag to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param key_id_map: Key ID Map object.
-        :type key_id_map: KeyIdMap, optional
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
         :returns: Json format as a dict
         :rtype: dict
 
@@ -238,12 +238,12 @@ class VideoTag(Tag):
 
         :param data: VideoTag in json format as a dict.
         :type data: dict
-        :param tag_meta_collection: :class:`TagMetaCollection<supervisely.annotation.tag_meta_collection.TagMetaCollection>` object.
-        :type tag_meta_collection: TagMetaCollection
+        :param tag_meta_collection: TagMetaCollection object.
+        :type tag_meta_collection: :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection`
         :param key_id_map: Key ID Map object.
-        :type key_id_map: KeyIdMap, optional
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
         :returns: VideoTag object
-        :rtype: :class:`VideoTag<VideoTag>`
+        :rtype: :class:`~supervisely.video_annotation.video_tag.VideoTag`
 
         :Usage Example:
 
@@ -288,7 +288,7 @@ class VideoTag(Tag):
         """
         Get string with information about VideoTag: name, value and range of frames.
 
-        :returns: Information about VideoTag object
+        :returns: Information about :class:`~supervisely.video_annotation.video_tag.VideoTag` object
         :rtype: str
 
         :Usage Example:
@@ -316,7 +316,7 @@ class VideoTag(Tag):
         Checks that 2 VideoTags are equal by comparing their meta, value and frame_range.
 
         :param other: VideoTag object.
-        :type other: VideoTag
+        :type other: :class:`~supervisely.video_annotation.video_tag.VideoTag`
         :returns: True if comparable objects are equal, otherwise False
         :rtype: bool
 
@@ -375,8 +375,8 @@ class VideoTag(Tag):
         Makes a copy of VideoTag with new fields, if fields are given, otherwise it will use fields of the original VideoTag.
 
         :param meta: General information about VideoTag.
-        :type meta: TagMeta, optional
-        :param value: VideoTag value. Depends on :class:`TagValueType<TagValueType>` of :class:`TagMeta<TagMeta>`.
+        :type meta: :class:`~supervisely.annotation.tag_meta.TagMeta`, optional
+        :param value: VideoTag value. Depends on TagValueType of :class:`TagMeta<~supervisely.annotation.tag_meta.TagMeta>`.
         :type value: str or int or float or None, optional
         :param frame_range: VideoTag frame range.
         :type frame_range: Tuple[int, int] or List[int, int], optional

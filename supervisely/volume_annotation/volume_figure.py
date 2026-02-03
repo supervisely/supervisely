@@ -32,19 +32,19 @@ from supervisely.volume_annotation.volume_object_collection import (
 
 class VolumeFigure(VideoFigure):
     """
-    VolumeFigure object for :class:`VolumeAnnotation<supervisely.volume_annotation.volume_annotation.VolumeAnnotation>`. :class:`VolumeFigure<VolumeFigure>` object is immutable.
+    VolumeFigure object for :class:`~supervisely.volume_annotation.volume_annotation.VolumeAnnotation`. :class:`~supervisely.volume_annotation.volume_figure.VolumeFigure` object is immutable.
 
     :param volume_object: VolumeObject object.
-    :type volume_object: VolumeObject
-    :param geometry: Geometry object
-    :type geometry: :class:`Geometry<supervisely.geometry>`
+    :type volume_object: :class:`~supervisely.volume_annotation.volume_object.VolumeObject`
+    :param geometry: Geometry object.
+    :type geometry: :class:`Geometry<~supervisely.geometry>`
     :param plane_name: Name of the volume plane.
     :type plane_name: str
     :param slice_index: Index of slice to which VolumeFigure belongs.
     :type slice_index: int
-    :param key: The UUID key associated with the VolumeFigure.
+    :param key: The UUID key associated with the :class:`~supervisely.volume_annotation.volume_figure.VolumeFigure`.
     :type key: UUID, optional
-    :param class_id: ID of :class:`VolumeObject<VolumeObject>` to which VolumeFigure belongs.
+    :param class_id: ID of VolumeObject to which VolumeFigure belongs.
     :type class_id: int, optional
     :param labeler_login: Login of the user who created VolumeFigure.
     :type labeler_login: str, optional
@@ -140,7 +140,7 @@ class VolumeFigure(VideoFigure):
         Get a parent VolumeObject object of volume figure.
 
         :returns: Parent VolumeObject object of volume figure.
-        :rtype: VolumeObject
+        :rtype: :class:`~supervisely.volume_annotation.volume_object.VolumeObject`
 
         :Usage Example:
 
@@ -174,7 +174,7 @@ class VolumeFigure(VideoFigure):
         Get a parent VolumeObject object of volume figure.
 
         :returns: VolumeObject object
-        :rtype: VolumeObject
+        :rtype: :class:`~supervisely.volume_annotation.volume_object.VolumeObject`
 
         :Usage Example:
 
@@ -208,7 +208,7 @@ class VolumeFigure(VideoFigure):
         """
         Get a slice index of volume figure.
 
-        :returns: :py:class:`Slice<supervisely.volume_annotation.slice.Slice>` index of volume figure.
+        :returns: Python int number of slice index of volume figure.
         :rtype: int
 
         :Usage Example:
@@ -297,7 +297,7 @@ class VolumeFigure(VideoFigure):
         """
         Get custom data associated with the VolumeFigure.
 
-        :returns: Custom data associated with the VolumeFigure.
+        :returns: Custom data associated with the :class:`~supervisely.volume_annotation.volume_figure.VolumeFigure`.
         :rtype: dict
 
         :Usage Example:
@@ -346,7 +346,7 @@ class VolumeFigure(VideoFigure):
         :type img_size: Tuple[int, int]
         :param _auto_correct: Correct the geometry of a shape if it is out of bounds or not.
         :type _auto_correct: bool, optional
-        :raises OutOfImageBoundsException: if figure is out of image bounds
+        :raises :class:`~supervisely.video_anotation.video_figure.OutOfImageBoundsException`: if figure is out of image bounds
         :returns: None
         :rtype: None
 
@@ -389,16 +389,16 @@ class VolumeFigure(VideoFigure):
         Makes a copy of VolumeFigure with new fields, if fields are given, otherwise it will use fields of the original VolumeFigure.
 
         :param volume_object: VolumeObject object.
-        :type volume_object: VolumeObject, optional
+        :type volume_object: :class:`~supervisely.volume_annotation.volume_object.VolumeObject`, optional
         :param geometry: Geometry object.
-        :type geometry: :class:`Geometry<supervisely.geometry>`
+        :type geometry: :class:`Geometry<~supervisely.geometry>`
         :param plane_name: Name of the volume plane.
         :type plane_name: str, optional
         :param slice_index: Index of slice to which VolumeFigure belongs.
         :type slice_index: int, optional
-        :param key: KeyIdMap object.
-        :type key: KeyIdMap, optional
-        :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which VolumeFigure belongs.
+        :param key: The UUID key associated with the :class:`~supervisely.volume_annotation.volume_figure.VolumeFigure`.
+        :type key: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
+        :param class_id: ID of ObjClass to which VolumeFigure belongs.
         :type class_id: int, optional
         :param labeler_login: Login of the user who created VolumeFigure.
         :type labeler_login: str, optional
@@ -409,7 +409,7 @@ class VolumeFigure(VideoFigure):
         :param custom_data: Custom data associated with the VolumeFigure.
         :type custom_data: dict, optional
         :returns: VolumeFigure object
-        :rtype: :class:`VolumeFigure`
+        :rtype: :class:`~supervisely.volume_annotation.volume_figure.VolumeFigure`
 
         :Usage Example:
 
@@ -514,16 +514,16 @@ class VolumeFigure(VideoFigure):
         :param data: Dict in json format.
         :type data: dict
         :param objects: VolumeObjectCollection object.
-        :type objects: VolumeObjectCollection
+        :type objects: :class:`~supervisely.volume_annotation.volume_object_collection.VolumeObjectCollection`
         :param plane_name: Name of the volume plane.
         :type plane_name: str
         :param slice_index: Index of slice to which VolumeFigure belongs.
         :type slice_index: int
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
         :raises RuntimeError: if volume object ID and volume object key are None, if volume object key and key_id_map are None, if volume object with given id not found in key_id_map
         :returns: VolumeFigure object
-        :rtype: :class:`VolumeFigure`
+        :rtype: :class:`~supervisely.volume_annotation.volume_figure.VolumeFigure`
 
         :Usage Example:
 
@@ -606,7 +606,7 @@ class VolumeFigure(VideoFigure):
         Convert the VolumeFigure to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
         :param save_meta: Save frame index or not.
         :type save_meta: bool, optional
         :returns: Json format as a dict
@@ -669,15 +669,15 @@ class VolumeFigure(VideoFigure):
         """
         Create a VolumeFigure from Mask 3D geometry.
 
-        :param volume_object: The VolumeObject to which the VolumeFigure belongs.
-        :type volume_object: VolumeObject
+        :param volume_object: VolumeObject to which the VolumeFigure belongs.
+        :type volume_object: :class:`~supervisely.volume_annotation.volume_object.VolumeObject`
         :param geometry_data: Geometry data represented as a path, NumPy array, or bytes.
         :type geometry_data: str or ndarray or bytes
         :param key: The UUID key associated with the VolumeFigure.
         :type key: UUID, optional
-        :param class_id: The ID of the VolumeObject class to which the VolumeFigure belongs.
+        :param class_id: The ID of the :class:`~supervisely.volume_annotation.volume_object.VolumeObject` class to which the VolumeFigure belongs.
         :type class_id: int, optional
-        :param labeler_login: The login of the user who created the VolumeFigure.
+        :param labeler_login: Login of the user who created the VolumeFigure.
         :type labeler_login: str, optional
         :param updated_at: The date and time when the VolumeFigure was last modified (ISO 8601 format, e.g., '2021-01-22T19:37:50.158Z').
         :type updated_at: str, optional
@@ -686,7 +686,7 @@ class VolumeFigure(VideoFigure):
         :param custom_data: Custom data associated with the VolumeFigure.
         :type custom_data: dict, optional
         :returns: A VolumeFigure object created from Mask3D geometry.
-        :rtype: VolumeFigure
+        :rtype: :class:`~supervisely.volume_annotation.volume_figure.VolumeFigure`
         """
         if isinstance(geometry_data, str):
             mask_3d = Mask3D.create_from_file(geometry_data)
@@ -715,7 +715,7 @@ class VolumeFigure(VideoFigure):
         Change the Mask3D geometry data in the figure.
 
         :param new_geometry: The new Mask3D geometry object.
-        :type new_geometry: Mask3D
+        :type new_geometry: :class:`~supervisely.geometry.mask_3d.Mask3D`
         """
         if not isinstance(new_geometry, Mask3D):
             raise TypeError(

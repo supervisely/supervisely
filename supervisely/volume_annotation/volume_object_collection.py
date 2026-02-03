@@ -5,7 +5,7 @@ from supervisely.volume_annotation.volume_object import VolumeObject
 
 class VolumeObjectCollection(VideoObjectCollection):
     """
-    Collection with :class:`VolumeObject<supervisely.volume_annotation.volume_object.VolumeObject>` instances. :class:`VolumeObjectCollection<VolumeObjectCollection>` object is immutable.
+    Collection with :class:`~supervisely.volume_annotation.volume_object.VolumeObject` instances. :class:`~supervisely.volume_annotation.volume_object_collection.VolumeObjectCollection` object is immutable.
 
     :Usage Example:
 
