@@ -87,7 +87,7 @@ class TagApi(ModuleApi):
         """
         Get list of tags for a given project ID.
 
-        :param project_id: :class:`Dataset<supervisely.project.project.Project>` ID in Supervisely.
+        :param project_id: Project ID in Supervisely.
         :type project_id: int
         :param filters: List of parameters to sort output tags. See: https://api.docs.supervisely.com/#tag/Advanced/paths/~1tags.list/get
         :type filters: List[Dict[str, str]], optional
@@ -103,7 +103,7 @@ class TagApi(ModuleApi):
         """
         Get dictionary with mapping tag name to tag ID for a given project ID.
 
-        :param project_id: :class:`Dataset<supervisely.project.project.Project>` ID in Supervisely.
+        :param project_id: Project ID in Supervisely.
         :type project_id: int
         :returns: Dictionary with mapping tag name to tag id for a given project ID.
         :rtype: dict
@@ -142,9 +142,9 @@ class TagApi(ModuleApi):
         :param project_id: Project ID in Supervisely.
         :type project_id: int
         :param tags: Collection of tags
-        :type tags: KeyIndexedCollection
-        :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
+        :type tags: :class:`~supervisely.collection.key_indexed_collection.KeyIndexedCollection`
+        :param key_id_map: KeyIdMap object. See class :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`.
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
         :returns: List of tags IDs
         :rtype: list
         """
@@ -186,10 +186,10 @@ class TagApi(ModuleApi):
         :type entity_id: int
         :param project_id: Project ID in Supervisely. Uses to get tag name to tag ID mapping.
         :type project_id: int
-        :param objects: Collection of Annotation Objects.
-        :type objects: KeyIndexedCollection
+        :param objects: Collection of annotation objects.
+        :type objects: :class:`~supervisely.collection.key_indexed_collection.KeyIndexedCollection`
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`
         :param is_video_multi_view: If True, indicates that the entity is a multi-view video.
         :type is_video_multi_view: bool
         :returns: List of tags IDs

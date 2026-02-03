@@ -47,6 +47,7 @@ from supervisely.api.video.video_figure_api import VideoFigureApi
 from supervisely.api.video.video_frame_api import VideoFrameAPI
 from supervisely.api.video.video_object_api import VideoObjectApi
 from supervisely.api.video.video_tag_api import VideoTagApi
+from supervisely.video_annotation.video_tag import VideoTag
 from supervisely.io.fs import (
     ensure_base_path,
     get_file_ext,
@@ -145,10 +146,10 @@ class VideoInfo(NamedTuple):
     #: "/h5un6l2bnaz1vms4-public/videos/Z/d/HD/lfgipl...NXrg5vz.mp4".
     path_original: str
 
-    #: :class: `list`: A list of timecodes in the format "SS.nnn" corresponding to each frame.
-    frames_to_timecodes: list
+    #: List[str]: A list of timecodes in the format "SS.nnn" corresponding to each frame.
+    frames_to_timecodes: List[str]
 
-    #: :class: `int`: Number of frames in the video
+    #: int: Number of frames in the video
     frames_count: int
 
     #: int: Video frames width in pixels.
@@ -163,11 +164,11 @@ class VideoInfo(NamedTuple):
     #: str: Time of last video update. e.g. "2019-02-22T14:59:53.381Z".
     updated_at: str
 
-    #: list: Video :class:`~supervisely.video_annotation.video_tag.VideoTag` list.
+    #: List[:class:`~supervisely.video_annotation.video_tag.VideoTag`]: Video Tag list.
     #: e.g. "[{'entityId': 19371139, 'tagId': 377141, 'id': 12241539, 'labelerLogin': 'admin',
     #: 'createdAt': '2023-02-07T19:35:01.808Z', 'updatedAt': '2023-02-07T19:35:01.808Z',
     #: 'frameRange': [244, 244]}, {...}]".
-    tags: list
+    tags: List[VideoTag]
 
     #: dict: A dictionary containing metadata about the video file.
     file_meta: dict
@@ -235,7 +236,7 @@ class VideoApi(RemoveableBulkModuleApi):
     API for working with videos. :class:`~supervisely.api.video.video_api.VideoApi` object is immutable.
 
     :param api: API connection to the server.
-    :type api: Api
+    :type api: :class:`~supervisely.api.api.Api`
 
     :Usage Example:
 
@@ -270,7 +271,7 @@ class VideoApi(RemoveableBulkModuleApi):
         """
         Get list of all :class:`~supervisely.api.video.video_api.VideoInfo` field names.
 
-        :returns: List of :class:`~supervisely.api.video.video_api.VideoInfo` field names.
+        :returns: List of VideoInfo field names.
         :rtype: List[str]
         """
 
@@ -312,7 +313,7 @@ class VideoApi(RemoveableBulkModuleApi):
         """
         Get url of the video by dataset ID and video ID
 
-        :param dataset_id: :class:`~supervisely.project.project.Dataset` ID in which the Video is located.
+        :param dataset_id: Dataset ID in which the Video is located.
         :type dataset_id: int
         :param video_id: Video ID in Supervisely.
         :type video_id: int
@@ -351,7 +352,7 @@ class VideoApi(RemoveableBulkModuleApi):
         """
         Get list of information about all videos for a given dataset ID.
 
-        :param dataset_id: :class:`~supervisely.project.project.Dataset` ID in Supervisely.
+        :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
         :param filters: List of parameters to sort output Videos. See: https://api.docs.supervisely.com/#tag/Videos/paths/~1videos.list/get
         :type filters: List[Dict[str, str]], optional
@@ -532,8 +533,8 @@ class VideoApi(RemoveableBulkModuleApi):
         :type progress_cb: Optional[Union[tqdm, Callable]]
         :param force_metadata_for_links: Specify whether to force retrieving video metadata from the server.
         :type force_metadata_for_links: bool
-        :returns: List of information about Videos. See :class:`info_sequence<info_sequence>`.
-        :rtype: List[VideoInfo]
+        :returns: List of information about Videos. See info_sequence.
+        :rtype: List[:class:`~supervisely.api.video.video_api.VideoInfo`]
 
         :Usage Example:
 
@@ -614,7 +615,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type raise_error: bool
         :param force_metadata_for_links: Specify whether to force retrieving video metadata from the server.
         :type force_metadata_for_links: bool
-        :returns: Information about Video. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Video. See info_sequence.
         :rtype: dict
 
         :Usage Example:
@@ -976,9 +977,9 @@ class VideoApi(RemoveableBulkModuleApi):
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: Optional[Union[tqdm, Callable]]
         :param infos: Videos information.
-        :type infos: Optional[List[VideoInfo]]
-        :returns: List with information about Videos. See :class:`info_sequence<info_sequence>`
-        :rtype: List[VideoInfo]
+        :type infos: Optional[List[:class:`~supervisely.api.video.video_api.VideoInfo`]]
+        :returns: List with information about Videos.
+        :rtype: List[:class:`~supervisely.api.video.video_api.VideoInfo`]
 
         :Usage Example:
 
@@ -1086,9 +1087,9 @@ class VideoApi(RemoveableBulkModuleApi):
         :param progress_cb: Function for tracking the progress of copying.
         :type progress_cb: tqdm or callable, optional
         :raises TypeError: if type of ids is not list
-        :raises ValueError: if videos ids are from the destination Dataset
-        :returns: List with information about Videos. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[VideoInfo]`
+        :raises ValueError: if videos ids are from the destination Datasetю
+        :returns: List with information about Videos.
+        :rtype: List[:class:`~supervisely.api.video.video_api.VideoInfo`]
 
         :Usage Example:
 
@@ -2168,7 +2169,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :param force_metadata_for_links: Specify whether to force retrieving video metadata from the server after upload
         :type force_metadata_for_links: Optional[bool]
         :returns: List with information about Video. See :meth:`info_sequence`.
-        :rtype: List[VideoInfo]
+        :rtype: List[:class:`~supervisely.api.video.video_api.VideoInfo`]
 
         :Usage Example:
 
@@ -2511,7 +2512,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :param progress_cb: Function for tracking upload progress.
         :type progress_cb: Optional[Union[tqdm, Callable]]
         :returns: List of uploaded videos infos
-        :rtype: List[VideoInfo]
+        :rtype: List[:class:`~supervisely.api.video.video_api.VideoInfo`]
         """
 
         if recursive:
@@ -2550,7 +2551,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :param progress_cb: Function for tracking upload progress.
         :type progress_cb: Optional[Union[tqdm, Callable]]
         :returns: List of uploaded videos infos
-        :rtype: List[VideoInfo]
+        :rtype: List[:class:`~supervisely.api.video.video_api.VideoInfo`]
         """
 
         video_infos = []
@@ -2678,7 +2679,7 @@ class VideoApi(RemoveableBulkModuleApi):
 
         :param id: Video ID in Supervisely.
         :type id: int
-        :param path: Local save path for Video.
+        :param path: Local save path for video.
         :type path: str
         :param semaphore: Semaphore for limiting the number of simultaneous downloads.
         :type semaphore: :class:`asyncio.Semaphore`, optional
@@ -2851,7 +2852,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type id: int
         :param name: New Video name.
         :type name: str
-        :returns: Information about updated Video.
+        :returns: Information about updated video.
         :rtype: :class:`~supervisely.api.video.video_api.VideoInfo`
 
         :Usage Example:

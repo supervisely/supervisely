@@ -135,7 +135,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
     API for working with point clouds. :class:`~supervisely.api.pointcloud.pointcloud_api.PointcloudApi` object is immutable.
 
     :param api: API connection to the server.
-    :type api: Api
+    :type api: :class:`~supervisely.api.api.Api`
 
     :Usage Example:
 
@@ -159,7 +159,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
 
     def __init__(self, api):
         """
-        :param api: Api class object
+        :param api: :class:`~supervisely.api.api.Api` class object
         """
         super().__init__(api)
         self.annotation = PointcloudAnnotationAPI(api)
@@ -172,7 +172,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
         """
         Get list of all :class:`~supervisely.api.pointcloud.pointcloud_api.PointcloudInfo` field names.
 
-        :returns: List of :class:`~supervisely.api.pointcloud.pointcloud_api.PointcloudInfo` field names.
+        :returns: List of PointcloudInfo field names.
         :rtype: List[str]
         """
 
@@ -240,9 +240,9 @@ class PointcloudApi(RemoveableBulkModuleApi):
         """
         Get list of information about all point cloud for a given dataset ID.
 
-        :param dataset_id: :class:`~supervisely.project.project.Dataset` ID in Supervisely.
+        :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
-        :param filters: List of parameters to sort output Pointclouds. See: https://api.docs.supervisely.com/#tag/Point-Clouds/paths/~1point-clouds.list/get
+        :param filters: List of parameters to sort output Pointclouds. See: https://api.docs.supervisely.com/#tag/:class:`~supervisely.geometry.point.Point`-Clouds/paths/~1point-clouds.list/get
         :type filters: List[Dict[str, str]], optional
         :returns: List of the point cloud objects from the dataset with the given ID.
         :rtype: List[:class:`~supervisely.api.pointcloud.pointcloud_api.PointcloudInfo`]
@@ -1710,7 +1710,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
         :type id: int
         :param name: New Pointcloud name.
         :type name: str
-        :returns: Information about updated Pointcloud.
+        :returns: Information about updated :class:`~supervisely.geometry.pointcloud.Pointcloud`.
         :rtype: :class:`~supervisely.api.pointcloud.pointcloud_api.PointcloudInfo`
 
         :Usage Example:

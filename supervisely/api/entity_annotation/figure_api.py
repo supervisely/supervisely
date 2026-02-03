@@ -78,7 +78,7 @@ class FigureInfo(NamedTuple):
         Get Figure's bounding box.
 
         :returns: Rectangle in supervisely format.
-        :rtype: :class: `sly.Rectangle`
+        :rtype: :class:`~supervisely.geometry.rectangle.Rectangle`
         """
         if self.geometry_meta is not None:
             return Rectangle(*self.geometry_meta["bbox"], sly_id=self.id)
@@ -89,7 +89,7 @@ class FigureInfo(NamedTuple):
 
 class FigureApi(RemoveableBulkModuleApi):
     """
-    Figure object for :class:`VideoAnnotation<supervisely.video_annotation.video_annotation.VideoAnnotation>`.
+    Figure object for :class:`VideoAnnotation<~supervisely.video_annotation.video_annotation.VideoAnnotation>`.
     """
 
     def _remove_batch_api_method_name(self):
@@ -176,8 +176,8 @@ class FigureApi(RemoveableBulkModuleApi):
 
         :param id: Figure ID in Supervisely.
         :type id: int
-        :returns: Information about Figure. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`NamedTuple`
+        :returns: Information about Figure.
+        :rtype: :class:`~supervisely.api.entity_annotation.figure_api.FigureInfo`
 
         :Usage Example:
 
@@ -285,8 +285,8 @@ class FigureApi(RemoveableBulkModuleApi):
         :type dataset_id: int
         :param ids: List of Figures IDs.
         :type ids: List[int]
-        :returns: List of information about Figures. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[NamedTuple]`
+        :returns: List of information about Figures.
+        :rtype: List[:class:`~supervisely.api.entity_annotation.figure_api.FigureInfo`]
 
         :Usage Example:
 
@@ -510,7 +510,7 @@ class FigureApi(RemoveableBulkModuleApi):
         :type skip_geometry: bool
 
         :returns: A dictionary where keys are image IDs and values are lists of figures.
-        :rtype: :class: `Dict[int, List[FigureInfo]]`
+        :rtype: Dict[int, List[:class:`~supervisely.api.entity_annotation.figure_api.FigureInfo`]]
         """
         fields = [
             ApiField.ID,
@@ -871,7 +871,7 @@ class FigureApi(RemoveableBulkModuleApi):
                         Adjust this value for optimal performance, value cannot exceed 500.
         :type batch_size: int, optional
         :returns: A dictionary where keys are image IDs and values are lists of figures.
-        :rtype: Dict[int, List[FigureInfo]]
+        :rtype: Dict[int, List[:class:`~supervisely.api.entity_annotation.figure_api.FigureInfo`]]
 
         :Usage Example:
 
@@ -1048,7 +1048,7 @@ class FigureApi(RemoveableBulkModuleApi):
         :type batch_size: int, optional
 
         :returns: A dictionary where keys are image IDs and values are lists of figures.
-        :rtype: Dict[int, List[FigureInfo]]
+        :rtype: Dict[int, List[:class:`~supervisely.api.entity_annotation.figure_api.FigureInfo`]]
 
         :Usage Example:
 

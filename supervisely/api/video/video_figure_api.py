@@ -37,18 +37,18 @@ class VideoFigureApi(FigureApi):
         :type video_id: int
         :param object_id: ID of the object to which the VideoFigure belongs.
         :type object_id: int
-        :param frame_index: Number of the frame to add VideoFigure.
+        :param frame_index: Number of the frame to add :class:`~supervisely.video_annotation.video_figure.VideoFigure`.
         :type frame_index: int
-        :param geometry_json: Parameters of geometry for VideoFigure.
+        :param geometry_json: Parameters of geometry for :class:`~supervisely.video_annotation.video_figure.VideoFigure`.
         :type geometry_json: dict
         :param geometry_type: Type of VideoFigure geometry.
         :type geometry_type: str
         :param track_id: int, optional.
         :type track_id: int, optional
-        :param meta: Meta data for VideoFigure.
+        :param meta: Meta data for :class:`~supervisely.video_annotation.video_figure.VideoFigure`.
         :type meta: dict, optional
         :param status: Labeling status. Specifies if the VideoFigure was created by NN model, manually or created by NN and then manually corrected.
-        :type status: LabelingStatus, optional
+        :type status: :class:`~supervisely.annotation.label.LabelingStatus`, optional
         :returns: New figure ID
         :rtype: int
 
@@ -97,9 +97,9 @@ class VideoFigureApi(FigureApi):
         :param video_id: Video ID in Supervisely.
         :type video_id: int
         :param figures: List of VideoFigures to append.
-        :type figures: List[VideoFigure]
+        :type figures: List[:class:`~supervisely.video_annotation.video_figure.VideoFigure`]
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`
         :returns: None
         :rtype: None
 
@@ -145,9 +145,11 @@ class VideoFigureApi(FigureApi):
         :param figure_id: ID of the figure to update
         :type figure_id: int
         :param geometry: Supervisely Gepmetry object
-        :type geometry: Geometry
+        :type geometry: :class:`~supervisely.geometry.geometry.Geometry`
         :param status: Labeling status. Specifies if the VideoFigure was created by NN model, manually or created by NN and then manually corrected.
-        :type status: LabelingStatus, optional
+        :type status: :class:`~supervisely.annotation.label.LabelingStatus`, optional
+        :returns: None
+        :rtype: None
 
         :Usage Example:
 
@@ -195,7 +197,7 @@ class VideoFigureApi(FigureApi):
         :param skip_geometry: Skip the download of figure geometry. May be useful for a significant api request speed increase in the large datasets.
         :type skip_geometry: bool
         :returns: A dictionary where keys are video IDs and values are lists of figures.
-        :rtype: :class: `Dict[int, List[FigureInfo]]`
+        :rtype: Dict[int, List[:class:`~supervisely.api.entity_annotation.figure_api.FigureInfo`]]
         """
         if kwargs.get("image_ids", False) is not False:
             video_ids = kwargs["image_ids"]  # backward compatibility

@@ -306,7 +306,7 @@ class TrainApi:
         :param project_id: Project id to train on.
         :type project_id: int
         :param model: Parsed model reference.
-        :type model: Model
+        :type model: str
         :param classes: Class names to train on (filtered to project meta upstream).
         :type classes: List[str]
         :param train_val_split: Train/Val split strategy for the GUI.

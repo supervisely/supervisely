@@ -25,7 +25,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
     :class:`~supervisely.api.video.video_annotation_api.VideoAnnotationAPI` object is immutable.
 
     :param api: API connection to the server.
-    :type api: Api
+    :type api: :class:`~supervisely.api.api.Api`
 
     :Usage Example:
 
@@ -111,9 +111,9 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         :param video_id: Video ID in Supervisely.
         :type video_id: int
         :param ann: VideoAnnotation object.
-        :type ann: VideoAnnotation
+        :type ann: :class:`~supervisely.video_annotation.video_annotation.VideoAnnotation`
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
         :param progress: Progress.
         :type progress: Optional[Union[tqdm, Callable]]
         :returns: None
@@ -168,8 +168,8 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         :type video_ids: List[int]
         :param ann_paths: Paths to annotations on local machine.
         :type ann_paths: List[str]
-        :param project_meta: Input :class:`~supervisely.project.project_meta.ProjectMeta` for VideoAnnotations.
-        :type project_meta: ProjectMeta
+        :param project_meta: Input ProjectMeta for VideoAnnotations.
+        :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
         :returns: None
@@ -223,8 +223,8 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         :type video_ids: List[int]
         :param ann_paths: Paths to annotations on local machine.
         :type ann_paths: List[str]
-        :param project_meta: Input :class:`~supervisely.project.project_meta.ProjectMeta` for VideoAnnotations.
-        :type project_meta: ProjectMeta
+        :param project_meta: Input ProjectMeta for VideoAnnotations.
+        :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
         :param progress_cb: Function for tracking upload progress.
         :type progress_cb: tqdm or callable, optional
         :returns: None
@@ -266,7 +266,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         :param progress_cb: Function for tracking upload progress (by number of figures).
         :type progress_cb: tqdm or callable, optional
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
         :returns: None
         :rtype: None
         """
@@ -413,7 +413,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         :param video_id: Video ID in Supervisely.
         :type video_id: int
         :param video_info: Does not affect the result, but is left for compatibility with the method signature.
-        :type video_info: VideoInfo, optional
+        :type video_info: :class:`~supervisely.api.video.video_api.VideoInfo`, optional
         :param semaphore: Semaphore to limit the number of parallel downloads.
         :type semaphore: asyncio.Semaphore, optional
         :param force_metadata_for_links: If True, updates meta for videos with links.

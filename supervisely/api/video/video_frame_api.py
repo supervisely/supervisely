@@ -179,7 +179,7 @@ class VideoFrameAPI(ModuleApi):
         :type video_id: int
         :param frame_index: Index of frame to download.
         :type frame_index: int
-        :param path: Local save path for Image.
+        :param path: Local save path for image.
         :type path: str
         :returns: None
         :rtype: None
@@ -283,7 +283,7 @@ class VideoFrameAPI(ModuleApi):
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
         :returns: List of Images in binary format
-        :rtype: :class:`List[bytes]`
+        :rtype: List[bytes]
 
         :Usage Example:
 

@@ -61,8 +61,8 @@ class NeuralNetworkApi:
         :param agent_id: Agent ID, if not present will be defined automatically.
         :type agent_id: Optional[int]
         :param kwargs: Additional parameters for deployment.
-        :returns: A :class:`ModelAPI` object for the deployed model.
-        :rtype: ModelAPI
+        :returns: ModelAPI object for the deployed model.
+        :rtype: :class:`~supervisely.nn.model.model_api.ModelAPI`
 
         :Usage Example:
 
@@ -262,8 +262,8 @@ class NeuralNetworkApi:
 
         :param task_id: the task_id of a finished training task in the Supervisely platform.
         :type task_id: int
-        :returns: an :class:`ExperimentInfo` object with information about the training, model, and results.
-        :rtype: ExperimentInfo
+        :returns: ExperimentInfo object with information about the training, model, and results.
+        :rtype: :class:`~supervisely.nn.experiments.ExperimentInfo`
         """
         from supervisely.nn.experiments import ExperimentInfo
 
@@ -287,8 +287,8 @@ class NeuralNetworkApi:
 
         :param task_id: the task_id of a running Serving App session in the Supervisely platform.
         :type task_id: int
-        :returns: a :class:`~supervisely.nn.model.model_api.ModelAPI` object
-        :rtype: ModelAPI
+        :returns: ModelAPI object
+        :rtype: :class:`~supervisely.nn.model.model_api.ModelAPI`
         """
         from supervisely.nn.model.model_api import ModelAPI
 

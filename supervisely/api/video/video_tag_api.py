@@ -190,8 +190,8 @@ class VideoTagApi(TagApi):
 
         :param video_id: Video ID in Supervidely.
         :type video_id: int
-        :param tag: VideoTag j,ject.
-        :type tag: VideoTag
+        :param tag: VideoTag object.
+        :type tag: :class:`~supervisely.video_annotation.video_tag.VideoTag`
         :param update_id_inplace: Specify if
         :returns: VideoTag ID in Supervisely
         :rtype: int
@@ -315,7 +315,7 @@ class VideoTagApi(TagApi):
         Remove tag from video.
 
         :param VideoTag in Supervisely.
-        :type tag: VideoTag
+        :type tag: :class:`~supervisely.video_annotation.video_tag.VideoTag`
         :returns: None
         :rtype: None
 
@@ -364,7 +364,7 @@ class VideoObjectTagApi(TagApi):
         :type tag_meta_id: int
         :param object_id: Object ID in project annotation objects
         :type object_id: int
-        :param value: possible_values from TagMeta, defaults to None
+        :param value: possible_values from :class:`~supervisely.annotation.tag_meta.TagMeta`, defaults to None
         :type value: Optional[Union[str, int]], optional
         :param frame_range: array of strictly 2 frame numbers, defaults to None
         :type frame_range: Optional[List[int]], optional
@@ -406,7 +406,7 @@ class VideoObjectTagApi(TagApi):
 
         :param tag_id: tag ID of certain object
         :type tag_id: int
-        :param value: possible_values from TagMeta
+        :param value: possible_values from :class:`~supervisely.annotation.tag_meta.TagMeta`
         :type value: Union[str, int]
         """
         request_body = {
@@ -445,11 +445,11 @@ class VideoObjectTagApi(TagApi):
         :param project_id: Project ID in Supervisely.
         :type project_id: int
         :param tags: Collection of tags
-        :type tags: KeyIndexedCollection
+        :type tags: :class:`~supervisely.collection.key_indexed_collection.KeyIndexedCollection`
         :param object_id: ID of the object in Supervisely to add a tag to
         :type object_id: int, optional
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
         :returns: List of tags IDs
         :rtype: list
         """

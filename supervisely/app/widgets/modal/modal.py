@@ -15,7 +15,7 @@ class Modal(Widget):
     :param title: Modal window title
     :type title: str
     :param widgets: List of widgets to be displayed inside the modal
-    :type widgets: Optional[List[Widget]]
+    :type widgets: Optional[List[:class:`~supervisely.app.widgets.widget.Widget`]]
     :param size: Modal size, one of: tiny, small, large, full
     :type size: Literal["tiny", "small", "large", "full"]
     :param widget_id: An identifier of the widget.
@@ -185,7 +185,7 @@ class Modal(Widget):
         """Returns list of widgets inside the modal.
 
         :returns: List of widgets
-        :rtype: List[Widget]
+        :rtype: List[:class:`~supervisely.app.widgets.widget.Widget`]
         """
         return self._widgets
 
@@ -195,6 +195,6 @@ class Modal(Widget):
         Note: Changing widgets dynamically may require re-rendering.
 
         :param widgets: List of widgets
-        :type widgets: List[Widget]
+        :type widgets: List[:class:`~supervisely.app.widgets.widget.Widget`]
         """
         self._widgets = widgets

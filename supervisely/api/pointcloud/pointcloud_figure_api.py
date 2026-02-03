@@ -31,7 +31,7 @@ class PointcloudFigureApi(FigureApi):
         :type pointcloud_id: int
         :param object_id: ID of the object to which the PointcloudFigure belongs.
         :type object_id: int
-        :param geometry_json: Parameters of geometry for PointcloudFigure.
+        :param geometry_json: Parameters of geometry for :class:`~supervisely.pointcloud_annotation.pointcloud_figure.PointcloudFigure`.
         :type geometry_json: dict
         :param geometry_type: Type of PointcloudFigure geometry.
         :type geometry_type: str
@@ -78,9 +78,9 @@ class PointcloudFigureApi(FigureApi):
         :param pointcloud_id: Point cloud ID in Supervisely.
         :type pointcloud_id: int
         :param figures: List of point cloud figures to append.
-        :type figures: List[PointcloudFigure]
+        :type figures: List[:class:`~supervisely.pointcloud_annotation.pointcloud_figure.PointcloudFigure`]
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`
         :returns: None
         :rtype: None
 
@@ -130,14 +130,14 @@ class PointcloudFigureApi(FigureApi):
         """
         Add pointcloud figures to Dataset annotations.
 
-        :param dataset_id: :class:`~supervisely.project.project.Dataset` ID in Supervisely.
+        :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
         :param figures: List of point cloud figures.
-        :type figures: List[PointcloudFigure]
+        :type figures: List[:class:`~supervisely.pointcloud_annotation.pointcloud_figure.PointcloudFigure`]
         :param entity_ids: List of point cloud IDs.
         :type entity_ids: List[int]
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
         :rtype: None
 
         :Usage Example:
@@ -228,7 +228,7 @@ class PointcloudFigureApi(FigureApi):
         :type skip_geometry: bool
 
         :returns: A dictionary where keys are pointcloud IDs and values are lists of figures.
-        :rtype: :class: `Dict[int, List[FigureInfo]]`
+        :rtype: Dict[int, List[:class:`~supervisely.api.entity_annotation.figure_api.FigureInfo`]]
         """
         if kwargs.get("image_ids", False) is not False:
             pointcloud_ids = kwargs["image_ids"]  # backward compatibility

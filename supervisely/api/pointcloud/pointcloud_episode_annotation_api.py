@@ -16,7 +16,7 @@ class PointcloudEpisodeAnnotationAPI(EntityAnnotationAPI):
     :class:`~supervisely.api.pointcloud.pointcloud_episode_annotation_api.PointcloudEpisodeAnnotationAPI` object is immutable.
 
     :param api: API connection to the server.
-    :type api: Api
+    :type api: :class:`~supervisely.api.api.Api`
 
     :Usage Example:
 
@@ -46,7 +46,7 @@ class PointcloudEpisodeAnnotationAPI(EntityAnnotationAPI):
         """
         Download information about PointcloudEpisodeAnnotation by dataset ID from API.
 
-        :param dataset_id: :class:`~supervisely.project.project.Dataset` ID in Supervisely.
+        :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
         :returns: Dictionary with information about PointcloudEpisodeAnnotation in json format.
         :rtype: dict
@@ -135,11 +135,11 @@ class PointcloudEpisodeAnnotationAPI(EntityAnnotationAPI):
         :param pointcloud_id: Point cloud ID in Supervisely.
         :type pointcloud_id: int
         :param ann: PointcloudEpisodeAnnotation object.
-        :type ann: PointcloudEpisodeAnnotation
+        :type ann: :class:`~supervisely.pointcloud_annotation.pointcloud_episode_annotation.PointcloudEpisodeAnnotation`
         :param frame_to_pointcloud_ids:  List of dictionaries with frame_id and name of pointcloud episodes
         :type frame_to_pointcloud_ids: List[dict]
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
         :returns: None
         :rtype: None
 

@@ -28,7 +28,7 @@ class PointcloudTagApi(TagApi):
         :type tag_meta_id: int
         :param pointcloud_id: Point cloud ID
         :type pointcloud_id: int
-        :param value: possible_values from TagMeta, defaults to None
+        :param value: possible_values from :class:`~supervisely.annotation.tag_meta.TagMeta`, defaults to None
         :type value: Optional[Union[str, int]], optional
         :returns: ID of the tag assigned to the point cloud
         :rtype: int
@@ -61,7 +61,7 @@ class PointcloudTagApi(TagApi):
 
         :param tag_id: tag ID of certain object
         :type tag_id: int
-        :param value: possible_values from TagMeta
+        :param value: possible_values from :class:`~supervisely.annotation.tag_meta.TagMeta`
         :type value: Union[str, int]
         :returns: None
         :rtype: None
@@ -92,7 +92,7 @@ class PointcloudObjectTagApi(TagApi):
         :type tag_meta_id: int
         :param object_id: Object ID in project annotation objects
         :type object_id: int
-        :param value: possible_values from TagMeta, defaults to None
+        :param value: possible_values from :class:`~supervisely.annotation.tag_meta.TagMeta`, defaults to None
         :type value: Optional[Union[str, int]], optional
         :param frame_range: array of 2 frame numbers in point cloud episodes, defaults to None
         :type frame_range: Optional[List[int]], optional
@@ -128,7 +128,7 @@ class PointcloudObjectTagApi(TagApi):
 
         :param tag_id: tag ID of certain object
         :type tag_id: int
-        :param value: possible_values from TagMeta
+        :param value: possible_values from :class:`~supervisely.annotation.tag_meta.TagMeta`
         :type value: Union[str, int]
         """
         request_body = {

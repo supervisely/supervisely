@@ -23,7 +23,7 @@ class PointcloudEpisodeApi(PointcloudApi):
     Inherits from :class:`~supervisely.api.pointcloud.pointcloud_api.PointcloudApi`.
 
     :param api: API connection to the server.
-    :type api: Api
+    :type api: :class:`~supervisely.api.api.Api`
 
     :Usage Example:
 
@@ -64,7 +64,7 @@ class PointcloudEpisodeApi(PointcloudApi):
         """
         Get a dictionary with frame_id and name of pointcloud by dataset id.
 
-        :param dataset_id: :class:`~supervisely.project.project.Dataset` ID in Supervisely.
+        :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
         :returns: Dictionary mapping frame index to point cloud name.
         :rtype: Dict[int, str]
@@ -145,7 +145,7 @@ class PointcloudEpisodeApi(PointcloudApi):
         Get max frame index for episode by dataset id.
         This method is useful for uploading pointclouds to the episode in parts.
 
-        :param dataset_id: :class:`~supervisely.project.project.Dataset` ID in Supervisely.
+        :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
         :returns: Max frame index, or None if the dataset has no point clouds.
         :rtype: Optional[int]

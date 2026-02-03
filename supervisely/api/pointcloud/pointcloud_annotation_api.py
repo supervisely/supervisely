@@ -22,7 +22,7 @@ class PointcloudAnnotationAPI(EntityAnnotationAPI):
     :class:`~supervisely.api.pointcloud.pointcloud_annotation_api.PointcloudAnnotationAPI` object is immutable.
 
     :param api: API connection to the server.
-    :type api: Api
+    :type api: :class:`~supervisely.api.api.Api`
 
     :Usage Example:
 
@@ -144,9 +144,9 @@ class PointcloudAnnotationAPI(EntityAnnotationAPI):
         :param pointcloud_id: Point cloud ID in Supervisely.
         :type pointcloud_id: int
         :param ann: PointcloudAnnotation object.
-        :type ann: PointcloudAnnotation
+        :type ann: :class:`~supervisely.pointcloud_annotation.pointcloud_annotation.PointcloudAnnotation`
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
         :returns: None
         :rtype: None
 

@@ -10,7 +10,7 @@ class ReloadableArea(DynamicWidget):
     UI of the app. It can be used when the widgets are needed to be added or removed dynamically.
 
     :param content: a Widget to be set as content of the ReloadableArea. Defaults to None.
-    :type content: Widget, optional
+    :type content: :class:`~supervisely.app.widgets.widget.Widget`, optional
     :param widget_id: The id of the widget. Defaults to None.
     :type widget_id: str, optional
 
@@ -61,7 +61,7 @@ class ReloadableArea(DynamicWidget):
         To reload the widget in UI use reload() function.
 
         :param content: new widget to be set as content
-        :type content: Widget
+        :type content: :class:`~supervisely.app.widgets.widget.Widget`
         """
         self._content = content
         DataJson().send_changes()

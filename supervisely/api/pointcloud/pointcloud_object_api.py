@@ -21,7 +21,7 @@ class PointcloudObjectApi(ObjectApi):
 
     def __init__(self, api):
         """
-        :param api: Api class object
+        :param api: :class:`~supervisely.api.api.Api` class object
         """
         super().__init__(api)
         self.tag = PointcloudObjectTagApi(api)
@@ -37,10 +37,10 @@ class PointcloudObjectApi(ObjectApi):
 
         :param pointcloud_id: Point cloud ID in Supervidely.
         :type pointcloud_id: int
-        :param objects: PointcloudAnnotation objects.
-        :type objects: PointcloudObjectCollection
+        :param objects: PointcloudObjectCollection objects.
+        :type objects: :class:`~supervisely.pointcloud_annotation.pointcloud_object_collection.PointcloudObjectCollection`
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
         :returns: List of objects IDs
         :rtype: :class:`List[int]`
 
@@ -97,12 +97,12 @@ class PointcloudObjectApi(ObjectApi):
         """
         Add pointcloud objects to Dataset annotation objects.
 
-        :param dataset_id: :class:`~supervisely.project.project.Dataset` ID in Supervisely.
+        :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
-        :param objects: Pointcloud objects collection.
-        :type objects: PointcloudObjectCollection
+        :param objects: PointcloudObjectCollection objects collection.
+        :type objects: :class:`~supervisely.pointcloud_annotation.pointcloud_object_collection.PointcloudObjectCollection`
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
         :returns: List of objects IDs
         :rtype: :class:`List[int]`
 

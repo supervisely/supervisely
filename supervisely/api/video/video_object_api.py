@@ -32,12 +32,12 @@ class VideoObjectApi(ObjectApi):
 
         :param video_id: Video ID in Supervidely.
         :type video_id: int
-        :param objects: VideoAnnotation objects.
-        :type objects: VideoObjectCollection
+        :param objects: VideoObjectCollection objects.
+        :type objects: :class:`~supervisely.video_annotation.video_object_collection.VideoObjectCollection`
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
         :returns: List of objects IDs
-        :rtype: :class:`List[int]`
+        :rtype: List[int]
 
         :Usage Example:
 

@@ -10,7 +10,7 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 
 class ObjectApi(RemoveableBulkModuleApi):
     """
-    Object for :class:`VideoAnnotation<supervisely.video_annotation.video_annotation.VideoAnnotation>`.
+    Object for :class:`VideoAnnotation<~supervisely.video_annotation.video_annotation.VideoAnnotation>`.
     """
 
     @staticmethod
@@ -81,7 +81,7 @@ class ObjectApi(RemoveableBulkModuleApi):
 
         :param id: Object ID in Supervisely.
         :type id: int
-        :returns: Information about Object. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Object.
         :rtype: :class:`NamedTuple`
         """
         return self._get_info_by_id(id, "annotation-objects.info")
