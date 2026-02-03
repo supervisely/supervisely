@@ -37,8 +37,8 @@ class Plane(FrameCollection):
     :type img_size: Optional[Union[Tuple[int, int], None]]
     :param slices_count: Number of slices in the plane.
     :type slices_count: Optional[Union[int, None]]
-    :param items: List of :py:class:`Slice<supervisely.volume_annotation.slice.Slice>` objects representing the slices in the plane.
-    :type items: Oprional[List[:py:class:`Slice<supervisely.volume_annotation.slice.Slice>`]]
+    :param items: List of Slice objects representing the slices in the plane.
+    :type items: Oprional[List[:class:`~supervisely.volume_annotation.slice.Slice`]]
     :param volume_meta: Metadata of the volume.
     :type volume_meta: Optional[dict]
 
@@ -367,12 +367,12 @@ class Plane(FrameCollection):
         """
         Creates a `Plane` instance from a JSON dictionary.
 
-        :param data: JSON dictionary representing a `Plane` instance.
+        :param data: JSON dictionary representing a Plane instance.
         :type data: dict
         :param plane_name: Name of the plane.
         :type plane_name: str
         :param objects: Objects in the plane.
-        :type objects: VolumeObjectCollection
+        :type objects: :class:`~supervisely.volume_annotation.volume_object_collection.VolumeObjectCollection`
         :param img_size: Size of the image represented by the plane.
         :type img_size: Optional[Union[list, tuple]]
         :param slices_count: Number of slices along the plane.
@@ -380,9 +380,9 @@ class Plane(FrameCollection):
         :param volume_meta: Metadata of the volume to extract slices from.
         :type volume_meta: Optional[dict]
         :param key_id_map: Dictionary mapping object keys to object IDs.
-        :type key_id_map: Optional[KeyIdMap]
-        :returns: A new class:`Plane<Plane>` instance created from the JSON.
-        :rtype: :py:class:`Plane<supervisely.volume_annotation.plane.Plane>`
+        :type key_id_map: Optional[:class:`~supervisely.video_annotation.key_id_map.KeyIdMap`]
+        :returns: A new Plane instance created from the JSON.
+        :rtype: :class:`~supervisely.volume_annotation.plane.Plane`
 
         :raises ValueError: if `plane_name` is not equal to the "name" field in "data", or if the "normal" field in "data" is not valid for the given plane, or if both `slices_count` and `volume_meta` are None.
 
@@ -433,11 +433,11 @@ class Plane(FrameCollection):
         key_id_map: Optional[KeyIdMap] = None,
     ) -> dict:
         """
-        Returns a JSON serializable dictionary representation of the `Plane` instance.
+        Returns a JSON serializable dictionary representation of the Plane instance.
 
         :param key_id_map: Dictionary mapping object keys to object IDs.
-        :type key_id_map: Optional[KeyIdMap]
-        :returns: A JSON serializable dictionary representation of the `Plane` instance.
+        :type key_id_map: Optional[:class:`~supervisely.video_annotation.key_id_map.KeyIdMap`]
+        :returns: A JSON serializable dictionary representation of the Plane instance.
         :rtype: dict
 
         :Usage Example:

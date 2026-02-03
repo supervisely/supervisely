@@ -47,7 +47,7 @@ class StepFlow:
         """
         Initializes the step manager.
 
-        :param stepper: Stepper object for step navigation
+        :param stepper: :class:`~supervisely.app.widgets.stepper.stepper.Stepper` object for step navigation
         :param app_options: Application options
         """
         self.stepper = stepper

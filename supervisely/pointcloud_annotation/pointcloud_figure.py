@@ -23,20 +23,20 @@ from supervisely.video_annotation.video_figure import VideoFigure
 class PointcloudFigure(VideoFigure):
     """
     PointcloudFigure object for
-    :class:`PointcloudAnnotation<supervisely.pointcloud_annotation.pointcloud_annotation.PointcloudAnnotation>` or :class:`PointcloudEpisodeAnnotation<supervisely.pointcloud_annotation.pointcloud_episode_annotation.PointcloudEpisodeAnnotation>`.
-    :class:`PointcloudFigure<PointcloudFigure>` objects is immutable.
+    :class:`~supervisely.pointcloud_annotation.pointcloud_annotation.PointcloudAnnotation` or :class:`~supervisely.pointcloud_annotation.pointcloud_episode_annotation.PointcloudEpisodeAnnotation`.
+    :class:`~supervisely.pointcloud_annotation.pointcloud_figure.PointcloudFigure` objects is immutable.
 
-    :param parent_object: PointcloudObject or PointcloudObject object.
-    :type parent_object: Union[PointcloudObject, PointcloudEpisodeObject]
-    :param geometry: Label :class:`geometry<supervisely.geometry.geometry.Geometry>`.
-    :type geometry: Geometry
+    :param parent_object: Pointcloud object or :class:`~supervisely.pointcloud_annotation.pointcloud_object.PointcloudObject` object.
+    :type parent_object: Union[:class:`~supervisely.pointcloud_annotation.pointcloud_object.PointcloudObject`, :class:`~supervisely.pointcloud_annotation.pointcloud_episode_object.PointcloudEpisodeObject`]
+    :param geometry: Label :class:`~supervisely.geometry.geometry.Geometry`.
+    :type geometry: :class:`~supervisely.geometry.geometry.Geometry`
     :param frame_index: Index of Frame to which PointcloudFigure belongs.
     :type frame_index: int
-    :param key: KeyIdMap object.
-    :type key: KeyIdMap, optional
-    :param class_id: ID of :class:`PointcloudObject<PointcloudObject>` (or :class:`PointcloudEpisodeObject<PointcloudEpisodeObject>`) to which PointcloudFigure belongs.
+    :param key: Key ID map.
+    :type key: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`
+    :param class_id: ID of pointcloud object (or pointcloud episode object) to which PointcloudFigure belongs.
     :type class_id: int, optional
-    :param labeler_login: Login of the user who created PointcloudFigure.
+    :param labeler_login: Login of the user who created :class:`~supervisely.pointcloud_annotation.pointcloud_figure.PointcloudFigure`.
     :type labeler_login: str, optional
     :param updated_at: Date and Time when PointcloudFigure was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
     :type updated_at: str, optional
@@ -100,8 +100,8 @@ class PointcloudFigure(VideoFigure):
         """
         PointcloudObject of current PointcloudFigure.
 
-        :returns: PointcloudObject ot PointcloudEpisodeObject object
-        :rtype: :class:`PointcloudObject<PointcloudObject>` or :class:`PointcloudEpisodeObject<PointcloudEpisodeObject>`
+        :returns: Pointcloud object or pointcloud episode object.
+        :rtype: :class:`~supervisely.pointcloud_annotation.pointcloud_object.PointcloudObject` or :class:`~supervisely.pointcloud_annotation.pointcloud_episode_object.PointcloudEpisodeObject`
 
         :Usage Example:
 
@@ -143,15 +143,15 @@ class PointcloudFigure(VideoFigure):
 
         :param data: Dict in json format.
         :type data: dict
-        :param objects: PointcloudObjectCollection or PointcloudEpisodeObjectCollection object.
-        :type objects: PointcloudObjectCollection or PointcloudEpisodeObjectCollection
+        :param objects: Pointcloud object collection or pointcloud episode object collection.
+        :type objects: :class:`~supervisely.pointcloud_annotation.pointcloud_object_collection.PointcloudObjectCollection` or :class:`~supervisely.pointcloud_annotation.pointcloud_episode_object_collection.PointcloudEpisodeObjectCollection`
         :param frame_index: Index of Frame to which PointcloudFigure belongs.
         :type frame_index: int
-        :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
+        :param key_id_map: Key ID map.
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`
         :raises RuntimeError: if point cloudobject ID and pointcloud object key are None, if pointcloud object key and key_id_map are None, if pointcloud object with given id not found in key_id_map
-        :returns: PointcloudFigure object
-        :rtype: :class:`PointcloudFigure`
+        :returns: Pointcloud figure object.
+        :rtype: :class:`~supervisely.pointcloud_annotation.pointcloud_figure.PointcloudFigure`
 
         :Usage Example:
 
@@ -192,24 +192,24 @@ class PointcloudFigure(VideoFigure):
         """
         Makes a copy of PointcloudFigure with new fields, if fields are given, otherwise it will use fields of the original PointcloudFigure.
 
-        :param parent_object: :class:`PointcloudObject<PointcloudObject>` (or :class:`PointcloudEpisodeObject<PointcloudEpisodeObject>`) object.
-        :type parent_object: PointcloudObject or PointcloudEpisodeObject, optional
-        :param geometry: Label :class:`geometry<supervisely.geometry.geometry.Geometry>`.
-        :type geometry: Geometry, optional
+        :param parent_object: Pointcloud object or pointcloud episode object.
+        :type parent_object: :class:`~supervisely.pointcloud_annotation.pointcloud_object.PointcloudObject` or :class:`~supervisely.pointcloud_annotation.pointcloud_episode_object.PointcloudEpisodeObject`, optional
+        :param geometry: Label :class:`~supervisely.geometry.geometry.Geometry`.
+        :type geometry: :class:`~supervisely.geometry.geometry.Geometry`, optional
         :param frame_index: Index of Frame to which PointcloudFigure belongs.
         :type frame_index: int, optional
-        :param key: KeyIdMap object.
-        :type key: KeyIdMap, optional
-        :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which PointcloudFigure belongs.
+        :param key: Key ID map.
+        :type key: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`
+        :param class_id: ID of pointcloud object (or pointcloud episode object) to which PointcloudFigure belongs.
         :type class_id: int, optional
-        :param labeler_login: Login of the user who created PointcloudFigure.
+        :param labeler_login: Login of the user who created :class:`~supervisely.pointcloud_annotation.pointcloud_figure.PointcloudFigure`.
         :type labeler_login: str, optional
         :param updated_at: Date and Time when PointcloudFigure was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
         :type updated_at: str, optional
         :param created_at: Date and Time when PointcloudFigure was created. Date Format is the same as in "updated_at" parameter.
         :type created_at: str, optional
-        :returns: PointcloudFigure object
-        :rtype: :class:`PointcloudFigure`
+        :returns: Pointcloud figure object.
+        :rtype: :class:`~supervisely.pointcloud_annotation.pointcloud_figure.PointcloudFigure`
 
         :Usage Example:
 

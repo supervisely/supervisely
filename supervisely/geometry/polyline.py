@@ -33,13 +33,13 @@ from supervisely.geometry.vector_geometry import VectorGeometry
 
 class Polyline(VectorGeometry):
     """
-    Polyline geometry for a single :class:`Label<supervisely.annotation.label.Label>`. :class:`Polyline<Polyline>` class object is immutable.
+    Polyline geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.polyline.Polyline` object is immutable.
 
     :param exterior: List of exterior coordinates, the Polyline is defined with these points.
-    :type exterior: List[PointLocation], List[List[int, int]], List[Tuple[int, int]
+    :type exterior: List[:class:`~supervisely.geometry.point_location.PointLocation`], List[List[int, int]], List[Tuple[int, int]
     :param sly_id: Polyline ID in Supervisely server.
     :type sly_id: int, optional
-    :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which Polyline belongs.
+    :param class_id: ID of ObjClass to which Polyline belongs.
     :type class_id: int, optional
     :param labeler_login: Login of the user who created Polyline.
     :type labeler_login: str, optional
@@ -47,7 +47,7 @@ class Polyline(VectorGeometry):
     :type updated_at: str, optional
     :param created_at: Date and Time when Polyline was created. Date Format is the same as in "updated_at" parameter.
     :type created_at: str, optional
-    :raises ValueError: field exterior must contain at least two points to create Polyline object
+    :raises ValueError: field exterior must contain at least two points to create Polyline.
 
     :Usage Example:
 
@@ -97,8 +97,8 @@ class Polyline(VectorGeometry):
 
         :param data: Polyline in json format as a dict.
         :type data: dict
-        :returns: Polyline object
-        :rtype: :class:`Polyline<Polyline>`
+        :returns: Polyline from json.
+        :rtype: :class:`~supervisely.geometry.polyline.Polyline`
 
         :Usage Example:
 
@@ -137,10 +137,10 @@ class Polyline(VectorGeometry):
         """
         Crops current Polyline.
 
-        :param rect: Rectangle object for crop.
-        :type rect: Rectangle
-        :returns: List of Polyline objects
-        :rtype: :class:`List[Polyline]<Polyline>`
+        :param rect: Rectangle to crop Polyline from.
+        :type rect: :class:`~supervisely.geometry.rectangle.Rectangle`
+        :returns: List of Polygons from Rectangle.
+        :rtype: List[:class:`~supervisely.geometry.polyline.Polyline`]
 
         :Usage Example:
 
@@ -195,7 +195,7 @@ class Polyline(VectorGeometry):
         """
         Polyline area, always 0.0.
 
-        :returns: Area of current Polyline
+        :returns: Area of current Polyline, always 0.0
         :rtype: float
 
         :Usage Example:
@@ -213,8 +213,8 @@ class Polyline(VectorGeometry):
 
         :param epsilon: Specifying the approximation accuracy.
         :type epsilon: float
-        :returns: Polyline object
-        :rtype: :class:`Polyline<Polyline>`
+        :returns: Approximated Polyline.
+        :rtype: :class:`~supervisely.geometry.polyline.Polyline`
 
         :Usage Example:
 

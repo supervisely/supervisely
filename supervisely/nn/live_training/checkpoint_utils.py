@@ -194,7 +194,7 @@ def save_state_json(state: dict, checkpoint_path: str):
     Save training state as JSON file next to checkpoint.
     
     Args:
-        state: State dict from LiveTraining.state()
+        state: State dict from :meth:`~supervisely.nn.live_training.live_training.LiveTraining.state`()
         checkpoint_path: Path to .pth checkpoint file
     """
     state_path = checkpoint_path.replace('.pth', '_state.json')
@@ -212,7 +212,7 @@ def load_state_json(checkpoint_path: str) -> dict:
         checkpoint_path: Path to .pth checkpoint file
         
     Returns:
-        state: State dict for LiveTraining.load_state()
+        state: State dict for :meth:`~supervisely.nn.live_training.live_training.LiveTraining.load_state`()
     """
     state_path = checkpoint_path.replace('.pth', '_state.json')
     

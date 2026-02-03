@@ -395,7 +395,7 @@ class TrainApp:
         """
         Returns :class:`~supervisely.api.project_api.ProjectInfo` object, which contains information about the project.
 
-        :returns: ProjectInfo object.
+        :returns: Project info.
         :rtype: :class:`~supervisely.api.project_api.ProjectInfo`
         """
         return self.gui.project_info
@@ -611,7 +611,7 @@ class TrainApp:
         The function must return ``experiment_info`` dict with **required keys**:
 
         - ``model_name``: str (name of the model used for training)
-        - ``task_type``: str (usually :class:`supervisely.nn.task_type.TaskType`)
+        - ``task_type``: str (usually :class:`~supervisely.nn.task_type.TaskType`)
         - ``checkpoints``: list[str] **or** path to directory (str) containing ``.pt``/``.pth`` files
         - ``best_checkpoint``: str (file name; must be present in ``checkpoints``)
 
@@ -1132,7 +1132,7 @@ class TrainApp:
         Downloads the project data from Supervisely without using the cache.
 
         :param dataset_infos: List of dataset information objects.
-        :type dataset_infos: List[DatasetInfo]
+        :type dataset_infos: List[:class:`~supervisely.api.dataset_api.DatasetInfo`]
         :param total_images: Total number of images to download.
         :type total_images: int
         """
@@ -1159,7 +1159,7 @@ class TrainApp:
         Downloads the project data from Supervisely using the cache.
 
         :param dataset_infos: List of dataset information objects.
-        :type dataset_infos: List[DatasetInfo]
+        :type dataset_infos: List[:class:`~supervisely.api.dataset_api.DatasetInfo`]
         :param total_images: Total number of images to download.
         :type total_images: int
         """
@@ -2114,9 +2114,9 @@ class TrainApp:
         :param experiment_info: Information about the experiment results.
         :type experiment_info: dict
         :param model_meta: Model meta with object classes.
-        :type model_meta: ProjectMeta
+        :type model_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
         :param session_link_file_info: Artifacts directory link, used if report is not generated.
-        :type session_link_file_info: FileInfo
+        :type session_link_file_info: :class:`~supervisely.api.file_api.FileInfo`
         :returns: Output file info and experiment info.
         :rtype: tuple
         """
@@ -2392,7 +2392,7 @@ class TrainApp:
         :param splits_data: Information about the train and val splits.
         :type splits_data: dict
         :param model_meta: Model meta with object classes.
-        :type model_meta: ProjectInfo
+        :type model_meta: :class:`~supervisely.api.project_api.ProjectInfo`
         :param gt_project_id: Ground truth project ID with converted shapes.
         :type gt_project_id: int
         :returns: Evaluation report, report ID and evaluation metrics.
@@ -2686,9 +2686,9 @@ class TrainApp:
         :param team_files_dir: Team files directory.
         :type team_files_dir: str
         :param file_info: FileInfo of the best checkpoint.
-        :type file_info: FileInfo
+        :type file_info: :class:`~supervisely.api.file_api.FileInfo`
         :param model_benchmark_report: FileInfo of the model benchmark report link (.lnk).
-        :type model_benchmark_report: Optional[FileInfo]
+        :type model_benchmark_report: Optional[:class:`~supervisely.api.file_api.FileInfo`]
         :param model_benchmark_report_id: Model benchmark report ID.
         """
         try:

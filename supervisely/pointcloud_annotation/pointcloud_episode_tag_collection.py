@@ -15,8 +15,8 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 
 class PointcloudEpisodeTagCollection(PointcloudTagCollection):
     """
-    Collection with :class:`PointcloudEpisodeTag<supervisely.pointcloud_annotation.pointcloud_episode_tag.PointcloudEpisodeTag>` instances.
-    :class:`PointcloudEpisodeTagCollection<PointcloudEpisodeTagCollection>` object is immutable.
+    Collection with :class:`~supervisely.pointcloud_annotation.pointcloud_episode_tag.PointcloudEpisodeTag` instances.
+    :class:`~supervisely.pointcloud_annotation.pointcloud_episode_tag_collection.PointcloudEpisodeTagCollection` object is immutable.
 
     :Usage Example:
 
@@ -161,12 +161,12 @@ class PointcloudEpisodeTagCollection(PointcloudTagCollection):
 
         :param data: API response data.
         :type data: List[Dict]
-        :param tag_meta_collection: TagMetaCollection object
-        :type tag_meta_collection: TagMetaCollection
+        :param tag_meta_collection: Tag metadata collection.
+        :type tag_meta_collection: :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection`
         :param id_to_tagmeta: Mapping of tag IDs to tag metadata.
-        :type id_to_tagmeta: Optional[Dict[int, TagMeta]]
-        :returns: PointcloudEpisodeTagCollection object.
-        :rtype: PointcloudEpisodeTagCollection
+        :type id_to_tagmeta: Optional[Dict[int, :class:`~supervisely.annotation.tag_meta.TagMeta`]]
+        :returns: Pointcloud episode tags collection.
+        :rtype: :class:`~supervisely.pointcloud_annotation.pointcloud_episode_tag_collection.PointcloudEpisodeTagCollection`
 
         :Usage Example:
 
@@ -221,17 +221,17 @@ class PointcloudEpisodeTagCollection(PointcloudTagCollection):
         key_id_map: Optional[KeyIdMap] = None,
     ) -> PointcloudEpisodeTagCollection:
         """
-        Convert a list with dicts in json format to :class:`PointcloudEpisodeTagCollection<PointcloudEpisodeTagCollection>`.
+        Convert a list with dicts in json format to :class:`~supervisely.pointcloud_annotation.pointcloud_episode_tag_collection.PointcloudEpisodeTagCollection`.
         Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: List with dicts in json format.
         :type data: :class:`List[Dict]`
-        :param tag_meta_collection: TagMetaCollection object.
-        :type tag_meta_collection: :class:`TagMetaCollection<supervisely.annotation.tag_meta_collection.TagMetaCollection>`
-        :param key_id_map: KeyIdMap object.
-        :type key_id_map: :class:`KeyIdMap<supervisely.video_annotation.key_id_map.KeyIdMap>`, optional
-        :returns: TagCollection object.
-        :rtype: :class:`PointcloudEpisodeTagCollection<PointcloudEpisodeTagCollection>`
+        :param tag_meta_collection: Tag metadata collection.
+        :type tag_meta_collection: :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection`
+        :param key_id_map: Key ID map.
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`
+        :returns: Pointcloud episode tags collection.
+        :rtype: :class:`~supervisely.pointcloud_annotation.pointcloud_episode_tag_collection.PointcloudEpisodeTagCollection`
 
         :Usage Example:
 

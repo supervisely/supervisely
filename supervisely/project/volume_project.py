@@ -176,7 +176,7 @@ class VolumeProject(VideoProject):
         Download volume project from Supervisely to the given directory.
 
         :param api: Supervisely API address and token.
-        :type api: :class:`Api<supervisely.api.api.Api>`
+        :type api: :class:`~supervisely.api.api.Api`
         :param project_id: Supervisely downloadable project ID.
         :type project_id: int
         :param dest_dir: Destination directory.
@@ -264,7 +264,7 @@ class VolumeProject(VideoProject):
         :type log_progress: bool
         :param progress_cb: Optional callback (or tqdm-like object) called with incremental progress.
         :type progress_cb: tqdm or callable, optional
-        :param return_bytesio: If True, return an in-memory :class:`io.BytesIO` with snapshot bytes. If False, write snapshot to ``dest_dir`` and return the file path.
+        :param return_bytesio: If True, return an in-memory BytesIO with snapshot bytes. If False, write snapshot to ``dest_dir`` and return the file path.
         :type return_bytesio: bool, optional
         :param schema_version: Snapshot schema version. Controls the internal Parquet layout/fields. Supported values are the keys from :func:`~supervisely.project.volume_schema.get_volume_snapshot_schema` (currently: ``"v2.0.0"``).
         :type schema_version: str, optional
@@ -434,7 +434,7 @@ class VolumeProject(VideoProject):
         :param directory: Path to project directory.
         :type directory: str
         :param api: Supervisely API address and token.
-        :type api: :class:`Api<supervisely.api.api.Api>`
+        :type api: :class:`~supervisely.api.api.Api`
         :param workspace_id: Workspace ID, where project will be uploaded.
         :type workspace_id: int
         :param project_name: Name of the project in Supervisely. Can be changed if project with the same name is already exists.
@@ -498,7 +498,7 @@ class VolumeProject(VideoProject):
 
         :param api: Supervisely API client.
         :type api: :class:`~supervisely.api.api.Api`
-        :param file: Snapshot file path (``.tar.zst``) or an in-memory :class:`io.BytesIO` stream.
+        :param file: Snapshot file path (`.tar.zst`) or an in-memory BytesIO stream.
         :type file: Union[str, io.BytesIO]
         :param workspace_id: Target workspace ID where the project will be created.
         :type workspace_id: int
@@ -965,7 +965,7 @@ def download_volume_project(
     Download volume project to the local directory.
 
     :param api: Supervisely API address and token.
-    :type api: Api
+    :type api: :class:`~supervisely.api.api.Api`
     :param project_id: Project ID to download.
     :type project_id: int
     :param dest_dir: Destination path to local directory.
@@ -1154,13 +1154,13 @@ def load_figure_data(
     Load data into figure geometry.
 
     :param api: Supervisely API address and token.
-    :type api: Api
+    :type api: :class:`~supervisely.api.api.Api`
     :param volume_file_path: Path to Volume file location
     :type volume_file_path: str
     :param spatial_figure: Spatial figure
-    :type spatial_figure: VolumeFigure object
+    :type spatial_figure: :class:`~supervisely.volume_annotation.volume_figure.VolumeFigure`
     :param key_id_map: Mapped keys and IDs
-    :type key_id_map: KeyIdMap object
+    :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`
     """
     figure_id = key_id_map.get_figure_id(spatial_figure.key())
     figure_path = "{}_mask3d/".format(volume_file_path[:-5]) + f"{figure_id}.nrrd"
@@ -1243,8 +1243,8 @@ def _create_volume_header(ann: VolumeAnnotation) -> Dict:
     """
     Create volume header to use in STL converter when downloading project without volumes.
 
-    :param ann: VolumeAnnotation object
-    :type ann: VolumeAnnotation
+    :param ann: :class:`~supervisely.volume_annotation.volume_annotation.VolumeAnnotation` object
+    :type ann: :class:`~supervisely.volume_annotation.volume_annotation.VolumeAnnotation`
     :returns: header with Volume meta parameters
     :rtype: Dict
     """

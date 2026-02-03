@@ -9,22 +9,22 @@ from supervisely.pointcloud_annotation.pointcloud_object import PointcloudObject
 
 class PointcloudEpisodeObject(PointcloudObject):
     """
-    PointcloudEpisodeObject object for :class:`PointcloudEpisodeAnnotation<supervisely.pointcloud_annotation.pointcloud_episode_annotation.PointcloudEpisodeAnnotation>`. :class:`PointcloudEpisodeObject<PointcloudEpisodeObject>` object is immutable.
+    PointcloudEpisodeObject object for :class:`~supervisely.pointcloud_annotation.pointcloud_episode_annotation.PointcloudEpisodeAnnotation`. :class:`~supervisely.pointcloud_annotation.pointcloud_episode_object.PointcloudEpisodeObject` object is immutable.
 
-    :param obj_class: :class:`class<supervisely.annotation.obj_class.ObjClass>` object.
-    :type obj_class: ObjClass
-    :param tags: :class:`PointcloudEpisodeTagCollection<supervisely.pointcloud_annotation.pointcloud_episode_tag_collection.PointcloudEpisodeTagCollection>` object.
-    :type tags: PointcloudEpisodeTagCollection, optional
-    :param key: KeyIdMap object.
-    :type key: KeyIdMap, optional
-    :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which PointcloudEpisodeObject belongs.
-    :type class_id: int, optional
-    :param labeler_login: Login of the user who created PointcloudEpisodeObject.
-    :type labeler_login: str, optional
+    :param obj_class: Object class.
+    :type obj_class: :class:`~supervisely.annotation.obj_class.ObjClass`
+    :param tags: Pointcloud episode tags collection.
+    :type tags: :class:`~supervisely.pointcloud_annotation.pointcloud_episode_tag_collection.PointcloudEpisodeTagCollection`
+    :param key: Key ID map.
+    :type key: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`
+    :param class_id: ID of ObjClass to which PointcloudEpisodeObject belongs.
+    :type class_id: int
+    :param labeler_login: Login of the user who created :class:`~supervisely.pointcloud_annotation.pointcloud_episode_object.PointcloudEpisodeObject`.
+    :type labeler_login: str
     :param updated_at: Date and Time when PointcloudEpisodeObject was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
-    :type updated_at: str, optional
+    :type updated_at: str
     :param created_at: Date and Time when PointcloudEpisodeObject was created. Date Format is the same as in "updated_at" parameter.
-    :type created_at: str, optional
+    :type created_at: str
 
     :Usage Example:
 

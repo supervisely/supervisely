@@ -32,20 +32,20 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 class PointcloudEpisodeAnnotation:
     """
     PointcloudEpisodeAnnotation for point cloud episodes.
-    :class:`PointcloudEpisodeAnnotation<PointcloudEpisodeAnnotation>` object is immutable.
+    :class:`~supervisely.pointcloud_annotation.pointcloud_episode_annotation.PointcloudEpisodeAnnotation` object is immutable.
 
-    :param frames_count: Number of PointcloudEpisodeFrame objects.
-    :type frames_count: int, optional
-    :param objects: PointcloudEpisodeObjectCollection object
-    :type objects: PointcloudEpisodeObjectCollection, optional
-    :param frames: PointcloudEpisodeFrameCollection object
-    :type frames: PointcloudEpisodeFrameCollection, optional
-    :param tags: PointcloudEpisodeTagCollection object
-    :type tags: PointcloudEpisodeTagCollection, optional
+    :param frames_count: Number of pointcloud episode frames.
+    :type frames_count: int
+    :param objects: Pointcloud episode objects collection.
+    :type objects: :class:`~supervisely.pointcloud_annotation.pointcloud_episode_object_collection.PointcloudEpisodeObjectCollection`
+    :param frames: Pointcloud episode frames collection.
+    :type frames: :class:`~supervisely.pointcloud_annotation.pointcloud_episode_frame_collection.PointcloudEpisodeFrameCollection`
+    :param tags: Pointcloud episode tags collection.
+    :type tags: :class:`~supervisely.pointcloud_annotation.pointcloud_episode_tag_collection.PointcloudEpisodeTagCollection`
     :param description: Description text
-    :type description: str, optional
-    :param key: uuid class object
-    :type key: uuid.UUID, optional
+    :type description: str
+    :param key: UUID object.
+    :type key: uuid.UUID
 
     :Usage Example:
 
@@ -103,7 +103,7 @@ class PointcloudEpisodeAnnotation:
         :param frame_index: The index of the frame for which tags need to be retrieved.
         :type frame_index: int
         :returns: PointcloudEpisodeTagCollection containing the retrieved tags associated with the specified frame.
-        :rtype: PointcloudEpisodeTagCollection
+        :rtype: :class:`~supervisely.pointcloud_annotation.pointcloud_episode_tag_collection.PointcloudEpisodeTagCollection`
         :raises ValueError: If no frame with the given frame_index exists in the annotation.
 
         :Usage Example:
@@ -227,8 +227,8 @@ class PointcloudEpisodeAnnotation:
 
         :param frame_index: The index of the frame for which figures need to be retrieved.
         :type frame_index: int
-        :returns: List of PointcloudFigure objects containing the retrieved figures associated with the specified frame.
-        :rtype: List[PointcloudFigure]
+        :returns: List of pointcloud figures containing the retrieved figures associated with the specified frame.
+        :rtype: List[:class:`~supervisely.pointcloud_annotation.pointcloud_figure.PointcloudFigure`]
 
         :Usage Example:
 
@@ -273,8 +273,8 @@ class PointcloudEpisodeAnnotation:
         """
         Convert PointcloudEpisodeAnnotation to JSON format.
 
-        :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
+        :param key_id_map: Key ID map.
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`
         :returns: PointcloudEpisodeAnnotation in JSON format.
         :rtype: Dict
 
@@ -364,12 +364,12 @@ class PointcloudEpisodeAnnotation:
         """
         Create a PointcloudEpisodeAnnotation object from a JSON representation.
 
-        :param data: JSON data representing the PointcloudEpisodeAnnotation.
+        :param data: JSON data representing the :class:`~supervisely.pointcloud_annotation.pointcloud_episode_annotation.PointcloudEpisodeAnnotation`.
         :type data: Dict
         :param project_meta: Project metadata.
-        :type project_meta: ProjectMeta
-        :returns: PointcloudEpisodeAnnotation object
-        :rtype: :class:`PointcloudEpisodeAnnotation<PointcloudEpisodeAnnotation>`
+        :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
+        :returns: Pointcloud episode annotation object.
+        :rtype: :class:`~supervisely.pointcloud_annotation.pointcloud_episode_annotation.PointcloudEpisodeAnnotation`
 
         :Usage Example:
 
@@ -421,12 +421,12 @@ class PointcloudEpisodeAnnotation:
 
         :param path: Path to the json file.
         :type path: str
-        :param project_meta: Input :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`.
-        :type project_meta: ProjectMeta
-        :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
-        :returns: PointcloudEpisodeAnnotation object
-        :rtype: :class:`PointcloudEpisodeAnnotation<PointcloudEpisodeAnnotation>`
+        :param project_meta: Input project metadata.
+        :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
+        :param key_id_map: Key ID map.
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`
+        :returns: Pointcloud episode annotation object.
+        :rtype: :class:`~supervisely.pointcloud_annotation.pointcloud_episode_annotation.PointcloudEpisodeAnnotation`
 
         :Usage Example:
 
@@ -471,17 +471,17 @@ class PointcloudEpisodeAnnotation:
         """
         Makes a copy of PointcloudEpisodeAnnotation with new fields, if fields are given, otherwise it will use fields of the original PointcloudEpisodeAnnotation.
 
-        :param frames_count: Number of PointcloudEpisodeFrame objects
+        :param frames_count: Number of pointcloud episode frames.
         :type frames_count: int, optional
-        :param objects: PointcloudEpisodeObjectCollection object
-        :type objects: PointcloudEpisodeObjectCollection, optional
-        :param frames: PointcloudEpisodeFrameCollection object
-        :type frames: PointcloudEpisodeFrameCollection, optional
-        :param tags: PointcloudEpisodeTagCollection object
-        :type tags: PointcloudEpisodeTagCollection, optional
+        :param objects: Pointcloud episode objects collection.
+        :type objects: :class:`~supervisely.pointcloud_annotation.pointcloud_episode_object_collection.PointcloudEpisodeObjectCollection`
+        :param frames: Pointcloud episode frames collection.
+        :type frames: :class:`~supervisely.pointcloud_annotation.pointcloud_episode_frame_collection.PointcloudEpisodeFrameCollection`
+        :param tags: Pointcloud episode tags collection.
+        :type tags: :class:`~supervisely.pointcloud_annotation.pointcloud_episode_tag_collection.PointcloudEpisodeTagCollection`
         :param description: Description text
-        :type description: str, optional
-        :returns: PointcloudAnnotation class object
+        :type description: str
+        :returns: Pointcloud episode annotation object.
 
         :Usage Example:
 
@@ -631,8 +631,8 @@ class PointcloudEpisodeAnnotation:
         """
         PointcloudEpisodeObject objects collection.
 
-        :returns: PointcloudEpisodeObjectCollection object.
-        :rtype: PointcloudEpisodeObjectCollection
+        :returns: Pointcloud episode objects collection.
+        :rtype: :class:`~supervisely.pointcloud_annotation.pointcloud_episode_object_collection.PointcloudEpisodeObjectCollection`
 
         :Usage Example:
 
@@ -668,8 +668,8 @@ class PointcloudEpisodeAnnotation:
         """
         PointcloudEpisodeFrameCollection collection.
 
-        :returns: PointcloudEpisodeFrameCollection object
-        :rtype: :class:`PointcloudEpisodeFrameCollection<supervisely.pointcloud_episodes.pointcloud_episode_frame_collection.PointcloudEpisodeFrameCollection>`
+        :returns: Pointcloud episode frames collection.
+        :rtype: :class:`~supervisely.pointcloud_annotation.pointcloud_episode_frame_collection.PointcloudEpisodeFrameCollection`
 
         :Usage Example:
 
@@ -719,8 +719,8 @@ class PointcloudEpisodeAnnotation:
         """
         PointcloudFigure objects.
 
-        :returns: List of PointcloudFigure objects from PointcloudEpisodeAnnotation object.
-        :rtype: list
+        :returns: List of pointcloud figures from :class:`~supervisely.pointcloud_annotation.pointcloud_episode_annotation.PointcloudEpisodeAnnotation` object.
+        :rtype: List[:class:`~supervisely.pointcloud_annotation.pointcloud_figure.PointcloudFigure`]
 
         :Usage Example:
 
@@ -769,8 +769,8 @@ class PointcloudEpisodeAnnotation:
         """
         PointcloudEpisodeTag objects collection.
 
-        :returns: PointcloudEpisodeTagCollection object.
-        :rtype: PointcloudEpisodeTagCollection
+        :returns: Pointcloud episode tags collection.
+        :rtype: :class:`~supervisely.pointcloud_annotation.pointcloud_episode_tag_collection.PointcloudEpisodeTagCollection`
 
         :Usage Example:
 
@@ -805,7 +805,7 @@ class PointcloudEpisodeAnnotation:
         """
         PointcloudEpisodeAnnotation key value.
 
-        :returns: Key value of point cloud episodes annotation object.
+        :returns: Key value of pointcloud episode annotation object.
         :rtype: str
 
         :Usage Example:
@@ -826,7 +826,7 @@ class PointcloudEpisodeAnnotation:
         """
         Description text for PointcloudEpisodeAnnotation object.
 
-        :returns: PointcloudEpisodeAnnotation description
+        :returns: Pointcloud episode annotation description
         :rtype: str
 
         :Usage Example:
@@ -844,9 +844,9 @@ class PointcloudEpisodeAnnotation:
 
     def is_empty(self) -> bool:
         """
-        Check whether point cloud episodes annotation contains objects or tags, or not.
+        Check whether pointcloud episode annotation contains objects or tags, or not.
 
-        :returns: True if point cloud episodes annotation  is empty, False otherwise.
+        :returns: True if pointcloud episode annotation  is empty, False otherwise.
         :rtype: bool
 
         :Usage Example:

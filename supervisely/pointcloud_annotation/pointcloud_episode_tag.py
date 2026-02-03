@@ -13,23 +13,23 @@ from supervisely.video_annotation.video_tag import VideoTag
 
 class PointcloudEpisodeTag(VideoTag):
     """
-    PointcloudEpisodeTag object for :class:`PointcloudEpisodeAnnotation<supervisely.pointcloud_annotation.pointcloud_episode_annotation.PointcloudEpisodeAnnotation>`. :class:`PointcloudEpisodeTag<PointcloudEpisodeTag>` object is immutable.
+    PointcloudEpisodeTag object for :class:`~supervisely.pointcloud_annotation.pointcloud_episode_annotation.PointcloudEpisodeAnnotation`. :class:`~supervisely.pointcloud_annotation.pointcloud_episode_tag.PointcloudEpisodeTag` object is immutable.
 
-    :param meta: General information about point cloud episodes Tag.
-    :type meta: TagMeta
-    :param value: point cloud episodes Tag value. Depends on :class:`TagValueType<TagValueType>` of :class:`TagMeta<TagMeta>`.
+    :param meta: General information about point cloud episodes :class:`~supervisely.annotation.tag.Tag`.
+    :type meta: :class:`~supervisely.annotation.tag_meta.TagMeta`
+    :param value: Pointcloud episode tag value. Depends on TagValueType of :class:`~supervisely.annotation.tag_meta.TagMeta`.
     :type value: Optional[Union[str, int, float]]
-    :param frame_range: point cloud episodes Tag frame range.
+    :param frame_range: Pointcloud episode tag frame range.
     :type frame_range: Tuple[int, int] or List[int, int], optional
     :param key: uuid.UUID object.
     :type key: uuid.UUID, optional
     :param sly_id: PointcloudEpisodeTag ID in Supervisely.
     :type sly_id: int, optional
-    :param labeler_login: Login of user who created PointcloudEpisodeTag.
+    :param labeler_login: Login of the user who created :class:`~supervisely.pointcloud_annotation.pointcloud_episode_tag.PointcloudEpisodeTag`.
     :type labeler_login: str, optional
     :param updated_at: Date and Time when PointcloudEpisodeTag was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
     :type updated_at: str, optional
-    :param created_at: Date and Time when PointcloudEpisodeTag was created. Date Format is the same as in "updated_at" parameter.
+    :param created_at: Date and Time when pointcloud episode tag was created. Date Format is the same as in "updated_at" parameter.
     :type created_at: str, optional
     :param is_finished: Pointcloud Episode Tag is finished or not (applicable for range tags).
     :type is_finished: bool, optional
@@ -107,12 +107,12 @@ class PointcloudEpisodeTag(VideoTag):
 
         :param data: PointcloudEpisodeTag in json format as a dict.
         :type data: dict
-        :param tag_meta_collection: :class:`TagMetaCollection<supervisely.annotation.tag_meta_collection.TagMetaCollection>` object.
-        :type tag_meta_collection: TagMetaCollection
-        :param key_id_map: Key ID Map object.
-        :type key_id_map: KeyIdMap, optional
-        :returns: PointcloudEpisodeTag object
-        :rtype: :class:`PointcloudEpisodeTag<PointcloudEpisodeTag>`
+        :param tag_meta_collection: Tag metadata collection.
+        :type tag_meta_collection: :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection`
+        :param key_id_map: Key ID map.
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`
+        :returns: Pointcloud episode tag object.
+        :rtype: :class:`~supervisely.pointcloud_annotation.pointcloud_episode_tag.PointcloudEpisodeTag`
 
         :Usage Example:
 
@@ -169,9 +169,9 @@ class PointcloudEpisodeTag(VideoTag):
         """
         Makes a copy of PointcloudEpisodeTag with new fields, if fields are given, otherwise it will use fields of the original PointcloudEpisodeTag.
 
-        :param meta: General information about PointcloudEpisodeTag.
-        :type meta: TagMeta, optional
-        :param value: PointcloudEpisodeTag value. Depends on :class:`TagValueType<TagValueType>` of :class:`TagMeta<TagMeta>`.
+        :param meta: General information about pointcloud episode tag.
+        :type meta: :class:`~supervisely.annotation.tag_meta.TagMeta`, optional
+        :param value: PointcloudEpisodeTag value. Depends on TagValueType of :class:`TagMeta<~supervisely.annotation.tag_meta.TagMeta>`.
         :type value: Optional[Union[str, int, float]]
         :param frame_range: PointcloudEpisodeTag frame range.
         :type frame_range: Optional[Union[Tuple[int, int], List[int, int]]]
@@ -179,7 +179,7 @@ class PointcloudEpisodeTag(VideoTag):
         :type key: uuid.UUID, optional
         :param sly_id: PointcloudEpisodeTag ID in Supervisely.
         :type sly_id: int, optional
-        :param labeler_login: Login of user who created PointcloudEpisodeTag.
+        :param labeler_login: Login of user who created :class:`~supervisely.pointcloud_annotation.pointcloud_episode_tag.PointcloudEpisodeTag`.
         :type labeler_login: str, optional
         :param updated_at: Date and Time when PointcloudEpisodeTag was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
         :type updated_at: str, optional

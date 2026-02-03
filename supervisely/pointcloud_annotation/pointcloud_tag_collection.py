@@ -12,8 +12,8 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 
 class PointcloudTagCollection(TagCollection):
     """
-    Collection with :class:`PointcloudTag<supervisely.pointcloud_annotation.pointcloud_tag.PointcloudTag>` instances.
-    :class:`PointcloudTagCollection<PointcloudTagCollection>` object is immutable.
+    Collection with :class:`~supervisely.pointcloud_annotation.pointcloud_tag.PointcloudTag` instances.
+    :class:`~supervisely.pointcloud_annotation.pointcloud_tag_collection.PointcloudTagCollection` object is immutable.
 
     :Usage Example:
 
@@ -158,7 +158,7 @@ class PointcloudTagCollection(TagCollection):
     #     :param tag_name: Pointcloud Tag name.
     #     :type tag_name: str
     #     :returns: List of Pointcloud Tags.
-    #     :rtype: :class:`List[PointcloudTag]<supervisely.pointcloud_annotation.pointcloud_tag.PointcloudTag>`
+    #     :rtype: :class:`List[PointcloudTag]<~supervisely.pointcloud_annotation.pointcloud_tag.PointcloudTag>`
     #     """
     #     res = []
     #     for tag in self:
@@ -174,7 +174,7 @@ class PointcloudTagCollection(TagCollection):
     #     :param tag_name: Pointcloud Tag name.
     #     :type tag_name: str
     #     :returns: PointcloudTag object or :class:`None<None>` If no elements with provided name in collection.
-    #     :rtype: :class:`PointcloudTag<supervisely.pointcloud_annotation.pointcloud_tag.PointcloudTag>` or :class:`NoneType<NoneType>`
+    #     :rtype: :class:`PointcloudTag<~supervisely.pointcloud_annotation.pointcloud_tag.PointcloudTag>` or :class:`NoneType<NoneType>`
     #     :raises ValueError: If collection contains more than 1 tag with provided name.
     #     """
     #     res = []
@@ -191,13 +191,13 @@ class PointcloudTagCollection(TagCollection):
 
     def to_json(self, key_id_map: Optional[KeyIdMap] = None) -> List[Dict]:
         """
-        Convert the :class:`PointcloudTagCollection<PointcloudTagCollection>` to a list of json dicts.
+        Convert the :class:`~supervisely.pointcloud_annotation.pointcloud_tag_collection.PointcloudTagCollection` to a list of json dicts.
         Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
-        :param key_id_map: KeyIdMap object.
-        :type key_id_map: :class:`KeyIdMap<supervisely.video_annotation.key_id_map.KeyIdMap>`, optional
-        :returns: List of dicts in json format
-        :rtype: :class:`List[dict]`
+        :param key_id_map: Key ID map.
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`
+        :returns: List of dictionaries in json format.
+        :rtype: :class:`List[Dict]`
 
         :Usage Example:
 
@@ -241,17 +241,17 @@ class PointcloudTagCollection(TagCollection):
         key_id_map: Optional[KeyIdMap] = None,
     ) -> PointcloudTagCollection:
         """
-        Convert a list with dicts in json format to :class:`PointcloudTagCollection<PointcloudTagCollection>`.
+        Convert a list with dictionaries in json format to :class:`~supervisely.pointcloud_annotation.pointcloud_tag_collection.PointcloudTagCollection`.
         Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: List with dicts in json format.
         :type data: :class:`List[Dict]`
-        :param tag_meta_collection: TagMetaCollection object.
-        :type tag_meta_collection: :class:`TagMetaCollection<supervisely.annotation.tag_meta_collection.TagMetaCollection>`
-        :param key_id_map: KeyIdMap object.
-        :type key_id_map: :class:`KeyIdMap<supervisely.video_annotation.key_id_map.KeyIdMap>`, optional
-        :returns: TagCollection object.
-        :rtype: :class:`PointcloudTagCollection<PointcloudTagCollection>`
+        :param tag_meta_collection: Tag metadata collection.
+        :type tag_meta_collection: :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection`
+        :param key_id_map: Key ID map.
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`
+        :returns: Pointcloud tag collection.
+        :rtype: :class:`~supervisely.pointcloud_annotation.pointcloud_tag_collection.PointcloudTagCollection`
 
         :Usage Example:
 

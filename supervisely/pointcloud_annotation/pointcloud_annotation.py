@@ -31,16 +31,16 @@ class PointcloudAnnotation(VideoAnnotation):
     """
     Class for creating and using PointcloudAnnotation
 
-    :param objects: PointcloudObjectCollection object
-    :type objects: PointcloudObjectCollection, optional
-    :param figures: List[PointcloudFigure] object
-    :type figures: List[PointcloudFigure], optional
-    :param tags: PointcloudTagCollection object
-    :type tags: PointcloudTagCollection, optional
+    :param objects: Pointcloud objects collection.
+    :type objects: :class:`~supervisely.pointcloud_annotation.pointcloud_object_collection.PointcloudObjectCollection`
+    :param figures: Pointcloud figures collection.
+    :type figures: List[:class:`~supervisely.pointcloud_annotation.pointcloud_figure.PointcloudFigure`]
+    :param tags: Pointcloud tags collection.
+    :type tags: :class:`~supervisely.pointcloud_annotation.pointcloud_tag_collection.PointcloudTagCollection`
     :param description: Description text
-    :type description: str, optional
-    :param key: uuid class object
-    :type key: uuid.UUID, optional
+    :type description: str
+    :param key: UUID object.
+    :type key: uuid.UUID
 
     :Usage Example:
 
@@ -111,8 +111,8 @@ class PointcloudAnnotation(VideoAnnotation):
         """
         PointcloudTag objects collection.
 
-        :returns: PointcloudTagCollection object.
-        :rtype: PointcloudTagCollection
+        :returns: Pointcloud tags collection.
+        :rtype: :class:`~supervisely.pointcloud_annotation.pointcloud_tag_collection.PointcloudTagCollection`
 
         :Usage Example:
 
@@ -148,8 +148,8 @@ class PointcloudAnnotation(VideoAnnotation):
         """
         PointcloudObject objects collection.
 
-        :returns: PointcloudObjectCollection object.
-        :rtype: PointcloudObjectCollection
+        :returns: Pointcloud objects collection.
+        :rtype: :class:`~supervisely.pointcloud_annotation.pointcloud_object_collection.PointcloudObjectCollection`
 
         :Usage Example:
 
@@ -185,8 +185,8 @@ class PointcloudAnnotation(VideoAnnotation):
         """
         PointcloudFigure objects.
 
-        :returns: List of PointcloudFigure objects from PointcloudAnnotation object.
-        :rtype: list
+        :returns: List of pointcloud figures from :class:`~supervisely.pointcloud_annotation.pointcloud_annotation.PointcloudAnnotation` object.
+        :rtype: List[:class:`~supervisely.pointcloud_annotation.pointcloud_figure.PointcloudFigure`]
 
         :Usage Example:
 
@@ -227,8 +227,8 @@ class PointcloudAnnotation(VideoAnnotation):
         """
         Get PointcloudObjectCollection object from annotation figures.
 
-        :returns: PointcloudObjectCollection object from annotation figures.
-        :rtype: PointcloudObjectCollection
+        :returns: Pointcloud objects collection from annotation figures.
+        :rtype: :class:`~supervisely.pointcloud_annotation.pointcloud_object_collection.PointcloudObjectCollection`
 
         :Usage Example:
 
@@ -311,9 +311,9 @@ class PointcloudAnnotation(VideoAnnotation):
         :param data: Pointcloud annotation in json format.
         :type data: Dict
         :param project_meta: Project metadata.
-        :type project_meta: ProjectMeta
-        :returns: PointcloudAnnotation object.
-        :rtype: PointcloudAnnotation
+        :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
+        :returns: Pointcloud annotation object.
+        :rtype: :class:`~supervisely.pointcloud_annotation.pointcloud_annotation.PointcloudAnnotation`
 
         :Usage Example:
 
@@ -375,12 +375,12 @@ class PointcloudAnnotation(VideoAnnotation):
 
         :param path: Path to the json file.
         :type path: str
-        :param project_meta: Input :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`.
-        :type project_meta: ProjectMeta
-        :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
-        :returns: PointcloudAnnotation object
-        :rtype: :class:`PointcloudAnnotation<PointcloudAnnotation>`
+        :param project_meta: Input project metadata.
+        :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
+        :param key_id_map: Key ID map.
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`
+        :returns: Pointcloud annotation object.
+        :rtype: :class:`~supervisely.pointcloud_annotation.pointcloud_annotation.PointcloudAnnotation`
 
         :Usage Example:
 
@@ -428,15 +428,15 @@ class PointcloudAnnotation(VideoAnnotation):
         """
         Makes a copy of PointcloudAnnotation with new fields, if fields are given, otherwise it will use fields of the original PointcloudAnnotation.
 
-        :param objects: PointcloudObjectCollection object
-        :type objects: PointcloudObjectCollection
-        :param figures: list of pointcloud figures
-        :type figures: list of figures
-        :param tags: PointcloudTagCollection object
-        :type tags: PointcloudTagCollection
+        :param objects: Pointcloud objects collection.
+        :type objects: :class:`~supervisely.pointcloud_annotation.pointcloud_object_collection.PointcloudObjectCollection`
+        :param figures: List of pointcloud figures.
+        :type figures: List[:class:`~supervisely.pointcloud_annotation.pointcloud_figure.PointcloudFigure`]
+        :param tags: Pointcloud tags collection.
+        :type tags: :class:`~supervisely.pointcloud_annotation.pointcloud_tag_collection.PointcloudTagCollection`
         :param description: Description text
         :type description: str
-        :returns: PointcloudAnnotation class object
+        :returns: :class:`~supervisely.pointcloud_annotation.pointcloud_annotation.PointcloudAnnotation` class object
 
         :Usage Example:
 

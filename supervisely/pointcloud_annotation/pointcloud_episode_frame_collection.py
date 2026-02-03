@@ -15,7 +15,7 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 
 class PointcloudEpisodeFrameCollection(FrameCollection):
     """
-    Collection with :class:`PointcloudEpisodeFrame<supervisely.pointcloud_annotation.pointcloud_episode_frame.PointcloudEpisodeFrame>` instances. :class:`PointcloudEpisodeFrameCollection<PointcloudEpisodeFrameCollection>` object is immutable.
+    Collection with :class:`~supervisely.pointcloud_annotation.pointcloud_episode_frame.PointcloudEpisodeFrame` instances. :class:`~supervisely.pointcloud_annotation.pointcloud_episode_frame_collection.PointcloudEpisodeFrameCollection` object is immutable.
 
     :Usage Example:
 
@@ -225,12 +225,12 @@ class PointcloudEpisodeFrameCollection(FrameCollection):
         """
         Get a PointcloudEpisodeFrame by its key and set default value if it does not exist.
 
-        :param key: Key of the PointcloudEpisodeFrame.
+        :param key: Key of the :class:`~supervisely.pointcloud_annotation.pointcloud_episode_frame.PointcloudEpisodeFrame`.
         :type key: str
         :param default: Default value to return if the key is not found (default: None).
         :type default: Optional[Any]
-        :returns: PointcloudEpisodeFrame object.
-        :rtype: PointcloudEpisodeFrame
+        :returns: :class:`~supervisely.pointcloud_annotation.pointcloud_episode_frame.PointcloudEpisodeFrame` object.
+        :rtype: :class:`~supervisely.pointcloud_annotation.pointcloud_episode_frame.PointcloudEpisodeFrame`
 
         :Usage Example:
 
@@ -262,14 +262,14 @@ class PointcloudEpisodeFrameCollection(FrameCollection):
 
         :param data: List with dicts in json format.
         :type data: List[dict]
-        :param objects: PointcloudEpisodeObjectCollection object.
-        :type objects: PointcloudEpisodeObjectCollection
-        :param frames_count: Number of frames in point cloud episodes.
-        :type frames_count: int, optional
-        :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
-        :returns: FrameCollection object
-        :rtype: :class:`FrameCollection`
+        :param objects: Pointcloud episode objects collection.
+        :type objects: :class:`~supervisely.pointcloud_annotation.pointcloud_episode_object_collection.PointcloudEpisodeObjectCollection`
+        :param frames_count: Number of frames in pointcloud episodes.
+        :type frames_count: int
+        :param key_id_map: Key ID map.
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`
+        :returns: Pointcloud episode frames collection.
+        :rtype: :class:`~supervisely.pointcloud_annotation.pointcloud_episode_frame_collection.PointcloudEpisodeFrameCollection`
 
         :Usage Example:
 
@@ -321,8 +321,8 @@ class PointcloudEpisodeFrameCollection(FrameCollection):
         """
         Get figures from all frames in collection.
 
-        :returns: List of figures from all frames in collection
-        :rtype: :class:`List[PointcloudFigure]<supervisely.pointcloud_annotation.pointcloud_figure.PointcloudFigure>`
+        :returns: List of pointcloud figures from all frames in collection.
+        :rtype: List[:class:`~supervisely.pointcloud_annotation.pointcloud_figure.PointcloudFigure`]
 
         :Usage Example:
 

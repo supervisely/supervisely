@@ -335,8 +335,8 @@ def write(path: str, pointcloud_np: np.ndarray, coords_dims: Optional[List[int]]
 
     :param path: Path to file.
     :type path: str
-    :param pointcloud_np: Pointcloud [N, 3] in XYZ format.
-    :type pointcloud_np: :class:`np.ndarray`
+    :param pointcloud_np: numpy array [N, 3] in XYZ format.
+    :type pointcloud_np: np.ndarray
     :param coords_dims: List of indexes for (X, Y, Z) coords. Default (if None): [0, 1, 2].
     :type coords_dims: Optional[List[int]]
     :returns: Success or not.

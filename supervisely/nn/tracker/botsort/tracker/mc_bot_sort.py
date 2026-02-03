@@ -139,10 +139,12 @@ class STrack(BaseTrack):
     def update(self, new_track, frame_id):
         """
         Update a matched track
-        :type new_track: STrack
+        :param new_track: New track to update.
+        :type new_track: :class:`~supervisely.nn.tracker.botsort.tracker.mc_bot_sort.STrack`
+        :param frame_id: Frame ID.
         :type frame_id: int
-        :type update_feature: bool
-        :returns:
+        :returns: Updated track.
+        :rtype: :class:`~supervisely.nn.tracker.botsort.tracker.mc_bot_sort.STrack`
         """
         self.frame_id = frame_id
         self.tracklet_len += 1

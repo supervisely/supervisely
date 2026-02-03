@@ -11,8 +11,8 @@ from supervisely.video_annotation.video_object_collection import VideoObjectColl
 
 class PointcloudObjectCollection(VideoObjectCollection):
     """
-    Collection with :class:`PointcloudObject<supervisely.pointcloud_annotation.pointcloud_object.PointcloudObject>` instances.
-    :class:`PointcloudObjectCollection<PointcloudObjectCollection>` object is immutable.
+    Collection with :class:`~supervisely.pointcloud_annotation.pointcloud_object.PointcloudObject` instances.
+    :class:`~supervisely.pointcloud_annotation.pointcloud_object_collection.PointcloudObjectCollection` object is immutable.
     """
 
     item_type = PointcloudObject
@@ -29,12 +29,12 @@ class PointcloudObjectCollection(VideoObjectCollection):
 
         :param data: List with dicts in json format.
         :type data: List[dict]
-        :param project_meta: Input :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`.
-        :type project_meta: ProjectMeta
-        :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
-        :returns: PointcloudObjectCollection object
-        :rtype: :class:`PointcloudObjectCollection`
+        :param project_meta: Input project metadata.
+        :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
+        :param key_id_map: Key ID map.
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`
+        :returns: Pointcloud object collection.
+        :rtype: :class:`~supervisely.pointcloud_annotation.pointcloud_object_collection.PointcloudObjectCollection`
 
         :Usage Example:
 

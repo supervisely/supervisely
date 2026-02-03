@@ -15,17 +15,17 @@ from supervisely.geometry.constants import LABELER_LOGIN, UPDATED_AT, CREATED_AT
 
 class PointcloudObject(VideoObject):
     """
-    PointcloudObject object for :class:`PointcloudAnnotation<supervisely.pointcloud_annotation.pointcloud_annotation.PointcloudAnnotation>`. :class:`PointcloudObject<PointcloudObject>` object is immutable.
+    PointcloudObject object for :class:`~supervisely.pointcloud_annotation.pointcloud_annotation.PointcloudAnnotation`. :class:`~supervisely.pointcloud_annotation.pointcloud_object.PointcloudObject` object is immutable.
 
-    :param obj_class: :class:`class<supervisely.annotation.obj_class.ObjClass>` object.
-    :type obj_class: ObjClass
-    :param tags: :class:`tags<supervisely.video_annotation.video_tag_collection.VideoTagCollection>` object.
-    :type tags: VideoTagCollection, optional
-    :param key: KeyIdMap object.
-    :type key: KeyIdMap, optional
-    :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which PointcloudObject belongs.
-    :type class_id: int, optional
-    :param labeler_login: Login of the user who created PointcloudObject.
+    :param obj_class: Object class.
+    :type obj_class: :class:`~supervisely.annotation.obj_class.ObjClass`
+    :param tags: Pointcloud tags collection.
+    :type tags: :class:`~supervisely.video_annotation.video_tag_collection.VideoTagCollection`
+    :param key: Key ID map.
+    :type key: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`
+    :param class_id: ID of pointcloud object to which PointcloudObject belongs.
+    :type class_id: int
+    :param labeler_login: Login of the user who created :class:`~supervisely.pointcloud_annotation.pointcloud_object.PointcloudObject`.
     :type labeler_login: str, optional
     :param updated_at: Date and Time when PointcloudObject was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
     :type updated_at: str, optional
@@ -60,11 +60,11 @@ class PointcloudObject(VideoObject):
         :param data: PointcloudObject in json format.
         :type data: dict
         :param project_meta: Project metadata.
-        :type project_meta: ProjectMeta
-        :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
-        :returns: PointcloudObject object.
-        :rtype: PointcloudObject
+        :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
+        :param key_id_map: Key ID map.
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`
+        :returns: Pointcloud object.
+        :rtype: :class:`~supervisely.pointcloud_annotation.pointcloud_object.PointcloudObject`
 
         :Usage Example:
 

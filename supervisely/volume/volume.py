@@ -118,7 +118,7 @@ def validate_format(path: str):
 
     :param path: Path to Volume file.
     :type path: str
-    :raises UnsupportedVolumeFormat: if Volume file from given path couldn't be read or file extension is not supported.
+    :raises :class:`~supervisely.volume.volume.UnsupportedVolumeFormat`: if Volume file from given path couldn't be read or file extension is not supported.
     :returns: None
     :rtype: None
 
@@ -898,7 +898,7 @@ def convert_3d_geometry_to_mesh(
     Converts a 3D geometry (Mask3D) to a Trimesh mesh.
 
     :param geometry: The 3D geometry to convert.
-    :type geometry: supervisely.geometry.mask_3d.Mask3D
+    :type geometry: supervisely.geometry.mask_3d.:class:`~supervisely.geometry.mask_3d.Mask3D`
     :param spacing: Voxel spacing in (x, y, z).
     :type spacing: tuple
     :param level: Isosurface value for marching cubes. Default is 0.5.
@@ -954,7 +954,7 @@ def export_3d_as_mesh(geometry: Mask3D, output_path: str, **kwargs):
     Exports the 3D mesh representation of the object to a file in either STL or OBJ format.
 
     :param geometry: The 3D geometry to be exported.
-    :type geometry: supervisely.geometry.mask_3d.Mask3D
+    :type geometry: supervisely.geometry.mask_3d.:class:`~supervisely.geometry.mask_3d.Mask3D`
     :param output_path: The path to the output file. Must have a ".stl" or ".obj" extension.
     :type output_path: str
     :param kwargs: Additional keyword arguments for mesh generation. Supported keys:

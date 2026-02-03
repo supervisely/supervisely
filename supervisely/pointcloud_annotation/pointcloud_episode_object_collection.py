@@ -15,8 +15,8 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 
 class PointcloudEpisodeObjectCollection(PointcloudObjectCollection):
     """
-    Collection with :class:`PointcloudEpisodeObject<supervisely.pointcloud_annotation.pointcloud_episode_object.PointcloudEpisodeObject>` instances.
-    :class:`PointcloudEpisodeObjectCollection<PointcloudEpisodeObjectCollection>` object is immutable.
+    Collection with :class:`~supervisely.pointcloud_annotation.pointcloud_episode_object.PointcloudEpisodeObject` instances.
+    :class:`~supervisely.pointcloud_annotation.pointcloud_episode_object_collection.PointcloudEpisodeObjectCollection` object is immutable.
     """
 
     item_type = PointcloudEpisodeObject
@@ -33,12 +33,12 @@ class PointcloudEpisodeObjectCollection(PointcloudObjectCollection):
 
         :param data: List with dicts in json format.
         :type data: List[dict]
-        :param project_meta: Input :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`.
-        :type project_meta: ProjectMeta
-        :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
-        :returns: PointcloudEpisodeObjectCollection object
-        :rtype: :class:`PointcloudEpisodeObjectCollection`
+        :param project_meta: Input project metadata.
+        :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
+        :param key_id_map: Key ID map.
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`
+        :returns: Pointcloud episode objects collection.
+        :rtype: :class:`~supervisely.pointcloud_annotation.pointcloud_episode_object_collection.PointcloudEpisodeObjectCollection`
 
         :Usage Example:
 

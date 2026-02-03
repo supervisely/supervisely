@@ -35,15 +35,15 @@ from supervisely.sly_logger import logger
 
 class Polygon(VectorGeometry):
     """
-    Polygon geometry for a single :class:`Label<supervisely.annotation.label.Label>`. :class:`Polygon<Polygon>` class object is immutable.
+    Polygon geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.polygon.Polygon` object is immutable.
 
     :param exterior: Exterior coordinates, object contour is defined with these points.
-    :type exterior: List[PointLocation], List[List[int, int]], List[Tuple[int, int]
+    :type exterior: List[:class:`~supervisely.geometry.point_location.PointLocation`], List[List[int, int]], List[Tuple[int, int]
     :param interior: Interior coordinates, object holes are defined with these points.
-    :type interior: List[List[PointLocation]], List[List[List[int, int]]], List[List[Tuple[int, int]]]
+    :type interior: List[List[:class:`~supervisely.geometry.point_location.PointLocation`]], List[List[List[int, int]]], List[List[Tuple[int, int]]]
     :param sly_id: Polygon ID in Supervisely server.
     :type sly_id: int, optional
-    :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which Polygon belongs.
+    :param class_id: ID of ObjClass to which Polygon belongs.
     :type class_id: int, optional
     :param labeler_login: Login of the user who created Polygon.
     :type labeler_login: str, optional
@@ -117,8 +117,8 @@ class Polygon(VectorGeometry):
 
         :param data: Polygon in json format as a dict.
         :type data: dict
-        :returns: Polygon object
-        :rtype: :class:`Polygon<Polygon>`
+        :returns: Polygon from json.
+        :rtype: :class:`~supervisely.geometry.polygon.Polygon`
 
         :Usage Example:
 
@@ -167,10 +167,10 @@ class Polygon(VectorGeometry):
         """
         Crops current Polygon.
 
-        :param rect: Rectangle object for crop.
-        :type rect: Rectangle
-        :returns: List of Polygon objects
-        :rtype: :class:`List[Polygon]<Polygon>`
+        :param rect: Rectangle to crop Polygon from.
+        :type rect: :class:`~supervisely.geometry.rectangle.Rectangle`
+        :returns: List of Polygons from Rectangle.
+        :rtype: List[:class:`~supervisely.geometry.polygon.Polygon`]
 
         :Usage Example:
 
@@ -248,7 +248,7 @@ class Polygon(VectorGeometry):
         """
         Polygon area.
 
-        :returns: Area of current Polygon object.
+        :returns: Area of current Polygon.
         :rtype: float
 
         :Usage Example:
@@ -277,8 +277,8 @@ class Polygon(VectorGeometry):
 
         :param epsilon: Specifying the approximation accuracy.
         :type epsilon: float
-        :returns: Polygon object
-        :rtype: :class:`Polygon<Polygon>`
+        :returns: Approximated Polygon.
+        :rtype: :class:`~supervisely.geometry.polygon.Polygon`
 
         :Usage Example:
 

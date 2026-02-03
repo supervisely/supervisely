@@ -13,12 +13,12 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 
 class PointcloudEpisodeFrame(Frame):
     """
-    PointcloudEpisodeFrame object for :class:`PointcloudEpisodeAnnotation<supervisely.pointcloud_annotation.pointcloud_episode_annotation.PointcloudEpisodeAnnotation>`. :class:`PointcloudEpisodeFrame<PointcloudEpisodeFrame>` object is immutable.
+    PointcloudEpisodeFrame object for :class:`~supervisely.pointcloud_annotation.pointcloud_episode_annotation.PointcloudEpisodeAnnotation`. :class:`~supervisely.pointcloud_annotation.pointcloud_episode_frame.PointcloudEpisodeFrame` object is immutable.
 
-    :param index: Index of the PointcloudEpisodeFrame.
+    :param index: Index of the :class:`~supervisely.pointcloud_annotation.pointcloud_episode_frame.PointcloudEpisodeFrame`.
     :type index: int
-    :param figures: List of :class:`PointcloudFigure<supervisely.pointcloud_annotation.pointcloud_figure.PointcloudFigure>`.
-    :type figures: list, optional
+    :param figures: List of pointcloud figures.
+    :type figures: List[:class:`~supervisely.pointcloud_annotation.pointcloud_figure.PointcloudFigure`]
 
     :Usage Example:
 
@@ -76,15 +76,15 @@ class PointcloudEpisodeFrame(Frame):
 
         :param data: Dict in json format.
         :type data: dict
-        :param objects: PointcloudEpisodeObjectCollection object.
-        :type objects: PointcloudEpisodeObjectCollection
-        :param frames_count: Number of frames in point cloud.
-        :type frames_count: int, optional
-        :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
-        :raises ValueError: if frame index < 0 and if frame index > number of frames in point cloud
-        :returns: PointcloudEpisodeFrame object
-        :rtype: :class:`PointcloudEpisodeFrame`
+        :param objects: Pointcloud episode objects collection.
+        :type objects: :class:`~supervisely.pointcloud_annotation.pointcloud_episode_object_collection.PointcloudEpisodeObjectCollection`
+        :param frames_count: Number of frames in pointcloud episode.
+        :type frames_count: int
+        :param key_id_map: Key ID map.
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`
+        :raises ValueError: if frame index < 0 and if frame index > number of frames in pointcloud episode
+        :returns: Pointcloud episode frame object.
+        :rtype: :class:`~supervisely.pointcloud_annotation.pointcloud_episode_frame.PointcloudEpisodeFrame`
 
         :Usage Example:
 

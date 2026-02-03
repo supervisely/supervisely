@@ -50,8 +50,8 @@ def apply_boxmot(
 def to_boxes(ann: Annotation, class_names: List[str]) -> np.ndarray:
     """
     Convert annotation to detections array in boxmot format.
-    :param ann: Supervisely Annotation object
-    :type ann: Annotation
+    :param ann: Supervisely annotation.
+    :type ann: :class:`~supervisely.annotation.annotation.Annotation`
     :param class_names: model class names
     :type class_names: List[str]
     :returns: detections array N x (x, y, x, y, conf, label)

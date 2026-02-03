@@ -24,7 +24,7 @@ from supervisely.geometry.rectangle import Rectangle
 
 class Point(Geometry):
     """
-    Point geometry for a single :class:`Label<supervisely.annotation.label.Label>`. :class:`Point<Point>` object is immutable.
+    Point geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.point.Point` object is immutable.
 
     :param row: Position of Point on height.
     :type row: int or float
@@ -32,7 +32,7 @@ class Point(Geometry):
     :type col: int or float
     :param sly_id: Point ID in Supervisely server.
     :type sly_id: int, optional
-    :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which Point belongs.
+    :param class_id: ID of ObjClass to which Point belongs.
     :type class_id: int, optional
     :param labeler_login: Login of the user who created Point.
     :type labeler_login: str, optional
@@ -77,7 +77,7 @@ class Point(Geometry):
         """
         Position of Point height.
 
-        :returns: Height of Point
+        :returns: Height of Point.
         :rtype: int
 
         :Usage Example:
@@ -94,7 +94,7 @@ class Point(Geometry):
         """
         Position of Point width.
 
-        :returns: Width of Point
+        :returns: Width of Point.
         :rtype: int
 
         :Usage Example:
@@ -117,22 +117,22 @@ class Point(Geometry):
         created_at: Optional[str] = None,
     ) -> Point:
         """
-        Create Point from given :class:`PointLocation<supervisely.geometry.point_location.PointLocation>` object.
+        Create Point from given :class:`~supervisely.geometry.point_location.PointLocation` object.
 
-        :param pt: PointLocation object.
-        :type pt: PointLocation
+        :param pt: PointLocation to create Point from.
+        :type pt: :class:`~supervisely.geometry.point_location.PointLocation`
         :param sly_id: Point ID in Supervisely server.
         :type sly_id: int, optional
-        :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which Point belongs.
+        :param class_id: ID of ObjClass to which Point belongs.
         :type class_id: int, optional
-        :param labeler_login: Login of the user who created Point.
+        :param labeler_login: Login of the user who created :class:`~supervisely.geometry.point.Point`.
         :type labeler_login: str, optional
         :param updated_at: Date and Time when Point was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
         :type updated_at: str, optional
         :param created_at: Date and Time when Point was created. Date Format is the same as in "updated_at" parameter.
         :type created_at: str, optional
-        :returns: Point object
-        :rtype: :class:`Point<Point>`
+        :returns: :class:`~supervisely.geometry.point.Point` object
+        :rtype: :class:`Point<~supervisely.geometry.point.Point>`
 
         :Usage Example:
 
@@ -156,10 +156,10 @@ class Point(Geometry):
     @property
     def point_location(self) -> PointLocation:
         """
-        Create PointLocation object from Point.
+        Get PointLocation from Point.
 
-        :returns: PointLocation object
-        :rtype: :class:`PointLocation<supervisely.geometry.point_location.PointLocation>`
+        :returns: PointLocation from Point.
+        :rtype: :class:`~supervisely.geometry.point_location.PointLocation`
 
         :Usage Example:
 
@@ -178,10 +178,10 @@ class Point(Geometry):
         """
         Crops current Point.
 
-        :param rect: Rectangle object for crop.
-        :type rect: Rectangle
-        :returns: List of Point objects
-        :rtype: :class:`List[Point]<Point>`
+        :param rect: Rectangle to crop Point from.
+        :type rect: :class:`~supervisely.geometry.rectangle.Rectangle`
+        :returns: List of Points from Rectangle.
+        :rtype: :class:`List[Point]`
 
         :Usage Example:
 
@@ -197,10 +197,10 @@ class Point(Geometry):
         """
         Rotates current Point.
 
-        :param rotator: ImageRotator object for rotation.
-        :type rotator: ImageRotator
-        :returns: Point object
-        :rtype: :class:`Point<Point>`
+        :param rotator: Class for object rotation.
+        :type rotator: :class:`~supervisely.geometry.image_rotator.ImageRotator`
+        :returns: Rotated Point.
+        :rtype: :class:`~supervisely.geometry.point.Point`
 
         :Usage Example:
 
@@ -220,12 +220,12 @@ class Point(Geometry):
         """
         Resizes current Point.
 
-        :param in_size: Input Input image size (height, width) to which belongs Point.
+        :param in_size: Input image size (height, width) to which belongs Point.
         :type in_size: Tuple[int, int]
         :param out_size: Desired output image size (height, width) to which belongs Point.
         :type out_size: Tuple[int, int]
-        :returns: Point object
-        :rtype: :class:`Point<Point>`
+        :returns: Resized Point.
+        :rtype: :class:`~supervisely.geometry.point.Point`
 
         :Usage Example:
 
@@ -242,10 +242,10 @@ class Point(Geometry):
         """
         Flips current Point in horizontal.
 
-        :param img_size: Input image size (height, width) to which belongs Point object.
+        :param img_size: Input image size (height, width) to which belongs Point.
         :type img_size: Tuple[int, int]
-        :returns: Point object
-        :rtype: :class:`Point<Point>`
+        :returns: Flipped Point.
+        :rtype: :class:`~supervisely.geometry.point.Point`
 
         :Usage Example:
 
@@ -261,10 +261,10 @@ class Point(Geometry):
         """
         Flips current Point in vertical.
 
-        :param img_size: Input image size (height, width) to which belongs Point object.
+        :param img_size: Input image size (height, width) to which belongs Point.
         :type img_size: Tuple[int, int]
-        :returns: Point object
-        :rtype: :class:`Point<Point>`
+        :returns: Flipped Point.
+        :rtype: :class:`~supervisely.geometry.point.Point`
 
         :Usage Example:
 
@@ -282,8 +282,8 @@ class Point(Geometry):
 
         :param factor: Scale parameter.
         :type factor: float
-        :returns: Point object
-        :rtype: :class:`Point<Point>`
+        :returns: Scaled Point.
+        :rtype: :class:`~supervisely.geometry.point.Point`
 
         :Usage Example:
 
@@ -302,8 +302,8 @@ class Point(Geometry):
         :type drow: int
         :param dcol: Vertical shift.
         :type dcol: int
-        :returns: Point object
-        :rtype: :class:`Point<Point>`
+        :returns: Translated Point.
+        :rtype: :class:`~supervisely.geometry.point.Point`
 
         :Usage Example:
 
@@ -328,7 +328,7 @@ class Point(Geometry):
         """
         Point area.
 
-        :returns: Area of current Point object, always 0.0
+        :returns: Area of current Point, always 0.0
         :rtype: float
 
         :Usage Example:
@@ -344,8 +344,8 @@ class Point(Geometry):
         """
         Create Rectangle object from current Point.
 
-        :returns: Rectangle object
-        :rtype: :class:`Rectangle<supervisely.geometry.rectangle.Rectangle>`
+        :returns: Rectangle from Point.
+        :rtype: :class:`~supervisely.geometry.rectangle.Rectangle`
 
         :Usage Example:
 
@@ -359,7 +359,7 @@ class Point(Geometry):
         """
         Convert the Point to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
-        :returns: Json format as a dict
+        :returns: Point in json format as a dict.
         :rtype: dict
 
         :Usage Example:
@@ -388,8 +388,8 @@ class Point(Geometry):
 
         :param data: Point in json format as a dict.
         :type data: dict
-        :returns: Point object
-        :rtype: :class:`Point<Point>`
+        :returns: Point from json.
+        :rtype: :class:`~supervisely.geometry.point.Point`
 
         :Usage Example:
 
