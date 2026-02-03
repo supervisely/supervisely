@@ -6,6 +6,7 @@ import supervisely.convert.pointcloud.sly.sly_pointcloud_helper as helpers
 from supervisely import PointcloudAnnotation, ProjectMeta, logger
 from supervisely.convert.base_converter import AvailablePointcloudConverters
 from supervisely.convert.pointcloud.pointcloud_converter import PointcloudConverter
+from supervisely.imaging.image import is_valid_ext
 from supervisely.io.fs import get_file_ext, get_file_name, get_file_name_with_ext
 from supervisely.io.json import load_json_file
 from supervisely.pointcloud.pointcloud import validate_ext as validate_pcd_ext
@@ -74,9 +75,7 @@ class SLYPointcloudConverter(PointcloudConverter):
                         rimg_ann_dict[file] = full_path
                     else:
                         ann_dict[file] = full_path
-                elif imghdr.what(full_path) or (
-                    self.upload_as_links and ext not in self.allowed_exts
-                ):
+                elif imghdr.what(full_path) or (self.upload_as_links and is_valid_ext(ext)):
                     if dir_name not in rimg_dict:
                         rimg_dict[dir_name] = []
                     rimg_dict[dir_name].append(full_path)
