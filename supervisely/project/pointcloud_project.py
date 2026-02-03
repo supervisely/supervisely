@@ -1237,7 +1237,9 @@ def upload_pointcloud_project(
     key_id_map = KeyIdMap()
     name_to_dsinfo = {}
     for dataset_fs in sorted(project_fs, key=lambda ds: len(ds.parents)):
-        parent_name = dataset_fs.name.removesuffix(dataset_fs.short_name).rstrip("/")
+        dataset_fs: PointcloudDataset
+        # removesuffix workaround for python < 3.9
+        parent_name = dataset_fs.name[: -len(dataset_fs.short_name)].rstrip("/")
         parent_info = name_to_dsinfo.get(parent_name)
         parent_id = None
         if parent_info is not None:
