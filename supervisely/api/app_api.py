@@ -126,7 +126,7 @@ def check_workflow_compatibility(api, min_instance_version: str) -> bool:
     If the instance is not compatible, the user will be notified about it.
 
     :param api: Supervisely API object
-    :type api: supervisely.api.api.Api
+    :type api: supervisely.api.api.:class:`~supervisely.api.api.Api`
     :param min_instance_version: Minimum version of the instance that supports workflow features
     :type min_instance_version: str
     :returns: True if the instance is compatible, False otherwise
@@ -447,9 +447,9 @@ class WorkflowMeta:
     """Used to customize the appearance of the workflow main and/or relation node.
 
     :param relation_settings: customizes the appearance of the relation node - inputs and outputs
-    :type relation_settings: Optional[WorkflowSettings]
+    :type relation_settings: Optional[:class:`~supervisely.api.app_api.WorkflowSettings`]
     :param node_settings: customizes the appearance of the main node - the task itself
-    :type node_settings: Optional[WorkflowSettings]
+    :type node_settings: Optional[:class:`~supervisely.api.app_api.WorkflowSettings`]
     """
 
     relation_settings: Optional[WorkflowSettings] = None
@@ -492,7 +492,7 @@ class AppApi(TaskApi):
         If instances are not compatible with the workflow features, the functionality will be disabled.
 
         :param api: Supervisely API object
-        :type api: supervisely.api.api.Api
+        :type api: supervisely.api.api.:class:`~supervisely.api.api.Api`
         :param min_instance_version: Minimum version of the instance that supports workflow features
         :type min_instance_version: str
         """
@@ -618,7 +618,7 @@ class AppApi(TaskApi):
             :param task_id: Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[Union[WorkflowMeta, dict]]
+            :type meta: Optional[Union[:class:`~supervisely.api.app_api.WorkflowMeta`, dict]]
             :returns: Response from the API.
             :rtype: dict
             """
@@ -684,7 +684,7 @@ class AppApi(TaskApi):
             You can only customize the main node with this method.
 
             :param project: Project ID or ProjectInfo object.
-            :type project: Optional[Union[int, ProjectInfo]]
+            :type project: Optional[Union[int, :class:`~supervisely.api.project_api.ProjectInfo`]]
             :param version_id: Version ID of the project.
             :type version_id: Optional[int]
             :param version_num: Version number of the project. This argument can only be used in conjunction with the project.
@@ -692,7 +692,7 @@ class AppApi(TaskApi):
             :param task_id: Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[Union[WorkflowMeta, dict]]
+            :type meta: Optional[Union[:class:`~supervisely.api.app_api.WorkflowMeta`, dict]]
             :returns: Response from the API.
             :rtype: dict
             """
@@ -744,11 +744,11 @@ class AppApi(TaskApi):
             You can only customize the main node with this method.
 
             :param dataset: Dataset ID or DatasetInfo object.
-            :type dataset: Union[int, DatasetInfo]
+            :type dataset: Union[int, :class:`~supervisely.api.dataset_api.DatasetInfo`]
             :param task_id: Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[Union[WorkflowMeta, dict]]
+            :type meta: Optional[Union[:class:`~supervisely.api.app_api.WorkflowMeta`, dict]]
             :returns: Response from the API.
             :rtype: dict
             """
@@ -778,13 +778,13 @@ class AppApi(TaskApi):
             This type is used to show that the application has used the specified file.
 
             :param file: File ID, FileInfo object or file path in team Files.
-            :type file: Union[int, FileInfo, str]
+            :type file: Union[int, :class:`~supervisely.api.file_api.FileInfo`, str]
             :param model_weight: Flag to indicate if the file is a model weight.
             :type model_weight: bool
             :param task_id: Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[Union[WorkflowMeta, dict]]
+            :type meta: Optional[Union[:class:`~supervisely.api.app_api.WorkflowMeta`, dict]]
             :returns: Response from the API.
             :rtype: dict
             """
@@ -830,7 +830,7 @@ class AppApi(TaskApi):
             :param task_id: Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[Union[WorkflowMeta, dict]]
+            :type meta: Optional[Union[:class:`~supervisely.api.app_api.WorkflowMeta`, dict]]
             :returns: Response from the API.
             :rtype: dict
             """
@@ -869,7 +869,7 @@ class AppApi(TaskApi):
             :param task_id: Task ID of the node. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[Union[WorkflowMeta, dict]]
+            :type meta: Optional[Union[:class:`~supervisely.api.app_api.WorkflowMeta`, dict]]
             :returns: Response from the API.
             :rtype: dict
             """
@@ -903,7 +903,7 @@ class AppApi(TaskApi):
             :param task_id: Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[Union[WorkflowMeta, dict]]
+            :type meta: Optional[Union[:class:`~supervisely.api.app_api.WorkflowMeta`, dict]]
             :returns: Response from the API.
             :rtype: dict
             """
@@ -936,13 +936,13 @@ class AppApi(TaskApi):
             You can only customize the main node with this method.
 
             :param project: Project ID or ProjectInfo object.
-            :type project: Union[int, ProjectInfo]
+            :type project: Union[int, :class:`~supervisely.api.project_api.ProjectInfo`]
             :param version_id: Version ID of the project.
             :type version_id: Optional[int]
             :param task_id: Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[Union[WorkflowMeta, dict]]
+            :type meta: Optional[Union[:class:`~supervisely.api.app_api.WorkflowMeta`, dict]]
             :returns: Response from the API.
             :rtype: dict
             """
@@ -984,11 +984,11 @@ class AppApi(TaskApi):
             You can only customize the main node with this method.
 
             :param dataset: Dataset ID or DatasetInfo object.
-            :type dataset: Union[int, DatasetInfo]
+            :type dataset: Union[int, :class:`~supervisely.api.dataset_api.DatasetInfo`]
             :param task_id: Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[Union[WorkflowMeta, dict]]
+            :type meta: Optional[Union[:class:`~supervisely.api.app_api.WorkflowMeta`, dict]]
             :returns: Response from the API.
             :rtype: dict
             """
@@ -1018,13 +1018,13 @@ class AppApi(TaskApi):
             This type is used to show that the application has created a file with the result of its work.
 
             :param file: File ID or FileInfo object.
-            :type file: Union[int, FileInfo]
+            :type file: Union[int, :class:`~supervisely.api.file_api.FileInfo`]
             :param model_weight: Flag to indicate if the file is a model weight.
             :type model_weight: bool
             :param task_id: Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[Union[WorkflowMeta, dict]]
+            :type meta: Optional[Union[:class:`~supervisely.api.app_api.WorkflowMeta`, dict]]
             :returns: Response from the API.
             :rtype: dict
             """
@@ -1060,7 +1060,7 @@ class AppApi(TaskApi):
             :param task_id: Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[Union[WorkflowMeta, dict]]
+            :type meta: Optional[Union[:class:`~supervisely.api.app_api.WorkflowMeta`, dict]]
             :returns: Response from the API.
             :rtype: dict
             """
@@ -1096,7 +1096,7 @@ class AppApi(TaskApi):
             :param task_id: App Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[Union[WorkflowMeta, dict]]
+            :type meta: Optional[Union[:class:`~supervisely.api.app_api.WorkflowMeta`, dict]]
             :returns: Response from the API.
             :rtype: dict
             """
@@ -1127,7 +1127,7 @@ class AppApi(TaskApi):
             :param task_id: Task ID of the node. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[Union[WorkflowMeta, dict]]
+            :type meta: Optional[Union[:class:`~supervisely.api.app_api.WorkflowMeta`, dict]]
             :returns: Response from the API.
             :rtype: dict
             """
@@ -1161,7 +1161,7 @@ class AppApi(TaskApi):
             :param task_id: Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[Union[WorkflowMeta, dict]]
+            :type meta: Optional[Union[:class:`~supervisely.api.app_api.WorkflowMeta`, dict]]
             :returns: Response from the API.
             :rtype: dict
             """
@@ -1266,7 +1266,7 @@ class AppApi(TaskApi):
         :type force_all_sessions: bool
 
         :returns: list of applications
-        :rtype: List[AppInfo]
+        :rtype: List[:class:`~supervisely.api.app_api.AppInfo`]
 
 
         :Usage Example:
@@ -1545,7 +1545,7 @@ class AppApi(TaskApi):
         :raises ValueError: if both module_id and slug are None
         :raises ValueError: if both module_id and slug are provided
         :returns: ModuleInfo object
-        :rtype: ModuleInfo
+        :rtype: :class:`~supervisely.api.app_api.ModuleInfo`
 
         :Usage Example:
 
@@ -1671,12 +1671,11 @@ class AppApi(TaskApi):
         :param session_name: session name to filter sessions
         :type session_name: Optional[str]
         :param statuses: list of statuses to filter sessions
-        :type statuses: Optional[List[TaskApi.Status]]
+        :type statuses: Optional[List[:meth:`~supervisely.api.task_api.TaskApi.Status`]]
         :param with_shared: include shared application sessions
         :type with_shared: bool
-
-        :returns: list of sessions
-        :rtype: List[SessionInfo]
+        :returns: List of sessions
+        :rtype: List[:class:`~supervisely.api.app_api.SessionInfo`]
 
         :Usage Example:
 
@@ -1808,14 +1807,14 @@ class AppApi(TaskApi):
         :param redirect_requests: For internal usage only in Develop and Debug mode.
         :type redirect_requests: dict
         :param kubernetes_settings: Kubernetes settings for the task. If not specified, default settings will be used.
-        :type kubernetes_settings: Optional[Union[KubernetesSettings, Dict[str, Any]]]
+        :type kubernetes_settings: Optional[Union[:class:`~supervisely.api.task_api.KubernetesSettings`, Dict[str, Any]]]
         :param multi_user_session: If True, the application session will be created as multi-user.
                                    In this case, multiple users will be able to connect to the same application session.
                                    All users will have separate application states.
                                    Available only for applications that support multi-user sessions.
         :type multi_user_session: bool, default is False
         :returns: SessionInfo object with information about the started task.
-        :rtype: SessionInfo
+        :rtype: :class:`~supervisely.api.app_api.SessionInfo`
         :raises ValueError: If both app_id and module_id are not provided.
         :raises ValueError: If both app_id and module_id are provided.
         """

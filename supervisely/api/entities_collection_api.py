@@ -77,7 +77,7 @@ class CollectionItem:
             :param data: Dictionary with meta information.
             :type data: dict
             :returns: Meta object.
-            :rtype: CollectionItem.Meta
+            :rtype: :class:`~supervisely.api.entities_collection_api.CollectionItem.Meta`
             """
             return cls(score=data.get(ApiField.SCORE, 0.0))
 
@@ -104,7 +104,7 @@ class CollectionItem:
         :param data: Dictionary with collection item data.
         :type data: dict
         :returns: CollectionItem object.
-        :rtype: CollectionItem
+        :rtype: :class:`~supervisely.api.entities_collection_api.CollectionItem`
         """
         meta_data = data.get(ApiField.META)
         meta = cls.Meta.from_json(meta_data) if meta_data is not None else None
@@ -222,7 +222,7 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
     @staticmethod
     def info_tuple_name():
         """
-        Get string name of :class:`EntitiesCollectionInfo` NamedTuple.
+        Get string name of :class:`~supervisely.api.entities_collection_api.EntitiesCollectionInfo` NamedTuple.
 
         :returns: NamedTuple name.
         :rtype: str
@@ -295,7 +295,7 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
         :param change_name_if_conflict: Checks if given name already exists and adds suffix to the end of the name. Defaults to False.
         :type change_name_if_conflict: bool
         :returns: Information about new Entities Collection
-        :rtype: :class:`EntitiesCollectionInfo`
+        :rtype: :class:`~supervisely.api.entities_collection_api.EntitiesCollectionInfo`
 
         :Usage Example:
 
@@ -384,13 +384,13 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
         :param with_meta: If True, includes meta information in the response. Defaults to False.
         :type with_meta: bool, optional
         :param collection_type: Type of the collection.
-                    Defaults to CollectionType.DEFAULT.
+                    Defaults to :meth:`~supervisely.api.entities_collection_api.CollectionType.DEFAULT`.
 
                     Available types are:
-                     - CollectionType.DEFAULT
-                     - CollectionType.AI_SEARCH
-                     - CollectionType.ALL
-        :type collection_type: CollectionType
+                     - :meth:`~supervisely.api.entities_collection_api.CollectionType.DEFAULT`
+                     - :meth:`~supervisely.api.entities_collection_api.CollectionType.AI_SEARCH`
+                     - :meth:`~supervisely.api.entities_collection_api.CollectionType.ALL`
+        :type collection_type: :class:`~supervisely.api.entities_collection_api.CollectionType`
         :returns: List of information about Entities Collections.
         :rtype: :class:`List[EntitiesCollectionInfo]`
 
@@ -432,7 +432,7 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
         :param with_meta: If True, includes meta information in the response. Defaults to False.
         :type with_meta: bool, optional
         :returns: Information about Entities Collection.
-        :rtype: :class:`EntitiesCollectionInfo`
+        :rtype: :class:`~supervisely.api.entities_collection_api.EntitiesCollectionInfo`
 
         :Usage Example:
 
@@ -474,14 +474,14 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
         self, project_id: int, ai_search_key: str
     ) -> Optional[EntitiesCollectionInfo]:
         """
-        Get information about Entities Collection of type ``CollectionType.AI_SEARCH`` with given AI search key.
+        Get information about Entities Collection of type ``:meth:`~supervisely.api.entities_collection_api.CollectionType.AI_SEARCH``` with given AI search key.
 
         :param project_id: Project ID in Supervisely.
         :type project_id: int
         :param ai_search_key: AI search key for the collection.
         :type ai_search_key: str
         :returns: Information about Entities Collection.
-        :rtype: :class:`EntitiesCollectionInfo`
+        :rtype: :class:`~supervisely.api.entities_collection_api.EntitiesCollectionInfo`
 
         :Usage Example:
 
@@ -549,8 +549,8 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
 
         :param id: Entities Collection ID in Supervisely.
         :type id: int
-        :param items: List of items to add to the collection. Could be a list of entity IDs (int) or CollectionItem objects.
-        :type items: List[Union[int, CollectionItem]]
+        :param items: List of items to add to the collection. Could be a list of entity IDs (int) or :class:`~supervisely.api.entities_collection_api.CollectionItem` objects.
+        :type items: List[Union[int, :class:`~supervisely.api.entities_collection_api.CollectionItem`]]
         :returns: List of added items with their IDs and creation timestamps.
         :rtype: List[Dict[str, int]]
 
@@ -612,8 +612,8 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
 
         :param collection_id: Entities Collection ID in Supervisely.
         :type collection_id: int
-        :param collection_type: Type of the collection. Can be CollectionTypeFilter.AI_SEARCH or CollectionTypeFilter.DEFAULT.
-        :type collection_type: CollectionTypeFilter
+        :param collection_type: Type of the collection. Can be AI_SEARCH or DEFAULT.
+        :type collection_type: :class:`~supervisely.api.entities_collection_api.CollectionTypeFilter`
         :param project_id: Project ID in Supervisely.
         :type project_id: int, optional
         :param ai_search_threshold: AI search threshold for filtering items. Optional, defaults to None.
@@ -621,7 +621,7 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
         :param ai_search_threshold_direction: Direction for the AI search threshold. Optional, defaults to 'above'.
         :type ai_search_threshold_direction: str
         :returns: List of ImageInfo objects.
-        :rtype: List[ImageInfo]
+        :rtype: List[:class:`~supervisely.api.image_api.ImageInfo`]
         :raises RuntimeError: If Entities Collection with given ID not found.
 
         :Usage Example:

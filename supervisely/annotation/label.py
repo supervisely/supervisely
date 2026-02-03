@@ -97,17 +97,17 @@ class LabelBase:
 
     :param geometry: Label geometry.
     :type geometry: :class:`~supervisely.geometry.geometry.Geometry`
-    :param obj_class: Label class.
-    :type obj_class: :class:`~supervisely.project.project_meta.ObjClass`
-    :param tags: Label tags.
-    :type tags: :class:`~supervisely.tag.tag_collection.TagCollection` or List[:class:`~supervisely.tag.tag.Tag`]
+    :param obj_class: :class:`~supervisely.annotation.obj_class.ObjClass` object.
+    :type obj_class: :class:`~supervisely.annotation.obj_class.ObjClass`
+    :param tags: TagCollection or List of Tag objects.
+    :type tags: :class:`~supervisely.annotation.tag_collection.TagCollection` or List[:class:`~supervisely.annotation.tag.Tag`]
     :param description: Label description.
     :type description: str, optional
-    :param binding_key: Label binding key.
+    :param binding_key: Label binding key in labeling tool.
     :type binding_key: str, optional
     :param smart_tool_input: Smart Tool parameters that were used for labeling.
     :type smart_tool_input: dict, optional
-    :param sly_id: Label unique identifier.
+    :param sly_id: Label unique identifier in Supervisely.
     :type sly_id: int, optional
     :param status: Sets labeling status. Shows how label was created and corrected.
     :type status: :class:`~supervisely.annotation.label.LabelingStatus`, optional
@@ -209,7 +209,7 @@ class LabelBase:
     @property
     def description(self) -> str:
         """
-        Description of the current Label.
+        Description of the Label.
 
         :returns: Description
         :rtype: str
@@ -264,7 +264,7 @@ class LabelBase:
     @property
     def tags(self) -> TagCollection:
         """
-        TagCollection of the current Label.
+        TagCollection of the Label.
 
         :returns: TagCollection object
         :rtype: :class:`~supervisely.annotation.tag_collection.TagCollection`
@@ -292,7 +292,7 @@ class LabelBase:
 
     def to_json(self) -> Dict:
         """
-        Convert the Label to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
+        Convert the Label to a json dictionary. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :returns: Json format as a dict
         :rtype: dict
@@ -361,10 +361,10 @@ class LabelBase:
 
         :param data: Label in json format as a dict.
         :type data: dict
-        :param project_meta: Input ProjectMeta.
-        :type project_meta: ProjectMeta
+        :param project_meta: ProjectMeta object.
+        :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
         :returns: Label object
-        :rtype: :class:`Label<LabelBase>`
+        :rtype: :class:`~supervisely.annotation.label.LabelBase`
 
         :Usage Example:
 
@@ -451,9 +451,9 @@ class LabelBase:
         Adds Tag to the current Label.
 
         :param tag: Tag to be added.
-        :type tag: Tag
+        :type tag: :class:`~supervisely.annotation.tag.Tag`
         :returns: Label object
-        :rtype: :class:`Label<LabelBase>`
+        :rtype: :class:`~supervisely.annotation.label.LabelBase`
 
         :Usage Example:
 
@@ -480,9 +480,9 @@ class LabelBase:
         Adds multiple Tags to the current Label.
 
         :param tags: List of Tags to be added.
-        :type tags: List[Tag]
+        :type tags: List[:class:`~supervisely.annotation.tag.Tag`]
         :returns: Label object
-        :rtype: :class:`Label<LabelBase>`
+        :rtype: :class:`~supervisely.annotation.label.LabelBase`
 
         :Usage Example:
 
@@ -524,7 +524,7 @@ class LabelBase:
 
         :param geometry: Label geometry.
         :type geometry: :class:`~supervisely.geometry.geometry.Geometry`
-        :param obj_class: Label class.
+        :param obj_class: :class:`~supervisely.annotation.obj_class.ObjClass` class.
         :type obj_class: :class:`~supervisely.project.project_meta.ObjClass`
         :param tags: Label tags.
         :type tags: :class:`~supervisely.tag.tag_collection.TagCollection` or List[:class:`~supervisely.tag.tag.Tag`]
@@ -535,9 +535,9 @@ class LabelBase:
         :param smart_tool_input: Smart Tool parameters that were used for labeling.
         :type smart_tool_input: dict, optional
         :param status: Sets labeling status. Specifies if the label was created by NN model, manually or created by NN and then manually corrected.
-        :type status: LabelingStatus, optional
-        :returns: New instance of Label
-        :rtype: :class:`Label<LabelBase>`
+        :type status: :class:`~supervisely.annotation.label.LabelingStatus`, optional
+        :returns: New instance of Label object
+        :rtype: :class:`~supervisely.annotation.label.LabelBase`
 
         :Usage Example:
 
@@ -590,9 +590,9 @@ class LabelBase:
         See usage example in :meth:`~supervisely.annotation.annotation.Annotation.crop_labels`.
 
         :param rect: Rectangle object.
-        :type rect: Rectangle
+        :type rect: :class:`~supervisely.geometry.rectangle.Rectangle`
         :returns: List of Labels with new geometries
-        :rtype: :class:`List[Label]<LabelBase>`
+        :rtype: List[:class:`~supervisely.annotation.label.LabelBase>`]
         """
         if rect.contains(self.geometry.to_bbox()):
             return [self]
@@ -612,9 +612,9 @@ class LabelBase:
         Mostly used for internal implementation. See usage example in :meth:`~supervisely.annotation.annotation.Annotation.relative_crop`.
 
         :param rect: Rectangle object.
-        :type rect: Rectangle
+        :type rect: :class:`~supervisely.geometry.rectangle.Rectangle`
         :returns: List of Labels with new geometries
-        :rtype: :class:`List[Label]<LabelBase>`
+        :rtype: List[:class:`~supervisely.annotation.label.LabelBase`]
         """
         return [self.clone(geometry=g) for g in self.geometry.relative_crop(rect)]
 
@@ -624,9 +624,9 @@ class LabelBase:
         See usage example in :meth:`~supervisely.annotation.annotation.Annotation.rotate`.
 
         :param rotator: ImageRotator object.
-        :type rotator: ImageRotator
+        :type rotator: :class:`~supervisely.geometry.image_rotator.ImageRotator`
         :returns: New instance of Label with rotated geometry
-        :rtype: :class:`Label<LabelBase>`
+        :rtype: :class:`~supervisely.annotation.label.LabelBase`
         """
         return self.clone(geometry=self.geometry.rotate(rotator))
 
@@ -640,7 +640,7 @@ class LabelBase:
         :param out_size: Desired output image size (height, width) of the Annotation to which Label belongs.
         :type out_size: Tuple[int, int]
         :returns: New instance of Label with resized geometry
-        :rtype: :class:`Label<LabelBase>`
+        :rtype: :class:`~supervisely.annotation.label.LabelBase`
         """
         return self.clone(geometry=self.geometry.resize(in_size, out_size))
 
@@ -652,7 +652,7 @@ class LabelBase:
         :param factor: Scale factor.
         :type factor: float
         :returns: New instance of Label with scaled geometry
-        :rtype: :class:`Label<LabelBase>`
+        :rtype: :class:`~supervisely.annotation.label.LabelBase`
         """
         return self.clone(geometry=self.geometry.scale(factor))
 
@@ -665,7 +665,7 @@ class LabelBase:
         :param dcol: Vertical shift.
         :type dcol: int
         :returns: New instance of Label with translated geometry
-        :rtype: :class:`Label<LabelBase>`
+        :rtype: :class:`~supervisely.annotation.label.LabelBase`
 
         :Usage Example:
 
@@ -716,7 +716,7 @@ class LabelBase:
         :param img_size: Input image size (height, width) of the Annotation to which Label belongs.
         :type img_size: Tuple[int, int]
         :returns: New instance of Label with flipped geometry
-        :rtype: :class:`Label<LabelBase>`
+        :rtype: :class:`Label<~supervisely.annotation.label.LabelBase>`
         """
         return self.clone(geometry=self.geometry.fliplr(img_size))
 
@@ -728,7 +728,7 @@ class LabelBase:
         :param img_size: Input image size (height, width) of the Annotation to which Label belongs.
         :type img_size: Tuple[int, int]
         :returns: New instance of Label with flipped geometry
-        :rtype: :class:`Label<LabelBase>`
+        :rtype: :class:`Label<~supervisely.annotation.label.LabelBase>`
         """
         return self.clone(geometry=self.geometry.flipud(img_size))
 
@@ -815,7 +815,7 @@ class LabelBase:
 
         :param img_size: size of the image (height, width)
         :type img_size: Tuple[int, int]
-        :returns: 2D boolean mask of the Label
+        :returns: 2D boolean mask of the :class:`~supervisely.annotation.label.Label`
         :rtype: np.ndarray
         """
         bitmap = np.zeros(img_size + (3,), dtype=np.uint8)
@@ -872,7 +872,7 @@ class LabelBase:
         """
         Label area.
 
-        :returns: Area of current geometry in Label.
+        :returns: Area of current geometry in :class:`~supervisely.annotation.label.LabelBase`.
         :rtype: float
 
         :Usage Example:
@@ -896,9 +896,9 @@ class LabelBase:
         Converts Label geometry to another geometry shape.
 
         :param new_obj_class: ObjClass with new geometry shape.
-        :type new_obj_class: ObjClass
+        :type new_obj_class: :class:`~supervisely.annotation.obj_class.ObjClass`
         :returns: List of Labels with converted geometries
-        :rtype: :class:`List[Label]<LabelBase>`
+        :rtype: List[:class:`~supervisely.annotation.label.LabelBase`]
 
         :Usage Example:
 
@@ -1028,7 +1028,7 @@ class LabelBase:
     #     However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
 
     #     :returns: New instance of Label with subpixel precision geometry
-    #     :rtype: :class:`Label<LabelBase>`
+    #     :rtype: :class:`Label<~supervisely.annotation.label.LabelBase>`
     #     """
     #     new_geometry = self.geometry._to_subpixel_coordinate_system()
     #     label = self.clone(geometry=new_geometry)

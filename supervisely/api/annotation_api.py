@@ -70,7 +70,7 @@ class AnnotationApi(ModuleApi):
     API for working with image annotations. :class:`~supervisely.api.annotation_api.AnnotationApi` object is immutable.
 
     :param api: API connection to the server.
-    :type api: Api
+    :type api: :class:`~supervisely.api.api.Api`
 
     :Usage Example:
 
@@ -318,7 +318,7 @@ class AnnotationApi(ModuleApi):
         :type force_metadata_for_links: bool, optional
 
         :returns: Information about Annotation. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`AnnotationInfo`
+        :rtype: :class:`~supervisely.api.annotation_api.AnnotationInfo`
 
         :Usage Example:
 
@@ -831,7 +831,7 @@ class AnnotationApi(ModuleApi):
         :param img_id: Image ID in Supervisely.
         :type img_id: int
         :param ann: Annotation object.
-        :type ann: Annotation
+        :type ann: :class:`~supervisely.annotation.annotation.Annotation`
         :returns: None
         :rtype: None
 
@@ -870,7 +870,7 @@ class AnnotationApi(ModuleApi):
         :param img_ids: Image ID in Supervisely.
         :type img_ids: List[int]
         :param anns: List of Annotation objects.
-        :type anns: List[Annotation]
+        :type anns: List[:class:`~supervisely.annotation.annotation.Annotation`]
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
         :returns: None
@@ -932,8 +932,8 @@ class AnnotationApi(ModuleApi):
         :type func_ann_to_json: callable
         :param img_ids: List of image IDs in Supervisely to which annotations will be uploaded.
         :type img_ids: List[int]
-        :param anns: List of annotations. Can be json, Annotation object or path to annotation file.
-        :type anns: List[Union[Dict, Annotation, str]]
+        :param anns: List of annotations. Can be json, :class:`~supervisely.annotation.annotation.Annotation` object or path to annotation file.
+        :type anns: List[Union[Dict, :class:`~supervisely.annotation.annotation.Annotation`, str]]
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
         :param skip_bounds_validation: Skip bounds validation.
@@ -1275,7 +1275,7 @@ class AnnotationApi(ModuleApi):
         :param image_id: Image ID to append labels.
         :type image_id: int
         :param labels: List of labels to append.
-        :type labels: List[Label]
+        :type labels: List[:class:`~supervisely.annotation.label.Label`]
         :returns: None
         :rtype: None
         """
@@ -1323,11 +1323,11 @@ class AnnotationApi(ModuleApi):
         :param label_id: ID of the label to get
         :type label_id: int
         :param project_meta: Supervisely ProjectMeta object
-        :type project_meta: ProjectMeta
-        :param with_tags: If True, tags will be added to the Label object
+        :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
+        :param with_tags: If True, tags will be added to the :class:`~supervisely.annotation.label.Label` object
         :type with_tags: bool, optional
-        :returns: Supervisely Label object
-        :rtype: Label
+        :returns: Label object
+        :rtype: :class:`~supervisely.annotation.label.Label`
 
         :Usage Example:
 
@@ -1394,13 +1394,15 @@ class AnnotationApi(ModuleApi):
         return self._api.get("figures.tags.list", {ApiField.ID: label_id}).json()
 
     def update_label(self, label_id: int, label: Label) -> None:
-        """Updates label with given ID in Supervisely with new Label object.
+        """
+        Updates label with given ID in Supervisely with new Label object.
+
         NOTE: This method only updates label's geometry and tags, not class title, etc.
 
         :param label_id: ID of the label to update
         :type label_id: int
-        :param label: Supervisely Label object
-        :type label: Label
+        :param label: Label object
+        :type label: :class:`~supervisely.annotation.label.Label`
 
         :Usage Example:
 
@@ -1502,7 +1504,7 @@ class AnnotationApi(ModuleApi):
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
         :type progress_cb_type: str, optional
         :returns: Information about Annotation. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`AnnotationInfo`
+        :rtype: :class:`~supervisely.api.annotation_api.AnnotationInfo`
 
         :Usage Example:
 
@@ -1810,9 +1812,9 @@ class AnnotationApi(ModuleApi):
         :param image_ids: List of Images IDs in Supervisely.
         :type image_ids: List[int]
         :param labels: List of Labels in Supervisely.
-        :type labels: List[Label]
+        :type labels: List[:class:`~supervisely.annotation.label.Label`]
         :param project_meta: Project meta. If not provided, will try to get it from the server.
-        :type project_meta: ProjectMeta, optional
+        :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`, optional
         :param group_name: Group name. Labels will be assigned by tag with this value.
         :type group_name: str, optional
         :returns: None
@@ -1910,7 +1912,7 @@ class AnnotationApi(ModuleApi):
         :param image_ids: List of image IDs in Supervisely.
         :type image_ids: List[int]
         :param anns: List of annotations to upload. Can be a generator or a list.
-        :type anns: Union[List[Annotation], Generator]
+        :type anns: Union[List[:class:`~supervisely.annotation.annotation.Annotation`], Generator]
         :param dataset_id: Dataset ID. If None, will be determined from image IDs or context.
         :type dataset_id: int, optional
         :param log_progress: Whether to log progress information.
@@ -2212,7 +2214,7 @@ class AnnotationApi(ModuleApi):
         :param image_ids: List of image IDs in Supervisely.
         :type image_ids: List[int]
         :param anns: List of Annotation objects.
-        :type anns: List[Annotation]
+        :type anns: List[:class:`~supervisely.annotation.annotation.Annotation`]
         :param dataset_id: Dataset ID. If None, will be determined from image IDs or context.
         :type dataset_id: int, optional
         :param log_progress: Whether to log progress information.

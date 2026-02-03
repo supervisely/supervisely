@@ -1063,7 +1063,7 @@ class ModuleApiBase(_JsonConvertibleModule):
         :param semaphore: Semaphore for limiting the number of simultaneous requests.
         :type semaphore: :class:`asyncio.Semaphore`, optional
         :returns: List of images in dataset.
-        :rtype: AsyncGenerator[List[ImageInfo]]
+        :rtype: AsyncGenerator[List[:class:`~supervisely.api.image_api.ImageInfo`]]
 
         :Usage Example:
 

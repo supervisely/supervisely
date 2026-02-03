@@ -57,9 +57,9 @@ class DatasetInfo(NamedTuple):
     :type size: int
     :param project_id: Project ID in which the Dataset is located.
     :type project_id: int
-    :param images_count: Number of images in the Dataset.
+    :param images_count: Number of images in the :class:`~supervisely.project.project.Dataset`.
     :type images_count: int
-    :param items_count: Number of items in the Dataset.
+    :param items_count: Number of items in the :class:`~supervisely.project.project.Dataset`.
     :type items_count: int
     :param created_at: Date and time when the Dataset was created.
     :type created_at: str
@@ -105,7 +105,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
     API for working with datasets. :class:`~supervisely.api.dataset_api.DatasetApi` object is immutable.
 
     :param api: API connection to the server.
-    :type api: Api
+    :type api: :class:`~supervisely.api.api.Api`
 
     :Usage Example:
 
@@ -200,10 +200,10 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :type filters: List[dict], optional
         :param recursive: If True, returns all Datasets from the given Project including nested Datasets.
         :type recursive: bool, optional
-        :param parent_id: Parent Dataset ID. If set to None, the search will be performed at the top level of the Project,
+        :param parent_id: Parent Dataset ID. If set to None, the search will be performed at the top level of the :class:`~supervisely.project.project.Project`,
             otherwise the search will be performed in the specified Dataset.
         :type parent_id: Union[int, None], optional
-        :param include_custom_data: If True, the response will include the `custom_data` field for each Dataset.
+        :param include_custom_data: If True, the response will include the `custom_data` field for each :class:`~supervisely.project.project.Dataset`.
         :type include_custom_data: bool, optional
         :returns: List of all Datasets with information for the given Project. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[DatasetInfo]`
@@ -275,8 +275,8 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
 
         :param id: Dataset ID in Supervisely.
         :type id: int
-        :returns: Information about Dataset. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`DatasetInfo`
+        :returns: DatasetInfo object with information about the Dataset.
+        :rtype: :class:`~supervisely.api.dataset_api.DatasetInfo`
 
         :Usage Example:
 
@@ -340,10 +340,10 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :param parent_id: Parent Dataset ID. If set to None, then the Dataset will be created at
             the top level of the Project, otherwise the Dataset will be created in a specified Dataset.
         :type parent_id: Union[int, None]
-        :param custom_data: Custom data to store in the Dataset.
+        :param custom_data: Custom data to store in the :class:`~supervisely.project.project.Dataset`.
         :type custom_data: Dict[Any, Any], optional
-        :returns: Information about Dataset. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`DatasetInfo`
+        :returns: DatasetInfo object with information about the Dataset.
+        :rtype: :class:`~supervisely.api.dataset_api.DatasetInfo`
 
         :Usage Example:
 
@@ -408,8 +408,8 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :param parent_id: Parent Dataset ID. If set to None, then the Dataset will be created at
             the top level of the Project, otherwise the Dataset will be created in a specified Dataset.
         :type parent_id: Union[int, None]
-        :returns: Information about Dataset. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`DatasetInfo`
+        :returns: DatasetInfo object with information about the Dataset.
+        :rtype: :class:`~supervisely.api.dataset_api.DatasetInfo`
 
         :Usage Example:
 
@@ -463,8 +463,8 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :type description: str, optional
         :param custom_data: New custom data.
         :type custom_data: Dict[Any, Any], optional
-        :returns: Information about Dataset. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`DatasetInfo`
+        :returns: DatasetInfo object with information about the Dataset.
+        :rtype: :class:`~supervisely.api.dataset_api.DatasetInfo`
 
         :Usage Example:
 
@@ -509,8 +509,8 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :type id: int
         :param custom_data: New custom data.
         :type custom_data: Dict[Any, Any]
-        :returns: Information about Dataset. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`DatasetInfo`
+        :returns: DatasetInfo object with information about the Dataset.
+        :rtype: :class:`~supervisely.api.dataset_api.DatasetInfo`
 
         :Usage Example:
 
@@ -563,7 +563,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :param with_annotations: If True copies Datasets with annotations, otherwise copies just items from Datasets without annotations.
         :type with_annotations: bool, optional
         :raises RuntimeError: if can not match "ids" and "new_names" lists, len(ids) != len(new_names)
-        :returns: Information about Datasets. See :class:`info_sequence<info_sequence>`
+        :returns: List of DatasetInfo objects.
         :rtype: List[:class:`~supervisely.api.dataset_api.DatasetInfo`]
 
         :Usage Example:
@@ -639,7 +639,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
 
         :param dst_project_id: Destination Project ID in Supervisely.
         :type dst_project_id: int
-        :param id: ID of copied Dataset.
+        :param id: ID of copied :class:`~supervisely.project.project.Dataset`.
         :type id: int
         :param new_name: New Dataset name.
         :type new_name: str, optional
@@ -647,8 +647,8 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :type change_name_if_conflict: bool, optional
         :param with_annotations: If True copies Dataset with annotations, otherwise copies just items from Dataset without annotation.
         :type with_annotations: bool, optional
-        :returns: Information about Dataset. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`DatasetInfo`
+        :returns: DatasetInfo object with information about the Dataset.
+        :rtype: :class:`~supervisely.api.dataset_api.DatasetInfo`
 
         :Usage Example:
 
@@ -703,7 +703,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :param with_annotations: If True moves Datasets with annotations, otherwise moves just items from Datasets without annotations.
         :type with_annotations: bool, optional
         :raises RuntimeError: if can not match "ids" and "new_names" lists, len(ids) != len(new_names)
-        :returns: Information about Datasets. See :class:`info_sequence<info_sequence>`
+        :returns: List of DatasetInfo objects.
         :rtype: List[:class:`~supervisely.api.dataset_api.DatasetInfo`]
 
         :Usage Example:
@@ -752,7 +752,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
 
         :param dst_project_id: Destination Project ID in Supervisely.
         :type dst_project_id: int
-        :param id: ID of moved Dataset.
+        :param id: ID of moved :class:`~supervisely.project.project.Dataset`.
         :type id: int
         :param new_name: New Dataset name.
         :type new_name: str, optional
@@ -760,8 +760,8 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :type change_name_if_conflict: bool, optional
         :param with_annotations: If True moves Dataset with annotations, otherwise moves just items from Dataset without annotation.
         :type with_annotations: bool, optional
-        :returns: Information about Dataset. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`DatasetInfo`
+        :returns: DatasetInfo object with information about the Dataset.
+        :rtype: :class:`~supervisely.api.dataset_api.DatasetInfo`
 
         :Usage Example:
 
@@ -904,10 +904,10 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
                      The default value is 'all', which retrieves all available datasets.
                      'None' will return the first page with datasets, the amount of which is set in param 'per_page'.
         :type page: Union[int, Literal["all"]], optional
-        :param include_custom_data: If True, the response will include the `custom_data` field for each Dataset.
+        :param include_custom_data: If True, the response will include the `custom_data` field for each :class:`~supervisely.project.project.Dataset`.
         :type include_custom_data: bool, optional
 
-        :returns: Search response information and 'DatasetInfo' of all datasets that are searched by a given criterion.
+        :returns: Search response information and ':class:`~supervisely.api.dataset_api.DatasetInfo`' of all datasets that are searched by a given criterion.
         :rtype: dict
 
         :Usage Example:
@@ -1045,8 +1045,8 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :type fields: List[str], optional
         :param parent_id: Parent Dataset ID. If the Dataset is not nested, then the value is None.
         :type parent_id: Union[int, None]
-        :returns: Information about Dataset. See :class:`info_sequence<info_sequence>`
-        :rtype: Union[DatasetInfo, None]
+        :returns: DatasetInfo object with information about the Dataset.
+        :rtype: Union[:class:`~supervisely.api.dataset_api.DatasetInfo`, None]
         """
         filters = [{"field": ApiField.NAME, "operator": "=", "value": name}]
         items = self.get_list(project_id, filters, parent_id=parent_id)
@@ -1061,7 +1061,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :param project_id: Project ID for which the tree is built.
         :type project_id: int
         :returns: Dictionary of datasets and their children.
-        :rtype: Dict[DatasetInfo, Dict]
+        :rtype: Dict[:class:`~supervisely.api.dataset_api.DatasetInfo`, Dict]
 
         :Usage Example:
 
@@ -1115,11 +1115,11 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         yields its (path, dataset) before recursively traversing and yielding from its children.
 
         :param tree: Tree structure to yield from.
-        :type tree: Dict[DatasetInfo, Dict]
+        :type tree: Dict[:class:`~supervisely.api.dataset_api.DatasetInfo`, Dict]
         :param path: Current path (used for recursion).
         :type path: List[str]
         :returns: Generator of tuples of (path, dataset).
-        :rtype: Generator[Tuple[List[str], DatasetInfo], None, None]
+        :rtype: Generator[Tuple[List[str], :class:`~supervisely.api.dataset_api.DatasetInfo`], None, None]
         """
         for dataset, children in tree.items():
             yield path, dataset
@@ -1133,13 +1133,13 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         """Find a specific dataset in the tree and return its subtree and path.
 
         :param tree: Tree structure to search in.
-        :type tree: Dict[DatasetInfo, Dict]
+        :type tree: Dict[:class:`~supervisely.api.dataset_api.DatasetInfo`, Dict]
         :param target_id: ID of the dataset to find.
         :type target_id: int
         :param path: Current path (used for recursion).
         :type path: List[str], optional
         :returns: Tuple of (found_dataset, its_subtree, path_to_dataset).
-        :rtype: Tuple[Optional[DatasetInfo], Optional[Dict], List[str]]
+        :rtype: Tuple[Optional[:class:`~supervisely.api.dataset_api.DatasetInfo`], Optional[Dict], List[str]]
         """
         if path is None:
             path = []
@@ -1167,7 +1167,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             the subtree starting from this dataset (including the dataset itself and all its children).
         :type dataset_id: Optional[int]
         :returns: Generator of tuples of (path, dataset).
-        :rtype: Generator[Tuple[List[str], DatasetInfo], None, None]
+        :rtype: Generator[Tuple[List[str], :class:`~supervisely.api.dataset_api.DatasetInfo`], None, None]
 
         :Usage Example:
 
@@ -1228,7 +1228,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :type dataset_id: int
 
         :returns: List of nested datasets.
-        :rtype: List[DatasetInfo]
+        :rtype: List[:class:`~supervisely.api.dataset_api.DatasetInfo`]
 
         :Usage Example:
 
@@ -1301,8 +1301,8 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         IMPORTANT: Number of annotations must be equal to the number of images in offset file.
                    Image names in the offset file and annotation files must match.
 
-        :param dataset: Dataset ID or DatasetInfo object.
-        :type dataset: Union[int, DatasetInfo]
+        :param dataset: Dataset ID or :class:`~supervisely.api.dataset_api.DatasetInfo` object.
+        :type dataset: Union[int, :class:`~supervisely.api.dataset_api.DatasetInfo`]
         :param blob_path: Local path to the blob file.
         :type blob_path: str
         :param offsets_path: Local path to the offsets file.
@@ -1310,9 +1310,9 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :param anns: List of annotation paths.
         :type anns: List[str]
         :param project_meta: ProjectMeta object.
-        :type project_meta: Optional[ProjectMeta], optional
+        :type project_meta: Optional[:class:`~supervisely.project.project_meta.ProjectMeta`], optional
         :param project_type: Project type.
-        :type project_type: Optional[ProjectType], optional
+        :type project_type: Optional[:class:`~supervisely.project.project_type.ProjectType`], optional
         :param log_progress: If True, show progress bar.
         :type log_progress: bool, optional
 

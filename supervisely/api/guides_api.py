@@ -55,7 +55,7 @@ class GuidesApi(ModuleApiBase):
     API for working with Guides. :class:`~supervisely.api.guides_api.GuidesApi` object is immutable.
 
     :param api: API connection to the server.
-    :type api: Api
+    :type api: :class:`~supervisely.api.api.Api`
 
     :Usage Example:
 

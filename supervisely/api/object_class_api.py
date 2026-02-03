@@ -15,7 +15,7 @@ class ObjectClassApi(ModuleApi):
     :class:`~supervisely.api.object_class_api.ObjectClassApi` object is immutable.
 
     :param api: API connection to the server.
-    :type api: Api
+    :type api: :class:`~supervisely.api.api.Api`
 
     :Usage Example:
 

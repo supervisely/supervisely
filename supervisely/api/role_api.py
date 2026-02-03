@@ -22,7 +22,7 @@ class RoleApi(ModuleApiBase):
     API for working with roles. :class:`~supervisely.api.role_api.RoleApi` object is immutable.
 
     :param api: API connection to the server
-    :type api: Api
+    :type api: :class:`~supervisely.api.api.Api`
 
     :Usage Example:
 
@@ -85,9 +85,9 @@ class RoleApi(ModuleApiBase):
         List of all roles that are available on private Supervisely instance.
 
         :param filters: List of params to sort output Roles.
-        :type filters: list
-        :returns: List of all roles with information. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[RoleInfo]`
+        :type filters: List[Dict[str, str]]
+        :returns: List of all roles with information.
+        :rtype: List[:class:`~supervisely.api.role_api.RoleInfo`]
 
         :Usage Example:
 

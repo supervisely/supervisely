@@ -13,7 +13,7 @@ class PluginApi(ModuleApi):
     API for working with plugins. :class:`~supervisely.api.plugin_api.PluginApi` object is immutable.
 
     :param api: API connection to the server
-    :type api: Api
+    :type api: :class:`~supervisely.api.api.Api`
 
     :Usage Example:
 

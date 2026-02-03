@@ -97,7 +97,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
     API for working with labeling jobs. :class:`~supervisely.api.labeling_job_api.LabelingJobApi` object is immutable.
 
     :param api: API connection to the server.
-    :type api: Api
+    :type api: :class:`~supervisely.api.api.Api`
 
     :Usage Example:
 
@@ -363,11 +363,11 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type readme: str, optional
         :param description: Description of Labeling Job.
         :type description: str, optional
-        :param classes_to_label: List of classes to label in Dataset.
+        :param classes_to_label: List of classes to label in :class:`~supervisely.project.project.Dataset`.
         :type classes_to_label: List[str], optional
         :param objects_limit_per_image: Limit the number of objects that the labeler can create on each image.
         :type objects_limit_per_image: int, optional
-        :param tags_to_label: List of tags to label in Dataset.
+        :param tags_to_label: List of tags to label in :class:`~supervisely.project.project.Dataset`.
         :type tags_to_label: List[str], optional
         :param tags_limit_per_image: Limit the number of tags that the labeler can create on each image.
         :type tags_limit_per_image: int, optional
@@ -397,8 +397,8 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type guide_id: int, optional
         :param allow_restore: If True, allows restoring a previously deleted labeling job with the same name in the same dataset.
         :type allow_restore: bool
-        :returns: List of information about new Labeling Job. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[LabelingJobInfo]`
+        :returns: List of LabelingJobInfo objects with information about new Labeling Jobs.
+        :rtype: List[:class:`~supervisely.api.labeling_job_api.LabelingJobInfo`]
 
         :Usage Example:
 
@@ -603,8 +603,8 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type queue_ids: Union[List, int], optional
         :param exclude_statuses: Exclude Labeling Jobs with given statuses.
         :type exclude_statuses: List[Literal["pending", "in_progress", "on_review", "completed"]], optional
-        :returns: List of information about Labeling Jobs. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[LabelingJobInfo]`
+        :returns: List of LabelingJobInfo objects with information about Labeling Jobs.
+        :rtype: List[:class:`~supervisely.api.labeling_job_api.LabelingJobInfo`]
 
         :Usage Example:
 
@@ -781,8 +781,8 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
 
         :param id: Labeling Job ID in Supervisely.
         :type id: int
-        :returns: Information about Labeling Job. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`LabelingJobInfo`
+        :returns: LabelingJobInfo object with information about the Labeling Job.
+        :rtype: :class:`~supervisely.api.labeling_job_api.LabelingJobInfo`
 
         :Usage Example:
 
@@ -941,7 +941,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type id: int
         :param target_status: Expected result status of Labeling Job.
         :type target_status: str
-        :param wait_attempts: Number of attempts to retry, when :class:`~supervisely.api.module_api.WaitingTimeExceeded` raises.
+        :param wait_attempts: Number of attempts to retry, when WaitingTimeExceeded raises.
         :type wait_attempts: int, optional
         :param wait_attempt_timeout_sec: Time between attempts.
         :type wait_attempt_timeout_sec: int, optional
@@ -1263,7 +1263,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :param id: Labeling Job ID in Supervisely.
         :type id: int
         :returns: Project meta of the labeling job with given id.
-        :rtype: :class:`ProjectMeta`
+        :rtype: :class:`~supervisely.project.project_meta.ProjectMeta`
         """
         job_info = self.get_info_by_id(id)
         project_meta_json = self._api.project.get_meta(job_info.project_id)
@@ -1300,13 +1300,13 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
                         Have lower priority than :param:`image_infos`.
         :type image_ids: List[int], optional
         :param project_meta: Project meta of the labeling job with given id. Can be retrieved with :func:`get_project_meta`.
-        :type project_meta: :class:`ProjectMeta`, optional
+        :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`, optional
         :param image_infos: List of ImageInfo objects.
                             If not provided, will be retrieved from the API.
                             Have higher priority than :param:`image_ids`.
-        :type image_infos: List[ImageInfo], optional
+        :type image_infos: List[:class:`~supervisely.api.image_api.ImageInfo`], optional
         :returns: Annotation for given image id from labeling job with given id.
-        :rtype: :class:`Annotation`
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
         """
 
         def _get_geometry(type: str, data: dict):

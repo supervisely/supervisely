@@ -424,13 +424,13 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         :param id: Project ID in Supervisely.
         :type id: int
-        :param expected_type: Expected ProjectType.
-        :type expected_type: ProjectType, optional
-        :param raise_error: If True raise error if given name is missing in the Project, otherwise skips missing names.
+        :param expected_type: Expected project type.
+        :type expected_type: :class:`~supervisely.project.project_type.ProjectType`, optional
+        :param raise_error: If True raise error if given name is missing in the :class:`~supervisely.project.project.Project`, otherwise skips missing names.
         :type raise_error: bool, optional
         :param extra_fields: List of extra fields to include in the response.
         :type extra_fields: list[str], optional
-        :returns: Information about Project. See :meth:`info_sequence<supervisely.api.project_api.ProjectApi.info_sequence()>`
+        :returns: ProjectInfo object with information about the Project.
         :rtype: :class:`~supervisely.api.project_api.ProjectInfo`
 
         :Usage Example:
@@ -496,11 +496,11 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type parent_id: int
         :param name: Project name.
         :type name: str
-        :param expected_type: Expected ProjectType.
-        :type expected_type: ProjectType, optional
-        :param raise_error: If True raise error if given name is missing in the Project, otherwise skips missing names.
+        :param expected_type: Expected project type.
+        :type expected_type: :class:`~supervisely.project.project_type.ProjectType`, optional
+        :param raise_error: If True raise error if given name is missing in the :class:`~supervisely.project.project.Project`, otherwise skips missing names.
         :type raise_error: bool, optional
-        :returns: Information about Project. See :meth:`info_sequence<supervisely.api.project_api.ProjectApi.info_sequence()>`
+        :returns: ProjectInfo object with information about the Project.
         :rtype: :class:`~supervisely.api.project_api.ProjectInfo`
 
         :Usage Example:
@@ -723,16 +723,16 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type workspace_id: int
         :param name: Project Name.
         :type name: str
-        :param type: Type of created Project.
-        :type type: ProjectType
+        :param type: Type of project. Example: ProjectType.IMAGES, ProjectType.VIDEOS and etc.
+        :type type: :class:`~supervisely.project.project_type.ProjectType`
         :param description: Project description.
         :type description: str
         :param change_name_if_conflict: Checks if given name already exists and adds suffix to the end of the name.
         :type change_name_if_conflict: bool, optional
         :param readme: Project readme.
         :type readme: str, optional
-        :returns: Information about Project. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`ProjectInfo`
+        :returns: ProjectInfo object with information about the Project.
+        :rtype: :class:`~supervisely.api.project_api.ProjectInfo`
 
         :Usage Example:
 
@@ -799,10 +799,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param id: Project ID in Supervisely.
         :type id: int
         :param meta: ProjectMeta object or ProjectMeta in JSON format.
-        :type meta: :class:`ProjectMeta` or dict
-
-        :returns: ProjectMeta
-        :rtype: :class: `ProjectMeta`
+        :type meta: :class:`~supervisely.project.project_meta.ProjectMeta` or dict
+        :returns: ProjectMeta object with updated ProjectMeta.
+        :rtype: :class:`~supervisely.project.project_meta.ProjectMeta`
 
         :Usage Example:
 
@@ -901,7 +900,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         :param id: Project ID in Supervisely.
         :type id: int
-        :returns: Number of Datasets in the given Project
+        :returns: Number of Datasets in the given project.
         :rtype: int
 
         :Usage Example:
@@ -934,7 +933,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         :param id: Project ID in Supervisely.
         :type id: int
-        :returns: Number of images in the given Project
+        :returns: Number of images in the given project.
         :rtype: int
 
         :Usage Example:
@@ -1016,8 +1015,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         :param id: Project ID in Supervisely.
         :type id: int
-        :returns: `Pandas DataFrame <https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.html>`_
-        :rtype: :class:`DataFrame`
+        :returns: Pandas DataFrame with project activity.
+        :rtype: pandas.DataFrame
 
         :Usage Example:
 
@@ -1144,7 +1143,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param silent: Determines whether the ``updatedAt`` timestamp should be updated or not.
                        If False, ``updatedAt`` will be updated.
         :type silent: bool
-        :returns: Project information in dict format
+        :returns: ProjectInfo object in json format.
         :rtype: dict
 
         :Usage Example:
@@ -1181,7 +1180,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         :param id: Project ID in Supervisely.
         :type id: int
-        :returns: Custom data of the Project
+        :returns: Custom data of the project.
         :rtype: dict
 
         :Usage Example:
@@ -1213,7 +1212,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         :param id: Project ID in Supervisely.
         :type id: int
-        :returns: System custom data of the Project
+        :returns: System custom data of the project.
         :rtype: dict
 
         :Usage Example:
@@ -1251,7 +1250,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param use_caching: If True, uses cached version of the schema if available.
             NOTE: This may lead to checks with outdated schema. Use with caution.
             And only in scenarios when the schema is not expected to change.
-        :returns: Validation schema of the Project
+        :returns: Validation schema of the project.
         :rtype: dict
 
         :Usage Example:
@@ -1306,7 +1305,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type id: int
         :param schema: Validation schema to set. If None, removes validation schema.
         :type schema: dict, optional
-        :returns: Project information in dict format
+        :returns: ProjectInfo object in json format.
         :rtype: dict
 
         :Usage Example:
@@ -1348,7 +1347,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type id: int
         :param schema: Validation schema to set.
         :type schema: dict
-        :returns: Project information in dict format
+        :returns: ProjectInfo object in json format.
         :rtype: dict
 
         :Usage Example:
@@ -1378,7 +1377,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         :param id: Project ID in Supervisely.
         :type id: int
-        :returns: Project information in dict format
+        :returns: ProjectInfo object in json format.
         :rtype: dict
 
         :Usage Example:
@@ -1608,11 +1607,11 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param name: name of the project to search or create
         :type name: str
         :param type: type of the project to create
-        :type type: Optional[str], default ProjectType.IMAGES
+        :type type: Optional[str], default :class:`~supervisely.project.project_type.ProjectType.IMAGES`
         :param description: description of the project to create
         :type description: Optional[str]
         :returns: ProjectInfo about found or created project
-        :rtype: ProjectInfo
+        :rtype: :class:`~supervisely.api.project_api.ProjectInfo`
 
         :Usage Example:
 
@@ -1663,7 +1662,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param project_type: new type of the project
         :type project_type: Optional[str]
         :returns: ProjectInfo of the edited project
-        :rtype: ProjectInfo
+        :rtype: :class:`~supervisely.api.project_api.ProjectInfo`
         :raises ValueError: if no arguments are specified
         :raises ValueError: if invalid project type is specified
         :raises ValueError: if project with given id already has given type
@@ -1735,7 +1734,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param id: Project ID
         :type id: int
         :param meta: ProjectMeta to update ids
-        :type meta: ProjectMeta
+        :type meta: :class:`~supervisely.project.project_meta.ProjectMeta`
+        :returns: None
+        :rtype: None
 
         :Usage Example:
 
@@ -2053,7 +2054,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param id: Project ID in Supervisely.
         :type id: int
         :param classes: New classes
-        :type classes: :class: ObjClassCollection or List[ObjClass]
+        :type classes: :class:`~supervisely.annotation.obj_class_collection.ObjClassCollection` or List[:class:`~supervisely.annotation.obj_class.ObjClass`]
         :returns: None
         :rtype: None
 
@@ -2328,7 +2329,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param extra_fields: List of additional fields to be included in the response.
         :type extra_fields: List[str], optional
 
-        :returns: Search response information and 'ProjectInfo' of all projects that are searched by a given criterion.
+        :returns: Search response information and  ':class:`~supervisely.api.project_api.ProjectInfo`' of all projects that are searched by a given criterion.
         :rtype: dict
 
         :Usage Example:
@@ -2660,11 +2661,11 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         This method allows you to search for similar images in a project using either a text prompt, an image ID, or a method type.
         It is mutually exclusive, meaning you can only provide one of the parameters: ``prompt``, ``image_id``, or ``method``.
 
-        :param project_id: ID of the Project
+        :param project_id: ID of the project.
         :type project_id: int
-        :param dataset_id: ID of the Dataset. If not None - search will be limited to this dataset.
+        :param dataset_id: ID of the dataset. If not None - search will be limited to this dataset.
         :type dataset_id: Optional[int]
-        :param image_id: ID(s) of the Image(s). Searches for images similar to the specified image(s).
+        :param image_id: ID(s) of the image(s). Searches for images similar to the specified image(s).
         :type image_id: Optional[Union[int, List[int]]]
         :param prompt: Text prompt for search request. Searches for similar images based on a text description.
         :type prompt: Optional[str]
@@ -2840,8 +2841,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                                  If ``dst_project_id`` is provided, this parameter will be ignored.
         :type dst_project_name: str, optional
 
-        :returns: Generator of tuples of source and destination DatasetInfo objects
-        :rtype: Generator[Tuple[DatasetInfo, DatasetInfo], None, None]
+        :returns: Generator of tuples of source and destination DatasetInfo objects.
+        :rtype: Generator[Tuple[:class:`~supervisely.api.dataset_api.DatasetInfo`, :class:`~supervisely.api.dataset_api.DatasetInfo`], None, None]
 
         :Usage Example:
 
@@ -2910,8 +2911,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                                  If ``dst_project_id`` is provided, this parameter will be ignored.
         :type dst_project_name: str, optional
 
-        :returns: List of tuples of source and destination DatasetInfo objects
-        :rtype: List[Tuple[DatasetInfo, DatasetInfo]]
+        :returns: List of tuples of source and destination DatasetInfo objects.
+        :rtype: List[Tuple[:class:`~supervisely.api.dataset_api.DatasetInfo`, :class:`~supervisely.api.dataset_api.DatasetInfo`]]
 
         :Usage Example:
 

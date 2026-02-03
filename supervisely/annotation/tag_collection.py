@@ -1,5 +1,5 @@
 # coding: utf-8
-"""collection with :class:`Tag<supervisely.annotation.tag.Tag>` instances"""
+"""collection with :class:`Tag<~supervisely.annotation.tag.Tag>` instances"""
 
 # docs
 from __future__ import annotations
@@ -14,7 +14,7 @@ from supervisely.collection.key_indexed_collection import MultiKeyIndexedCollect
 
 class TagCollection(MultiKeyIndexedCollection):
     """
-    Collection with :class:`Tag<supervisely.annotation.tag.Tag>` instances. :class:`TagCollection<TagCollection>` object is immutable.
+    Collection with :class:`Tag<~supervisely.annotation.tag.Tag>` instances. :class:`TagCollection<~supervisely.annotation.tag_collection.TagCollection>` object is immutable.
 
     :Usage Example:
 
@@ -183,10 +183,10 @@ class TagCollection(MultiKeyIndexedCollection):
 
         :param data: List with dicts in json format.
         :type data: List[dict]
-        :param tag_meta_collection: Input TagMetaCollection object.
-        :type tag_meta_collection: TagMetaCollection
+        :param tag_meta_collection: TagMetaCollection object.
+        :type tag_meta_collection: :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection`
         :returns: TagCollection object
-        :rtype: :class:`TagCollection<TagCollection>`
+        :rtype: :class:`TagCollection<~supervisely.annotation.tag_collection.TagCollection>`
 
         :Usage Example:
 
@@ -235,12 +235,12 @@ class TagCollection(MultiKeyIndexedCollection):
 
         :param data: API response data.
         :type data: List[Dict]
-        :param tag_meta_collection: TagMetaCollection object
-        :type tag_meta_collection: TagMetaCollection
+        :param tag_meta_collection: TagMetaCollection object.
+        :type tag_meta_collection: :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection`
         :param id_to_tagmeta: Mapping of tag IDs to tag metadata.
-        :type id_to_tagmeta: Optional[Dict[int, TagMeta]]
+        :type id_to_tagmeta: Optional[Dict[int, :class:`~supervisely.annotation.tag_meta.TagMeta`]]
         :returns: TagCollection object.
-        :rtype: TagCollection
+        :rtype: :class:`~supervisely.annotation.tag_collection.TagCollection`
 
         :Usage Example:
 

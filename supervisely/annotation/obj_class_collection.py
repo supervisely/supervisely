@@ -1,5 +1,5 @@
 # coding: utf-8
-"""collection with :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` instances"""
+"""collection with :class:`ObjClass<~supervisely.annotation.obj_class.ObjClass>` instances"""
 
 # docs
 from __future__ import annotations
@@ -18,7 +18,7 @@ from supervisely.io.json import JsonSerializable
 
 class ObjClassCollection(KeyIndexedCollection, JsonSerializable):
     """
-    Collection with :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` instances. :class:`ObjClassCollection<ObjClassCollection>` object is immutable.
+    Collection with :class:`ObjClass<~supervisely.annotation.obj_class.ObjClass>` instances. :class:`ObjClassCollection<~supervisely.annotation.obj_class_collection.ObjClassCollection>` object is immutable.
 
     :raises :class:`~supervisely.collection.key_indexed_collection.DuplicateKeyError`: if instance with given name already exist
 
@@ -213,7 +213,7 @@ class ObjClassCollection(KeyIndexedCollection, JsonSerializable):
         :param data: List with dicts in json format.
         :type data: List[dict]
         :returns: ObjClassCollection object
-        :rtype: :class:`ObjClassCollection<ObjClassCollection>`
+        :rtype: :class:`ObjClassCollection<~supervisely.annotation.obj_class_collection.ObjClassCollection>`
 
         :Usage Example:
 
@@ -300,7 +300,9 @@ class ObjClassCollection(KeyIndexedCollection, JsonSerializable):
         """Updates ids of classes in the collection from given classes.
 
         :param classes: Collection with classes to update ids from.
-        :type classes: ObjClassCollection
+        :type classes: :class:`~supervisely.annotation.obj_class_collection.ObjClassCollection`
+        :returns: None
+        :rtype: None
         """
         for new_class in classes:
             my_class = self.get(new_class.name)
@@ -317,13 +319,13 @@ def make_renamed_classes(
     """Returns a new ObjClassCollection with renamed classes.
 
     :param src_obj_classes: ObjClassCollection to rename.
-    :type src_obj_classes: ObjClassCollection
-    :param renamer: Renamer object, which will handle renaming process.
-    :type renamer: Renamer
+    :type src_obj_classes: Input ObjClassCollection
+    :param renamer: :class:`~supervisely.annotation.renamer.Renamer` object, which will handle renaming process.
+    :type renamer: :class:`~supervisely.annotation.renamer.Renamer`
     :param skip_missing: If True, missing classes will be skipped, otherwise KeyError will be raised.
     :type skip_missing: Optional[bool]
     :returns: New ObjClassCollection with renamed classes.
-    :rtype: ObjClassCollection
+    :rtype: :class:`~supervisely.annotation.obj_class_collection.ObjClassCollection`
     :raises KeyError: If skip_missing is False and some classes could not be renamed.
     """
     renamed_classes = []

@@ -47,7 +47,7 @@ class AgentApi(ModuleApi, ModuleWithStatus):
     API for working with agents. :class:`~supervisely.api.agent_api.AgentApi` object is immutable.
 
     :param api: API connection to the server
-    :type api: Api
+    :type api: :class:`~supervisely.api.api.Api`
 
     :Usage Example:
 

@@ -69,7 +69,7 @@ class FileApi(ModuleApiBase):
     API for working with files. :class:`~supervisely.api.file_api.FileApi` object is immutable.
 
     :param api: API connection to the server.
-    :type api: Api
+    :type api: :class:`~supervisely.api.api.Api`
 
     :Usage Example:
 
@@ -197,8 +197,8 @@ class FileApi(ModuleApiBase):
         :type recursive: bool
         :param return_type: The specified value between 'dict' or 'fileinfo'. By default: 'dict'.
         :type return_type: str
-        :returns: List of all Files with information. See classes info_sequence and FileInfo
-        :rtype: class List[Union[Dict, FileInfo]]
+        :returns: List of all Files with information.
+        :rtype: class List[Union[Dict, :class:`~supervisely.api.file_api.FileInfo`]]
 
         :Usage Example:
 
@@ -308,7 +308,7 @@ class FileApi(ModuleApiBase):
         :param recursive: If True return all FileInfos recursively.
         :type recursive: bool
         :returns: List of all Files with information. See class info_sequence
-        :rtype: class List[FileInfo]
+        :rtype: class List[:class:`~supervisely.api.file_api.FileInfo`]
 
         :Usage Example:
 
@@ -484,7 +484,7 @@ class FileApi(ModuleApiBase):
         :param local_save_path: Local save path.
         :type local_save_path: str
         :param cache: optional
-        :type cache: FileCache, optional
+        :type cache: :class:`~supervisely.io.fs_cache.FileCache`, optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
         :returns: None
@@ -1802,7 +1802,7 @@ class FileApi(ModuleApiBase):
         :param semaphore: Semaphore for limiting the number of simultaneous downloads.
         :type semaphore: asyncio.Semaphore
         :param cache: Cache object for storing files.
-        :type cache: FileCache, optional
+        :type cache: :class:`~supervisely.io.fs_cache.FileCache`, optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "size".
@@ -1914,7 +1914,7 @@ class FileApi(ModuleApiBase):
         :param semaphore: Semaphore for limiting the number of simultaneous downloads.
         :type semaphore: asyncio.Semaphore
         :param caches: List of cache objects for storing files.
-        :type caches: List[FileCache], optional
+        :type caches: List[:class:`~supervisely.io.fs_cache.FileCache`], optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "size".

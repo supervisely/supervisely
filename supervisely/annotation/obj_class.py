@@ -1,5 +1,5 @@
 # coding: utf-8
-"""General information about :class:`Label<supervisely.annotation.label.LabelBase>`"""
+"""General information about object class"""
 
 # docs
 from __future__ import annotations
@@ -20,7 +20,7 @@ from supervisely.sly_logger import logger
 
 
 class ObjClassJsonFields:
-    """Json fields for :class:`Annotation<supervisely.annotation.obj_class.ObjClass>`"""
+    """Json fields for :class:`Annotation<~supervisely.annotation.obj_class.ObjClass>`"""
 
     ID = "id"
     """"""
@@ -40,11 +40,11 @@ class ObjClassJsonFields:
 
 class ObjClass(KeyObject, JsonSerializable):
     """
-    General information about :class:`Label<supervisely.annotation.label.Label>`. :class:`ObjClass` object is immutable.
+    General information about object class. ObjClass object is immutable.
 
     :param name: Class name.
     :type name: str
-    :param geometry_type: Defines the shape of ObjClass: :class:`Bitmap<supervisely.geometry.bitmap.Bitmap>`, :class:`Cuboid<supervisely.geometry.cuboid.Cuboid>`, :class:`Graph<supervisely.geometry.graph.GraphNodes>`, :class:`Point<supervisely.geometry.point.Point>`, :class:`Polygon<supervisely.geometry.polygon.Polygon>`, :class:`Polyline<supervisely.geometry.polyline.Polyline>`, :class:`Rectangle<supervisely.geometry.rectangle.Rectangle>`.
+    :param geometry_type: Defines the shape of ObjClass: :class:`Bitmap<~supervisely.geometry.bitmap.Bitmap>`, :class:`Cuboid<~supervisely.geometry.cuboid.Cuboid>`, :class:`Graph<~supervisely.geometry.graph.GraphNodes>`, :class:`Point<~supervisely.geometry.point.Point>`, :class:`Polygon<~supervisely.geometry.polygon.Polygon>`, :class:`Polyline<~supervisely.geometry.polyline.Polyline>`, :class:`Rectangle<~supervisely.geometry.rectangle.Rectangle>`.
     :type geometry_type: dict, optional
     :param color: :class:`[R, G, B]`, generates random color by default.
     :type color: List[int, int, int], optional
@@ -333,7 +333,7 @@ class ObjClass(KeyObject, JsonSerializable):
         Checks that 2 ObjClass objects are equal by comparing their name, geometry type and geometry config.
 
         :param other: ObjClass object.
-        :type other: ObjClass
+        :type other: :class:`~supervisely.annotation.obj_class.ObjClass`
         :returns: True if comparable objects are equal, otherwise False
         :rtype: bool
 
@@ -369,7 +369,7 @@ class ObjClass(KeyObject, JsonSerializable):
         Checks that 2 ObjClass objects are opposite.
 
         :param other: ObjClass object.
-        :type other: ObjClass
+        :type other: :class:`~supervisely.annotation.obj_class.ObjClass`
         :returns: True if comparable objects are not equal, otherwise False
         :rtype: bool
 
@@ -434,7 +434,7 @@ class ObjClass(KeyObject, JsonSerializable):
 
         :param name: Class name.
         :type name: str
-        :param geometry_type: Defines the shape of ObjClass: :class:`Bitmap<supervisely.geometry.bitmap.Bitmap>`, :class:`Cuboid<supervisely.geometry.cuboid.Cuboid>`, :class:`Point<supervisely.geometry.point.Point>`, :class:`Polygon<supervisely.geometry.polygon.Polygon>`, :class:`Polyline<supervisely.geometry.polyline.Polyline>`, :class:`Rectangle<supervisely.geometry.rectangle.Rectangle>`.
+        :param geometry_type: Defines the shape of ObjClass: :class:`Bitmap<~supervisely.geometry.bitmap.Bitmap>`, :class:`Cuboid<~supervisely.geometry.cuboid.Cuboid>`, :class:`Point<~supervisely.geometry.point.Point>`, :class:`Polygon<~supervisely.geometry.polygon.Polygon>`, :class:`Polyline<~supervisely.geometry.polyline.Polyline>`, :class:`Rectangle<~supervisely.geometry.rectangle.Rectangle>`.
         :type geometry_type: type
         :param color: :class:`[R, G, B]`, generates random color by default.
         :type color: List[int, int, int], optional
@@ -446,9 +446,8 @@ class ObjClass(KeyObject, JsonSerializable):
         :type hotkey: str, optional
         :param description: Description of the class.
         :type description: str, optional
-
-        :returns: New instance of ObjClass
-        :rtype: :class:`ObjClass<ObjClass>`
+        :returns: New instance of ObjClass object
+        :rtype: :class:`ObjClass<~supervisely.annotation.obj_class.ObjClass>`
 
         :Usage Example:
 

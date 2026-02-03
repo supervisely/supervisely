@@ -24,7 +24,7 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
     API for working with workspaces. :class:`~supervisely.api.workspace_api.WorkspaceApi` object is immutable.
 
     :param api: API connection to the server.
-    :type api: Api
+    :type api: :class:`~supervisely.api.api.Api`
 
     :Usage Example:
 
@@ -92,9 +92,9 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
         :param team_id: Team ID in which the Workspaces are located.
         :type team_id: int
         :param filters: List of params to sort output Workspaces.
-        :type filters: List[dict], optional
-        :returns: List of all Workspaces with information for the given Team. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[WorkspaceInfo]`
+        :type filters: List[Dict[str, str]], optional
+        :returns: List of all Workspaces with information for the given Team.
+        :rtype: List[:class:`~supervisely.api.workspace_api.WorkspaceInfo`]
 
         :Usage Example:
 
@@ -157,8 +157,8 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
 
         :param id: Workspace ID in Supervisely.
         :type id: int
-        :returns: Information about Workspace. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`WorkspaceInfo`
+        :returns: Information about Workspace.
+        :rtype: :class:`~supervisely.api.workspace_api.WorkspaceInfo`
 
         :Usage Example:
 
@@ -208,8 +208,8 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
         :type description: str, optional
         :param change_name_if_conflict: Checks if given name already exists and adds suffix to the end of the name.
         :type change_name_if_conflict: bool, optional
-        :returns: Information about Workspace. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`WorkspaceInfo`
+        :returns: Information about Workspace.
+        :rtype: :class:`~supervisely.api.workspace_api.WorkspaceInfo`
 
         :Usage Example:
 

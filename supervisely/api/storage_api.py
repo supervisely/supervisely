@@ -22,7 +22,7 @@ class StorageApi(FileApi):
     :class:`~supervisely.api.storage_api.StorageApi` object is immutable.
 
     :param api: API connection to the server.
-    :type api: Api
+    :type api: :class:`~supervisely.api.api.Api`
 
     :Usage Example:
 
@@ -99,8 +99,8 @@ class StorageApi(FileApi):
         :type include_folders: bool
         :param limit: Limit the number of files returned.
         :type limit: int
-        :returns: List of all Files with information. See classes info_sequence and FileInfo
-        :rtype: class List[Union[Dict, FileInfo]]
+        :returns: List of all Files with information.
+        :rtype: class List[Union[Dict, :class:`~supervisely.api.file_api.FileInfo`]]
 
         :Usage Example:
 

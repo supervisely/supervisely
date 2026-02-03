@@ -1,5 +1,5 @@
 # coding: utf-8
-"""Tag can be attached to whole image and/or to individual :class:`Label<supervisely.annotation.label.Label>`"""
+"""Tag can be attached to whole image and/or to individual :class:`Label<~supervisely.annotation.label.Label>`"""
 
 # docs
 from __future__ import annotations
@@ -13,7 +13,7 @@ from supervisely.collection.key_indexed_collection import KeyObject
 
 
 class TagJsonFields:
-    """Json fields for :class:`Annotation<supervisely.annotation.tag.Tag>`"""
+    """Json fields for :class:`Annotation<~supervisely.annotation.tag.Tag>`"""
 
     TAG_NAME = "name"
     """"""
@@ -33,11 +33,11 @@ class TagJsonFields:
 
 class Tag(KeyObject):
     """
-    :class:`Tag<Tag>` can be attached to whole image and/or to individual :class:`Label<LabelBase>`. :class:`Tag<Tag>` object is immutable.
+    :class:`Tag<~supervisely.annotation.tag.Tag>` can be attached to whole image and/or to individual :class:`Label<~supervisely.annotation.label.LabelBase>`. :class:`Tag<~supervisely.annotation.tag.Tag>` object is immutable.
 
     :param meta: General information about Tag.
-    :type meta: TagMeta
-    :param value: Tag value. Depends on :class:`TagValueType<TagValueType>` of :class:`TagMeta<TagMeta>`.
+    :type meta: :class:`~supervisely.annotation.tag_meta.TagMeta`
+    :param value: Tag value. Depends on TagValueType of :class:`TagMeta<~supervisely.annotation.tag_meta.TagMeta>`.
     :type value: Optional[Union[str, int, float]]
     :param sly_id: Tag ID in Supervisely server.
     :type sly_id: int, optional
@@ -47,7 +47,7 @@ class Tag(KeyObject):
     :type updated_at: str, optional
     :param created_at: Date and Time when Tag was created. Date Format is the same as in "updated_at" parameter.
     :type created_at: str, optional
-    :raises ValueError: if meta is None or if Tag has incompatible value against it's meta value type
+    :raises ValueError: if meta is None or if :class:`~supervisely.annotation.tag.Tag` has incompatible value against it's meta value type
 
     :Usage Example:
 
@@ -109,10 +109,10 @@ class Tag(KeyObject):
     @property
     def meta(self) -> TagMeta:
         """
-        General information about Tag. When creating a new Tag, it's value is automatically cross-checked against :class:`TagValueType<supervisely.annotation.tag_meta.TagValueType>` to make sure that value is valid.
+        General information about Tag. When creating a new Tag, it's value is automatically cross-checked against :class:`TagValueType<~supervisely.annotation.tag_meta.TagValueType>` to make sure that value is valid.
 
         :returns: TagMeta object
-        :rtype: :class:`TagMeta<supervisely.annotation.tag_meta.TagMeta>`
+        :rtype: :class:`TagMeta<~supervisely.annotation.tag_meta.TagMeta>`
 
         :Usage Example:
 
@@ -130,7 +130,7 @@ class Tag(KeyObject):
     @property
     def value(self) -> str or int or float:
         """
-        Tag value. Return type depends on :class:`TagValueType<supervisely.annotation.tag_meta.TagValueType>`.
+        Tag value. Return type depends on :class:`TagValueType<~supervisely.annotation.tag_meta.TagValueType>`.
 
         :returns: Tag value
         :rtype: str, int or float or None
@@ -252,9 +252,9 @@ class Tag(KeyObject):
         :param data: Tag in json format as a dict.
         :type data: dict
         :param tag_meta_collection: TagMetaCollection object.
-        :type tag_meta_collection: TagMetaCollection
+        :type tag_meta_collection: :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection`
         :returns: Tag object
-        :rtype: :class:`Tag<Tag>`
+        :rtype: :class:`Tag<~supervisely.annotation.tag.Tag>`
 
         :Usage Example:
 
@@ -303,7 +303,7 @@ class Tag(KeyObject):
         """
         Displays information about Tag's name and value in string format.
 
-        :returns: Name and value of the given Tag
+        :returns: Name and value of the given :class:`~supervisely.annotation.tag.Tag`
         :rtype: str
 
         :Usage Example:
@@ -327,7 +327,7 @@ class Tag(KeyObject):
         Checks that 2 Tags are equal by comparing their meta and value.
 
         :param other: Tag object.
-        :type other: Tag
+        :type other: :class:`~supervisely.annotation.tag.Tag`
         :returns: True if comparable objects are equal, otherwise False
         :rtype: bool
 
@@ -361,7 +361,7 @@ class Tag(KeyObject):
         Checks that 2 Tags are opposite.
 
         :param other: Tag object.
-        :type other: Tag
+        :type other: :class:`~supervisely.annotation.tag.Tag`
         :returns: True if comparable objects are not equal, otherwise False
         :rtype: bool
 
@@ -403,18 +403,18 @@ class Tag(KeyObject):
         Clone makes a copy of Tag with new fields, if fields are given, otherwise it will use original Tag fields.
 
         :param meta: General information about Tag.
-        :type meta: TagMeta
+        :type meta: :class:`~supervisely.annotation.tag_meta.TagMeta`
         :type value: str or int or float or None
         :param sly_id: Tag ID in Supervisely server.
         :type sly_id: int, optional
-        :param labeler_login: Login of user who created Tag.
+        :param labeler_login: Login of user who created :class:`~supervisely.annotation.tag.Tag`.
         :type labeler_login: str, optional
         :param updated_at: Date and Time when Tag was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
         :type updated_at: str, optional
         :param created_at: Date and Time when Tag was created. Date Format is the same as in "updated_at" parameter.
         :type created_at: str, optional
-        :returns: New instance of Tag
-        :rtype: :class:`Tag<Tag>`
+        :returns: New instance of Tag object
+        :rtype: :class:`Tag<~supervisely.annotation.tag.Tag>`
 
         :Usage Example:
 

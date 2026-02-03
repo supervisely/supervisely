@@ -27,14 +27,14 @@ def skeletonize_bitmap(
     """Extracts skeletons from bitmap figures.
 
     :param ann: Input annotation.
-    :type ann: Annotation
-    :param classes: List of classes to skeletonize.
+    :type ann: :class:`~supervisely.annotation.annotation.Annotation`
+    :param classes: List of classes names to skeletonize.
     :type classes: List[str]
     :param method_id: Algorithm of processing. See supervisely.geometry.bitmap.SkeletonizeMethod enum.
-    :type method_id: SkeletonizeMethod
+    :type method_id: :class:`~supervisely.geometry.bitmap.SkeletonizeMethod`
     :returns: Annotation with skeletonized labels.
-    :rtype: Annotation
-    :raises RuntimeError: If input class is not a Bitmap.
+    :rtype: :class:`~supervisely.annotation.annotation.Annotation`
+    :raises RuntimeError: If input class is not a :class:`~supervisely.geometry.bitmap.Bitmap`.
     """
 
     def _skel(label: Label):
@@ -53,14 +53,14 @@ def approximate_vector(ann: Annotation, classes: List[str], epsilon: float) -> A
     """Approximates vector figures: lines and polygons.
 
     :param ann: Input annotations.
-    :type ann: Annotation
-    :param classes: List of classes to apply transformation.
+    :type ann: :class:`~supervisely.annotation.annotation.Annotation`
+    :param classes: List of classes names to apply transformation.
     :type classes: List[str]
     :param epsilon: Approximation accuracy (maximum distance between the original curve and its approximation)
     :type epsilon: float
     :returns: Annotation with approximated vector figures of selected classes.
-    :rtype: Annotation
-    :raises RuntimeError: If input class is not a Polygon or a Line.
+    :rtype: :class:`~supervisely.annotation.annotation.Annotation`
+    :raises RuntimeError: If input class is not a :class:`~supervisely.geometry.polygon.Polygon` or a :class:`~supervisely.geometry.polyline.Polyline`.
     """
 
     def _approx(label: Label):
@@ -79,11 +79,11 @@ def add_background(ann: Annotation, bg_class: ObjClass) -> Annotation:
     """Adds background rectangle (size equals to image size) to annotation.
 
     :param ann: Input annotation.
-    :type ann: Annotation
-    :param bg_class: ObjClass instance for background class label.
-    :type bg_class: ObjClass
+    :type ann: :class:`~supervisely.annotation.annotation.Annotation`
+    :param bg_class: :class:`~supervisely.annotation.obj_class.ObjClass` instance for background.
+    :type bg_class: :class:`~supervisely.annotation.obj_class.ObjClass`
     :returns: Annotation with added background rectangle.
-    :rtype: Annotation
+    :rtype: :class:`~supervisely.annotation.annotation.Annotation`
     """
     img_size = ann.img_size
     rect = Rectangle(0, 0, img_size[0] - 1, img_size[1] - 1)
@@ -95,11 +95,11 @@ def drop_object_by_class(ann: Annotation, classes: List[str]) -> Annotation:
     """Removes labels of specified classes from annotation.
 
     :param ann: Input annotation.
-    :type ann: Annotation
-    :param classes: List of classes to remove.
+    :type ann: :class:`~supervisely.annotation.annotation.Annotation`
+    :param classes: List of classes names to remove.
     :type classes: List[str]
     :returns: Annotation with removed labels of specified classes.
-    :rtype: Annotation
+    :rtype: :class:`~supervisely.annotation.annotation.Annotation`
     """
 
     def _filter(label: Label):
@@ -119,15 +119,15 @@ def filter_objects_by_area(
     """Deletes labels less (or greater) than specified percentage of image area.
 
     :param ann: Input annotation.
-    :type ann: Annotation
-    :param classes: List of classes to filter.
+    :type ann: :class:`~supervisely.annotation.annotation.Annotation`
+    :param classes: List of classes names to filter.
     :type classes: List[str]
     :param comparator: Comparison function.
     :type comparator: Callable, optional
     :param thresh_percent: Threshold percent value of image area.
     :type thresh_percent: float, optional
     :returns: Annotation containing filtered labels.
-    :rtype: Annotation
+    :rtype: :class:`~supervisely.annotation.annotation.Annotation`
     """
     imsize = ann.img_size
     img_area = float(imsize[0] * imsize[1])
@@ -152,16 +152,16 @@ def bitwise_mask(
     """Performs bitwise operation between two masks. Uses one target mask to correct all others.
 
     :param ann: Input annotation.
-    :type ann: Annotation
+    :type ann: :class:`~supervisely.annotation.annotation.Annotation`
     :param class_mask: Class name of target mask.
     :type class_mask: str
     :param classes_to_correct: List of classes which will be corrected using target mask.
     :type classes_to_correct: List[str]
-    ;param bitwise_op: Bitwise numpy function to process masks.For example: "np.logical_or", "np.logical_and",
+    :param bitwise_op: Bitwise numpy function to process masks.For example: "np.logical_or", "np.logical_and",
     :type bitwise_op: Callable[[np.ndarray, np.ndarray], np.ndarray], optional
     :returns: Annotation containing corrected Bitmaps.
-    :rtype: Annotation
-    :raises RuntimeError: If input class is not a Bitmap.
+    :rtype: :class:`~supervisely.annotation.annotation.Annotation`
+    :raises RuntimeError: If input class is not a :class:`~supervisely.geometry.bitmap.Bitmap`.
     """
     imsize = ann.img_size
 
@@ -205,12 +205,12 @@ def find_contours(
     """Finds contours of Bitmaps and converts them to Polygons.
 
     :param ann: Input annotation.
-    :type ann: Annotation
+    :type ann: :class:`~supervisely.annotation.annotation.Annotation`
     :param classes_mapping: Dict matching source class names and new ObjClasses
-    :type classes_mapping: Dict[str, ObjClass]
+    :type classes_mapping: Dict[str, :class:`~supervisely.annotation.obj_class.ObjClass`]
     :returns: Annotation with Bitmaps converted to contours Polygons.
-    :rtype: Annotation
-    :raises RuntimeError: If input class is not a Bitmap.
+    :rtype: :class:`~supervisely.annotation.annotation.Annotation`
+    :raises RuntimeError: If input class is not a :class:`~supervisely.geometry.bitmap.Bitmap`.
     """
 
     def to_contours(label: Label):
@@ -232,12 +232,13 @@ def extract_labels_from_mask(
 ) -> List[Label]:
     """
     Extract multiclass instances from grayscale mask and save it to labels list.
-    :param mask: multiclass grayscale mask
+
+    :param mask: Multiclass grayscale mask
     :type mask: np.ndarray
-    :param color_id_to_obj_class: dict of objects classes assigned to color id (e.g. {1: ObjClass('cat), ...})
-    :type color_id_to_obj_class: Dict[int, ObjClass]
-    :returns: list of labels with bitmap geometry
-    :rtype: List[Label]
+    :param color_id_to_obj_class: dict of objects classes assigned to color id (e.g. {1: :class:`~supervisely.annotation.obj_class.ObjClass`('cat), ...})
+    :type color_id_to_obj_class: Dict[int, :class:`~supervisely.annotation.obj_class.ObjClass`]
+    :returns: List of labels with bitmap geometry
+    :rtype: List[:class:`~supervisely.annotation.label.Label`]
     """
     from scipy import ndimage
     from skimage import measure

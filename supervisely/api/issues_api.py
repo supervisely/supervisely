@@ -32,7 +32,7 @@ class CommentInfo(NamedTuple):
         :param data: JSON data.
         :type data: Dict
         :returns: Instance of the class.
-        :rtype: CommentInfo
+        :rtype: :class:`~supervisely.api.issues_api.CommentInfo`
         """
         return cls(
             id=data.get(ApiField.ID),
@@ -66,7 +66,7 @@ class IssuesApi(ModuleApiBase):
     """Class for working with issues in Supervisely.
 
     :param api: API connection to the server.
-    :type api: Api
+    :type api: :class:`~supervisely.api.api.Api`
 
     :Usage Example:
 
@@ -123,9 +123,8 @@ class IssuesApi(ModuleApiBase):
         :type team_id: int
         :param filters: List of filters to apply to the list of issues.
         :type filters: List[Dict[str, str]], optional
-
         :returns: List of issues.
-        :rtype: List[IssueInfo]
+        :rtype: List[:class:`~supervisely.api.issues_api.IssueInfo`]
 
         :Usage Example:
 
@@ -157,7 +156,7 @@ class IssuesApi(ModuleApiBase):
         :param id: Issue ID.
         :type id: int
         :returns: Information about the issue.
-        :rtype: IssueInfo
+        :rtype: :class:`~supervisely.api.issues_api.IssueInfo`
 
         :Usage Example:
 
@@ -207,7 +206,7 @@ class IssuesApi(ModuleApiBase):
             created. If set to False, the issue will be available for all users from all teams.
         :type is_local: bool
         :returns: Information about the added issue.
-        :rtype: IssueInfo
+        :rtype: :class:`~supervisely.api.issues_api.IssueInfo`
 
         :Usage Example:
 
@@ -263,7 +262,7 @@ class IssuesApi(ModuleApiBase):
         :type is_pinned: bool, optional
         :raises ValueError: if the status is incorrect. Expected one of ["open", "closed"], got {status}
         :returns: Information about the issue.
-        :rtype: IssueInfo
+        :rtype: :class:`~supervisely.api.issues_api.IssueInfo`
 
         :Usage Example:
 
@@ -302,7 +301,8 @@ class IssuesApi(ModuleApiBase):
         return self.get_info_by_id(issue_id)
 
     def remove(self, issue_id: int) -> None:
-        """Remove the issue by its ID.
+        """
+        Remove the issue by its ID.
         NOTE: This operation is irreversible.
 
         :param issue_id: Issue ID.
@@ -330,15 +330,15 @@ class IssuesApi(ModuleApiBase):
         self._api.post("issues.remove", {ApiField.ID: issue_id})
 
     def add_comment(self, issue_id: int, comment: str) -> CommentInfo:
-        """Add a comment to the issue with the specified ID.
+        """
+        Add a comment to the issue with the specified ID.
 
         :param issue_id: Issue ID.
         :type issue_id: int
         :param comment: Comment text.
         :type comment: str
-
         :returns: Information about the added comment.
-        :rtype: CommentInfo
+        :rtype: :class:`~supervisely.api.issues_api.CommentInfo`
 
         :Usage Example:
 
@@ -366,14 +366,15 @@ class IssuesApi(ModuleApiBase):
         return CommentInfo.from_json(response.json())
 
     def update_comment(self, comment_id: int, comment: str) -> CommentInfo:
-        """Update the comment with the specified ID.
+        """
+        Update the comment with the specified ID.
 
         :param comment_id: Comment ID.
         :type comment_id: int
         :param comment: New comment text.
         :type comment: str
         :returns: Information about the updated comment.
-        :rtype: CommentInfo
+        :rtype: :class:`~supervisely.api.issues_api.CommentInfo`
 
         :Usage Example:
 
@@ -430,10 +431,11 @@ class IssuesApi(ModuleApiBase):
         annotation_info: AnnotationInfo,
         project_meta: ProjectMeta,
     ) -> None:
-        """Add a subissue to the specified issue.
+        """
+        Add a subissue to the specified issue.
         Image and label IDs should be the same type, e.g. both int or list of ints.
         If they are lists, they should have the same length.
-        Annotation info should be an instance of AnnotationInfo, not sly.Annotation, since the
+        Annotation info should be an instance of AnnotationInfo, not :class:`~supervisely.annotation.annotation.Annotation`, since the
         second one does not contain required information.
 
         :param issue_id: Issue ID.
@@ -447,9 +449,11 @@ class IssuesApi(ModuleApiBase):
         :param left: Left position of the marker of subissue in the Labeling interface.
         :type left: Union[int, float]
         :param annotation_info: Information about the annotation.
-        :type annotation_info: AnnotationInfo
+        :type annotation_info: :class:`~supervisely.api.annotation_api.AnnotationInfo`
         :param project_meta: Project meta information.
-        :type project_meta: ProjectMeta
+        :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
+        :returns: None
+        :rtype: None
 
         :Usage Example:
 

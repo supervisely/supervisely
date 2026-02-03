@@ -1,5 +1,5 @@
 # coding: utf-8
-"""Collection with :class:`TagMeta<supervisely.annotation.tag_meta.TagMeta>` instances"""
+"""Collection with :class:`TagMeta<~supervisely.annotation.tag_meta.TagMeta>` instances"""
 
 # docs
 from __future__ import annotations
@@ -15,7 +15,7 @@ from supervisely.io.json import JsonSerializable
 
 class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
     """
-    Collection with :class:`TagMeta<supervisely.annotation.tag_meta.TagMeta>` instances. :class:`TagMetaCollection<TagMetaCollection>` object is immutable.
+    Collection with :class:`TagMeta<~supervisely.annotation.tag_meta.TagMeta>` instances. :class:`TagMetaCollection<~supervisely.annotation.tag_meta_collection.TagMetaCollection>` object is immutable.
 
     :raises :class:`~supervisely.collection.key_indexed_collection.DuplicateKeyError`: if instance with given name already exists
 
@@ -214,7 +214,7 @@ class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
         :param data: List with dicts in json format.
         :type data: List[dict]
         :returns: TagMetaCollection object
-        :rtype: :class:`TagMetaCollection<TagMetaCollection>`
+        :rtype: :class:`TagMetaCollection<~supervisely.annotation.tag_meta_collection.TagMetaCollection>`
 
         :Usage Example:
 
@@ -281,7 +281,9 @@ class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
         """Update ids of TagMetas in collection from given collection.
 
         :param tags: TagMetaCollection to update ids from.
-        :type tags: TagMetaCollection
+        :type tags: :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection`
+        :returns: None
+        :rtype: None
         """
         for new_tag in tags:
             my_tag = self.get(new_tag.name)
@@ -295,7 +297,7 @@ class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
         :param tag_meta_id: TagMeta id to search for.
         :type tag_meta_id: int
         :returns: TagMeta with given id.
-        :rtype: TagMeta
+        :rtype: :class:`~supervisely.annotation.tag_meta.TagMeta`
         """
         for tag_meta in self:
             if tag_meta.sly_id == tag_meta_id:
@@ -313,10 +315,10 @@ class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
         Merge two TagMetaCollection objects.
 
         :param other: TagMetaCollection object.
-        :type other:  TagMetaCollection
-        :raises ValueError: if item name from given collection is in TagMetaCollection but TagMetas in both are different
+        :type other:  :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection`
+        :raises ValueError: if item name from given collection is in :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection` but TagMetas in both are different
         :returns: TagMetaCollection object
-        :rtype: :class:`TagMetaCollection<TagMetaCollection>`
+        :rtype: :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection`
 
         :Usage Example:
 
@@ -382,7 +384,17 @@ class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
 def make_renamed_tag_metas(
     src_tag_metas: TagMetaCollection, renamer: Renamer, skip_missing: bool = False
 ) -> TagMetaCollection:
-    """make_renamed_tag_metas"""
+    """Returns a new TagMetaCollection with renamed TagMetas.
+
+    :param src_tag_metas: TagMetaCollection to rename.
+    :type src_tag_metas: :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection`
+    :param renamer: Renamer object, which will handle renaming process.
+    :type renamer: :class:`~supervisely.annotation.renamer.Renamer`
+    :param skip_missing: If True, missing TagMetas will be skipped, otherwise KeyError will be raised.
+    :type skip_missing: bool, optional
+    :returns: New TagMetaCollection with renamed TagMetas.
+    :rtype: :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection`
+    """
     result_tags = []
     for src_tag in src_tag_metas:
         renamed_name = renamer.rename(src_tag.name)

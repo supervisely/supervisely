@@ -95,13 +95,13 @@ class ApiContext:
     It allows you to avoid redundant API calls to get the same project or dataset info multiple times.
 
     :param api: API object.
-    :type api: :class:`Api`
+    :type api: :class:`~supervisely.api.api.Api`
     :param project_id: Project ID.
     :type project_id: int, optional
     :param dataset_id: Dataset ID.
     :type dataset_id: int, optional
     :param project_meta: ProjectMeta object.
-    :type project_meta: :class:`ProjectMeta`, optional
+    :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`, optional
     :raises RuntimeError: if api is None.
 
     :Usage Example:
@@ -236,7 +236,7 @@ class UserSession:
         :param password: User password.
         :type password: str
         :returns: UserSession object
-        :rtype: :class:`UserSession`
+        :rtype: :class:`~supervisely.api.api.UserSession`
         """
         login_url = urljoin(self.server_address, "api/account")
         payload = {"login": login, "password": password}
@@ -255,7 +255,7 @@ class UserSession:
 
 class Api:
     """
-    An API connection to the server with which you can communicate with your teams, workspaces and projects. :class:`Api<Api>` object is immutable.
+    An API connection to the server with which you can communicate with your teams, workspaces and projects. :class:`Api<~supervisely.api.api.Api>` object is immutable.
 
     :param server_address: Address of the server.
     :type server_address: str
@@ -989,7 +989,7 @@ class Api:
         :type login: str
         :param password: User password.
         :type password: str
-        :param override: If False, return Api object. If True, additionally create ".env" file or overwrite existing (backup file will be created automatically), and override environment variables.
+        :param override: If False, return :class:`~supervisely.api.api.Api` object. If True, additionally create ".env" file or overwrite existing (backup file will be created automatically), and override environment variables.
         :type override: bool, optional
         :param env_file: Path to your .env file.
         :type env_file: str, optional
@@ -997,6 +997,7 @@ class Api:
             version of the Supervisely instance.
         :type check_instance_version: bool or str, optional
         :returns: Api object
+        :rtype: :class:`~supervisely.api.api.Api`
 
         :Usage Example:
 

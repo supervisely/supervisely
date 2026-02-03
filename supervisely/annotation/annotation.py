@@ -9,7 +9,7 @@ import json
 import operator
 from collections import defaultdict
 from copy import deepcopy
-from typing import TYPE_CHECKING, Callable, Dict, List, Literal, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 
 import numpy as np
 from PIL import Image
@@ -306,7 +306,7 @@ class Annotation:
         :param data: Annotation in json format as a dict.
         :type data: dict
         :param project_meta: Input :class:`~supervisely.project.project_meta.ProjectMeta`.
-        :type project_meta: ProjectMeta
+        :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
         :returns: Annotation object
         :rtype: :class:`~supervisely.annotation.annotation.Annotation`
         :raises Exception: if failed to deserialize one of the label from JSON format annotation
@@ -383,7 +383,7 @@ class Annotation:
         :param path: Path to the json file.
         :type path: str
         :param project_meta: Input :class:`~supervisely.project.project_meta.ProjectMeta`.
-        :type project_meta: ProjectMeta
+        :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
         :returns: Annotation object
         :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
@@ -436,20 +436,19 @@ class Annotation:
 
         :param img_size: Size of the image (height, width).
         :type img_size: Tuple[int, int] or List[int, int]
-        :param labels: List of Label objects.
-        :type labels: List[Label]
+        :param labels: List of labels.
+        :type labels: List[:class:`~supervisely.annotation.label.Label`]
         :param img_tags: TagCollection object or list of Tag objects.
-        :type img_tags: TagCollection or List[Tag]
+        :type img_tags: :class:`~supervisely.annotation.tag_collection.TagCollection` or List[:class:`~supervisely.annotation.tag.Tag`]
         :param img_description: Image description.
         :type img_description: str, optional
-        :param pixelwise_scores_labels: List of Label objects.
-        :type pixelwise_scores_labels: List[Label]
+        :param pixelwise_scores_labels: List of labels with pixel-wise scores.
+        :type pixelwise_scores_labels: List[:class:`~supervisely.annotation.label.Label`]
         :param custom_data: Custom data.
         :type custom_data: dict, optional
         :param image_id: Id of the image.
         :type image_id: int, optional
-
-        :returns: New instance of Annotation
+        :returns: New instance of Annotation object
         :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
@@ -488,12 +487,15 @@ class Annotation:
             image_id=take_with_default(image_id, self.image_id),
         )
 
-    def _add_labels_impl(self, dest: List, labels: List[Label]):
+    def _add_labels_impl(self, dest: List[Label], labels: List[Label]):
         """
         The function _add_labels_impl extend list of the labels of the current Annotation object
-        :param dest: destination list of the Label class objects
-        :param labels: list of the Label class objects to be added to the destination list
-        :returns: list of the Label class objects
+        :param dest: Destination list of labels
+        :type dest: List[:class:`~supervisely.annotation.label.Label`]
+        :param labels: List of labels to be added to the destination list
+        :type labels: List[:class:`~supervisely.annotation.label.Label`]
+        :returns: None
+        :rtype: None
         """
         for label in labels:
             if self.img_size.count(None) == 0 and not isinstance(label.geometry, OrientedBBox):
@@ -519,8 +521,8 @@ class Annotation:
         Clones Annotation and adds a new Label.
 
         :param label: Label to be added.
-        :type label: Label
-        :returns: New instance of Annotation
+        :type label: :class:`~supervisely.annotation.label.Label`
+        :returns: New instance of :class:`~supervisely.annotation.annotation.Annotation`
         :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
@@ -543,11 +545,11 @@ class Annotation:
 
     def add_labels(self, labels: List[Label]) -> Annotation:
         """
-        Clones Annotation and adds a new Labels.
+        Clones Annotation and adds multiple new Labels.
 
-        :param labels: List of Label objects to be added.
-        :type labels: List[Label]
-        :returns: New instance of Annotation
+        :param labels: List of labels to be added.
+        :type labels: List[:class:`~supervisely.annotation.label.Label`]
+        :returns: New instance of Annotation object
         :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
@@ -578,9 +580,9 @@ class Annotation:
         Clones Annotation with removed Label.
 
         :param label: Label to be deleted.
-        :type label: Label
-        :raises KeyError: if there is no deleted Label in current Annotation object
-        :returns: New instance of Annotation
+        :type label: :class:`~supervisely.annotation.label.Label`
+        :raises KeyError: if there is no deleted label in current Annotation object
+        :returns: New instance of Annotation object
         :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
@@ -622,8 +624,11 @@ class Annotation:
     def add_pixelwise_score_label(self, label: Label) -> Annotation:
         """
         Add label to the pixelwise_scores_labels and return the copy of the current  Annotation object.
-        :param label: Label class object to be added
-        :returns: Annotation class object with the new list of the pixelwise_scores_labels
+
+        :param label: Label to be added
+        :type label: :class:`~supervisely.annotation.label.Label`
+        :returns: Annotation object with the new list of the pixelwise_scores_labels
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
         """
         return self.add_pixelwise_score_labels([label])
 
@@ -631,8 +636,11 @@ class Annotation:
         """
         Add_pixelwise_score_labels extend list of the labels of the pixelwise_scores_labels and return
         the copy of the current  Annotation object.
-        :param labels: list of the Label class objects to be added
-        :returns: Annotation class object with the new list of the pixelwise_scores_labels
+
+        :param labels: List of labels to be added
+        :type labels: List[:class:`~supervisely.annotation.label.Label`]
+        :returns: Annotation object with the new list of the pixelwise_scores_labels
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
         """
         new_labels = []
         self._add_labels_impl(new_labels, labels)
@@ -642,9 +650,9 @@ class Annotation:
         """
         Clones Annotation and adds a new Tag.
 
-        :param tag: Tag object to be added.
-        :type tag: Tag
-        :returns: New instance of Annotation
+        :param tag: Tag to be added.
+        :type tag: :class:`~supervisely.annotation.tag.Tag`
+        :returns: New instance of Annotation object
         :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
@@ -670,8 +678,8 @@ class Annotation:
         Clones Annotation and adds a new list of Tags.
 
         :param tags: List of Tags to be added.
-        :type tags: List[Tag]
-        :returns: New instance of Annotation
+        :type tags: List[:class:`~supervisely.annotation.tag.Tag`]
+        :returns: New instance of Annotation object
         :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
@@ -701,7 +709,7 @@ class Annotation:
 
         :param tag_names: List of Tags names to be deleted.
         :type tag_names: List[str]
-        :returns: New instance of Annotation
+        :returns: New instance of Annotation object
         :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
@@ -735,7 +743,7 @@ class Annotation:
 
         :param tag_name: Tag name to be delete.
         :type tag_name: str
-        :returns: New instance of Annotation
+        :returns: New instance of Annotation object
         :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
@@ -763,8 +771,8 @@ class Annotation:
         Clones Annotation with removed Tags.
 
         :param tags: List of Tags to be deleted.
-        :type tags: List[Tag]
-        :returns: New instance of Annotation
+        :type tags: List[:class:`~supervisely.annotation.tag.Tag`]
+        :returns: New instance of Annotation object
         :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
@@ -796,8 +804,8 @@ class Annotation:
         Clones Annotation with removed Tag.
 
         :param tag: Tag to be deleted.
-        :type tag: Tag
-        :returns: New instance of Annotation
+        :type tag: :class:`~supervisely.annotation.tag.Tag`
+        :returns: New instance of Annotation object
         :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
@@ -832,7 +840,8 @@ class Annotation:
         Annotation object.
         :param label_transform_fn: function for transform labels
         :param new_size: new image size
-        :returns: Annotation class object with new labels and image size
+        :returns: Annotation object with new labels and image size
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
         """
 
         def _do_transform_labels(src_labels, label_transform_fn):
@@ -859,9 +868,9 @@ class Annotation:
         """
         Crops Labels of the current Annotation.
 
-        :param rect: Rectangle object for crop.
-        :type rect: Rectangle
-        :returns: New instance of Annotation
+        :param rect: :class:`~supervisely.geometry.rectangle.Rectangle` object for crop.
+        :type rect: :class:`~supervisely.geometry.rectangle.Rectangle`
+        :returns: New instance of Annotation object
         :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
@@ -923,9 +932,9 @@ class Annotation:
         """
         Crops current Annotation and with image size (height, width) changes.
 
-        :param rect: Rectangle object for crop.
-        :type rect: Rectangle
-        :returns: New instance of Annotation
+        :param rect: :class:`~supervisely.geometry.rectangle.Rectangle` object for crop.
+        :type rect: :class:`~supervisely.geometry.rectangle.Rectangle`
+        :returns: New instance of Annotation object
         :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
@@ -988,9 +997,9 @@ class Annotation:
         """
         Rotates current Annotation.
 
-        :param rotator: ImageRotator object.
-        :type rotator: ImageRotator
-        :returns: New instance of Annotation
+        :param rotator: :class:`~supervisely.geometry.image_rotator.ImageRotator` object.
+        :type rotator: :class:`~supervisely.geometry.image_rotator.ImageRotator`
+        :returns: New instance of :class:`~supervisely.annotation.annotation.Annotation`
         :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
@@ -1059,9 +1068,8 @@ class Annotation:
         :type out_size: Tuple[int, int]
         :param skip_empty_masks: Skip the raising of the error when you have got an empty label mask after a resizing procedure.
         :type skip_empty_masks: bool
-
-        :returns: New instance of Annotation
-        :rtype: :class: Annotation
+        :returns: New instance of Annotation object
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
 
@@ -1131,7 +1139,7 @@ class Annotation:
 
         :param factor: Scale size.
         :type factor: float
-        :returns: New instance of Annotation
+        :returns: New instance of Annotation object
         :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
@@ -1198,7 +1206,7 @@ class Annotation:
         """
         Flips the current Annotation horizontally.
 
-        :returns: New instance of Annotation
+        :returns: New instance of Annotation object
         :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
@@ -1261,7 +1269,7 @@ class Annotation:
         """
         Flips the current Annotation vertically.
 
-        :returns: New instance of Annotation
+        :returns: New instance of Annotation object
         :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
@@ -1359,7 +1367,7 @@ class Annotation:
         """
         Draws current Annotation on image. Modifies mask.
 
-        :param bitmap: Image.
+        :param bitmap: :class:`~supervisely.app.widgets.image.image.Image`.
         :type bitmap: np.ndarray
         :param color: Drawing color in ``[R, G, B]``.
         :type color: List[int, int, int], optional
@@ -1447,7 +1455,7 @@ class Annotation:
         """
         Draws geometry contour of Annotation on image. Modifies mask.
 
-        :param bitmap: Image.
+        :param bitmap: :class:`~supervisely.app.widgets.image.image.Image`.
         :type bitmap: np.ndarray
         :param color: Drawing color in ``[R, G, B]``.
         :type color: List[int, int, int], optional
@@ -1514,7 +1522,7 @@ class Annotation:
 
         :param img_path: Path to the input image.
         :type img_path: str
-        :returns: Annotation
+        :returns: Annotation object
         :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
@@ -1642,7 +1650,7 @@ class Annotation:
         :param class_names: List of classes names.
         :type class_names: List[str], optional
         :returns: Number of each class in Annotation and total number of classes
-        :rtype: :class:`defaultdict`
+        :rtype: :class:`~collections.defaultdict`
 
         :Usage Example:
 
@@ -1685,7 +1693,9 @@ class Annotation:
         :param render: Target render to draw classes.
         :type render: np.ndarray
         :param name_to_index: Dict where keys are class names and values are class indices to draw on render.
-        :type name_to_index: dict
+        :type name_to_index: Dict[str, int]
+        :returns: None
+        :rtype: None
 
         :Usage Example:
 
@@ -1729,12 +1739,12 @@ class Annotation:
             label.draw(render, color=color, thickness=1)
 
     @property
-    def custom_data(self):
+    def custom_data(self) -> Dict[str, Any]:
         """
         Custom annotation data (stored in ``customBigData`` in Supervisely JSON format).
 
-        :returns: Copy of custom data dict.
-        :rtype: dict
+        :returns: Copy of custom data dictionary.
+        :rtype: Dict[str, Any]
         """
         return self._custom_data.copy()
 
@@ -1753,7 +1763,7 @@ class Annotation:
         :type filter_operator: operator
         :param classes: List of Labels names to apply filter.
         :type classes: List[str]
-        :returns: New instance of Annotation
+        :returns: New instance of :class:`~supervisely.annotation.annotation.Annotation`
         :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
@@ -1887,8 +1897,8 @@ class Annotation:
         Merge current Annotation with another Annotation.
 
         :param other: Annotation to merge.
-        :type other: Annotation
-        :returns: New instance of Annotation
+        :type other: :class:`~supervisely.annotation.annotation.Annotation`
+        :returns: New instance of Annotation object
         :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
@@ -1942,7 +1952,7 @@ class Annotation:
         """
         Draws current Annotation on image with contour. Modifies mask.
 
-        :param bitmap: Image.
+        :param bitmap: RGB Image in numpy format. You can read image using :meth:`~supervisely.imaging.image.read` method.
         :type bitmap: np.ndarray
         :param color: Drawing color in ``[R, G, B]``.
         :type color: List[int, int, int], optional
@@ -2019,7 +2029,7 @@ class Annotation:
 
         :param mapping: Dict with ObjClasses for mapping.
         :type mapping: Dict[:class:`~supervisely.annotation.obj_class.ObjClass`, :class:`~supervisely.annotation.obj_class.ObjClass`]
-        :returns: New instance of Annotation
+        :returns: New instance of Annotation object
         :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
@@ -2288,7 +2298,7 @@ class Annotation:
         """
         Convert Annotation classes by joining labels with same object classes to one label. Applies to Bitmap only.
 
-        :returns: New instance of Annotation
+        :returns: New instance of Annotation object
         :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
@@ -2443,7 +2453,7 @@ class Annotation:
 
         :param mapping: Mapping between source and target object classes.
         :type mapping: Dict[:class:`~supervisely.annotation.obj_class.ObjClass`, :class:`~supervisely.annotation.obj_class.ObjClass`]
-        :returns: New instance of Annotation
+        :returns: New instance of Annotation object
         :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
@@ -2805,9 +2815,9 @@ class Annotation:
         :param index_to_class: Dictionary specifying index match of class name.
         :type index_to_class: Dict[int, str], optional
         :param meta: ProjectMeta.
-        :type meta: ProjectMeta, optional
+        :type meta: :class:`~supervisely.project.project_meta.ProjectMeta`, optional
         :raises ValueError: if ia_boxes or ia_masks and meta is None
-        :raises KeyError: if processed ObjClass not found in meta
+        :raises KeyError: if processed :class:`~supervisely.annotation.obj_class.ObjClass` not found in meta
         :returns: Annotation object
         :rtype: :class:`~supervisely.annotation.annotation.Annotation`
         """
@@ -2862,7 +2872,7 @@ class Annotation:
 
         :param keep_classes: List with classes names.
         :type keep_classes: List[str]
-        :returns: New instance of Annotation
+        :returns: New instance of Annotation object
         :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
@@ -3002,7 +3012,7 @@ class Annotation:
         """Returns dictionary with bindings keys as keys and list of labels as values.
 
         :returns: Dictionary with bindings keys as keys and list of labels as values.
-        :rtype: Dict[str, List[Label]]
+        :rtype: Dict[str, List[:class:`~supervisely.annotation.label.Label`]]
         """
         d = defaultdict(list)
         for label in self.labels:

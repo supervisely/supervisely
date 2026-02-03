@@ -239,7 +239,7 @@ def compress_image_url(
     """NOTE: This function is deprecated. Use resize_image_url instead.
     Returns a URL to a compressed image with given parameters.
 
-    :param url: Full Image storage URL, can be obtained from ImageInfo.
+    :param url: Full Image storage URL, can be obtained from :class:`~supervisely.api.image_api.ImageInfo`.
     :type url: str
     :param width: Width of the compressed image.
     :type width: int, optional
@@ -273,7 +273,7 @@ def resize_image_url(
     just compressed if the extension is jpeg to the given quality.
     Learn more about resize parameters `here <https://docs.imgproxy.net/usage/processing#resize>`_.
 
-    :param full_storage_url: Full Image storage URL, can be obtained from ImageInfo.
+    :param full_storage_url: Full Image storage URL, can be obtained from :class:`~supervisely.api.image_api.ImageInfo`.
     :type full_storage_url: str
     :param ext: Image extension, jpeg or png.
     :type ext: Literal["jpeg", "png"], optional

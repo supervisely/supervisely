@@ -217,11 +217,11 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type collection_id: int, optional
         :param readme: Additional information about Labeling Queue.
         :type readme: str, optional
-        :param classes_to_label: List of classes to label in Dataset.
+        :param classes_to_label: List of classes to label in :class:`~supervisely.project.project.Dataset`.
         :type classes_to_label: List[str], optional
         :param objects_limit_per_image: Limit the number of objects that the labeler can create on each image.
         :type objects_limit_per_image: int, optional
-        :param tags_to_label: List of tags to label in Dataset.
+        :param tags_to_label: List of tags to label in :class:`~supervisely.project.project.Dataset`.
         :type tags_to_label: List[str], optional
         :param tags_limit_per_image: Limit the number of tags that the labeler can create on each image.
         :type tags_limit_per_image: int, optional
@@ -655,7 +655,7 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :param id: Labeling Queue ID in Supervisely.
         :type id: int
         :returns: Project meta of the labeling queue with given id.
-        :rtype: :class:`ProjectMeta`
+        :rtype: :class:`~supervisely.project.project_meta.ProjectMeta`
         """
         queue_info = self.get_info_by_id(id)
         project_meta_json = self._api.project.get_meta(queue_info.project_id, with_settings=True)

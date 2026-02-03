@@ -41,6 +41,7 @@ class Renamer:
         """
         The function to_json convert Renamer to json format
         :returns: Renamer in json format
+        :rtype: dict
         """
         return {Renamer.ADD_SUFFIX: self._add_suffix, Renamer.SAVE_CLASSES: self._save_names}
 
@@ -49,7 +50,8 @@ class Renamer:
         """
         The function from_json convert Renamer from json format to Renamer class object.
         :param renamer_json: Renamer in json format
-        :returns: Renamer class object
+        :returns: Renamer object
+        :rtype: :class:`~supervisely.annotation.renamer.Renamer`
         """
         enabled_names = renamer_json.get(Renamer.SAVE_NAMES)
         if enabled_names is None:

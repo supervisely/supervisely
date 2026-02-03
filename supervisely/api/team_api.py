@@ -152,7 +152,7 @@ class TeamApi(ModuleNoParent, UpdateableModule):
     API for working with teams. :class:`~supervisely.api.team_api.TeamApi` object is immutable.
 
     :param api: API connection to the server
-    :type api: Api
+    :type api: :class:`~supervisely.api.api.Api`
 
     :Usage Example:
 
@@ -219,8 +219,8 @@ class TeamApi(ModuleNoParent, UpdateableModule):
 
         :param filters: List of params to sort output Teams.
         :type filters: list, optional
-        :returns: List of all Teams with information. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[TeamInfo]`
+        :returns: List of all Teams with information.
+        :rtype: List[:class:`~supervisely.api.team_api.TeamInfo`]
 
         :Usage Example:
 
@@ -284,8 +284,8 @@ class TeamApi(ModuleNoParent, UpdateableModule):
 
         :param id: Team ID in Supervisely.
         :type id: int
-        :returns: Information about Team. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`TeamInfo`
+        :returns: Information about Team.
+        :rtype: :class:`~supervisely.api.team_api.TeamInfo`
 
         :Usage Example:
 
@@ -345,8 +345,8 @@ class TeamApi(ModuleNoParent, UpdateableModule):
         :type description: str
         :param change_name_if_conflict: Checks if given name already exists and adds suffix to the end of the name.
         :type change_name_if_conflict: bool, optional
-        :returns: Information about Team. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`TeamInfo`
+        :returns: Information about Team.
+        :rtype: :class:`~supervisely.api.team_api.TeamInfo`
 
         :Usage Example:
 

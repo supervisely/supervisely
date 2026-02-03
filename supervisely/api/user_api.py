@@ -36,7 +36,7 @@ class UserApi(ModuleApiBase):
     API for working with users. :class:`~supervisely.api.user_api.UserApi` object is immutable.
 
     :param api: API connection to the server.
-    :type api: Api
+    :type api: :class:`~supervisely.api.api.Api`
 
     :Usage Example:
 
@@ -113,8 +113,8 @@ class UserApi(ModuleApiBase):
 
         :param id: User ID in Supervisely.
         :type id: int
-        :returns: Information about User. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`UserInfo`
+        :returns: Information about User.
+        :rtype: :class:`~supervisely.api.user_api.UserInfo`
 
         :Usage Example:
 
@@ -156,8 +156,8 @@ class UserApi(ModuleApiBase):
 
         :param login: User login in Supervisely.
         :type login: str
-        :returns: Information about User. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`UserInfo`
+        :returns: Information about User.
+        :rtype: :class:`~supervisely.api.user_api.UserInfo`
 
         :Usage Example:
 
@@ -203,8 +203,8 @@ class UserApi(ModuleApiBase):
         :type team_id: int
         :param login: User login in Supervisely.
         :type login: str
-        :returns: Information about User. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`UserInfo`
+        :returns: Information about User.
+        :rtype: :class:`~supervisely.api.user_api.UserInfo`
 
         :Usage Example:
 
@@ -254,8 +254,8 @@ class UserApi(ModuleApiBase):
         :type team_id: int
         :param user_id: User ID in Supervisely.
         :type user_id: int
-        :returns: Information about User. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`UserInfo`
+        :returns: Information about User.
+        :rtype: :class:`~supervisely.api.user_api.UserInfo`
 
         :Usage Example:
 
@@ -303,7 +303,7 @@ class UserApi(ModuleApiBase):
 
         :param filters: List of params to sort output Users.
         :type filters: List[dict], optional
-        :returns: List of information about Users. See :class:`info_sequence<info_sequence>`
+        :returns: List of information about Users.
         :rtype: :class:`List[UserInfo]`
 
         :Usage Example:
@@ -362,8 +362,8 @@ class UserApi(ModuleApiBase):
         :type name: str, optional
         :param email: New User email.
         :type email: str, optional
-        :returns: Information about new User. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`UserInfo`
+        :returns: Information about new User.
+        :rtype: :class:`~supervisely.api.user_api.UserInfo`
 
         :Usage Example:
 
@@ -624,8 +624,8 @@ class UserApi(ModuleApiBase):
         :type password: str
         :param name: User name.
         :type name: str
-        :returns: New information about User. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`UserInfo`
+        :returns: New information about User.
+        :rtype: :class:`~supervisely.api.user_api.UserInfo`
 
         :Usage Example:
 

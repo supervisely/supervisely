@@ -66,7 +66,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
     API for working with tasks. :class:`~supervisely.api.task_api.TaskApi` object is immutable.
 
     :param api: API connection to the server.
-    :type api: Api
+    :type api: :class:`~supervisely.api.api.Api`
 
     :Usage Example:
 
@@ -449,7 +449,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             with specified workspace_id.
         :type limit_by_workspace: bool, optional
         :param kubernetes_settings: Kubernetes settings for the application.
-        :type kubernetes_settings: Union[KubernetesSettings, Dict[str, Any]], optional
+        :type kubernetes_settings: Union[:class:`~supervisely.api.task_api.KubernetesSettings`, Dict[str, Any]], optional
         :param multi_user_session: If True, the application session will be created as multi-user.
                                    In this case, multiple users will be able to connect to the same application session.
                                    All users will have separate application states.
@@ -968,7 +968,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         :type description: Optional[str]
         :param show_logs: If True, the link to the task logs will be displayed in the task output.
         :type show_logs: Optional[bool], default False
-        :param zmdi_icon: Icon class name from Material Design Icons (ZMDI).
+        :param zmdi_icon: Icon class name from Material Design :class:`~supervisely.app.widgets.icons.icons.Icons` (ZMDI).
         :type zmdi_icon: Optional[str], default "zmdi-comment-alt-text"
         :param icon_color: Icon color in HEX format.
         :type icon_color: Optional[str], default "#33c94c" (nearest Duron Jolly Green)
@@ -1048,7 +1048,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
 
         :param task_id: Task ID in Supervisely.
         :type task_id: int
-        :param experiment_info: Experiment info from TrainApp.
+        :param experiment_info: Experiment info from :class:`~supervisely.nn.training.train_app.TrainApp`. See class :class:`~supervisely.nn.experiments.ExperimentInfo`.
         :type experiment_info: dict
         :returns: Server response JSON.
         :rtype: dict

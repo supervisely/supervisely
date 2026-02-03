@@ -1,5 +1,5 @@
 # coding: utf-8
-"""General information about :class:`Tag<supervisely.annotation.tag.Tag>`"""
+"""General information about :class:`Tag<~supervisely.annotation.tag.Tag>`"""
 
 from __future__ import annotations
 
@@ -29,7 +29,7 @@ class TagValueType:
 
 class TagMetaJsonFields:
     """
-    Json fields for :class:`TagMeta<supervisely.annotation.tag_meta.TagMeta>`
+    Json fields for :class:`TagMeta<~supervisely.annotation.tag_meta.TagMeta>`
     """
 
     ID = "id"
@@ -99,7 +99,7 @@ SUPPORTED_TARGET_TYPES = [
 
 class TagMeta(KeyObject, JsonSerializable):
     """
-    General information about :class:`Tag<supervisely.annotation.tag>`. :class:`TagMeta<TagMeta>` object is immutable.
+    General information about :class:`Tag<~supervisely.annotation.tag>`. :class:`TagMeta<~supervisely.annotation.tag_meta.TagMeta>` object is immutable.
 
     :param name: Tag name.
     :type name: str
@@ -107,7 +107,7 @@ class TagMeta(KeyObject, JsonSerializable):
     :type value_type: str
     :param possible_values: List of possible values.
     :type possible_values: List[str], optional
-    :param color: :class:`[R, G, B]` color, generates random color by default.
+    :param color: [R, G, B] color, generates random color by default.
     :type color: List[int, int, int], optional
     :param sly_id: Tag ID in Supervisely server.
     :type sly_id: int, optional
@@ -227,7 +227,7 @@ class TagMeta(KeyObject, JsonSerializable):
     @property
     def value_type(self) -> str:
         """
-        Value type. See possible value types in :class:`TagValueType<TagValueType>`.
+        Value type. See possible value types in :class:`TagValueType<~supervisely.annotation.tag_meta.TagValueType>`.
 
         :returns: Value type
         :rtype: str
@@ -473,7 +473,7 @@ class TagMeta(KeyObject, JsonSerializable):
         :param data: TagMeta in json format as a dict.
         :type data: dict
         :returns: TagMeta object
-        :rtype: :class:`TagMeta<TagMeta>`
+        :rtype: :class:`TagMeta<~supervisely.annotation.tag_meta.TagMeta>`
 
         :Usage Example:
 
@@ -541,8 +541,8 @@ class TagMeta(KeyObject, JsonSerializable):
         :param value: New value that will be added to a list.
         :type value: str
         :raises ValueError: if object's value type is not "oneof_string" or already exists in a list
-        :returns: New instance of TagMeta
-        :rtype: :class:`TagMeta<TagMeta>`
+        :returns: New instance of TagMeta object
+        :rtype: :class:`TagMeta<~supervisely.annotation.tag_meta.TagMeta>`
 
         :Usage Example:
 
@@ -626,7 +626,7 @@ class TagMeta(KeyObject, JsonSerializable):
         Checks that 2 TagMetas are equal by their name, value type and possible values.
 
         :param other: TagMeta object.
-        :type other: TagMeta
+        :type other: :class:`~supervisely.annotation.tag_meta.TagMeta`
         :returns: True if comparable objects are equal, otherwise False
         :rtype: bool
 
@@ -662,7 +662,7 @@ class TagMeta(KeyObject, JsonSerializable):
         Checks that 2 TagMetas are opposite.
 
         :param other: TagMeta object.
-        :type other: TagMeta
+        :type other: :class:`~supervisely.annotation.tag_meta.TagMeta`
         :returns: True if comparable objects are not equal, otherwise False
         :rtype: bool
 
@@ -722,7 +722,7 @@ class TagMeta(KeyObject, JsonSerializable):
         :type value_type: str
         :param possible_values: List of possible values.
         :type possible_values: List[str], optional
-        :param color: :class:`[R, G, B]` color, generates random color by default.
+        :param color: [R, G, B] color, generates random color by default.
         :type color: List[int, int, int], optional
         :param sly_id: Tag ID in Supervisely server.
         :type sly_id: int, optional
@@ -732,8 +732,8 @@ class TagMeta(KeyObject, JsonSerializable):
         :type applicable_to: str, optional
         :param applicable_classes: Defines applicability of Tag only to certain classes.
         :type applicable_classes: List[str], optional
-        :returns: New instance of TagMeta
-        :rtype: :class:`TagMeta<TagMeta>`
+        :returns: New instance of TagMeta object
+        :rtype: :class:`TagMeta<~supervisely.annotation.tag_meta.TagMeta>`
 
         :Usage Example:
 
