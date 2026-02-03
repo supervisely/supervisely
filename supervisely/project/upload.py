@@ -24,7 +24,7 @@ def upload(
     :param src_dir: Source path to local directory.
     :type src_dir: str
     :param api: Supervisely API address and token.
-    :type api: Api
+    :type api: :class:`~supervisely.api.api.Api`
     :param workspace_id: Destination workspace ID.
     :type workspace_id: int
     :param project_name: Custom project name. By default, it's a directory name.

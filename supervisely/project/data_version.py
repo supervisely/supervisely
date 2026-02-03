@@ -118,8 +118,8 @@ class DataVersion(ModuleApiBase):
         """
         Initialize project versions.
 
-        :param project_info: ProjectInfo object or project ID
-        :type project_info: Union[ProjectInfo, int]
+        :param project_info: Project info object or project ID
+        :type project_info: Union[:class:`~supervisely.api.project_api.ProjectInfo`, int]
         """
         if isinstance(project_info, int):
             project_info = self._api.project.get_info_by_id(project_info)
@@ -139,7 +139,7 @@ class DataVersion(ModuleApiBase):
         :param filters: Filters
         :type filters: Optional[List]
         :returns: List of project versions
-        :rtype: List[VersionInfo]
+        :rtype: List[:class:`~supervisely.project.data_version.VersionInfo`]
         """
         data = {ApiField.PROJECT_ID: project_id}
         if filters:
@@ -174,8 +174,8 @@ class DataVersion(ModuleApiBase):
         """
         Get project versions map from storage.
 
-        :param project_info: ProjectInfo object or project ID
-        :type project_info: Union[ProjectInfo, int]
+        :param project_info: Project info object or project ID
+        :type project_info: Union[:class:`~supervisely.api.project_api.ProjectInfo`, int]
         :param do_initialization: Initialize project versions. Set to False for internal use.
         :type do_initialization: bool
         :returns: Project versions
@@ -197,8 +197,8 @@ class DataVersion(ModuleApiBase):
         """
         Save project versions map to storage.
 
-        :param project_info: ProjectInfo object or project ID
-        :type project_info: Union[ProjectInfo, int]
+        :param project_info: Project info object or project ID
+        :type project_info: Union[:class:`~supervisely.api.project_api.ProjectInfo`, int]
         :param initialize: Initialize project versions. Set to False for internal use.
         :type initialize: bool
         :returns: None
@@ -231,8 +231,8 @@ class DataVersion(ModuleApiBase):
         If the project is already on the latest version, returns the latest version ID.
         If the project version cannot be created, returns None.
 
-        :param project_info: ProjectInfo object or project ID
-        :type project_info: Union[ProjectInfo, int]
+        :param project_info: Project info object or project ID
+        :type project_info: Union[:class:`~supervisely.api.project_api.ProjectInfo`, int]
         :param version_title: Version title
         :type version_title: Optional[str]
         :param version_description: Version description
@@ -416,16 +416,16 @@ class DataVersion(ModuleApiBase):
         Restore project to a specific version.
         Version can be specified by ID or number.
 
-        :param project_info: ProjectInfo object or project ID
-        :type project_info: Union[ProjectInfo, int]
+        :param project_info: Project info object or project ID
+        :type project_info: Union[:class:`~supervisely.api.project_api.ProjectInfo`, int]
         :param version_id: Version ID
         :type version_id: Optional[int]
         :param version_num: Version number
         :type version_num: Optional[int]
         :param skip_missed_entities: Skip missed Images
         :type skip_missed_entities: bool, default False
-        :returns: ProjectInfo object of the restored project
-        :rtype: ProjectInfo or None
+        :returns: Project info object of the restored project
+        :rtype: :class:`~supervisely.api.project_api.ProjectInfo` or None
         """
         if version_id is None and version_num is None:
             raise ValueError("Either version_id or version_num must be provided")

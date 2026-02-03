@@ -15,11 +15,11 @@ from supervisely.video_annotation.video_object_collection import VideoObjectColl
 
 class Frame(KeyObject):
     """
-    Frame object for :class:`VideoAnnotation<supervisely.video_annotation.video_annotation.VideoAnnotation>`. :class:`Frame<Frame>` object is immutable.
+    Frame object for VideoAnnotation. Frame object is immutable.
 
     :param index: Index of the Frame.
     :type index: int
-    :param figures: List of :class:`VideoFigures<supervisely.video_annotation.video_figure.VideoFigure>`.
+    :param figures: List of VideoFigures.
     :type figures: list, optional
 
     :Usage Example:
@@ -117,7 +117,7 @@ class Frame(KeyObject):
         Frame figures.
 
         :returns: List of figures on Frame.
-        :rtype: :class:`List[VideoFigure]<supervisely.video_annotation.video_figure.VideoFigure>`
+        :rtype: List[:class:`~supervisely.video_annotation.video_figure.VideoFigure`]
 
         :Usage Example:
 
@@ -133,7 +133,7 @@ class Frame(KeyObject):
 
         :param img_size: Size of the image (height, width).
         :type img_size: Tuple[int, int], optional
-        :raises OutOfImageBoundsException: if figure is out of image bounds
+        :raises :class:`~supervisely.video_annotation.video_figure.OutOfImageBoundsException`: if figure is out of image bounds
         :returns: None
         :rtype: None
 
@@ -164,9 +164,9 @@ class Frame(KeyObject):
         Convert the Frame to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
         :returns: Json format as a dict
-        :rtype: dict
+        :rtype: Dict
 
         :Usage Example:
 
@@ -229,15 +229,15 @@ class Frame(KeyObject):
 
         :param data: Dict in json format.
         :type data: dict
-        :param objects: VideoObjectCollection object.
-        :type objects: VideoObjectCollection
+        :param objects: :class:`~supervisely.video_annotation.video_object_collection.VideoObjectCollection` object.
+        :type objects: :class:`~supervisely.video_annotation.video_object_collection.VideoObjectCollection`
         :param frames_count: Number of frames in video.
         :type frames_count: int, optional
-        :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
+        :param key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap` object.
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
         :raises ValueError: if frame index < 0 and if frame index > number of frames in video
-        :returns: Frame object
-        :rtype: :class:`Frame`
+        :returns: :class:`~supervisely.video_annotation.frame.Frame` object
+        :rtype: :class:`~supervisely.video_annotation.frame.Frame`
 
         :Usage Example:
 
@@ -281,10 +281,10 @@ class Frame(KeyObject):
 
         :param index: Index of the Frame.
         :type index: int, optional
-        :param figures: List of :class:`VideoFigures<supervisely.video_annotation.video_figure.VideoFigure>`.
-        :type figures: list, optional
-        :returns: Frame object
-        :rtype: :class:`Frame`
+        :param figures: List of VideoFigures.
+        :type figures: List[:class:`~supervisely.video_annotation.video_figure.VideoFigure`], optional
+        :returns: Frame object.
+        :rtype: :class:`~supervisely.video_annotation.frame.Frame`
 
         :Usage Example:
 

@@ -40,7 +40,7 @@ def download(
     `sly.download_pointcloud_episode_project` to examine full list of possible arguments.
 
     :param api: Supervisely API address and token.
-    :type api: Api
+    :type api: :class:`~supervisely.api.api.Api`
     :param project_id: Project ID, which will be downloaded.
     :type project_id: int
     :param dest_dir: Destination path to local directory.
@@ -222,9 +222,26 @@ def download_async_or_sync(
     """
     Download project asynchronously if possible, otherwise download synchronously.
     Automatically detects project type.
-    You can pass :class:`ProjectInfo` as `project_info` kwarg to avoid additional API requests.
+    You can pass project info object as `project_info` kwarg to avoid additional API requests.
 
     In case of error during asynchronous download, the function will switch to synchronous download.
+
+    :param api: Supervisely API address and token.
+    :type api: :class:`~supervisely.api.api.Api`
+    :param project_id: Project ID.
+    :type project_id: int
+    :param dest_dir: Destination directory.
+    :type dest_dir: str
+    :param dataset_ids: Dataset IDs.
+    :type dataset_ids: List[int], optional
+    :param log_progress: Show progress bar.
+    :type log_progress: bool
+    :param progress_cb: Progress callback.
+    :type progress_cb: tqdm or callable, optional
+    :param semaphore: Semaphore to limit the number of concurrent downloads.
+    :type semaphore: asyncio.Semaphore, optional
+    :param kwargs: Additional keyword arguments.
+    :type kwargs: dict
     """
     project_info = kwargs.pop("project_info", None)
     if not isinstance(project_info, ProjectInfo) or project_info.id != project_id:
@@ -286,7 +303,7 @@ def download_fast(
     Automatically detects project type.
 
     :param api: Supervisely API address and token.
-    :type api: :class:`Api<supervisely.api.api.Api>`
+    :type api: :class:`Api<~supervisely.api.api.Api>`
     :param project_id: Supervisely downloadable project ID.
     :type project_id: int
     :param dest_dir: Destination directory.
@@ -321,7 +338,7 @@ def download_fast(
                                 If False - download project like a regular project in classic Supervisely format.
     :type download_blob_files: bool, optional
     :param project_info: Project info object. To avoid additional API requests.
-    :type project_info: :class:`ProjectInfo`, optional
+    :type project_info: :class:`~supervisely.api.project_api.ProjectInfo`, optional
     :param skip_create_readme: Skip creating README.md file. Default is False.
     :type skip_create_readme: bool, optional
     :returns: None
@@ -593,13 +610,13 @@ def download_to_cache(
     If both dataset_infos and dataset_ids are None, all datasets of the project will be downloaded.
 
     :param api: Supervisely API address and token.
-    :type api: Api
+    :type api: :class:`~supervisely.api.api.Api`
     :param project_id: Project ID, which will be downloaded.
     :type project_id: int
     :param dataset_infos: Specified list of Dataset Infos which will be downloaded.
-    :type dataset_infos: list(DatasetInfo), optional
+    :type dataset_infos: List[:class:`~supervisely.api.dataset_api.DatasetInfo`], optional
     :param dataset_ids: Specified list of Dataset IDs which will be downloaded.
-    :type dataset_ids: list(int), optional
+    :type dataset_ids: List[int], optional
     :param log_progress: Show downloading logs in the output.
     :type log_progress: bool, optional
     :param progress_cb: Function for tracking download progress. Will be called with number of items downloaded.
@@ -725,7 +742,7 @@ def download_using_cache(
     If dataset_ids is None, all datasets of the project will be downloaded.
 
     :param api: Supervisely API address and token.
-    :type api: Api
+    :type api: :class:`~supervisely.api.api.Api`
     :param project_id: Project ID, which will be downloaded.
     :type project_id: int
     :param dest_dir: Destination path to local directory.

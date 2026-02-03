@@ -3,7 +3,7 @@
 # docs
 from __future__ import annotations
 
-from typing import Dict, List, Literal, Optional, Tuple, Union
+from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
 from supervisely._utils import take_with_default
 from supervisely.annotation.obj_class import ObjClass
@@ -48,16 +48,16 @@ def _merge_img_obj_tag_metas(
 
 class ProjectMeta(JsonSerializable):
     """
-    General information about ProjectMeta. :class:`ProjectMeta<ProjectMeta>` object is immutable.
+    General information about ProjectMeta. ProjectMeta object is immutable.
 
-    :param obj_classes: ObjClassCollection or just list that stores ObjClass instances with unique names.
-    :type obj_classes: ObjClassCollection or List[ObjClass], optional
-    :param tag_metas: TagMetaCollection or just list that stores TagMeta instances with unique names.
-    :type tag_metas: TagMetaCollection or List[TagMeta], optional
+    :param obj_classes: ObjClassCollection or just list that stores :class:`~supervisely.annotation.obj_class.ObjClass` instances with unique names.
+    :type obj_classes: Union[:class:`~supervisely.annotation.obj_class_collection.ObjClassCollection`, List[:class:`~supervisely.annotation.obj_class.ObjClass`]], optional
+    :param tag_metas: TagMetaCollection or just list that stores :class:`~supervisely.annotation.tag_meta.TagMeta` instances with unique names.
+    :type tag_metas: Union[:class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection`, List[:class:`~supervisely.annotation.tag_meta.TagMeta`]], optional
     :param project_type: Type of items in project: images, videos, volumes, point_clouds.
-    :type project_type: ProjectType, optional
+    :type project_type: :class:`~supervisely.project.project_type.ProjectType`, optional
     :param project_settings: Additional project properties. For example, multi-view settings.
-    :type project_settings: dict or ProjectSettings, optional
+    :type project_settings: Union[:class:`~supervisely.project.project_settings.ProjectSettings`, Dict[str, Any]], optional
 
     :Usage Example:
 
@@ -170,7 +170,7 @@ class ProjectMeta(JsonSerializable):
         Collection of ObjClasses in ProjectMeta.
 
         :returns: ObjClassCollection object
-        :rtype: :class:`ObjClassCollection<supervisely.annotation.obj_class_collection.ObjClassCollection>`
+        :rtype: :class:`~supervisely.annotation.obj_class_collection.ObjClassCollection`
 
         :Usage Example:
 
@@ -216,7 +216,7 @@ class ProjectMeta(JsonSerializable):
         Collection of TagMetas in ProjectMeta.
 
         :returns: TagMetaCollection object
-        :rtype: :class:`TagMetaCollection<supervisely.annotation.tag_meta_collection.TagMetaCollection>`
+        :rtype: :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection`
 
         :Usage Example:
 
@@ -248,7 +248,7 @@ class ProjectMeta(JsonSerializable):
     @property
     def project_type(self) -> str:
         """
-        Type of project. See possible value types in :class:`ProjectType<supervisely.project.project_type.ProjectType>`.
+        Type of project. See possible value types in :class:`~supervisely.project.project_type.ProjectType`.
 
         :returns: Project type
         :rtype: str
@@ -269,10 +269,10 @@ class ProjectMeta(JsonSerializable):
     @property
     def project_settings(self) -> ProjectSettings:
         """
-        Settings of the project. See possible values in :class: `ProjectSettings`.
+        Settings of the project. See possible values in :class:`~supervisely.project.project_settings.ProjectSettings`.
 
         :returns: Project settings
-        :rtype: :class: `Dict[str, str]`
+        :rtype: :class:`~supervisely.project.project_settings.ProjectSettings`
 
         :Usage Example:
 
@@ -298,7 +298,7 @@ class ProjectMeta(JsonSerializable):
         Get labeling interface settings of the project.
 
         :returns: Labeling interface settings
-        :rtype: :class: `LabelingInterface` or None
+        :rtype: :class:`~supervisely.project.project_settings.LabelingInterface` or None
 
         :Usage Example:
 
@@ -319,12 +319,12 @@ class ProjectMeta(JsonSerializable):
         """
         return self._project_settings.labeling_interface if self._project_settings else None
 
-    def to_json(self) -> Dict:
+    def to_json(self) -> Dict[str, Any]:
         """
         Convert the ProjectMeta to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :returns: Json format as a dict
-        :rtype: dict
+        :rtype: Dict[str, Any]
 
         :Usage Example:
 
@@ -379,7 +379,7 @@ class ProjectMeta(JsonSerializable):
         :param data: ProjectMeta in json format as a dict.
         :type data: dict
         :returns: ProjectMeta object
-        :rtype: :class:`ProjectMeta<ProjectMeta>`
+        :rtype: :class:`ProjectMeta<~supervisely.project.project_meta.ProjectMeta>`
 
         :Usage Example:
 
@@ -474,10 +474,10 @@ class ProjectMeta(JsonSerializable):
         """
         Merge all instances from given ProjectMeta into a single ProjectMeta object.
 
-        :param other: ProjectMeta object.
-        :type other: ProjectMeta
-        :returns: New instance of ProjectMeta object
-        :rtype: :class:`ProjectMeta<ProjectMeta>`
+        :param other: Other project's meta.
+        :type other: :class:`~supervisely.project.project_meta.ProjectMeta`
+        :returns: New instance of project meta object
+        :rtype: :class:`~supervisely.project.project_meta.ProjectMeta`
         :raises ValueError: Upon attempt to merge metas which contain the same obj class or tag meta
 
         :Usage Example:
@@ -553,17 +553,17 @@ class ProjectMeta(JsonSerializable):
         """
         Clone makes a copy of ProjectMeta with new fields, if fields are given, otherwise it will use original ProjectMeta fields.
 
-        :param obj_classes: ObjClassCollection or just list that stores ObjClass instances with unique names.
-        :type obj_classes: ObjClassCollection or List[ObjClass], optional
-        :param tag_metas: TagMetaCollection that stores TagMeta instances with unique names.
-        :type tag_metas: TagMetaCollection or List[TagMeta], optional
+        :param obj_classes: ObjClassCollection or just list that stores :class:`~supervisely.annotation.obj_class.ObjClass` instances with unique names.
+        :type obj_classes: :class:`~supervisely.annotation.obj_class_collection.ObjClassCollection` or List[:class:`~supervisely.annotation.obj_class.ObjClass`], optional
+        :param tag_metas: TagMetaCollection that stores :class:`~supervisely.annotation.tag_meta.TagMeta` instances with unique names.
+        :type tag_metas: :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection` or List[:class:`~supervisely.annotation.tag_meta.TagMeta`], optional
         :param project_type: Type of items in project: images, videos, volumes, point_clouds.
         :type project_type: str, optional
         :param project_settings: Additional project properties. For example, multi-view settings
-        :type project_settings: dict or ProjectSettings, optional
+        :type project_settings: dict or :class:`~supervisely.project.project_settings.ProjectSettings`, optional
 
         :returns: New instance of ProjectMeta object
-        :rtype: :class:`ProjectMeta<ProjectMeta>`
+        :rtype: :class:`~supervisely.project.project_meta.ProjectMeta`
 
         :Usage Example:
 
@@ -616,9 +616,9 @@ class ProjectMeta(JsonSerializable):
         Adds given ObjClass to ProjectMeta.
 
         :param new_obj_class: ObjClass object.
-        :type new_obj_class: ObjClass
+        :type new_obj_class: :class:`~supervisely.annotation.obj_class.ObjClass`
         :returns: New instance of ProjectMeta object
-        :rtype: :class:`ProjectMeta<ProjectMeta>`
+        :rtype: :class:`~supervisely.project.project_meta.ProjectMeta`
 
         :Usage Example:
 
@@ -653,10 +653,10 @@ class ProjectMeta(JsonSerializable):
         """
         Adds given ObjClasses to ProjectMeta.
 
-        :param new_obj_classes: List of ObjClass objects.
-        :type new_obj_classes: ObjClassCollection or List[ObjClass]
+        :param new_obj_classes: List of ObjClass objects or ObjClassCollection.
+        :type new_obj_classes: List[:class:`~supervisely.annotation.obj_class.ObjClass`] or :class:`~supervisely.annotation.obj_class_collection.ObjClassCollection`
         :returns: New instance of ProjectMeta object
-        :rtype: :class:`ProjectMeta<ProjectMeta>`
+        :rtype: :class:`~supervisely.project.project_meta.ProjectMeta`
 
         :Usage Example:
 
@@ -698,9 +698,9 @@ class ProjectMeta(JsonSerializable):
         Adds given TagMeta to ProjectMeta.
 
         :param new_tag_meta: TagMeta object.
-        :type new_tag_meta: TagMeta
+        :type new_tag_meta: :class:`~supervisely.annotation.tag_meta.TagMeta`
         :returns: New instance of ProjectMeta object
-        :rtype: :class:`ProjectMeta<ProjectMeta>`
+        :rtype: :class:`~supervisely.project.project_meta.ProjectMeta`
 
         :Usage Example:
 
@@ -734,10 +734,10 @@ class ProjectMeta(JsonSerializable):
         """
         Adds given TagMetas to ProjectMeta.
 
-        :param new_tag_metas: List of TagMeta objects.
-        :type new_tag_metas: List[TagMeta]
+        :param new_tag_metas: List of TagMeta objects or TagMetaCollection.
+        :type new_tag_metas: List[:class:`~supervisely.annotation.tag_meta.TagMeta`] or :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection`
         :returns: New instance of ProjectMeta object
-        :rtype: :class:`ProjectMeta<ProjectMeta>`
+        :rtype: :class:`~supervisely.project.project_meta.ProjectMeta`
 
         :Usage Example:
 
@@ -780,8 +780,11 @@ class ProjectMeta(JsonSerializable):
     def _delete_items(collection, item_names):
         """
         :param collection: ObjClassCollection or TagMetaCollection instance
-        :param item_names: list of item names to delete
-        :returns: list of items, which are in collection and not in given list of items to delete
+        :type collection: :class:`~supervisely.annotation.obj_class_collection.ObjClassCollection` or :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection`
+        :param item_names: List of item names to delete
+        :type item_names: List[str]
+        :returns: List of items, which are in collection and not in given list of items to delete
+        :rtype: List[:class:`~supervisely.annotation.obj_class.ObjClass`] or List[:class:`~supervisely.annotation.tag_meta.TagMeta`]
         """
         names_to_delete = set(item_names)
         res_items = []
@@ -797,7 +800,7 @@ class ProjectMeta(JsonSerializable):
         :param obj_class_name: ObjClass name.
         :type obj_class_name: str
         :returns: New instance of ProjectMeta object
-        :rtype: :class:`ProjectMeta<ProjectMeta>`
+        :rtype: :class:`~supervisely.project.project_meta.ProjectMeta`
 
         :Usage Example:
 
@@ -842,7 +845,7 @@ class ProjectMeta(JsonSerializable):
         :param obj_class_names: List of ObjClasses names.
         :type obj_class_names: List[str]
         :returns: New instance of ProjectMeta object
-        :rtype: :class:`ProjectMeta<ProjectMeta>`
+        :rtype: :class:`~supervisely.project.project_meta.ProjectMeta`
 
         :Usage Example:
 
@@ -896,7 +899,7 @@ class ProjectMeta(JsonSerializable):
         :param tag_name: TagMeta name.
         :type tag_name: str
         :returns: New instance of ProjectMeta object
-        :rtype: :class:`ProjectMeta<ProjectMeta>`
+        :rtype: :class:`~supervisely.project.project_meta.ProjectMeta`
 
         :Usage Example:
 
@@ -940,9 +943,9 @@ class ProjectMeta(JsonSerializable):
         Removes given TagMetas by names from ProjectMeta.
 
         :param tag_names: List of TagMetas names.
-        :type tag_names: List[TagMeta]
+        :type tag_names: List[:class:`~supervisely.annotation.tag_meta.TagMeta`]
         :returns: New instance of ProjectMeta object
-        :rtype: :class:`ProjectMeta<ProjectMeta>`
+        :rtype: :class:`~supervisely.project.project_meta.ProjectMeta`
 
         :Usage Example:
 
@@ -998,8 +1001,8 @@ class ProjectMeta(JsonSerializable):
 
         :param obj_class_name: ObjClass name.
         :type obj_class_name: str
-        :returns: ObjClass object
-        :rtype: :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>`
+        :returns: :class:`~supervisely.annotation.obj_class.ObjClass` object
+        :rtype: :class:`~supervisely.annotation.obj_class.ObjClass`
 
         :Usage Example:
 
@@ -1052,8 +1055,8 @@ class ProjectMeta(JsonSerializable):
 
         :param obj_class_id: ObjClass id.
         :type obj_class_id: int
-        :returns: ObjClass object or None
-        :rtype: :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>`
+        :returns: :class:`~supervisely.annotation.obj_class.ObjClass` object or None
+        :rtype: :class:`~supervisely.annotation.obj_class.ObjClass`
 
         :Usage Example:
 
@@ -1085,8 +1088,8 @@ class ProjectMeta(JsonSerializable):
 
         :param tag_name: TagMeta name.
         :type tag_name: str
-        :returns: TagMeta object or None.
-        :rtype: :class:`TagMeta<supervisely.annotation.tag_meta.TagMeta>`
+        :returns: :class:`~supervisely.annotation.tag_meta.TagMeta` object or None.
+        :rtype: :class:`~supervisely.annotation.tag_meta.TagMeta`
 
         :Usage Example:
 
@@ -1141,7 +1144,7 @@ class ProjectMeta(JsonSerializable):
         :param tag_id: TagMeta id to search for.
         :type tag_id: int
         :returns: TagMeta with given id.
-        :rtype: TagMeta or None
+        :rtype: :class:`~supervisely.annotation.tag_meta.TagMeta` or None
         """
         return self._tag_metas.get_by_id(tag_id)
 
@@ -1160,10 +1163,10 @@ class ProjectMeta(JsonSerializable):
         """
         Merge ProjectMetas from given list of ProjectMetas into single ProjectMeta object.
 
-        :param metas: List of ProjectMeta objects.
-        :type metas: List[ProjectMeta]
-        :returns: New instance of ProjectMeta object
-        :rtype: :class:`ProjectMeta<ProjectMeta>`
+        :param metas: List of :class:`~supervisely.project.project_meta.ProjectMeta` objects.
+        :type metas: List[:class:`~supervisely.project.project_meta.ProjectMeta`]
+        :returns: New instance of :class:`~supervisely.project.project_meta.ProjectMeta` object
+        :rtype: :class:`~supervisely.project.project_meta.ProjectMeta`
 
         :Usage Example:
 
@@ -1235,7 +1238,7 @@ class ProjectMeta(JsonSerializable):
         :param keep_geometries: List of geometries that can be converted.
         :type keep_geometries: List, optional
         :returns: New project meta and dict correspondences of old classes to new
-        :rtype: :class:`Tuple[ProjectMeta, Dict[ObjClass, ObjClass]]`
+        :rtype: Tuple[:class:`~supervisely.project.project_meta.ProjectMeta`, Dict[:class:`~supervisely.annotation.obj_class.ObjClass`, :class:`~supervisely.annotation.obj_class.ObjClass`]]
 
         :Usage Example:
 

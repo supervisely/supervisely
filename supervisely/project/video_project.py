@@ -48,12 +48,12 @@ class VideoItemPaths(NamedTuple):
 
 class VideoDataset(Dataset):
     """
-    VideoDataset is where your labeled and unlabeled videos and other data files live. :class:`VideoDataset<VideoDataset>` object is immutable.
+    VideoDataset is where your labeled and unlabeled videos and other data files live. :class:`~supervisely.project.video_project.VideoDataset` object is immutable.
 
     :param directory: Path to dataset directory.
     :type directory: str
     :param mode: Determines working mode for the given dataset.
-    :type mode: :class:`OpenMode<supervisely.project.project.OpenMode>`
+    :type mode: :class:`~supervisely.project.project.OpenMode`
 
     :Usage Example:
 
@@ -361,12 +361,12 @@ class VideoDataset(Dataset):
 
         :param item_name: Item name.
         :type item_name: str
-        :param project_meta: ProjectMeta object.
-        :type project_meta: :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`
+        :param project_meta: Project meta.
+        :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: :class:`KeyIdMap<supervisely.video_annotation.key_id_map.KeyIdMap>`, optional
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
         :returns: VideoAnnotation object.
-        :rtype: :class:`VideoAnnotation<supervisely.video_annotation.video_annotation.VideoAnnotation>`
+        :rtype: :class:`~supervisely.video_annotation.video_annotation.VideoAnnotation`
         :raises RuntimeError: if item not found in the project
 
         :Usage Example:
@@ -483,7 +483,7 @@ class VideoDataset(Dataset):
         :param item_name: Item name.
         :type item_name: str
         :returns: VideoInfo object.
-        :rtype: :class:`VideoInfo<supervisely.api.video.video_api.VideoInfo>`
+        :rtype: :class:`~supervisely.api.video.video_api.VideoInfo`
 
         :Usage Example:
 
@@ -545,13 +545,13 @@ class VideoDataset(Dataset):
         :param item_path: Path to the item.
         :type item_path: str
         :param ann: VideoAnnotation object or path to annotation json file.
-        :type ann: :class:`VideoAnnotation<supervisely.video_annotation.video_annotation.VideoAnnotation>` or str, optional
+        :type ann: :class:`~supervisely.video_annotation.video_annotation.VideoAnnotation` or str, optional
         :param _validate_item: Checks input files format.
         :type _validate_item: bool, optional
         :param _use_hardlink: If True creates a hardlink pointing to src named dst, otherwise don't.
         :type _use_hardlink: bool, optional
         :param item_info: VideoInfo object or VideoInfo object converted to dict or path to item info json file for copying to dataset item info directory.
-        :type item_info: :class:`VideoInfo<supervisely.api.video.video_api.VideoInfo>` or dict or str, optional
+        :type item_info: :class:`~supervisely.api.video.video_api.VideoInfo` or dict or str, optional
         :returns: None
         :rtype: NoneType
         :raises RuntimeError: if item_name already exists in dataset or item name has unsupported extension.
@@ -639,7 +639,7 @@ class VideoDataset(Dataset):
         """
         Create empty VideoAnnotation for given video
         :param item_name: str
-        :returns: VideoAnnotation class object
+        :returns: VideoAnnotation object
         """
         img_size, frames_count = sly_video.get_image_size_and_frames_count(item_name)
         return self.annotation_class(img_size, frames_count)
@@ -683,9 +683,9 @@ class VideoDataset(Dataset):
         :param item_name: Item name.
         :type item_name: str
         :param ann: VideoAnnotation object.
-        :type ann: :class:`VideoAnnotation<supervisely.video_annotation.video_annotation.VideoAnnotation>`
+        :type ann: :class:`~supervisely.video_annotation.video_annotation.VideoAnnotation`
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: :class:`KeyIdMap<supervisely.video_annotation.key_id_map.KeyIdMap>`, optional
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
         :returns: None
         :rtype: NoneType
 
@@ -711,12 +711,12 @@ class VideoDataset(Dataset):
 
     def get_item_paths(self, item_name) -> VideoItemPaths:
         """
-        Generates :class:`VideoItemPaths<VideoItemPaths>` object with paths to item and annotation directories for item with given name.
+        Generates VideoItemPaths object with paths to item and annotation directories for item with given name.
 
         :param item_name: Item name.
         :type item_name: str
         :returns: VideoItemPaths object
-        :rtype: :class:`VideoItemPaths<VideoItemPaths>`
+        :rtype: :class:`~supervisely.project.video_project.VideoItemPaths`
 
         :Usage Example:
 
@@ -743,9 +743,9 @@ class VideoDataset(Dataset):
         """
         Get URL to dataset items list in Supervisely.
 
-        :param project_id: :class:`VideoProject<VideoProject>` ID in Supervisely.
+        :param project_id: VideoProject ID in Supervisely.
         :type project_id: int
-        :param dataset_id: :class:`VideoDataset<VideoDataset>` ID in Supervisely.
+        :param dataset_id: VideoDataset ID in Supervisely.
         :type dataset_id: int
         :returns: URL to dataset items list.
         :rtype: str
@@ -773,7 +773,7 @@ class VideoProject(Project):
     :param directory: Path to video project directory.
     :type directory: str
     :param mode: Determines working mode for the given project.
-    :type mode: :class:`OpenMode<supervisely.project.project.OpenMode>`
+    :type mode: :class:`~supervisely.project.project.OpenMode`
 
     :Usage Example:
 
@@ -793,7 +793,7 @@ class VideoProject(Project):
     def __init__(self, directory, mode: OpenMode):
         """
         :param directory: path to the directory where the project will be saved or where it will be loaded from
-        :param mode: OpenMode class object which determines in what mode to work with the project (generate exception error if not so)
+        :param mode: :class:`~supervisely.project.project.OpenMode` class object which determines in what mode to work with the project (generate exception error if not so)
         """
         self._key_id_map: KeyIdMap = None
         super().__init__(directory, mode)
@@ -803,7 +803,7 @@ class VideoProject(Project):
         """
         Get URL to video datasets list in Supervisely.
 
-        :param id: :class:`VideoProject<VideoProject>` ID in Supervisely.
+        :param id: VideoProject ID in Supervisely.
         :type id: int
         :returns: URL to datasets list.
         :rtype: str
@@ -878,7 +878,8 @@ class VideoProject(Project):
     def set_key_id_map(self, new_map: KeyIdMap):
         """
         Save given KeyIdMap object to project dir in json format.
-        :param new_map: KeyIdMap class object
+        :param new_map: KeyIdMap object.
+        :type new_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`
         """
         self._key_id_map = new_map
         self._key_id_map.dump_json(self._get_key_id_map_path())
@@ -897,7 +898,7 @@ class VideoProject(Project):
         _use_hardlink: Optional[bool] = False,
     ) -> VideoProject:
         """
-        Makes a copy of the :class:`VideoProject<VideoProject>`.
+        Makes a copy of the VideoProject.
 
         :param dst_directory: Path to video project parent directory.
         :type dst_directory: str
@@ -907,8 +908,8 @@ class VideoProject(Project):
         :type _validate_item: bool, optional
         :param _use_hardlink: If True creates a hardlink pointing to src named dst, otherwise don't.
         :type _use_hardlink: bool, optional
-        :returns: VideoProject object.
-        :rtype: :class:`VideoProject<VideoProject>`
+        :returns: New instance of VideoProject object.
+        :rtype: :class:`~supervisely.project.video_project.VideoProject`
 
         :Usage Example:
 
@@ -1130,7 +1131,8 @@ class VideoProject(Project):
         """
         Read project from given ditectory. Generate exception error if given dir contains more than one subdirectory
         :param dir: str
-        :returns: VideoProject class object
+        :returns: New instance of VideoProject object.
+        :rtype: :class:`~supervisely.project.video_project.VideoProject`
         """
         return read_project_wrapper(dir, cls)
 
@@ -1149,8 +1151,8 @@ class VideoProject(Project):
         """
         Download video project from Supervisely to the given directory.
 
-        :param api: Supervisely Api class object.
-        :type api: :class:`Api<supervisely.api.api.Api>`
+        :param api: Supervisely API object.
+        :type api: :class:`~supervisely.api.api.Api`
         :param project_id: Project ID in Supervisely.
         :type project_id: int
         :param dest_dir: Directory to download video project.
@@ -1164,7 +1166,7 @@ class VideoProject(Project):
         :param log_progress: Log download progress or not.
         :type log_progress: bool
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: :class:`tqdm`, optional
+        :type progress_cb: tqdm or callable, optional
         :returns: None
         :rtype: NoneType
 
@@ -1216,8 +1218,8 @@ class VideoProject(Project):
 
         :param dir: Directory with video project.
         :type dir: str
-        :param api: Api class object.
-        :type api: Api
+        :param api: Supervisely API object.
+        :type api: :class:`~supervisely.api.api.Api`
         :param workspace_id: Workspace ID in Supervisely to upload video project.
         :type workspace_id: int
         :param project_name: Name of video project.
@@ -1280,8 +1282,8 @@ class VideoProject(Project):
         """
         Download video project from Supervisely to the given directory asynchronously.
 
-        :param api: Supervisely Api class object.
-        :type api: :class:`Api<supervisely.api.api.Api>`
+        :param api: Supervisely :class:`~supervisely.api.api.Api` class object.
+        :type api: :class:`~supervisely.api.api.Api`
         :param project_id: Project ID in Supervisely.
         :type project_id: int
         :param dest_dir: Directory to download video project.
@@ -1370,7 +1372,7 @@ class VideoProject(Project):
             - figures.parquet
 
         :param api: Supervisely API client.
-        :type api: Api
+        :type api: :class:`~supervisely.api.api.Api`
         :param project_id: Source project ID.
         :type project_id: int
         :param dest_dir: Directory to save the resulting ``.tar.zst`` file. Required if ``return_bytesio`` is False.
@@ -1381,11 +1383,11 @@ class VideoProject(Project):
         :type batch_size: int
         :param log_progress: If True, shows progress (uses internal tqdm progress bars) when ``progress_cb`` is not provided.
         :type log_progress: bool
-        :param progress_cb: Optional progress callback. Can be a ``tqdm``-like callable or a function accepting an integer increment.
+        :param progress_cb: Optional progress callback. Can be a tqdm or callable, accepting an integer increment.
         :type progress_cb: Optional[Union[tqdm, Callable]]
-        :param return_bytesio: If True, return the snapshot as :class:`io.BytesIO`. If False, write the snapshot to ``dest_dir`` and return the output file path.
+        :param return_bytesio: If True, return the snapshot as io.BytesIO. If False, write the snapshot to dest_dir and return the output file path.
         :type return_bytesio: bool
-        :returns: Either output file path (``.tar.zst``) when ``return_bytesio`` is False, or an in-memory snapshot stream when ``return_bytesio`` is True.
+        :returns: Either output file path (.tar.zst) when return_bytesio is False, or an in-memory snapshot stream when return_bytesio is True.
         :rtype: Union[str, io.BytesIO]
         """
         if dest_dir is None and not return_bytesio:
@@ -1431,8 +1433,8 @@ class VideoProject(Project):
         Restore a video project from an Arrow/Parquet-based binary snapshot.
 
         :param api: Supervisely API client.
-        :type api: Api
-        :param file: Snapshot file path (``.tar.zst``) or in-memory snapshot stream.
+        :type api: :class:`~supervisely.api.api.Api`
+        :param file: Snapshot file path (.tar.zst) or in-memory snapshot stream (io.BytesIO).
         :type file: Union[str, io.BytesIO]
         :param workspace_id: Target workspace ID where the project will be created.
         :type workspace_id: int
@@ -1442,12 +1444,12 @@ class VideoProject(Project):
         :type with_custom_data: bool
         :param log_progress: If True, shows progress (uses internal tqdm progress bars) when ``progress_cb`` is not provided.
         :type log_progress: bool
-        :param progress_cb: Optional progress callback. Can be a ``tqdm``-like callable or a function accepting an integer increment.
+        :param progress_cb: Optional progress callback. Can be a tqdm or callable, accepting an integer increment.
         :type progress_cb: Optional[Union[tqdm, Callable]]
         :param skip_missed: If True, skip videos that are missing on server when restoring by hash.
         :type skip_missed: bool
         :returns: Info of the newly created project.
-        :rtype: ProjectInfo
+        :rtype: :class:`~supervisely.api.project_api.ProjectInfo`
         """
         if isinstance(file, io.BytesIO):
             snapshot_bytes = file.getvalue()
@@ -1478,6 +1480,23 @@ class VideoProject(Project):
     ) -> io.BytesIO:
         """
         Create a video project snapshot in Arrow/Parquet+tar.zst format and return it as BytesIO.
+
+        :param api: Supervisely API client.
+        :type api: :class:`~supervisely.api.api.Api`
+        :param project_id: Source project ID.
+        :type project_id: int
+        :param dataset_ids: Optional list of dataset IDs to include. If provided, only those datasets (and their videos/annotations) will be included in the snapshot.
+        :type dataset_ids: Optional[List[int]]
+        :param batch_size: Batch size for downloading video annotations.
+        :type batch_size: int
+        :param log_progress: If True, shows progress (uses internal tqdm progress bars) when progress_cb is not provided.
+        :type log_progress: bool
+        :param progress_cb: Optional progress callback. Can be a tqdm or callable, accepting an integer increment.
+        :type progress_cb: Optional[Union[tqdm, Callable]]
+        :param schema_version: Snapshot schema version. Controls the internal Parquet layout/fields. Supported values are the keys from get_video_snapshot_schema (currently: "v2.0.0").
+        :type schema_version: str
+        :returns: In-memory snapshot stream (io.BytesIO).
+        :rtype: io.BytesIO
         """
         try:
             import pyarrow  # pylint: disable=import-error
@@ -2056,7 +2075,7 @@ def download_video_project(
     Download video project to the local directory.
 
     :param api: Supervisely API address and token.
-    :type api: Api
+    :type api: :class:`~supervisely.api.api.Api`
     :param project_id: Project ID to download
     :type project_id: int
     :param dest_dir: Destination path to local directory.
@@ -2401,7 +2420,7 @@ async def download_video_project_async(
     Download video project to the local directory.
 
     :param api: Supervisely API address and token.
-    :type api: Api
+    :type api: :class:`~supervisely.api.api.Api`
     :param project_id: Project ID to download
     :type project_id: int
     :param dest_dir: Destination path to local directory.

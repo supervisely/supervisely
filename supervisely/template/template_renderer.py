@@ -106,34 +106,34 @@ class TemplateRenderer:
             # Remove leading/trailing hyphens
             title = title.strip('-')
             return title
-        
+
         def replace_header(match):
             """Replace header with version that includes ID"""
             level = match.group(1)  # Header level (2 or 3)
             title = match.group(2).strip()  # Header title text
-            
+
             # Generate clean ID
             clean_id = clean_title_for_id(title)
             section_id = f"{clean_id}"
-            
+
             # Check for potential duplicate IDs (basic check)
             if section_id in used_ids:
                 logger.debug(f"Duplicate header ID detected: '{section_id}' for title '{title}'")
                 section_id += "-2"  # TODO: Improve duplicate handling logic
             used_ids.add(section_id)
-            
+
             # Return header with ID attribute
             return f'<h{level} id="{section_id}">{title}</h{level}>'
-        
+
         # Track used IDs for duplicate detection
         used_ids = set()
-        
+
         # Pattern to match h2 and h3 headers
         header_pattern = r"<h([2-3])>(.*?)</h\1>"
-        
+
         # Replace all matching headers with versions that include IDs
         updated_html = re.sub(header_pattern, replace_header, content_html, flags=re.IGNORECASE)
-        
+
         return updated_html
 
     def _generate_autosidebar(self, content_html: str):

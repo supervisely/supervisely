@@ -16,7 +16,7 @@ from supervisely.video_annotation.video_object_collection import VideoObjectColl
 
 class FrameCollection(KeyIndexedCollection):
     """
-    Collection with :class:`Frame<supervisely.video_annotation.frame.Frame>` instances. :class:`FrameCollection<FrameCollection>` object is immutable.
+    Collection with Frame instances. FrameCollection object is immutable.
 
     :Usage Example:
 
@@ -165,8 +165,8 @@ class FrameCollection(KeyIndexedCollection):
         :type key: str
         :param default: The value that is returned if there is no key in the collection.
         :type default:  Optional[Any]
-        :returns: :class:`Frame<supervisely.video_annotation.frame.Frame>`, :class:`Slice<supervisely.volume_annotation.slice.Slice>` or :class:`PointcloudEpisodeFrame<supervisely.pointcloud_annotation.pointcloud_episode_frame.PointcloudEpisodeFrame>` object
-        :rtype: :class:`KeyObject<KeyObject>`
+        :returns: Frame, Slice or PointcloudEpisodeFrame object
+        :rtype: :class:`KeyObject<~supervisely.collection.key_indexed_collection.KeyObject>`
 
         :Usage Example:
 
@@ -212,9 +212,9 @@ class FrameCollection(KeyIndexedCollection):
         Convert the FrameCollection to a list of json dicts. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
         :returns: List of dicts in json format
-        :rtype: :class:`List[dict]`
+        :rtype: List[dict]
 
         :Usage Example:
 
@@ -256,13 +256,13 @@ class FrameCollection(KeyIndexedCollection):
         :param data: List with dicts in json format.
         :type data: List[dict]
         :param objects: VideoObjectCollection object.
-        :type objects: VideoObjectCollection
+        :type objects: :class:`~supervisely.video_annotation.video_object_collection.VideoObjectCollection`
         :param frames_count: Number of frames in video.
         :type frames_count: int, optional
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
-        :returns: FrameCollection object
-        :rtype: :class:`FrameCollection`
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
+        :returns: FrameCollection object.
+        :rtype: :class:`~supervisely.video_annotation.frame_collection.FrameCollection` object
 
         :Usage Example:
 
@@ -300,7 +300,7 @@ class FrameCollection(KeyIndexedCollection):
         Get figures from all frames in collection.
 
         :returns: List of figures from all frames in collection
-        :rtype: :class:`List[VideoFigure]<supervisely.video_annotation.video_figure.VideoFigure>`
+        :rtype: List[:class:`~supervisely.video_annotation.video_figure.VideoFigure`]
 
         :Usage Example:
 
@@ -335,9 +335,9 @@ class FrameCollection(KeyIndexedCollection):
         Get figures from all frames in collection in json format, keys from all figures in frames in collection.
 
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`
         :returns: Figures from all frames in collection in json format, keys from all figures in frames in collection
-        :rtype: :class:`Tuple[list, list]`
+        :rtype: Tuple[List[dict], List[str]]
 
         :Usage Example:
 

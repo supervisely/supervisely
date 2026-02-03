@@ -81,7 +81,7 @@ def validate_ext(ext: str):
 
     :param ext: Video extension. Available extensions: avi, mp4, 3gp, flv, webm, wmv, mov, mkv.
     :type ext: str
-    :raises UnsupportedVideoFormat: if given video with extension that is not supported.
+    :raises :class:`~supervisely.video.video.UnsupportedVideoFormat`: if given video with extension that is not supported.
     :returns: None
     :rtype: None
 
@@ -144,7 +144,7 @@ def validate_format(path: str) -> None:
 
     :param path: Path to Video file.
     :type path: str
-    :raises VideoReadException: if Video file from given path couldn't be read or file extension is not supported
+    :raises :class:`~supervisely.video.video.VideoReadException`: if :class:`~supervisely.app.widgets.video.video.Video` file from given path couldn't be read or file extension is not supported
     :returns: None
     :rtype: None
 

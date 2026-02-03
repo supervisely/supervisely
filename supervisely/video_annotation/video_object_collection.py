@@ -11,7 +11,7 @@ from supervisely.video_annotation.video_object import VideoObject
 
 class VideoObjectCollection(KeyIndexedCollection):
     """
-    Collection with :class:`VideoObject<supervisely.video_annotation.video_object.VideoObject>` instances. :class:`VideoObjectCollection<VideoObjectCollection>` object is immutable.
+    Collection with VideoObject instances. VideoObjectCollection object is immutable.
 
     :Usage Example:
 
@@ -168,9 +168,9 @@ class VideoObjectCollection(KeyIndexedCollection):
         Convert the VideoObjectCollection to a list of json dicts. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
         :returns: List of dicts in json format
-        :rtype: :class:`List[dict]`
+        :rtype: List[dict]
 
         :Usage Example:
 
@@ -209,12 +209,12 @@ class VideoObjectCollection(KeyIndexedCollection):
 
         :param data: List with dicts in json format.
         :type data: List[dict]
-        :param project_meta: Input :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`.
-        :type project_meta: ProjectMeta
+        :param project_meta: Input ProjectMeta object.
+        :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
         :returns: VideoObjectCollection object
-        :rtype: :class:`VideoObjectCollection`
+        :rtype: :class:`~supervisely.video_annotation.video_object_collection.VideoObjectCollection`
 
         :Usage Example:
 

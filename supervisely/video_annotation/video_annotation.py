@@ -30,18 +30,18 @@ from supervisely.video_annotation.video_tag_collection import VideoTagCollection
 
 class VideoAnnotation:
     """
-    VideoAnnotation for a single video. :class:`VideoAnnotation<VideoAnnotation>` object is immutable.
+    VideoAnnotation for a single video. :class:`~supervisely.video_annotation.video_annotation.VideoAnnotation` object is immutable.
 
     :param img_size: Size of the image (height, width).
     :type img_size: Tuple[int, int] or List[int, int]
     :param frames_count: Number of frames in VideoAnnotation.
     :type frames_count: int
     :param objects: VideoObjectCollection object.
-    :type objects: VideoObjectCollection, optional
+    :type objects: :class:`~supervisely.video_annotation.video_object_collection.VideoObjectCollection`, optional
     :param frames: FrameCollection object.
-    :type frames: FrameCollection, optional
+    :type frames: :class:`~supervisely.video_annotation.frame_collection.FrameCollection`, optional
     :param tags: VideoTagCollection object.
-    :type tags: VideoTagCollection, optional
+    :type tags: :class:`~supervisely.video_annotation.video_tag_collection.VideoTagCollection`, optional
     :param description: Video description.
     :type description: str, optional
     :param key: UUID object.
@@ -227,8 +227,8 @@ class VideoAnnotation:
         """
         VideoAnnotation objects.
 
-        :returns: VideoObjectCollection object
-        :rtype: :class:`VideoObjectCollection`
+        :returns: VideoObjectCollection object.
+        :rtype: VideoObjectCollection
 
         :Usage Example:
 
@@ -259,8 +259,8 @@ class VideoAnnotation:
         """
         VideoAnnotation frames.
 
-        :returns: FrameCollection object
-        :rtype: :class:`FrameCollection`
+        :returns: FrameCollection object.
+        :rtype: FrameCollection
 
         :Usage Example:
 
@@ -316,8 +316,8 @@ class VideoAnnotation:
         """
         VideoAnnotation figures.
 
-        :returns: List of VideoFigures from all frames in VideoAnnotation
-        :rtype: :class:`List[VideoFigure]<supervisely.video_annotation.video_figure.VideoFigure>`
+        :returns: List of VideoFigures from all frames in VideoAnnotation.
+        :rtype: List[:class:`~supervisely.video_annotation.video_figure.VideoFigure`]
 
         :Usage Example:
 
@@ -346,8 +346,8 @@ class VideoAnnotation:
         """
         VideoAnnotation tags.
 
-        :returns: VideoTagCollection object
-        :rtype: :class:`VideoTagCollection`
+        :returns: VideoTagCollection object.
+        :rtype: :class:`~supervisely.video_annotation.video_tag_collection.VideoTagCollection`
 
         :Usage Example:
 
@@ -388,7 +388,7 @@ class VideoAnnotation:
         Annotation key value.
 
         :returns: Key value of annotation object.
-        :rtype: str
+        :rtype: UUID
 
         :Usage Example:
 
@@ -439,7 +439,7 @@ class VideoAnnotation:
     #     :param frame_index: Video frame index.
     #     :type frame_index: int
     #     :returns: Tags from the given frame.
-    #     :rtype: :class:`VideoTagCollection<supervisely.video_annotation.video_tag_collection.VideoTagCollection>`
+    #     :rtype: :class:`~supervisely.video_annotation.video_tag_collection.VideoTagCollection`
 
     #     :Usage Example:
 
@@ -479,7 +479,7 @@ class VideoAnnotation:
     #     :param frame_index: Video frame index.
     #     :type frame_index: int
     #     :returns: Objects from the given frame.
-    #     :rtype: :class:`VideoObjectCollection<supervisely.video_annotation.video_object_collection.VideoObjectCollection>`
+    #     :rtype: :class:`~supervisely.video_annotation.video_object_collection.VideoObjectCollection`
 
     #     :Usage Example:
 
@@ -516,7 +516,7 @@ class VideoAnnotation:
         """
         Checks if image contains figures from all frames in collection.
 
-        :raises OutOfImageBoundsException: if figure is out of image bounds
+        :raises :class:`~supervisely.video_annotation.video_figure.OutOfImageBoundsException`: if figure is out of image bounds
         :returns: None
         :rtype: None
 
@@ -549,9 +549,9 @@ class VideoAnnotation:
         Convert the VideoAnnotation to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
         :returns: Json format as a dict
-        :rtype: dict
+        :rtype: Dict
 
         :Usage Example:
 
@@ -609,14 +609,14 @@ class VideoAnnotation:
 
         :param data: Dict in json format.
         :type data: dict
-        :param project_meta: Input :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`.
-        :type project_meta: ProjectMeta
+        :param project_meta: Input ProjectMeta object.
+        :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: Union[KeyIdMap, None]
+        :type key_id_map: Union[:class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, None]
         :param skip_corrupted: Skip corrupted items (currently only frames) during conversion.
         :type skip_corrupted: bool, optional
         :returns: VideoAnnotation object
-        :rtype: :class:`VideoAnnotation`
+        :rtype: :class:`~supervisely.video_annotation.video_annotation.VideoAnnotation`
 
         :Usage Example:
 
@@ -675,12 +675,12 @@ class VideoAnnotation:
 
         :param path: Path to the json file.
         :type path: str
-        :param project_meta: Input :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`.
-        :type project_meta: ProjectMeta
+        :param project_meta: Input ProjectMeta object.
+        :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
         :returns: VideoAnnotation object
-        :rtype: :class:`VideoAnnotation<VideoAnnotation>`
+        :rtype: :class:`~supervisely.video_annotation.video_annotation.VideoAnnotation`
 
         :Usage Example:
 
@@ -734,11 +734,11 @@ class VideoAnnotation:
         :param frames_count: Number of frames in VideoAnnotation.
         :type frames_count: int, optional
         :param objects: VideoObjectCollection object.
-        :type objects: VideoObjectCollection, optional
+        :type objects: :class:`~supervisely.video_annotation.video_object_collection.VideoObjectCollection`, optional
         :param frames: FrameCollection object.
-        :type frames: FrameCollection, optional
+        :type frames: :class:`~supervisely.video_annotation.frame_collection.FrameCollection`, optional
         :param tags: VideoTagCollection object.
-        :type tags: VideoTagCollection, optional
+        :type tags: :class:`~supervisely.video_annotation.video_tag_collection.VideoTagCollection`, optional
         :param description: Video description.
         :type description: str, optional
         :raises TypeError: if img_size is not tuple or list

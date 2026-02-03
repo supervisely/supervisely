@@ -108,11 +108,11 @@ class PointcloudEpisodeDataset(PointcloudDataset):
         :param item_name: Pointcloud name.
         :type item_name: str
         :param project_meta: Project Meta.
-        :type project_meta: :class:`ProjectMeta<supervisely.ProjectMeta>`
-        :param key_id_map: KeyIdMap object.
-        :type key_id_map: :class:`KeyIdMap<supervisely.video_annotation.key_id_map.KeyIdMap>`, optional
-        :returns: PointcloudEpisodeAnnotation object
-        :rtype: :class:`PointcloudEpisodeAnnotation<supervisely.PointcloudEpisodeAnnotation>`
+        :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
+        :param key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap` object.
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
+        :returns: Pointcloud episode annotation object
+        :rtype: :class:`~supervisely.pointcloud_annotation.pointcloud_episode_annotation.PointcloudEpisodeAnnotation`
         :raises RuntimeError: if item not found in the project
 
         :Usage Example:
@@ -543,13 +543,13 @@ class PointcloudEpisodeProject(PointcloudProject):
         Download pointcloud episodes project from Supervisely to the given directory.
 
         :param api: Supervisely API address and token.
-        :type api: :class:`Api<supervisely.api.api.Api>`
+        :type api: :class:`~supervisely.api.api.Api`
         :param project_id: Supervisely downloadable project ID.
         :type project_id: int
         :param dest_dir: Destination directory.
         :type dest_dir: str
         :param dataset_ids: Dataset IDs.
-        :type dataset_ids: list [ int ], optional
+        :type dataset_ids: List[int], optional
         :param download_pointclouds: Download pointcloud data files or not.
         :type download_pointclouds: bool, optional
         :param download_related_images: Download related images or not.
@@ -561,7 +561,7 @@ class PointcloudEpisodeProject(PointcloudProject):
         :param log_progress: Show uploading progress bar.
         :type log_progress: bool
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: :class:`tqdm` or callable, optional
+        :type progress_cb: tqdm or callable, optional
         :returns: None
         :rtype: NoneType
 
@@ -617,7 +617,7 @@ class PointcloudEpisodeProject(PointcloudProject):
         :param directory: Path to project directory.
         :type directory: str
         :param api: Supervisely API address and token.
-        :type api: Api
+        :type api: :class:`~supervisely.api.api.Api`
         :param workspace_id: Workspace ID, where project will be uploaded.
         :type workspace_id: int
         :param project_name: Name of the project in Supervisely. Can be changed if project with the same name is already exists.
@@ -707,13 +707,13 @@ def download_pointcloud_episode_project(
     Download pointcloud episode project to the local directory.
 
     :param api: Supervisely API address and token.
-    :type api: Api
+    :type api: :class:`~supervisely.api.api.Api`
     :param project_id: Project ID to download.
     :type project_id: int
     :param dest_dir: Destination path to local directory.
     :type dest_dir: str
     :param dataset_ids: Specified list of Dataset IDs which will be downloaded. Datasets could be downloaded from different projects but with the same data type.
-    :type dataset_ids: list(int), optional
+    :type dataset_ids: List[int], optional
     :param download_pcd: Include pointcloud episode items in the download.
     :type download_pcd: bool, optional
     :param download_related_images: Include related context images in the download.

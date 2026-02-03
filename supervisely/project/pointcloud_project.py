@@ -204,8 +204,8 @@ class PointcloudDataset(VideoDataset):
 
         :param item_name: Pointcloud name.
         :type item_name: str
-        :returns: Pointcloud with information for the given Dataset
-        :rtype: :class:`NamedTuple`
+        :returns: Pointcloud with information for the given :class:`~supervisely.project.project.Dataset`
+        :rtype: NamedTuple
 
         :Usage Example:
 
@@ -294,31 +294,17 @@ class PointcloudDataset(VideoDataset):
         :type item_name: str
         :param item_path: Path to the item.
         :type item_path: str
-        :param ann: PointcloudAnnotation object or path to annotation json file.
-        :type ann: :class:`PointcloudAnnotation<supervisely.pointcloud_annotation.pointcloud_annotation.PointcloudAnnotation>` or str, optional
+        :param ann: Pointcloud annotation object or path to annotation json file.
+        :type ann: :class:`~supervisely.pointcloud_annotation.pointcloud_annotation.PointcloudAnnotation` or str, optional
         :param _validate_item: Checks input files format.
         :type _validate_item: bool, optional
         :param _use_hardlink: If True creates a hardlink pointing to src named dst, otherwise don't.
         :type _use_hardlink: bool, optional
-        :param item_info: PointcloudInfo object or PointcloudInfo object converted to dict or path to item info json file for copying to dataset item info directory.
-        :type item_info: :class:`PointcloudInfo<supervisely.api.pointcloud.pointcloud_api.PointcloudInfo>` or dict or str, optional
+        :param item_info: Pointcloud info object or Pointcloud info object converted to dict or path to item info json file for copying to dataset item info directory.
+        :type item_info: :class:`~supervisely.api.pointcloud.pointcloud_api.PointcloudInfo` or dict or str, optional
         :returns: None
-        :rtype: NoneType
+        :rtype: None
         :raises RuntimeError: if item_name already exists in dataset or item name has unsupported extension.
-
-        :Usage Example:
-
-            .. code-block:: python
-
-                import supervisely as sly
-
-                dataset_path = "/home/admin/work/supervisely/projects/ptc_project/ds0"
-                ds = sly.PointcloudDataset(dataset_path, sly.OpenMode.READ)
-
-                ann = "/home/admin/work/supervisely/projects/ptc_project/ds0/ann/PTC_8888.pcd.json"
-                ds.add_item_file("PTC_8888.pcd", "/home/admin/work/supervisely/projects/ptc_project/ds0/pointcloud/PTC_8888.pcd", ann=ann)
-                print(ds.item_exists("PTC_8888.pcd"))
-                # Output: True
         """
         return super().add_item_file(
             item_name=item_name,
@@ -343,9 +329,9 @@ class PointcloudDataset(VideoDataset):
         :type item_name: str
         :param pointcloud: numpy Pointcloud array [N, 3], in (X, Y, Z) format.
         :type pointcloud: np.ndarray
-        :param ann: PointcloudAnnotation object or path to annotation .json file.
-        :type ann: PointcloudAnnotation or str, optional
-        :param item_info: NamedTuple PointcloudItemInfo containing information about Pointcloud.
+        :param ann: Pointcloud annotation object or path to annotation .json file.
+        :type ann: :class:`~supervisely.pointcloud_annotation.pointcloud_annotation.PointcloudAnnotation` or str, optional
+        :param item_info: NamedTuple containing information about pointcloud item.
         :type item_info: NamedTuple, optional
         :returns: None
         :rtype: None
@@ -467,11 +453,11 @@ class PointcloudDataset(VideoDataset):
         :param item_name: Pointcloud name.
         :type item_name: str
         :param project_meta: Project Meta.
-        :type project_meta: ProjectMeta
-        :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
-        :returns: PointcloudAnnotation object
-        :rtype: :class:`PointcloudAnnotation<supervisely.PointcloudAnnotation>`
+        :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
+        :param key_id_map: Key ID map.
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
+        :returns: Pointcloud annotation object
+        :rtype: :class:`~supervisely.pointcloud_annotation.pointcloud_annotation.PointcloudAnnotation`
         :raises RuntimeError: if item not found in the project
 
         :Usage Example:
@@ -546,7 +532,7 @@ class PointcloudProject(VideoProject):
     :param directory: Path to pointcloud project directory.
     :type directory: str
     :param mode: Determines working mode for the given project.
-    :type mode: :class:`OpenMode<supervisely.project.project.OpenMode>`
+    :type mode: :class:`~supervisely.project.project.OpenMode`
 
     :Usage Example:
 
@@ -613,7 +599,7 @@ class PointcloudProject(VideoProject):
         :type val_count: int
         :raises ValueError: if total_count != train_count + val_count
         :returns: Tuple with lists of train items information and val items information
-        :rtype: :class:`Tuple[List[PointcloudItemInfo], List[PointcloudItemInfo]]`
+        :rtype: Tuple[List[:class:`~supervisely.project.pointcloud_project.PointcloudItemInfo`], List[:class:`~supervisely.project.pointcloud_project.PointcloudItemInfo`]]
 
         :Usage Example:
 
@@ -807,7 +793,7 @@ class PointcloudProject(VideoProject):
         Download pointcloud project from Supervisely to the given directory.
 
         :param api: Supervisely API address and token.
-        :type api: sly.Api
+        :type api: :class:`~supervisely.api.api.Api`
         :param project_id: Supervisely downloadable project ID.
         :type project_id: int
         :param dest_dir: Destination directory.
@@ -827,7 +813,7 @@ class PointcloudProject(VideoProject):
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
         :returns: None
-        :rtype: NoneType
+        :rtype: None
 
         :Usage Example:
 
@@ -879,7 +865,7 @@ class PointcloudProject(VideoProject):
         :param directory: Path to project directory.
         :type directory: str
         :param api: Supervisely API address and token.
-        :type api: sly.Api
+        :type api: :class:`~supervisely.api.api.Api`
         :param workspace_id: Workspace ID, where project will be uploaded.
         :type workspace_id: int
         :param project_name: Name of the project in Supervisely. Can be changed if project with the same name is already exists.
@@ -967,13 +953,13 @@ def download_pointcloud_project(
     Download pointcloud project to the local directory.
 
     :param api: Supervisely API address and token.
-    :type api: Api
+    :type api: :class:`~supervisely.api.api.Api`
     :param project_id: Project ID to download.
     :type project_id: int
     :param dest_dir: Destination path to local directory.
     :type dest_dir: str
     :param dataset_ids: Specified list of Dataset IDs which will be downloaded. Datasets could be downloaded from different projects but with the same data type.
-    :type dataset_ids: list(int), optional
+    :type dataset_ids: List[int], optional
     :param download_items: Include pointcloud items in the download.
     :type download_items: bool, optional
     :param download_related_images: Include related context images of a pointcloud project in the download.
@@ -988,7 +974,7 @@ def download_pointcloud_project(
     :type progress_cb: tqdm or callable, optional
 
     :returns: None.
-    :rtype: NoneType
+    :rtype: None
 
     :Usage Example:
 

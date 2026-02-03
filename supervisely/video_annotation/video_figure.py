@@ -33,17 +33,17 @@ class OutOfImageBoundsException(Exception):
 
 class VideoFigure:
     """
-    VideoFigure object for :class:`VideoAnnotation<supervisely.video_annotation.video_annotation.VideoAnnotation>`. :class:`VideoFigure<VideoFigure>` object is immutable.
+    VideoFigure object for VideoAnnotation. VideoFigure object is immutable.
 
     :param video_object: VideoObject object.
-    :type video_object: VideoObject
-    :param geometry: Label :class:`geometry<supervisely.geometry.geometry.Geometry>`.
-    :type geometry: Geometry
+    :type video_object: :class:`~supervisely.video_annotation.video_object.VideoObject`
+    :param geometry: Label Geometry object.
+    :type geometry: :class:`~supervisely.geometry.geometry.Geometry`
     :param frame_index: Index of Frame to which VideoFigure belongs.
     :type frame_index: int
     :param key_id_map: KeyIdMap object.
-    :type key_id_map: KeyIdMap, optional
-    :param class_id: ID of :class:`VideoObject<VideoObject>` to which VideoFigure belongs.
+    :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
+    :param class_id: ID of VideoObject to which VideoFigure belongs.
     :type class_id: int, optional
     :param labeler_login: Login of the user who created VideoFigure.
     :type labeler_login: str, optional
@@ -58,7 +58,7 @@ class VideoFigure:
     :param priority: Priority of the figure (position of the figure relative to other overlapping or underlying figures).
     :type priority: int, optional
     :param status: Sets labeling status. Shows how label was created and corrected.
-    :type status: LabelingStatus, optional
+    :type status: :class:`~supervisely.annotation.label.LabelingStatus`, optional
 
     :Usage Example:
 
@@ -140,7 +140,7 @@ class VideoFigure:
     def _set_geometry_inplace(self, geometry: Geometry) -> None:
         """
         Checks the given geometry for correctness. Raise error if given geometry type != geometry type of VideoObject class
-        :param geometry: Geometry class object (Point, Rectangle etc)
+        :param geometry: Geometry class object (:class:`~supervisely.geometry.point.Point`, Rectangle etc)
         """
         self._geometry = geometry
         self._validate_geometry_type()
@@ -152,7 +152,7 @@ class VideoFigure:
         VideoObject of current VideoFigure.
 
         :returns: VideoObject object
-        :rtype: :class:`VideoObject<VideoObject>`
+        :rtype: :class:`~supervisely.video_annotation.video_object.VideoObject`
 
         :Usage Example:
 
@@ -174,7 +174,7 @@ class VideoFigure:
         VideoObject of current VideoFigure.
 
         :returns: VideoObject object
-        :rtype: :class:`VideoObject<VideoObject>`
+        :rtype: :class:`~supervisely.video_annotation.video_object.VideoObject`
 
         :Usage Example:
 
@@ -196,7 +196,7 @@ class VideoFigure:
         Geometry of the current VideoFigure.
 
         :returns: Geometry object
-        :rtype: :class:`Geometry<supervisely.geometry>`
+        :rtype: :class:`~supervisely.geometry.geometry.Geometry`
 
         :Usage Example:
 
@@ -319,11 +319,11 @@ class VideoFigure:
         Convert the VideoFigure to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
         :param save_meta: Save frame index or not.
         :type save_meta: bool, optional
         :returns: Json format as a dict
-        :rtype: dict
+        :rtype: Dict
 
         :Usage Example:
 
@@ -399,7 +399,7 @@ class VideoFigure:
         Get metadata for the video figure.
 
         :returns: Dictionary with metadata for the video figure.
-        :rtype: :py:class:`Dict[str, int]`
+        :rtype: Dict[str, int]
 
         :Usage Example:
 
@@ -432,14 +432,14 @@ class VideoFigure:
         :param data: Dict in json format.
         :type data: dict
         :param objects: VideoObjectCollection object.
-        :type objects: VideoObjectCollection
+        :type objects: :class:`~supervisely.video_annotation.video_object_collection.VideoObjectCollection`
         :param frame_index: Index of Frame to which VideoFigure belongs.
         :type frame_index: int
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
         :raises RuntimeError: if video object ID and video object key are None, if video object key and key_id_map are None, if video object with given id not found in key_id_map
         :returns: VideoFigure object
-        :rtype: :class:`VideoFigure`
+        :rtype: :class:`~supervisely.video_annotation.video_figure.VideoFigure`
 
         :Usage Example:
 
@@ -532,14 +532,14 @@ class VideoFigure:
         Makes a copy of VideoFigure with new fields, if fields are given, otherwise it will use fields of the original VideoFigure.
 
         :param video_object: VideoObject object.
-        :type video_object: VideoObject, optional
-        :param geometry: Label :class:`geometry<supervisely.geometry.geometry.Geometry>`.
-        :type geometry: Geometry, optional
+        :type video_object: :class:`~supervisely.video_annotation.video_object.VideoObject`, optional
+        :param geometry: Label Geometry object.
+        :type geometry: :class:`~supervisely.geometry.geometry.Geometry`, optional
         :param frame_index: Index of Frame to which VideoFigure belongs.
         :type frame_index: int, optional
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
-        :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which VideoFigure belongs.
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
+        :param class_id: ID of ObjClass to which VideoFigure belongs.
         :type class_id: int, optional
         :param labeler_login: Login of the user who created VideoFigure.
         :type labeler_login: str, optional
@@ -554,9 +554,9 @@ class VideoFigure:
         :param priority: Priority of the figure (position of the figure relative to other overlapping or underlying figures).
         :type priority: int, optional
         :param status: Sets labeling status. Specifies if the VideoFigure was created by NN model, manually or created by NN and then manually corrected.
-        :type status: LabelingStatus, optional
+        :type status: :class:`~supervisely.annotation.label.LabelingStatus`, optional
         :returns: VideoFigure object
-        :rtype: :class:`VideoFigure`
+        :rtype: :class:`~supervisely.video_annotation.video_figure.VideoFigure`
 
         :Usage Example:
 
@@ -635,7 +635,7 @@ class VideoFigure:
         :type img_size: Tuple[int, int]
         :param _auto_correct: Correct the geometry of a shape if it is out of bounds or not.
         :type _auto_correct: bool, optional
-        :raises OutOfImageBoundsException: if figure is out of image bounds
+        :raises :class:`~supervisely.video_annotation.video_figure.OutOfImageBoundsException`: if figure is out of image bounds
         :returns: None
         :rtype: None
 

@@ -83,14 +83,14 @@ def validate_project_settings_schema(data: dict) -> None:
 
 class ProjectSettings(JsonSerializable):
     """
-    General information about :class:`<supervisely.project.project_settings.ProjectSettings>`. The class is immutable.
+    General information about :class:`~supervisely.project.project_settings.ProjectSettings`. The class is immutable.
 
     :param multiview_enabled: Enable multi-view mode.
     :type multiview_enabled: bool
     :param multiview_tag_name: The name of the tag which will be used as a group tag for multi-window mode.
     :type multiview_tag_name: str, optional
     :param multiview_tag_id: The id of the tag which will be used as a group tag for multi-window mode.
-    :type multiview_tag_id: str, optional
+    :type multiview_tag_id: int, optional
     :param multiview_is_synced: Enable syncronization of views for the multi-view mode.
     :type multiview_is_synced: bool
     :param labeling_interface: The interface for labeling images.
