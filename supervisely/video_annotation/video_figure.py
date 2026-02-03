@@ -8,6 +8,7 @@ from uuid import UUID
 
 from supervisely._utils import take_with_default
 from supervisely.annotation.json_geometries_map import GET_GEOMETRY_FROM_STR
+from supervisely.annotation.label import LabelingStatus
 from supervisely.api.module_api import ApiField
 from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely.geometry.constants import (
@@ -18,13 +19,12 @@ from supervisely.geometry.constants import (
     UPDATED_AT,
 )
 from supervisely.geometry.geometry import Geometry
+from supervisely.geometry.oriented_bbox import OrientedBBox
 from supervisely.geometry.rectangle import Rectangle
 from supervisely.video_annotation.constants import ID, KEY, OBJECT_ID, OBJECT_KEY
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.video_annotation.video_object import VideoObject
 from supervisely.video_annotation.video_object_collection import VideoObjectCollection
-
-from supervisely.annotation.label import LabelingStatus
 
 
 class OutOfImageBoundsException(Exception):
@@ -649,7 +649,13 @@ class VideoFigure:
             # raise OutOfImageBoundsException("Figure is out of image bounds")
         """
         canvas_rect = Rectangle.from_size(img_size)
-        if canvas_rect.contains(self.geometry.to_bbox()) is False:
+
+
+        if isinstance(self.geometry, OrientedBBox):
+            contains = canvas_rect.contains_point_location(self.geometry.center)
+        else:
+            contains = canvas_rect.contains(self.geometry.to_bbox())
+        if not contains:
             details = {
                 "class_name": self.parent_object.obj_class.name,
                 "geometry": self.geometry.geometry_name(),

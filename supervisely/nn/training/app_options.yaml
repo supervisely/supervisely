@@ -2,6 +2,7 @@
 model_selector:
   enabled: true
   show_custom: true
+  default_model: "YOLO26s-det"
 
 # ==================== Data Selection ==============
 # if false, use all classes from project meta

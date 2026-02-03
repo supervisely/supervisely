@@ -51,6 +51,10 @@ class ModelSelector:
 
         # GUI Components
         self.pretrained_models_table = PretrainedModelsSelector(self.models)
+        default_model = model_selector_opts.get("default_model", None)
+        if default_model is not None:
+            self.pretrained_models_table.set_by_model_name(default_model)
+
         experiment_infos = get_experiment_infos(self.api, self.team_id, framework)
         if self.app_options.get("legacy_checkpoints", False):
             try:
