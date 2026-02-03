@@ -970,7 +970,7 @@ class Application(metaclass=Singleton):
         """Initialize the Supervisely Application.
 
         :param layout: Main layout of the application.
-        :type layout: Widget
+        :type layout: :class:`~supervisely.app.widgets.widget.Widget`
         :param templates_dir: Directory with Jinja2 templates. It is preferred to use `layout` instead of `templates_dir`.
         :type templates_dir: str, optional
         :param static_dir: Directory with static files (e.g. CSS, JS), used for serving static content.
@@ -978,7 +978,7 @@ class Application(metaclass=Singleton):
         :param hot_reload: Whether to enable hot reload during development (default is False).
         :type hot_reload: bool, optional
         :param session_info_extra_content: Additional content to be displayed in the session info area.
-        :type session_info_extra_content: Widget, optional
+        :type session_info_extra_content: :class:`~supervisely.app.widgets.widget.Widget`, optional
         :param session_info_solid: Whether to use solid background for the session info area.
         :type session_info_solid: bool, optional
         :param ready_check_function: Function to check if the app is ready for requests.
@@ -1174,7 +1174,7 @@ class Application(metaclass=Singleton):
         Supports both async and sync functions.
 
         :param event: event to register (e.g. `Event.Brush.LeftMouseReleased`)
-        :type event: Event
+        :type event: :class:`~supervisely.app.fastapi.subapp.Event`
         :param use_state: if set to True, data will be extracted from request.state.state,
             otherwise from request.state.context, defaults to False
         :type use_state: bool, optional

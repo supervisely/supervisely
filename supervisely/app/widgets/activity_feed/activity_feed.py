@@ -21,8 +21,8 @@ class ActivityFeed(Widget):
     Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/layouts-and-containers/activity-feed>`_
         (including screenshots and examples).
 
-    :param items: List of ActivityFeed.Item objects to display
-    :type items: Optional[List[ActivityFeed.Item]]
+    :param items: List of items to display
+    :type items: Optional[List[:class:`~supervisely.app.widgets.activity_feed.activity_feed.ActivityFeed.Item`]]
     :param widget_id: An identifier of the widget.
     :type widget_id: str, optional
 
@@ -68,7 +68,7 @@ class ActivityFeed(Widget):
         """Represents a single item in the ActivityFeed.
 
         :param content: Widget to display as the item content
-        :type content: Widget
+        :type content: :class:`~supervisely.app.widgets.widget.Widget`
         :param status: Status of the item (pending, in_progress, completed, failed)
         :type status: Literal["pending", "in_progress", "completed", "failed"]
         :param number: Position number in the feed (auto-assigned if not provided)
@@ -143,12 +143,12 @@ class ActivityFeed(Widget):
     ) -> None:
         """Add a new item to the activity feed.
 
-        You can either pass an ActivityFeed.Item object or provide content and status separately.
+        You can either pass an item object or provide content and status separately.
 
-        :param item: ActivityFeed.Item to add
-        :type item: Optional[ActivityFeed.Item]
+        :param item: Item to add
+        :type item: Optional[:class:`~supervisely.app.widgets.activity_feed.activity_feed.ActivityFeed.Item`]
         :param content: Widget content (used if item is not provided)
-        :type content: Optional[Widget]
+        :type content: Optional[:class:`~supervisely.app.widgets.widget.Widget`]
         :param status: Status of the item (used if item is not provided)
         :type status: Literal["pending", "in_progress", "completed", "failed"]
         :param number: Position number (auto-assigned if not provided)
@@ -218,7 +218,7 @@ class ActivityFeed(Widget):
         """Get all items in the activity feed.
 
         :returns: List of all items
-        :rtype: List[ActivityFeed.Item]
+        :rtype: List[:class:`~supervisely.app.widgets.activity_feed.activity_feed.ActivityFeed.Item`]
         """
         return self._items
 
@@ -232,7 +232,7 @@ class ActivityFeed(Widget):
         """Replace all items in the activity feed.
 
         :param items: New list of items
-        :type items: List[ActivityFeed.Item]
+        :type items: List[:class:`~supervisely.app.widgets.activity_feed.activity_feed.ActivityFeed.Item`]
         """
         self._items = items
         self._auto_assign_numbers()

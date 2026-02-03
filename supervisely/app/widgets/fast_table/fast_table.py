@@ -33,7 +33,7 @@ class FastTable(Widget):
     :param columns_options: List of dicts with options for each column
     :type columns_options: List[dict], optional
     :param project_meta: Project meta information
-    :type project_meta: Union[ProjectMeta, dict], optional
+    :type project_meta: Union[:class:`~supervisely.project.project_meta.ProjectMeta`, dict], optional
     :param fixed_columns: Number of fixed columns
     :type fixed_columns: Literal[1], optional
     :param page_size: Number of rows per page
@@ -53,9 +53,9 @@ class FastTable(Widget):
     :param is_selectable: Enable multiple row selection
     :type is_selectable: bool, optional
     :param header_left_content: Widget to display in the left side of the header
-    :type header_left_content: Widget, optional
+    :type header_left_content: :class:`~supervisely.app.widgets.widget.Widget`, optional
     :param header_right_content: Widget to display in the right side of the header
-    :type header_right_content: Widget, optional
+    :type header_right_content: :class:`~supervisely.app.widgets.widget.Widget`, optional
     :param max_selected_rows: Maximum number of rows that can be selected
     :type max_selected_rows: int, optional
     :param search_position: Position of the search input ("left" or "right")
@@ -380,7 +380,7 @@ class FastTable(Widget):
         """Sets project meta information.
 
         :param meta: Project meta information
-        :type meta: Union[ProjectMeta, Dict]
+        :type meta: Union[:class:`~supervisely.project.project_meta.ProjectMeta`, Dict]
         """
         self._project_meta = self._unpack_project_meta(meta)
         DataJson()[self.widget_id]["projectMeta"] = self._project_meta

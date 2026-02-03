@@ -343,7 +343,7 @@ class Heatmap(Widget):
         Creates and sets a heatmap from Supervisely annotations showing object density/overlaps.
 
         :param anns: List of Supervisely annotations to convert to heatmap
-        :type anns: List[Annotation]
+        :type anns: List[:class:`~supervisely.annotation.annotation.Annotation`]
         :param object_name: Name of the object class to filter annotations by. If None, all objects are included
         :type object_name: str, optional
         :raises ValueError: If the annotations list is empty

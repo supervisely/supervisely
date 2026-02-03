@@ -181,7 +181,7 @@ class VolumeApi(RemoveableBulkModuleApi):
     API for working with volumes. :class:`~supervisely.api.volume.volume_api.VolumeApi` object is immutable.
 
     :param api: API connection to the server.
-    :type api: Api
+    :type api: :class:`~supervisely.api.api.Api`
 
     :Usage Example:
 
@@ -205,7 +205,8 @@ class VolumeApi(RemoveableBulkModuleApi):
 
     def __init__(self, api):
         """
-        :param api: Api class object
+        :param api: Api object
+        :type api: :class:`~supervisely.api.api.Api`
         """
         super().__init__(api)
         self.annotation = VolumeAnnotationAPI(api)
@@ -219,7 +220,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         """
         Get list of all :class:`~supervisely.api.volume.volume_api.VolumeInfo` field names.
 
-        :returns: List of :class:`~supervisely.api.volume.volume_api.VolumeInfo` field names.
+        :returns: List of VolumeInfo field names.
         :rtype: List[str]
         """
 
@@ -274,7 +275,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         """
         Get list of information about all volumes for a given dataset ID.
 
-        :param dataset_id: :class:`~supervisely.project.project.Dataset` ID in Supervisely.
+        :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
         :param filters: List of parameters to sort output Volumes. See: https://api.docs.supervisely.com/#tag/Volumes/paths/~1volumes.list/get
         :type filters: List[Dict[str, str]], optional
@@ -1066,15 +1067,15 @@ class VolumeApi(RemoveableBulkModuleApi):
 
         :param volume_id: Volume ID in Supervisely.
         :type volume_id: int
-        :param slice_index: :class:`~supervisely.volume_annotation.slice.Slice` index.
+        :param slice_index: Slice index.
         :type slice_index: int
-        :param plane: :class:`~supervisely.volume_annotation.plane.Plane` of the slice in volume.
+        :param plane: Plane of the slice in volume.
         :type plane: str
         :param window_center: Window center.
         :type window_center: float
         :param window_width: Window width.
         :type window_width: int
-        :returns: Information about Volume. See :class:`info_sequence<info_sequence>`
+        :returns: Information about Volume.
         :rtype: :class:`~supervisely.api.volume.volume_api.VolumeInfo`
 
         :Usage Example:

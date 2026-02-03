@@ -195,7 +195,7 @@ class ClassesListSelector(Widget):
         The decorated function receives the newly created ObjClass.
 
         :param func: Function to be called when a new class is created
-        :type func: Callable[[ObjClass], None]
+        :type func: Callable[[:class:`~supervisely.annotation.obj_class.ObjClass`], None]
         """
         route_path = self.get_route_path(ClassesListSelector.Routes.CLASS_CREATED)
         server = self._sly_app.get_server()

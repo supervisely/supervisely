@@ -387,7 +387,7 @@ def draw_text_sequence(
     :param anchor_point: Coordinates of the place on the image where the text will be displayed(row, column).
     :type anchor_point: Tuple[int, int]
     :param corner_snap: Corner of image to draw texts.
-    :type corner_snap: CornerAnchorMode, optional
+    :type corner_snap: :class:`~supervisely.imaging.image.CornerAnchorMode`, optional
     :param col_space: Distance between texts.
     :type col_space: int, optional
     :param font: Type of text font.
@@ -456,7 +456,7 @@ def draw_text(
     :param anchor_point: Coordinates of the place on the image where the text will be displayed(row, column).
     :type anchor_point: Tuple[int, int]
     :param corner_snap: Corner of image to draw texts.
-    :type corner_snap: CornerAnchorMode, optional
+    :type corner_snap: :class:`~supervisely.imaging.image.CornerAnchorMode`, optional
     :param font: Type of text font.
     :type font: ImageFont.FreeTypeFont, optional
     :param fill_background: Define fill text background or not.
@@ -610,8 +610,8 @@ def crop(img: np.ndarray, rect: Rectangle) -> np.ndarray:
 
     :param img: Image in numpy format(RGB).
     :type img: np.ndarray
-    :param rect: :class:`Rectangle<supervisely.geometry.rectangle.Rectangle>` object for crop.
-    :type rect: Rectangle
+    :param rect: Rectangle object for crop.
+    :type rect: :class:`~supervisely.geometry.rectangle.Rectangle`
     :returns: Cropped image in numpy format
     :rtype: :class:`np.ndarray`
 
@@ -651,8 +651,8 @@ def crop_with_padding(img: np.ndarray, rect: Rectangle) -> np.ndarray:
 
     :param img: Image in numpy format(RGB).
     :type img: np.ndarray
-    :param rect: :class:`Rectangle<supervisely.geometry.rectangle.Rectangle>` object for crop.
-    :type rect: Rectangle
+    :param rect: Rectangle object for crop.
+    :type rect: :class:`~supervisely.geometry.rectangle.Rectangle`
     :returns: Cropped image in numpy format
     :rtype: :class:`np.ndarray`
 
@@ -943,7 +943,7 @@ def rotate(
     :param degrees_angle: Angle in degrees for rotating.
     :type degrees_angle: int
     :param mode: One of RotateMode enum values.
-    :type mode: RotateMode, optional
+    :type mode: :class:`~supervisely.imaging.image.RotateMode`, optional
     :returns: Rotate image in numpy format
     :rtype: :class:`np.ndarray`
 

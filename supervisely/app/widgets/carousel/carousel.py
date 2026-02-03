@@ -17,8 +17,8 @@ class Carousel(Widget):
     Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/media/carousel>`_
         (including screenshots and examples).
 
-    :param items: List of Carousel.Item objects to be displayed in the carousel.
-    :type items: List[Carousel.Item]
+    :param items: List of items to be displayed in the carousel.
+    :type items: List[:class:`~supervisely.app.widgets.carousel.carousel.Carousel.Item`]
     :param height: Height of the carousel in pixels.
     :type height: Optional[int]
     :param initial_index: Index of the item to be displayed at initialization.
@@ -130,7 +130,7 @@ class Carousel(Widget):
 
         Dictionary contains the following fields:
             - height: Height of the carousel in pixels.
-            - items: List of Carousel.Item objects to be displayed in the carousel.
+            - items: List of items to be displayed in the carousel.
             - initialIndex: Index of the item to be displayed at initialization.
             - trigger: Trigger type to change the active item.
             - autoplay: If True, the carousel will be autoplayed.
@@ -172,21 +172,21 @@ class Carousel(Widget):
         return StateJson()[self.widget_id]["clickedValue"]
 
     def get_items(self) -> List[Carousel.Item]:
-        """Returns list of Carousel.Item objects.
+        """Returns list of items.
 
-        :returns: List of Carousel.Item objects.
-        :rtype: List[Carousel.Item]
+        :returns: List of items.
+        :rtype: List[:class:`~supervisely.app.widgets.carousel.carousel.Carousel.Item`]
         """
         return DataJson()[self.widget_id]["items"]
 
     def set_items(self, value: List[Carousel.Item]) -> None:
-        """Sets list of Carousel.Item objects to be displayed in the carousel.
+        """Sets list of items to be displayed in the carousel.
         This method will overwrite the existing items, not append to it.
         To append items, use :meth:`add_items`.
 
-        :param value: List of Carousel.Item objects to be displayed in the carousel.
-        :type value: List[Carousel.Item]
-        :raises ValueError: If items are not of type Carousel.Item.
+        :param value: List of items to be displayed in the carousel.
+        :type value: List[:class:`~supervisely.app.widgets.carousel.carousel.Carousel.Item`]
+        :raises ValueError: If items are not of type :class:`~supervisely.app.widgets.carousel.carousel.Carousel.Item`.
         """
         if not all(isinstance(item, Carousel.Item) for item in value):
             raise ValueError("Items must be of type Carousel.Item")
@@ -195,12 +195,12 @@ class Carousel(Widget):
         DataJson().send_changes()
 
     def add_items(self, value: List[Carousel.Item]) -> None:
-        """Appends list of Carousel.Item objects to the existing items.
+        """Appends list of items to the existing items.
         This method will not overwrite the existing items, but append to it.
         To overwrite items, use :meth:`set_items`.
 
-        :param value: List of Carousel.Item objects to be displayed in the carousel.
-        :type value: List[Carousel.Item]
+        :param value: List of items to be displayed in the carousel.
+        :type value: List[:class:`~supervisely.app.widgets.carousel.carousel.Carousel.Item`]
         """
         self._items.extend(value)
         DataJson()[self.widget_id]["items"] = self._set_items()

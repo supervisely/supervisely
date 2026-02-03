@@ -10,10 +10,10 @@ class CopyToClipboard(Widget):
         (including screenshots and examples).
 
     :param content: content to be copied
-    :type content: Union[Editor, Text, TextArea, Input, str]
+    :type content: Union[:class:`~supervisely.app.widgets.editor.editor.Editor`, :class:`~supervisely.app.widgets.text.text.Text`, :class:`~supervisely.app.widgets.textarea.textarea.TextArea`, :class:`~supervisely.app.widgets.input.input.Input`, str]
     :param widget_id: An identifier of the widget.
     :type widget_id: str, optional
-    :raises TypeError: if content is not str, Editor, Text, TextArea, or Input
+    :raises TypeError: if content is not str, :class:`~supervisely.app.widgets.editor.editor.Editor`, :class:`~supervisely.app.widgets.text.text.Text`, :class:`~supervisely.app.widgets.textarea.textarea.TextArea`, or :class:`~supervisely.app.widgets.input.input.Input`
 
     :Usage Example:
 
@@ -79,6 +79,6 @@ class CopyToClipboard(Widget):
         """Returns content of the widget.
 
         :returns: content of the widget
-        :rtype: Union[Editor, Input, Text, TextArea, str]
+        :rtype: Union[:class:`~supervisely.app.widgets.editor.editor.Editor`, :class:`~supervisely.app.widgets.input.input.Input`, :class:`~supervisely.app.widgets.text.text.Text`, :class:`~supervisely.app.widgets.textarea.textarea.TextArea`, str]
         """
         return self._content

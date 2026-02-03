@@ -26,8 +26,8 @@ class SelectTag(Widget):
     SelectTag is a compact dropdown widget for selecting tag metadata with an option to create
     new tags on the fly.
 
-    :param tags: Initial list of TagMeta instances
-    :type tags: Optional[Union[List[TagMeta], TagMetaCollection]]
+    :param tags: Initial list of tag metas or a tag meta collection
+    :type tags: Optional[Union[List[:class:`~supervisely.annotation.tag_meta.TagMeta`], :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection`]]
     :param filterable: Enable search/filter functionality in dropdown
     :type filterable: Optional[bool]
     :param placeholder: Placeholder text when no tag is selected
@@ -266,7 +266,7 @@ class SelectTag(Widget):
         The decorated function receives the selected TagMeta (or list of TagMeta if multiple=True).
 
         :param func: Function to be called when selection changes
-        :type func: Callable[[Union[TagMeta, List[TagMeta]]], None]
+        :type func: Callable[[Union[:class:`~supervisely.annotation.tag_meta.TagMeta`, List[:class:`~supervisely.annotation.tag_meta.TagMeta`]]], None]
         """
         route_path = self.get_route_path(SelectTag.Routes.VALUE_CHANGED)
         server = self._sly_app.get_server()
@@ -346,7 +346,7 @@ class SelectTag(Widget):
         The decorated function receives the newly created TagMeta.
 
         :param func: Function to be called when a new tag is created
-        :type func: Callable[[TagMeta], None]
+        :type func: Callable[[:class:`~supervisely.annotation.tag_meta.TagMeta`], None]
         """
         self._tag_created_callback = func
         return func

@@ -295,11 +295,11 @@ class BaseTrainArtifacts:
         Sort artifacts folder by task id.
 
         :param train_infos: The list of training infos.
-        :type train_infos: List[TrainInfo]
+        :type train_infos: List[:class:`~supervisely.nn.artifacts.artifacts.TrainInfo`]
         :param sort: The sort order, either "desc" or "asc". Default is "desc", which means newer checkpoints will be first.
         :type sort: Literal["desc", "asc"]
         :returns: The sorted list of checkpoints.
-        :rtype: List[TrainInfo]
+        :rtype: List[:class:`~supervisely.nn.artifacts.artifacts.TrainInfo`]
         """
         if sort == "desc":
             return sorted(train_infos, key=lambda x: int(x.task_id), reverse=True)
@@ -568,7 +568,7 @@ class BaseTrainArtifacts:
         :param sort: The sort order, either "desc" or "asc". Default is "desc".
         :type sort: Literal["desc", "asc"]
         :returns: The list of custom training artifact infos.
-        :rtype: List[TrainInfo]
+        :rtype: List[:class:`~supervisely.nn.artifacts.artifacts.TrainInfo`]
         """
         self._validate_sort(sort)
         start_time = time()
@@ -688,7 +688,7 @@ class BaseTrainArtifacts:
         :param return_type: The return type, either "train_info" or "experiment_info". Default is "experiment_info".
         :type return_type: Literal["train_info", "experiment_info"]
         :returns: The training info.
-        :rtype: TrainInfo
+        :rtype: :class:`~supervisely.nn.artifacts.artifacts.TrainInfo`
         """
         for train_info in self.get_list():
             if train_info.artifacts_folder == artifacts_dir:

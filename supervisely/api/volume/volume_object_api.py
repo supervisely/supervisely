@@ -24,11 +24,11 @@ class VolumeObjectApi(ObjectApi):
         :param volume_id: Volume ID in Supervidely.
         :type volume_id: int
         :param objects: VolumeAnnotation objects.
-        :type objects: VolumeObjectCollection
+        :type objects: :class:`~supervisely.volume_annotation.volume_object_collection.VolumeObjectCollection`
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
         :returns: List of objects IDs
-        :rtype: :class:`List[int]`
+        :rtype: List[int]
 
         :Usage Example:
 

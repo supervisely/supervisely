@@ -430,9 +430,9 @@ class PointTracking(BaseTracking):
         :param settings: model parameters
         :type settings: Dict[str, Any]
         :param start_object: point to track on the initial frame
-        :type start_object: PredictionPoint
+        :type start_object: :class:`~supervisely.nn.prediction_dto.PredictionPoint`
         :returns: predicted points for frame range (0, m]; `m-1` prediction in total
-        :rtype: List[PredictionPoint]
+        :rtype: List[:class:`~supervisely.nn.prediction_dto.PredictionPoint`]
         """
         raise NotImplementedError
 
@@ -450,9 +450,9 @@ class PointTracking(BaseTracking):
         :param settings: model parameters
         :type settings: Dict[str, Any]
         :param start_objects: points to track on the initial frame
-        :type start_objects: List[PredictionPoint]
+        :type start_objects: List[:class:`~supervisely.nn.prediction_dto.PredictionPoint`]
         :returns: predicted points for frame range (0, m]; `m-1` prediction in total
-        :rtype: List[List[PredictionPoint]]
+        :rtype: List[List[:class:`~supervisely.nn.prediction_dto.PredictionPoint`]]
         """
         raise NotImplementedError
 

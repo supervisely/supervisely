@@ -100,7 +100,7 @@ class VolumeTagApi(TagApi):
         :param tag_value: VolumeTag value.
         :type tag_value: str or int or None, optional
         :param tag_meta: TagMeta object.
-        :type tag_meta: TagMeta, optional
+        :type tag_meta: :class:`~supervisely.annotation.tag_meta.TagMeta`, optional
         :returns: VolumeTag ID.
         :rtype: int
 

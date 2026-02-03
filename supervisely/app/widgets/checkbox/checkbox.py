@@ -13,7 +13,7 @@ class Checkbox(Widget):
         (including screenshots and examples).
 
     :param content: Content of the checkbox.
-    :type content: Union[Widget, str]
+    :type content: Union[:class:`~supervisely.app.widgets.widget.Widget`, str]
     :param checked: Initial state of the checkbox.
     :type checked: Optional[bool]
     :param widget_id: Unique widget identifier.

@@ -39,9 +39,9 @@ def read_project(
     Read project of arbitrary modality from given directory.
 
     :param dir: Path to directory, which contains project folder.
-    :type dir: :class: str
-    :returns: Project class object of specific modality
-    :rtype: :class: Project or VideoProject or VolumeProject or PointcloudProject or PointcloudEpisodeProject
+    :type dir: str
+    :returns: Project object of specific modality
+    :rtype: Union[:class:`~supervisely.project.project.Project`, :class:`~supervisely.project.video_project.VideoProject`, :class:`~supervisely.project.volume_project.VolumeProject`, :class:`~supervisely.project.pointcloud_project.PointcloudProject`, :class:`~supervisely.project.pointcloud_episode_project.PointcloudEpisodeProject`]
 
     :Usage Example:
 

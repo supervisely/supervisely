@@ -64,8 +64,8 @@ class SelectClass(Widget):
     SelectClass is a compact dropdown widget for selecting object classes with an option to create
     new classes on the fly.
 
-    :param classes: Initial list of ObjClass instances
-    :type classes: Optional[Union[List[ObjClass], ObjClassCollection]]
+    :param classes: Initial list of obj class instances
+    :type classes: Optional[Union[List[:class:`~supervisely.annotation.obj_class.ObjClass`], :class:`~supervisely.annotation.obj_class_collection.ObjClassCollection`]]
     :param filterable: Enable search/filter functionality in dropdown
     :type filterable: Optional[bool]
     :param placeholder: Placeholder text when no class is selected
@@ -293,7 +293,7 @@ class SelectClass(Widget):
         The decorated function receives the selected ObjClass (or list of ObjClass if multiple=True).
 
         :param func: Function to be called when selection changes
-        :type func: Callable[[Union[ObjClass, List[ObjClass]]], None]
+        :type func: Callable[[Union[:class:`~supervisely.annotation.obj_class.ObjClass`, List[:class:`~supervisely.annotation.obj_class.ObjClass`]]], None]
         """
         route_path = self.get_route_path(SelectClass.Routes.VALUE_CHANGED)
         server = self._sly_app.get_server()
@@ -357,7 +357,7 @@ class SelectClass(Widget):
         The decorated function receives the newly created ObjClass.
 
         :param func: Function to be called when a new class is created
-        :type func: Callable[[ObjClass], None]
+        :type func: Callable[[:class:`~supervisely.annotation.obj_class.ObjClass`], None]
         """
         self._class_created_callback = func
         return func

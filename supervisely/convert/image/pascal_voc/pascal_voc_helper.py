@@ -317,11 +317,11 @@ def sly_ann_to_pascal_voc(ann: Annotation, image_name: str) -> Tuple[dict]:
     Converts Supervisely annotation to Pascal VOC format annotation.
 
     :param ann: Supervisely annotation.
-    :type ann: :class:`Annotation<supervisely.annotation.annotation.Annotation>`
+    :type ann: :class:`~supervisely.annotation.annotation.Annotation`
     :param image_name: Image name.
     :type image_name: str
     :returns: Tuple with xml tree and instance and class masks in PIL.Image format.
-    :rtype: :class:`Tuple`
+    :rtype: Tuple[dict, Image.Image, Image.Image]
 
     :Usage Example:
 
@@ -431,7 +431,7 @@ def sly_ds_to_pascal_voc(
     Converts Supervisely dataset to Pascal VOC format.
 
     :param meta: Project meta information.
-    :type meta: :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`
+    :type meta: :class:`~supervisely.project.project_meta.ProjectMeta`
     :param dest_dir: Destination directory.
     :type dest_dir: str, optional
     :param train_val_split_coef: Coefficient for splitting images into train and validation sets.
@@ -439,7 +439,7 @@ def sly_ds_to_pascal_voc(
     :param log_progress: If True, log progress.
     :type log_progress: str, optional
     :param progress_cb: Progress callback.
-    :type progress_cb: :class:`Callable`, optional
+    :type progress_cb: tqdm or callable, optional
     :returns: None
     :rtype: NoneType
 
@@ -713,18 +713,18 @@ def to_pascal_voc(
         - If the input_data is a Project, the dest_dir parameters are required.
         - If the input_data is a Dataset, the meta and dest_dir parameters are required.
 
-    :param input_data: Input data to convert (Project, Dataset, or path to the project/dataset directory).
-    :type input_data: :class:`Project<supervisely.project.project.Project>`, :class:`Dataset<supervisely.dataset.dataset.Dataset>`, or str
+    :param input_data: Input data to convert (:class:`~supervisely.project.project.Project`, :class:`~supervisely.project.project.Dataset`, or path to the project/dataset directory).
+    :type input_data: :class:`~supervisely.project.project.Project`, :class:`~supervisely.project.project.Dataset`, or str
     :param dest_dir: Destination directory.
     :type dest_dir: str, optional
     :param meta: Project meta information (required for Dataset conversion).
-    :type meta: :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`, optional
+    :type meta: :class:`~supervisely.project.project_meta.ProjectMeta`, optional
     :param train_val_split_coef: Coefficient for splitting images into train and validation sets.
     :type train_val_split_coef: float, optional
     :param log_progress: Show uploading progress bar.
     :type log_progress: bool
     :param progress_cb: Function for tracking conversion progress (for all items in the project).
-    :type progress_cb: callable, optional
+    :type progress_cb: tqdm or callable, optional
     :returns: None
     :rtype: NoneType
 

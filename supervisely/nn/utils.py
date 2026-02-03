@@ -25,7 +25,7 @@ class CheckpointInfo:
     """
     :param checkpoint_name: A name for model weights, e.g., "YOLOv8n COCO (best)".
     :param model_name: The name of a model for which the weights are applicable, e.g., "YOLOv8n".
-    :param architecture: Collection for a set of models, e.g., "YOLOv8".
+    :param architecture: Collection for a set of models, e.g., ":class:`~supervisely.nn.artifacts.yolov8.YOLOv8`".
     :param checkpoint_url: URL to download the model weights.
     :param custom_checkpoint_path: Path in Team Files to the weights.
     :param model_source: Source of the model, either "Pretrained models" or "Custom models".

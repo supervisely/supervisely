@@ -12,7 +12,7 @@ class Badge(Widget):
     :param value: Value to be displayed on the badge.
     :type value: Optional[Union[int, str, float]]
     :param widget: Widget to be displayed on the badge.
-    :type widget: Optional[Widget]
+    :type widget: Optional[:class:`~supervisely.app.widgets.widget.Widget`]
     :param max: Maximum value of the badge. If value is greater than max, max will be displayed on the badge.
     :type max: Optional[Union[int, float]]
     :param is_dot: If True, the badge will be displayed as a dot.

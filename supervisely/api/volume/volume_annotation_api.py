@@ -42,7 +42,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
     :class:`~supervisely.api.volume.volume_annotation_api.VolumeAnnotationAPI` object is immutable.
 
     :param api: API connection to the server.
-    :type api: Api
+    :type api: :class:`~supervisely.api.api.Api`
 
     :Usage Example:
 
@@ -142,9 +142,9 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         :param volume_id: Volume ID in Supervisely.
         :type volume_id: int
         :param ann: VolumeAnnotation object.
-        :type ann: VolumeAnnotation
+        :type ann: :class:`~supervisely.volume_annotation.volume_annotation.VolumeAnnotation`
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
         :returns: None
         :rtype: None
 
@@ -203,8 +203,8 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         :type volume_ids: List[int]
         :param ann_paths: Paths to annotation files
         :type ann_paths: List[str]
-        :param project_meta: Input :class:`~supervisely.project.project_meta.ProjectMeta` for VolumeAnnotations
-        :type project_meta: ProjectMeta
+        :param project_meta: Input ProjectMeta for VolumeAnnotations
+        :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
         :param interpolation_dirs: Paths to dirs with interpolation STL files
         :type interpolation_dirs: List[str], optional
         :param progress_cb: Function for tracking download progress
@@ -314,16 +314,16 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
 
         :param transfer_type: Defines the process during which the update will be performed ("download" or "upload").
         :type transfer_type: Literal["download", "upload"]
-        :param ann: The VolumeAnnotation object to update.
-        :type ann: VolumeAnnotation
-        :param project_meta: The ProjectMeta object.
-        :type project_meta: ProjectMeta
+        :param ann: VolumeAnnotation object to update.
+        :type ann: :class:`~supervisely.volume_annotation.volume_annotation.VolumeAnnotation`
+        :param project_meta: ProjectMeta object.
+        :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
         :param nrrd_paths: Paths to the converted NRRD files from STL.
         :type nrrd_paths: List[str]
         :param project_id: The Project ID to update metadata on upload (optional).
         :type project_id: int, optional
         :returns: A tuple containing the updated ann and project_meta objects.
-        :rtype: Tuple[VolumeAnnotation, ProjectMeta]
+        :rtype: Tuple[:class:`~supervisely.volume_annotation.volume_annotation.VolumeAnnotation`, :class:`~supervisely.project.project_meta.ProjectMeta`]
         """
 
         for nrrd_path in nrrd_paths:
@@ -397,9 +397,9 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         :param volume_id: The ID of the volume.
         :type volume_id: int
         :param objects: New volume objects.
-        :type objects: List[VolumeObject] or VolumeObjectCollection
-        :param key_id_map: The KeyIdMap (optional).
-        :type key_id_map: KeyIdMap, optional
+        :type objects: List[:class:`~supervisely.volume_annotation.volume_object.VolumeObject`] or :class:`~supervisely.volume_annotation.volume_object_collection.VolumeObjectCollection`
+        :param key_id_map: KeyIdMap object (optional).
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
         :returns: None
         :rtype: NoneType
 
@@ -448,7 +448,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         :param interpolation_dir: Path to dir with interpolation STL files
         :type interpolation_dir: str
         :param ann: VolumeAnnotation object
-        :type ann: VolumeAnnotation
+        :type ann: :class:`~supervisely.volume_annotation.volume_annotation.VolumeAnnotation`
         :returns: Paths to STL and NRRD files used in the conversion process
         :rtype: Tuple[List, List, List]
         """

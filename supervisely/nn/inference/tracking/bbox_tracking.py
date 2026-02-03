@@ -546,7 +546,7 @@ class BBoxTracking(BaseTracking):
         :param init_rgb_image: frame with object
         :type init_rgb_image: np.ndarray
         :param target_bbox: initial bbox
-        :type target_bbox: PredictionBBox
+        :type target_bbox: :class:`~supervisely.nn.prediction_dto.PredictionBBox`
         """
         raise NotImplementedError
 
@@ -567,9 +567,9 @@ class BBoxTracking(BaseTracking):
         :param init_rgb_image: previous frame with object
         :type init_rgb_image: np.ndarray
         :param target_bbox: bbox added on previous step
-        :type target_bbox: PredictionBBox
+        :type target_bbox: :class:`~supervisely.nn.prediction_dto.PredictionBBox`
         :returns: predicted annotation
-        :rtype: PredictionBBox
+        :rtype: :class:`~supervisely.nn.prediction_dto.PredictionBBox`
         """
         raise NotImplementedError
 

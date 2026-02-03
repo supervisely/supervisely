@@ -47,11 +47,11 @@ class VolumeFigureApi(FigureApi):
         :type volume_id: int
         :param object_id: ID of the object to which the VolumeFigure belongs.
         :type object_id: int
-        :param plane_name: :class:`~supervisely.volume_annotation.plane.Plane` of the slice in volume.
+        :param plane_name: Plane of the slice in volume.
         :type plane_name: str
-        :param slice_index: Number of the slice to add VolumeFigure.
+        :param slice_index: Number of the slice to add :class:`~supervisely.volume_annotation.volume_figure.VolumeFigure`.
         :type slice_index: int
-        :param geometry_json: Parameters of geometry for VolumeFigure.
+        :param geometry_json: Parameters of geometry for :class:`~supervisely.volume_annotation.volume_figure.VolumeFigure`.
         :type geometry_json: dict
         :param geometry_type: Type of VolumeFigure geometry.
         :type geometry_type: str
@@ -119,9 +119,9 @@ class VolumeFigureApi(FigureApi):
         :param volume_id: Volume ID in Supervisely.
         :type volume_id: int
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`
         :param figures: List of VolumeFigure objects.
-        :type figures: List[VolumeFigure]
+        :type figures: List[:class:`~supervisely.volume_annotation.volume_figure.VolumeFigure`]
         :returns: None
         :rtype: None
 
@@ -268,9 +268,9 @@ class VolumeFigureApi(FigureApi):
         :param volume_id: VolumeFigure ID in Supervisely.
         :type volume_id: int
         :param spatial_figure: Spatial figure to interpolate.
-        :type spatial_figure: VolumeFigure
+        :type spatial_figure: :class:`~supervisely.volume_annotation.volume_figure.VolumeFigure`
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`
         :returns: None
         :rtype: None
 
@@ -398,9 +398,9 @@ class VolumeFigureApi(FigureApi):
         :param volume_id: VolumeFigure ID in Supervisely.
         :type volume_id: int
         :param spatial_figures: List of spatial figures to upload.
-        :type spatial_figures: List[VolumeFigure]
+        :type spatial_figures: List[:class:`~supervisely.volume_annotation.volume_figure.VolumeFigure`]
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`
         :returns: None
         :rtype: None
 
@@ -473,7 +473,7 @@ class VolumeFigureApi(FigureApi):
         :param figures_keys: List of figure keys as UUID.
         :type figures_keys: list
         :param key_id_map: KeyIdMap object (dict with bidict values)
-        :type key_id_map: KeyIdMap
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`
         :param field_name: field name for request body
         :type field_name: str
         :rtype: None
@@ -524,8 +524,8 @@ class VolumeFigureApi(FigureApi):
         :type spatial_figures: List[UUID]
         :param geometries: Dictionary where keys are UUIDs of spatial figures, and values are geometries represented as NRRD files in byte format.
         :type geometries: Dict[UUID, bytes]
-        :param key_id_map: The KeyIdMap object (a dictionary with bidict values).
-        :type key_id_map: KeyIdMap
+        :param key_id_map: KeyIdMap object (a dictionary with bidict values).
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`
         :returns: None
         :rtype: None
 
@@ -584,7 +584,7 @@ class VolumeFigureApi(FigureApi):
         :param geometries: Dictionary with geometries, which represented as content of NRRD files in byte format.
         :type geometries: list
         :param key_id_map: KeyIdMap object (dict with bidict values)
-        :type key_id_map: KeyIdMap
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`
         :rtype: None
         """
 
@@ -662,8 +662,8 @@ class VolumeFigureApi(FigureApi):
         Download geometry of an existing in Supervisely figure
         and load this data into the VolumeFigure object to complete this figure representation.
 
-        :param spatial_figure: The spatial figure object from VolumeAnnotation.
-        :type spatial_figure: VolumeFigure
+        :param spatial_figure: The spatial figure object from :class:`~supervisely.volume_annotation.volume_annotation.VolumeAnnotation`.
+        :type spatial_figure: :class:`~supervisely.volume_annotation.volume_figure.VolumeFigure`
         :param key_id_map: The mapped keys and IDs.
         :type key_id_map: KeyIdMap object
         """
@@ -688,7 +688,7 @@ class VolumeFigureApi(FigureApi):
         :type skip_geometry: bool
 
         :returns: A dictionary where keys are volume IDs and values are lists of figures.
-        :rtype: :class: `Dict[int, List[FigureInfo]]`
+        :rtype: Dict[int, List[:class:`~supervisely.api.entity_annotation.figure_api.FigureInfo`]]
         """
         if kwargs.get("image_ids", False) is not False:
             volume_ids = kwargs["image_ids"]  # backward compatibility

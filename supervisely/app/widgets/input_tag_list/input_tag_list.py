@@ -10,8 +10,8 @@ from supervisely.imaging.color import rgb2hex
 class InputTagList(Widget):
     """Store and manage a list of input tags. Class accepts a list of TagMeta objects and provides methods to interact with them.
 
-    :param tag_metas: List of TagMeta objects or a TagMetaCollection, defaults to an empty list
-    :type tag_metas: Union[List[TagMeta], TagMetaCollection], optional
+    :param tag_metas: List of tag metas or a tag meta collection, defaults to an empty list
+    :type tag_metas: Union[List[:class:`~supervisely.annotation.tag_meta.TagMeta`], :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection`], optional
     :param max_width: Maximum width of the widget in pixels, defaults to 300
     :type max_width: int, optional
     :param max_height: Maximum height of the widget in pixels, defaults to 50
@@ -46,7 +46,7 @@ class InputTagList(Widget):
         3. ANY_NUMBER: 0
 
         :param tag_meta: Tag metadata
-        :type tag_meta: TagMeta
+        :type tag_meta: :class:`~supervisely.annotation.tag_meta.TagMeta`
         :returns: Default value for the tag
         :rtype: Union[str, int, None]
         """
@@ -142,7 +142,7 @@ class InputTagList(Widget):
         """Get selected tag metas for the widget.
 
         :returns: List of selected tag metas
-        :rtype: List[TagMeta]
+        :rtype: List[:class:`~supervisely.annotation.tag_meta.TagMeta`]
         """
         return [
             tm
@@ -154,7 +154,7 @@ class InputTagList(Widget):
         """Get selected tags for the widget.
 
         :returns: List of selected tags
-        :rtype: List[Tag]
+        :rtype: List[:class:`~supervisely.annotation.tag.Tag`]
         """
         return [
             Tag(meta=tm, value=value)
@@ -170,7 +170,7 @@ class InputTagList(Widget):
         """Get all tags for the widget.
 
         :returns: List of all tag metas
-        :rtype: Union[List[TagMeta], TagMetaCollection]
+        :rtype: Union[List[:class:`~supervisely.annotation.tag_meta.TagMeta`], :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection`]
         """
         return [
             Tag(meta=tm, value=value)
@@ -184,7 +184,7 @@ class InputTagList(Widget):
         """Set tag metas for the widget.
 
         :param tag_metas: Tag metas to set
-        :type tag_metas: Union[List[TagMeta], TagMetaCollection]
+        :type tag_metas: Union[List[:class:`~supervisely.annotation.tag_meta.TagMeta`], :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection`]
         :returns: None
         """
         self._tag_metas = tag_metas
@@ -252,7 +252,7 @@ class InputTagList(Widget):
         """Get all tag metas for the widget.
 
         :returns: List of all tag metas
-        :rtype: List[TagMeta]
+        :rtype: List[:class:`~supervisely.annotation.tag_meta.TagMeta`]
         """
         return self._tag_metas
 

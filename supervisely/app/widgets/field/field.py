@@ -13,7 +13,7 @@ class Field(Widget):
         (including screenshots and examples).
 
     :param content: Widget to be placed inside the field
-    :type content: Widget
+    :type content: :class:`~supervisely.app.widgets.widget.Widget`
     :param title: Title of the field
     :type title: str
     :param description: Description of the field

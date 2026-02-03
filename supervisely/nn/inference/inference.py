@@ -1654,7 +1654,7 @@ class Inference:
         :param: settings: inference settings
         :type: settings: dict
         :returns: annotation or list of annotations
-        :rtype: Union[Annotation, List[Annotation]]
+        :rtype: Union[:class:`~supervisely.annotation.annotation.Annotation`, List[:class:`~supervisely.annotation.annotation.Annotation`]]
 
         :Usage Example:
 
@@ -4726,16 +4726,16 @@ def _filter_duplicated_predictions_from_ann(
     to the specified threshold with any ground truth annotation. This is useful for identifying
     new objects that aren't already annotated in the ground truth.
 
-    :param gt_ann: Annotation object containing ground truth labels
-    :type gt_ann: Annotation
-    :param pred_ann: Annotation object containing prediction labels to be filtered
-    :type pred_ann: Annotation
+    :param gt_ann: :class:`~supervisely.annotation.annotation.Annotation` object containing ground truth labels
+    :type gt_ann: :class:`~supervisely.annotation.annotation.Annotation`
+    :param pred_ann: :class:`~supervisely.annotation.annotation.Annotation` object containing prediction labels to be filtered
+    :type pred_ann: :class:`~supervisely.annotation.annotation.Annotation`
     :param iou_threshold:   IoU threshold (0.0-1.0). Predictions with IoU >= threshold with any
                             ground truth box of the same class will be removed
     :type iou_threshold: float
     :returns: A new annotation object containing only predictions that don't significantly
                 overlap with ground truth annotations
-    :rtype: Annotation
+    :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
 
     Notes:
@@ -4802,9 +4802,9 @@ def _exclude_duplicated_predictions(
     - Filters out predictions that have an IoU greater than or equal to the specified threshold with any GT object
 
     :param api: Supervisely API object
-    :type api: Api
-    :param pred_anns: List of Annotation objects containing predictions
-    :type pred_anns: List[Annotation]
+    :type api: :class:`~supervisely.api.api.Api`
+    :param pred_anns: List of annotation objects containing predictions
+    :type pred_anns: List[:class:`~supervisely.annotation.annotation.Annotation`]
     :param dataset_id: ID of the dataset containing the images
     :type dataset_id: int
     :param gt_image_ids: List of image IDs to filter predictions. All images should belong to the same dataset
@@ -4812,10 +4812,10 @@ def _exclude_duplicated_predictions(
     :param iou: IoU threshold (0.0-1.0). Predictions with IoU >= threshold with any
                     ground truth box of the same class will be removed. None if no filtering is needed
     :type iou: Optional[float]
-    :param meta: ProjectMeta object
-    :type meta: Optional[ProjectMeta]
-    :returns: List of Annotation objects containing filtered predictions
-    :rtype: List[Annotation]
+    :param meta: Project meta
+    :type meta: Optional[:class:`~supervisely.project.project_meta.ProjectMeta`]
+    :returns: List of annotation objects containing filtered predictions
+    :rtype: List[:class:`~supervisely.annotation.annotation.Annotation`]
 
     Notes:
     ------

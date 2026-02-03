@@ -35,13 +35,13 @@ class ClassesTable(Widget):
         (including screenshots and examples).
 
     :param project_meta: Project meta object from which classes will be taken.
-    :type project_meta: sly.ProjectMeta
+    :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
     :param project_id: Project id from which classes will be taken.
     :type project_id: int
-    :param project_fs: Project object from which classes will be taken.
-    :type project_fs: sly.Project
+    :param project_fs: Local supervisely project from which classes will be taken.
+    :type project_fs: :class:`~supervisely.project.project.Project`
     :param allowed_types: List of allowed geometry types to be displayed in table.
-    :type allowed_types: List[Geometry]
+    :type allowed_types: List[:class:`~supervisely.geometry.geometry.Geometry`]
     :param selectable: If True, user can select classes from table.
     :type selectable: bool
     :param disabled: If True, the elements in the table will be disabled.
@@ -247,7 +247,7 @@ class ClassesTable(Widget):
         """Read project meta and update table data.
 
         :param project_meta: Project meta object from which classes will be taken.
-        :type project_meta: sly.ProjectMeta
+        :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
         """
         self.loading = True
         self._project_fs = None
@@ -267,8 +267,8 @@ class ClassesTable(Widget):
     def read_project(self, project_fs: sly.Project) -> None:
         """Read local project and update table data.
 
-        :param project_fs: Project object from which classes will be taken.
-        :type project_fs: sly.Project
+        :param project_fs: Local supervisely project object from which classes will be taken.
+        :type project_fs: :class:`~supervisely.project.project.Project`
         """
         self.loading = True
         self._project_fs = project_fs
@@ -341,7 +341,7 @@ class ClassesTable(Widget):
         """Returns list of allowed geometry types to be displayed in table.
 
         :returns: List of allowed geometry types to be displayed in table.
-        :rtype: List[Geometry]
+        :rtype: List[:class:`~supervisely.geometry.geometry.Geometry`]
         """
         return self._allowed_types
 
@@ -358,8 +358,8 @@ class ClassesTable(Widget):
     def project_fs(self) -> int:
         """Returns project object from which classes was taken.
 
-        :returns: Project object from which classes was taken.
-        :rtype: sly.Project
+        :returns: Local supervisely project from which classes was taken.
+        :rtype: :class:`~supervisely.project.project.Project`
         """
         return self._project_fs
 
@@ -377,7 +377,7 @@ class ClassesTable(Widget):
         """Returns project meta object from which classes was taken.
 
         :returns: Project meta object from which classes was taken.
-        :rtype: sly.ProjectMeta
+        :rtype: :class:`~supervisely.project.project_meta.ProjectMeta`
         """
         return self._project_meta
 
@@ -438,7 +438,7 @@ class ClassesTable(Widget):
         """Sets project meta object from which classes will be taken.
 
         :param project_meta: Project meta object from which classes will be taken.
-        :type project_meta: sly.ProjectMeta
+        :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
         """
         self._update_meta(project_meta)
         self._project_meta = project_meta

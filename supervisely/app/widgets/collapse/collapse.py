@@ -14,7 +14,7 @@ class Collapse(Widget):
         (including screenshots and examples).
 
     :param items: list of items to be displayed in the widget
-    :type items: List[Collapse.Item]
+    :type items: List[:class:`~supervisely.app.widgets.collapse.collapse.Collapse.Item`]
     :param accordion: if True, only one panel could be active at a time
     :type accordion: bool
     :param widget_id: An identifier of the widget.
@@ -45,7 +45,7 @@ class Collapse(Widget):
         :param title: title of the panel
         :type title: str
         :param content: content of the panel
-        :type content: Optional[Union[Widget, str]]
+        :type content: Optional[Union[:class:`~supervisely.app.widgets.widget.Widget`, str]]
         """
 
         def __init__(self, name: str, title: str, content: Optional[Union[Widget, str]]):
@@ -167,17 +167,17 @@ class Collapse(Widget):
         """Returns list of items.
 
         :returns: list of items
-        :rtype: List[Collapse.Item]
+        :rtype: List[:class:`~supervisely.app.widgets.collapse.collapse.Collapse.Item`]
         """
         return DataJson()[self.widget_id]["items"]
 
     def set_items(self, value: List[Collapse.Item]) -> None:
         """Set items for the widget.
         This method replaces all existing items with new ones.
-        To add new items, use :meth:`add_items` method.
+        To add new items, use :meth:`~supervisely.app.widgets.collapse.collapse.Collapse.add_items` method.
 
         :param value: list of items to be displayed in the widget
-        :type value: List[Collapse.Item]
+        :type value: List[:class:`~supervisely.app.widgets.collapse.collapse.Collapse.Item`]
         """
         names = [val.name for val in value]
 
@@ -194,7 +194,7 @@ class Collapse(Widget):
         To replace all existing items with new ones, use :meth:`set_items` method.
 
         :param value: list of items to be displayed in the widget
-        :type value: List[Collapse.Item]
+        :type value: List[:class:`~supervisely.app.widgets.collapse.collapse.Collapse.Item`]
         :raises ValueError: item with such name already exists.
         """
         names = [val.name for val in value]

@@ -1143,8 +1143,8 @@ def download(
     :type url: str
     :param url: The path where the file is saved.
     :type url: str
-    :param cache: An instance of FileCache class that provides caching functionality for the downloaded content. If None, caching is disabled.
-    :type cache: FileCache, optional
+    :param cache: An instance of :class:`~supervisely.io.fs_cache.FileCache` class that provides caching functionality for the downloaded content. If None, caching is disabled.
+    :type cache: :class:`~supervisely.io.fs_cache.FileCache`, optional
     :param progress: Function for tracking download progress.
     :type progress: Progress, optional
     :param headers: A dictionary of HTTP headers to include in the request.
@@ -1750,7 +1750,7 @@ def get_file_offsets_batch_generator(
                    `dicts` - returns a list of dictionaries.
     :type output_format: Literal["dicts", "objects"]
     :returns: Generator yielding batches of file information in the specified format.
-    :rtype: Generator[Union[List[Dict], List[BlobImageInfo]]], None, None]
+    :rtype: Generator[Union[List[Dict], List[:class:`~supervisely.api.image_api.BlobImageInfo`]]], None, None]
 
     :raises ValueError: If the archive type is not supported or contains compressed files
 

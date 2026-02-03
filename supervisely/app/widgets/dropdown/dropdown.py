@@ -13,7 +13,7 @@ class Dropdown(Widget):
         (including screenshots and examples).
 
     :param items: List of items in the dropdown menu
-    :type items: Optional[List[Dropdown.Item]]
+    :type items: Optional[List[:class:`~supervisely.app.widgets.dropdown.dropdown.Dropdown.Item`]]
     :param header: Dropdown header text
     :type header: Optional[str]
     :param trigger: Dropdown trigger type, one of: hover, click
@@ -167,7 +167,7 @@ class Dropdown(Widget):
         """Returns list of items in the dropdown menu.
 
         :returns: list of items in the dropdown menu
-        :rtype: List[Dropdown.Item]
+        :rtype: List[:class:`~supervisely.app.widgets.dropdown.dropdown.Dropdown.Item`]
         """
         return DataJson()[self.widget_id]["items"]
 
@@ -177,7 +177,7 @@ class Dropdown(Widget):
         To add items to the dropdown menu, use :meth:`add_items` instead.
 
         :param value: list of items in the dropdown menu
-        :type value: List[Dropdown.Item]
+        :type value: List[:class:`~supervisely.app.widgets.dropdown.dropdown.Dropdown.Item`]
         """
         if not all(isinstance(item, Dropdown.Item) for item in value):
             raise TypeError("Items must be a list of Dropdown.Item")
@@ -191,7 +191,7 @@ class Dropdown(Widget):
         To overwrite all existing items, use :meth:`set_items` instead.
 
         :param value: list of items in the dropdown menu
-        :type value: List[Dropdown.Item]
+        :type value: List[:class:`~supervisely.app.widgets.dropdown.dropdown.Dropdown.Item`]
         """
         self._items.extend(value)
         DataJson()[self.widget_id]["items"] = self._set_items()

@@ -97,7 +97,7 @@ class CompareAnnotations(GridGallery):
         """Adds annotation to the widget.
 
         :param annotation: annotation to add
-        :type annotation: Annotation, optional
+        :type annotation: :class:`~supervisely.annotation.annotation.Annotation`, optional
         :param title: title for the annotation
         :type title: str, optional
         :param column_index: index of the column to add annotation to

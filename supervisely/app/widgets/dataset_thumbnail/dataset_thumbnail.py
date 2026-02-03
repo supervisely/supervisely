@@ -14,9 +14,9 @@ class DatasetThumbnail(Widget):
         (including screenshots and examples).
 
     :param project_info: project info
-    :type project_info: Optional[ProjectInfo]
+    :type project_info: Optional[:class:`~supervisely.api.project_api.ProjectInfo`]
     :param dataset_info: dataset info
-    :type dataset_info: Optional[DatasetInfo]
+    :type dataset_info: Optional[:class:`~supervisely.api.dataset_api.DatasetInfo`]
     :param show_project_name: if True, project name will be shown
     :type show_project_name: Optional[bool]
     :param remove_margins: if True, removes margins around the widget
@@ -123,9 +123,9 @@ class DatasetThumbnail(Widget):
         """Sets the data for the widget.
 
         :param project_info: project info
-        :type project_info: ProjectInfo
+        :type project_info: :class:`~supervisely.api.project_api.ProjectInfo`
         :param dataset_info: dataset info
-        :type dataset_info: DatasetInfo
+        :type dataset_info: :class:`~supervisely.api.dataset_api.DatasetInfo`
         :param show_project_name: if True, project name will be shown
         :type show_project_name: Optional[bool]
         """

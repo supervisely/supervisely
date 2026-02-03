@@ -98,13 +98,13 @@ def get_experiment_infos(api: Api, team_id: int, framework_name: str) -> List[Ex
     Get experiments from the specified framework folder for Train v2
 
     :param api: Supervisely API client
-    :type api: Api
+    :type api: :class:`~supervisely.api.api.Api`
     :param team_id: Team ID
     :type team_id: int
     :param framework_name: Name of the framework
     :type framework_name: str
-    :returns: List of ExperimentInfo objects
-    :rtype: List[ExperimentInfo]
+    :returns: List of experiment info objects
+    :rtype: List[:class:`~supervisely.nn.experiments.ExperimentInfo`]
 
     :Usage Example:
 
@@ -194,13 +194,13 @@ def _fetch_experiment_data(api, team_id: int, experiment_path: str) -> Union[Exp
     Fetch experiment data from the specified path in Supervisely Team Files
 
     :param api: Supervisely API client
-    :type api: Api
+    :type api: :class:`~supervisely.api.api.Api`
     :param team_id: Team ID
     :type team_id: int
     :param experiment_path: Path to the experiment data
     :type experiment_path: str
-    :returns: ExperimentInfo object
-    :rtype: Union[ExperimentInfo, None]
+    :returns: Experiment info object
+    :rtype: Union[:class:`~supervisely.nn.experiments.ExperimentInfo`, None]
     """
     try:
         response = api.post(
@@ -249,13 +249,13 @@ def get_experiment_info_by_artifacts_dir(
     Get experiment info by artifacts directory
 
     :param api: Supervisely API client
-    :type api: Api
+    :type api: :class:`~supervisely.api.api.Api`
     :param team_id: Team ID
     :type team_id: int
     :param artifacts_dir: Path to the directory with artifacts
     :type artifacts_dir: str
-    :returns: ExperimentInfo object
-    :rtype: Optional[ExperimentInfo]
+    :returns: Experiment info object
+    :rtype: Optional[:class:`~supervisely.nn.experiments.ExperimentInfo`]
 
     :Usage Example:
 

@@ -14,7 +14,7 @@ class Dialog(Widget):
     :param title: Dialog title
     :type title: str
     :param content: Dialog content
-    :type content: Widget
+    :type content: :class:`~supervisely.app.widgets.widget.Widget`
     :param size: Dialog size, one of: tiny, small, large, full
     :type size: Literal["tiny", "small", "large", "full"]
     :param widget_id: An identifier of the widget.

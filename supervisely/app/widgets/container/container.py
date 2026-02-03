@@ -10,7 +10,7 @@ class Container(Widget):
         (including screenshots and examples).
 
     :param widgets: list of widgets to be placed in the container
-    :type widgets: Optional[List[Widget]]
+    :type widgets: Optional[List[:class:`~supervisely.app.widgets.widget.Widget`]]
     :param direction: direction of the container, one of: vertical, horizontal
     :type direction: Optional[Literal["vertical", "horizontal"]]
     :param gap: gap between widgets in pixels

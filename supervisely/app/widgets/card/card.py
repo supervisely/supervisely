@@ -19,9 +19,9 @@ class Card(Widget):
     :param collapsable: If True, the card will be collapsable in the UI.
     :type collapsable: Optional[bool]
     :param content: Widget to be displayed in the card.
-    :type content: Optional[Widget]
+    :type content: Optional[:class:`~supervisely.app.widgets.widget.Widget`]
     :param content_top_right: Widget to be displayed in the top right corner of the card.
-    :type content_top_right: Optional[Widget]
+    :type content_top_right: Optional[:class:`~supervisely.app.widgets.widget.Widget`]
     :param lock_message: Message to be displayed when the card is locked.
     :type lock_message: Optional[str]
     :param remove_padding: If True, padding will be removed from the card.

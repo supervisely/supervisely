@@ -16,9 +16,9 @@ class Transfer(Widget):
     the same as the argument 'transferred_items' in the constructor:
     you should pass keys of the items in the 'items' list.
 
-    :param items: A list of Transfer.Item objects or a list of strings (keys), which will be automatically
-                transformed into Transfer.Item objects. Defaults to None.
-    :type items: Union[List[Transfer.Item], List[str]], optional
+    :param items: A list of items or a list of strings (keys), which will be automatically
+                transformed into items. Defaults to None.
+    :type items: Union[List[:class:`~supervisely.app.widgets.transfer.transfer.Transfer.Item`], List[str]], optional
     :param transferred_items: A list of keys of the items to be displayed in the right (target) list. This list
                             contains keys of the items in the 'items' list, not new items. Defaults to None.
     :type transferred_items: List[str], optional
@@ -54,11 +54,11 @@ class Transfer(Widget):
         Function under this decorator should recieve one argument - the list of transferred items (keys of the
         items which are currently displayed in the right list).
     set_items(): sets the list of items to be displayed in the widget. Likewise in the class constructor,
-        the list of items can either be a list of Transfer.Item objects or a list of strings.
+        the list of items can either be a list of items or a list of strings.
     set_transferred_items(): sets the list of transferred items (keys of the items which should be displayed
         in the right list).
     add(): adds new items to the widget. Likewise in the class constructor, the list of items can either be
-        a list of Transfer.Item objects or a list of strings. Must not contain items with the same keys as
+        a list of items or a list of strings. Must not contain items with the same keys as
         in the current list of items.
     remove(): removes items from the widget by their keys.
     get_items_keys(): returns the list of keys of the items, which are currently displayed in the widget.
@@ -171,18 +171,18 @@ class Transfer(Widget):
 
     def __checked_items(self, items: Optional[Union[List[Item], List[str]]]) -> List[Transfer.Item]:
         """
-        If the list of items is specified as a list of strings, they will be converted to Transfer.Item objects. List of
+        If the list of items is specified as a list of strings, they will be converted to items. List of
         Transfer items will be checked for uniqueness of the keys. If the keys of the items are not unique, an error will be
         raised.
 
-        :param items: The list of items can either be a list of Transfer.Item objects or a list of strings, containing the
-            keys for Transfer.Item objects to be created.
+        :param items: The list of items can either be a list of items or a list of strings, containing the
+            keys for items to be created.
         :type items: Optional[Union[List[Item], List[str]]]
 
         :raises ValueError: If the keys of the items are not unique.
 
-        :returns: The list of Transfer.Item objects with unique keys.
-        :rtype: List[Transfer.Item]
+        :returns: The list of items with unique keys.
+        :rtype: List[:class:`~supervisely.app.widgets.transfer.transfer.Transfer.Item`]
         """
 
         if isinstance(items[0], str):
@@ -238,7 +238,7 @@ class Transfer(Widget):
         Data will contain the list of items and the list of transferred items.
 
         :returns: The data of the widget in JSON format: {"items": List[Dict[str, Any]], "transferred_items": List[str]}.
-            "items" - the list of items in the widget in JSON format. Each item is represented as Transfer.Item object.
+            "items" - the list of items in the widget in JSON format. Each item is represented as item.
             "transferred_items" - the list of transferred items (keys of the items which should be displayed in the right list).
         :rtype: Dict[str, List[Dict[str, Union[str, bool]]]]
         """
@@ -329,13 +329,13 @@ class Transfer(Widget):
         """
         Sets the list of items for the widget.
 
-        If the list of items is specified as strings, they will be converted to Transfer.Item objects.
+        If the list of items is specified as strings, they will be converted to items.
         Note: this method will REPLACE the current list of items with the new one. If you want to add new items to the current
         list, use .add() method.
 
-        :param items: List of items to be set as the new list of items for the widget. Can be specified as Transfer.Item
+        :param items: List of items to be set as the new list of items for the widget. Can be specified as items
             objects or as strings of the item keys.
-        :type items: Union[List[Transfer.Item], List[str]]
+        :type items: Union[List[:class:`~supervisely.app.widgets.transfer.transfer.Transfer.Item`], List[str]]
 
         :Usage Example:
 
@@ -374,12 +374,12 @@ class Transfer(Widget):
         """
         Adds new items to the current list of items.
 
-        If the list of items is specified as strings, Transfer.Item objects will be created from them. If the list of adding
+        If the list of items is specified as strings, items will be created from them. If the list of adding
         items contains any items with the same key as the items in the current list, an error will be raised.
 
-        :param items: List of items to be added to the current list of items. Can be specified as Transfer.Item objects or
+        :param items: List of items to be added to the current list of items. Can be specified as items or
             as strings of the item keys.
-        :type items: Union[List[Item], List[str]]
+        :type items: Union[List[:class:`~supervisely.app.widgets.transfer.transfer.Transfer.Item`], List[str]]
 
         :raises ValueError: If the list of adding items contains any items with the same key as the items in the current list.
 

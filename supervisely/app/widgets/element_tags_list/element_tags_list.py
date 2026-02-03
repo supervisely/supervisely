@@ -15,7 +15,7 @@ class ElementTagsList(Widget):
         (including screenshots and examples).
 
     :param tags: List of tags
-    :type tags: Optional[List[Tag]]
+    :type tags: Optional[List[:class:`~supervisely.annotation.tag.Tag`]]
     :param widget_id: An identifier of the widget.
     :type widget_id: str, optional
 
@@ -139,7 +139,7 @@ class ElementTagsList(Widget):
             :param tag_json: JSON representation of tag
             :type tag_json: Dict[str, Union[str, bool]]
             :returns: tag
-            :rtype: ElementTagsList.Tag
+            :rtype: :class:`~supervisely.app.widgets.element_tags_list.element_tags_list.ElementTagsList.Tag`
             """
             return cls(
                 tag_json["text"],
@@ -190,7 +190,7 @@ class ElementTagsList(Widget):
         To add tags, use add_tags method.
 
         :param tags: List of tags
-        :type tags: List[Tag]]
+        :type tags: List[:class:`~supervisely.annotation.tag.Tag`]]
         """
 
         self._tags = tags
@@ -201,7 +201,7 @@ class ElementTagsList(Widget):
         """Returns current tags.
 
         :returns: current tags
-        :rtype: List[Tag]
+        :rtype: List[:class:`~supervisely.annotation.tag.Tag`]
         """
         return [ElementTagsList.Tag.from_json(tag) for tag in StateJson()[self.widget_id]["tags"]]
 
@@ -211,7 +211,7 @@ class ElementTagsList(Widget):
         To replace all tags, use set_tags method.
 
         :param tags: List of tags
-        :type tags: List[Tag]]
+        :type tags: List[:class:`~supervisely.annotation.tag.Tag`]]
         """
         self._tags = self.get_tags()
         self._tags.extend(tags)
@@ -222,7 +222,7 @@ class ElementTagsList(Widget):
         """Decorator for function that will be called when tag is closed.
 
         :param func: Function that will be called when tag is closed
-        :type func: Callable[[List[Tag]], Any]
+        :type func: Callable[[List[:class:`~supervisely.annotation.tag.Tag`]], Any]
         :returns: Decorated function
         :rtype: Callable[[], None]
         """

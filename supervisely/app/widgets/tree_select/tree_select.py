@@ -16,7 +16,7 @@ class TreeSelect(Widget):
         (including screenshots and examples).
 
     :param items: List of items to display in the tree.
-    :type items: List[TreeSelect.Item], optional
+    :type items: List[:class:`~supervisely.app.widgets.tree_select.tree_select.TreeSelect.Item`], optional
     :param multiple_select: Whether multiple items can be selected at once.
     :type multiple_select: bool, optional
     :param flat: If set to true, selecting a parent item will NOT select all its children.
@@ -79,7 +79,7 @@ class TreeSelect(Widget):
         :param label: The label of the item.
         :type label: str, optional
         :param children: The children of the item.
-        :type children: List[TreeSelect.Item], optional
+        :type children: List[:class:`~supervisely.app.widgets.tree_select.tree_select.TreeSelect.Item`], optional
 
         :Usage Example:
 
@@ -183,7 +183,7 @@ class TreeSelect(Widget):
         Do not use this property directly, use get_selected() instead.
 
         :returns: The selected item(s).
-        :rtype: Union[List[TreeSelect.Item], TreeSelect.Item]
+        :rtype: Union[List[:class:`~supervisely.app.widgets.tree_select.tree_select.TreeSelect.Item`], :class:`~supervisely.app.widgets.tree_select.tree_select.TreeSelect.Item`]
         """
         return self._value
 
@@ -193,7 +193,7 @@ class TreeSelect(Widget):
         Do not use this property directly, use set_selected() instead.
 
         :param value: The selected item(s).
-        :type value: Union[List[TreeSelect.Item], TreeSelect.Item]
+        :type value: Union[List[:class:`~supervisely.app.widgets.tree_select.tree_select.TreeSelect.Item`], :class:`~supervisely.app.widgets.tree_select.tree_select.TreeSelect.Item`]
         """
         self._value = value
 
@@ -201,7 +201,7 @@ class TreeSelect(Widget):
         """Get the selected item as instances of the Item class.
 
         :returns: The selected item(s).
-        :rtype: Union[List[TreeSelect.Item], TreeSelect.Item]
+        :rtype: Union[List[:class:`~supervisely.app.widgets.tree_select.tree_select.TreeSelect.Item`], :class:`~supervisely.app.widgets.tree_select.tree_select.TreeSelect.Item`]
         """
         res = StateJson()[self.widget_id]["value"]
         if res is None:
@@ -214,7 +214,7 @@ class TreeSelect(Widget):
         """Set the selected item(s) as instances of the Item class.
 
         :param value: The selected item(s).
-        :type value: Union[List[TreeSelect.Item], TreeSelect.Item]
+        :type value: Union[List[:class:`~supervisely.app.widgets.tree_select.tree_select.TreeSelect.Item`], :class:`~supervisely.app.widgets.tree_select.tree_select.TreeSelect.Item`]
         """
         self.value = value
         if isinstance(value, list):
@@ -234,7 +234,7 @@ class TreeSelect(Widget):
         """Get the selected item(s).
 
         :returns: The selected item(s).
-        :rtype: Union[List[TreeSelect.Item], TreeSelect.Item]
+        :rtype: Union[List[:class:`~supervisely.app.widgets.tree_select.tree_select.TreeSelect.Item`], :class:`~supervisely.app.widgets.tree_select.tree_select.TreeSelect.Item`]
         """
         return self._get_value()
 
@@ -242,7 +242,7 @@ class TreeSelect(Widget):
         """Set the selected item(s).
 
         :param value: The selected item(s).
-        :type value: Union[List[TreeSelect.Item], TreeSelect.Item]
+        :type value: Union[List[:class:`~supervisely.app.widgets.tree_select.tree_select.TreeSelect.Item`], :class:`~supervisely.app.widgets.tree_select.tree_select.TreeSelect.Item`]
         :raises ValueError: If the widget is set to single selection mode and a list of items
             is provided.
         """
@@ -260,7 +260,7 @@ class TreeSelect(Widget):
         """Get all items in the tree.
 
         :returns: All items in the tree.
-        :rtype: List[TreeSelect.Item]
+        :rtype: List[:class:`~supervisely.app.widgets.tree_select.tree_select.TreeSelect.Item`]
         """
 
         def _get_all_items(items: List[TreeSelect.Item]) -> List[TreeSelect.Item]:
@@ -304,7 +304,7 @@ class TreeSelect(Widget):
         :param item_id: The ID of the item.
         :type item_id: str
         :returns: The item with the specified ID.
-        :rtype: Optional[TreeSelect.Item]
+        :rtype: Optional[:class:`~supervisely.app.widgets.tree_select.tree_select.TreeSelect.Item`]
         """
 
         def _get_item_by_id(
@@ -344,7 +344,7 @@ class TreeSelect(Widget):
         """Update the items in the widget.
 
         :param items: The items to update.
-        :type items: Union[List[TreeSelect.Item], TreeSelect.Item]
+        :type items: Union[List[:class:`~supervisely.app.widgets.tree_select.tree_select.TreeSelect.Item`], :class:`~supervisely.app.widgets.tree_select.tree_select.TreeSelect.Item`]
         :param overwrite: Whether to overwrite the existing items.
         :type overwrite: bool
         """
@@ -360,7 +360,7 @@ class TreeSelect(Widget):
         """Set the items in the widget.
 
         :param items: The items to set.
-        :type items: List[TreeSelect.Item]
+        :type items: List[:class:`~supervisely.app.widgets.tree_select.tree_select.TreeSelect.Item`]
         """
         self._update_items(items, overwrite=True)
 
@@ -368,7 +368,7 @@ class TreeSelect(Widget):
         """Add the items to the widget.
 
         :param items: The items to add.
-        :type items: List[TreeSelect.Item]
+        :type items: List[:class:`~supervisely.app.widgets.tree_select.tree_select.TreeSelect.Item`]
         """
         self._update_items(items, overwrite=False)
 

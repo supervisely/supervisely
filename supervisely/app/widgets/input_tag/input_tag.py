@@ -33,7 +33,7 @@ class InputTag(Widget):
     """Widget for inputting a single tag value based on its TagMeta information. Accepts various input types depending on the tag's value type. Returns the tag value when requested.
 
     :param tag_meta: Tag metadata
-    :type tag_meta: TagMeta
+    :type tag_meta: :class:`~supervisely.annotation.tag_meta.TagMeta`
     :param max_width: Maximum width of the widget in pixels, defaults to 300
     :type max_width: int
     :param hide_switch: Whether to hide the activation switch, defaults to False
@@ -103,7 +103,7 @@ class InputTag(Widget):
         """Get the tag metadata.
 
         :returns: Tag metadata
-        :rtype: TagMeta
+        :rtype: :class:`~supervisely.annotation.tag_meta.TagMeta`
         """
         return self._tag_meta
 
@@ -156,7 +156,7 @@ class InputTag(Widget):
         """Set the tag value.
 
         :param tag: Tag to set
-        :type tag: Union[Tag, None]
+        :type tag: Union[:class:`~supervisely.annotation.tag.Tag`, None]
         :returns: None
         """
         if tag is None:
@@ -170,7 +170,7 @@ class InputTag(Widget):
         """Get the current tag.
 
         :returns: Current tag
-        :rtype: Union[Tag, None]
+        :rtype: Union[:class:`~supervisely.annotation.tag.Tag`, None]
         """
         if not self._hide_switch and not self.is_active():
             return None
@@ -253,7 +253,7 @@ class InputTag(Widget):
         """Set the tag metadata.
 
         :param tag_meta: Tag metadata to set
-        :type tag_meta: TagMeta
+        :type tag_meta: :class:`~supervisely.annotation.tag_meta.TagMeta`
         :returns: None
         """
         self._tag_meta = tag_meta

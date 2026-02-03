@@ -143,12 +143,16 @@ class LyftConverter(PointcloudConverter):
         """
         Converts a point cloud item and its annotations to the supervisely formats.
 
-        Args:
-            item (PointcloudConverter.Item): The point cloud item to convert.
-            meta (ProjectMeta): The project meta.
-
-        Returns:
-            PointcloudAnnotation: The converted point cloud annotation.
+        :param item: The point cloud item to convert.
+        :type item: :class:`~supervisely.convert.pointcloud.pointcloud_converter.PointcloudConverter.Item`
+        :param meta: The project meta.
+        :type meta: :class:`~supervisely.project.project_meta.ProjectMeta`
+        :param renamed_classes: The renamed classes.
+        :type renamed_classes: dict
+        :param renamed_tags: The renamed tags.
+        :type renamed_tags: dict
+        :returns: The converted point cloud annotation.
+        :rtype: :class:`~supervisely.pointcloud_annotation.pointcloud_annotation.PointcloudAnnotation`
         """
         import open3d as o3d  # pylint: disable=import-error
 

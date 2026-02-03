@@ -21,17 +21,17 @@ from supervisely.imaging.image import read
 
 class AlphaMask(Bitmap):
     """
-    AlphaMask geometry for a single :class:`Label<supervisely.annotation.label.Label>`. :class:`AlphaMask<AlphaMask>` object is immutable.
+    AlphaMask geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.alpha_mask.AlphaMask` object is immutable.
 
     :param data: AlphaMask mask data. Must be a numpy array with values in range [0, 255].
     :type data: np.ndarray
-    :param origin: :class:`PointLocation<supervisely.geometry.point_location.PointLocation>`: top, left corner of AlphaMask. Position of the AlphaMask within image.
-    :type origin: PointLocation, optional
+    :param origin: :class:`PointLocation<~supervisely.geometry.point_location.PointLocation>`: top, left corner of AlphaMask. Position of the AlphaMask within image.
+    :type origin: :class:`~supervisely.geometry.point_location.PointLocation`, optional
     :param sly_id: AlphaMask ID in Supervisely server.
     :type sly_id: int, optional
-    :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which AlphaMask belongs.
+    :param class_id: ID of ObjClass to which AlphaMask belongs.
     :type class_id: int, optional
-    :param labeler_login: Login of the user who created AlphaMask.
+    :param labeler_login: Login of the user who created :class:`~supervisely.geometry.alpha_mask.AlphaMask`.
     :type labeler_login: str, optional
     :param updated_at: Date and Time when AlphaMask was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
     :type updated_at: str, optional
@@ -130,10 +130,10 @@ class AlphaMask(Bitmap):
         """
         Rotates current AlphaMask.
 
-        :param rotator: :class:`ImageRotator<supervisely.geometry.image_rotator.ImageRotator>` for AlphaMask rotation.
-        :type rotator: ImageRotator
-        :returns: AlphaMask object
-        :rtype: :class:`AlphaMask<AlphaMask>`
+        :param rotator: ImageRotator for AlphaMask rotation.
+        :type rotator: :class:`~supervisely.geometry.image_rotator.ImageRotator`
+        :returns: Alpha mask
+        :rtype: :class:`~supervisely.geometry.alpha_mask.AlphaMask`
 
         :Usage Example:
 
@@ -180,7 +180,7 @@ class AlphaMask(Bitmap):
         """
         AlphaMask area.
 
-        :returns: Area of current AlphaMask
+        :returns: Area of current :class:`~supervisely.geometry.alpha_mask.AlphaMask`
         :rtype: float
 
         :Usage Example:
@@ -300,8 +300,8 @@ class AlphaMask(Bitmap):
 
         :param path: Path to image
         :type path: str
-        :returns: AlphaMask
-        :rtype: AlphaMask
+        :returns: Alpha mask
+        :rtype: :class:`~supervisely.geometry.alpha_mask.AlphaMask`
         """
         img = cv2.imread(path, cv2.IMREAD_UNCHANGED)  # pylint: disable=no-member
         if len(img.shape) == 2:

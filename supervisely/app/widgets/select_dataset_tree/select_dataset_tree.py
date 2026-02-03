@@ -27,7 +27,7 @@ class SelectDatasetTree(Widget):
     :param select_all_datasets: Whether all datasets should be selected by default.
     :type select_all_datasets: bool
     :param allowed_project_types: The list of project types that are allowed to be selected.
-    :type allowed_project_types: Optional[List[ProjectType]]
+    :type allowed_project_types: Optional[List[:class:`~supervisely.project.project_type.ProjectType`]]
     :param flat: Whether the dataset selector should be flat.
     :type flat: bool
     :param always_open: Whether the dataset selector should always be open.
@@ -538,7 +538,7 @@ class SelectDatasetTree(Widget):
         Possible keyword arguments are 'team_id' and 'workspace_id'.
 
         :returns: The list of items.
-        :rtype: List[Select.Item]
+        :rtype: List[:class:`~supervisely.app.widgets.select.select.Select.Item`]
         """
         if not kwargs:
             items = self._api.team.get_list()
@@ -572,12 +572,12 @@ class SelectDatasetTree(Widget):
         return {}
 
     def _read_datasets(self, project_id: Optional[int]) -> Optional[List[TreeSelect.Item]]:
-        """Get the lisf of TreeSelect.Item objects representing the dataset hierarchy.
+        """Get the list of items representing the dataset hierarchy.
 
         :param project_id: The ID of the project.
         :type project_id: Optional[int]
-        :returns: The list of TreeSelect.Item objects.
-        :rtype: Optional[List[TreeSelect.Item]]
+        :returns: The list of items.
+        :rtype: Optional[List[:class:`~supervisely.app.widgets.tree_select.tree_select.TreeSelect.Item`]]
         """
         if not project_id:
             return None
@@ -585,12 +585,12 @@ class SelectDatasetTree(Widget):
 
         def convert_tree_to_list(node, parent_id: Optional[int] = None):
             """
-            Recursively converts a tree of DatasetInfo objects into a list of
-                SelectDatasetTree.Item objects.
+            Recursively converts a tree of DatasetInfo objects into a list of items.
 
             :param node: The current node in the tree (a tuple of DatasetInfo and its children).
             :param parent_id: The ID of the parent dataset, if any.
-            :returns: A list of SelectDatasetTree.Item objects representing the tree.
+            :returns: A list of items representing the tree.
+            :rtype: List[:class:`~supervisely.app.widgets.select_dataset_tree.select_dataset_tree.SelectDatasetTree.Item`]
             """
             result = []
             for dataset_info, children in node.items():

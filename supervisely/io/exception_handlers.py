@@ -784,8 +784,8 @@ def handle_exception(exception: Exception) -> Union[HandleException, None]:
 
     :param exception: Exception to be handled.
     :type exception: Exception
-    :returns: Instance of the ErrorHandler class or None.
-    :rtype: Union[ErrorHandler, None]
+    :returns: Instance of the :class:`~supervisely.io.exception_handlers.ErrorHandler` class or None.
+    :rtype: Union[:class:`~supervisely.io.exception_handlers.ErrorHandler`, None]
 
     :Usage Example:
 

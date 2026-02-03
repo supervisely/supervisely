@@ -15,13 +15,13 @@ class TagsTable(Widget):
         (including screenshots and examples).
 
     :param project_meta: Project meta object from which tags will be taken.
-    :type project_meta: sly.ProjectMeta
+    :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
     :param project_id: Project id from which tags will be taken.
     :type project_id: int
-    :param project_fs: Project object from which tags will be taken.
-    :type project_fs: sly.Project
+    :param project_fs: Local supervisely project from which tags will be taken.
+    :type project_fs: :class:`~supervisely.project.project.Project`
     :param allowed_types: List of allowed value types to be displayed in table.
-    :type allowed_types: List[TagValueType]
+    :type allowed_types: List[:class:`~supervisely.annotation.tag_meta.TagValueType`]
     :param selectable: If True, user can select tags from table.
     :type selectable: bool
     :param disabled: If True, the elements in the table will be disabled.
@@ -205,7 +205,7 @@ class TagsTable(Widget):
         """Read project meta and update table data.
 
         :param project_meta: Project meta object from which tags will be taken.
-        :type project_meta: sly.ProjectMeta
+        :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
         """
         self.loading = True
         self._project_fs = None
@@ -225,8 +225,8 @@ class TagsTable(Widget):
     def read_project(self, project_fs: sly.Project) -> None:
         """Read local project and update table data.
 
-        :param project_fs: Project object from which tags will be taken.
-        :type project_fs: sly.Project
+        :param project_fs: :class:`~supervisely.project.project.Project` object from which tags will be taken.
+        :type project_fs: :class:`~supervisely.project.project.Project`
         """
         self.loading = True
         self._project_fs = project_fs
@@ -293,7 +293,7 @@ class TagsTable(Widget):
         """Returns list of allowed tag value types to be displayed in table.
 
         :returns: List of allowed tag value types to be displayed in table.
-        :rtype: List[TagValueType]
+        :rtype: List[:class:`~supervisely.annotation.tag_meta.TagValueType`]
         """
         return self._allowed_types
 
@@ -310,8 +310,8 @@ class TagsTable(Widget):
     def project_fs(self) -> int:
         """Returns project object from which tags was taken.
 
-        :returns: Project object from which tags was taken.
-        :rtype: sly.Project
+        :returns: Local supervisely project from which tags was taken.
+        :rtype: :class:`~supervisely.project.project.Project`
         """
         return self._project_fs
 
@@ -329,7 +329,7 @@ class TagsTable(Widget):
         """Returns project meta object from which tags was taken.
 
         :returns: Project meta object from which tags was taken.
-        :rtype: sly.ProjectMeta
+        :rtype: :class:`~supervisely.project.project_meta.ProjectMeta`
         """
         return self._project_meta
 
@@ -388,7 +388,7 @@ class TagsTable(Widget):
         """Sets project meta object from which tags will be taken.
 
         :param project_meta: Project meta object from which tags will be taken.
-        :type project_meta: sly.ProjectMeta
+        :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
         """
         self._update_meta(project_meta)
         self._project_meta = project_meta

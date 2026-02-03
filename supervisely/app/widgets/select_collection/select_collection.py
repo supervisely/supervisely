@@ -26,7 +26,7 @@ class SelectCollection(Widget):
     :param select_all_collections: Whether all collections should be selected by default.
     :type select_all_collections: bool
     :param allowed_project_types: The list of project types that are allowed to be selected.
-    :type allowed_project_types: Optional[List[ProjectType]]
+    :type allowed_project_types: Optional[List[:class:`~supervisely.project.project_type.ProjectType`]]
     :param team_is_selectable: Whether the team selector should be selectable.
     :type team_is_selectable: bool
     :param workspace_is_selectable: Whether the workspace selector should be selectable.
@@ -461,7 +461,7 @@ class SelectCollection(Widget):
         Possible keyword arguments are 'team_id' and 'workspace_id'.
 
         :returns: The list of items.
-        :rtype: List[Select.Item]
+        :rtype: List[:class:`~supervisely.app.widgets.select.select.Select.Item`]
         """
         if not kwargs:
             items = self._api.team.get_list()
@@ -495,12 +495,12 @@ class SelectCollection(Widget):
         return {}
 
     def _read_collections(self, project_id: Optional[int]) -> Optional[List[Select.Item]]:
-        """Get the lisf of Select.Item objects representing the collection hierarchy.
+        """Get the list of items representing the collection hierarchy.
 
         :param project_id: The ID of the project.
         :type project_id: Optional[int]
-        :returns: The list of Select.Item objects.
-        :rtype: Optional[List[Select.Item]]
+        :returns: The list of items.
+        :rtype: Optional[List[:class:`~supervisely.app.widgets.select.select.Select.Item`]]
         """
         self._fetch_collections(project_id)
 
