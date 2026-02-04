@@ -9,9 +9,9 @@ from typing import List, Optional, Tuple, Union
 import cv2
 import nrrd
 import numpy as np
+from packaging.version import parse as parse_version
 from PIL import Image as PILImage
 from PIL import ImageDraw, ImageFile, ImageFont
-from pkg_resources import parse_version
 
 from supervisely._utils import abs_url, get_bytes_hash, is_development, rand_str
 from supervisely.geometry.image_rotator import ImageRotator

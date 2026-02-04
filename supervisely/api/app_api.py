@@ -20,7 +20,7 @@ TEMPLATE = "template"
 
 from functools import wraps
 
-from pkg_resources import parse_version
+from packaging.version import parse as parse_version
 
 from supervisely import env, logger
 from supervisely.api.dataset_api import DatasetInfo

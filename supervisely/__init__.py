@@ -1,11 +1,11 @@
 # coding: utf-8
 # isort: skip_file
-import pkg_resources  # isort: skip
 import os
 
 try:
-    __version__ = pkg_resources.require("supervisely")[0].version
-except TypeError as e:
+    from importlib.metadata import version
+    __version__ = version("supervisely")
+except Exception:
     __version__ = "development"
 
 

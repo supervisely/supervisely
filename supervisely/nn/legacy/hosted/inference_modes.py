@@ -1,31 +1,44 @@
 # coding: utf-8
-
 import itertools
 from collections import defaultdict
 from copy import deepcopy
-import numpy as np
-import pkg_resources
+from importlib.resources import files
 
-from supervisely.metric.common import safe_ratio
-from supervisely.project.project_meta import ProjectMeta
+import numpy as np
+
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.label import Label
 from supervisely.annotation.obj_class import ObjClass
-from supervisely.annotation.obj_class_collection import make_renamed_classes, ObjClassCollection
-from supervisely.annotation.obj_class_mapper import ObjClassMapper, RenamingObjClassMapper
-from supervisely.annotation.tag_meta_collection import make_renamed_tag_metas
-from supervisely.annotation.tag_meta import TagValueType
-from supervisely.annotation.tag_meta_mapper import RenamingTagMetaMapper, TagMetaMapper, make_renamed_tags
+from supervisely.annotation.obj_class_collection import (
+    ObjClassCollection,
+    make_renamed_classes,
+)
+from supervisely.annotation.obj_class_mapper import (
+    ObjClassMapper,
+    RenamingObjClassMapper,
+)
 from supervisely.annotation.renamer import Renamer, is_name_included
+from supervisely.annotation.tag_meta import TagValueType
+from supervisely.annotation.tag_meta_collection import make_renamed_tag_metas
+from supervisely.annotation.tag_meta_mapper import (
+    RenamingTagMetaMapper,
+    TagMetaMapper,
+    make_renamed_tags,
+)
 from supervisely.geometry.geometry import Geometry
 from supervisely.geometry.multichannel_bitmap import MultichannelBitmap
 from supervisely.geometry.rectangle import Rectangle
 from supervisely.geometry.sliding_windows import SlidingWindows
 from supervisely.imaging.image import read as sly_image_read
+from supervisely.metric.common import safe_ratio
 from supervisely.nn.legacy import raw_to_labels
-from supervisely.nn.legacy.config import update_recursively, update_strict, MultiTypeValidator
+from supervisely.nn.legacy.config import (
+    MultiTypeValidator,
+    update_recursively,
+    update_strict,
+)
 from supervisely.nn.legacy.hosted.inference_single_image import SingleImageInferenceBase
-
+from supervisely.project.project_meta import ProjectMeta
 
 INFERENCE_MODE_CONFIG = 'inference_mode_config'
 CLASS_NAME = 'class_name'
@@ -156,8 +169,7 @@ class InferenceModeBase:
         }
 
     def __init__(self, config: dict, in_meta: ProjectMeta, model: SingleImageInferenceBase):
-        validation_schema_path = pkg_resources.resource_filename(
-            __name__, 'inference_modes_schemas/{}.json'.format(self.mode_name()))
+        validation_schema_path = str(files(__name__).joinpath('inference_modes_schemas/{}.json'.format(self.mode_name())))
         MultiTypeValidator(validation_schema_path).val(INFERENCE_MODE_CONFIG, config)
         self._config = deepcopy(config)
         self._out_meta = in_meta

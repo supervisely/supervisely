@@ -32,7 +32,7 @@ import httpx
 import jwt
 import requests
 from dotenv import get_key, load_dotenv, set_key
-from pkg_resources import parse_version
+from packaging.version import parse as parse_version
 from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 
 import supervisely.api.advanced_api as advanced_api
