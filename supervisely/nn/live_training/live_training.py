@@ -81,10 +81,10 @@ class LiveTraining:
         self.training_start_time = None
         self._upload_in_progress = False
 
-        self._upload_interval = 60
+        self._upload_interval = 300
         self._last_upload_time = None
 
-        self._inactivity_timeout = 10 * 30  # 10 hours in seconds
+        self._inactivity_timeout = 600  # 10 hours in seconds
         self._last_activity_time = None
 
         # from . import live_training_instance
