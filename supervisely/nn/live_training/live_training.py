@@ -301,13 +301,13 @@ class LiveTraining:
         )
         if self.evaluator and self.phase!=Phase.WAITING_FOR_SAMPLES:
             result = self.evaluator.evaluate(image_id, sly_ann)
-        if result is not None:
-            self.metrics_last = result['last']
-            self.metrics_ema = result['ema']
-            
-            metrics_str = ', '.join([f"{k}={v:.3f}" for k, v in self.metrics_last.items()])
-            ema_str = ', '.join([f"{k}_ema={v:.3f}" for k, v in self.metrics_ema.items()])
-            logger.info(f"Image {image_id}: {metrics_str} | {ema_str}")
+            if result is not None:
+                self.metrics_last = result['last']
+                self.metrics_ema = result['ema']
+                
+                metrics_str = ', '.join([f"{k}={v:.3f}" for k, v in self.metrics_last.items()])
+                ema_str = ', '.join([f"{k}_ema={v:.3f}" for k, v in self.metrics_ema.items()])
+                logger.info(f"Image {image_id}: {metrics_str} | {ema_str}")
 
         if (len(self.dataset) >= self.initial_samples) and self.phase==Phase.WAITING_FOR_SAMPLES:
             self.phase = Phase.INITIAL_TRAINING
