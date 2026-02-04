@@ -81,10 +81,10 @@ class LiveTraining:
         self.training_start_time = None
         self._upload_in_progress = False
 
-        self._upload_interval = 7200
+        self._upload_interval = 60
         self._last_upload_time = None
 
-        self._inactivity_timeout = 10 * 3600  # 10 hours in seconds
+        self._inactivity_timeout = 10 * 30  # 10 hours in seconds
         self._last_activity_time = None
 
         # from . import live_training_instance
@@ -185,6 +185,16 @@ class LiveTraining:
             
             if not self.request_queue.is_empty():
                 self._process_pending_requests()
+            
+            if self._should_upload_periodically():
+                logger.info(f"Periodic upload (interval: {self._upload_interval}s)")
+                self._save_and_upload()
+                self._last_upload_time = time.time()
+
+            if self._should_stop():
+                logger.warning(f"No activity for {self._inactivity_timeout / 3600:.1f} hours")
+                self._save_and_upload()
+                sys.exit(0)
 
             time.sleep(sleep_interval)
             elapsed_time += sleep_interval
