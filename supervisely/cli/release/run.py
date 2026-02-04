@@ -172,7 +172,7 @@ def _ask_share_app(server_address):
 
 
 def _check_release_version(release_version):
-    return re.fullmatch("v\d+\.\d+\.\d+", release_version)
+    return re.fullmatch(r"v\d+\.\d+\.\d+", release_version)
 
 
 def _check_instance_version(instance_version):

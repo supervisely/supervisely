@@ -64,7 +64,7 @@ def get_remote_url(remote: git.Remote):
 
 
 def get_semver(string):
-    return re.match("\d+\.\d+\.\d+", string)
+    return re.match(r"\d+\.\d+\.\d+", string)
 
 
 def find_tag_in_repo(tag_name, repo: git.Repo):
@@ -221,8 +221,8 @@ def archive_application(repo: git.Repo, config, slug):
         app_folder_name = config["name"].lower()
     else:
         app_folder_name = slug.split("/")[1].lower()
-    app_folder_name = re.sub("[ \/]", "-", app_folder_name)
-    app_folder_name = re.sub("[\"'`,\[\]\(\)]", "", app_folder_name)
+    app_folder_name = re.sub(r"[ \/]", "-", app_folder_name)
+    app_folder_name = re.sub(r"[\"'`,\[\]\(\)]", "", app_folder_name)
     working_dir_path = Path(repo.working_dir).absolute()
     should_remove_dir = None
     if config.get("type", "app") == "client_side_app":

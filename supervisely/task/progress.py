@@ -387,7 +387,7 @@ def report_checkpoint_saved(checkpoint_idx, subdir, sizeb, best_now, optional_da
 
 class SlyWrapFile:
     def __init__(self) -> None:
-        self._pattern = "\\r(.*?)\\:"
+        self._pattern = r"\\r(.*?)\\:"
 
     def write(self, msg):
         match = re.search(self._pattern, msg)

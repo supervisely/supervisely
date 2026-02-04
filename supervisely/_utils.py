@@ -63,8 +63,8 @@ def generate_names(base_name, count):
 
 
 def camel_to_snake(name):
-    s1 = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", name)
-    return re.sub("([a-z0-9])([A-Z])", r"\1_\2", s1).lower()
+    s1 = re.sub(r"(.)([A-Z][a-z]+)", r"\1_\2", name)
+    return re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", s1).lower()
 
 
 def snake_to_human(snake_str: str) -> str:
@@ -616,7 +616,7 @@ def get_filename_from_headers(url):
             response = requests.get(url, stream=True)
         content_disposition = response.headers.get("Content-Disposition")
         if content_disposition:
-            filename = re.findall('filename="?([^"]+)"?', content_disposition)
+            filename = re.findall(r'filename="?([^"]+)"?', content_disposition)
             if filename:
                 return filename[0]
         filename = url.split("/")[-1] or "downloaded_file"
