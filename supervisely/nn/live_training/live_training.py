@@ -507,7 +507,11 @@ class LiveTraining:
         pass
 
     def _init_loss_plateau_detector(self):
-        loss_plateau_detector = LossPlateauDetector()
+        loss_plateau_detector = LossPlateauDetector(
+            window_size=150,
+            threshold=0.002,
+            patience=3
+        )
         loss_plateau_detector.register_save_checkpoint_callback(self.save_checkpoint)
         return loss_plateau_detector
 
@@ -515,7 +519,7 @@ class LiveTraining:
         return Evaluator(
             task_type=self.task_type,
             class2idx=self.class_map.class2idx,
-            ema_alpha=0.1,
+            ema_alpha=0.2,
             ignore_index=255,
             score_thr=0.3,
         )

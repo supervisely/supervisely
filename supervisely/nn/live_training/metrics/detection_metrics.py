@@ -10,8 +10,8 @@ class DetectionMetrics:
         self.score_weights = {
             'tp': 1.0,
             'fs': 0.5,
-            'fc': 0.5,
-            'fp': -0.5,
+            'fc': 0.7,
+            'fp': -0.1,
             'fn': 0.0
         }
 
@@ -93,9 +93,15 @@ class DetectionMetrics:
             else:
                 fp += 1
         fn = num_gt - len(gt_matches)
-        score = (tp*self.score_weights['tp'] + fs*self.score_weights['fs'] +
-                 fc*self.score_weights['fc'] + fp*self.score_weights['fp'] +
-                 fn*self.score_weights['fn']) / num_gt
+        raw_score = (
+            tp*self.score_weights['tp'] +
+            fs*self.score_weights['fs'] +
+            fc*self.score_weights['fc'] +
+            fp*self.score_weights['fp'] +
+            fn*self.score_weights['fn']
+        )
+
+        score = max(0.0, raw_score / num_gt)
 
         return {'assistance_score': score, 'tp': tp, 'fs': fs, 'fc': fc, 'fp': fp, 'fn': fn, 'num_gt': num_gt}
 
