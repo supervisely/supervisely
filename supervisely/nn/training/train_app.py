@@ -2988,7 +2988,6 @@ class TrainApp:
         self._validate_experiment_name()
         self.gui.training_process.experiment_name_input.disable()
         if self._app_options.get("device_selector", False):
-            self.gui.training_process.select_device._select.disable()
             self.gui.training_process.select_device.disable()
 
         if self._app_options.get("model_benchmark", False):
@@ -3007,7 +3006,6 @@ class TrainApp:
         self.gui.stepper.set_active_step(self.gui.stepper.get_active_step() - 1)
         self.gui.training_process.experiment_name_input.enable()
         if self._app_options.get("device_selector", False):
-            self.gui.training_process.select_device._select.enable()
             self.gui.training_process.select_device.enable()
         self.gui.enable_select_buttons()
 
