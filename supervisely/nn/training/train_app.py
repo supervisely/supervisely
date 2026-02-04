@@ -199,7 +199,7 @@ class TrainApp:
         self._onnx_supported = self._app_options.get("export_onnx_supported", False)
         self._tensorrt_supported = self._app_options.get("export_tensorrt_supported", False)
         self._device_ids: List[int] = []
-        self._is_multi_gpu: bool = False
+        self._is_multi_gpu: bool = self._app_options.get("multi_gpu", False)
         if self._onnx_supported:
             self._convert_onnx_func = None
         if self._tensorrt_supported:
@@ -443,6 +443,8 @@ class TrainApp:
         :return: List of device strings (e.g. ["cuda:0", "cuda:1"]).
         :rtype: List[str]
         """
+        if not self.is_multi_gpu:
+            return [self.device]
         return self.gui.training_process.get_devices()
 
     @property
@@ -691,11 +693,9 @@ class TrainApp:
         return self._parse_device_ids(env_value)
 
     def _configure_devices(self) -> None:
-        self._is_multi_gpu = False
-
         device_ids = self._get_multi_gpu_devices_from_env()
 
-        if device_ids is None and self._app_options.get("multi_gpu", False):
+        if device_ids is None and self.is_multi_gpu:
             try:
                 import torch
 
@@ -706,8 +706,6 @@ class TrainApp:
 
         if device_ids is not None and len(device_ids) > 1:
             mapped_ids = sly_env.remap_gpu_devices(device_ids)
-            self._is_multi_gpu = True
-            logger.info(f"Multi-GPU enabled. Visible devices: {device_ids} -> {mapped_ids}")
 
     def _finalize(self, experiment_info: dict) -> None:
         """
