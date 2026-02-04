@@ -80,6 +80,8 @@ class LiveTraining:
         
         self.training_start_time = None
         self._upload_in_progress = False
+        self._upload_interval = 3600
+        self._last_upload_time = None
 
         # from . import live_training_instance
         # live_training_instance = self  # for access from other modules
@@ -104,6 +106,7 @@ class LiveTraining:
     def run(self):
         self.training_start_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self._add_shutdown_callback()
+        self._last_upload_time = time.time()
 
         work_dir_path = Path(self.work_dir)
         work_dir_path.mkdir(parents=True, exist_ok=True)
@@ -332,6 +335,14 @@ class LiveTraining:
                 )
                 self._is_paused = False
                 self.loss_plateau_detector.reset()
+
+        if self._should_upload_periodically():
+            logger.info(f"Periodic upload triggered (interval: {self.periodic_upload_interval}s)")
+            self.save_checkpoint(self.latest_checkpoint_path)
+            save_state_json(self.state(), self.latest_checkpoint_path)
+            self._upload_artifacts()
+            self._last_upload_time = time.time()
+
         self._process_pending_requests()
     
     def register_model(self, model: nn.Module):
@@ -495,3 +506,12 @@ class LiveTraining:
         
         signal.signal(signal.SIGINT, signal_handler)
         signal.signal(signal.SIGTERM, signal_handler)
+
+    def _should_upload_periodically(self) -> bool:
+        """Check if periodic upload should be triggered based on time interval"""
+        if self._last_upload_time is None:
+            return False
+        if self.periodic_upload_interval <= 0:
+            return False
+        elapsed = time.time() - self._last_upload_time
+        return elapsed >= self.periodic_upload_interval
