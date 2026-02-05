@@ -566,17 +566,19 @@ class TagApi(ModuleApi):
         """
 
         OBJ_ID_FIELD = ApiField.FIGURE_ID if type(self) is TagApi else ApiField.OBJECT_ID
+        tag_name_id_map = self.get_name_to_id_map(project_id)
 
         data = []
         for obj_id, tags in tags_map.items():
             for tag in tags:
+                tag_id = tag_name_id_map.get(tag.name)
+                if tag_id is None:
+                    raise ValueError(f"Tag {tag.name} not found in project {project_id}")
 
-                if tag.meta.sly_id is None:
-                    raise ValueError(f"Tag {tag.name} meta has no sly_id")
-
-                data.append(
-                    {ApiField.TAG_ID: tag.meta.sly_id, OBJ_ID_FIELD: obj_id, **tag.to_json()}
-                )
+                tag_json = tag.to_json()
+                tag_json[ApiField.TAG_ID] = tag_id
+                tag_json[OBJ_ID_FIELD] = obj_id
+                data.append(tag_json)
 
         return self.add_to_objects(
             project_id,

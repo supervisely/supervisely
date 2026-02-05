@@ -348,6 +348,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         enable_quality_check: Optional[bool] = None,
         guide_id: Optional[int] = None,
         allow_restore: bool = False,
+        read_only_tags: Optional[List[str]] = None,
     ) -> List[LabelingJobInfo]:
         """
         Creates Labeling Job and assigns given Users to it.
@@ -396,6 +397,8 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type guide_id: int, optional
         :param allow_restore: If True, allows restoring a previously deleted labeling job with the same name in the same dataset.
         :type allow_restore: bool
+        :param read_only_tags: List of tags that should be read-only for annotators.
+        :type read_only_tags: List[str], optional
         :return: List of information about new Labeling Job. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[LabelingJobInfo]`
         :Usage example:
@@ -476,6 +479,9 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             "dynamicTags": dynamic_tags,
             "allowRestore": allow_restore,
         }
+
+        if read_only_tags is not None:
+            meta["readOnlyTags"] = read_only_tags
 
         if guide_id is not None:
             try:
