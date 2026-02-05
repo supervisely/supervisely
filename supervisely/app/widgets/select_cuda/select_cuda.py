@@ -37,11 +37,7 @@ class SelectCudaDevice(Widget):
         width_px: Optional[int] = None,
     ):
         self._multiple = multiple
-        placeholder = None
-        if self._multiple:
-            placeholder = "Select device(s)"
-        else:
-            placeholder = "Select device"
+        placeholder = "Select device(s)" if self._multiple is True else "Select device"
         self._select = Select(
             [], placeholder=placeholder, multiple=self._multiple, width_px=width_px
         )
