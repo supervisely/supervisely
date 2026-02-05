@@ -66,8 +66,9 @@ class Evaluator:
     def _evaluate_segmentation(self, objects: list, gt_annotation: sly.Annotation, image_shape: Tuple[int,int]) -> float:
         pred_mask = self._pred_objects_to_mask(objects, image_shape)
         gt_mask = self._gt_annotation_to_mask(gt_annotation, image_shape)
-        metrics = SegmentationMetrics(num_classes=len(self.class2idx), ignore_index=self.ignore_index)
-        return metrics.calculate_mean_boundary_iou(pred_mask, gt_mask)
+        metrics_calc = SegmentationMetrics(num_classes=len(self.class2idx), ignore_index=self.ignore_index)
+        metrics = metrics_calc.all_metrics(pred_mask, gt_mask)
+        return metrics['mean_boundary_iou']
 
     def _evaluate_detection(self, objects: list, gt_annotation: sly.Annotation, image_shape: Tuple[int,int]) -> float:
         if self.score_thr is not None:
