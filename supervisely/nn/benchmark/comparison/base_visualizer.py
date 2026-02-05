@@ -145,6 +145,6 @@ class BaseComparisonVisualizer:
             recursive=True,
         )
 
-        # eval_result.pred_dataset_infos = self.api.dataset.get_list(
-        #     eval_result.pred_project_id, recursive=True
-        # )
+        eval_result.pred_dataset_infos = self.api.dataset.get_list(
+            eval_result.pred_project_id, recursive=True
+        )

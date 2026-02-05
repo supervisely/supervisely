@@ -77,7 +77,7 @@ class ExplorePredictions(BaseVisMetrics):
                     this_eval_res_annotations.extend(batch_anns)
 
                     if len(sample_images) >= 5:
-                        sample_infos_by_dataset[dataset_info.name] = gt_batch_images[:-(len(sample_images)-5)]
+                        sample_infos_by_dataset[dataset_info.name] = gt_batch_images[:5 - (len(sample_images) - len(gt_batch_images))]
                         sample_images = sample_images[:5]
                         sample_annotations = sample_annotations[:5]
                         this_eval_res_images = this_eval_res_images[:5]
@@ -92,7 +92,7 @@ class ExplorePredictions(BaseVisMetrics):
 
                 assert len(sample_images) > 0, "No images found in the DT project"
             else:
-                for dataset_name, gt_image_infos in sample_infos_by_dataset:
+                for dataset_name, gt_image_infos in sample_infos_by_dataset.items():
                     dataset_info = api.dataset.get_info_by_name(eval_res.pred_project_id, dataset_name)
                     assert dataset_info is not None, f"Dataset {dataset_name} not found in DT project"
                     image_infos = eval_res.api.image.get_list(
