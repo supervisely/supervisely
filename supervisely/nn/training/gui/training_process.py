@@ -1,7 +1,11 @@
+import os
 from typing import Any, Dict, List
 
 # Safe optional import for torch to prevent pylint import-error when the library is absent.
+if "LOGLEVEL" in os.environ:
+    os.environ["LOGLEVEL"] = os.environ["LOGLEVEL"].upper()
 try:
+
     import torch  # type: ignore
 except ImportError:  # pragma: no cover
     torch = None  # type: ignore
