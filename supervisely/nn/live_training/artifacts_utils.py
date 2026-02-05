@@ -215,10 +215,6 @@ def upload_artifacts(
     generator._report_file_info = file_info
 
     report_id = file_info if isinstance(file_info, int) else getattr(file_info, 'id', file_info)
-
-    # from time import time
-    # cache_buster = int(time())
-    # report_url = f"{api.server_address}/nn/experiments/{report_id}?v={cache_buster}"
     report_url = f"{api.server_address}/nn/experiments/{report_id}"
 
     logger.info(f"Report URL: {report_url}")
