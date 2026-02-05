@@ -86,8 +86,6 @@ class LiveTraining:
 
         self.evaluator = self.init_evaluator()
 
-        self.ema_metric = None
-
         # from . import live_training_instance
         # live_training_instance = self  # for access from other modules
     
@@ -96,7 +94,7 @@ class LiveTraining:
         return self.iter > self.initial_iters
 
     def status(self):
-        return {
+        status_dict = {
             'phase': self.phase,
             'samples_count': len(self.dataset) if self.dataset is not None else 0,
             'waiting_samples': self.initial_samples,
@@ -104,10 +102,15 @@ class LiveTraining:
             'iteration': self.iter,
             'loss': self._loss,
             'training_paused': self._is_paused,
-            'ready_to_predict': self.ready_to_predict, 
+            'ready_to_predict': self.ready_to_predict,
             'initial_iters': self.initial_iters,
-            'ema_metric': self.ema_metric,
         }
+        
+        if self.evaluator:
+            status_dict['metric_name'] = self.evaluator.metric_name
+            status_dict['metric_ema'] = self.evaluator.ema_value
+        
+        return status_dict
     
     def run(self):
         self.training_start_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -294,10 +297,15 @@ class LiveTraining:
         if self.evaluator and self.phase!=Phase.WAITING_FOR_SAMPLES:
             result = self.evaluator.evaluate(image_id, sly_ann)
             if result is not None:
-                self.ema_metric = result['ema_value']
-                logger.info(f"Image {image_id}: metric={result['metric_value']:.3f}, EMA={result['ema_value']:.3f}")
+                metric_name = self.evaluator.metric_name
+                logger.info(
+                    f"Image {image_id}: {metric_name}={result['metric_value']:.3f}, "
+                    f"EMA={result['ema_value']:.3f}"
+                )
+
         if (len(self.dataset) >= self.initial_samples) and self.phase==Phase.WAITING_FOR_SAMPLES:
             self.phase = Phase.INITIAL_TRAINING
+
         return {
             'image_id': image_id,
             'status': self.status(),

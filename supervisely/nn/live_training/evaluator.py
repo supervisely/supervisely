@@ -45,30 +45,30 @@ class Evaluator:
         self, image_id: Any, ground_truth_annotation: sly.Annotation
     ) -> Optional[Dict[str, float]]:
         if image_id not in self._predictions:
-            logger.warning(f"No prediction stored for image_id={image_id}. Skipping evaluation for this image")
+            logger.warning(f"No prediction stored for image_id={image_id}. Skipping evaluation")
             return None
 
-        objects, image_shape = self._predictions.pop(image_id)  
+        objects, image_shape = self._predictions.pop(image_id)
 
-        metric_value: Optional[float] = None
         if self.task_type == TaskType.SEMANTIC_SEGMENTATION:
-            metric_value = self._evaluate_segmentation(objects, ground_truth_annotation, image_shape)
+            metrics = self._evaluate_segmentation(objects, ground_truth_annotation, image_shape)
         elif self.task_type == TaskType.OBJECT_DETECTION:
-            metric_value = self._evaluate_detection(objects, ground_truth_annotation, image_shape)
+            metrics = self._evaluate_detection(objects, ground_truth_annotation, image_shape)
         else:
             raise ValueError(f"Unsupported task_type: {self.task_type}")
-
+        
+        metric_value = metrics[self.metric_name]
         if metric_value is not None:
             self._update_ema(metric_value)
 
         return {'metric_value': metric_value, 'ema_value': self.ema_value}
-
+    
     def _evaluate_segmentation(self, objects: list, gt_annotation: sly.Annotation, image_shape: Tuple[int,int]) -> float:
         pred_mask = self._pred_objects_to_mask(objects, image_shape)
         gt_mask = self._gt_annotation_to_mask(gt_annotation, image_shape)
         metrics_calc = SegmentationMetrics(num_classes=len(self.class2idx), ignore_index=self.ignore_index)
         metrics = metrics_calc.all_metrics(pred_mask, gt_mask)
-        return metrics['mean_boundary_iou']
+        return metrics
 
     def _evaluate_detection(self, objects: list, gt_annotation: sly.Annotation, image_shape: Tuple[int,int]) -> float:
         if self.score_thr is not None:
@@ -77,7 +77,7 @@ class Evaluator:
         gt_boxes, gt_labels = self._gt_annotation_to_bboxes(gt_annotation)
         metrics_calc = DetectionMetrics()
         metrics = metrics_calc.all_metrics(pred_boxes, pred_labels, gt_boxes, gt_labels)
-        return metrics['assistance_score']
+        return metrics
     
     def _pred_objects_to_mask(self, objects: list, image_shape: Tuple[int,int]) -> np.ndarray:
         """Convert predicted objects to segmentation mask."""
@@ -190,3 +190,13 @@ class Evaluator:
 
     def load_state_dict(self, state: Dict):
         self.ema_value = state.get('ema_value')
+
+    @property
+    def metric_name(self) -> str:
+        """Primary metric name for this task type"""
+        if self.task_type == TaskType.SEMANTIC_SEGMENTATION:
+            return 'mean_boundary_iou'
+        elif self.task_type == TaskType.OBJECT_DETECTION:
+            return 'assistance_score'
+        else:
+            raise ValueError(f"Unsupported task_type: {self.task_type}")
