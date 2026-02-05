@@ -448,6 +448,16 @@ class TrainApp:
         return self.gui.training_process.get_devices()
 
     @property
+    def device_ids(self) -> List[int]:
+        """
+        Returns the list of device IDs used for training in multi-GPU mode.
+
+        :return: List of device IDs (e.g. [0, 1] for "cuda:0" and "cuda:1").
+        :rtype: List[int]
+        """
+        return self._parse_device_ids(self.devices)
+
+    @property
     def is_multi_gpu(self) -> bool:
         """
         Returns True if multi-GPU mode is enabled.
@@ -685,27 +695,6 @@ class TrainApp:
             parts = [p.strip() for p in raw.split(",") if p.strip()]
             return [int(p) for p in parts]
         return None
-
-    def _get_multi_gpu_devices_from_env(self) -> Optional[List[int]]:
-        env_value = os.environ.get("CUDA_VISIBLE_DEVICES")
-        if env_value is None:
-            return None
-        return self._parse_device_ids(env_value)
-
-    def _configure_devices(self) -> None:
-        device_ids = self._get_multi_gpu_devices_from_env()
-
-        if device_ids is None and self.is_multi_gpu:
-            try:
-                import torch
-
-                if torch.cuda.is_available() and torch.cuda.device_count() > 1:
-                    device_ids = list(range(torch.cuda.device_count()))
-            except Exception:
-                device_ids = None
-
-        if device_ids is not None and len(device_ids) > 1:
-            mapped_ids = sly_env.remap_gpu_devices(device_ids)
 
     def _finalize(self, experiment_info: dict) -> None:
         """
