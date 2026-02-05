@@ -32,7 +32,8 @@ class SelectCudaDevice(Widget):
         widget_id: str = None,
     ):
         self._multiple = bool(allow_multi)
-        self._select = Select([], multiple=self._multiple)
+        placeholder = "Select device(s)" if self._multiple else "Select device"
+        self._select = Select([], placeholder=placeholder, multiple=self._multiple)
         self._refresh_button = Button(
             text="", button_type="text", button_size="large", icon="zmdi zmdi-refresh"
         )
@@ -87,7 +88,7 @@ class SelectCudaDevice(Widget):
         try:
             from torch import cuda
         except ImportError as ie:
-            logger.warn(
+            logger.warning(
                 "Unable to import Torch. Please, run 'pip install torch' to resolve the issue.",
                 extra={"error message": str(ie)},
             )
@@ -99,7 +100,7 @@ class SelectCudaDevice(Widget):
             if not cuda.is_available():
                 raise RuntimeError("CUDA is not available")
         except Exception as e:
-            logger.warn(f"Failed to initialize CUDA: {e}")
+            logger.warning(f"Failed to initialize CUDA: {e}")
             return
         try:
             for idx in range(cuda.device_count()):

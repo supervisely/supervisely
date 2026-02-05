@@ -43,9 +43,17 @@ class TrainingProcess:
         self.is_multi_gpu = self.app_options.get("multi_gpu", False)
         if self.app_options.get("device_selector", False):
             self.select_device = SelectCudaDevice(allow_multi=self.is_multi_gpu)
+            select_device_field_title = None
+            select_device_field_description = None
+            if self.is_multi_gpu:
+                select_device_field_title = "Select CUDA devices"
+                select_device_field_description = "The devices on which the model will be trained."
+            else:
+                select_device_field_title = "Select CUDA device"
+                select_device_field_description = "The device on which the model will be trained."
             self.select_device_field = Field(
-                title="Select CUDA device",
-                description="The device on which the model will be trained",
+                title=select_device_field_title,
+                description=select_device_field_description,
                 content=self.select_device,
             )
             self.display_widgets.extend([self.select_device_field])
