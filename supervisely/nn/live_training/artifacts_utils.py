@@ -126,7 +126,8 @@ def upload_artifacts(
         team_id=team_id,
         local_dir=str(output_dir),
         remote_dir=remote_dir,
-        replace_if_conflict=True 
+        change_name_if_conflict=False,
+        replace_if_conflict=True
     )
 
     experiment_info = {
