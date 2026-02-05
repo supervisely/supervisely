@@ -262,9 +262,9 @@ class LiveTraining:
                 image_shape = image_np.shape[:2]
                 self.evaluator.store_prediction(image_id, objects_raw, image_shape)
 
-            objects_filtered = self.filter_predictions_by_conf(objects_raw, score_thr)
+            # objects_filtered = self.filter_predictions_by_conf(objects_raw, score_thr)
             return {
-                'objects': objects_filtered,
+                'objects': objects_raw,
                 'image_id': image_id,
                 'status': self.status(),
             }
