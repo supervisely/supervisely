@@ -19,10 +19,10 @@ class SelectCudaDevice(Widget):
     :type sort_by_free_ram: bool, optional
     :param include_cpu_option: Whether to include an option to select the CPU in the device list.
     :type include_cpu_option: bool, optional
-    :param allow_multi: Whether to allow selecting multiple devices.
-    :type allow_multi: bool, optional
     :param widget_id: The unique identifier for the widget instance.
     :type widget_id: str, optional
+    :param multiselect: Whether to allow selecting multiple devices.
+    :type multiselect: bool, optional
     :param width_px: The width of the widget in pixels.
     :type width_px: int, optional
     """
@@ -32,11 +32,11 @@ class SelectCudaDevice(Widget):
         get_list_on_init: Optional[bool] = True,
         sort_by_free_ram: Optional[bool] = False,
         include_cpu_option: Optional[bool] = False,
-        allow_multi: Optional[bool] = False,
         widget_id: str = None,
+        multiselect: Optional[bool] = None,
         width_px: Optional[int] = None,
     ):
-        self._multiple = bool(allow_multi)
+        self._multiple = bool(multiselect)
         placeholder = "Select device(s)" if self._multiple else "Select device"
         self._select = Select(
             [], placeholder=placeholder, multiple=self._multiple, width_px=width_px

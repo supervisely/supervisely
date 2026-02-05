@@ -134,16 +134,13 @@ class TrainingProcess:
 
     def get_device_names(self) -> List[str]:
         devices = self.get_devices()
+        if torch is None:
+            return ["CPU"]
         device_names = []
-        if torch is not None:
-            for device in devices:
-                if device.startswith("cuda"):
-                    device_name = torch.cuda.get_device_name(device)
-                else:
-                    device_name = "CPU"
+        for device in devices:
+            if device.startswith("cuda"):
+                device_name = torch.cuda.get_device_name(device)
                 device_names.append(device_name)
-        else:
-            device_names = ["CPU" for _ in devices]
         return device_names
 
     def get_experiment_name(self) -> str:
