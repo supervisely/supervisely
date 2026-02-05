@@ -107,8 +107,7 @@ class LiveTraining:
         }
         
         if self.evaluator:
-            status_dict['metric_name'] = self.evaluator.metric_name
-            status_dict['metric_ema'] = self.evaluator.ema_value
+            status_dict[f'{self.evaluator.metric_name}_EMA'] = self.evaluator.ema_value
         
         return status_dict
     
