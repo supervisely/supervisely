@@ -47,7 +47,7 @@ class TrainingProcess:
         self.is_multi_gpu = self.app_options.get("multi_gpu", False)
         if self.app_options.get("device_selector", False):
             self.select_device = SelectCudaDevice(
-                sort_by_free_ram=True, allow_multi=self.is_multi_gpu, width_px=275
+                sort_by_free_ram=True, multiple=self.is_multi_gpu, width_px=275
             )
             select_device_field_title = None
             select_device_field_description = None
