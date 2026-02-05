@@ -94,7 +94,7 @@ class LiveTraining:
         return self.iter > self.initial_iters
 
     def status(self):
-        status_dict = {
+        return {
             'phase': self.phase,
             'samples_count': len(self.dataset) if self.dataset is not None else 0,
             'waiting_samples': self.initial_samples,
@@ -104,12 +104,8 @@ class LiveTraining:
             'training_paused': self._is_paused,
             'ready_to_predict': self.ready_to_predict,
             'initial_iters': self.initial_iters,
+            f'{self.evaluator.metric_name}_EMA': self.evaluator.ema_value if self.evaluator else None
         }
-        
-        if self.evaluator:
-            status_dict[f'{self.evaluator.metric_name}_EMA'] = self.evaluator.ema_value
-        
-        return status_dict
     
     def run(self):
         self.training_start_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
