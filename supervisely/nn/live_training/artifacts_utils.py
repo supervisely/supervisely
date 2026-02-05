@@ -203,15 +203,30 @@ def upload_artifacts(
     )
 
     generator.generate()
-    file_info = generator.upload_to_artifacts(os.path.join(remote_dir, "visualization"))
+
+    # Upload report with overwrite enabled
+    report_remote_dir = os.path.join(remote_dir, "visualization")
+    file_info = generator.upload(
+        remote_dir=report_remote_dir,
+        team_id=team_id,
+        replace_if_conflict=True,
+        change_name_if_conflict=False
+    )
+    generator._report_file_info = file_info
 
     report_id = file_info if isinstance(file_info, int) else getattr(file_info, 'id', file_info)
+
+    # from time import time
+    # cache_buster = int(time())
+    # report_url = f"{api.server_address}/nn/experiments/{report_id}?v={cache_buster}"
     report_url = f"{api.server_address}/nn/experiments/{report_id}"
 
     logger.info(f"Report URL: {report_url}")
 
     experiment_info["has_report"] = True
-    experiment_info["experiment_report_id"] = int(report_url.split('/')[-1])
+    experiment_info["experiment_report_id"] = int(report_id)
+
+    # Set output experiment - this REPLACES the entire output
     response = api.task.set_output_experiment(task_id, experiment_info)
 
     return report_url
