@@ -2901,7 +2901,6 @@ class TrainApp:
                 raise ValueError("Train function is not defined")
             self._prepare_working_dir()
             self._init_logger()
-            self._configure_devices()
         except Exception as e:
             message = f"Error occurred during training initialization. {check_logs_text}"
             self._show_error(message, e)
