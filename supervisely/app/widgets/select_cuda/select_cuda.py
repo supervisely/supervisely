@@ -21,6 +21,10 @@ class SelectCudaDevice(Widget):
     :type include_cpu_option: bool, optional
     :param allow_multi: Whether to allow selecting multiple devices.
     :type allow_multi: bool, optional
+    :param widget_id: The unique identifier for the widget instance.
+    :type widget_id: str, optional
+    :param width_px: The width of the widget in pixels.
+    :type width_px: int, optional
     """
 
     def __init__(
