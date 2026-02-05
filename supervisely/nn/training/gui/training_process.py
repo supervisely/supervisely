@@ -118,6 +118,8 @@ class TrainingProcess:
 
     def get_device_name(self) -> str:
         device = self.get_device()
+        if isinstance(device, list):
+            device = device[0]
 
         if torch is not None and device.startswith("cuda"):
             device_name = torch.cuda.get_device_name(device)
