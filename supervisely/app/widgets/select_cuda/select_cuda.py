@@ -173,6 +173,8 @@ class SelectCudaDevice(Widget):
         """
         value = self._select.get_value()
         if isinstance(value, list):
+            if len(value) == 0:
+                return None
             return value[0]
         return value
 
