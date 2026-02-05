@@ -58,7 +58,7 @@ class ExplorePredictions(BaseVisMetrics):
             this_eval_res_images = []
             this_eval_res_annotations = []
             if idx == 0:
-                for dataset_info in eval_res.dt_dataset_infos:    
+                for dataset_info in eval_res.pred_dataset_infos:    
                     batch_images = api.image.get_list(dataset_info.id, limit=5, force_metadata_for_links=False)
                     if len(batch_images) == 0:
                         continue
