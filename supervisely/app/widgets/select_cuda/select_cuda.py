@@ -163,14 +163,18 @@ class SelectCudaDevice(Widget):
 
         return value_cb
 
-    def get_device(self) -> Optional[Union[str, List[str]]]:
-        """Gets the currently selected device(s).
+    def get_device(self) -> Optional[str]:
+        """
+        Gets the currently selected device(s).
         This method returns the value of the currently selected device.
 
         :return: The value of the selected device(s) (e.g. 'cuda:0', 'cpu', etc.), or None if no device is selected.
-        :rtype: Optional[Union[str, List[str]]]
+        :rtype: Optional[str]
         """
-        return self._select.get_value()
+        value = self._select.get_value()
+        if isinstance(value, list):
+            return value[0]
+        return value
 
     def get_devices(self) -> List[str]:
         """Gets the currently selected devices as a list.
