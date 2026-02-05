@@ -30,10 +30,13 @@ class SelectCudaDevice(Widget):
         include_cpu_option: Optional[bool] = False,
         allow_multi: Optional[bool] = False,
         widget_id: str = None,
+        width_px: Optional[int] = None,
     ):
         self._multiple = bool(allow_multi)
         placeholder = "Select device(s)" if self._multiple else "Select device"
-        self._select = Select([], placeholder=placeholder, multiple=self._multiple)
+        self._select = Select(
+            [], placeholder=placeholder, multiple=self._multiple, width_px=width_px
+        )
         self._refresh_button = Button(
             text="", button_type="text", button_size="large", icon="zmdi zmdi-refresh"
         )
