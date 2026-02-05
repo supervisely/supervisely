@@ -5,17 +5,17 @@ import os
 import pickle
 import zipfile
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, Generic, List, Optional, TypeVar, Union
 
 import numpy as np
 import pandas as pd
 import yaml
 
+from supervisely.api.project_api import ProjectInfo
 from supervisely.app.widgets import SlyTqdm
 from supervisely.io.fs import get_file_name_with_ext, silent_remove
 from supervisely.io.json import dump_json_file, load_json_file
 from supervisely.task.progress import tqdm_sly
-
 
 class BaseEvalResult:
     PRIMARY_METRIC = None
@@ -26,6 +26,8 @@ class BaseEvalResult:
         self.speedtest_info: Optional[Dict] = None
         self.eval_data: Optional[Dict] = None
         self.mp = None
+
+        self.gt_project_info: ProjectInfo = None
 
         if self.directory is not None:
             self._read_files(self.directory)
@@ -159,9 +161,11 @@ class BaseEvalResult:
             return False
 
 
-class BaseEvaluator:
+TEvalResult = TypeVar("TEvalResult", bound=BaseEvalResult)
+
+class BaseEvaluator(Generic[TEvalResult]):
     EVALUATION_PARAMS_YAML_PATH: Optional[str] = None
-    eval_result_cls = BaseEvalResult
+    eval_result_cls: TEvalResult = BaseEvalResult
 
     def __init__(
         self,
@@ -259,5 +263,5 @@ class BaseEvaluator:
             zf.write(filepath, arcname="eval_data.json")
             silent_remove(filepath)
 
-    def get_eval_result(self) -> BaseEvalResult:
+    def get_eval_result(self) -> TEvalResult:
         return self.eval_result_cls(self.result_dir)

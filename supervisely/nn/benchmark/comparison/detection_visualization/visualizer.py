@@ -25,7 +25,7 @@ from supervisely.nn.benchmark.visualization.widgets import (
 
 
 class DetectionComparisonVisualizer(BaseComparisonVisualizer):
-    vis_texts = texts
+    vis_texts: texts = texts
     ann_opacity = 0.5
 
     def __init__(self, *args, **kwargs):

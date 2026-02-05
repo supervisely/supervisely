@@ -1,6 +1,6 @@
 import datetime
 from pathlib import Path
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from supervisely.api.module_api import ApiField
 from supervisely.nn.benchmark.comparison.semantic_segmentation.vis_metrics import (
@@ -14,13 +14,16 @@ from supervisely.nn.benchmark.visualization.widgets import (
 )
 from supervisely.project.project_meta import ProjectMeta
 
+if TYPE_CHECKING:
+    from supervisely.nn.benchmark.comparison.model_comparison import ModelComparison
+
 
 class BaseComparisonVisualizer:
     vis_texts = None
     ann_opacity = None
     report_name = "Model Comparison Report.lnk"
 
-    def __init__(self, comparison):
+    def __init__(self, comparison: "ModelComparison"):
         self.comparison = comparison
         self.api = comparison.api
         self.eval_results = comparison.eval_results

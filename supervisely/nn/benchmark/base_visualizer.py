@@ -1,12 +1,11 @@
-from typing import List, Tuple
+from typing import Generic, List, Tuple
 
 from supervisely.annotation.annotation import Annotation
 from supervisely.api.api import Api
 from supervisely.api.image_api import ImageInfo
 from supervisely.api.module_api import ApiField
 from supervisely.api.project_api import ProjectInfo
-from supervisely.nn.benchmark.base_evaluator import BaseEvalResult
-from supervisely.nn.benchmark.cv_tasks import CVTask
+from supervisely.nn.benchmark.base_evaluator import TEvalResult
 from supervisely.nn.benchmark.visualization.renderer import Renderer
 from supervisely.nn.benchmark.visualization.widgets import GalleryWidget
 from supervisely.project.project_meta import ProjectMeta
@@ -31,12 +30,12 @@ class MatchedPairData:
         self.diff_annotation = diff_annotation
 
 
-class BaseVisMetrics:
+class BaseVisMetrics(Generic[TEvalResult]):
 
     def __init__(
         self,
         vis_texts,
-        eval_results: List[BaseEvalResult],
+        eval_results: List[TEvalResult],
         explore_modal_table: GalleryWidget = None,
         diff_modal_table: GalleryWidget = None,
     ) -> None:
@@ -51,7 +50,7 @@ class BaseVisMetric(BaseVisMetrics):
     def __init__(
         self,
         vis_texts,
-        eval_result: BaseEvalResult,
+        eval_result: TEvalResult,
         explore_modal_table: GalleryWidget = None,
         diff_modal_table: GalleryWidget = None,
     ) -> None:
@@ -59,14 +58,14 @@ class BaseVisMetric(BaseVisMetrics):
         self.eval_result = eval_result
 
 
-class BaseVisualizer:
+class BaseVisualizer(Generic[TEvalResult]):
     cv_task = None
     report_name = "Model Evaluation Report.lnk"
 
     def __init__(
         self,
         api: Api,
-        eval_results: List[BaseEvalResult],
+        eval_results: List[TEvalResult],
         workdir="./visualizations",
         progress=None,
     ):
@@ -88,7 +87,7 @@ class BaseVisualizer:
                     self._get_eval_project_infos(eval_result)
                 p.update(1)
 
-    def _get_eval_project_infos(self, eval_result):
+    def _get_eval_project_infos(self, eval_result: TEvalResult):
         # get project infos
         if self.gt_project_info is None:
             self.gt_project_info = self.api.project.get_info_by_id(eval_result.gt_project_id)
