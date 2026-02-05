@@ -21,8 +21,8 @@ class SelectCudaDevice(Widget):
     :type include_cpu_option: bool, optional
     :param widget_id: The unique identifier for the widget instance.
     :type widget_id: str, optional
-    :param multiselect: Whether to allow selecting multiple devices.
-    :type multiselect: bool, optional
+    :param multiple: Whether to allow selecting multiple devices.
+    :type multiple: bool
     :param width_px: The width of the widget in pixels.
     :type width_px: int, optional
     """
@@ -32,12 +32,16 @@ class SelectCudaDevice(Widget):
         get_list_on_init: Optional[bool] = True,
         sort_by_free_ram: Optional[bool] = False,
         include_cpu_option: Optional[bool] = False,
-        widget_id: str = None,
-        multiselect: Optional[bool] = None,
+        widget_id: Optional[str] = None,
+        multiple: bool = False,
         width_px: Optional[int] = None,
     ):
-        self._multiple = bool(multiselect)
-        placeholder = "Select device(s)" if self._multiple else "Select device"
+        self._multiple = multiple
+        placeholder = None
+        if self._multiple:
+            placeholder = "Select device(s)"
+        else:
+            placeholder = "Select device"
         self._select = Select(
             [], placeholder=placeholder, multiple=self._multiple, width_px=width_px
         )
