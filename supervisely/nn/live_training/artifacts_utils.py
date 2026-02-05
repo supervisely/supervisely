@@ -125,7 +125,8 @@ def upload_artifacts(
     api.file.upload_directory_fast(
         team_id=team_id,
         local_dir=str(output_dir),
-        remote_dir=remote_dir
+        remote_dir=remote_dir,
+        replace_if_conflict=True 
     )
 
     experiment_info = {
