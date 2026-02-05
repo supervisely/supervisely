@@ -26,7 +26,7 @@
       :disabled="item.disabled"
     >
       <span v-if="item.right_text !== null"
-        style="display: flex; align-items: center; justify-content: space-between; width: 100%; padding-right: 20px; gap: 10px;">
+        style="display: flex; align-items: center; justify-content: space-between; width: 100%; padding-right: 20px; gap: 10px; flex-wrap: nowrap;">
         <span>{{ item.label }}</span>
         <span style="color: #8492a6; font-size: 13px">{{ item.right_text }}</span>
       </span>
@@ -47,7 +47,7 @@
         :disabled="item.disabled"
       >
         <span v-if="item.right_text"
-          style="display: flex; align-items: center; justify-content: space-between; width: 100%; padding-right: 20px; gap: 10px;">
+          style="display: flex; align-items: center; justify-content: space-between; width: 100%; padding-right: 20px; gap: 10px; flex-wrap: nowrap;">
           <span>{{ item.label }}</span>
           <span style="color: #8492a6; font-size: 13px">{{ item.right_text }}</span>
         </span>
