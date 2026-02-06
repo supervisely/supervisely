@@ -51,6 +51,19 @@ def create_api(app: FastAPI, request_queue: RequestQueue) -> FastAPI:
         result = await _wait_for_result(future, response)
         return result
 
+    @app.post("/predict-video")
+    async def predict_video(request: Request, response: Response):
+        """Run inference on a video frame."""
+        sly_api = _api_from_request(request)
+        state = request.state.state
+        video_id = state["video_id"]
+        frame_idx = state["frame_idx"]
+        frame_np = sly_api.video.frame.download_np(video_id, frame_idx)
+        frame_id = f"{video_id}_{frame_idx}"
+        future = request_queue.put(RequestType.PREDICT, {"image": frame_np, "image_id": frame_id})
+        result = await _wait_for_result(future, response)
+        return result
+
     @app.post("/add-sample")
     async def add_sample(request: Request, response: Response):
         """Add a new training sample."""
