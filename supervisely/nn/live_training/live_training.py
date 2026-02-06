@@ -316,7 +316,7 @@ class LiveTraining:
             allowed_geometries = self._task2geometries[self.task_type]
             obj_classes = [
                 obj_class for obj_class in obj_classes
-                if obj_class.geometry_type in allowed_geometries
+                if obj_class.geometry_type in allowed_geometries + [sly.AnyGeometry]
             ]
 
         return ClassMap(obj_classes)
@@ -324,10 +324,13 @@ class LiveTraining:
     def _filter_annotation(self, ann_json: dict) -> dict:
         # Filter objects according to class_map
         # Important: Must be filtered before sly.Annotation.from_json due to static project meta
+        #TODO: check it
+        allowed_geometries = self._task2geometries[self.task_type]
+        allowed_geometries = [geom.geometry_name() for geom in allowed_geometries]
         filtered_objects = []
         for obj in ann_json['objects']:
             sly_id = obj['classId']
-            if sly_id in self.class_map.sly_ids:
+            if sly_id in self.class_map.sly_ids and obj['geometryType'] in allowed_geometries:
                 filtered_objects.append(obj)
         ann_json['objects'] = filtered_objects
         return ann_json
