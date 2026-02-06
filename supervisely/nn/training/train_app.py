@@ -5,6 +5,7 @@ This module contains the `TrainApp` class and related functionality to facilitat
 training workflows in a Supervisely application.
 """
 
+import os
 import shutil
 import subprocess
 import time
@@ -197,6 +198,8 @@ class TrainApp:
 
         self._onnx_supported = self._app_options.get("export_onnx_supported", False)
         self._tensorrt_supported = self._app_options.get("export_tensorrt_supported", False)
+        self._device_ids: List[int] = []
+        self._is_multi_gpu: bool = self._app_options.get("multi_gpu", False)
         if self._onnx_supported:
             self._convert_onnx_func = None
         if self._tensorrt_supported:
@@ -257,6 +260,10 @@ class TrainApp:
         state = self.gui._extract_state_from_env()
         logger.debug(f"State: {state}")
         gui_state_raw = state.get("guiState")
+
+        # Use for debugging guiState
+        # gui_state_raw = self.__debug_gui_state()
+
         if gui_state_raw is not None:
             logger.info("Loading GUI from state")
             logger.debug(f"GUI State: {gui_state_raw}")
@@ -311,6 +318,7 @@ class TrainApp:
         If True, the training will start automatically after the GUI is loaded and train server is started.
         """
         return self.gui._start_training
+
     # ----------------------------------------- #
 
     # Input Data
@@ -426,6 +434,38 @@ class TrainApp:
         :rtype: str
         """
         return self.gui.training_process.get_device()
+
+    @property
+    def devices(self) -> List[str]:
+        """
+        Returns all devices used for training in multi-GPU mode.
+
+        :return: List of device strings (e.g. ["cuda:0", "cuda:1"]).
+        :rtype: List[str]
+        """
+        if not self.is_multi_gpu:
+            return [self.device]
+        return self.gui.training_process.get_devices()
+
+    @property
+    def device_ids(self) -> List[int]:
+        """
+        Returns the list of device IDs used for training in multi-GPU mode.
+
+        :return: List of device IDs (e.g. [0, 1] for "cuda:0" and "cuda:1").
+        :rtype: List[int]
+        """
+        return self._parse_device_ids(self.devices)
+
+    @property
+    def is_multi_gpu(self) -> bool:
+        """
+        Returns True if multi-GPU mode is enabled.
+
+        :return: True if multi-GPU is enabled.
+        :rtype: bool
+        """
+        return self._is_multi_gpu
 
     @property
     def base_checkpoint(self) -> str:
@@ -637,6 +677,25 @@ class TrainApp:
         # Step 7. Download Model files
         self._download_model()
 
+    def _parse_device_ids(self, value) -> Optional[List[int]]:
+        if value is None:
+            return None
+        if isinstance(value, (list, tuple)):
+            ids = []
+            for v in value:
+                if isinstance(v, str) and v.startswith("cuda:"):
+                    v = v.split(":", 1)[1]
+                ids.append(int(v))
+            return ids
+        if isinstance(value, str):
+            raw = value.strip()
+            if not raw:
+                return None
+            raw = raw.replace("cuda:", "")
+            parts = [p.strip() for p in raw.split(",") if p.strip()]
+            return [int(p) for p in parts]
+        return None
+
     def _finalize(self, experiment_info: dict) -> None:
         """
         Finalizes the training process by validating outputs, uploading artifacts,
@@ -734,7 +793,9 @@ class TrainApp:
         self._upload_demo_files(remote_dir)
 
         # Step 10. Generate training output
-        output_file_info, experiment_info = self._generate_experiment_output(experiment_info, model_meta, session_link_file_info)
+        output_file_info, experiment_info = self._generate_experiment_output(
+            experiment_info, model_meta, session_link_file_info
+        )
 
         # Step 11. Set output widgets
         self._set_text_status("reset")
@@ -1201,7 +1262,9 @@ class TrainApp:
 
         # Load splits
         self.gui.train_val_splits_selector.set_sly_project(self.sly_project)
-        self._train_split, self._val_split = self.gui.train_val_splits_selector.train_val_splits.get_splits()
+        self._train_split, self._val_split = (
+            self.gui.train_val_splits_selector.train_val_splits.get_splits()
+        )
         self._train_split_ids, self._val_split_ids = [], []
         self._train_split_item_ids, self._val_split_item_ids = set(), set()
 
@@ -1275,7 +1338,13 @@ class TrainApp:
                     message=f"Preparing '{dataset}'", total=len(split)
                 ) as second_pbar:
                     self.progress_bar_secondary.show()
-                    move_files(split, split_name, paths[dataset], image_name_formats[dataset], second_pbar)
+                    move_files(
+                        split,
+                        split_name,
+                        paths[dataset],
+                        image_name_formats[dataset],
+                        second_pbar,
+                    )
                     main_pbar.update(1)
                 self.progress_bar_secondary.hide()
             self.progress_bar_main.hide()
@@ -1295,7 +1364,10 @@ class TrainApp:
         with self.progress_bar_main(message="Processing splits", total=2) as pbar:
             self.progress_bar_main.show()
             for dataset in ["train", "val"]:
-                shutil.move(paths[dataset]["split_path"], train_ds_path if dataset == "train" else val_ds_path)
+                shutil.move(
+                    paths[dataset]["split_path"],
+                    train_ds_path if dataset == "train" else val_ds_path,
+                )
                 pbar.update(1)
             self.progress_bar_main.hide()
 
@@ -2039,7 +2111,12 @@ class TrainApp:
 
             self.progress_bar_main.hide()
 
-    def _generate_experiment_output(self, experiment_info: dict, model_meta: ProjectMeta, session_link_file_info: FileInfo) -> tuple:
+    def _generate_experiment_output(
+        self,
+        experiment_info: dict,
+        model_meta: ProjectMeta,
+        session_link_file_info: FileInfo,
+    ) -> tuple:
         """
         Generates and uploads the experiment page to the output directory, if report generation is successful.
         Otherwise, artifacts directory link will be used for output.
@@ -2806,7 +2883,9 @@ class TrainApp:
     def start_in_thread(self):
         def auto_train():
             import threading
+
             threading.Thread(target=self._wrapped_start_training, daemon=True).start()
+
         self._server.add_event_handler("startup", auto_train)
 
     def _wrapped_start_training(self):
@@ -2897,7 +2976,6 @@ class TrainApp:
         self._validate_experiment_name()
         self.gui.training_process.experiment_name_input.disable()
         if self._app_options.get("device_selector", False):
-            self.gui.training_process.select_device._select.disable()
             self.gui.training_process.select_device.disable()
 
         if self._app_options.get("model_benchmark", False):
@@ -2916,7 +2994,6 @@ class TrainApp:
         self.gui.stepper.set_active_step(self.gui.stepper.get_active_step() - 1)
         self.gui.training_process.experiment_name_input.enable()
         if self._app_options.get("device_selector", False):
-            self.gui.training_process.select_device._select.enable()
             self.gui.training_process.select_device.enable()
         self.gui.enable_select_buttons()
 
@@ -3151,7 +3228,10 @@ class TrainApp:
         return gt_project_info.id, gt_split_data
 
     def _create_collection_splits(self):
-        def _check_match(current_selected_collection_ids: List[int], all_split_collections: List[EntitiesCollectionInfo]):
+        def _check_match(
+            current_selected_collection_ids: List[int],
+            all_split_collections: List[EntitiesCollectionInfo],
+        ):
             if len(current_selected_collection_ids) > 0:
                 if len(current_selected_collection_ids) == 1:
                     current_selected_collection_id = current_selected_collection_ids[0]
@@ -3168,15 +3248,21 @@ class TrainApp:
         latest_train_collection = self.gui.train_val_splits_selector.latest_train_collection
         latest_val_collection = self.gui.train_val_splits_selector.latest_val_collection
         if split_method == "Based on collections":
-            current_selected_train_collection_ids = self.gui.train_val_splits_selector.train_val_splits.get_train_collections_ids()
+            current_selected_train_collection_ids = (
+                self.gui.train_val_splits_selector.train_val_splits.get_train_collections_ids()
+            )
             train_match = _check_match(current_selected_train_collection_ids, all_train_collections)
             if train_match:
-                current_selected_val_collection_ids = self.gui.train_val_splits_selector.train_val_splits.get_val_collections_ids()
+                current_selected_val_collection_ids = (
+                    self.gui.train_val_splits_selector.train_val_splits.get_val_collections_ids()
+                )
                 val_match = _check_match(current_selected_val_collection_ids, all_val_collections)
                 if val_match:
                     self._train_collection_id = current_selected_train_collection_ids[0]
                     self._val_collection_id = current_selected_val_collection_ids[0]
-                    self._update_project_custom_data(self._train_collection_id, self._val_collection_id)
+                    self._update_project_custom_data(
+                        self._train_collection_id, self._val_collection_id
+                    )
                     return
         # ------------------------------------------------------------ #
 
@@ -3231,10 +3317,35 @@ class TrainApp:
         train_info = {
             "task_id": self.task_id,
             "framework_name": self.framework_name,
-            "splits": {"train_collection": train_collection_id, "val_collection": val_collection_id}
+            "splits": {
+                "train_collection": train_collection_id,
+                "val_collection": val_collection_id,
+            },
         }
         custom_data = self._api.project.get_info_by_id(self.project_id).custom_data
         train_info_list = custom_data.get("train_info", [])
         train_info_list.append(train_info)
         custom_data.update({"train_info": train_info_list})
         self._api.project.update_custom_data(self.project_id, custom_data)
+
+    def __debug_gui_state(self):
+        """
+        Inner method for debugging experiment guiState.
+
+        Set model name and classes according to the training app and project meta.
+        """
+        gui_state_raw = {
+            "model": {"source": "Pretrained models", "model_name": "YOLO11n-det"},
+            "classes": ["cat", "dog"],
+            "train_val_split": {"method": "random", "split": "train", "percent": 80},
+            "hyperparameters": None,
+            "options": {
+                "convert_class_shapes": True,
+                "model_benchmark": {"enable": False, "speed_test": False},
+                "cache_project": True,
+                "export": {"enable": False, "ONNXRuntime": False, "TensorRT": False},
+            },
+            "experiment_name": None,
+            "start_training": False,
+        }
+        return gui_state_raw

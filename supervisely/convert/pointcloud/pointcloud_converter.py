@@ -91,6 +91,10 @@ class PointcloudConverter(BaseConverter):
         else:
             progress_cb = None
 
+        upload_fn = api.pointcloud.upload_paths
+        if self.upload_as_links and self.supports_links:
+            upload_fn = api.pointcloud.upload_links
+
         key_id_map = KeyIdMap()
         for batch in batched(self._items, batch_size=batch_size):
             item_names = []
@@ -101,19 +105,24 @@ class PointcloudConverter(BaseConverter):
                     existing_names, item.name, with_ext=True, extend_used_names=True
                 )
                 item_names.append(item.name)
-                item_paths.append(item.path)
+                if self.upload_as_links:
+                    item_paths.append(
+                        self.remote_files_map.get(os.path.abspath(item.path), item.path)
+                    )
+                else:
+                    item_paths.append(item.path)
 
                 ann = self.to_supervisely(item, meta, renamed_classes, renamed_tags)
                 anns.append(ann)
 
-            pcd_infos = api.pointcloud.upload_paths(
+            pcd_infos = upload_fn(
                 dataset_id,
                 item_names,
                 item_paths,
             )
             pcd_ids = [pcd_info.id for pcd_info in pcd_infos]
             pcl_to_rimg_figures: Dict[int, Dict[str, List[Dict]]] = {}
-            pcl_to_hash_to_id: Dict[int, Dict[str, int]] = {}
+            pcl_to_rimg_to_id: Dict[int, Dict[str, int]] = {}
             for pcd_id, ann, item in zip(pcd_ids, anns, batch):
                 if ann is not None:
                     api.pointcloud.annotation.append(pcd_id, ann, key_id_map)
@@ -130,29 +139,39 @@ class PointcloudConverter(BaseConverter):
                             raise ValueError("Related image meta not found in json file.")
                         if ApiField.NAME not in meta_json:
                             raise ValueError("Related image name not found in json file.")
-                        img_hash = api.pointcloud.upload_related_image(img_path)
+
+                        img_hash = None
+                        if not self.upload_as_links:
+                            img_hash = api.pointcloud.upload_related_image(img_path)
+
                         if "deviceId" not in meta_json[ApiField.META].keys():
                             camera_names.append(f"CAM_{str(img_ind).zfill(2)}")
                         else:
                             camera_names.append(meta_json[ApiField.META]["deviceId"])
-                        rimg_infos.append(
-                            {
-                                ApiField.ENTITY_ID: pcd_id,
-                                ApiField.NAME: meta_json[ApiField.NAME],
-                                ApiField.HASH: img_hash,
-                                ApiField.META: meta_json[ApiField.META],
-                            }
-                        )
+
+                        rimage_dict = {
+                            ApiField.ENTITY_ID: pcd_id,
+                            ApiField.NAME: meta_json[ApiField.NAME],
+                            ApiField.META: meta_json[ApiField.META],
+                        }
+                        link = None
+                        if img_hash is not None:
+                            rimage_dict[ApiField.HASH] = img_hash
+                        else:
+                            link = self.remote_files_map.get(os.path.abspath(img_path), img_path)
+                            rimage_dict[ApiField.LINK] = link
+                        img_data = img_hash or link
+                        rimg_infos.append(rimage_dict)
 
                         if fig_path is not None and os.path.isfile(fig_path):
                             try:
                                 figs_json = load_json_file(fig_path)
-                                pcl_to_rimg_figures.setdefault(pcd_id, {})[img_hash] = figs_json
+                                pcl_to_rimg_figures.setdefault(pcd_id, {})[img_data] = figs_json
                             except Exception as e:
                                 logger.debug(f"Failed to read figures json '{fig_path}': {repr(e)}")
 
                     except Exception as e:
-                        logger.warn(
+                        logger.warning(
                             f"Failed to upload related image or add it to pointcloud: {repr(e)}"
                         )
                         continue
@@ -163,14 +182,14 @@ class PointcloudConverter(BaseConverter):
                         uploaded_rimgs = api.pointcloud.add_related_images(rimg_infos, camera_names)
                         # build mapping hash->id
                         for info, uploaded in zip(rimg_infos, uploaded_rimgs):
-                            img_hash = info.get(ApiField.HASH)
+                            img_data = info.get(ApiField.HASH, info.get(ApiField.LINK, None))
                             img_id = (
                                 uploaded.get(ApiField.ID)
                                 if isinstance(uploaded, dict)
                                 else getattr(uploaded, "id", None)
                             )
-                            if img_hash is not None and img_id is not None:
-                                pcl_to_hash_to_id.setdefault(pcd_id, {})[img_hash] = img_id
+                            if img_data is not None and img_id is not None:
+                                pcl_to_rimg_to_id.setdefault(pcd_id, {})[img_data] = img_id
                     except Exception as e:
                         logger.debug(f"Failed to add related images to pointcloud: {repr(e)}")
 
@@ -182,15 +201,15 @@ class PointcloudConverter(BaseConverter):
 
                     figures_payload: List[Dict] = []
 
-                    for pcl_id, hash_to_figs in pcl_to_rimg_figures.items():
-                        hash_to_ids = pcl_to_hash_to_id.get(pcl_id, {})
-                        if len(hash_to_ids) == 0:
+                    for pcl_id, rimg_data_to_figs in pcl_to_rimg_figures.items():
+                        rimg_data_to_id = pcl_to_rimg_to_id.get(pcl_id, {})
+                        if len(rimg_data_to_id) == 0:
                             continue
 
-                        for img_hash, figs_json in hash_to_figs.items():
-                            if img_hash not in hash_to_ids:
+                        for img_data, figs_json in rimg_data_to_figs.items():
+                            if img_data not in rimg_data_to_id:
                                 continue
-                            rimg_id = hash_to_ids[img_hash]
+                            rimg_id = rimg_data_to_id[img_data]
                             for fig in figs_json:
                                 try:
                                     fig[ApiField.ENTITY_ID] = rimg_id
@@ -202,7 +221,7 @@ class PointcloudConverter(BaseConverter):
                                         )
                                 except Exception as e:
                                     logger.debug(
-                                        f"Failed to process figure json for img_hash={img_hash}: {repr(e)}"
+                                        f"Failed to process figure json for current image. Hash / link = {img_data}: {repr(e)}"
                                     )
                                     continue
 
@@ -289,6 +308,13 @@ class PointcloudConverter(BaseConverter):
         if ext == ".pcd":
             return pcd_path
         elif ext == ".bin":
+            if self.upload_as_links:
+                logger.warning(
+                    f"Uploading .bin pointcloud files as links is not supported. "
+                    f"Please convert .bin files to .pcd format before uploading. "
+                    f"Skipping conversion for: {pcd_path}"
+                )
+                return None
             if not self._validate_bin_pointcloud(pcd_path):
                 logger.warning(
                     f"The .bin pointcloud file '{pcd_path}' is not valid. Skipping conversion to .pcd."
@@ -359,9 +385,6 @@ class PointcloudConverter(BaseConverter):
             norm_intensity = intensity
         intensity_fake_rgb = np.zeros((norm_intensity.shape[0], 3))
         intensity_fake_rgb[:, 0] = norm_intensity
-        pc = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(points))
-        pc.colors = o3d.utility.Vector3dVector(intensity_fake_rgb)
-        o3d.io.write_point_cloud(pcd_file, pc)
         pc = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(points))
         pc.colors = o3d.utility.Vector3dVector(intensity_fake_rgb)
         o3d.io.write_point_cloud(pcd_file, pc)

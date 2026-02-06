@@ -2,6 +2,7 @@
 model_selector:
   enabled: true
   show_custom: true
+  default_model: "YOLO26s-det"
 
 # ==================== Data Selection ==============
 # if false, use all classes from project meta
@@ -38,6 +39,9 @@ show_logs_in_gui: true
 
 # [Beta] Collapse GUI cards on selection
 collapsable: false
+
+# Multi-GPU training support
+multi_gpu: false
 
 # ==================== Export ======================
 # Requires additional implementation

@@ -17,7 +17,10 @@ from supervisely import (
     logger,
 )
 from supervisely.convert.base_converter import AvailablePointcloudConverters
-from supervisely.convert.pointcloud.bag.bag_helper import process_pc2_msg, process_vector3_msg
+from supervisely.convert.pointcloud.bag.bag_helper import (
+    process_pc2_msg,
+    process_vector3_msg,
+)
 from supervisely.convert.pointcloud.pointcloud_converter import PointcloudConverter
 from supervisely.geometry.cuboid_3d import Cuboid3d
 from supervisely.io.fs import (
@@ -220,6 +223,9 @@ class BagConverter(PointcloudConverter):
         else:
             progress_cb = None
 
+        upload_fn = (
+            api.pointcloud_episode.upload_path if is_episodes else api.pointcloud.upload_path
+        )
         for idx, item in enumerate(self._items):
             current_dataset = dataset_info if not multiple_items else datasets[idx]
             current_dataset_id = current_dataset.id
@@ -239,11 +245,6 @@ class BagConverter(PointcloudConverter):
                 )
                 if is_episodes:
                     pcd_meta["frame"] = idx
-                upload_fn = (
-                    api.pointcloud_episode.upload_path
-                    if is_episodes
-                    else api.pointcloud.upload_path
-                )
                 info = upload_fn(current_dataset_id, pcd_name, pcd_path, pcd_meta)
                 pcd_id = info.id
                 frame_to_pointcloud_ids[idx] = pcd_id

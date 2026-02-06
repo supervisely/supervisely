@@ -8,8 +8,10 @@ from tqdm import tqdm
 
 from supervisely._utils import batched, get_or_create_event_loop, is_production
 from supervisely.annotation.annotation import Annotation
+from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.tag_meta import TagValueType
 from supervisely.api.api import Api
+from supervisely.geometry.graph import GraphNodes
 from supervisely.io.env import team_id
 from supervisely.io.fs import (
     get_file_ext,
@@ -19,8 +21,6 @@ from supervisely.io.fs import (
     silent_remove,
     unpack_archive,
 )
-from supervisely.annotation.obj_class import ObjClass
-from supervisely.geometry.graph import GraphNodes
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_settings import LabelingInterface
 from supervisely.sly_logger import logger
@@ -291,14 +291,14 @@ class BaseConverter:
                     raise RuntimeError(
                         f"Not found any {self.modality} to upload. "  # pylint: disable=no-member
                         f"Unsupported file extensions detected: {unsupported_exts}. "
-                        f"Convert your data to one of the supported formats: {self.allowed_exts}"
+                        f"Convert your data to one of the supported formats: {self.allowed_exts}"  # pylint: disable=no-member
                     )
                 raise RuntimeError(
                     "Please refer to the app overview and documentation for annotation formats, "
                     "and ensure that your data contains valid information"
                 )
             if not only_modality_items:
-                logger.warn(
+                logger.warning(
                     "Annotations not found. "  # pylint: disable=no-member
                     f"Uploading {self.modality} without annotations. "
                     "If you need assistance to upload data with annotations, please contact our support team."
@@ -366,7 +366,7 @@ class BaseConverter:
                 new_name = f"{new_cls.name}_{i}"
                 i += 1
             if new_name != new_cls.name:
-                logger.warn(f"Class {new_cls.name} renamed to {new_name}")
+                logger.warning(f"Class {new_cls.name} renamed to {new_name}")
                 renamed_classes[new_cls.name] = new_name
             if not matched:
                 new_cls = new_cls.clone(name=new_name)
@@ -387,7 +387,7 @@ class BaseConverter:
                 new_name = f"{new_tag.name}_{i}"
                 i += 1
             if new_name != new_tag.name:
-                logger.warn(f"Tag {new_tag.name} renamed to {new_name}")
+                logger.warning(f"Tag {new_tag.name} renamed to {new_name}")
                 renamed_tags[new_tag.name] = new_name
             if not matched:
                 new_tag = new_tag.clone(name=new_name)

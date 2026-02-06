@@ -11,6 +11,7 @@ import json
 import os
 import shutil
 import threading
+import time
 from logging import Logger
 from pathlib import Path
 from typing import (
@@ -65,11 +66,14 @@ import supervisely.api.user_api as user_api
 import supervisely.api.video.video_api as video_api
 import supervisely.api.video_annotation_tool_api as video_annotation_tool_api
 import supervisely.api.volume.volume_api as volume_api
+import supervisely.api.webhook_api as webhook_api
 import supervisely.api.workspace_api as workspace_api
 import supervisely.io.env as sly_env
 from supervisely._utils import camel_to_snake, is_community, is_development
 from supervisely.api.module_api import ApiField
 from supervisely.io.network_exceptions import (
+    CONNECTION_ERROR_PATTERNS,
+    STREAMING_ERROR_PATTERNS,
     RetryableRequestException,
     process_requests_exception,
     process_requests_exception_async,
@@ -378,6 +382,7 @@ class Api:
         self.volume = volume_api.VolumeApi(self)
         self.issues = issues_api.IssuesApi(self)
         self.entities_collection = entities_collection_api.EntitiesCollectionApi(self)
+        self.webhook = webhook_api.WebhookApi(self)
 
         self.retry_count = retry_count
         self.retry_sleep_sec = retry_sleep_sec
@@ -401,6 +406,9 @@ class Api:
         self._instance_version = None
         self._version_check_completed = False
         self._version_check_lock = threading.Lock()
+        self._client_recreation_lock = None  # asyncio.Lock, created on first use
+        self._last_client_recreation_time = None  # timestamp of last client recreation
+        self._client_recreation_cooldown = 30  # seconds between client recreations
 
         if check_instance_version:
             self._check_version(None if check_instance_version is True else check_instance_version)
@@ -1465,6 +1473,8 @@ class Api:
                     self.logger.warning(
                         "API_TOKEN env variable is undefined. See more: https://developer.supervisely.com/getting-started/basics-of-authentication"
                     )
+
+                client_recreated = await self._recreate_client_if_needed(exc)
                 if raise_error:
                     raise exc
                 else:
@@ -1479,6 +1489,10 @@ class Api:
                         response=response,
                         retry_info={"retry_idx": retry_idx + 1, "retry_limit": retries},
                     )
+                    if client_recreated:
+                        self.logger.warning(
+                            f"Recreated httpx client due to: {exc.__class__.__name__}"
+                        )
             except Exception as exc:
                 process_unhandled_request(self.logger, exc)
         raise httpx.RequestError(
@@ -1622,6 +1636,8 @@ class Api:
                     self.logger.warning(
                         "API_TOKEN env variable is undefined. See more: https://developer.supervisely.com/getting-started/basics-of-authentication"
                     )
+
+                client_recreated = await self._recreate_client_if_needed(e)
                 retry_range_start = total_streamed + (range_start or 0)
                 if total_streamed != 0:
                     retry_range_start += 1
@@ -1638,6 +1654,8 @@ class Api:
                     response=locals().get("resp"),
                     retry_info={"retry_idx": retry_idx + 1, "retry_limit": retries},
                 )
+                if client_recreated:
+                    self.logger.warning(f"Recreated httpx client due to: {e.__class__.__name__}")
             except Exception as e:
                 process_unhandled_request(self.logger, e)
         raise httpx.RequestError(
@@ -1650,14 +1668,101 @@ class Api:
         Set async httpx client with HTTP/2 if it is not set yet.
         """
         if self.async_httpx_client is None:
-            self.async_httpx_client = httpx.AsyncClient(http2=True)
+            semaphore_size = self.get_default_semaphore()._value
+            limits = httpx.Limits(
+                max_connections=semaphore_size + 2,
+                max_keepalive_connections=semaphore_size,
+                keepalive_expiry=5.0,  # as default
+            )
+            self.async_httpx_client = httpx.AsyncClient(http2=True, limits=limits)
 
     def _set_client(self):
         """
         Set sync httpx client with HTTP/2 if it is not set yet.
         """
         if self.httpx_client is None:
-            self.httpx_client = httpx.Client(http2=True)
+            semaphore_size = self.get_default_semaphore()._value
+            limits = httpx.Limits(
+                max_connections=semaphore_size + 2,
+                max_keepalive_connections=semaphore_size,
+                keepalive_expiry=5.0,  # as default
+            )
+            self.httpx_client = httpx.Client(http2=True, limits=limits)
+
+    async def _close_client_gracefully(self, client: httpx.AsyncClient, delay: int = 30) -> None:
+        """
+        Close httpx client gracefully after a delay to allow active requests to finish.
+        Runs in background to avoid blocking current request.
+
+        :param client: The client to close.
+        :type client: httpx.AsyncClient
+        :param delay: Seconds to wait before closing. Default is 30.
+        :type delay: int
+        """
+        try:
+            await asyncio.sleep(delay)
+            await client.aclose()
+            self.logger.debug(f"Gracefully closed old httpx client after {delay}s")
+        except Exception as e:
+            self.logger.debug(f"Error during graceful client closure: {e}")
+
+    async def _recreate_client_if_needed(self, exc: Exception) -> bool:
+        """
+        Check if httpx client should be recreated based on error type and recreate if needed.
+        Used to handle HTTP/2 connection errors and corrupted connection pools.
+        Thread-safe for concurrent async requests with cooldown period to prevent excessive recreations.
+
+        :param exc: Exception that was raised during request.
+        :type exc: Exception
+        :return: True if client was recreated, False otherwise.
+        :rtype: bool
+        """
+        should_recreate = False
+        exc_str = str(exc).lower()
+
+        # HTTP/2 specific protocol errors - always recreate
+        if isinstance(exc, httpx.RemoteProtocolError):
+            should_recreate = True
+        # Connection errors - recreate on critical patterns
+        elif isinstance(exc, (httpx.ConnectError, httpx.ReadError, httpx.WriteError)):
+            should_recreate = any(err in exc_str for err in CONNECTION_ERROR_PATTERNS)
+        # RetryableRequestException wraps errors from streaming (aiter_raw)
+        # These are rare mid-stream errors, not initial connection errors
+        elif isinstance(exc, RetryableRequestException):
+            should_recreate = any(pattern in exc_str for pattern in STREAMING_ERROR_PATTERNS)
+
+        if not should_recreate:
+            return False
+
+        # Initialize lock on first use (can't create in __init__ as event loop may not exist)
+        if self._client_recreation_lock is None:
+            self._client_recreation_lock = asyncio.Lock()
+
+        # Use lock to prevent concurrent recreation by parallel requests
+        async with self._client_recreation_lock:
+            # Check cooldown period - don't recreate if recently recreated
+            current_time = time.time()
+            if self._last_client_recreation_time is not None:
+                time_since_last_recreation = current_time - self._last_client_recreation_time
+                if time_since_last_recreation < self._client_recreation_cooldown:
+                    self.logger.debug(
+                        f"Skipping client recreation (cooldown: {time_since_last_recreation:.1f}s / {self._client_recreation_cooldown}s)"
+                    )
+                    return False
+
+            # Check again inside lock - another request might have already recreated the client
+            if self.async_httpx_client is not None:
+                # Save old client reference and replace with new one immediately
+                old_client = self.async_httpx_client
+                self.async_httpx_client = None
+                self._set_async_client()
+                self._last_client_recreation_time = current_time
+
+                # Schedule old client closure in background to avoid blocking
+                # This allows active requests to finish gracefully while preventing memory leaks
+                asyncio.create_task(self._close_client_gracefully(old_client))
+                return True
+            return False
 
     def get_default_semaphore(self) -> asyncio.Semaphore:
         """
