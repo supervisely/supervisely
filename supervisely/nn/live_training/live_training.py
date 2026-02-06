@@ -81,6 +81,12 @@ class LiveTraining:
         self.training_start_time = None
         self._upload_in_progress = False
 
+        self._upload_interval = 7200
+        self._last_upload_time = None
+
+        self._inactivity_timeout = 24 * 3600 # 24 hours in seconds
+        self._last_activity_time = None
+
         # from . import live_training_instance
         # live_training_instance = self  # for access from other modules
     
@@ -104,6 +110,8 @@ class LiveTraining:
     def run(self):
         self.training_start_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self._add_shutdown_callback()
+        self._last_upload_time = time.time()
+        self._last_activity_time = time.time()
 
         work_dir_path = Path(self.work_dir)
         work_dir_path.mkdir(parents=True, exist_ok=True)
@@ -177,6 +185,16 @@ class LiveTraining:
             
             if not self.request_queue.is_empty():
                 self._process_pending_requests()
+            
+            if self._should_upload_periodically():
+                logger.info(f"Periodic upload (interval: {self._upload_interval}s)")
+                self._save_and_upload()
+                self._last_upload_time = time.time()
+
+            if self._should_stop():
+                logger.warning(f"No activity for {self._inactivity_timeout / 3600:.1f} hours")
+                self._save_and_upload()
+                sys.exit(0)
 
             time.sleep(sleep_interval)
             elapsed_time += sleep_interval
@@ -209,11 +227,13 @@ class LiveTraining:
                 if request.type == RequestType.PREDICT:
                     result = self._handle_predict(request.data)
                     request.future.set_result(result)
-                
+                    self._last_activity_time = time.time()
+
                 elif request.type == RequestType.ADD_SAMPLE:
                     result = self._handle_add_sample(request.data)
                     request.future.set_result(result)
                     new_samples_added = True
+                    self._last_activity_time = time.time()
 
                 elif request.type == RequestType.STATUS:
                     result = self.status()
@@ -488,10 +508,32 @@ class LiveTraining:
             
             # Save checkpoint and state before upload
             logger.info("Received shutdown signal, saving checkpoint...")
-            self.save_checkpoint(self.latest_checkpoint_path)
-            save_state_json(self.state(), self.latest_checkpoint_path)
-            self._upload_artifacts()
+            self._save_and_upload()
             sys.exit(0)
         
         signal.signal(signal.SIGINT, signal_handler)
         signal.signal(signal.SIGTERM, signal_handler)
+        
+    def _is_timeout_reached(self, last_time: float, timeout: int) -> bool:
+        """Check if timeout interval has passed since last_time"""
+        if last_time is None:
+            return False
+        if timeout <= 0:
+            return False
+        elapsed = time.time() - last_time
+        return elapsed >= timeout
+
+    def _should_upload_periodically(self) -> bool:
+        """Check if periodic upload should be triggered"""
+        return self._is_timeout_reached(self._last_upload_time, self._upload_interval)
+
+    def _should_stop(self) -> bool:
+        """Check if training should stop due to user inactivity"""
+        return self._is_timeout_reached(self._last_activity_time, self._inactivity_timeout)
+
+    def _save_and_upload(self):
+        """Save checkpoint, state, and upload artifacts"""
+        logger.info("Saving checkpoint and uploading artifacts...")
+        self.save_checkpoint(self.latest_checkpoint_path)
+        save_state_json(self.state(), self.latest_checkpoint_path)
+        self._upload_artifacts()
