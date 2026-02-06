@@ -92,7 +92,7 @@ class WebhookApi(ModuleNoParent):
             data[ApiField.FILTER] = filters
         response = self._api.post("webhooks.list", data)
         results = []
-        for item in response.json():
+        for item in response.json().get("entities", []):
             meta = item.get("meta", {})
             results.append(WebhookInfo(
                 id=item.get(ApiField.ID),
