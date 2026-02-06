@@ -106,16 +106,6 @@ jobs:
       - name: Check Import
         if: ${{ env.HAS_PYTHON_FILES == 'true' && github.event.inputs.skip_checks != 'skip' }}
         run: python -c "import supervisely"
-      
-      - name: Set status to failure
-        if: failure() && github.event.inputs.skip_checks != 'skip'
-        run: |
-          gh api -X POST \
-            repos/${{ github.repository }}/statuses/${{ github.sha }} \
-            -f state=failure \
-            -f context="Checking modified files in PR with pylint" \
-            -f description="The import of supervisely failed" \
-            -f target_url="${{ github.event.pull_request.html_url }}"
 
       - name: Run check with pylint
         if: ${{ env.HAS_PYTHON_FILES == 'true' && github.event.inputs.skip_checks != 'skip' }}
