@@ -7,7 +7,7 @@ from supervisely.nn import TaskType
 
 from .metrics import SegmentationMetrics, DetectionMetrics
 
-class Evaluator:
+class LiveEvaluator:
     """
     App-agnostic evaluator for Live Training.
 
@@ -21,7 +21,7 @@ class Evaluator:
         class2idx: Mapping[str, int],
         ema_alpha: float = 0.1,
         ignore_index: int = 255,
-        score_thr: float | None = None,
+        score_thr: float = None,
     ):
         if not 0 < ema_alpha <= 1:
             raise ValueError(f"ema_alpha must be in (0, 1], got {ema_alpha}")

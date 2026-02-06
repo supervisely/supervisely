@@ -1,2 +1,2 @@
-from .segmentation_metrics import *
-from .detection_metrics import *
+from .segmentation_metrics import SegmentationMetrics
+from .detection_metrics import DetectionMetrics

@@ -4,7 +4,7 @@ from .api_server import start_api_server
 from .request_queue import RequestQueue, RequestType
 from .incremental_dataset import IncrementalDataset
 from .helpers import ClassMap
-from .evaluator import Evaluator
+from .evaluator import LiveEvaluator
 import supervisely as sly
 from supervisely import logger
 from supervisely.nn import TaskType
@@ -39,12 +39,10 @@ class LiveTraining:
             self,
             initial_samples: int = 2,
             filter_classes_by_task: bool = True,
-            score_thr: float = 0.3,
         ):
         from torch import nn  # pylint: disable=import-error
         self.initial_samples = initial_samples
         self.filter_classes_by_task = filter_classes_by_task
-        self.score_thr = score_thr 
         if self.task_type is None and self.filter_classes_by_task:
             raise ValueError("task_type must be set in subclass if filter_classes_by_task is set to True")
         if self.framework_name is None:
@@ -246,7 +244,6 @@ class LiveTraining:
     def _handle_predict(self, data: dict):
         image_np = data['image']
         image_id = data['image_id']
-        score_thr = data['score_thr']
         image_info = {'id': image_id}   
         model = self.model
         was_training = model.training
@@ -258,7 +255,6 @@ class LiveTraining:
                 image_shape = image_np.shape[:2]
                 self.evaluator.store_prediction(image_id, objects_raw, image_shape)
 
-            # objects_filtered = self.filter_predictions_by_conf(objects_raw, score_thr)
             return {
                 'objects': objects_raw,
                 'image_id': image_id,
@@ -355,10 +351,9 @@ class LiveTraining:
                     samples_needed=1,
                     max_wait_time=None,
                 )
-                logger.debug("New sample added, removing pause")
                 self._is_paused = False
                 self.loss_plateau_detector.reset()
-                logger.debug(f"Training resumed, next iteration will be {self.iter + 1}")
+                logger.debug(f"Resuming training. Next iteration will be {self.iter + 1}")
         self._process_pending_requests()
     
     def register_model(self, model: nn.Module):
@@ -367,19 +362,7 @@ class LiveTraining:
     def register_dataset(self, dataset: IncrementalDataset):
         assert hasattr(dataset, 'add_or_update'), "Dataset must implement add_or_update method. Consider inheriting from IncrementalDataset."
         self.dataset = dataset
-
-    def filter_predictions_by_conf(self, objects: list, score_thr: float = None) -> list:
-        if self.task_type not in [TaskType.OBJECT_DETECTION, TaskType.INSTANCE_SEGMENTATION]:
-            return objects
-        
-        filtered = []
-        for obj in objects:
-            confidence = obj.get('meta', {}).get('confidence', 1.0)
-            if confidence >= score_thr:
-                filtered.append(obj)
-        
-        return filtered
-
+    
     def _load_checkpoint(self) -> tuple:
         """Resolve and configure checkpoint based on checkpoint_mode."""
         self._process_pending_requests() 
@@ -519,7 +502,7 @@ class LiveTraining:
         return loss_plateau_detector
 
     def init_evaluator(self):
-        return Evaluator(
+        return LiveEvaluator(
             task_type=self.task_type,
             class2idx=self.class_map.class2idx,
             ema_alpha=0.2,
