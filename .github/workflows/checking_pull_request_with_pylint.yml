@@ -11,62 +11,9 @@ on:
         default: ''
 
 jobs:
-  import-SDK-check:
-    name: Import SDK Check
-    runs-on: gha-runner-supervisely
-    steps:
-          
-      - name: Skip check if requested
-        if: github.event.inputs.skip_checks == 'skip'
-        run: |
-          gh api -X POST \
-            repos/${{ github.repository }}/statuses/${{ github.sha }} \
-            -f state=success \
-            -f context="Import SDK Check" \
-            -f description="Check skipped by user request" \
-            -f target_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-        env:
-          GH_TOKEN: ${{ github.token }}
-
-      - name: Install dependencies
-        if: github.event.inputs.skip_checks != 'skip'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libgl1 libmagic1
-
-      - name: Checkout Repository
-        if: github.event.inputs.skip_checks != 'skip'
-        uses: actions/checkout@v6
-        with:
-          repository: ${{ github.repository }}
-
-      - name: Add local bin to PATH
-        if: github.event.inputs.skip_checks != 'skip'
-        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
-
-      - name: Import
-        if: github.event.inputs.skip_checks != 'skip'
-        run: |
-          python -m pip install --upgrade pip
-          pip install .
-          python -c "import supervisely"
-      
-      - name: Set status to failure
-        if: failure() && github.event.inputs.skip_checks != 'skip'
-        run: |
-          gh api -X POST \
-            repos/${{ github.repository }}/statuses/${{ github.sha }} \
-            -f state=failure \
-            -f context="Import SDK Check" \
-            -f description="The import of supervisely failed" \
-            -f target_url="${{ github.event.pull_request.html_url }}"
-        env:
-          GH_TOKEN: ${{ github.token }}
-
   pylint:
     name: Checking modified files in PR with pylint
     runs-on: gha-runner-supervisely
-    needs: import-SDK-check
     env:
       ISSUES_URL: "https://api.github.com/repos/supervisely/issues/issues"
       PROJECT_NUMBER: "2"
@@ -90,12 +37,6 @@ jobs:
             -f context="Checking modified files in PR with pylint" \
             -f description="Check skipped by user request" \
             -f target_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-
-      - name: Install dependencies
-        if: github.event.inputs.skip_checks != 'skip'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libgl1 libmagic1
 
       - name: Checkout Repository
         if: github.event.inputs.skip_checks != 'skip'
@@ -161,6 +102,10 @@ jobs:
           pip install --upgrade pip
           pip install pylint
           pip install .[extras,sdk-nn-plugins,aug]
+      
+      - name: Check Import
+        if: ${{ env.HAS_PYTHON_FILES == 'true' && github.event.inputs.skip_checks != 'skip' }}
+        run: python -c "import supervisely"
 
       - name: Run check with pylint
         if: ${{ env.HAS_PYTHON_FILES == 'true' && github.event.inputs.skip_checks != 'skip' }}
