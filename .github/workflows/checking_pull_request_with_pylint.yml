@@ -93,11 +93,11 @@ jobs:
           fi
 
       - name: Add local bin to PATH
-        if: ${{ env.HAS_PYTHON_FILES == 'true' && github.event.inputs.skip_checks != 'skip' }}
+        # if: ${{ env.HAS_PYTHON_FILES == 'true' && github.event.inputs.skip_checks != 'skip' }}
         run: echo "$HOME/.local/bin" >> $GITHUB_PATH
         
       - name: Install dependencies
-        if: ${{ env.HAS_PYTHON_FILES == 'true' && github.event.inputs.skip_checks != 'skip' }}
+        # if: ${{ env.HAS_PYTHON_FILES == 'true' && github.event.inputs.skip_checks != 'skip' }}
         run: |
           pip install --upgrade pip
           pip install pylint
