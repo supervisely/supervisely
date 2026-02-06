@@ -312,7 +312,7 @@ class LiveTraining:
         return img_ann
 
     def _handle_add_sample_video(self, data: dict):
-        frame_id = f"{data["video_id"]}_{data["frame_idx"]}"
+        frame_id = f"{data['video_id']}_{data['frame_idx']}"
         video_ann_json = data["video_ann_json"]
         video_ann_json = self._filter_annotation(video_ann_json)
         key_id_map = sly.KeyIdMap()
