@@ -84,7 +84,7 @@ class LiveTraining:
         self._upload_interval = 7200
         self._last_upload_time = None
 
-        self._inactivity_timeout = 10 * 3600 # 10 hours in seconds
+        self._inactivity_timeout = 24 * 3600 # 24 hours in seconds
         self._last_activity_time = None
 
         # from . import live_training_instance
@@ -352,17 +352,6 @@ class LiveTraining:
                 )
                 self._is_paused = False
                 self.loss_plateau_detector.reset()
-
-        if self._should_upload_periodically():
-            logger.info(f"Periodic upload (interval: {self._upload_interval}s)")
-            self._save_and_upload()
-            self._last_upload_time = time.time()
-
-        if self._should_stop():
-            logger.warning(f"No activity for {self._inactivity_timeout / 3600:.1f} hours")
-            self._save_and_upload()
-            sys.exit(0)
-        
         self._process_pending_requests()
     
     def register_model(self, model: nn.Module):
