@@ -326,7 +326,7 @@ class LiveTraining:
         if (len(self.dataset) >= self.initial_samples) and self.phase == Phase.WAITING_FOR_SAMPLES:
             self.phase = Phase.INITIAL_TRAINING
         return {
-            "image_id": data["image_id"],
+            "image_id": frame_id,
             "status": self.status(),
         }
 

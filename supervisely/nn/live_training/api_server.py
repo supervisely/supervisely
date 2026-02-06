@@ -78,7 +78,7 @@ def create_api(app: FastAPI, request_queue: RequestQueue) -> FastAPI:
         state = request.state.state
         video_id = state["video_id"]
         frame_idx = state["frame_idx"]
-        frame_np = sly_api.video.video.frame.download_np(video_id, frame_idx)
+        frame_np = sly_api.video.frame.download_np(video_id, frame_idx)
         video_ann_json = sly_api.video.annotation.download(video_id)
         future = request_queue.put(
             RequestType.ADD_SAMPLE_VIDEO,
