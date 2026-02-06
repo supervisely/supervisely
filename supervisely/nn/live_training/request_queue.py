@@ -9,6 +9,7 @@ class RequestType(Enum):
     PREDICT = "predict"
     ADD_SAMPLE = "add-sample"
     STATUS = "status"
+    ADD_SAMPLE_VIDEO = "add-sample-video"
 
 
 class Request:
@@ -17,10 +18,9 @@ class Request:
         self.type = request_type
         self.data = data
         self.future = future
-    
+
     def to_tuple(self):
         return (self.type, self.data, self.future)
-    
 
 class RequestQueue:
     """Thread-safe queue for API requests."""

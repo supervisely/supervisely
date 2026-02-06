@@ -30,14 +30,14 @@ def start_api_server(
 
 
 def create_api(app: FastAPI, request_queue: RequestQueue) -> FastAPI:
-    
+
     @app.post("/start")
     async def start(response: Response):
         """Start the live training process."""
         future = request_queue.put(RequestType.START)
         result = await _wait_for_result(future, response, timeout=None)
         return result
-        
+
     @app.post("/predict")
     async def predict(request: Request, response: Response):
         """Run inference on an image."""
@@ -50,7 +50,7 @@ def create_api(app: FastAPI, request_queue: RequestQueue) -> FastAPI:
         )
         result = await _wait_for_result(future, response)
         return result
-    
+
     @app.post("/add-sample")
     async def add_sample(request: Request, response: Response):
         """Add a new training sample."""
@@ -71,13 +71,33 @@ def create_api(app: FastAPI, request_queue: RequestQueue) -> FastAPI:
         result = await _wait_for_result(future, response)
         return result
 
+    @app.post("/add-sample-video")
+    async def add_sample_video(request: Request, response: Response):
+        """Add a new training sample."""
+        sly_api = _api_from_request(request)
+        state = request.state.state
+        video_id = state["video_id"]
+        frame_idx = state["frame_idx"]
+        frame_np = sly_api.video.video.frame.download_np(video_id, frame_idx)
+        video_ann_json = sly_api.video.annotation.download(video_id)
+        future = request_queue.put(
+            RequestType.ADD_SAMPLE_VIDEO,
+            {
+                "video_id": video_id,
+                "frame_idx": frame_idx,
+                "frame_np": frame_np,
+                "video_ann_json": video_ann_json,
+            },
+        )
+        result = await _wait_for_result(future, response)
+        return result
+
     @app.post("/status")
     async def status(response: Response):
         """Check the status of the training process."""
         future = request_queue.put(RequestType.STATUS)
         result = await _wait_for_result(future, response)
         return result
-
     return app
 
 

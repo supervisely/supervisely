@@ -23,11 +23,11 @@ class Phase:
     TRAINING = "training"
 
 class LiveTraining:
-    
+
     from torch import nn  # pylint: disable=import-error
     task_type: str = None  # Should be set in subclass
     framework_name: str = None # Should be set in subclass
-    
+
     _task2geometries = {
         TaskType.OBJECT_DETECTION: [sly.Rectangle],
         TaskType.INSTANCE_SEGMENTATION: [sly.Bitmap, sly.Polygon],
@@ -46,7 +46,7 @@ class LiveTraining:
             raise ValueError("task_type must be set in subclass if filter_classes_by_task is set to True")
         if self.framework_name is None:
             raise ValueError("framework_name must be set in subclass")
-        
+
         self.project_id = sly.env.project_id()
         self.team_id = sly.env.team_id()
         self.task_id = sly.env.task_id(raise_not_found=False)
@@ -73,17 +73,17 @@ class LiveTraining:
         self.loss_plateau_detector = self._init_loss_plateau_detector()
         self.work_dir = 'app_data'
         self.latest_checkpoint_path = f"{self.work_dir}/checkpoints/latest.pth"
-        
+
         self.checkpoint_mode = os.getenv("modal.state.checkpointMode", "scratch")
         selected_task_id_env = os.getenv("modal.state.selectedExperimentTaskId")
         self.selected_experiment_task_id = int(selected_task_id_env) if selected_task_id_env else None
-        
+
         self.training_start_time = None
         self._upload_in_progress = False
 
         # from . import live_training_instance
         # live_training_instance = self  # for access from other modules
-    
+
     @property
     def ready_to_predict(self):
         return self.iter > self.initial_iters
@@ -100,7 +100,7 @@ class LiveTraining:
             'ready_to_predict': self.ready_to_predict, 
             'initial_iters': self.initial_iters,
         }
-    
+
     def run(self):
         self.training_start_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self._add_shutdown_callback()
@@ -109,7 +109,7 @@ class LiveTraining:
         work_dir_path.mkdir(parents=True, exist_ok=True)
         model_meta_path = work_dir_path / "model_meta.json"
         sly.json.dump_json_file(self.project_meta.to_json(), str(model_meta_path))
-        
+
         try:
             self.phase = Phase.READY_TO_START
             self._wait_for_start()
@@ -128,12 +128,12 @@ class LiveTraining:
                 self.save_checkpoint(final_checkpoint)
                 save_state_json(self.state(), final_checkpoint)
                 self._upload_artifacts()
-        
+
     def _run_from_scratch(self):
         self.phase = Phase.WAITING_FOR_SAMPLES
         self._wait_for_initial_samples()
         self.train(checkpoint_path=None)
-    
+
     def _run_continue(self):
         checkpoint_path, state = self._load_checkpoint()
         self.load_state(state)
@@ -141,13 +141,13 @@ class LiveTraining:
         if image_ids:
             self._restore_dataset(image_ids)
         self.train(checkpoint_path=checkpoint_path)
-    
+
     def _run_finetune(self):
         checkpoint_path, _ = self._load_checkpoint()
         self.phase = Phase.WAITING_FOR_SAMPLES
         self._wait_for_initial_samples()
         self.train(checkpoint_path=checkpoint_path)
-    
+
     def _wait_for_start(self):
         request = self.request_queue.get()
         while request.type != RequestType.START:
@@ -174,7 +174,7 @@ class LiveTraining:
         while len(self.dataset) - samples_before < samples_needed:
             if max_wait_time is not None and elapsed_time >= max_wait_time:
                 raise RuntimeError("Timeout waiting for samples")
-            
+
             if not self.request_queue.is_empty():
                 self._process_pending_requests()
 
@@ -203,15 +203,20 @@ class LiveTraining:
             return
 
         new_samples_added = False
-        
+
         for request in requests: 
             try:
                 if request.type == RequestType.PREDICT:
                     result = self._handle_predict(request.data)
                     request.future.set_result(result)
-                
+
                 elif request.type == RequestType.ADD_SAMPLE:
                     result = self._handle_add_sample(request.data)
+                    request.future.set_result(result)
+                    new_samples_added = True
+
+                elif request.type == RequestType.ADD_SAMPLE_VIDEO:
+                    result = self._handle_add_sample_video(request.data)
                     request.future.set_result(result)
                     new_samples_added = True
 
@@ -230,7 +235,7 @@ class LiveTraining:
         Handle phases: initial training, training
         """
         raise NotImplementedError
-    
+
     def predict(self, model: nn.Module, image_np, image_info) -> list:
         """
         Run inference on a single image and return predictions as a list of sly figures in json format.
@@ -254,7 +259,7 @@ class LiveTraining:
             # Restore training mode
             if was_training:
                 model.train()
-    
+
     def add_sample(
             self,
             image_id: int,
@@ -263,7 +268,7 @@ class LiveTraining:
             image_name: str
         ) -> dict:
         return self.dataset.add_or_update(image_id, image_np, annotation, image_name)
-    
+
     def _handle_add_sample(self, data: dict):
         ann_json = data['annotation']
         ann_json = self._filter_annotation(ann_json)
@@ -280,12 +285,56 @@ class LiveTraining:
             'image_id': data['image_id'],
             'status': self.status(),
         }
-    
+
+    def add_sample_video(
+        self,
+        frame_id: str,
+        frame_np: np.ndarray,
+        annotation: sly.Annotation,
+    ) -> dict:
+        return self.dataset.add_or_update_video(frame_id, frame_np, annotation)
+
+    def frame_ann_to_img_ann(
+        self,
+        video_ann: sly.VideoAnnotation,
+        frame_idx: int,
+    ):
+        frame_ann = video_ann.frames.get(frame_idx)
+        frame_figures = frame_ann.figures
+
+        labels = []
+        for figure in frame_figures:
+            geometry = figure.geometry
+            obj_class = figure.video_object.obj_class
+            labels.append(sly.Label(geometry, obj_class))
+
+        img_ann = sly.Annotation(video_ann.img_size, labels)
+        return img_ann
+
+    def _handle_add_sample_video(self, data: dict):
+        frame_id = f"{data["video_id"]}_{data["frame_idx"]}"
+        video_ann_json = data["video_ann_json"]
+        video_ann_json = self._filter_annotation(video_ann_json)
+        key_id_map = sly.KeyIdMap()
+        video_ann = sly.VideoAnnotation.from_json(video_ann_json, self.project_meta, key_id_map)
+        img_ann = self.frame_ann_to_img_ann(video_ann, data["frame_idx"])
+        self.add_sample_video(
+            frame_id=frame_id,
+            frame_np=data["frame_np"],
+            annotation=img_ann,
+        )
+        if (len(self.dataset) >= self.initial_samples) and self.phase == Phase.WAITING_FOR_SAMPLES:
+            self.phase = Phase.INITIAL_TRAINING
+        return {
+            "image_id": data["image_id"],
+            "status": self.status(),
+        }
+
     def _fetch_project_meta(self, project_id: int) -> sly.ProjectMeta:
         project_meta = self.api.project.get_meta(project_id)
         project_meta = sly.ProjectMeta.from_json(project_meta)
         return project_meta
-    
+
     def _init_class_map(self, project_meta: sly.ProjectMeta) -> ClassMap:
         obj_classes = list(project_meta.obj_classes)
 
@@ -300,7 +349,7 @@ class LiveTraining:
             ]
 
         return ClassMap(obj_classes)
-    
+
     def _filter_annotation(self, ann_json: dict) -> dict:
         # Filter objects according to class_map
         # Important: Must be filtered before sly.Annotation.from_json due to static project meta
@@ -333,14 +382,14 @@ class LiveTraining:
                 self._is_paused = False
                 self.loss_plateau_detector.reset()
         self._process_pending_requests()
-    
+
     def register_model(self, model: nn.Module):
         self.model = model
-    
+
     def register_dataset(self, dataset: IncrementalDataset):
         assert hasattr(dataset, 'add_or_update'), "Dataset must implement add_or_update method. Consider inheriting from IncrementalDataset."
         self.dataset = dataset
-    
+
     def _load_checkpoint(self) -> tuple:
         """Resolve and configure checkpoint based on checkpoint_mode."""
         self._process_pending_requests() 
@@ -353,7 +402,7 @@ class LiveTraining:
             team_id=self.team_id,
             work_dir=self.work_dir
         )
-        
+
         self.class_map = class_map  
         self._process_pending_requests() 
         return checkpoint_path, state
@@ -384,31 +433,31 @@ class LiveTraining:
             return
 
         logger.info(f"Restoring {len(image_ids)} images from Supervisely...")
-    
+
         restored_count = 0
         for img_id in image_ids:
             img_info = self.api.image.get_info_by_id(img_id)
-            
+
             if img_info is None:
                 logger.warning(f"Image {img_id} not found, skipping")
                 continue
-            
+
             image_np = self.api.image.download_np(img_id)
             ann_json = self.api.annotation.download_json(img_id)
             ann = sly.Annotation.from_json(ann_json, self.project_meta)
-            
+
             self.dataset.add_or_update(
                 image_id=img_id,
                 image_np=image_np,
                 annotation=ann,
                 image_name=img_info.name
             )
-            
+
             restored_count += 1
-            
+
             if restored_count % 10 == 0:
                 logger.info(f"Restored {restored_count}/{len(image_ids)}")
-        
+
         logger.info(f"Restored {restored_count} images")
 
     def prepare_artifacts(self) -> dict:
@@ -460,13 +509,13 @@ class LiveTraining:
             )
 
             logger.info(f"Report: {report_url}")
-        
+
         except Exception as e:
             logger.error(f"Upload failed: {e}", exc_info=True)
-        
+
         finally:
             self._upload_in_progress = False
-    
+
     def save_checkpoint(self, checkpoint_path: str):
         pass
 
@@ -474,24 +523,24 @@ class LiveTraining:
         loss_plateau_detector = LossPlateauDetector()
         loss_plateau_detector.register_save_checkpoint_callback(self.save_checkpoint)
         return loss_plateau_detector
-    
+
     def _add_shutdown_callback(self):
         """Setup graceful shutdown: save experiment on SIGINT/SIGTERM"""
         self._upload_in_progress = False
-        
+
         def signal_handler(signum, frame):
             if self._upload_in_progress:
                 # Already uploading - force exit on second signal
                 signal.signal(signal.SIGINT, lambda s, f: sys.exit(1))
                 signal.signal(signal.SIGTERM, lambda s, f: sys.exit(1))
                 return
-            
+
             # Save checkpoint and state before upload
             logger.info("Received shutdown signal, saving checkpoint...")
             self.save_checkpoint(self.latest_checkpoint_path)
             save_state_json(self.state(), self.latest_checkpoint_path)
             self._upload_artifacts()
             sys.exit(0)
-        
+
         signal.signal(signal.SIGINT, signal_handler)
         signal.signal(signal.SIGTERM, signal_handler)

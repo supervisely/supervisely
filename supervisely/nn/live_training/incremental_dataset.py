@@ -63,7 +63,33 @@ class IncrementalDataset:
         self.samples[image_id] = sample
         self.samples_list.append(sample)
         return sample
-    
+
+    def add_video(
+        self, frame_id: str, frame_np: np.ndarray, annotation: sly.VideoAnnotation
+    ) -> dict:
+        if frame_id in self.samples:
+            raise ValueError(
+                f"Cannot add sample: frame with ID {frame_id} already exists in the dataset."
+            )
+        frame_name = f"{frame_id}.png"
+        w, h = frame_np.shape[1], frame_np.shape[0]
+        img_size = (w, h)
+        image_path = self._save_img(frame_np, frame_name)
+        mask_path = None
+        if self.save_masks_as_images:
+            mask_path = self._save_mask(annotation, frame_name)
+        sample = self._format_sample(frame_id, annotation, img_size, image_path, mask_path)
+        assert isinstance(sample, dict), "Sample must be a dict."
+        # add extra fields for internal use
+        sample["image_path"] = image_path
+        sample["size"] = img_size
+        if mask_path is not None:
+            sample["mask_path"] = mask_path
+        # add to dataset
+        self.samples[frame_id] = sample
+        self.samples_list.append(sample)
+        return sample
+
     def update(
             self,
             image_id: int,
@@ -81,7 +107,7 @@ class IncrementalDataset:
         )
         sample.update(new_sample)
         return sample
-    
+
     def add_or_update(
             self,
             image_id: int,
@@ -93,7 +119,15 @@ class IncrementalDataset:
             return self.add(image_id, image_np, annotation, image_name)
         else:
             return self.update(image_id, annotation)
-    
+
+    def add_or_update_video(
+        self, frame_id: str, frame_np: np.ndarray, annotation: sly.VideoAnnotation
+    ) -> dict:
+        if frame_id not in self.samples:
+            return self.add_video(frame_id, frame_np, annotation)
+        else:
+            return self.update_video(frame_id, annotation)
+
     def _format_sample(
             self,
             image_id: int,
@@ -111,7 +145,7 @@ class IncrementalDataset:
             'mask_path': mask_path
         }
         return sample
-    
+
     def _save_img(self, image_np: np.ndarray, image_name: str) -> str:
         image = Image.fromarray(image_np).convert('RGB')
         image_path = str(self.images_dir / image_name)
@@ -124,23 +158,22 @@ class IncrementalDataset:
         ann_nonoverlap = annotation.to_nonoverlapping_masks(mapping)
         h, w = annotation.img_size
         mask = np.zeros((h, w), dtype=np.uint8)
-        
+
         for label in ann_nonoverlap.labels:
             class_name = label.obj_class.name
             class_id = self.class2idx.get(class_name)
             if class_id is not None:
                 label.geometry.draw(mask, color=class_id)
-        
+
         mask_name = Path(image_name).stem + '.png' 
         mask_path = str(self.masks_dir / mask_name)
         cv2.imwrite(mask_path, mask)
-        
+
         return mask_path
 
     def __len__(self) -> int:
         return len(self.samples)
-    
+
     def get_image_ids(self) -> list:
         """Get list of image IDs in dataset"""
         return list(self.samples.keys())
-    
