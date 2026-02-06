@@ -4,6 +4,7 @@ from .api_server import start_api_server
 from .request_queue import RequestQueue, RequestType
 from .incremental_dataset import IncrementalDataset
 from .helpers import ClassMap
+from .evaluator import LiveEvaluator
 import supervisely as sly
 from supervisely import logger
 from supervisely.nn import TaskType
@@ -81,6 +82,8 @@ class LiveTraining:
         self.training_start_time = None
         self._upload_in_progress = False
 
+        self.evaluator = self.init_evaluator()
+
         # from . import live_training_instance
         # live_training_instance = self  # for access from other modules
     
@@ -97,8 +100,9 @@ class LiveTraining:
             'iteration': self.iter,
             'loss': self._loss,
             'training_paused': self._is_paused,
-            'ready_to_predict': self.ready_to_predict, 
+            'ready_to_predict': self.ready_to_predict,
             'initial_iters': self.initial_iters,
+            f'{self.evaluator.metric_name}_EMA': self.evaluator.ema_value if self.evaluator else None
         }
     
     def run(self):
@@ -239,15 +243,21 @@ class LiveTraining:
 
     def _handle_predict(self, data: dict):
         image_np = data['image']
-        image_info = {'id': data['image_id']}
+        image_id = data['image_id']
+        image_info = {'id': image_id}   
         model = self.model
         was_training = model.training
         model.eval()
         try:
-            objects = self.predict(self.model, image_np=image_np, image_info=image_info)
+            objects_raw = self.predict(self.model, image_np=image_np, image_info=image_info)
+
+            if self.evaluator:
+                image_shape = image_np.shape[:2]
+                self.evaluator.store_prediction(image_id, objects_raw, image_shape)
+
             return {
-                'objects': objects,
-                'image_id': data['image_id'],
+                'objects': objects_raw,
+                'image_id': image_id,
                 'status': self.status(),
             }
         finally:
@@ -268,16 +278,27 @@ class LiveTraining:
         ann_json = data['annotation']
         ann_json = self._filter_annotation(ann_json)
         sly_ann = sly.Annotation.from_json(ann_json, self.project_meta)
+        image_id = data['image_id']
         self.add_sample(
-            image_id=data['image_id'],
+            image_id=image_id,
             image_np=data['image'],
             annotation=sly_ann,
             image_name=data['image_name']
         )
+        if self.evaluator and self.phase!=Phase.WAITING_FOR_SAMPLES:
+            result = self.evaluator.evaluate(image_id, sly_ann)
+            if result is not None:
+                metric_name = self.evaluator.metric_name
+                logger.info(
+                    f"Image {image_id}: {metric_name}={result['metric_value']:.3f}, "
+                    f"EMA={result['ema_value']:.3f}"
+                )
+
         if (len(self.dataset) >= self.initial_samples) and self.phase==Phase.WAITING_FOR_SAMPLES:
             self.phase = Phase.INITIAL_TRAINING
+
         return {
-            'image_id': data['image_id'],
+            'image_id': image_id,
             'status': self.status(),
         }
     
@@ -332,6 +353,7 @@ class LiveTraining:
                 )
                 self._is_paused = False
                 self.loss_plateau_detector.reset()
+                logger.debug(f"Resuming training. Next iteration will be {self.iter + 1}")
         self._process_pending_requests()
     
     def register_model(self, model: nn.Module):
@@ -471,9 +493,22 @@ class LiveTraining:
         pass
 
     def _init_loss_plateau_detector(self):
-        loss_plateau_detector = LossPlateauDetector()
+        loss_plateau_detector = LossPlateauDetector(
+            window_size=150,
+            threshold=0.002,
+            patience=3
+        )
         loss_plateau_detector.register_save_checkpoint_callback(self.save_checkpoint)
         return loss_plateau_detector
+
+    def init_evaluator(self):
+        return LiveEvaluator(
+            task_type=self.task_type,
+            class2idx=self.class_map.class2idx,
+            ema_alpha=0.2,
+            ignore_index=255,
+            score_thr=0.3,
+        )
     
     def _add_shutdown_callback(self):
         """Setup graceful shutdown: save experiment on SIGINT/SIGTERM"""
