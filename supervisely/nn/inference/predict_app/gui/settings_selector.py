@@ -469,7 +469,7 @@ class Preview:
         video_ids = input_settings.get("video_ids", None)
         if not video_ids:
             raise RuntimeError("No videos selected")
-        if not self._current_item_id:
+        if not getattr(self, "_current_item_id", None):
             self._download_preview_item(with_progress=True)
         video_id = self._current_item_id
 
