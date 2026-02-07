@@ -1516,7 +1516,16 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             return json_response.get(ApiField.CUSTOM_DATA, {})
         return {}
 
-    def set_custom_data(self, id: int, custom_data: dict, update: bool = True) -> None:
+    def set_custom_data(
+        self,
+        id: int,
+        custom_data: dict,
+        update: bool = True,
+        disable_confirm: Optional[bool] = None,
+        disable_submit: Optional[bool] = None,
+        enable_intermediate_review: Optional[bool] = None,
+        toolbox_settings: Optional[Dict] = None,
+    ) -> None:
         """
         Update or replace custom data of Labeling Job with given ID.
         By default, updates existing custom data. To replace it entirely, set `update` to False.
@@ -1527,6 +1536,19 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type custom_data: dict
         :param update: Whether to update existing custom data or replace it entirely.
         :type update: bool
+        :param disable_confirm: If True, the Confirm button will be disabled in the labeling tool.
+                               It will remain disabled until the next API call sets the parameter
+                               to False, re-enabling the button.
+        :type disable_confirm: bool, optional
+        :param disable_submit: If True, the Submit button will be disabled in the labeling tool.
+                              It will remain disabled until the next API call sets the parameter
+                              to False, re-enabling the button.
+        :type disable_submit: bool, optional
+        :param enable_intermediate_review: If True, adds an intermediate step between "review"
+                                           and completing the Labeling Job.
+        :type enable_intermediate_review: bool, optional
+        :param toolbox_settings: Settings for the labeling tool. Only video projects are supported.
+        :type toolbox_settings: Dict, optional
         :return: None
         :rtype: :class:`NoneType`
         :Usage example:
@@ -1539,7 +1561,20 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
             api = sly.Api.from_env()
 
-            api.labeling_job.set_custom_data(9, {"key": "value"})
+            toolbox_settings = { # only for video projects
+                "playbackRate": 32,
+                "skipFramesSize": 15,
+                "showVideoTime": True
+            }
+
+            api.labeling_job.set_custom_data(
+                9,
+                {"key": "value"},
+                disable_confirm=True,
+                disable_submit=False,
+                enable_intermediate_review=True,
+                toolbox_settings=toolbox_settings,
+            )
         """
         method = "jobs.editInfo"
 
@@ -1547,4 +1582,14 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             existing_custom_data = self.get_custom_data(id)
             existing_custom_data.update(custom_data)
             custom_data = existing_custom_data
+
+        if disable_confirm is not None:
+            custom_data["disableConfirm"] = disable_confirm
+        if disable_submit is not None:
+            custom_data["disableSubmit"] = disable_submit
+        if enable_intermediate_review is not None:
+            custom_data["enableIntermediateReview"] = enable_intermediate_review
+        if toolbox_settings is not None:
+            custom_data["toolboxSettings"] = toolbox_settings
+
         self._api.post(method, {ApiField.ID: id, ApiField.CUSTOM_DATA: custom_data})
