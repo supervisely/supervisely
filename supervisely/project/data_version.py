@@ -14,12 +14,13 @@ from supervisely.api.module_api import ApiField, ModuleApiBase
 from supervisely.api.project_api import ProjectInfo
 from supervisely.io import json
 from supervisely.io.fs import remove_dir, silent_remove
-from supervisely.project.versioning.schema_fields import VersionSchemaField
 from supervisely.project.versioning.common import (
     DEFAULT_IMAGE_SCHEMA_VERSION,
     DEFAULT_VIDEO_SCHEMA_VERSION,
     DEFAULT_VOLUME_SCHEMA_VERSION,
 )
+from supervisely.project.versioning.schema_fields import VersionSchemaField
+
 
 class VersionInfo(NamedTuple):
     """
@@ -559,7 +560,7 @@ class DataVersion(ModuleApiBase):
         data = None
         try:
             data = self.project_cls.download_bin(
-                self._api, self.project_info.id, batch_size=200, return_bytesio=True
+                self._api, self.project_info.id, return_bytesio=True
             )
             info = tarfile.TarInfo(name="version.bin")
             data.seek(0, io.SEEK_END)
