@@ -15,9 +15,9 @@ class LossPlateauDetector:
 
     def __init__(
         self,
-        window_size: int = 20,
-        threshold: float = 0.005,
-        patience: int = 1,
+        window_size: int = 150,
+        threshold: float = 0.002,
+        patience: int = 3,
         check_interval: int = 1,
     ):
         self.window_size = window_size
