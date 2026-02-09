@@ -33,7 +33,8 @@ class LiveEvaluator:
         self.score_thr: float = score_thr
 
         self._predictions: Dict[Any, Tuple[list, Tuple[int, int]]] = {}
-
+        
+        self._sample_count = 0
         self.ema_value: Optional[float] = None
 
     def store_prediction(self, image_id: Any, objects: list, image_shape: Tuple[int, int]):
@@ -171,10 +172,12 @@ class LiveEvaluator:
         return sly.ProjectMeta(obj_classes=sly.ObjClassCollection(obj_classes))
 
     def _update_ema(self, new_value: float):
+        self._sample_count += 1
+        alpha = min(self.ema_alpha * 2, 1.0) if self._sample_count <= 2 else self.ema_alpha
         if self.ema_value is None:
             self.ema_value = new_value
         else:
-            self.ema_value = self.ema_alpha * new_value + (1 - self.ema_alpha) * self.ema_value
+            self.ema_value = alpha * new_value + (1 - alpha) * self.ema_value
 
     def reset(self):
         self._predictions.clear()

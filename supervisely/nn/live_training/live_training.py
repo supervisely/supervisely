@@ -505,7 +505,7 @@ class LiveTraining:
         return LiveEvaluator(
             task_type=self.task_type,
             class2idx=self.class_map.class2idx,
-            ema_alpha=0.2,
+            ema_alpha=0.1,
             ignore_index=255,
             score_thr=0.3,
         )
