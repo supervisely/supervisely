@@ -498,7 +498,8 @@ class LiveTraining:
         loss_plateau_detector = LossPlateauDetector(
             window_size=150,
             threshold=0.002,
-            patience=3
+            patience=3,
+            check_interval=1,
         )
         loss_plateau_detector.register_save_checkpoint_callback(self.save_checkpoint)
         return loss_plateau_detector
