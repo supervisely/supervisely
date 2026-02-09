@@ -314,7 +314,7 @@ class LiveTraining:
             obj_classes.insert(0, sly.ObjClass(name='_background_', geometry_type=sly.Bitmap))
 
         if self.filter_classes_by_task:
-            allowed_geometries = self._task2geometries[self.task_type]
+            allowed_geometries = self._task2geometries[self.task_type] + [sly.AnyGeometry]
             obj_classes = [
                 obj_class for obj_class in obj_classes
                 if obj_class.geometry_type in allowed_geometries
@@ -325,10 +325,12 @@ class LiveTraining:
     def _filter_annotation(self, ann_json: dict) -> dict:
         # Filter objects according to class_map
         # Important: Must be filtered before sly.Annotation.from_json due to static project meta
+        allowed_geometries = self._task2geometries[self.task_type]
+        allowed_geometries = [geom.geometry_name() for geom in allowed_geometries]
         filtered_objects = []
         for obj in ann_json['objects']:
             sly_id = obj['classId']
-            if sly_id in self.class_map.sly_ids:
+            if sly_id in self.class_map.sly_ids and obj['geometryType'] in allowed_geometries:
                 filtered_objects.append(obj)
         ann_json['objects'] = filtered_objects
         return ann_json
