@@ -1,4 +1,5 @@
 import os
+import tempfile
 from collections import defaultdict, namedtuple
 from typing import Dict, List, Optional
 
@@ -87,11 +88,9 @@ class MultiSpectralImageConverter(ImageConverter):
         meta = ProjectMeta.from_json(meta_json)
         group_tag_meta = meta.get_tag_meta(_MULTISPECTRAL_TAG_NAME)
 
-        items_count = sum(
-            len(group.split) + len(group.upload) for group in self._group_map.values()
-        )
+        groups_count = len(self._group_map)
         if log_progress:
-            progress, progress_cb = self.get_progress(items_count, "Uploading images...")
+            progress, progress_cb = self.get_progress(groups_count, "Processing groups...")
         else:
             progress_cb = None
 
@@ -116,7 +115,7 @@ class MultiSpectralImageConverter(ImageConverter):
                 img_channels = self._get_image_channels(image)
                 if image.dtype != np.uint8 and np.max(image) > 255:
                     for idx, channel in enumerate(img_channels):
-                        nrrd_path = self._prepare_nrrd(channel, group_path, image_to_split, idx)
+                        nrrd_path = self._prepare_nrrd(channel, image_to_split, idx)
                         nrrd_paths.append(nrrd_path)
                         nrrd_names.append(os.path.basename(nrrd_path))
                         group_tag = Tag(meta=group_tag_meta, value=group_name)
@@ -127,16 +126,29 @@ class MultiSpectralImageConverter(ImageConverter):
             with ApiContext(
                 api=api, project_id=project_id, dataset_id=dataset_id, project_meta=meta
             ):
+                img_count = len(channels) + len(images) + len(nrrd_paths)
+                if log_progress:
+                    _, _progress_cb = self.get_progress(img_count, f"Uploading {group_name}...")
+                else:
+                    _progress_cb = None
+
                 if channels or images:
                     api.image.upload_multispectral(
-                        dataset.id, group_name, channels, images, progress_cb
+                        dataset.id, group_name, channels, images, _progress_cb
                     )
                 if nrrd_paths:
                     img_infos = api.image.upload_paths(
-                        dataset.id, nrrd_names, nrrd_paths, progress_cb
+                        dataset.id,
+                        nrrd_names,
+                        nrrd_paths,
+                        _progress_cb,
+                        conflict_resolution="rename",
                     )
                     image_ids = [image_info.id for image_info in img_infos]
                     api.annotation.upload_anns(image_ids, nrrds_anns)
+
+            if progress_cb is not None:
+                progress_cb(1)
 
         if log_progress:
             if is_development():
@@ -176,15 +188,15 @@ class MultiSpectralImageConverter(ImageConverter):
         # Handle multi-channel images
         return [image[:, :, i] for i in range(image.shape[2])]
 
-    def _prepare_nrrd(
-        self, image: np.ndarray, group_path: str, image_name: str, channel_idx: int
-    ) -> str:
+    def _prepare_nrrd(self, image: np.ndarray, image_name: str, channel_idx: int) -> str:
         header = {"sizes": image.shape, "type": str(image.dtype), "dimension": len(image.shape)}
 
-        name = os.path.splitext(image_name)[0] + f"_{channel_idx}.nrrd"
-        path = os.path.join(group_path, name)
-        if os.path.exists(path):
-            path = generate_free_name(os.listdir(group_path), path, with_ext=True)
+        _dir = os.path.join(tempfile.gettempdir(), "supervisely_multispectral_nrrds")
+        os.makedirs(_dir, exist_ok=True)
+
+        base_name = os.path.basename(image_name)
+        name = f"{os.path.splitext(base_name)[0]}_{channel_idx}.nrrd"
+        path = os.path.join(_dir, name)
 
         nrrd.write(path, image, header)
         return path
