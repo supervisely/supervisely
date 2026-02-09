@@ -1327,7 +1327,7 @@ class VideoProject(Project):
         :type dest_dir: Optional[str]
         :param dataset_ids: Optional list of dataset IDs to include. If provided, only those datasets (and their videos/annotations) will be included in the snapshot.
         :type dataset_ids: Optional[List[int]]
-        :param batch_size: Batch size for downloading video annotations.
+        :param batch_size: Batch size for downloading video annotations. Cannot be greater than 100 due to API limitations. Default is 50.
         :type batch_size: int
         :param log_progress: If True, shows progress (uses internal tqdm progress bars) when ``progress_cb`` is not provided.
         :type log_progress: bool
@@ -1436,6 +1436,12 @@ class VideoProject(Project):
             raise RuntimeError(
                 "pyarrow is required to build video snapshot. Please install pyarrow."
             ) from e
+
+        if batch_size > 100:
+            logger.warning(
+                "Batch size cannot be greater than 100 due to Video Project API limitations. Setting batch_size to 100."
+            )
+            batch_size = 100
 
         project_info = api.project.get_info_by_id(project_id)
         meta = ProjectMeta.from_json(api.project.get_meta(project_id, with_settings=True))
