@@ -100,7 +100,6 @@ jobs:
         if: ${{ env.HAS_PYTHON_FILES == 'true' && github.event.inputs.skip_checks != 'skip' }}
         run: |
           pip install --upgrade pip
-          pip install "setuptools<81.0.0"
           pip install pylint
           pip install .[extras,sdk-nn-plugins,aug]
       
