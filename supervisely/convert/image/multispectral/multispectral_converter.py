@@ -113,15 +113,15 @@ class MultiSpectralImageConverter(ImageConverter):
                 # image has wide range of pixel values, we will upload it as nrrd
                 # (supports `windowing` feature in the Image Labeling Toolbox)
                 img_channels = self._get_image_channels(image)
-                if image.dtype != np.uint8 and np.max(image) > 255:
-                    for idx, channel in enumerate(img_channels):
+                for idx, channel in enumerate(img_channels):
+                    if channel.dtype != np.uint8 or np.max(channel) > 255:
                         nrrd_path = self._prepare_nrrd(channel, image_to_split, idx)
                         nrrd_paths.append(nrrd_path)
                         nrrd_names.append(os.path.basename(nrrd_path))
                         group_tag = Tag(meta=group_tag_meta, value=group_name)
                         nrrds_anns.append(Annotation(channel.shape).add_tag(group_tag))
-                else:
-                    channels.extend(img_channels)
+                    else:
+                        channels.append(channel)
 
             with ApiContext(
                 api=api, project_id=project_id, dataset_id=dataset_id, project_meta=meta
