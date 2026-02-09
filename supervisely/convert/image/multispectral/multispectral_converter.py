@@ -8,7 +8,6 @@ import nrrd
 import numpy as np
 
 from supervisely import ProjectMeta, is_development, logger
-from supervisely._utils import generate_free_name
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.tag import Tag
 from supervisely.api.api import Api, ApiContext
