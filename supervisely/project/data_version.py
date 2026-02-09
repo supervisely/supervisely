@@ -14,12 +14,13 @@ from supervisely.api.module_api import ApiField, ModuleApiBase
 from supervisely.api.project_api import ProjectInfo
 from supervisely.io import json
 from supervisely.io.fs import remove_dir, silent_remove
-from supervisely.project.versioning.schema_fields import VersionSchemaField
 from supervisely.project.versioning.common import (
     DEFAULT_IMAGE_SCHEMA_VERSION,
     DEFAULT_VIDEO_SCHEMA_VERSION,
     DEFAULT_VOLUME_SCHEMA_VERSION,
 )
+from supervisely.project.versioning.schema_fields import VersionSchemaField
+
 
 class VersionInfo(NamedTuple):
     """
@@ -41,10 +42,16 @@ class VersionInfo(NamedTuple):
 
 
 class DataVersion(ModuleApiBase):
+
     """
     Class for managing project versions.
     This class provides methods for creating, restoring, and managing project versions.
     """
+    PROJECT_NAME_TEMPLATE = "{project_name}, from ver. {version_num}"
+    PROJECT_DESC_TEMPLATE = (
+        "Restored from version {version_num}. "
+        "Source project ID: {project_id}, version ID: {version_id}"
+    )
 
     def __init__(self, api):
         """
@@ -461,11 +468,22 @@ class DataVersion(ModuleApiBase):
             )
             return
 
+        dst_project_name = self.PROJECT_NAME_TEMPLATE.format(
+            project_name=self.project_info.name, version_num=version_num
+        )
+        dst_project_desc = self.PROJECT_DESC_TEMPLATE.format(
+            version_num=version_num,
+            project_id=self.project_info.id,
+            version_id=version_id,
+        )
+
         bin_io = self._download_and_extract(backup_files)
         new_project_info = self.project_cls.upload_bin(
             self._api,
             bin_io,
-            self.project_info.workspace_id,
+            workspace_id=self.project_info.workspace_id,
+            project_name=dst_project_name,
+            project_desc=dst_project_desc,
             skip_missed=skip_missed_entities,
         )
         return new_project_info
