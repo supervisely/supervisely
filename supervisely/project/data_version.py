@@ -22,7 +22,6 @@ from supervisely.project.versioning.common import (
 )
 
 
-
 class VersionInfo(NamedTuple):
     """
     Object with image parameters from Supervisely that describes the version of the project.
@@ -488,7 +487,7 @@ class DataVersion(ModuleApiBase):
             bin_io,
             workspace_id=self.project_info.workspace_id,
             project_name=dst_project_name,
-            project_desc=dst_project_desc,
+            project_description=dst_project_desc,
             skip_missed=skip_missed_entities,
         )
         return new_project_info
