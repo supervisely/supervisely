@@ -121,6 +121,7 @@ class DataVersion(ModuleApiBase):
             return VideoProject
         elif project_type == ProjectType.VOLUMES.value:
             self.__version_format = DEFAULT_VOLUME_SCHEMA_VERSION
+            self._batch_size = 20
             return VolumeProject
         else:
             raise ValueError(f"Unsupported project type: {project_type}")
