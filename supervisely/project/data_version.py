@@ -19,7 +19,8 @@ from supervisely.project.versioning.common import (
     DEFAULT_VIDEO_SCHEMA_VERSION,
     DEFAULT_VOLUME_SCHEMA_VERSION,
 )
-from supervisely.project.versioning.schema_fields import VersionSchemaField
+
+# from supervisely.project.versioning.schema_fields import VersionSchemaField
 
 
 class VersionInfo(NamedTuple):
