@@ -266,6 +266,8 @@ class VolumeProject(VideoProject):
         :type return_bytesio: bool, optional
         :param schema_version: Snapshot schema version. Controls the internal Parquet layout/fields. Supported values are the keys from :func:`~supervisely.project.volume_schema.get_volume_snapshot_schema` (currently: ``"v2.0.0"``).
         :type schema_version: str, optional
+        :param batch_size: Batch size for API calls determining how many items to download in one request. Default is 50.
+        :type batch_size: int, optional
         :return: Snapshot file path (when ``return_bytesio=False``) or a BytesIO (when ``return_bytesio=True``).
         :rtype: str or io.BytesIO
         :raises ValueError: If ``dest_dir`` is not provided and ``return_bytesio`` is False.
