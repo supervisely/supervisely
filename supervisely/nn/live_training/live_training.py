@@ -4,6 +4,7 @@ from .api_server import start_api_server
 from .request_queue import RequestQueue, RequestType
 from .incremental_dataset import IncrementalDataset
 from .helpers import ClassMap
+from .evaluator import LiveEvaluator
 import supervisely as sly
 from supervisely import logger
 from supervisely.nn import TaskType
@@ -81,6 +82,13 @@ class LiveTraining:
         self.training_start_time = None
         self._upload_in_progress = False
 
+        self.evaluator = self.init_evaluator()
+        self._upload_interval = 7200
+        self._last_upload_time = None
+
+        self._inactivity_timeout = 24 * 3600 # 24 hours in seconds
+        self._last_activity_time = None
+
         # from . import live_training_instance
         # live_training_instance = self  # for access from other modules
 
@@ -97,13 +105,16 @@ class LiveTraining:
             'iteration': self.iter,
             'loss': self._loss,
             'training_paused': self._is_paused,
-            'ready_to_predict': self.ready_to_predict, 
+            'ready_to_predict': self.ready_to_predict,
             'initial_iters': self.initial_iters,
+            f'{self.evaluator.metric_name}_EMA': self.evaluator.ema_value if self.evaluator else None
         }
 
     def run(self):
         self.training_start_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self._add_shutdown_callback()
+        self._last_upload_time = time.time()
+        self._last_activity_time = time.time()
 
         work_dir_path = Path(self.work_dir)
         work_dir_path.mkdir(parents=True, exist_ok=True)
@@ -177,6 +188,16 @@ class LiveTraining:
 
             if not self.request_queue.is_empty():
                 self._process_pending_requests()
+            
+            if self._should_upload_periodically():
+                logger.info(f"Periodic upload (interval: {self._upload_interval}s)")
+                self._save_and_upload()
+                self._last_upload_time = time.time()
+
+            if self._should_stop():
+                logger.warning(f"No activity for {self._inactivity_timeout / 3600:.1f} hours")
+                self._save_and_upload()
+                sys.exit(0)
 
             time.sleep(sleep_interval)
             elapsed_time += sleep_interval
@@ -209,11 +230,13 @@ class LiveTraining:
                 if request.type == RequestType.PREDICT:
                     result = self._handle_predict(request.data)
                     request.future.set_result(result)
+                    self._last_activity_time = time.time()
 
                 elif request.type == RequestType.ADD_SAMPLE:
                     result = self._handle_add_sample(request.data)
                     request.future.set_result(result)
                     new_samples_added = True
+                    self._last_activity_time = time.time()
 
                 elif request.type == RequestType.ADD_SAMPLE_VIDEO:
                     result = self._handle_add_sample_video(request.data)
@@ -244,15 +267,21 @@ class LiveTraining:
 
     def _handle_predict(self, data: dict):
         image_np = data['image']
-        image_info = {'id': data['image_id']}
+        image_id = data['image_id']
+        image_info = {'id': image_id}   
         model = self.model
         was_training = model.training
         model.eval()
         try:
-            objects = self.predict(self.model, image_np=image_np, image_info=image_info)
+            objects_raw = self.predict(self.model, image_np=image_np, image_info=image_info)
+
+            if self.evaluator:
+                image_shape = image_np.shape[:2]
+                self.evaluator.store_prediction(image_id, objects_raw, image_shape)
+
             return {
-                'objects': objects,
-                'image_id': data['image_id'],
+                'objects': objects_raw,
+                'image_id': image_id,
                 'status': self.status(),
             }
         finally:
@@ -273,16 +302,27 @@ class LiveTraining:
         ann_json = data['annotation']
         ann_json = self._filter_annotation(ann_json)
         sly_ann = sly.Annotation.from_json(ann_json, self.project_meta)
+        image_id = data['image_id']
         self.add_sample(
-            image_id=data['image_id'],
+            image_id=image_id,
             image_np=data['image'],
             annotation=sly_ann,
             image_name=data['image_name']
         )
+        if self.evaluator and self.phase!=Phase.WAITING_FOR_SAMPLES:
+            result = self.evaluator.evaluate(image_id, sly_ann)
+            if result is not None:
+                metric_name = self.evaluator.metric_name
+                logger.info(
+                    f"Image {image_id}: {metric_name}={result['metric_value']:.3f}, "
+                    f"EMA={result['ema_value']:.3f}"
+                )
+
         if (len(self.dataset) >= self.initial_samples) and self.phase==Phase.WAITING_FOR_SAMPLES:
             self.phase = Phase.INITIAL_TRAINING
+
         return {
-            'image_id': data['image_id'],
+            'image_id': image_id,
             'status': self.status(),
         }
 
@@ -342,7 +382,7 @@ class LiveTraining:
             obj_classes.insert(0, sly.ObjClass(name='_background_', geometry_type=sly.Bitmap))
 
         if self.filter_classes_by_task:
-            allowed_geometries = self._task2geometries[self.task_type]
+            allowed_geometries = self._task2geometries[self.task_type] + [sly.AnyGeometry]
             obj_classes = [
                 obj_class for obj_class in obj_classes
                 if obj_class.geometry_type in allowed_geometries
@@ -353,10 +393,12 @@ class LiveTraining:
     def _filter_annotation(self, ann_json: dict) -> dict:
         # Filter objects according to class_map
         # Important: Must be filtered before sly.Annotation.from_json due to static project meta
+        allowed_geometries = self._task2geometries[self.task_type]
+        allowed_geometries = [geom.geometry_name() for geom in allowed_geometries]
         filtered_objects = []
         for obj in ann_json['objects']:
             sly_id = obj['classId']
-            if sly_id in self.class_map.sly_ids:
+            if sly_id in self.class_map.sly_ids and obj['geometryType'] in allowed_geometries:
                 filtered_objects.append(obj)
         ann_json['objects'] = filtered_objects
         return ann_json
@@ -381,6 +423,7 @@ class LiveTraining:
                 )
                 self._is_paused = False
                 self.loss_plateau_detector.reset()
+                logger.debug(f"Resuming training. Next iteration will be {self.iter + 1}")
         self._process_pending_requests()
 
     def register_model(self, model: nn.Module):
@@ -520,10 +563,24 @@ class LiveTraining:
         pass
 
     def _init_loss_plateau_detector(self):
-        loss_plateau_detector = LossPlateauDetector()
+        loss_plateau_detector = LossPlateauDetector(
+            window_size=150,
+            threshold=0.002,
+            patience=3,
+            check_interval=1,
+        )
         loss_plateau_detector.register_save_checkpoint_callback(self.save_checkpoint)
         return loss_plateau_detector
 
+    def init_evaluator(self):
+        return LiveEvaluator(
+            task_type=self.task_type,
+            class2idx=self.class_map.class2idx,
+            ema_alpha=0.1,
+            ignore_index=255,
+            score_thr=0.3,
+        )
+    
     def _add_shutdown_callback(self):
         """Setup graceful shutdown: save experiment on SIGINT/SIGTERM"""
         self._upload_in_progress = False
@@ -537,10 +594,31 @@ class LiveTraining:
 
             # Save checkpoint and state before upload
             logger.info("Received shutdown signal, saving checkpoint...")
-            self.save_checkpoint(self.latest_checkpoint_path)
-            save_state_json(self.state(), self.latest_checkpoint_path)
-            self._upload_artifacts()
+            self._save_and_upload()
             sys.exit(0)
 
         signal.signal(signal.SIGINT, signal_handler)
-        signal.signal(signal.SIGTERM, signal_handler)
+        
+    def _is_timeout_reached(self, last_time: float, timeout: int) -> bool:
+        """Check if timeout interval has passed since last_time"""
+        if last_time is None:
+            return False
+        if timeout <= 0:
+            return False
+        elapsed = time.time() - last_time
+        return elapsed >= timeout
+
+    def _should_upload_periodically(self) -> bool:
+        """Check if periodic upload should be triggered"""
+        return self._is_timeout_reached(self._last_upload_time, self._upload_interval)
+
+    def _should_stop(self) -> bool:
+        """Check if training should stop due to user inactivity"""
+        return self._is_timeout_reached(self._last_activity_time, self._inactivity_timeout)
+
+    def _save_and_upload(self):
+        """Save checkpoint, state, and upload artifacts"""
+        logger.info("Saving checkpoint and uploading artifacts...")
+        self.save_checkpoint(self.latest_checkpoint_path)
+        save_state_json(self.state(), self.latest_checkpoint_path)
+        self._upload_artifacts()

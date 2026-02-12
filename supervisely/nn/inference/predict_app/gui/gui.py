@@ -5,7 +5,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 import yaml
 
-from supervisely._utils import is_development, logger
+from supervisely._utils import batched, is_development, logger
 from supervisely.api.api import Api
 from supervisely.api.image_api import ImageInfo
 from supervisely.api.video.video_api import VideoInfo
@@ -467,16 +467,17 @@ class PredictAppGui:
             )
             self.output_selector.secondary_progress.show()
             for dataset_id, video_infos in video_infos_by_dataset_id.items():
-                annotations = self.api.video.annotation.download_bulk(
-                    dataset_id, [info.id for info in video_infos]
-                )
-                for ann_json, video_info in zip(annotations, video_infos):
-                    if ann_json:
-                        project_meta = src_project_metas[video_info.project_id]
-                        ann = VideoAnnotation.from_json(ann_json, project_meta=project_meta)
-                        if len(ann.figures) > 0:
-                            video_ids_to_skip.add(video_info.id)
-                    secondary_pbar.update()
+                for video_info_batch in batched(video_infos, batch_size=100):
+                    annotations = self.api.video.annotation.download_bulk(
+                        dataset_id, [info.id for info in video_info_batch]
+                    )
+                    for ann_json, video_info in zip(annotations, video_info_batch):
+                        if ann_json:
+                            project_meta = src_project_metas[video_info.project_id]
+                            ann = VideoAnnotation.from_json(ann_json, project_meta=project_meta)
+                            if len(ann.figures) > 0:
+                                video_ids_to_skip.add(video_info.id)
+                        secondary_pbar.update()
             self.output_selector.secondary_progress.hide()
             if video_ids_to_skip:
                 video_infos_by_project_id = {
