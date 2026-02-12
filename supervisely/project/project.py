@@ -3561,6 +3561,7 @@ class Project:
         log_progress: Optional[bool] = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         skip_missed: Optional[bool] = False,
+        project_description: Optional[str] = None,
     ) -> sly.ProjectInfo:
         """
         Uploads project to Supervisely from the given binary file and suitable only for projects downloaded in binary format.
@@ -3583,6 +3584,8 @@ class Project:
         :type progress_cb: tqdm or callable, optional
         :param skip_missed: Skip missed images.
         :type skip_missed: :class:`bool`, optional
+        :param project_description: Description of the destination project in Supervisely.
+        :type project_description: :class:`str`, optional
         :return: ProjectInfo object.
         :rtype: :class:`ProjectInfo<supervisely.api.project.ProjectInfo>`
         :Usage example:
@@ -3625,10 +3628,12 @@ class Project:
             )
         if project_name is None:
             project_name = project_info.name
+
+        project_description = project_description or project_info.description
         new_project_info = api.project.create(
             workspace_id,
             project_name,
-            description=project_info.description,
+            description=project_description,
             change_name_if_conflict=True,
             readme=project_info.readme,
         )

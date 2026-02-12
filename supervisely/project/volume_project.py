@@ -24,12 +24,12 @@ from supervisely.io.fs import change_directory_at_index, touch
 from supervisely.project.project import OpenMode
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import ProjectType
-from supervisely.project.video_project import VideoDataset, VideoProject
 from supervisely.project.versioning.common import (
     DEFAULT_VOLUME_SCHEMA_VERSION,
     get_volume_snapshot_schema,
 )
 from supervisely.project.versioning.schema_fields import VersionSchemaField
+from supervisely.project.video_project import VideoDataset, VideoProject
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress, tqdm_sly
 from supervisely.video_annotation.key_id_map import KeyIdMap
@@ -232,6 +232,7 @@ class VolumeProject(VideoProject):
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         return_bytesio: bool = False,
         schema_version: str = DEFAULT_VOLUME_SCHEMA_VERSION,
+        batch_size: int = 50,
         *args,
         **kwargs,
     ) -> Union[str, io.BytesIO]:
@@ -265,6 +266,8 @@ class VolumeProject(VideoProject):
         :type return_bytesio: bool, optional
         :param schema_version: Snapshot schema version. Controls the internal Parquet layout/fields. Supported values are the keys from :func:`~supervisely.project.volume_schema.get_volume_snapshot_schema` (currently: ``"v2.0.0"``).
         :type schema_version: str, optional
+        :param batch_size: Batch size for API calls determining how many items to download in one request. Default is 50.
+        :type batch_size: int, optional
         :return: Snapshot file path (when ``return_bytesio=False``) or a BytesIO (when ``return_bytesio=True``).
         :rtype: str or io.BytesIO
         :raises ValueError: If ``dest_dir`` is not provided and ``return_bytesio`` is False.
@@ -340,52 +343,53 @@ class VolumeProject(VideoProject):
                     total=len(volumes),
                 )
 
-            volume_ids = [volume_info.id for volume_info in volumes]
-            ann_jsons = api.volume.annotation.download_bulk(dataset_info.id, volume_ids)
-
-            # insert custom_data into ann_jsons (api does not return it in download_bulk atm)
-            # Build mappings:
-            # - volume_id -> ann_json
-            # - volume_id -> {figure_id -> spatial_figure_dict}
             ann_by_volume_id: Dict[int, Dict[str, Any]] = {}
             spatial_figures_by_volume: Dict[int, Dict[int, Dict[str, Any]]] = {}
-            for ann_json in ann_jsons:
-                volume_id = ann_json.get(ApiField.VOLUME_ID)
-                if volume_id is None:
-                    continue
-                ann_by_volume_id[volume_id] = ann_json
-                figures_list = ann_json.get(volume_constants.SPATIAL_FIGURES, []) or []
-                fig_id_to_spatial_figure: Dict[int, Dict[str, Any]] = {}
-                for spatial_figure in figures_list:
-                    fig_id = spatial_figure.get("id")
-                    if fig_id is not None:
-                        fig_id_to_spatial_figure[fig_id] = spatial_figure
-                spatial_figures_by_volume[volume_id] = fig_id_to_spatial_figure
+            volume_ids = [volume_info.id for volume_info in volumes]
+            for volume_ids_batch in batched(volume_ids, batch_size):
+                ann_jsons = api.volume.annotation.download_bulk(dataset_info.id, volume_ids_batch)
 
-            figures_dict = api.volume.figure.download(dataset_info.id, volume_ids)
-            for volume_id, figure_infos in figures_dict.items():
-                ann_json = ann_by_volume_id.get(volume_id)
-                if ann_json is None:
-                    continue
-                fig_id_to_spatial_figure = spatial_figures_by_volume.get(volume_id, {})
-                for figure_info in figure_infos:
-                    spatial_figure = fig_id_to_spatial_figure.get(figure_info.id)
-                    if spatial_figure is not None:
-                        spatial_figure[ApiField.CUSTOM_DATA] = figure_info.custom_data
+                # insert custom_data into ann_jsons (api does not return it in download_bulk atm)
+                # Build mappings:
+                # - volume_id -> ann_json
+                # - volume_id -> {figure_id -> spatial_figure_dict}
+                for ann_json in ann_jsons:
+                    volume_id = ann_json.get(ApiField.VOLUME_ID)
+                    if volume_id is None:
+                        continue
+                    ann_by_volume_id[volume_id] = ann_json
+                    figures_list = ann_json.get(volume_constants.SPATIAL_FIGURES, []) or []
+                    fig_id_to_spatial_figure: Dict[int, Dict[str, Any]] = {}
+                    for spatial_figure in figures_list:
+                        fig_id = spatial_figure.get("id")
+                        if fig_id is not None:
+                            fig_id_to_spatial_figure[fig_id] = spatial_figure
+                    spatial_figures_by_volume[volume_id] = fig_id_to_spatial_figure
 
-            for volume_info, ann_json in zip(volumes, ann_jsons):
-                ann_dict = snapshot_schema.annotation_dict_from_raw(
-                    api=api,
-                    raw_ann_json=ann_json,
-                    project_meta_obj=project_meta_obj,
-                    key_id_map=key_id_map,
-                )
-                volume_records.append(volume_info._asdict())
-                annotations[str(volume_info.id)] = ann_dict
-                if progress_cb is not None:
-                    progress_cb(1)
-                if ds_progress is not None:
-                    ds_progress(1)
+                figures_dict = api.volume.figure.download(dataset_info.id, volume_ids_batch)
+                for volume_id, figure_infos in figures_dict.items():
+                    ann_json = ann_by_volume_id.get(volume_id)
+                    if ann_json is None:
+                        continue
+                    fig_id_to_spatial_figure = spatial_figures_by_volume.get(volume_id, {})
+                    for figure_info in figure_infos:
+                        spatial_figure = fig_id_to_spatial_figure.get(figure_info.id)
+                        if spatial_figure is not None:
+                            spatial_figure[ApiField.CUSTOM_DATA] = figure_info.custom_data
+
+                for volume_info, ann_json in zip(volumes, ann_jsons):
+                    ann_dict = snapshot_schema.annotation_dict_from_raw(
+                        api=api,
+                        raw_ann_json=ann_json,
+                        project_meta_obj=project_meta_obj,
+                        key_id_map=key_id_map,
+                    )
+                    volume_records.append(volume_info._asdict())
+                    annotations[str(volume_info.id)] = ann_dict
+                    if progress_cb is not None:
+                        progress_cb(1)
+                    if ds_progress is not None:
+                        ds_progress(1)
 
         project_info_dict = project_info._asdict()
         project_info_dict[VersionSchemaField.SCHEMA_VERSION] = schema_version
@@ -478,7 +482,9 @@ class VolumeProject(VideoProject):
         project_name: Optional[str] = None,
         log_progress: bool = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
-        skip_missed_entities: bool = False,
+        skip_missed: bool = False,
+        project_description: Optional[str] = None,
+        with_custom_data: bool = True,
         *args,
         **kwargs,
     ) -> ProjectInfo:
@@ -497,11 +503,15 @@ class VolumeProject(VideoProject):
         :type log_progress: bool
         :param progress_cb: Optional callback (or tqdm-like object) called with incremental progress.
         :type progress_cb: tqdm or callable, optional
-        :param skip_missed_entities: If True, skip volumes that cannot be restored because their source hash is missing in the snapshot payload. If False, such cases raise an error.
-        :type skip_missed_entities: bool
+        :param skip_missed: If True, skip volumes that cannot be restored because their source hash is missing in the snapshot payload. If False, such cases raise an error.
+        :type skip_missed: bool
+        :param project_description: Description of the destination project in Supervisely.
+        :type project_description: :class:`str`, optional
+        :param with_custom_data: Whether to include custom_data from the snapshot in the restored project. Default is True.
+        :type with_custom_data: bool, optional
         :return: Info of the newly created project.
         :rtype: :class:`~supervisely.api.project_api.ProjectInfo`
-        :raises RuntimeError: If the snapshot contains volumes without hashes and ``skip_missed_entities`` is False.
+        :raises RuntimeError: If the snapshot contains volumes without hashes and ``skip_missed`` is False.
         """
 
         pa = VolumeProject._require_pyarrow()
@@ -523,12 +533,12 @@ class VolumeProject(VideoProject):
         project_title = project_name or project_info.get("name")
         if api.project.exists(workspace_id, project_title):
             project_title = api.project.get_free_name(workspace_id, project_title)
-        src_project_desc = project_info.get("description")
+        project_description = project_description or project_info.get("description")
         new_project_info = api.project.create(
             workspace_id,
             project_title,
             ProjectType.VOLUMES,
-            description=src_project_desc,
+            description=project_description,
             readme=project_info.get("readme"),
         )
         api.project.update_meta(new_project_info.id, project_meta)
@@ -540,9 +550,10 @@ class VolumeProject(VideoProject):
             "project_id": source_project_id,
             "version_num": version_info.get("version"),
         }
-        original_custom_data = payload["project_info"].get("custom_data") or {}
-        custom_data.update(original_custom_data)
-        api.project.update_custom_data(new_project_info.id, custom_data, silent=True)
+        if with_custom_data:
+            original_custom_data = payload["project_info"].get("custom_data") or {}
+            custom_data.update(original_custom_data)
+            api.project.update_custom_data(new_project_info.id, custom_data, silent=True)
 
         dataset_mapping: Dict[int, sly.DatasetInfo] = {}
         sorted_datasets = sorted(
@@ -557,7 +568,7 @@ class VolumeProject(VideoProject):
                 name=dataset_data.get("name"),
                 description=dataset_data.get("description"),
                 parent_id=new_parent_id,
-                custom_data=dataset_data.get("custom_data"),
+                custom_data=dataset_data.get("custom_data") if with_custom_data else None,
             )
             dataset_mapping[dataset_data.get("id")] = new_dataset_info
 
@@ -580,7 +591,7 @@ class VolumeProject(VideoProject):
                     missing_names.append(vol.get("name") or str(vol.get("id")))
 
             if missing_names:
-                if skip_missed_entities:
+                if skip_missed:
                     for vol_name in missing_names:
                         logger.warning(
                             "Volume %r skipped during restoration because its source hash is unavailable.",
@@ -620,7 +631,7 @@ class VolumeProject(VideoProject):
         for volume_id_str, ann_json in annotations.items():
             new_volume_info = volume_mapping.get(int(volume_id_str))
             if new_volume_info is None:
-                if skip_missed_entities:
+                if skip_missed:
                     logger.warning(
                         "Annotation for volume %s skipped because the source volume was not restored.",
                         volume_id_str,
