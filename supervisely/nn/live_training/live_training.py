@@ -428,20 +428,14 @@ class LiveTraining:
             frame for frame in video_ann_json["frames"] if frame["index"] == frame_index
         ][0]
 
-        filtered_objects = []
-        for obj in video_ann_json["objects"]:
-            sly_id = obj["classId"]
-            if sly_id in self.class_map.sly_ids and obj["geometryType"] in allowed_geometries:
-                filtered_objects.append(obj)
-        video_ann_json["objects"] = filtered_objects
-
         filtered_objects, filtered_figures = [], []
         for figure in frame_ann_json["figures"]:
             obj_id = figure["objectId"]
-            sly_id = [obj["classId"] for obj in video_ann_json["objects"] if obj["id"] == obj_id][0]
+            video_obj = [obj for obj in video_ann_json["objects"] if obj["id"] == obj_id][0]
+            sly_id = video_obj["classId"]
             if sly_id in self.class_map.sly_ids and figure["geometryType"] in allowed_geometries:
                 filtered_figures.append(figure)
-                filtered_objects.append(obj)
+                filtered_objects.append(video_obj)
 
         frame_ann_json = {
             "index": frame_index,
