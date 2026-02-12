@@ -188,7 +188,7 @@ class LiveTraining:
 
             if not self.request_queue.is_empty():
                 self._process_pending_requests()
-            
+
             if self._should_upload_periodically():
                 logger.info(f"Periodic upload (interval: {self._upload_interval}s)")
                 self._save_and_upload()
@@ -363,8 +363,19 @@ class LiveTraining:
             frame_np=data["frame_np"],
             annotation=img_ann,
         )
+
+        if self.evaluator and self.phase != Phase.WAITING_FOR_SAMPLES:
+            result = self.evaluator.evaluate(frame_id, img_ann)
+            if result is not None:
+                metric_name = self.evaluator.metric_name
+                logger.info(
+                    f"Image {frame_id}: {metric_name}={result['metric_value']:.3f}, "
+                    f"EMA={result['ema_value']:.3f}"
+                )
+
         if (len(self.dataset) >= self.initial_samples) and self.phase == Phase.WAITING_FOR_SAMPLES:
             self.phase = Phase.INITIAL_TRAINING
+
         return {
             "image_id": frame_id,
             "status": self.status(),
@@ -580,7 +591,7 @@ class LiveTraining:
             ignore_index=255,
             score_thr=0.3,
         )
-    
+
     def _add_shutdown_callback(self):
         """Setup graceful shutdown: save experiment on SIGINT/SIGTERM"""
         self._upload_in_progress = False
@@ -598,7 +609,7 @@ class LiveTraining:
             sys.exit(0)
 
         signal.signal(signal.SIGINT, signal_handler)
-        
+
     def _is_timeout_reached(self, last_time: float, timeout: int) -> bool:
         """Check if timeout interval has passed since last_time"""
         if last_time is None:
