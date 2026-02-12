@@ -359,7 +359,8 @@ class LiveTraining:
             video_ann_json, frame_idx
         )
         video_obj_col = sly.VideoObjectCollection.from_json(video_objects_json, self.project_meta)
-        frame_ann = sly.Frame.from_json(frame_ann_json, video_obj_col)
+        frames_count = video_ann_json["framesCount"]
+        frame_ann = sly.Frame.from_json(frame_ann_json, video_obj_col, frames_count, sly.KeyIdMap())
         frame_h, frame_w = video_ann_json["size"]["height"], video_ann_json["size"]["width"]
         img_ann = self.frame_ann_to_img_ann(frame_ann, frame_h, frame_w)
         self.add_sample_video(
