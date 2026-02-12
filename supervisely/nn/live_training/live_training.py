@@ -336,10 +336,10 @@ class LiveTraining:
 
     def frame_ann_to_img_ann(
         self,
-        video_ann: sly.VideoAnnotation,
-        frame_idx: int,
+        frame_ann: sly.Frame,
+        frame_h: int,
+        frame_w: int,
     ):
-        frame_ann = video_ann.frames.get(frame_idx)
         frame_figures = frame_ann.figures
 
         labels = []
@@ -348,16 +348,20 @@ class LiveTraining:
             obj_class = figure.video_object.obj_class
             labels.append(sly.Label(geometry, obj_class))
 
-        img_ann = sly.Annotation(video_ann.img_size, labels)
+        img_ann = sly.Annotation((frame_h, frame_w), labels)
         return img_ann
 
     def _handle_add_sample_video(self, data: dict):
-        frame_id = f"{data['video_id']}_{data['frame_idx']}"
+        frame_idx = data["frame_idx"]
+        frame_id = f"{data['video_id']}_{frame_idx}"
         video_ann_json = data["video_ann_json"]
-        video_ann_json = self._filter_annotation(video_ann_json)
-        key_id_map = sly.KeyIdMap()
-        video_ann = sly.VideoAnnotation.from_json(video_ann_json, self.project_meta, key_id_map)
-        img_ann = self.frame_ann_to_img_ann(video_ann, data["frame_idx"])
+        video_objects_json, frame_ann_json = self._filter_annotation_video(
+            video_ann_json, frame_idx
+        )
+        video_obj_col = sly.VideoObjectCollection.from_json(video_objects_json, self.project_meta)
+        frame_ann = sly.Frame.from_json(frame_ann_json, video_obj_col)
+        frame_h, frame_w = video_ann_json["size"]["height"], video_ann_json["size"]["width"]
+        img_ann = self.frame_ann_to_img_ann(frame_ann, frame_h, frame_w)
         self.add_sample_video(
             frame_id=frame_id,
             frame_np=data["frame_np"],
@@ -413,6 +417,38 @@ class LiveTraining:
                 filtered_objects.append(obj)
         ann_json['objects'] = filtered_objects
         return ann_json
+
+    def _filter_annotation_video(self, video_ann_json: dict, frame_index: int) -> dict:
+        # Filter objects according to class_map
+        # Important: Must be filtered before sly.Annotation.from_json due to static project meta
+        allowed_geometries = self._task2geometries[self.task_type]
+        allowed_geometries = [geom.geometry_name() for geom in allowed_geometries]
+
+        frame_ann_json = [
+            frame for frame in video_ann_json["frames"] if frame["index"] == frame_index
+        ][0]
+
+        filtered_objects = []
+        for obj in video_ann_json["objects"]:
+            sly_id = obj["classId"]
+            if sly_id in self.class_map.sly_ids and obj["geometryType"] in allowed_geometries:
+                filtered_objects.append(obj)
+        video_ann_json["objects"] = filtered_objects
+
+        filtered_objects, filtered_figures = [], []
+        for figure in frame_ann_json["figures"]:
+            obj_id = figure["objectId"]
+            sly_id = [obj["classId"] for obj in video_ann_json["objects"] if obj["id"] == obj_id][0]
+            if sly_id in self.class_map.sly_ids and figure["geometryType"] in allowed_geometries:
+                filtered_figures.append(figure)
+                filtered_objects.append(obj)
+
+        frame_ann_json = {
+            "index": frame_index,
+            "figures": filtered_figures,
+        }
+
+        return filtered_objects, frame_ann_json
 
     def after_train_step(self, loss: float):
         self.iter += 1
