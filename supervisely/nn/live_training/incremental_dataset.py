@@ -64,9 +64,7 @@ class IncrementalDataset:
         self.samples_list.append(sample)
         return sample
 
-    def add_video(
-        self, frame_id: str, frame_np: np.ndarray, annotation: sly.VideoAnnotation
-    ) -> dict:
+    def add_video(self, frame_id: str, frame_np: np.ndarray, annotation: sly.Annotation) -> dict:
         if frame_id in self.samples:
             raise ValueError(
                 f"Cannot add sample: frame with ID {frame_id} already exists in the dataset."
@@ -104,6 +102,18 @@ class IncrementalDataset:
             sample['size'],
             sample['image_path'],
             sample.get('mask_path')
+        )
+        sample.update(new_sample)
+        return sample
+
+    def update_video(self, frame_id: str, annotation: sly.Annotation) -> dict:
+        if frame_id not in self.samples:
+            raise ValueError(
+                f"Cannot update sample: Frame ID {frame_id} does not exist in the dataset."
+            )
+        sample = self.samples[frame_id]
+        new_sample = self._format_sample(
+            frame_id, annotation, sample["size"], sample["image_path"], sample.get("mask_path")
         )
         sample.update(new_sample)
         return sample
