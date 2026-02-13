@@ -358,9 +358,12 @@ class LiveTraining:
         video_objects_json, frame_ann_json = self._filter_annotation_video(
             video_ann_json, frame_idx
         )
-        video_obj_col = sly.VideoObjectCollection.from_json(video_objects_json, self.project_meta)
+        key_id_map = sly.KeyIdMap()
+        video_obj_col = sly.VideoObjectCollection.from_json(
+            video_objects_json, self.project_meta, key_id_map
+        )
         frames_count = video_ann_json["framesCount"]
-        frame_ann = sly.Frame.from_json(frame_ann_json, video_obj_col, frames_count, sly.KeyIdMap())
+        frame_ann = sly.Frame.from_json(frame_ann_json, video_obj_col, frames_count, key_id_map)
         frame_h, frame_w = video_ann_json["size"]["height"], video_ann_json["size"]["width"]
         img_ann = self.frame_ann_to_img_ann(frame_ann, frame_h, frame_w)
         self.add_sample_video(
