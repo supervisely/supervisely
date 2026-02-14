@@ -32,7 +32,7 @@ RUN pip install pillow-heif==0.18.0
 RUN pip install tifffile==2023.7.10
 # RUN pip install pymupdf==1.22.5
 RUN pip install nibabel==5.2.1
-RUN pip install bagpy==0.5
+# RUN pip install bagpy==0.5
 RUN pip install imagecodecs==2024.6.1
 RUN pip install lyft-dataset-sdk==0.0.8
 RUN pip install matplotlib==3.8.4
@@ -40,6 +40,13 @@ RUN pip install shapely==2.0.4
 RUN pip install nuscenes-devkit==1.1.11 --no-deps
 RUN pip install lxml==5.2.2
 RUN pip install scikit-image==0.23.2
+
+# todo: remove; test only
+RUN pip install git+https://github.com/supervisely/supervisely.git@hardened-docker-images
+RUN pip install protobuf==6.33.5
+RUN pip install pillow==12.1.1
+RUN pip install fastapi==0.129.0
+RUN pip install starlette==0.49.1
 
 # ============================================================================
 # STAGE 2: Runtime Stage (Minimal & Hardened)
@@ -58,3 +65,15 @@ COPY --from=builder /usr/lib/x86_64-linux-gnu/libmagic.so.1 /usr/lib/x86_64-linu
 # Copy Python packages from builder
 COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends \
+    libc6 \
+    libc-bin \
+    libglib2.0-0 \
+    libgl1 \
+    libsqlite3-0 \
+    zlib1g \
+  && rm -rf /var/lib/apt/lists/*
+
+RUN python -m pip install --no-cache-dir --upgrade pip==26.0.1
