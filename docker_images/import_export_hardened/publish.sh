@@ -1,6 +1,6 @@
 set -euo pipefail
 
-IMAGE_REF="supervisely/import-export-hardened:0.0.1"
+IMAGE_REF="supervisely/import-export-hardened:0.0.2"
 
 docker build --platform linux/amd64 -t "$IMAGE_REF" .
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
