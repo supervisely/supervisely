@@ -43,7 +43,7 @@ class CityscapesConverter(ImageConverter):
     @property
     def key_file_ext(self) -> str:
         return ".json"
-    
+
     @property
     def ann_ext(self) -> str:
         return ".json"
@@ -114,7 +114,7 @@ class CityscapesConverter(ImageConverter):
             return False
 
     def validate_format(self) -> bool:
-        if self.upload_as_links:
+        if self.upload_as_links and self.supports_links:
             self._download_remote_ann_files()
         detected_ann_cnt = 0
         images_list, ann_dict = [], {}

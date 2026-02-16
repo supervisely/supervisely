@@ -21,6 +21,7 @@ from supervisely.project.versioning.common import (
     DEFAULT_VOLUME_SCHEMA_VERSION,
 )
 
+
 class VersionInfo(NamedTuple):
     """
     Object with image parameters from Supervisely that describes the version of the project.
@@ -41,10 +42,16 @@ class VersionInfo(NamedTuple):
 
 
 class DataVersion(ModuleApiBase):
+
     """
     Class for managing project versions.
     This class provides methods for creating, restoring, and managing project versions.
     """
+    PROJECT_NAME_TEMPLATE = "{project_name}, from ver. {version_num}"
+    PROJECT_DESC_TEMPLATE = (
+        "Restored from version {version_num}. "
+        "Source project ID: {project_id}, version ID: {version_id}"
+    )
 
     def __init__(self, api):
         """
@@ -59,6 +66,7 @@ class DataVersion(ModuleApiBase):
         self.project_dir = None
         self.versions_path = None
         self.versions = None
+        self._batch_size = None
 
     @staticmethod
     def info_sequence():
@@ -101,15 +109,19 @@ class DataVersion(ModuleApiBase):
         if self.project_info is None:
             raise ValueError("Project info is not initialized. Call 'initialize' method first.")
 
+        self._batch_size = None
         project_type = self.project_info.type
         if project_type == ProjectType.IMAGES.value:
             self.__version_format = DEFAULT_IMAGE_SCHEMA_VERSION
+            self._batch_size = 200
             return Project
         elif project_type == ProjectType.VIDEOS.value:
             self.__version_format = DEFAULT_VIDEO_SCHEMA_VERSION
+            self._batch_size = 50
             return VideoProject
         elif project_type == ProjectType.VOLUMES.value:
             self.__version_format = DEFAULT_VOLUME_SCHEMA_VERSION
+            self._batch_size = 50
             return VolumeProject
         else:
             raise ValueError(f"Unsupported project type: {project_type}")
@@ -445,7 +457,7 @@ class DataVersion(ModuleApiBase):
             if str(version_id) not in self.versions:
                 raise ValueError(f"Version {version_id} does not exist")
             version_num = self.versions[str(version_id)]["number"]
-        updated_at = self.versions[str(version_id)]["updated_at"]
+        # updated_at = self.versions[str(version_id)]["updated_at"]
         backup_files = self.versions[str(version_id)]["path"]
 
         # turn off this check for now (treating this as a project clone operation)
@@ -461,11 +473,22 @@ class DataVersion(ModuleApiBase):
             )
             return
 
+        dst_project_name = self.PROJECT_NAME_TEMPLATE.format(
+            project_name=self.project_info.name, version_num=version_num
+        )
+        dst_project_desc = self.PROJECT_DESC_TEMPLATE.format(
+            version_num=version_num,
+            project_id=self.project_info.id,
+            version_id=version_id,
+        )
+
         bin_io = self._download_and_extract(backup_files)
         new_project_info = self.project_cls.upload_bin(
             self._api,
             bin_io,
-            self.project_info.workspace_id,
+            workspace_id=self.project_info.workspace_id,
+            project_name=dst_project_name,
+            project_description=dst_project_desc,
             skip_missed=skip_missed_entities,
         )
         return new_project_info
@@ -559,7 +582,7 @@ class DataVersion(ModuleApiBase):
         data = None
         try:
             data = self.project_cls.download_bin(
-                self._api, self.project_info.id, batch_size=200, return_bytesio=True
+                self._api, self.project_info.id, batch_size=self._batch_size, return_bytesio=True
             )
             info = tarfile.TarInfo(name="version.bin")
             data.seek(0, io.SEEK_END)

@@ -349,6 +349,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         enable_quality_check: Optional[bool] = None,
         guide_id: Optional[int] = None,
         allow_restore: bool = False,
+        read_only_tags: Optional[List[str]] = None,
     ) -> List[LabelingJobInfo]:
         """
         Creates Labeling Job and assigns given Users to it.
@@ -484,6 +485,9 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             "dynamicTags": dynamic_tags,
             "allowRestore": allow_restore,
         }
+
+        if read_only_tags is not None:
+            meta["readOnlyTags"] = read_only_tags
 
         if guide_id is not None:
             try:

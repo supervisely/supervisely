@@ -38,9 +38,6 @@ class PlyConverter(PointcloudConverter):
                     if ext not in used_img_ext:
                         used_img_ext.append(ext)
 
-                    
-                
-
         # create Items
         self._items = []
         for ply_path in ply_list:

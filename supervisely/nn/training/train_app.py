@@ -2,6 +2,7 @@
 High-level wrapper for building Supervisely training applications.
 """
 
+import os
 import shutil
 import subprocess
 import time
@@ -228,6 +229,8 @@ class TrainApp:
 
         self._onnx_supported = self._app_options.get("export_onnx_supported", False)
         self._tensorrt_supported = self._app_options.get("export_tensorrt_supported", False)
+        self._device_ids: List[int] = []
+        self._is_multi_gpu: bool = self._app_options.get("multi_gpu", False)
         if self._onnx_supported:
             self._convert_onnx_func = None
         if self._tensorrt_supported:
@@ -464,6 +467,38 @@ class TrainApp:
         return self.gui.training_process.get_device()
 
     @property
+    def devices(self) -> List[str]:
+        """
+        Returns all devices used for training in multi-GPU mode.
+
+        :return: List of device strings (e.g. ["cuda:0", "cuda:1"]).
+        :rtype: List[str]
+        """
+        if not self.is_multi_gpu:
+            return [self.device]
+        return self.gui.training_process.get_devices()
+
+    @property
+    def device_ids(self) -> List[int]:
+        """
+        Returns the list of device IDs used for training in multi-GPU mode.
+
+        :return: List of device IDs (e.g. [0, 1] for "cuda:0" and "cuda:1").
+        :rtype: List[int]
+        """
+        return self._parse_device_ids(self.devices)
+
+    @property
+    def is_multi_gpu(self) -> bool:
+        """
+        Returns True if multi-GPU mode is enabled.
+
+        :return: True if multi-GPU is enabled.
+        :rtype: bool
+        """
+        return self._is_multi_gpu
+
+    @property
     def base_checkpoint(self) -> str:
         """
         Returns the name of the base checkpoint.
@@ -691,6 +726,25 @@ class TrainApp:
 
         # Step 7. Download Model files
         self._download_model()
+
+    def _parse_device_ids(self, value) -> Optional[List[int]]:
+        if value is None:
+            return None
+        if isinstance(value, (list, tuple)):
+            ids = []
+            for v in value:
+                if isinstance(v, str) and v.startswith("cuda:"):
+                    v = v.split(":", 1)[1]
+                ids.append(int(v))
+            return ids
+        if isinstance(value, str):
+            raw = value.strip()
+            if not raw:
+                return None
+            raw = raw.replace("cuda:", "")
+            parts = [p.strip() for p in raw.split(",") if p.strip()]
+            return [int(p) for p in parts]
+        return None
 
     def _finalize(self, experiment_info: dict) -> None:
         """
@@ -2975,7 +3029,6 @@ class TrainApp:
         self._validate_experiment_name()
         self.gui.training_process.experiment_name_input.disable()
         if self._app_options.get("device_selector", False):
-            self.gui.training_process.select_device._select.disable()
             self.gui.training_process.select_device.disable()
 
         if self._app_options.get("model_benchmark", False):
@@ -2994,7 +3047,6 @@ class TrainApp:
         self.gui.stepper.set_active_step(self.gui.stepper.get_active_step() - 1)
         self.gui.training_process.experiment_name_input.enable()
         if self._app_options.get("device_selector", False):
-            self.gui.training_process.select_device._select.enable()
             self.gui.training_process.select_device.enable()
         self.gui.enable_select_buttons()
 

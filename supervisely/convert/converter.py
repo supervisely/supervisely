@@ -140,6 +140,7 @@ class ImportManager:
             if self._upload_as_links and str(self._modality) in [
                 ProjectType.IMAGES.value,
                 ProjectType.VIDEOS.value,
+                ProjectType.POINT_CLOUDS.value,
             ]:
                 logger.info(f"Input data is a remote directory: {input_data}. Scanning...")
                 return self._reproduce_remote_files(input_data, is_dir=True)

@@ -1004,7 +1004,8 @@ def upload_pointcloud_episode_project(
         else:
             episode_annotation = PointcloudEpisodeAnnotation()
 
-        parent_path = dataset_fs.name.removesuffix(dataset_fs.short_name).rstrip("/")
+        # removesuffix workaround for python < 3.9
+        parent_path = dataset_fs.name[: -len(dataset_fs.short_name)].rstrip("/")
         parent_info = name_to_dsinfo.get(parent_path)
         parent_id = parent_info.id if parent_info else None
         dataset = api.dataset.create(

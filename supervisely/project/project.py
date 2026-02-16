@@ -3704,6 +3704,7 @@ class Project:
         log_progress: Optional[bool] = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         skip_missed: Optional[bool] = False,
+        project_description: Optional[str] = None,
     ) -> sly.ProjectInfo:
         """
         Uploads project to Supervisely from the given binary file and suitable only for projects downloaded in binary format.
@@ -3726,7 +3727,9 @@ class Project:
         :type progress_cb: tqdm or callable, optional
         :param skip_missed: Skip missed images.
         :type skip_missed: bool, optional
-        :returns: :class:`~supervisely.api.project_api.ProjectInfo` object.
+        :param project_description: Description of the destination project in Supervisely.
+        :type project_description: str, optional
+        :returns: ProjectInfo object.
         :rtype: :class:`~supervisely.api.project_api.ProjectInfo`
 
         :Usage Example:
@@ -3769,10 +3772,12 @@ class Project:
             )
         if project_name is None:
             project_name = project_info.name
+
+        project_description = project_description or project_info.description
         new_project_info = api.project.create(
             workspace_id,
             project_name,
-            description=project_info.description,
+            description=project_description,
             change_name_if_conflict=True,
             readme=project_info.readme,
         )
@@ -5774,9 +5779,9 @@ async def _download_project_async(
     :rtype: NoneType
     """
     # to switch between single and bulk download
-    switch_size = kwargs.get("switch_size", 1.28 * 1024 * 1024)
+    switch_size = kwargs.get("switch_size", 512 * 1024)
     # batch size for bulk download
-    batch_size = kwargs.get("batch_size", 100)
+    batch_size = kwargs.get("batch_size", 72)
     # control whether to download blob files
     download_blob_files = kwargs.get("download_blob_files", False)
     # control whether to create README file
@@ -6002,25 +6007,49 @@ async def _download_project_async(
             if len(small_images) == 1:
                 large_images.append(small_images.pop())
 
+            async def download_batch_with_fallback(images_batch):
+                """Try batch download, fall back to individual downloads on error."""
+                try:
+                    await _download_project_items_batch_async(
+                        api=api,
+                        dataset_id=dataset_id,
+                        img_infos=images_batch,
+                        meta=meta,
+                        dataset_fs=dataset_fs,
+                        id_to_tagmeta=id_to_tagmeta,
+                        semaphore=semaphore,
+                        save_images=save_images,
+                        save_image_info=save_image_info,
+                        only_image_tags=only_image_tags,
+                        progress_cb=ds_progress,
+                    )
+                except Exception as e:
+                    sly.logger.warning(
+                        f"Batch download failed, falling back to individual downloads: {repr(e)}",
+                        extra={"dataset": dataset.name, "batch_size": len(images_batch)},
+                    )
+                    # Fall back to downloading each image individually
+                    for image in images_batch:
+                        await _download_project_item_async(
+                            api=api,
+                            img_info=image,
+                            meta=meta,
+                            dataset_fs=dataset_fs,
+                            id_to_tagmeta=id_to_tagmeta,
+                            semaphore=semaphore,
+                            save_images=save_images,
+                            save_image_info=save_image_info,
+                            only_image_tags=only_image_tags,
+                            progress_cb=ds_progress,
+                        )
+
             # Create batch download tasks
             sly.logger.debug(
                 f"Downloading {len(small_images)} small images in batch number {len(small_images) // batch_size}...",
                 extra={"dataset": dataset.name},
             )
             for images_batch in batched(small_images, batch_size=batch_size):
-                task = _download_project_items_batch_async(
-                    api=api,
-                    dataset_id=dataset_id,
-                    img_infos=images_batch,
-                    meta=meta,
-                    dataset_fs=dataset_fs,
-                    id_to_tagmeta=id_to_tagmeta,
-                    semaphore=semaphore,
-                    save_images=save_images,
-                    save_image_info=save_image_info,
-                    only_image_tags=only_image_tags,
-                    progress_cb=ds_progress,
-                )
+                task = download_batch_with_fallback(images_batch)
                 tasks.append(task)
 
             # Create individual download tasks for large images

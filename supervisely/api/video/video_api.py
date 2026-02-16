@@ -1198,12 +1198,12 @@ class VideoApi(RemoveableBulkModuleApi):
             )
             if progress_cb is not None:
                 progress_cb(len(videos))
+            results.extend(self._convert_json_info(item) for item in response.json())
 
-            results = [self._convert_json_info(item) for item in response.json()]
-            name_to_res = {img_info.name: img_info for img_info in results}
-            ordered_results = [name_to_res[name] for name in names]
+        name_to_res = {img_info.name: img_info for img_info in results}
+        ordered_results = [name_to_res[name] for name in names]
 
-            return ordered_results
+        return ordered_results
 
     def _download(self, id, is_stream=False):
         """

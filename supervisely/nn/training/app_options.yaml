@@ -40,6 +40,9 @@ show_logs_in_gui: true
 # [Beta] Collapse GUI cards on selection
 collapsable: false
 
+# Multi-GPU training support
+multi_gpu: false
+
 # ==================== Export ======================
 # Requires additional implementation
 export_onnx_supported: false

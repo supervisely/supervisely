@@ -1379,7 +1379,7 @@ class VideoProject(Project):
         :type dest_dir: Optional[str]
         :param dataset_ids: Optional list of dataset IDs to include. If provided, only those datasets (and their videos/annotations) will be included in the snapshot.
         :type dataset_ids: Optional[List[int]]
-        :param batch_size: Batch size for downloading video annotations.
+        :param batch_size: Batch size for downloading video annotations. Cannot be greater than 100 due to API limitations. Default is 50.
         :type batch_size: int
         :param log_progress: If True, shows progress (uses internal tqdm progress bars) when ``progress_cb`` is not provided.
         :type log_progress: bool
@@ -1428,6 +1428,7 @@ class VideoProject(Project):
         log_progress: bool = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         skip_missed: bool = False,
+        project_description: Optional[str] = None,
     ) -> "ProjectInfo":
         """
         Restore a video project from an Arrow/Parquet-based binary snapshot.
@@ -1448,7 +1449,9 @@ class VideoProject(Project):
         :type progress_cb: Optional[Union[tqdm, Callable]]
         :param skip_missed: If True, skip videos that are missing on server when restoring by hash.
         :type skip_missed: bool
-        :returns: Info of the newly created project.
+        :param project_description: Description of the destination project in Supervisely.
+        :type project_description: str, optional
+        :returns: ProjectInfo object.
         :rtype: :class:`~supervisely.api.project_api.ProjectInfo`
         """
         if isinstance(file, io.BytesIO):
@@ -1466,6 +1469,7 @@ class VideoProject(Project):
             log_progress=log_progress,
             progress_cb=progress_cb,
             skip_missed=skip_missed,
+            project_description=project_description,
         )
 
     @staticmethod
@@ -1505,6 +1509,12 @@ class VideoProject(Project):
             raise RuntimeError(
                 "pyarrow is required to build video snapshot. Please install pyarrow."
             ) from e
+
+        if batch_size > 100:
+            logger.warning(
+                "Batch size cannot be greater than 100 due to Video Project API limitations. Setting batch_size to 100."
+            )
+            batch_size = 100
 
         project_info = api.project.get_info_by_id(project_id)
         meta = ProjectMeta.from_json(api.project.get_meta(project_id, with_settings=True))
@@ -1723,6 +1733,7 @@ class VideoProject(Project):
         log_progress: bool = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         skip_missed: bool = False,
+        project_description: Optional[str] = None,
     ) -> ProjectInfo:
         """
         Restore a video project from a snapshot and return ProjectInfo.
@@ -1776,6 +1787,9 @@ class VideoProject(Project):
             if project_name is None:
                 project_name = src_project_name
 
+            if project_description is None:
+                project_description = src_project_desc
+
             if api.project.exists(workspace_id, project_name):
                 project_name = api.project.get_free_name(workspace_id, project_name)
 
@@ -1783,7 +1797,7 @@ class VideoProject(Project):
                 workspace_id,
                 project_name,
                 ProjectType.VIDEOS,
-                src_project_desc,
+                project_description,
                 readme=src_project_readme,
             )
             new_meta = api.project.update_meta(project.id, meta.to_json())

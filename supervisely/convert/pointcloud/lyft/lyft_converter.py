@@ -1,27 +1,28 @@
-import numpy as np
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, Optional
+
+import numpy as np
 
 from supervisely import (
     Api,
     ObjClass,
     PointcloudAnnotation,
-    ProjectMeta,
-    logger,
-    is_development,
-    Progress,
     PointcloudObject,
+    Progress,
+    ProjectMeta,
     TagMeta,
     TagValueType,
+    TinyTimer,
+    is_development,
+    logger,
 )
-from supervisely.io import fs
+from supervisely.api.api import ApiField
 from supervisely.convert.base_converter import AvailablePointcloudConverters
+from supervisely.convert.pointcloud.lyft import lyft_helper
 from supervisely.convert.pointcloud.pointcloud_converter import PointcloudConverter
 from supervisely.geometry.cuboid_3d import Cuboid3d
-from supervisely.convert.pointcloud.lyft import lyft_helper
-from supervisely.api.api import ApiField
-from datetime import datetime
-from supervisely import TinyTimer
+from supervisely.io import fs
 from supervisely.pointcloud_annotation.pointcloud_annotation import (
     PointcloudFigure,
     PointcloudObjectCollection,

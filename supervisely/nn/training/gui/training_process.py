@@ -1,7 +1,11 @@
-from typing import Any, Dict
+import os
+from typing import Any, Dict, List
 
 # Safe optional import for torch to prevent pylint import-error when the library is absent.
+if "LOGLEVEL" in os.environ:
+    os.environ["LOGLEVEL"] = os.environ["LOGLEVEL"].upper()
 try:
+
     import torch  # type: ignore
 except ImportError:  # pragma: no cover
     torch = None  # type: ignore
@@ -40,11 +44,22 @@ class TrainingProcess:
         self.app_options = app_options
 
         # GUI Components
+        self.is_multi_gpu = self.app_options.get("multi_gpu", False)
         if self.app_options.get("device_selector", False):
-            self.select_device = SelectCudaDevice()
+            self.select_device = SelectCudaDevice(
+                sort_by_free_ram=True, multiple=self.is_multi_gpu, width_px=275
+            )
+            select_device_field_title = None
+            select_device_field_description = None
+            if self.is_multi_gpu:
+                select_device_field_title = "Select CUDA devices"
+                select_device_field_description = "The devices on which the model will be trained."
+            else:
+                select_device_field_title = "Select CUDA device"
+                select_device_field_description = "The device on which the model will be trained."
             self.select_device_field = Field(
-                title="Select CUDA device",
-                description="The device on which the model will be trained",
+                title=select_device_field_title,
+                description=select_device_field_description,
                 content=self.select_device,
             )
             self.display_widgets.extend([self.select_device_field])
@@ -99,8 +114,16 @@ class TrainingProcess:
         else:
             return "cuda:0"
 
+    def get_devices(self) -> List:
+        if self.app_options.get("device_selector", False):
+            return self.select_device.get_devices()
+        else:
+            return ["cuda:0"]
+
     def get_device_name(self) -> str:
         device = self.get_device()
+        if isinstance(device, list):
+            device = device[0]
 
         if torch is not None and device.startswith("cuda"):
             device_name = torch.cuda.get_device_name(device)
@@ -108,6 +131,17 @@ class TrainingProcess:
             device_name = "CPU"
 
         return device_name
+
+    def get_device_names(self) -> List[str]:
+        devices = self.get_devices()
+        if torch is None:
+            return ["CPU"]
+        device_names = []
+        for device in devices:
+            if device.startswith("cuda"):
+                device_name = torch.cuda.get_device_name(device)
+                device_names.append(device_name)
+        return device_names
 
     def get_experiment_name(self) -> str:
         return self.experiment_name_input.get_value()
