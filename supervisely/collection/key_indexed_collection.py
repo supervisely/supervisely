@@ -349,10 +349,10 @@ class KeyIndexedCollection:
         """
         Find intersection of given list of instances with collection items.
 
-        :param key: List of :class:`~supervisely.annotation.obj_class_collection.ObjClassCollection`, TagMetaCollection or :class:`~supervisely.annotation.tag_collection.TagCollection` objects.
-        :type key:  List[:class:`~supervisely.collection.key_indexed_collection.KeyObject`]
+        :param other: List of items to intersect with the collection.
+        :type other: List[:class:`~supervisely.collection.key_indexed_collection.KeyObject`]
         :raises ValueError: if find items with same keys(item names)
-        :returns: :class:`~supervisely.collection.key_indexed_collection.KeyIndexedCollection` object
+        :returns: KeyIndexedCollection object
         :rtype: :class:`~supervisely.collection.key_indexed_collection.KeyIndexedCollection`
 
         :Usage Example:
@@ -398,8 +398,8 @@ class KeyIndexedCollection:
         """
         Find difference between collection and given list of instances.
 
-        :param key: List of :class:`~supervisely.annotation.obj_class_collection.ObjClassCollection`, TagMetaCollection or :class:`~supervisely.annotation.tag_collection.TagCollection` objects.
-        :type key:  List[:class:`~supervisely.collection.key_indexed_collection.KeyObject`]
+        :param other: List of items to subtract from the collection.
+        :type other: List[:class:`~supervisely.collection.key_indexed_collection.KeyObject`]
         :returns: :class:`~supervisely.collection.key_indexed_collection.KeyIndexedCollection` object
         :rtype: :class:`~supervisely.collection.key_indexed_collection.KeyIndexedCollection`
 
@@ -437,8 +437,8 @@ class KeyIndexedCollection:
         """
         Merge collection and other KeyIndexedCollection object.
 
-        :param key: :class:`~supervisely.collection.key_indexed_collection.KeyIndexedCollection` object.
-        :type key:  :class:`~supervisely.collection.key_indexed_collection.KeyIndexedCollection`
+        :param other: Other collection to merge with.
+        :type other: :class:`~supervisely.collection.key_indexed_collection.KeyIndexedCollection`
         :raises ValueError: if item name from given list is in collection but items in both are different
         :returns: :class:`~supervisely.collection.key_indexed_collection.KeyIndexedCollection` object
         :rtype: :class:`~supervisely.collection.key_indexed_collection.KeyIndexedCollection`
@@ -719,8 +719,8 @@ class MultiKeyIndexedCollection(KeyIndexedCollection):
         """
         Find intersection of given list of instances with collection items.
 
-        :param key: List of :class:`~supervisely.annotation.obj_class_collection.ObjClassCollection`, TagMetaCollection or :class:`~supervisely.annotation.tag_collection.TagCollection` objects.
-        :type key:  List[:class:`~supervisely.collection.key_indexed_collection.KeyObject`]
+        :param other: List of items to intersect with the collection.
+        :type other: List[:class:`~supervisely.collection.key_indexed_collection.KeyObject`]
         :raises ValueError: if find items with same keys(item names)
         :returns: :class:`~supervisely.collection.key_indexed_collection.MultiKeyIndexedCollection` object
         :rtype: :class:`~supervisely.collection.key_indexed_collection.MultiKeyIndexedCollection`
@@ -766,8 +766,8 @@ class MultiKeyIndexedCollection(KeyIndexedCollection):
         """
         Merge collection with other MultiKeyIndexedCollection object.
 
-        :param key: multi key indexed collection object.
-        :type key:  :class:`~supervisely.collection.key_indexed_collection.MultiKeyIndexedCollection`
+        :param other: Other multi key indexed collection object.
+        :type other: :class:`~supervisely.collection.key_indexed_collection.MultiKeyIndexedCollection`
         :returns: Merged multi key indexed collection object
         :rtype: :class:`~supervisely.collection.key_indexed_collection.MultiKeyIndexedCollection`
 
@@ -839,10 +839,10 @@ class MultiKeyIndexedCollection(KeyIndexedCollection):
         """
         Merge collection with other MultiKeyIndexedCollection object. Duplicates will be ignored.
 
-        :param key: multi key indexed collection object.
-        :type key:  :class:`~supervisely.collection.key_indexed_collection.MultiKeyIndexedCollection`
+        :param other: Other multi key indexed collection object.
+        :type other: :class:`~supervisely.collection.key_indexed_collection.MultiKeyIndexedCollection`
         :raises ValueError: if item name from given :class:`~supervisely.collection.key_indexed_collection.MultiKeyIndexedCollection` is in collection but items in both are different
-        :returns: :class:`~supervisely.collection.key_indexed_collection.MultiKeyIndexedCollection` object
+        :returns: MultiKeyIndexedCollection object
         :rtype: :class:`~supervisely.collection.key_indexed_collection.MultiKeyIndexedCollection`
 
         :Usage Example:

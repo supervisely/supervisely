@@ -11,36 +11,38 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
 class PointcloudEpisodeAnnotationAPI(EntityAnnotationAPI):
-    """
-    API for working with :class:`~supervisely.pointcloud_annotation.pointcloud_episode_annotation.PointcloudEpisodeAnnotation`.
-    :class:`~supervisely.api.pointcloud.pointcloud_episode_annotation_api.PointcloudEpisodeAnnotationAPI` object is immutable.
-
-    :param api: API connection to the server.
-    :type api: :class:`~supervisely.api.api.Api`
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import os
-            from dotenv import load_dotenv
-
-            import supervisely as sly
-
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            if sly.is_development():
-                load_dotenv(os.path.expanduser("~/supervisely.env"))
-
-            api = sly.Api.from_env()
-
-            dataset_id = 62664
-            ann_info = api.pointcloud_episode.annotation.download(dataset_id)
-            print(ann_info)
-    """
-
     _method_download = "point-clouds.episodes.annotations.info"
     _entity_ids_str = ApiField.POINTCLOUD_IDS
+
+    def __init__(self, api):
+        """
+        API for working with :class:`~supervisely.pointcloud_annotation.pointcloud_episode_annotation.PointcloudEpisodeAnnotation`.
+        :class:`~supervisely.api.pointcloud.pointcloud_episode_annotation_api.PointcloudEpisodeAnnotationAPI` object is immutable.
+
+        :param api: API connection to the server.
+        :type api: :class:`~supervisely.api.api.Api`
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import os
+                from dotenv import load_dotenv
+
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                dataset_id = 62664
+                ann_info = api.pointcloud_episode.annotation.download(dataset_id)
+                print(ann_info)
+        """
+        super().__init__(api)
 
     def download(self, dataset_id: int) -> dict:
         """

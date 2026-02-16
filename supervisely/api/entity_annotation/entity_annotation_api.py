@@ -18,6 +18,16 @@ class EntityAnnotationAPI(ModuleApi):
     _entity_ids_str = None
     """"""
 
+    def __init__(self, api):
+        """
+        EntityAnnotationAPI is a base class for all entity annotation APIs.
+
+        :param api: API connection to the server.
+        :type api: :class:`~supervisely.api.api.Api`
+        """
+        super().__init__(api)
+        self._api = api
+
     def download(self, entity_id):
         """"""
         raise NotImplementedError()

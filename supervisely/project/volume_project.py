@@ -51,6 +51,42 @@ class VolumeDataset(VideoDataset):
     item_module = sly_volume
     paths_tuple = VolumeItemPaths
 
+    def __init__(
+        self,
+        directory: str,
+        mode: Optional[OpenMode] = None,
+        parents: Optional[List[str]] = None,
+        dataset_id: Optional[int] = None,
+        api: Optional[sly.Api] = None,
+    ):
+        """
+        VolumeDataset is a dataset for volume data. VolumeDataset object is immutable.
+
+        :param directory: Path to dataset directory.
+        :type directory: str
+        :param mode: Determines working mode for the given dataset.
+        :type mode: :class:`~supervisely.project.project.OpenMode`, optional. If not provided, dataset_id must be provided.
+        :param parents: List of parent directories, e.g. ["ds1", "ds2", "ds3"].
+        :type parents: List[str]
+        :param dataset_id: Dataset ID if the Dataset is opened in API mode.
+            If dataset_id is specified then api must be specified as well.
+        :type dataset_id: Optional[int]
+        :param api: API object if the Dataset is opened in API mode.
+        :type api: :class:`~supervisely.api.api.Api`, optional.
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                dataset_path = "/home/admin/work/supervisely/projects/volumes_project/ds0"
+                ds = sly.VolumeDataset(dataset_path, sly.OpenMode.READ)
+                print(ds.project_dir)
+                # Output: "/home/admin/work/supervisely/projects/volumes_project"
+        """
+        super().__init__(directory, mode, parents, dataset_id, api)
+
     @classmethod
     def _has_valid_ext(cls, path: str) -> bool:
         """
@@ -129,6 +165,25 @@ class VolumeProject(VideoProject):
     _SECTION_DATASETS = 3
     _SECTION_VOLUMES = 4
     _SECTION_ANNOTATIONS = 5
+
+    def __init__(self, directory: str, mode: OpenMode):
+        """
+        VolumeProject is a parent directory for volume datasets. VolumeProject object is immutable.
+        :param directory: Path to volume project directory.
+        :type directory: str
+        :param mode: Determines working mode for the given project.
+        :type mode: :class:`~supervisely.project.project.OpenMode`
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                project_path = "/home/admin/work/supervisely/projects/volumes_project"
+                project = sly.VolumeProject(project_path, sly.OpenMode.READ)
+        """
+        super().__init__(directory, mode)
 
     def get_classes_stats(
         self,

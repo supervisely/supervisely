@@ -67,6 +67,42 @@ class VideoDataset(Dataset):
 
     datasets_dir_name = "datasets"
 
+    def __init__(
+        self,
+        directory: str,
+        mode: Optional[OpenMode] = None,
+        parents: Optional[List[str]] = None,
+        dataset_id: Optional[int] = None,
+        api: Optional[Api] = None,
+    ):
+        """
+        VideoDataset is a dataset for video data. VideoDataset object is immutable.
+
+        :param directory: Path to dataset directory.
+        :type directory: str
+        :param mode: Determines working mode for the given dataset.
+        :type mode: :class:`~supervisely.project.project.OpenMode`, optional. If not provided, dataset_id must be provided.
+        :param parents: List of parent directories, e.g. ["ds1", "ds2", "ds3"].
+        :type parents: List[str]
+        :param dataset_id: Dataset ID if the Dataset is opened in API mode.
+            If dataset_id is specified then api must be specified as well.
+        :type dataset_id: Optional[int]
+        :param api: API object if the Dataset is opened in API mode.
+        :type api: :class:`~supervisely.api.api.Api`, optional.
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                dataset_path = "/home/admin/work/supervisely/projects/videos_example/ds0"
+                ds = sly.VideoDataset(dataset_path, sly.OpenMode.READ)
+                print(ds.project_dir)
+                # Output: "/home/admin/work/supervisely/projects/videos_example"
+        """
+        super().__init__(directory, mode, parents, dataset_id, api)
+
     @property
     def project_dir(self) -> str:
         """

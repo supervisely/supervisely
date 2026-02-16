@@ -1121,6 +1121,12 @@ class ModuleApi(ModuleApiBase):
     """Number of seconds for intervals between attempts."""
 
     def __init__(self, api):
+        """
+        ModuleApi is a base class for all module APIs.
+
+        :param api: API connection to the server.
+        :type api: :class:`~supervisely.api.api.Api`
+        """
         super().__init__(api)
         self._api = api
 

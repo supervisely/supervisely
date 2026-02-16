@@ -196,8 +196,8 @@ class Rectangle(Geometry):
         """
         Crops current Rectangle.
 
-        :param rect: Rectangle to crop from.
-        :type rect: :class:`~supervisely.geometry.rectangle.Rectangle`
+        :param other: Rectangle to crop from.
+        :type other: :class:`~supervisely.geometry.rectangle.Rectangle`
         :returns: List of Rectangles from Rectangle.
         :rtype: List[:class:`~supervisely.geometry.rectangle.Rectangle`]
 

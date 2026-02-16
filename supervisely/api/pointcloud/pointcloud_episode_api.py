@@ -16,36 +16,35 @@ from supervisely.api.pointcloud.pointcloud_episode_object_api import (
 
 
 class PointcloudEpisodeApi(PointcloudApi):
-    """
-
-    API for working with point cloud episodes.
-    :class:`~supervisely.api.pointcloud.pointcloud_episode_api.PointcloudEpisodeApi` object is immutable.
-    Inherits from :class:`~supervisely.api.pointcloud.pointcloud_api.PointcloudApi`.
-
-    :param api: API connection to the server.
-    :type api: :class:`~supervisely.api.api.Api`
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import os
-            from dotenv import load_dotenv
-
-            import supervisely as sly
-
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            if sly.is_development():
-                load_dotenv(os.path.expanduser("~/supervisely.env"))
-
-            api = sly.Api.from_env()
-
-            pcd_epsodes_id = 19373295
-            pcd_epsodes_info = api.pointcloud_episode.get_info_by_id(pcd_epsodes_id) # api usage example
-    """
 
     def __init__(self, api):
+        """
+        API for working with point cloud episodes.
+        :class:`~supervisely.api.pointcloud.pointcloud_episode_api.PointcloudEpisodeApi` object is immutable.
+        Inherits from :class:`~supervisely.api.pointcloud.pointcloud_api.PointcloudApi`.
+
+        :param api: API connection to the server.
+        :type api: :class:`~supervisely.api.api.Api`
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import os
+                from dotenv import load_dotenv
+
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                pcd_epsodes_id = 19373295
+                pcd_epsodes_info = api.pointcloud_episode.get_info_by_id(pcd_epsodes_id) # api usage example
+        """
         super().__init__(api)
         self.annotation = PointcloudEpisodeAnnotationAPI(api)
         self.object = PointcloudEpisodeObjectApi(api)

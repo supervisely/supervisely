@@ -90,6 +90,41 @@ class PointcloudDataset(VideoDataset):
     annotation_class = PointcloudAnnotation
     item_info_type = PointcloudInfo
 
+    def __init__(
+        self,
+        directory: str,
+        mode: Optional[OpenMode] = None,
+        parents: Optional[List[str]] = None,
+        dataset_id: Optional[int] = None,
+        api: Optional[Api] = None,
+    ):
+        """
+        PointcloudDataset is a dataset for pointcloud data. PointcloudDataset object is immutable.
+
+        :param directory: Path to dataset directory.
+        :type directory: str
+        :param mode: Determines working mode for the given dataset.
+        :type mode: :class:`~supervisely.project.project.OpenMode`, optional. If not provided, dataset_id must be provided.
+        :param parents: List of parent directories, e.g. ["ds1", "ds2", "ds3"].
+        :type parents: List[str]
+        :param dataset_id: Dataset ID if the Dataset is opened in API mode.
+            If dataset_id is specified then api must be specified as well.
+        :type dataset_id: Optional[int]
+        :param api: API object if the Dataset is opened in API mode.
+        :type api: :class:`~supervisely.api.api.Api`, optional.
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                dataset_path = "/home/admin/work/supervisely/projects/ptc_project/ds0"
+                ds = sly.PointcloudDataset(dataset_path, sly.OpenMode.READ)
+                print(ds.project_dir)
+        """
+        super().__init__(directory, mode, parents, dataset_id, api)
+
     @property
     def img_dir(self) -> str:
         """
@@ -526,28 +561,30 @@ class PointcloudDataset(VideoDataset):
 
 
 class PointcloudProject(VideoProject):
-    """
-    PointcloudProject is a parent directory for pointcloud datasets. PointcloudProject object is immutable.
-
-    :param directory: Path to pointcloud project directory.
-    :type directory: str
-    :param mode: Determines working mode for the given project.
-    :type mode: :class:`~supervisely.project.project.OpenMode`
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import supervisely as sly
-
-            project_path = "/home/admin/work/supervisely/projects/ptc_project"
-            project = sly.PointcloudProject(project_path, sly.OpenMode.READ)
-    """
-
     dataset_class = PointcloudDataset
 
     class DatasetDict(KeyIndexedCollection):
         item_type = PointcloudDataset
+
+    def __init__(self, directory: str, mode: OpenMode):
+        """
+        PointcloudProject is a parent directory for pointcloud datasets. PointcloudProject object is immutable.
+
+        :param directory: Path to pointcloud project directory.
+        :type directory: str
+        :param mode: Determines working mode for the given project.
+        :type mode: :class:`~supervisely.project.project.OpenMode`
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                project_path = "/home/admin/work/supervisely/projects/ptc_project"
+                project = sly.PointcloudProject(project_path, sly.OpenMode.READ)
+        """
+        super().__init__(directory, mode)
 
     @classmethod
     def read_single(cls, dir) -> PointcloudProject:
