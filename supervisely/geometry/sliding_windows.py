@@ -6,8 +6,17 @@ from supervisely.geometry.validation import is_2d_int_coords_valid
 
 class SlidingWindows:
     """
+    Sliding windows.
     """
     def __init__(self, window_shape, min_overlap):
+        """
+        Sliding windows.
+
+        :param window_shape: Shape of the window (height, width).
+        :type window_shape: tuple
+        :param min_overlap: Minimum overlap of the window (height, width).
+        :type min_overlap: tuple
+        """
         if not is_2d_int_coords_valid([window_shape]):
             raise ValueError('window_shape must contains 2 integers.')
 
@@ -22,6 +31,12 @@ class SlidingWindows:
 
     def get(self, source_shape):
         """
+        Get the sliding windows.
+
+        :param source_shape: Shape of the source (image) (height, width).
+        :type source_shape: tuple
+        :returns: Generator of sliding windows.
+        :rtype: generator
         """
         source_rect = Rectangle.from_size(source_shape)
         window_rect = Rectangle.from_size(self.window_shape)

@@ -10,8 +10,7 @@ from supervisely.geometry.constants import MULTICHANNEL_BITMAP
 
 
 class MultichannelBitmap(BitmapBase):
-    """
-    """
+    """MultichannelBitmap is a geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.multichannel_bitmap.MultichannelBitmap` object is immutable."""
     @staticmethod
     def geometry_name():
         """
@@ -21,10 +20,25 @@ class MultichannelBitmap(BitmapBase):
     def __init__(self, data, origin: PointLocation = None,
                  sly_id=None, class_id=None, labeler_login=None, updated_at=None, created_at=None):
         """
-        The constructor for MultichannelBitmap class.
+        MultichannelBitmap is a geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.multichannel_bitmap.MultichannelBitmap` object is immutable.
+
         :param data: bool numpy array
         :param origin: points (x and y coordinates) of the top left corner of a bitmap, i.e. the position of the
         bitmap within the image
+        :type origin: :class:`~supervisely.geometry.point_location.PointLocation`
+        :param sly_id: MultichannelBitmap ID in Supervisely server.
+        :type sly_id: int, optional
+        :param class_id: ID of ObjClass to which MultichannelBitmap belongs.
+        :type class_id: int, optional
+        :param labeler_login: Login of the user who created :class:`~supervisely.geometry.multichannel_bitmap.MultichannelBitmap`.
+        :type labeler_login: str, optional
+        :param updated_at: Date and Time when MultichannelBitmap was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
+        :type updated_at: str, optional
+        :param created_at: Date and Time when MultichannelBitmap was created. Date Format is the same as in "updated_at" parameter.
+        :type created_at: str, optional
+        :raises TypeError: if origin is not a :class:`~supervisely.geometry.point_location.PointLocation` object
+        :raises TypeError: if data is not a bool numpy array
+        :raises ValueError: if data is not a 3-dimensional numpy array
         """
         super().__init__(data, origin, expected_data_dims=3,
                          sly_id=sly_id, class_id=class_id,
@@ -33,16 +47,21 @@ class MultichannelBitmap(BitmapBase):
     @classmethod
     def _impl_json_class_name(cls):
         """
+        Returns the name of the geometry.
+
+        :returns: name of the geometry
+        :rtype: str
         """
         return MULTICHANNEL_BITMAP
 
     def rotate(self, rotator):
         """
-        The function rotate render the bitmap within the full image canvas and rotate the whole canvas
+        Rotates the MultichannelBitmap within the full image canvas and rotate the whole canvas
         with a given rotator (ImageRotator class object contain size of image and angle to rotate)
+
         :param rotator: Class for image rotation.
         :type rotator: :class:`~supervisely.geometry.image_rotator.ImageRotator`
-        :returns: MultichannelBitmap after rotation.
+        :returns: Rotated MultichannelBitmap.
         :rtype: :class:`~supervisely.geometry.multichannel_bitmap.MultichannelBitmap`
         """
         full_img_data = np.zeros(rotator.src_imsize + self.data.shape[2:], dtype=self.data.dtype)
@@ -57,10 +76,11 @@ class MultichannelBitmap(BitmapBase):
 
     def crop(self, rect):
         """
-        Crop the current MultichannelBitmap object with a given rectangle
+        Crops the current MultichannelBitmap object with a given rectangle
+
         :param rect: Rectangle for crop.
         :type rect: :class:`~supervisely.geometry.rectangle.Rectangle`
-        :returns: MultichannelBitmap after crop.
+        :returns: Cropped MultichannelBitmap.
         :rtype: :class:`~supervisely.geometry.multichannel_bitmap.MultichannelBitmap`
         """
         maybe_cropped_area = self.to_bbox().crop(rect)
@@ -76,6 +96,7 @@ class MultichannelBitmap(BitmapBase):
     def resize(self, in_size, out_size):
         """
         Resize the current MultichannelBitmap to match a certain size
+
         :param in_size: input image size
         :type in_size: Tuple[int, int]
         :param out_size: output image size
@@ -102,7 +123,9 @@ class MultichannelBitmap(BitmapBase):
     @property
     def area(self):
         """
-        :returns: area of current MultichannelBitmap.
+        Returns the area of the current MultichannelBitmap.
+
+        :returns: Area of the MultichannelBitmap.
         :rtype: int
         """
         return self.data.shape[0] * self.data.shape[1]
@@ -111,6 +134,7 @@ class MultichannelBitmap(BitmapBase):
     def base64_2_data(s: str) -> np.ndarray:
         """
         The function base64_2_data convert base64 encoded string to numpy
+
         :param s: string
         :type s: str
         :returns: numpy array

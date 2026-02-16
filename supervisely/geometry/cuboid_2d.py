@@ -42,35 +42,7 @@ CUBOID2D_EDGES_MAPPING = [
 
 
 class Cuboid2d(GraphNodes):
-    """
-    Cuboid2d geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.cuboid_2d.Cuboid2d` class object is immutable.
-
-    :param nodes: Dict or List containing nodes of graph
-    :type nodes: dict
-    :param sly_id: Cuboid2d ID in Supervisely server.
-    :type sly_id: int, optional
-    :param class_id: ID of ObjClass to which Cuboid2d belongs.
-    :type class_id: int, optional
-    :param labeler_login: Login of the user who created :class:`~supervisely.geometry.cuboid_2d.Cuboid2d`.
-    :type labeler_login: str, optional
-    :param updated_at: Date and Time when Cuboid2d was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
-    :type updated_at: str, optional
-    :param created_at: Date and Time when Cuboid2d was created. Date Format is the same as in "updated_at" parameter.
-    :type created_at: str, optional
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import supervisely as sly
-            from supervisely.geometry.graph import Node, Cuboid2d
-
-            vertex_1 = Node(sly.PointLocation(5, 5))
-            vertex_2 = Node(sly.PointLocation(100, 100))
-            vertex_3 = Node(sly.PointLocation(200, 250))
-            nodes = {0: vertex_1, 1: vertex_2, 2: vertex_3}
-            figure = Cuboid2d(nodes)
-    """
+    """Cuboid2d is a geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.cuboid_2d.Cuboid2d` object is immutable."""
 
     items_json_field = VERTICES
 
@@ -91,6 +63,35 @@ class Cuboid2d(GraphNodes):
         dimensions: Optional[Dict] = None,
         face: Optional[List[str]] = None,
     ):
+        """
+        Cuboid2d geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.cuboid_2d.Cuboid2d` class object is immutable.
+
+        :param nodes: Dict or List containing nodes of graph
+        :type nodes: dict
+        :param sly_id: Cuboid2d ID in Supervisely server.
+        :type sly_id: int, optional
+        :param class_id: ID of ObjClass to which Cuboid2d belongs.
+        :type class_id: int, optional
+        :param labeler_login: Login of the user who created :class:`~supervisely.geometry.cuboid_2d.Cuboid2d`.
+        :type labeler_login: str, optional
+        :param updated_at: Date and Time when Cuboid2d was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
+        :type updated_at: str, optional
+        :param created_at: Date and Time when Cuboid2d was created. Date Format is the same as in "updated_at" parameter.
+        :type created_at: str, optional
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+                from supervisely.geometry.graph import Node, Cuboid2d
+
+                vertex_1 = Node(sly.PointLocation(5, 5))
+                vertex_2 = Node(sly.PointLocation(100, 100))
+                vertex_3 = Node(sly.PointLocation(200, 250))
+                nodes = {0: vertex_1, 1: vertex_2, 2: vertex_3}
+                figure = Cuboid2d(nodes)
+        """
         super().__init__(
             nodes=nodes,
             sly_id=sly_id,

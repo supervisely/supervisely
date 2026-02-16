@@ -11,6 +11,7 @@ from supervisely.project.download import is_cached
 
 
 class InputSelector:
+    """TrainApp GUI component for selecting an input data options."""
     title = "Input project"
     description = "Selected project from which items and annotations will be downloaded"
     lock_message = None

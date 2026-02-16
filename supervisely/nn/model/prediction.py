@@ -39,6 +39,7 @@ from supervisely.video.video import VideoFrameReader
 
 
 class Prediction:
+    """A single prediction result."""
     _temp_dir = os.path.join(tempfile.gettempdir(), "prediction_files")
     __cleanup_registered = False
 
@@ -124,7 +125,7 @@ class Prediction:
             self.path = str(self.source)
 
     def _init_geometries(self):
-
+        """Initialize the geometries of the prediction."""
         def _get_confidence(label: Label):
             for tag_name in ["confidence", "conf", "score"]:
                 conf_tag: Tag = label.tags.get(tag_name, None)
@@ -169,30 +170,35 @@ class Prediction:
 
     @property
     def boxes(self):
+        """Get the bounding boxes of the prediction."""
         if self._boxes is None:
             self._init_geometries()
         return self._boxes
 
     @property
     def masks(self):
+        """Get the masks of the prediction."""
         if self._masks is None:
             self._init_geometries()
         return self._masks
 
     @property
     def classes(self):
+        """Get the classes of the prediction."""
         if self._classes is None:
             self._init_geometries()
         return self._classes
 
     @property
     def scores(self):
+        """Get the scores of the prediction."""
         if self._scores is None:
             self._init_geometries()
         return self._scores
 
     @property
     def annotation(self) -> Annotation:
+        """Get the annotation of the prediction."""
         if self._annotation is None and self.annotation_json is not None:
             if self.model_meta is None:
                 raise ValueError("Model meta is not provided. Cannot create annotation.")
@@ -202,6 +208,7 @@ class Prediction:
 
     @annotation.setter
     def annotation(self, annotation: Union[Annotation, Dict]):
+        """Set the annotation of the prediction."""
         if isinstance(annotation, Annotation):
             self._annotation = annotation
             self.annotation_json = annotation.to_json()
@@ -213,6 +220,7 @@ class Prediction:
 
     @property
     def class_idxs(self) -> np.ndarray:
+        """Get the class indexes of the prediction."""
         if self.model_meta is None:
             raise ValueError("Model meta is not provided. Cannot create class indexes.")
         cls_name_to_idx = {
@@ -221,7 +229,11 @@ class Prediction:
         return np.array([cls_name_to_idx[class_name] for class_name in self.classes])
     @property
     def track_ids(self):
-        """Get track IDs for each detection. Returns None for detections without tracking."""
+        """Get track IDs for each detection. Returns None for detections without tracking.
+
+        :returns: Track IDs for each detection.
+        :rtype: np.ndarray
+        """
         if self._track_ids is None:
             self._init_geometries()
         return self._track_ids

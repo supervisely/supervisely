@@ -20,64 +20,16 @@ from supervisely.imaging.image import read
 
 
 class AlphaMask(Bitmap):
-    """
-    AlphaMask geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.alpha_mask.AlphaMask` object is immutable.
-
-    :param data: AlphaMask mask data. Must be a numpy array with values in range [0, 255].
-    :type data: np.ndarray
-    :param origin: :class:`PointLocation<~supervisely.geometry.point_location.PointLocation>`: top, left corner of AlphaMask. Position of the AlphaMask within image.
-    :type origin: :class:`~supervisely.geometry.point_location.PointLocation`, optional
-    :param sly_id: AlphaMask ID in Supervisely server.
-    :type sly_id: int, optional
-    :param class_id: ID of ObjClass to which AlphaMask belongs.
-    :type class_id: int, optional
-    :param labeler_login: Login of the user who created :class:`~supervisely.geometry.alpha_mask.AlphaMask`.
-    :type labeler_login: str, optional
-    :param updated_at: Date and Time when AlphaMask was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
-    :type updated_at: str, optional
-    :param created_at: Date and Time when AlphaMask was created. Date Format is the same as in "updated_at" parameter.
-    :type created_at: str, optional
-    :param extra_validation: If True, additional validation is performed. Throws a ValueError if values of the data are not in the range [0, 255]. If True it will affect performance.
-    :type extra_validation: bool, optional
-    :raises ValueError, if data values are not in the range [0, 255].
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import supervisely as sly
-
-            # Create simple alpha mask:
-            mask = np.array([[0, 0, 0, 0, 0],
-                            [0, 50, 50, 50, 0],
-                            [0, 50, 0, 50, 0],
-                            [0, 50, 50, 50, 0],
-                            [0, 0, 0, 0, 0]], dtype=np.uint8)
-
-            figure = sly.AlphaMask(mask)
-
-            origin = figure.origin.to_json()
-            print(json.dumps(origin, indent=4))
-            # Output: {
-            #     "points": {
-            #         "exterior": [
-            #             [
-            #                 1,
-            #                 1
-            #             ]
-            #         ],
-            #         "interior": []
-            #     }
-
-            # Create alpha mask from PNG image:
-            img = sly.imaging.image.read(os.path.join(os.getcwd(), 'black_white.png'))
-            mask = img[:, :, 3]
-            figure = sly.AlphaMask(mask)
-    """
+    """AlphaMask geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.alpha_mask.AlphaMask` object is immutable."""
 
     @staticmethod
     def geometry_name():
-        """geometry_name"""
+        """
+        Returns the name of the geometry.
+
+        :returns: name of the geometry
+        :rtype: str
+        """
         return "alpha_mask"
 
     def __init__(
@@ -91,6 +43,60 @@ class AlphaMask(Bitmap):
         created_at: Optional[str] = None,
         extra_validation: Optional[bool] = True,
     ):
+        """
+        AlphaMask geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.alpha_mask.AlphaMask` object is immutable.
+
+        :param data: AlphaMask mask data. Must be a numpy array with values in range [0, 255].
+        :type data: np.ndarray
+        :param origin: :class:`PointLocation<~supervisely.geometry.point_location.PointLocation>`: top, left corner of AlphaMask. Position of the AlphaMask within image.
+        :type origin: :class:`~supervisely.geometry.point_location.PointLocation`, optional
+        :param sly_id: AlphaMask ID in Supervisely server.
+        :type sly_id: int, optional
+        :param class_id: ID of ObjClass to which AlphaMask belongs.
+        :type class_id: int, optional
+        :param labeler_login: Login of the user who created :class:`~supervisely.geometry.alpha_mask.AlphaMask`.
+        :type labeler_login: str, optional
+        :param updated_at: Date and Time when AlphaMask was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
+        :type updated_at: str, optional
+        :param created_at: Date and Time when AlphaMask was created. Date Format is the same as in "updated_at" parameter.
+        :type created_at: str, optional
+        :param extra_validation: If True, additional validation is performed. Throws a ValueError if values of the data are not in the range [0, 255]. If True it will affect performance.
+        :type extra_validation: bool, optional
+        :raises ValueError, if data values are not in the range [0, 255].
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                # Create simple alpha mask:
+                mask = np.array([[0, 0, 0, 0, 0],
+                                [0, 50, 50, 50, 0],
+                                [0, 50, 0, 50, 0],
+                                [0, 50, 50, 50, 0],
+                                [0, 0, 0, 0, 0]], dtype=np.uint8)
+
+                figure = sly.AlphaMask(mask)
+
+                origin = figure.origin.to_json()
+                print(json.dumps(origin, indent=4))
+                # Output: {
+                #     "points": {
+                #         "exterior": [
+                #             [
+                #                 1,
+                #                 1
+                #             ]
+                #         ],
+                #         "interior": []
+                #     }
+
+                # Create alpha mask from PNG image:
+                img = sly.imaging.image.read(os.path.join(os.getcwd(), 'black_white.png'))
+                mask = img[:, :, 3]
+                figure = sly.AlphaMask(mask)
+        """
         if data.dtype != np.uint8:
             if data.dtype == np.bool:
                 data = data.astype(np.uint8) * 255
@@ -155,7 +161,7 @@ class AlphaMask(Bitmap):
         return AlphaMask(data=new_mask)
 
     def _draw_impl(self, bitmap, color, thickness=1, config=None):
-        """_draw_impl"""
+        """Draws the AlphaMask on a bitmap."""
         channels = bitmap.shape[2] if len(bitmap.shape) == 3 else 1
         non_zero_values = self.data > 0
         alpha = self.data / 255.0
@@ -285,7 +291,7 @@ class AlphaMask(Bitmap):
 
     @classmethod
     def allowed_transforms(cls):
-        """allowed_transforms"""
+        """Returns the allowed transforms for the AlphaMask."""
         from supervisely.geometry.any_geometry import AnyGeometry
         from supervisely.geometry.bitmap import Bitmap
         from supervisely.geometry.polygon import Polygon

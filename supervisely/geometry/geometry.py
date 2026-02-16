@@ -76,7 +76,11 @@ class Geometry(JsonSerializable):
 
     @staticmethod
     def geometry_name():
-        """Get the name of the geometry.
+        """
+        Get the name of the geometry.
+
+        :returns: name of the geometry
+        :rtype: str
         :returns: string with name of geometry
         """
         raise NotImplementedError()

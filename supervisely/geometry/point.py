@@ -23,34 +23,7 @@ from supervisely.geometry.rectangle import Rectangle
 
 
 class Point(Geometry):
-    """
-    Point geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.point.Point` object is immutable.
-
-    :param row: Position of Point on height.
-    :type row: int or float
-    :param col: Position of Point on width.
-    :type col: int or float
-    :param sly_id: Point ID in Supervisely server.
-    :type sly_id: int, optional
-    :param class_id: ID of ObjClass to which Point belongs.
-    :type class_id: int, optional
-    :param labeler_login: Login of the user who created Point.
-    :type labeler_login: str, optional
-    :param updated_at: Date and Time when Point was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
-    :type updated_at: str, optional
-    :param created_at: Date and Time when Point was created. Date Format is the same as in "updated_at" parameter.
-    :type created_at: str, optional
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import supervisely as sly
-
-            row = 100
-            col = 200
-            figure = sly.Point(row, col)
-    """
+    """Point geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.point.Point` object is immutable."""
 
     def __init__(
         self,
@@ -62,6 +35,34 @@ class Point(Geometry):
         updated_at: Optional[str] = None,
         created_at: Optional[str] = None,
     ):
+        """
+        Point geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.point.Point` object is immutable.
+
+        :param row: Position of Point on height.
+        :type row: int or float
+        :param col: Position of Point on width.
+        :type col: int or float
+        :param sly_id: Point ID in Supervisely server.
+        :type sly_id: int, optional
+        :param class_id: ID of ObjClass to which Point belongs.
+        :type class_id: int, optional
+        :param labeler_login: Login of the user who created Point.
+        :type labeler_login: str, optional
+        :param updated_at: Date and Time when Point was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
+        :type updated_at: str, optional
+        :param created_at: Date and Time when Point was created. Date Format is the same as in "updated_at" parameter.
+        :type created_at: str, optional
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                row = 100
+                col = 200
+                figure = sly.Point(row, col)
+        """
         super().__init__(
             sly_id=sly_id,
             class_id=class_id,

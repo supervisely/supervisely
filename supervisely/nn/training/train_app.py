@@ -74,6 +74,9 @@ from supervisely.template.experiment.experiment_generator import ExperimentGener
 
 
 class TrainApp:
+    """
+    High-level wrapper for building Supervisely training applications.
+    """
 
     def __init__(
         self,

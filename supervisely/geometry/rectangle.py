@@ -67,7 +67,12 @@ class Rectangle(Geometry):
 
     @staticmethod
     def geometry_name():
-        """ """
+        """
+        Returns the name of the geometry.
+
+        :returns: name of the geometry
+        :rtype: str
+        """
         return "rectangle"
 
     def __init__(

@@ -16,6 +16,7 @@ from supervisely.app.widgets import (
 
 
 class TrainingLogs:
+    """TrainApp GUI component for tracking training logs."""
     title = "Training Logs"
     description = "Track training progress"
     lock_message = "Start training to unlock"

@@ -136,10 +136,16 @@ class CuboidFace:
 
 
 class Cuboid(Geometry):
+    """Cuboid is a geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.cuboid.Cuboid` object is immutable."""
 
     @staticmethod
     def geometry_name():
-        """ """
+        """
+        Returns the name of the geometry.
+
+        :returns: name of the geometry
+        :rtype: str
+        """
         return "cuboid"
 
     def __init__(

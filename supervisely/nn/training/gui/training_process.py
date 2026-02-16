@@ -23,6 +23,7 @@ from supervisely.app.widgets import (
 
 
 class TrainingProcess:
+    """TrainApp GUI component for managing the training process."""
     title = "Training Process"
     description = "Manage training process"
     lock_message = "Select previous step to unlock"

@@ -17,7 +17,14 @@ class RenamingObjClassMapper(ObjClassMapper):
     """
     This is a class for renaming ObjClass in given ObjClassCollection
     """
+
     def __init__(self, dest_obj_classes: ObjClassCollection, renamer: Renamer):
+        """
+        :param dest_obj_classes: :class:`~supervisely.annotation.obj_class_collection.ObjClassCollection` object to map to.
+        :type dest_obj_classes: :class:`~supervisely.annotation.obj_class_collection.ObjClassCollection`
+        :param renamer: :class:`~supervisely.annotation.renamer.Renamer` object to use for renaming.
+        :type renamer: :class:`~supervisely.annotation.renamer.Renamer`
+        """
         self._dest_obj_classes = dest_obj_classes
         self._renamer = renamer
 

@@ -11,6 +11,7 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
 class PointcloudEpisodeAnnotationAPI(EntityAnnotationAPI):
+    """API for working with point cloud episode annotations."""
     _method_download = "point-clouds.episodes.annotations.info"
     _entity_ids_str = ApiField.POINTCLOUD_IDS
 

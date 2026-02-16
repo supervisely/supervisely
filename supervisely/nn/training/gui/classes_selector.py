@@ -18,6 +18,7 @@ from supervisely.nn.training.gui.model_selector import ModelSelector
 
 
 class ClassesSelector:
+    """TrainApp GUI component for selecting model classes."""
     title = "Classes Selector"
     description = "Select classes that will be used for training"
     lock_message = "Select previous step to unlock"

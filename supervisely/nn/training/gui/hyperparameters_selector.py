@@ -12,6 +12,7 @@ from supervisely.app.widgets import (
 
 
 class HyperparametersSelector:
+    """GUI component for selecting hyperparameters."""
     title = "Hyperparameters"
     description = "Set hyperparameters for training"
     lock_message = "Select previous step to unlock"

@@ -25,37 +25,6 @@ from supervisely.geometry.rectangle import Rectangle
 class VectorGeometry(Geometry):
     """
     VectorGeometry is a base class of geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.vector_geometry.VectorGeometry` object is immutable.
-
-    :param exterior: Exterior coordinates, object contour is defined with these points (used for :class:`~supervisely.geometry.polygon.Polygon`).
-    :type exterior: List[:class:`~supervisely.geometry.point_location.PointLocation`], List[List[int, int]], List[Tuple[int, int]
-    :param interior: Interior coordinates, object holes is defined with these points (used for :class:`~supervisely.geometry.polygon.Polygon`).
-    :type interior: List[List[:class:`~supervisely.geometry.point_location.PointLocation`]], List[List[List[int, int]]], List[List[Tuple[int, int]]]
-    :param sly_id: VectorGeometry ID in Supervisely server.
-    :type sly_id: int, optional
-    :param class_id: ID of :class:`~supervisely.project.obj_class.ObjClass` to which VectorGeometry belongs.
-    :type class_id: int, optional
-    :param labeler_login: Login of the user who created VectorGeometry.
-    :type labeler_login: str, optional
-    :param updated_at: Date and Time when VectorGeometry was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
-    :type updated_at: str, optional
-    :param created_at: Date and Time when VectorGeometry was created. Date Format is the same as in "updated_at" parameter.
-    :type created_at: str, optional
-    :raises TypeError: if exterior or interior parameters are not a list of :class:`~supervisely.geometry.point_location.PointLocation` objects
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import supervisely as sly
-
-            exterior = [sly.PointLocation(730, 2104), sly.PointLocation(2479, 402), sly.PointLocation(3746, 1646)]
-            # or exterior = [[730, 2104], [2479, 402], [3746, 1646]]
-            # or exterior = [(730, 2104), (2479, 402), (3746, 1646)]
-            interior = [[sly.PointLocation(1907, 1255), sly.PointLocation(2468, 875), sly.PointLocation(2679, 1577)]]
-            # or interior = [[[730, 2104], [2479, 402], [3746, 1646]]]
-            # or interior = [[(730, 2104), (2479, 402), (3746, 1646)]]
-
-            figure = sly.Polygon(exterior, interior)
     """
 
     def __init__(
@@ -72,6 +41,40 @@ class VectorGeometry(Geometry):
         updated_at: Optional[str] = None,
         created_at: Optional[str] = None,
     ):
+        """
+        VectorGeometry is a base class of geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.vector_geometry.VectorGeometry` object is immutable.
+
+        :param exterior: Exterior coordinates, object contour is defined with these points (used for :class:`~supervisely.geometry.polygon.Polygon`).
+        :type exterior: List[:class:`~supervisely.geometry.point_location.PointLocation`], List[List[int, int]], List[Tuple[int, int]
+        :param interior: Interior coordinates, object holes is defined with these points (used for :class:`~supervisely.geometry.polygon.Polygon`).
+        :type interior: List[List[:class:`~supervisely.geometry.point_location.PointLocation`]], List[List[List[int, int]]], List[List[Tuple[int, int]]]
+        :param sly_id: VectorGeometry ID in Supervisely server.
+        :type sly_id: int, optional
+        :param class_id: ID of :class:`~supervisely.project.obj_class.ObjClass` to which VectorGeometry belongs.
+        :type class_id: int, optional
+        :param labeler_login: Login of the user who created VectorGeometry.
+        :type labeler_login: str, optional
+        :param updated_at: Date and Time when VectorGeometry was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
+        :type updated_at: str, optional
+        :param created_at: Date and Time when VectorGeometry was created. Date Format is the same as in "updated_at" parameter.
+        :type created_at: str, optional
+        :raises TypeError: if exterior or interior parameters are not a list of :class:`~supervisely.geometry.point_location.PointLocation` objects
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                exterior = [sly.PointLocation(730, 2104), sly.PointLocation(2479, 402), sly.PointLocation(3746, 1646)]
+                # or exterior = [[730, 2104], [2479, 402], [3746, 1646]]
+                # or exterior = [(730, 2104), (2479, 402), (3746, 1646)]
+                interior = [[sly.PointLocation(1907, 1255), sly.PointLocation(2468, 875), sly.PointLocation(2679, 1577)]]
+                # or interior = [[[730, 2104], [2479, 402], [3746, 1646]]]
+                # or interior = [[(730, 2104), (2479, 402), (3746, 1646)]]
+
+                figure = sly.Polygon(exterior, interior)
+        """
         result_exterior = []
         if not isinstance(exterior, list):
             raise TypeError('Argument "exterior" must be a list of coordinates')

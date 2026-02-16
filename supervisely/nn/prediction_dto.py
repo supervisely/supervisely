@@ -7,6 +7,8 @@ from supervisely.geometry.polyline_3d import Polyline3D
 
 
 class Prediction:
+    """Base class for predictions."""
+
     def __init__(self, class_name):
         """
         :param class_name: Name of the class.
@@ -16,6 +18,8 @@ class Prediction:
 
 
 class PredictionMask(Prediction):
+    """Prediction for a mask."""
+
     def __init__(self, class_name: str, mask: np.ndarray, score: Optional[float] = None):
         """
         :param class_name: Name of the class.
@@ -31,6 +35,8 @@ class PredictionMask(Prediction):
 
 
 class PredictionBBox(Prediction):
+    """Prediction for a bounding box."""
+
     def __init__(self, class_name: str, bbox_tlbr: List[int], score: Optional[float], angle: Optional[float] = None):
         """
         :param class_name: Predicted class name.
@@ -49,6 +55,8 @@ class PredictionBBox(Prediction):
 
 
 class PredictionSegmentation(Prediction):
+    """Prediction for a segmentation."""
+
     def __init__(self, mask: np.ndarray):
         """
         :param mask: Numpy array with bool or binary ([0, 1] or [0, 255]) values.
@@ -58,6 +66,8 @@ class PredictionSegmentation(Prediction):
 
 
 class PredictionAlphaMask(Prediction):
+    """Prediction for an alpha mask."""
+
     def __init__(self, class_name: str, mask: np.ndarray):
         """
         :param class_name: Name of the class.
@@ -70,6 +80,8 @@ class PredictionAlphaMask(Prediction):
 
 
 class ProbabilityMask(Prediction):
+    """Prediction for a probability mask."""
+
     def __init__(self, class_name: str, mask: np.ndarray):
         """
         :param class_name: Name of the class.
@@ -82,6 +94,8 @@ class ProbabilityMask(Prediction):
 
 
 class PredictionKeypoints(Prediction):
+    """Prediction for keypoints."""
+
     def __init__(self, class_name: str, labels: List[str], coordinates: List[float]):
         """
         :param class_name: Name of the class.
@@ -97,6 +111,8 @@ class PredictionKeypoints(Prediction):
 
 
 class PredictionPoint(Prediction):
+    """Prediction for a point."""
+
     def __init__(self, class_name: str, col: int, row: int):
         """
         :param class_name: Name of the class.
@@ -112,6 +128,8 @@ class PredictionPoint(Prediction):
 
 
 class PredictionCuboid3d(Prediction):
+    """Prediction for a 3D cuboid."""
+
     def __init__(self, class_name: str, cuboid_3d: Cuboid3d, score: Optional[float]):
         """
         :param class_name: Name of the class.
@@ -127,6 +145,8 @@ class PredictionCuboid3d(Prediction):
 
 
 class PredictionPolyline3D(Prediction):
+    """Prediction for a 3D polyline."""
+
     def __init__(self, class_name: str, polyline_3d: Polyline3D):
         """
         :param class_name: Name of the class.

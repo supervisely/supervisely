@@ -28,6 +28,7 @@ TRT_FILE_NAME = "demo_tensorrt.py"
 
 
 class TrainingArtifacts:
+    """TrainApp GUI component for training artifacts step."""
     title = "Training Artifacts"
     description = "All outputs of the training process will appear here"
     lock_message = "Artifacts will be available after training is completed"

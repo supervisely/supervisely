@@ -17,6 +17,8 @@ from supervisely.io.json import JsonSerializable
 
 
 class ObjClassCollection(KeyIndexedCollection, JsonSerializable):
+    """Collection with :class:`ObjClass<~supervisely.annotation.obj_class.ObjClass>` instances. :class:`ObjClassCollection<~supervisely.annotation.obj_class_collection.ObjClassCollection>` object is immutable."""
+
     item_type = ObjClass
 
     def __init__(self, items: Optional[List[ObjClass]] = None):

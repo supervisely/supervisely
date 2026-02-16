@@ -68,12 +68,16 @@ class Vector3d:
 
 class Cuboid3d(Geometry):
     """
-    This is a class for creating and using Cuboid3d objects for Labels
+    Cuboid3d is a geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.cuboid_3d.Cuboid3d` object is immutable.
     """
 
     @staticmethod
     def geometry_name():
         """
+        Returns the name of the geometry.
+
+        :returns: name of the geometry
+        :rtype: str
         """
         return 'cuboid_3d'
 
@@ -89,6 +93,8 @@ class Cuboid3d(Geometry):
         created_at: Optional[str] = None,
     ):
         """
+        Cuboid3d is a geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.cuboid_3d.Cuboid3d` object is immutable.
+
         :param position: Vector3d.
         :type position: :class:`~supervisely.geometry.cuboid_3d.Vector3d`
         :param rotation: Vector3d.
@@ -122,24 +128,39 @@ class Cuboid3d(Geometry):
     @property
     def position(self):
         """
+        Copy of the position of the Cuboid3d.
+
+        :returns: Position of the :class:`~supervisely.geometry.cuboid_3d.Cuboid3d`
+        :rtype: :class:`~supervisely.geometry.cuboid_3d.Vector3d`
         """
         return self._position.clone()
 
     @property
     def rotation(self):
         """
+        Copy of the rotation of the Cuboid3d.
+
+        :returns: Rotation of the :class:`~supervisely.geometry.cuboid_3d.Cuboid3d`
+        :rtype: :class:`~supervisely.geometry.cuboid_3d.Vector3d`
         """
         return self._rotation.clone()
 
     @property
     def dimensions(self):
         """
+        Copy of the dimensions of the Cuboid3d.
+
+        :returns: Dimensions of the :class:`~supervisely.geometry.cuboid_3d.Cuboid3d`
+        :rtype: :class:`~supervisely.geometry.cuboid_3d.Vector3d`
         """
         return self._dimensions.clone()
 
     def to_json(self):
         """
-        The function to_json convert Cuboid3d class object to json format(dict)
+        Converts the Cuboid3d to a JSON object.
+
+        :returns: JSON object
+        :rtype: dict
         :returns: Cuboid3d in json format
         """
         res = {POSITION: self.position.to_json(),
@@ -152,7 +173,12 @@ class Cuboid3d(Geometry):
     @classmethod
     def from_json(cls, data):
         """
-        The function from_json convert Cuboid3d from json format(dict) to Cuboid3d class object.
+        Converts a JSON object to a Cuboid3d.
+
+        :param data: JSON object
+        :type data: dict
+        :returns: Cuboid3d
+        :rtype: :class:`~supervisely.geometry.cuboid_3d.Cuboid3d`
         :param data: Cuboid3d in json format(dict)
         :returns: Cuboid3d from json.
         :rtype: :class:`~supervisely.geometry.cuboid_3d.Cuboid3d`

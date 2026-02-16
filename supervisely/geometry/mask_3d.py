@@ -36,30 +36,31 @@ if not hasattr(np, "bool"):
 
 
 class PointVolume(JsonSerializable):
-    """
-    PointVolume (x, y, z) determines position of Mask3D. It locates the first sample.
-    :class:`~supervisely.geometry.mask_3d.PointVolume` object is immutable.
-
-    :param x: Position of :class:`~supervisely.geometry.mask_3d.PointVolume` object on X-axis.
-    :type x: int or float
-    :param y: Position of :class:`~supervisely.geometry.mask_3d.PointVolume` object on Y-axis.
-    :type y: int or float
-    :param z: Position of :class:`~supervisely.geometry.mask_3d.PointVolume` object on Z-axis.
-    :type z: int or float
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import supervisely as sly
-
-            x = 100
-            y = 200
-            z = 2
-            loc = sly.PointVolume(x, y, z)
-    """
+    """PointVolume is a geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.mask_3d.PointVolume` object is immutable."""
 
     def __init__(self, x: Union[int, float], y: Union[int, float], z: Union[int, float]):
+        """
+        PointVolume (x, y, z) determines position of Mask3D. It locates the first sample.
+        :class:`~supervisely.geometry.mask_3d.PointVolume` object is immutable.
+
+        :param x: Position of :class:`~supervisely.geometry.mask_3d.PointVolume` object on X-axis.
+        :type x: int or float
+        :param y: Position of :class:`~supervisely.geometry.mask_3d.PointVolume` object on Y-axis.
+        :type y: int or float
+        :param z: Position of :class:`~supervisely.geometry.mask_3d.PointVolume` object on Z-axis.
+        :type z: int or float
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                x = 100
+                y = 200
+                z = 2
+                loc = sly.PointVolume(x, y, z)
+        """
         self._x = round(unwrap_if_numpy(x))
         self._y = round(unwrap_if_numpy(y))
         self._z = round(unwrap_if_numpy(z))
@@ -169,6 +170,7 @@ class PointVolume(JsonSerializable):
 
 
 class Mask3D(Geometry):
+    """Mask3D is a geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.mask_3d.Mask3D` object is immutable."""
 
     def __init__(
         self,

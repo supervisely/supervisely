@@ -20,6 +20,7 @@ from supervisely._utils import get_filename_from_headers
 
 
 class ModelSelector:
+    """TrainApp GUI component for selecting a model."""
     title = "Select Model"
     description = "Select a model for training"
     lock_message = "Select previous step to unlock"

@@ -35,42 +35,17 @@ from supervisely.sly_logger import logger
 
 class Polygon(VectorGeometry):
     """
-    Polygon geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.polygon.Polygon` object is immutable.
-
-    :param exterior: Exterior coordinates, object contour is defined with these points.
-    :type exterior: List[:class:`~supervisely.geometry.point_location.PointLocation`], List[List[int, int]], List[Tuple[int, int]
-    :param interior: Interior coordinates, object holes are defined with these points.
-    :type interior: List[List[:class:`~supervisely.geometry.point_location.PointLocation`]], List[List[List[int, int]]], List[List[Tuple[int, int]]]
-    :param sly_id: Polygon ID in Supervisely server.
-    :type sly_id: int, optional
-    :param class_id: ID of ObjClass to which Polygon belongs.
-    :type class_id: int, optional
-    :param labeler_login: Login of the user who created Polygon.
-    :type labeler_login: str, optional
-    :param updated_at: Date and Time when Polygon was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
-    :type updated_at: str, optional
-    :param created_at: Date and Time when Polygon was created. Date Format is the same as in "updated_at" parameter.
-    :type created_at: str, optional
-    :raises ValueError: if len(exterior) < 3 or len(any element in interior list) < 3
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import supervisely as sly
-
-            exterior = [sly.PointLocation(730, 2104), sly.PointLocation(2479, 402), sly.PointLocation(3746, 1646)]
-            # or exterior = [[730, 2104], [2479, 402], [3746, 1646]]
-            # or exterior = [(730, 2104), (2479, 402), (3746, 1646)]
-            interior = [[sly.PointLocation(1907, 1255), sly.PointLocation(2468, 875), sly.PointLocation(2679, 1577)]]
-            # or interior = [[[730, 2104], [2479, 402], [3746, 1646]]]
-            # or interior = [[(730, 2104), (2479, 402), (3746, 1646)]]
-            figure = sly.Polygon(exterior, interior)
+    Polygon is a geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.polygon.Polygon` object is immutable.
     """
 
     @staticmethod
     def geometry_name():
-        """ """
+        """
+        Returns the name of the geometry.
+
+        :returns: name of the geometry
+        :rtype: str
+        """
         return "polygon"
 
     def __init__(
@@ -85,6 +60,39 @@ class Polygon(VectorGeometry):
         updated_at: Optional[str] = None,
         created_at: Optional[str] = None,
     ):
+        """
+        Polygon geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.polygon.Polygon` object is immutable.
+
+        :param exterior: Exterior coordinates, object contour is defined with these points.
+        :type exterior: List[:class:`~supervisely.geometry.point_location.PointLocation`], List[List[int, int]], List[Tuple[int, int]
+        :param interior: Interior coordinates, object holes are defined with these points.
+        :type interior: List[List[:class:`~supervisely.geometry.point_location.PointLocation`]], List[List[List[int, int]]], List[List[Tuple[int, int]]]
+        :param sly_id: Polygon ID in Supervisely server.
+        :type sly_id: int, optional
+        :param class_id: ID of ObjClass to which Polygon belongs.
+        :type class_id: int, optional
+        :param labeler_login: Login of the user who created Polygon.
+        :type labeler_login: str, optional
+        :param updated_at: Date and Time when Polygon was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
+        :type updated_at: str, optional
+        :param created_at: Date and Time when Polygon was created. Date Format is the same as in "updated_at" parameter.
+        :type created_at: str, optional
+        :raises ValueError: if len(exterior) < 3 or len(any element in interior list) < 3
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                exterior = [sly.PointLocation(730, 2104), sly.PointLocation(2479, 402), sly.PointLocation(3746, 1646)]
+                # or exterior = [[730, 2104], [2479, 402], [3746, 1646]]
+                # or exterior = [(730, 2104), (2479, 402), (3746, 1646)]
+                interior = [[sly.PointLocation(1907, 1255), sly.PointLocation(2468, 875), sly.PointLocation(2679, 1577)]]
+                # or interior = [[[730, 2104], [2479, 402], [3746, 1646]]]
+                # or interior = [[(730, 2104), (2479, 402), (3746, 1646)]]
+                figure = sly.Polygon(exterior, interior)
+        """
         if len(exterior) < 3:
             exterior.extend([exterior[-1]] * (3 - len(exterior)))
             logger.warn(

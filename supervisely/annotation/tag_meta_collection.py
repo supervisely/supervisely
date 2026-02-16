@@ -1,7 +1,5 @@
 # coding: utf-8
-"""Collection with :class:`TagMeta<~supervisely.annotation.tag_meta.TagMeta>` instances"""
 
-# docs
 from __future__ import annotations
 
 from collections import Counter
@@ -14,6 +12,8 @@ from supervisely.io.json import JsonSerializable
 
 
 class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
+    """Collection with :class:`TagMeta<~supervisely.annotation.tag_meta.TagMeta>` instances."""
+
     item_type = TagMeta
 
     def __init__(self, items: Optional[List[TagMeta]] = None):

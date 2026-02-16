@@ -1,4 +1,6 @@
 class TaskType:
+    """Types of tasks for Neural Networks."""
+
     OBJECT_DETECTION = "object detection"
     INSTANCE_SEGMENTATION = "instance segmentation"
     SEMANTIC_SEGMENTATION = "semantic segmentation"

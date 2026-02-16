@@ -1,6 +1,4 @@
 # coding: utf-8
-"""Control the Supervisely Image Annotation Tool UI via API."""
-
 from typing import Literal, Optional
 
 from supervisely.api.module_api import ApiField, ModuleApiBase
@@ -8,6 +6,8 @@ from supervisely.collection.str_enum import StrEnum
 
 
 class ImageAnnotationToolAction(StrEnum):
+    """Action to set the figure as the current figure (selected figure) in the annotation tool."""
+
     SET_FIGURE = "figures/setFigure"
     """"""
     NEXT_IMAGE = "images/nextImage"
@@ -27,6 +27,8 @@ class ImageAnnotationToolAction(StrEnum):
 
 
 class ImageAnnotationToolApi(ModuleApiBase):
+    """Control the Supervisely Image Annotation Tool UI via API."""
+
     def set_figure(self, session_id: str, figure_id: int):
         """Sets the figure as the current figure (selected figure) in the annotation tool.
 

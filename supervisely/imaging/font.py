@@ -1,6 +1,7 @@
+"""Font module."""
+
 # coding: utf-8
 
-# docs
 from typing import Tuple, Optional
 
 import os

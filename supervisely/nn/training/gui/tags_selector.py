@@ -3,6 +3,7 @@ from supervisely.app.widgets import Button, Card, Container, TagsTable, Text
 
 
 class TagsSelector:
+    """TrainApp GUI component for selecting model tags."""
     title = "Tags Selector"
     description = "Select tags that will be used for training"
     lock_message = "Select previous step to unlock"

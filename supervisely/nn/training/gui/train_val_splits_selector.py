@@ -6,6 +6,7 @@ from supervisely.api.module_api import ApiField
 from supervisely.api.entities_collection_api import EntitiesCollectionInfo
 
 class TrainValSplitsSelector:
+    """TrainApp GUI component for selecting train and val splits."""
     title = "Train / Val Splits"
     description = "Select train and val splits for training"
     lock_message = "Select previous step to unlock"
@@ -379,7 +380,6 @@ class TrainValSplitsSelector:
                             curr_idx = collection_idx
                             curr_collection = collection
         return curr_collection
-
 
     def _detect_collections(self) -> bool:
         """Find collections with train and val prefixes and set them to train_val_splits"""

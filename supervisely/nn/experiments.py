@@ -14,6 +14,8 @@ EXPERIMENT_INFO_FILENAME = "experiment_info.json"
 
 @dataclass
 class ExperimentInfo:
+    """Information about an experiment."""
+
     experiment_name: str
     """Name of the experiment. Defined by the user in the training app"""
     framework_name: str
@@ -86,6 +88,7 @@ class ExperimentInfo:
             setattr(self, key, value)
 
     def to_json(self) -> Dict:
+        """Convert the experiment info to a JSON dictionary."""
         data = {}
         for field in fields(self.__class__):
             value = getattr(self, field.name)

@@ -91,50 +91,7 @@ class LabelingStatus(StrEnum):
 
 
 class LabelBase:
-    """
-    Labeling object for :class:`~supervisely.annotation.annotation.Annotation`.
-    :class:`~supervisely.annotation.label.Label` object is immutable.
-
-    :param geometry: Label geometry.
-    :type geometry: :class:`~supervisely.geometry.geometry.Geometry`
-    :param obj_class: :class:`~supervisely.annotation.obj_class.ObjClass` object.
-    :type obj_class: :class:`~supervisely.annotation.obj_class.ObjClass`
-    :param tags: TagCollection or List of Tag objects.
-    :type tags: :class:`~supervisely.annotation.tag_collection.TagCollection` or List[:class:`~supervisely.annotation.tag.Tag`]
-    :param description: Label description.
-    :type description: str, optional
-    :param binding_key: Label binding key in labeling tool.
-    :type binding_key: str, optional
-    :param smart_tool_input: Smart Tool parameters that were used for labeling.
-    :type smart_tool_input: dict, optional
-    :param sly_id: Label unique identifier in Supervisely.
-    :type sly_id: int, optional
-    :param status: Sets labeling status. Shows how label was created and corrected.
-    :type status: :class:`~supervisely.annotation.label.LabelingStatus`, optional
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import supervisely as sly
-
-            # Simple Label example
-            class_kiwi = sly.ObjClass('kiwi', sly.Rectangle)
-            figure = sly.Rectangle(0, 0, 300, 300)
-            label_kiwi = sly.Label(figure, class_kiwi)
-
-            # More complex Label example
-            # Tag
-            meta_kiwi = sly.TagMeta('kiwi_tag', sly.TagValueType.ANY_STRING)
-            tag_kiwi = sly.Tag(meta_kiwi, 'Hello')
-            # ObjClass
-            class_kiwi = sly.ObjClass('kiwi', sly.Rectangle)
-
-            # Label
-            geometry_figure = sly.Rectangle(0, 0, 300, 300)
-            label = sly.Label(figure, class_kiwi, sly.TagCollection([tag_kiwi]), 'Label description')
-            # or sly.Label(figure, class_kiwi, [tag_kiwi], 'Label description')
-    """
+    """Base class for :class:`~supervisely.annotation.label.Label`."""
 
     def __init__(
         self,
@@ -147,6 +104,50 @@ class LabelBase:
         sly_id: Optional[int] = None,
         status: Optional[LabelingStatus] = None,
     ):
+        """
+        Labeling object for :class:`~supervisely.annotation.annotation.Annotation`.
+        :class:`~supervisely.annotation.label.Label` object is immutable.
+
+        :param geometry: Label geometry.
+        :type geometry: :class:`~supervisely.geometry.geometry.Geometry`
+        :param obj_class: :class:`~supervisely.annotation.obj_class.ObjClass` object.
+        :type obj_class: :class:`~supervisely.annotation.obj_class.ObjClass`
+        :param tags: TagCollection or List of Tag objects.
+        :type tags: :class:`~supervisely.annotation.tag_collection.TagCollection` or List[:class:`~supervisely.annotation.tag.Tag`]
+        :param description: Label description.
+        :type description: str, optional
+        :param binding_key: Label binding key in labeling tool.
+        :type binding_key: str, optional
+        :param smart_tool_input: Smart Tool parameters that were used for labeling.
+        :type smart_tool_input: dict, optional
+        :param sly_id: Label unique identifier in Supervisely.
+        :type sly_id: int, optional
+        :param status: Sets labeling status. Shows how label was created and corrected.
+        :type status: :class:`~supervisely.annotation.label.LabelingStatus`, optional
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                # Simple Label example
+                class_kiwi = sly.ObjClass('kiwi', sly.Rectangle)
+                figure = sly.Rectangle(0, 0, 300, 300)
+                label_kiwi = sly.Label(figure, class_kiwi)
+
+                # More complex Label example
+                # Tag
+                meta_kiwi = sly.TagMeta('kiwi_tag', sly.TagValueType.ANY_STRING)
+                tag_kiwi = sly.Tag(meta_kiwi, 'Hello')
+                # ObjClass
+                class_kiwi = sly.ObjClass('kiwi', sly.Rectangle)
+
+                # Label
+                geometry_figure = sly.Rectangle(0, 0, 300, 300)
+                label = sly.Label(figure, class_kiwi, sly.TagCollection([tag_kiwi]), 'Label description')
+                # or sly.Label(figure, class_kiwi, [tag_kiwi], 'Label description')
+        """
         self._geometry = geometry
         self._obj_class = obj_class
         self._tags = take_with_default(tags, TagCollection())

@@ -68,9 +68,22 @@ def resize_origin_and_bitmap(
 
 
 class BitmapBase(Geometry):
-    """
+    """BitmapBase is a base class of :class:`~supervisely.geometry.bitmap.Bitmap` geometry. :class:`~supervisely.geometry.bitmap_base.BitmapBase` class object is immutable."""
+
+    def __init__(
+        self,
+        data: np.ndarray,
+        origin: Optional[PointLocation] = None,
+        expected_data_dims: Optional[int] = None,
+        sly_id: Optional[int] = None,
+        class_id: Optional[int] = None,
+        labeler_login: Optional[int] = None,
+        updated_at: Optional[str] = None,
+        created_at: Optional[str] = None,
+    ):
+        """
         BitmapBase is a base class of :class:`~supervisely.geometry.bitmap.Bitmap` geometry. :class:`~supervisely.geometry.bitmap_base.BitmapBase` class object is immutable.
-        
+
         Example of creating and using see in :class:`~supervisely.geometry.bitmap.Bitmap`.
 
         :param data: Bitmap mask data.
@@ -89,19 +102,7 @@ class BitmapBase(Geometry):
         :type updated_at: str, optional
         :param created_at: Date and Time when Bitmap was created. Date Format is the same as in "updated_at" parameter.
         :type created_at: str, optional
-    """
-
-    def __init__(
-        self,
-        data: np.ndarray,
-        origin: Optional[PointLocation] = None,
-        expected_data_dims: Optional[int] = None,
-        sly_id: Optional[int] = None,
-        class_id: Optional[int] = None,
-        labeler_login: Optional[int] = None,
-        updated_at: Optional[str] = None,
-        created_at: Optional[str] = None,
-    ):
+        """
         super().__init__(
             sly_id=sly_id,
             class_id=class_id,

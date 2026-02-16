@@ -12,22 +12,39 @@ from supervisely.geometry.constants import (
 
 
 class ClosedSurfaceMesh(Geometry):
-    """
-    """
+    """ClosedSurfaceMesh is a geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.closed_surface_mesh.ClosedSurfaceMesh` object is immutable."""
 
     @staticmethod
     def geometry_name():
         """
+        Returns the name of the geometry.
+
+        :returns: name of the geometry
+        :rtype: str
         """
         return "closed_surface_mesh"
 
     def draw(self, bitmap, color, thickness=1, config=None):
         """
+        Draws the ClosedSurfaceMesh on a bitmap.
+
+        :param bitmap: np.ndarray
+        :param color: [R, G, B]
+        :param thickness: (int)
+        :param config: drawing config specific to a concrete subclass, e.g. per edge colors
+        :type config: dict
         """
         raise NotImplementedError('Method "draw" is unavailable for this geometry')
 
     def draw_contour(self, bitmap, color, thickness=1, config=None):
         """
+        Draws the contour of the ClosedSurfaceMesh on a bitmap.
+
+        :param bitmap: np.ndarray
+        :param color: [R, G, B]
+        :param thickness: (int)
+        :param config: drawing config specific to a concrete subclass, e.g. per edge colors
+        :type config: dict
         """
         raise NotImplementedError(
             'Method "draw_contour" is unavailable for this geometry'
@@ -35,11 +52,23 @@ class ClosedSurfaceMesh(Geometry):
 
     def convert(self, new_geometry, contour_radius=0, approx_epsilon=None):
         """
+        Converts the ClosedSurfaceMesh to a new geometry.
+
+        :param new_geometry: new geometry
+        :type new_geometry: :class:`~supervisely.geometry.geometry.Geometry`
+        :param contour_radius: radius of the contour
+        :type contour_radius: int
+        :param approx_epsilon: epsilon for the approximation
+        :type approx_epsilon: float
         """
         raise NotImplementedError('Method "convert" is unavailable for this geometry')
 
     def to_json(self):
         """
+        Converts the ClosedSurfaceMesh to a JSON object.
+
+        :returns: JSON object
+        :rtype: dict
         """
         res = {}
         self._add_creation_info(res)
@@ -48,6 +77,12 @@ class ClosedSurfaceMesh(Geometry):
     @classmethod
     def from_json(cls, data):
         """
+        Converts a JSON object to a ClosedSurfaceMesh.
+
+        :param data: JSON object
+        :type data: dict
+        :returns: ClosedSurfaceMesh
+        :rtype: :class:`~supervisely.geometry.closed_surface_mesh.ClosedSurfaceMesh`
         """
         labeler_login = data.get(LABELER_LOGIN, None)
         updated_at = data.get(UPDATED_AT, None)

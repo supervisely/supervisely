@@ -17,26 +17,27 @@ if TYPE_CHECKING:
 
 
 class PointLocation(JsonSerializable):
-    """
-    PointLocation in (row, col) position. :class:`~supervisely.geometry.point_location.PointLocation` object is immutable.
-
-    :param row: Position of PointLocation on height.
-    :type row: int or float
-    :param col: Position of PointLocation on width.
-    :type col: int or float
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import supervisely as sly
-
-            row = 100
-            col = 200
-            loc = sly.PointLocation(row, col)
-    """
+    """PointLocation in (row, col) position. :class:`~supervisely.geometry.point_location.PointLocation` object is immutable."""
 
     def __init__(self, row: int, col: int):
+        """
+        PointLocation in (row, col) position. :class:`~supervisely.geometry.point_location.PointLocation` object is immutable.
+
+        :param row: Position of PointLocation on height.
+        :type row: int or float
+        :param col: Position of PointLocation on width.
+        :type col: int or float
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                row = 100
+                col = 200
+                loc = sly.PointLocation(row, col)
+        """
         self._row = floor(unwrap_if_numpy(row))
         self._col = floor(unwrap_if_numpy(col))
 

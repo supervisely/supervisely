@@ -31,6 +31,7 @@ class KeyObject:
 
 
 class KeyIndexedCollection:
+    """Base class for collections that can be indexed by a key."""
     item_type = KeyObject
     """
     The type of items that can be storred in collection. Defaul value is 
@@ -556,6 +557,7 @@ class KeyIndexedCollection:
 
 
 class MultiKeyIndexedCollection(KeyIndexedCollection):
+    """Collection that can be indexed by multiple keys."""
 
     def __init__(self, items: Optional[List] = None):
         """

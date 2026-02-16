@@ -1,5 +1,4 @@
 # coding: utf-8
-"""collection with :class:`Tag<~supervisely.annotation.tag.Tag>` instances"""
 
 # docs
 from __future__ import annotations
@@ -13,6 +12,8 @@ from supervisely.collection.key_indexed_collection import MultiKeyIndexedCollect
 
 
 class TagCollection(MultiKeyIndexedCollection):
+    """Collection with :class:`Tag<~supervisely.annotation.tag.Tag>` instances."""
+
     item_type = Tag
 
     def __init__(self, items: Optional[List[Tag]] = None):

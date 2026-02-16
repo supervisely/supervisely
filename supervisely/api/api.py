@@ -1,5 +1,4 @@
 # coding: utf-8
-"""Supervisely API client."""
 
 from __future__ import annotations
 
@@ -93,47 +92,7 @@ SUPERVISELY_ENV_FILE = os.path.join(Path.home(), "supervisely.env")
 
 
 class ApiContext:
-    """
-    Context manager for the API object for optimization purposes.
-    Use this context manager when you need to perform a series of operations on the same project or dataset.
-    It allows you to avoid redundant API calls to get the same project or dataset info multiple times.
-
-    :param api: API object.
-    :type api: :class:`~supervisely.api.api.Api`
-    :param project_id: Project ID.
-    :type project_id: int, optional
-    :param dataset_id: Dataset ID.
-    :type dataset_id: int, optional
-    :param project_meta: ProjectMeta object.
-    :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`, optional
-    :raises RuntimeError: if api is None.
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import os
-            from dotenv import load_dotenv
-
-            import supervisely as sly
-
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            if sly.is_development():
-                load_dotenv(os.path.expanduser("~/supervisely.env"))
-
-            api = sly.Api.from_env()
-
-            with ApiContext(
-                api,
-                project_id=33333,
-                dataset_id=99999,
-                project_meta=project_meta,
-                with_alpha_masks=True,
-            ):
-                api.annotation.upload_paths(image_ids, ann_paths, anns_progress)
-                # another code here
-    """
+    """Context manager for the API object for optimization purposes."""
 
     def __init__(
         self,
@@ -143,6 +102,47 @@ class ApiContext:
         project_meta: Optional[ProjectMeta] = None,
         with_alpha_masks: Optional[bool] = True,
     ):
+        """
+        Context manager for the API object for optimization purposes.
+        Use this context manager when you need to perform a series of operations on the same project or dataset.
+        It allows you to avoid redundant API calls to get the same project or dataset info multiple times.
+
+        :param api: API object.
+        :type api: :class:`~supervisely.api.api.Api`
+        :param project_id: Project ID.
+        :type project_id: int, optional
+        :param dataset_id: Dataset ID.
+        :type dataset_id: int, optional
+        :param project_meta: ProjectMeta object.
+        :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`, optional
+        :raises RuntimeError: if api is None.
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import os
+                from dotenv import load_dotenv
+
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                with ApiContext(
+                    api,
+                    project_id=33333,
+                    dataset_id=99999,
+                    project_meta=project_meta,
+                    with_alpha_masks=True,
+                ):
+                    api.annotation.upload_paths(image_ids, ann_paths, anns_progress)
+                    # another code here
+        """
         if api is None:
             raise RuntimeError("Api object is None")
         self.api = api
@@ -167,13 +167,14 @@ class ApiContext:
 class UserSession:
     """
     UserSession object contains info that is returned after user authentication.
-
-    :param server: Server url.
-    :type server: str
-    :raises RuntimeError: if server url is invalid.
     """
 
     def __init__(self, server_address: str):
+        """
+        :param server_address: Server url.
+        :type server_address: str
+        :raises RuntimeError: if server url is invalid.
+        """
         self.api_token = None
         self.team_id = None
         self.workspace_id = None
@@ -258,51 +259,7 @@ class UserSession:
 
 
 class Api:
-    """
-    An API connection to the server with which you can communicate with your teams, workspaces and projects. :class:`Api<~supervisely.api.api.Api>` object is immutable.
-
-    :param server_address: Address of the server.
-    :type server_address: str
-    :param token: Unique secret token associated with your agent.
-    :type token: str
-    :param retry_count: The number of attempts to connect to the server.
-    :type retry_count: int, optional
-    :param retry_sleep_sec: The number of seconds to delay between attempts to connect to the server.
-    :type retry_sleep_sec: int, optional
-    :param external_logger: Logger class object.
-    :type external_logger: logger, optional
-    :param ignore_task_id:
-    :type ignore_task_id: bool, optional
-    :param api_server_address: Address of the API server.
-    :type api_server_address: str, optional
-    :param check_instance_version: Check if the given version is lower or equal to the current
-        Supervisely instance version. If set to True, will try to read the version from the environment variable
-        "MINIMUM_INSTANCE_VERSION_FOR_SDK". If set to a string, will use this string as the version to check.
-        If set to False, will skip the check.
-    :type check_instance_version: bool or str, optional
-    :raises ValueError: if token is None or it length != 128
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import os
-            from dotenv import load_dotenv
-
-            import supervisely as sly
-
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            if sly.is_development():
-                load_dotenv(os.path.expanduser("~/supervisely.env"))
-
-            api = sly.Api.from_env()
-
-            # Or you can pass values into the API constructor (optional, not recommended)
-            server_address = "https://app.supervisely.com"
-            token = "4r47N...xaTatb"
-            api = sly.Api(server_address, token)
-    """
+    """Supervisely API client."""
 
     _checked_servers = set()
 
@@ -317,6 +274,51 @@ class Api:
         api_server_address: Optional[str] = None,
         check_instance_version: Union[bool, str] = False,
     ):
+        """
+        An API connection to the server with which you can communicate with your teams, workspaces and projects. :class:`Api<~supervisely.api.api.Api>` object is immutable.
+
+        :param server_address: Address of the server.
+        :type server_address: str
+        :param token: Unique secret token associated with your agent.
+        :type token: str
+        :param retry_count: The number of attempts to connect to the server.
+        :type retry_count: int, optional
+        :param retry_sleep_sec: The number of seconds to delay between attempts to connect to the server.
+        :type retry_sleep_sec: int, optional
+        :param external_logger: Logger class object.
+        :type external_logger: logger, optional
+        :param ignore_task_id:
+        :type ignore_task_id: bool, optional
+        :param api_server_address: Address of the API server.
+        :type api_server_address: str, optional
+        :param check_instance_version: Check if the given version is lower or equal to the current
+            Supervisely instance version. If set to True, will try to read the version from the environment variable
+            "MINIMUM_INSTANCE_VERSION_FOR_SDK". If set to a string, will use this string as the version to check.
+            If set to False, will skip the check.
+        :type check_instance_version: bool or str, optional
+        :raises ValueError: if token is None or it length != 128
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import os
+                from dotenv import load_dotenv
+
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                # Or you can pass values into the API constructor (optional, not recommended)
+                server_address = "https://app.supervisely.com"
+                token = "4r47N...xaTatb"
+                api = sly.Api(server_address, token)
+        """
         self.logger = external_logger or logger
 
         if server_address is None:

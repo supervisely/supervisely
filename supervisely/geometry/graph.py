@@ -37,6 +37,7 @@ COLOR = "color"
 
 
 class Node(JsonSerializable):
+    """Node is a geometry for a single :class:`~supervisely.geometry.graph.GraphNodes`. :class:`~supervisely.geometry.graph.Node` object is immutable."""
 
     def __init__(
         self,
@@ -168,6 +169,8 @@ def _maybe_transform_colors(elements, process_fn):
 
 
 class GraphNodes(Geometry):
+    """GraphNodes is a geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.graph.GraphNodes` object is immutable."""
+
     items_json_field = NODES
 
     @staticmethod

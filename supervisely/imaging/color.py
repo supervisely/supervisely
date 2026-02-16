@@ -1,3 +1,5 @@
+"""Color module."""
+
 # coding: utf-8
 from __future__ import annotations
 
@@ -14,7 +16,22 @@ from typing import List
 def _validate_color(color):
     """
     Checks input color for compliance with the required format
-    :param: color: color (RGB tuple of integers)
+
+    :param color: color (RGB tuple of integers)
+    :type color: list or tuple
+    :raises ValueError: if color is not a list or tuple or does not contain exactly 3 values
+    :returns: None
+    :rtype: None
+
+    :Usage Example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            sly.color._validate_color([128, 64, 255])
+            # Output: None
+            sly.color._validate_color([128, 64, 255, 128])
     """
     if not isinstance(color, (list, tuple)):
         raise ValueError("Color has to be list, or tuple")
@@ -55,6 +72,9 @@ def _normalize_color(color):
     """
     Divide all RGB values by 255.
     :param color: color (RGB tuple of integers)
+    :type color: list or tuple
+    :returns: Normalized color
+    :rtype: list
     """
     return [c / 255.0 for c in color]
 
@@ -62,9 +82,11 @@ def _normalize_color(color):
 def _color_distance(first_color: list, second_color: list) -> float:
     """
     Calculate distance in HLS color space between Hue components of 2 colors
+
     :param first_color: first color (RGB tuple of integers)
     :param second_color: second color (RGB tuple of integers)
     :returns: Euclidean distance between 'first_color' and 'second_color'
+    :rtype: float
     """
     first_color_hls = colorsys.rgb_to_hls(*_normalize_color(first_color))
     second_color_hls = colorsys.rgb_to_hls(*_normalize_color(second_color))

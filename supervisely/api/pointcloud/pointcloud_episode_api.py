@@ -16,6 +16,7 @@ from supervisely.api.pointcloud.pointcloud_episode_object_api import (
 
 
 class PointcloudEpisodeApi(PointcloudApi):
+    """API for working with point cloud episodes."""
 
     def __init__(self, api):
         """

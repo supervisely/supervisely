@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 
 
 class ApiField:
-    """ApiField"""
+    """Fields for API requests."""
 
     ID = "id"
     """"""
@@ -732,15 +732,24 @@ def _get_single_item(items):
 
 
 class _JsonConvertibleModule:
-    """_JsonConvertibleModule"""
+    """Base class for all module APIs that can be converted to JSON."""
 
     def _convert_json_info(self, info: dict, skip_missing=False):
-        """_convert_json_info"""
+        """
+        Convert JSON info to a dictionary.
+
+        :param info: Dictionary with JSON info.
+        :type info: dict
+        :param skip_missing: Skip missing fields.
+        :type skip_missing: bool
+        :returns: Dictionary with JSON info.
+        :rtype: dict
+        """
         raise NotImplementedError()
 
 
 class ModuleApiBase(_JsonConvertibleModule):
-    """ModuleApiBase"""
+    """Base class for all module APIs."""
 
     MAX_WAIT_ATTEMPTS = 999
     """ Maximum number of attempts that will be made to wait for a certain condition to be met."""
@@ -777,7 +786,14 @@ class ModuleApiBase(_JsonConvertibleModule):
         self._api = api
 
     def _add_sort_param(self, data):
-        """_add_sort_param"""
+        """
+        Add sort parameter to the data.
+
+        :param data: Dictionary with request body info.
+        :type data: dict
+        :returns: Dictionary with request body info and sort parameter.
+        :rtype: dict
+        """
         results = deepcopy(data)
         results[ApiField.SORT] = ApiField.ID
         results[ApiField.SORT_ORDER] = "asc"  # @TODO: move to enum
@@ -807,6 +823,8 @@ class ModuleApiBase(_JsonConvertibleModule):
         :type limit: int, optional
         :param return_first_response: Specify if return first response
         :type return_first_response: bool, optional
+        :returns: List of entities.
+        :rtype: List[dict]
         """
 
         if convert_json_info_cb is None:
@@ -923,7 +941,16 @@ class ModuleApiBase(_JsonConvertibleModule):
 
     @staticmethod
     def _get_info_by_name(get_info_by_filters_fn, name):
-        """_get_info_by_name"""
+        """
+        Get information about an entity by its name from the Supervisely server.
+
+        :param get_info_by_filters_fn: Function to get information about an entity by its filters.
+        :type get_info_by_filters_fn: Callable
+        :param name: Name of the entity.
+        :type name: str
+        :returns: Information about the entity.
+        :rtype: dict
+        """
         filters = [{"field": ApiField.NAME, "operator": "=", "value": name}]
         return get_info_by_filters_fn(filters)
 
@@ -939,7 +966,16 @@ class ModuleApiBase(_JsonConvertibleModule):
 
     @staticmethod
     def _get_free_name(exist_check_fn, name):
-        """_get_free_name"""
+        """
+        Get a free name for an entity.
+
+        :param exist_check_fn: Function to check if a name is already used.
+        :type exist_check_fn: Callable
+        :param name: Name of the entity.
+        :type name: str
+        :returns: Free name for the entity.
+        :rtype: str
+        """
         res_title = name
         suffix = 1
         while exist_check_fn(res_title):
@@ -948,7 +984,16 @@ class ModuleApiBase(_JsonConvertibleModule):
         return res_title
 
     def _convert_json_info(self, info: dict, skip_missing=False):
-        """_convert_json_info"""
+        """
+        Convert JSON info to a dictionary.
+
+        :param info: Dictionary with JSON info.
+        :type info: dict
+        :param skip_missing: Skip missing fields.
+        :type skip_missing: bool
+        :returns: Dictionary with JSON info.
+        :rtype: dict
+        """
 
         def _get_value(dict, field_name, skip_missing):
             if skip_missing is True:
@@ -977,7 +1022,14 @@ class ModuleApiBase(_JsonConvertibleModule):
 
     @classmethod
     def convert_info_to_json(cls, info: NamedTuple) -> Dict:
-        """_convert_info_to_json"""
+        """
+        Convert information about an entity to a dictionary.
+
+        :param info: Information about the entity.
+        :type info: NamedTuple
+        :returns: Dictionary with information about the entity.
+        :rtype: dict
+        """
 
         def _create_nested_dict(keys, value):
             if len(keys) == 1:
@@ -1331,7 +1383,7 @@ class ModuleNoParent(ModuleApiBase):
 
 
 class CloneableModuleApi(ModuleApi):
-    """CloneableModuleApi"""
+    """API for cloning entities."""
 
     MAX_WAIT_ATTEMPTS = ModuleApiBase.MAX_WAIT_ATTEMPTS
     """Maximum number of attempts that will be made to wait for a certain condition to be met."""
@@ -1444,7 +1496,7 @@ class CloneableModuleApi(ModuleApi):
 
 
 class ModuleWithStatus:
-    """ModuleWithStatus"""
+    """API for getting and raising for status of an entity."""
 
     def get_status(self, id):
         """get_status"""
@@ -1456,23 +1508,33 @@ class ModuleWithStatus:
 
 
 class WaitingTimeExceeded(Exception):
-    """WaitingTimeExceeded"""
+    """Exception raised when waiting for a status of an entity exceeds the timeout."""
 
     pass
 
 
 class UpdateableModule(_JsonConvertibleModule):
-    """UpdateableModule"""
+    """API for updating entities."""
 
     def __init__(self, api):
         self._api = api
 
     def _get_update_method(self):
-        """_get_update_method"""
+        """Get the method name for updating an entity."""
         raise NotImplementedError()
 
     def update(self, id, name=None, description=None):
-        """update"""
+        """Update an entity with the specified ID.
+
+        :param id: ID of the entity to update.
+        :type id: int
+        :param name: New name of the entity.
+        :type name: str, optional
+        :param description: New description of the entity.
+        :type description: str, optional
+        :returns: Entity with updated information.
+        :rtype: dict
+        """
         if name is None and description is None:
             raise ValueError("'name' or 'description' or both have to be specified")
 
@@ -1487,7 +1549,7 @@ class UpdateableModule(_JsonConvertibleModule):
 
 
 class RemoveableModuleApi(ModuleApi):
-    """RemoveableModuleApi"""
+    """API for removing entities."""
 
     MAX_WAIT_ATTEMPTS = ModuleApiBase.MAX_WAIT_ATTEMPTS
     """Maximum number of attempts that will be made to wait for a certain condition to be met."""
@@ -1496,7 +1558,7 @@ class RemoveableModuleApi(ModuleApi):
     """Number of seconds for intervals between attempts."""
 
     def _remove_api_method_name(self):
-        """_remove_api_method_name"""
+        """Get the method name for removing an entity."""
         raise NotImplementedError()
 
     def remove(self, id):
@@ -1505,6 +1567,8 @@ class RemoveableModuleApi(ModuleApi):
 
         :param id: Entity ID in Supervisely
         :type id: int
+        :returns: None
+        :rtype: None
         """
         self._api.post(self._remove_api_method_name(), {ApiField.ID: id})
 
@@ -1516,6 +1580,8 @@ class RemoveableModuleApi(ModuleApi):
         :type ids: List[int]
         :param progress_cb: Function for control remove progress.
         :type progress_cb: Callable
+        :returns: None
+        :rtype: None
         """
         for id in ids:
             self.remove(id)
@@ -1524,7 +1590,7 @@ class RemoveableModuleApi(ModuleApi):
 
 
 class RemoveableBulkModuleApi(ModuleApi):
-    """RemoveableBulkModuleApi"""
+    """API for removing multiple entities."""
 
     MAX_WAIT_ATTEMPTS = ModuleApiBase.MAX_WAIT_ATTEMPTS
     """Maximum number of attempts that will be made to wait for a certain condition to be met."""
@@ -1533,11 +1599,11 @@ class RemoveableBulkModuleApi(ModuleApi):
     """Number of seconds for intervals between attempts."""
 
     def _remove_batch_api_method_name(self):
-        """_remove_batch_api_method_name"""
+        """Get the method name for removing a batch of entities."""
         raise NotImplementedError()
 
     def _remove_batch_field_name(self):
-        """_remove_batch_field_name"""
+        """Get the field name for the IDs of the entities to remove."""
         raise NotImplementedError()
 
     def remove_batch(self, ids, progress_cb=None, batch_size=50):

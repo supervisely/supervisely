@@ -26,50 +26,16 @@ from supervisely.geometry.rectangle import Rectangle
 
 
 class OrientedBBox(Rectangle):
-    """
-    OrientedBBox geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.oriented_bbox.OrientedBBox` class object is immutable.
-
-    :param top: Minimal vertical value of the oriented bounding box.
-    :type top: int or float
-    :param left: Minimal horizontal value of the oriented bounding box.
-    :type left: int or float
-    :param bottom: Maximal vertical value of the oriented bounding box.
-    :type bottom: int or float
-    :param right: Maximal vertical value of the oriented bounding box.
-    :type right: int or float
-    :param angle: Angle of rotation in radians. Positive values mean clockwise rotation.
-    :type angle: int or float, optional
-    :param sly_id: OrientedBBox ID in Supervisely server.
-    :type sly_id: int, optional
-    :param class_id: ID of ObjClass to which OrientedBBox belongs.
-    :type class_id: int, optional
-    :param labeler_login: Login of the user who created the oriented bounding box.
-    :type labeler_login: str, optional
-    :param updated_at: Date and Time when OrientedBBox was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
-    :type updated_at: str, optional
-    :param created_at: Date and Time when OrientedBBox was created. Date Format is the same as in "updated_at" parameter.
-    :type created_at: str, optional
-    :raises ValueError: if top argument has greater value than bottom, or left argument has greater value than right
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import supervisely as sly
-
-            import math
-
-            top = 100
-            left = 100
-            bottom = 700
-            right = 900
-            angle = math.pi / 12  # 15 degrees in radians
-            figure = sly.OrientedBBox(top, left, bottom, right, angle=angle)
-    """
+    """Rotated Bounding Box is a geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.oriented_bbox.OrientedBBox` object is immutable."""
 
     @staticmethod
     def geometry_name():
-        """ """
+        """
+        Returns the name of the geometry.
+
+        :returns: name of the geometry
+        :rtype: str
+        """
         return "oriented_bbox"
 
     def __init__(
@@ -85,6 +51,46 @@ class OrientedBBox(Rectangle):
         updated_at: Optional[str] = None,
         created_at: Optional[str] = None,
     ):
+        """
+        OrientedBBox geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.oriented_bbox.OrientedBBox` class object is immutable.
+
+        :param top: Minimal vertical value of the oriented bounding box.
+        :type top: int or float
+        :param left: Minimal horizontal value of the oriented bounding box.
+        :type left: int or float
+        :param bottom: Maximal vertical value of the oriented bounding box.
+        :type bottom: int or float
+        :param right: Maximal vertical value of the oriented bounding box.
+        :type right: int or float
+        :param angle: Angle of rotation in radians. Positive values mean clockwise rotation.
+        :type angle: int or float, optional
+        :param sly_id: OrientedBBox ID in Supervisely server.
+        :type sly_id: int, optional
+        :param class_id: ID of ObjClass to which OrientedBBox belongs.
+        :type class_id: int, optional
+        :param labeler_login: Login of the user who created the oriented bounding box.
+        :type labeler_login: str, optional
+        :param updated_at: Date and Time when OrientedBBox was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
+        :type updated_at: str, optional
+        :param created_at: Date and Time when OrientedBBox was created. Date Format is the same as in "updated_at" parameter.
+        :type created_at: str, optional
+        :raises ValueError: if top argument has greater value than bottom, or left argument has greater value than right
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                import math
+
+                top = 100
+                left = 100
+                bottom = 700
+                right = 900
+                angle = math.pi / 12  # 15 degrees in radians
+                figure = sly.OrientedBBox(top, left, bottom, right, angle=angle)
+        """
 
         super().__init__(
             top=top,
