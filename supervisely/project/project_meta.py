@@ -47,86 +47,6 @@ def _merge_img_obj_tag_metas(
 
 
 class ProjectMeta(JsonSerializable):
-    """
-    General information about ProjectMeta. ProjectMeta object is immutable.
-
-    :param obj_classes: ObjClassCollection or just list that stores :class:`~supervisely.annotation.obj_class.ObjClass` instances with unique names.
-    :type obj_classes: Union[:class:`~supervisely.annotation.obj_class_collection.ObjClassCollection`, List[:class:`~supervisely.annotation.obj_class.ObjClass`]], optional
-    :param tag_metas: TagMetaCollection or just list that stores :class:`~supervisely.annotation.tag_meta.TagMeta` instances with unique names.
-    :type tag_metas: Union[:class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection`, List[:class:`~supervisely.annotation.tag_meta.TagMeta`]], optional
-    :param project_type: Type of items in project: images, videos, volumes, point_clouds.
-    :type project_type: :class:`~supervisely.project.project_type.ProjectType`, optional
-    :param project_settings: Additional project properties. For example, multi-view settings.
-    :type project_settings: Union[:class:`~supervisely.project.project_settings.ProjectSettings`, Dict[str, Any]], optional
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import supervisely as sly
-
-            # Example 1: Empty ProjectMeta
-            meta = sly.ProjectMeta()
-            print(meta)
-            # Output:
-            # ProjectMeta:
-            # Object Classes
-            # +------+-------+-------+--------+
-            # | Name | Shape | Color | Hotkey |
-            # +------+-------+-------+--------+
-            # +------+-------+-------+--------+
-            # Tags
-            # +------+------------+-----------------+--------+---------------+--------------------+
-            # | Name | Value type | Possible values | Hotkey | Applicable to | Applicable classes |
-            # +------+------------+-----------------+--------+---------------+--------------------+
-            # +------+------------+-----------------+--------+---------------+--------------------+
-
-            # Example 2: Complex ProjectMeta
-            lemon = sly.ObjClass('lemon', sly.Rectangle)
-            kiwi = sly.ObjClass('kiwi', sly.Polygon)
-            tag_fruit = sly.TagMeta('fruit', sly.TagValueType.ANY_STRING)
-            objects = sly.ObjClassCollection([lemon, kiwi])
-            # or objects = [lemon, kiwi]
-            tags = sly.TagMetaCollection([tag_fruit])
-            # or tags = [tag_fruit]
-            meta = sly.ProjectMeta(obj_classes=objects, tag_metas=tags, project_type=sly.ProjectType.IMAGES)
-            print(meta)
-            # Output:
-            # +-------+-----------+----------------+--------+
-            # |  Name |   Shape   |     Color      | Hotkey |
-            # +-------+-----------+----------------+--------+
-            # | lemon | Rectangle | [108, 15, 138] |        |
-            # |  kiwi |  Polygon  | [15, 98, 138]  |        |
-            # +-------+-----------+----------------+--------+
-            # Tags
-            # +-------+------------+-----------------+--------+---------------+--------------------+
-            # |  Name | Value type | Possible values | Hotkey | Applicable to | Applicable classes |
-            # +-------+------------+-----------------+--------+---------------+--------------------+
-            # | fruit | any_string |       None      |        |      all      |         []         |
-            # +-------+------------+-----------------+--------+---------------+--------------------+
-
-            # Example 3: Add multi-view to the project
-            lemon = sly.ObjClass('lemon', sly.Rectangle)
-            kiwi = sly.ObjClass('kiwi', sly.Polygon)
-            tag_fruit = sly.TagMeta('fruit', sly.TagValueType.ANY_STRING)
-
-            settings = sly.ProjectSettings(
-                multiview_enabled=True,
-                multiview_tag_name=tag_fruit.name,
-                multiview_is_synced=False,
-            )
-            meta = sly.ProjectMeta(
-                obj_classes=[lemon, kiwi],
-                tag_metas=tag_fruit,
-                project_type=sly.ProjectType.IMAGES,
-                project_settings=settings
-            )
-
-            # Example 4: Custom color
-            cat_class = sly.ObjClass("cat", sly.Rectangle, color=[0, 255, 0])
-            scene_tag = sly.TagMeta("scene", sly.TagValueType.ANY_STRING)
-            meta = sly.ProjectMeta(obj_classes=[cat_class], tag_metas=[scene_tag])
-    """
 
     def __init__(
         self,
@@ -135,6 +55,86 @@ class ProjectMeta(JsonSerializable):
         project_type: Optional[ProjectType] = None,
         project_settings: Optional[Union[ProjectSettings, Dict]] = None,
     ):
+        """
+        General information about ProjectMeta. ProjectMeta object is immutable.
+
+        :param obj_classes: ObjClassCollection or just list that stores :class:`~supervisely.annotation.obj_class.ObjClass` instances with unique names.
+        :type obj_classes: Union[:class:`~supervisely.annotation.obj_class_collection.ObjClassCollection`, List[:class:`~supervisely.annotation.obj_class.ObjClass`]], optional
+        :param tag_metas: TagMetaCollection or just list that stores :class:`~supervisely.annotation.tag_meta.TagMeta` instances with unique names.
+        :type tag_metas: Union[:class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection`, List[:class:`~supervisely.annotation.tag_meta.TagMeta`]], optional
+        :param project_type: Type of items in project: images, videos, volumes, point_clouds.
+        :type project_type: :class:`~supervisely.project.project_type.ProjectType`, optional
+        :param project_settings: Additional project properties. For example, multi-view settings.
+        :type project_settings: Union[:class:`~supervisely.project.project_settings.ProjectSettings`, Dict[str, Any]], optional
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                # Example 1: Empty ProjectMeta
+                meta = sly.ProjectMeta()
+                print(meta)
+                # Output:
+                # ProjectMeta:
+                # Object Classes
+                # +------+-------+-------+--------+
+                # | Name | Shape | Color | Hotkey |
+                # +------+-------+-------+--------+
+                # +------+-------+-------+--------+
+                # Tags
+                # +------+------------+-----------------+--------+---------------+--------------------+
+                # | Name | Value type | Possible values | Hotkey | Applicable to | Applicable classes |
+                # +------+------------+-----------------+--------+---------------+--------------------+
+                # +------+------------+-----------------+--------+---------------+--------------------+
+
+                # Example 2: Complex ProjectMeta
+                lemon = sly.ObjClass('lemon', sly.Rectangle)
+                kiwi = sly.ObjClass('kiwi', sly.Polygon)
+                tag_fruit = sly.TagMeta('fruit', sly.TagValueType.ANY_STRING)
+                objects = sly.ObjClassCollection([lemon, kiwi])
+                # or objects = [lemon, kiwi]
+                tags = sly.TagMetaCollection([tag_fruit])
+                # or tags = [tag_fruit]
+                meta = sly.ProjectMeta(obj_classes=objects, tag_metas=tags, project_type=sly.ProjectType.IMAGES)
+                print(meta)
+                # Output:
+                # +-------+-----------+----------------+--------+
+                # |  Name |   Shape   |     Color      | Hotkey |
+                # +-------+-----------+----------------+--------+
+                # | lemon | Rectangle | [108, 15, 138] |        |
+                # |  kiwi |  Polygon  | [15, 98, 138]  |        |
+                # +-------+-----------+----------------+--------+
+                # Tags
+                # +-------+------------+-----------------+--------+---------------+--------------------+
+                # |  Name | Value type | Possible values | Hotkey | Applicable to | Applicable classes |
+                # +-------+------------+-----------------+--------+---------------+--------------------+
+                # | fruit | any_string |       None      |        |      all      |         []         |
+                # +-------+------------+-----------------+--------+---------------+--------------------+
+
+                # Example 3: Add multi-view to the project
+                lemon = sly.ObjClass('lemon', sly.Rectangle)
+                kiwi = sly.ObjClass('kiwi', sly.Polygon)
+                tag_fruit = sly.TagMeta('fruit', sly.TagValueType.ANY_STRING)
+
+                settings = sly.ProjectSettings(
+                    multiview_enabled=True,
+                    multiview_tag_name=tag_fruit.name,
+                    multiview_is_synced=False,
+                )
+                meta = sly.ProjectMeta(
+                    obj_classes=[lemon, kiwi],
+                    tag_metas=tag_fruit,
+                    project_type=sly.ProjectType.IMAGES,
+                    project_settings=settings
+                )
+
+                # Example 4: Custom color
+                cat_class = sly.ObjClass("cat", sly.Rectangle, color=[0, 255, 0])
+                scene_tag = sly.TagMeta("scene", sly.TagValueType.ANY_STRING)
+                meta = sly.ProjectMeta(obj_classes=[cat_class], tag_metas=[scene_tag])
+        """
         if obj_classes is None:
             self._obj_classes = ObjClassCollection()
         elif isinstance(obj_classes, list):

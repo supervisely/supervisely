@@ -28,50 +28,6 @@ from supervisely.video_annotation.video_annotation import VideoAnnotation
 
 
 class PointcloudAnnotation(VideoAnnotation):
-    """
-    Class for creating and using PointcloudAnnotation
-
-    :param objects: Pointcloud objects collection.
-    :type objects: :class:`~supervisely.pointcloud_annotation.pointcloud_object_collection.PointcloudObjectCollection`
-    :param figures: Pointcloud figures collection.
-    :type figures: List[:class:`~supervisely.pointcloud_annotation.pointcloud_figure.PointcloudFigure`]
-    :param tags: Pointcloud tags collection.
-    :type tags: :class:`~supervisely.pointcloud_annotation.pointcloud_tag_collection.PointcloudTagCollection`
-    :param description: Description text
-    :type description: str
-    :param key: UUID object.
-    :type key: uuid.UUID
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import supervisely as sly
-
-            from supervisely.video_annotation.key_id_map import KeyIdMap
-
-            # PointcloudAnnotation example 1
-            pointcloud_ann = sly.PointcloudAnnotation()
-            print(pointcloud_ann.to_json())
-            # Output: {
-            #     "description": "",
-            #     "key": "ad97e8a4a8524b8a992d1f083c5e6b00",
-            #     "tags": [],
-            #     "objects": [],
-            #     "figures": []
-            # }
-
-            # PointcloudAnnotation example 2
-            key_id_map = KeyIdMap()
-            project_meta_json = api.project.get_meta(pcd_info.project_id)
-            project_meta = sly.ProjectMeta.from_json(project_meta_json)
-            ann_json = api.pointcloud.annotation.download(pointcloud_id)
-            ann = sly.PointcloudAnnotation.from_json(
-                data=ann_json,
-                project_meta=project_meta,
-                key_id_map=key_id_map
-            )
-    """
 
     def __init__(
         self,
@@ -81,7 +37,50 @@ class PointcloudAnnotation(VideoAnnotation):
         description: Optional[str] = "",
         key: Optional[uuid.UUID] = None,
     ):
+        """
+        Class for creating and using PointcloudAnnotation
 
+        :param objects: Pointcloud objects collection.
+        :type objects: :class:`~supervisely.pointcloud_annotation.pointcloud_object_collection.PointcloudObjectCollection`
+        :param figures: Pointcloud figures collection.
+        :type figures: List[:class:`~supervisely.pointcloud_annotation.pointcloud_figure.PointcloudFigure`]
+        :param tags: Pointcloud tags collection.
+        :type tags: :class:`~supervisely.pointcloud_annotation.pointcloud_tag_collection.PointcloudTagCollection`
+        :param description: Description text
+        :type description: str
+        :param key: UUID object.
+        :type key: uuid.UUID
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                from supervisely.video_annotation.key_id_map import KeyIdMap
+
+                # PointcloudAnnotation example 1
+                pointcloud_ann = sly.PointcloudAnnotation()
+                print(pointcloud_ann.to_json())
+                # Output: {
+                #     "description": "",
+                #     "key": "ad97e8a4a8524b8a992d1f083c5e6b00",
+                #     "tags": [],
+                #     "objects": [],
+                #     "figures": []
+                # }
+
+                # PointcloudAnnotation example 2
+                key_id_map = KeyIdMap()
+                project_meta_json = api.project.get_meta(pcd_info.project_id)
+                project_meta = sly.ProjectMeta.from_json(project_meta_json)
+                ann_json = api.pointcloud.annotation.download(pointcloud_id)
+                ann = sly.PointcloudAnnotation.from_json(
+                    data=ann_json,
+                    project_meta=project_meta,
+                    key_id_map=key_id_map
+                )
+        """
         self._description = description
         self._tags = take_with_default(tags, PointcloudTagCollection())
         self._objects = take_with_default(objects, PointcloudObjectCollection())

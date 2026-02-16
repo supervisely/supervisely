@@ -57,72 +57,7 @@ def _find_mask_tight_bbox(raw_mask: np.ndarray) -> Rectangle:
 
 
 class Bitmap(BitmapBase):
-    """
-    Bitmap geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.bitmap.Bitmap` object is immutable.
 
-    :param data: Bitmap mask data. Must be a numpy array with only 2 unique values: [0, 1] or [0, 255] or [False, True].
-    :type data: np.ndarray
-    :param origin: :class:`~supervisely.geometry.point_location.PointLocation`: top, left corner of Bitmap. Position of the Bitmap within image.
-    :type origin: :class:`~supervisely.geometry.point_location.PointLocation`, optional
-    :param sly_id: Bitmap ID in Supervisely server.
-    :type sly_id: int, optional
-    :param class_id: ID of ObjClass to which Bitmap belongs.
-    :type class_id: int, optional
-    :param labeler_login: Login of the user who created :class:`~supervisely.geometry.bitmap.Bitmap`.
-    :type labeler_login: str, optional
-    :param updated_at: Date and Time when Bitmap was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
-    :type updated_at: str, optional
-    :param created_at: Date and Time when Bitmap was created. Date Format is the same as in "updated_at" parameter.
-    :type created_at: str, optional
-    :param extra_validation: If True, additional validation is performed. Throws a ValueError if values of the data are not one of [0, 1], [0, 255], [True, False]. This option affects performance. If False, the mask is converted to dtype np.bool.
-    :type extra_validation: bool, optional
-    :raises ValueError, if data is not bool or no pixels set to True in data
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import supervisely as sly
-
-            # Create simple bitmap
-            mask = np.array([[0, 0, 0, 0, 0],
-                            [0, 1, 1, 1, 0],
-                            [0, 1, 0, 1, 0],
-                            [0, 1, 1, 1, 0],
-                            [0, 0, 0, 0, 0]],
-                            dtype=np.bool_)
-
-            figure = sly.Bitmap(mask)
-
-            # Note, when creating a bitmap, the specified mask is cut off by positive values, based on this, a origin is formed:
-            print(figure.data)
-            # Output:
-            #    [[ True  True  True]
-            #     [ True False  True]
-            #     [ True  True  True]]
-
-            origin = figure.origin.to_json()
-            print(json.dumps(origin, indent=4))
-            # Output: {
-            #     "points": {
-            #         "exterior": [
-            #             [
-            #                 1,
-            #                 1
-            #             ]
-            #         ],
-            #         "interior": []
-            #     }
-
-            # Create bitmap from black and white image:
-            img = sly.imaging.image.read(os.path.join(os.getcwd(), 'black_white.jpeg'))
-            mask = img[:, :, 0].astype(bool) # Get 2-dimensional bool numpy array
-            figure = sly.Bitmap(mask)
-
-    .. image:: https://i.imgur.com/2L3HRPs.jpg
-        :width: 600
-        :height: 500
-    """
     def __init__(
         self,
         data: np.ndarray,
@@ -134,6 +69,73 @@ class Bitmap(BitmapBase):
         created_at: Optional[str] = None,
         extra_validation: Optional[bool] = True,
     ):
+        """
+        Bitmap geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.bitmap.Bitmap` object is immutable.
+
+        :param data: Bitmap mask data. Must be a numpy array with only 2 unique values: [0, 1] or [0, 255] or [False, True].
+        :type data: np.ndarray
+        :param origin: :class:`~supervisely.geometry.point_location.PointLocation`: top, left corner of Bitmap. Position of the Bitmap within image.
+        :type origin: :class:`~supervisely.geometry.point_location.PointLocation`, optional
+        :param sly_id: Bitmap ID in Supervisely server.
+        :type sly_id: int, optional
+        :param class_id: ID of ObjClass to which Bitmap belongs.
+        :type class_id: int, optional
+        :param labeler_login: Login of the user who created :class:`~supervisely.geometry.bitmap.Bitmap`.
+        :type labeler_login: str, optional
+        :param updated_at: Date and Time when Bitmap was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
+        :type updated_at: str, optional
+        :param created_at: Date and Time when Bitmap was created. Date Format is the same as in "updated_at" parameter.
+        :type created_at: str, optional
+        :param extra_validation: If True, additional validation is performed. Throws a ValueError if values of the data are not one of [0, 1], [0, 255], [True, False]. This option affects performance. If False, the mask is converted to dtype np.bool.
+        :type extra_validation: bool, optional
+        :raises ValueError, if data is not bool or no pixels set to True in data
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                # Create simple bitmap
+                mask = np.array([[0, 0, 0, 0, 0],
+                                [0, 1, 1, 1, 0],
+                                [0, 1, 0, 1, 0],
+                                [0, 1, 1, 1, 0],
+                                [0, 0, 0, 0, 0]],
+                                dtype=np.bool_)
+
+                figure = sly.Bitmap(mask)
+
+                # Note, when creating a bitmap, the specified mask is cut off by positive values, based on this, a origin is formed:
+                print(figure.data)
+                # Output:
+                #    [[ True  True  True]
+                #     [ True False  True]
+                #     [ True  True  True]]
+
+                origin = figure.origin.to_json()
+                print(json.dumps(origin, indent=4))
+                # Output: {
+                #     "points": {
+                #         "exterior": [
+                #             [
+                #                 1,
+                #                 1
+                #             ]
+                #         ],
+                #         "interior": []
+                #     }
+
+                # Create bitmap from black and white image:
+                img = sly.imaging.image.read(os.path.join(os.getcwd(), 'black_white.jpeg'))
+                mask = img[:, :, 0].astype(bool) # Get 2-dimensional bool numpy array
+                figure = sly.Bitmap(mask)
+
+        .. image:: https://i.imgur.com/2L3HRPs.jpg
+            :width: 600
+            :height: 500
+        """
+
         if data.dtype != np.bool:
             if extra_validation:
                 if not (

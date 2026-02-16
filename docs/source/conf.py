@@ -85,7 +85,6 @@ source_suffix = {".rst": "restructuredtext", ".txt": "restructuredtext", ".md": 
 autodoc_default_options = {
     "members": True,
     "methods": True,
-    "exclude-members": "__init__",
     "show-inheritance": True,
 }
 

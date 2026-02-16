@@ -39,40 +39,6 @@ from supervisely.video.video import VideoFrameReader
 
 
 class Prediction:
-    """
-    A single prediction result.
-
-    The prediction is primarily represented by ``annotation_json`` (Supervisely annotation format).
-    If you provide ``model_meta`` (a :class:`~supervisely.project.project_meta.ProjectMeta` or its JSON),
-    you can access the parsed :class:`~supervisely.annotation.annotation.Annotation` via
-    :attr:`~supervisely.nn.model.prediction.Prediction.annotation`.
-
-    :param annotation_json: Prediction in Supervisely annotation JSON format.
-    :type annotation_json: dict or :class:`~supervisely.annotation.annotation.Annotation`
-    :param source: Optional source descriptor (path, id, etc.), used as a hint for loading/visualization.
-    :type source: str or int, optional
-    :param model_meta: Output meta of the model, required to construct an :class:`~supervisely.annotation.annotation.Annotation`.
-    :type model_meta: :class:`~supervisely.project.project_meta.ProjectMeta` or dict, optional
-    :param name: Optional name for this prediction (used in visualization filenames).
-    :type name: str, optional
-    :param path: Local path to the source image/video.
-    :type path: str, optional
-    :param url: URL to the source image/video.
-    :type url: str, optional
-    :param project_id: Project id associated with the source.
-    :type project_id: int, optional
-    :param dataset_id: Dataset id associated with the source.
-    :type dataset_id: int, optional
-    :param image_id: Image id associated with the source.
-    :type image_id: int, optional
-    :param video_id: Video id associated with the source (for frame predictions).
-    :type video_id: int, optional
-    :param frame_index: Frame index for video predictions.
-    :type frame_index: int, optional
-    :param api: API client used to download image/frame by id.
-    :type api: :class:`~supervisely.api.api.Api`, optional
-    """
-
     _temp_dir = os.path.join(tempfile.gettempdir(), "prediction_files")
     __cleanup_registered = False
 
@@ -92,6 +58,39 @@ class Prediction:
         api: Optional["Api"] = None,
         **kwargs,
     ):
+        """
+        A single prediction result.
+
+        The prediction is primarily represented by ``annotation_json`` (Supervisely annotation format).
+        If you provide ``model_meta`` (a :class:`~supervisely.project.project_meta.ProjectMeta` or its JSON),
+        you can access the parsed :class:`~supervisely.annotation.annotation.Annotation` via
+        :attr:`~supervisely.nn.model.prediction.Prediction.annotation`.
+
+        :param annotation_json: Prediction in Supervisely annotation JSON format.
+        :type annotation_json: dict or :class:`~supervisely.annotation.annotation.Annotation`
+        :param source: Optional source descriptor (path, id, etc.), used as a hint for loading/visualization.
+        :type source: str or int, optional
+        :param model_meta: Output meta of the model, required to construct an :class:`~supervisely.annotation.annotation.Annotation`.
+        :type model_meta: :class:`~supervisely.project.project_meta.ProjectMeta` or dict, optional
+        :param name: Optional name for this prediction (used in visualization filenames).
+        :type name: str, optional
+        :param path: Local path to the source image/video.
+        :type path: str, optional
+        :param url: URL to the source image/video.
+        :type url: str, optional
+        :param project_id: Project id associated with the source.
+        :type project_id: int, optional
+        :param dataset_id: Dataset id associated with the source.
+        :type dataset_id: int, optional
+        :param image_id: Image id associated with the source.
+        :type image_id: int, optional
+        :param video_id: Video id associated with the source (for frame predictions).
+        :type video_id: int, optional
+        :param frame_index: Frame index for video predictions.
+        :type frame_index: int, optional
+        :param api: API client used to download image/frame by id.
+        :type api: :class:`~supervisely.api.api.Api`, optional
+        """
         self.source = source
         if isinstance(annotation_json, Annotation):
             annotation_json = annotation_json.to_json()

@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Dict, List, Tuple
 
 import numpy as np
 
-from supervisely import logger
+from supervisely.sly_logger import logger
 from supervisely.geometry.constants import (
     ANY_SHAPE,
     BITMAP,
@@ -25,7 +25,6 @@ from supervisely.geometry.constants import (
     UPDATED_AT,
 )
 from supervisely.io.json import JsonSerializable
-from supervisely.geometry.image_rotator import ImageRotator
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
 
@@ -34,6 +33,7 @@ if not hasattr(np, "bool"):
 
 if TYPE_CHECKING:
     from supervisely.geometry.rectangle import Rectangle
+    from supervisely.geometry.image_rotator import ImageRotator
 
 
 # @TODO: use properties instead of field if it makes sense

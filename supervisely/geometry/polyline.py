@@ -13,7 +13,7 @@ from shapely.geometry import LineString
 from shapely.geometry import Polygon as ShapelyPolygon
 from shapely.geometry import mapping
 
-from supervisely import logger
+from supervisely.sly_logger import logger
 from supervisely.geometry import validation
 from supervisely.geometry.constants import (
     CLASS_ID,

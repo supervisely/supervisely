@@ -19,24 +19,24 @@ ALLOWED_KEY_TYPES = [TAGS, OBJECTS, VIDEOS, FIGURES]
 
 # @TODO: reimplement to support different item types - videos, volumes, 3d episodes, ...
 class KeyIdMap:
-    """
-    KeyIdMap object for :class:`~supervisely.video_annotation.video_annotation.VideoAnnotation`. It consist from dict with bidict values.
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            key_id_map = KeyIdMap()
-            print(key_id_map.to_dict())
-            # Output: {
-            #     "tags": {},
-            #     "objects": {},
-            #     "figures": {},
-            #     "videos": {}
-            # }
-    """
 
     def __init__(self):
+        """
+        KeyIdMap object for :class:`~supervisely.video_annotation.video_annotation.VideoAnnotation`. It consist from dict with bidict values.
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                key_id_map = KeyIdMap()
+                print(key_id_map.to_dict())
+                # Output: {
+                #     "tags": {},
+                #     "objects": {},
+                #     "figures": {},
+                #     "videos": {}
+                # }
+        """
         self._data = dict()
         self._data[TAGS] = bidict()
         self._data[OBJECTS] = bidict()

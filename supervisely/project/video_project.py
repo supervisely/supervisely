@@ -47,24 +47,6 @@ class VideoItemPaths(NamedTuple):
 
 
 class VideoDataset(Dataset):
-    """
-    VideoDataset is where your labeled and unlabeled videos and other data files live. :class:`~supervisely.project.video_project.VideoDataset` object is immutable.
-
-    :param directory: Path to dataset directory.
-    :type directory: str
-    :param mode: Determines working mode for the given dataset.
-    :type mode: :class:`~supervisely.project.project.OpenMode`
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import supervisely as sly
-
-            dataset_path = "/home/admin/work/supervisely/projects/videos_example/ds0"
-            ds = sly.VideoDataset(dataset_path, sly.OpenMode.READ)
-    """
-
     #: str: Items data directory name
     item_dir_name = "video"
 
@@ -767,24 +749,6 @@ class VideoDataset(Dataset):
 
 
 class VideoProject(Project):
-    """
-    VideoProject is a parent directory for video dataset. VideoProject object is immutable.
-
-    :param directory: Path to video project directory.
-    :type directory: str
-    :param mode: Determines working mode for the given project.
-    :type mode: :class:`~supervisely.project.project.OpenMode`
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import supervisely as sly
-
-            project_path = "/home/admin/work/supervisely/projects/videos_example"
-            project = sly.Project(project_path, sly.OpenMode.READ)
-    """
-
     dataset_class = VideoDataset
 
     class DatasetDict(KeyIndexedCollection):
@@ -792,8 +756,21 @@ class VideoProject(Project):
 
     def __init__(self, directory, mode: OpenMode):
         """
-        :param directory: path to the directory where the project will be saved or where it will be loaded from
-        :param mode: :class:`~supervisely.project.project.OpenMode` class object which determines in what mode to work with the project (generate exception error if not so)
+        VideoProject is a parent directory for video dataset. VideoProject object is immutable.
+
+        :param directory: Path to video project directory.
+        :type directory: str
+        :param mode: Determines working mode for the given project.
+        :type mode: :class:`~supervisely.project.project.OpenMode`
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                project_path = "/home/admin/work/supervisely/projects/videos_example"
+                project = sly.Project(project_path, sly.OpenMode.READ)
         """
         self._key_id_map: KeyIdMap = None
         super().__init__(directory, mode)

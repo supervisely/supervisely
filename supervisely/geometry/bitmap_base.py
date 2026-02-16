@@ -189,8 +189,8 @@ class BitmapBase(Geometry):
         """
         Convert a json dict to BitmapBase. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
-        :param data: Bitmap in json format as a dict.
-        :type data: dict
+        :param json_data: Bitmap in json format as a dict.
+        :type json_data: dict
         :returns: Bitmap.
         :rtype: :class:`~supervisely.geometry.bitmap_base.BitmapBase`
 

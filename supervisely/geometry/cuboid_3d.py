@@ -1,5 +1,6 @@
 # coding: utf-8
 
+from typing import Optional
 from copy import deepcopy
 
 from supervisely.geometry.constants import X, Y, Z, \
@@ -69,24 +70,42 @@ class Cuboid3d(Geometry):
     """
     This is a class for creating and using Cuboid3d objects for Labels
     """
+
     @staticmethod
     def geometry_name():
         """
         """
         return 'cuboid_3d'
 
-    def __init__(self, position: Vector3d, rotation: Vector3d, dimensions: Vector3d,
-                 sly_id=None, class_id=None, labeler_login=None, updated_at=None, created_at=None):
-
+    def __init__(
+        self,
+        position: Vector3d,
+        rotation: Vector3d,
+        dimensions: Vector3d,
+        sly_id: Optional[int] = None,
+        class_id: Optional[int] = None,
+        labeler_login: Optional[int] = None,
+        updated_at: Optional[str] = None,
+        created_at: Optional[str] = None,
+    ):
         """
-
         :param position: Vector3d.
         :type position: :class:`~supervisely.geometry.cuboid_3d.Vector3d`
         :param rotation: Vector3d.
         :type rotation: :class:`~supervisely.geometry.cuboid_3d.Vector3d`
         :param dimensions: Vector3d.
         :type dimensions: :class:`~supervisely.geometry.cuboid_3d.Vector3d`
-        """         
+        :param sly_id: Cuboid3d ID in Supervisely server.
+        :type sly_id: int, optional
+        :param class_id: ID of ObjClass to which Cuboid3d belongs.
+        :type class_id: int, optional
+        :param labeler_login: Login of the user who created Cuboid3d.
+        :type labeler_login: str, optional
+        :param updated_at: Date and Time when Cuboid3d was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
+        :type updated_at: str, optional
+        :param created_at: Date and Time when Cuboid3d was created. Date Format is the same as in "updated_at" parameter.
+        :type created_at: str, optional
+        """
         super().__init__(sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
 
         if type(position) is not Vector3d:

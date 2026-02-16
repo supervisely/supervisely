@@ -11,7 +11,7 @@ from typing import Dict, List, Literal, Optional, Tuple, Union
 
 import numpy as np
 
-from supervisely import logger
+from supervisely.sly_logger import logger
 from supervisely._utils import unwrap_if_numpy
 from supervisely.geometry.constants import (
     CLASS_ID,
@@ -169,53 +169,6 @@ class PointVolume(JsonSerializable):
 
 
 class Mask3D(Geometry):
-    """
-    Mask 3D geometry for a single :class:`Label<~supervisely.annotation.label.Label>`. :class:`Mask3D<~supervisely.geometry.mask_3d.Mask3D>` object is immutable.
-
-    :param data: Mask 3D mask data. Must be a numpy array with only 2 unique values: [0, 1] or [0, 255] or [False, True].
-    :type data: np.ndarray
-    :param sly_id: Mask 3D ID in Supervisely server.
-    :type sly_id: int, optional
-    :param class_id: ID of ObjClass to which Mask 3D belongs.
-    :type class_id: int, optional
-    :param labeler_login: Login of the user who created Mask 3D.
-    :type labeler_login: str, optional
-    :param updated_at: Date and Time when Mask 3D was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
-    :type updated_at: str, optional
-    :param created_at: Date and Time when Mask 3D was created. Date Format is the same as in "updated_at" parameter.
-    :type created_at: str, optional
-    :param volume_header: NRRD header dictionary. Optional.
-    :type volume_header: dict, optional
-    :param convert_to_ras: If True, converts the mask to RAS orientation. Default is True.
-    :type convert_to_ras: bool, optional
-    :raises ValueError: if data is not bool or no pixels set to True in data
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import supervisely as sly
-
-            # Create simple Mask 3D
-            mask3d = np.zeros((3, 3, 3), dtype=np.bool_)
-            mask3d[0:2, 0:2, 0:2] = True
-
-            shape = sly.Mask3D(mask3d)
-
-            print(shape.data)
-            # Output:
-            #    [[[ True  True False]
-            #      [ True  True False]
-            #      [False False False]]
-
-            #     [[ True  True False]
-            #      [ True  True False]
-            #      [False False False]]
-
-            #     [[False False False]
-            #      [False False False]
-            #      [False False False]]]
-    """
 
     def __init__(
         self,
@@ -228,6 +181,53 @@ class Mask3D(Geometry):
         volume_header: Optional[Dict] = None,
         convert_to_ras: bool = True,
     ):
+        """
+        Mask 3D geometry for a single :class:`Label<~supervisely.annotation.label.Label>`. :class:`Mask3D<~supervisely.geometry.mask_3d.Mask3D>` object is immutable.
+
+        :param data: Mask 3D mask data. Must be a numpy array with only 2 unique values: [0, 1] or [0, 255] or [False, True].
+        :type data: np.ndarray
+        :param sly_id: Mask 3D ID in Supervisely server.
+        :type sly_id: int, optional
+        :param class_id: ID of ObjClass to which Mask 3D belongs.
+        :type class_id: int, optional
+        :param labeler_login: Login of the user who created Mask 3D.
+        :type labeler_login: str, optional
+        :param updated_at: Date and Time when Mask 3D was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
+        :type updated_at: str, optional
+        :param created_at: Date and Time when Mask 3D was created. Date Format is the same as in "updated_at" parameter.
+        :type created_at: str, optional
+        :param volume_header: NRRD header dictionary. Optional.
+        :type volume_header: dict, optional
+        :param convert_to_ras: If True, converts the mask to RAS orientation. Default is True.
+        :type convert_to_ras: bool, optional
+        :raises ValueError: if data is not bool or no pixels set to True in data
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                # Create simple Mask 3D
+                mask3d = np.zeros((3, 3, 3), dtype=np.bool_)
+                mask3d[0:2, 0:2, 0:2] = True
+
+                shape = sly.Mask3D(mask3d)
+
+                print(shape.data)
+                # Output:
+                #    [[[ True  True False]
+                #      [ True  True False]
+                #      [False False False]]
+
+                #     [[ True  True False]
+                #      [ True  True False]
+                #      [False False False]]
+
+                #     [[False False False]
+                #      [False False False]
+                #      [False False False]]]
+        """
         super().__init__(
             sly_id=sly_id,
             class_id=class_id,

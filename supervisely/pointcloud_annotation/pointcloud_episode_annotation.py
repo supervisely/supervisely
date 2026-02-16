@@ -30,55 +30,6 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
 class PointcloudEpisodeAnnotation:
-    """
-    PointcloudEpisodeAnnotation for point cloud episodes.
-    :class:`~supervisely.pointcloud_annotation.pointcloud_episode_annotation.PointcloudEpisodeAnnotation` object is immutable.
-
-    :param frames_count: Number of pointcloud episode frames.
-    :type frames_count: int
-    :param objects: Pointcloud episode objects collection.
-    :type objects: :class:`~supervisely.pointcloud_annotation.pointcloud_episode_object_collection.PointcloudEpisodeObjectCollection`
-    :param frames: Pointcloud episode frames collection.
-    :type frames: :class:`~supervisely.pointcloud_annotation.pointcloud_episode_frame_collection.PointcloudEpisodeFrameCollection`
-    :param tags: Pointcloud episode tags collection.
-    :type tags: :class:`~supervisely.pointcloud_annotation.pointcloud_episode_tag_collection.PointcloudEpisodeTagCollection`
-    :param description: Description text
-    :type description: str
-    :param key: UUID object.
-    :type key: uuid.UUID
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import supervisely as sly
-            from supervisely.video_annotation.key_id_map import KeyIdMap
-
-            # PointcloudEpisodeAnnotation example 1
-            pointcloud_episodes_ann = sly.PointcloudEpisodeAnnotation()
-            print(pointcloud_episodes_ann.to_json())
-            # Output: {
-            #     "description": "",
-            #     "frames": [],
-            #     "framesCount": None,
-            #     "key": "494f67984d714c1eaf7a65e5df289ac6",
-            #     "objects": [],
-            #     "tags": []
-            # }
-
-            # PointcloudEpisodeAnnotation example 2
-            pointcloud_id = 19481098
-            key_id_map = KeyIdMap()
-            pcd_info = api.pointcloud_episode.get_info_by_id(pointcloud_id)
-            project_meta_json = api.project.get_meta(pcd_info.project_id)
-            project_meta = sly.ProjectMeta.from_json(project_meta_json)
-            ann_json = api.pointcloud_episode.annotation.download(pcd_info.dataset_id)
-            ann = sly.PointcloudEpisodeAnnotation.from_json(
-                data=ann_json,
-                project_meta=project_meta,
-                key_id_map=key_id_map
-            )
-    """
 
     def __init__(
         self,
@@ -89,6 +40,55 @@ class PointcloudEpisodeAnnotation:
         description: Optional[str] = "",
         key: uuid.UUID = None,
     ) -> None:
+        """
+        PointcloudEpisodeAnnotation for point cloud episodes.
+        :class:`~supervisely.pointcloud_annotation.pointcloud_episode_annotation.PointcloudEpisodeAnnotation` object is immutable.
+
+        :param frames_count: Number of pointcloud episode frames.
+        :type frames_count: int
+        :param objects: Pointcloud episode objects collection.
+        :type objects: :class:`~supervisely.pointcloud_annotation.pointcloud_episode_object_collection.PointcloudEpisodeObjectCollection`
+        :param frames: Pointcloud episode frames collection.
+        :type frames: :class:`~supervisely.pointcloud_annotation.pointcloud_episode_frame_collection.PointcloudEpisodeFrameCollection`
+        :param tags: Pointcloud episode tags collection.
+        :type tags: :class:`~supervisely.pointcloud_annotation.pointcloud_episode_tag_collection.PointcloudEpisodeTagCollection`
+        :param description: Description text
+        :type description: str
+        :param key: UUID object.
+        :type key: uuid.UUID
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+                from supervisely.video_annotation.key_id_map import KeyIdMap
+
+                # PointcloudEpisodeAnnotation example 1
+                pointcloud_episodes_ann = sly.PointcloudEpisodeAnnotation()
+                print(pointcloud_episodes_ann.to_json())
+                # Output: {
+                #     "description": "",
+                #     "frames": [],
+                #     "framesCount": None,
+                #     "key": "494f67984d714c1eaf7a65e5df289ac6",
+                #     "objects": [],
+                #     "tags": []
+                # }
+
+                # PointcloudEpisodeAnnotation example 2
+                pointcloud_id = 19481098
+                key_id_map = KeyIdMap()
+                pcd_info = api.pointcloud_episode.get_info_by_id(pointcloud_id)
+                project_meta_json = api.project.get_meta(pcd_info.project_id)
+                project_meta = sly.ProjectMeta.from_json(project_meta_json)
+                ann_json = api.pointcloud_episode.annotation.download(pcd_info.dataset_id)
+                ann = sly.PointcloudEpisodeAnnotation.from_json(
+                    data=ann_json,
+                    project_meta=project_meta,
+                    key_id_map=key_id_map
+                )
+        """
         self._frames_count = frames_count
         self._description = description
         self._frames = take_with_default(frames, PointcloudEpisodeFrameCollection())

@@ -31,26 +31,26 @@ if not hasattr(np, "bool"):
 
 
 class CuboidFace:
-    """
-    CuboidFace for a single :class:`~supervisely.geometry.cuboid.Cuboid`.
-
-    :param a: Node of the CuboidFace.
-    :type a: int
-    :param b: Node of the CuboidFace.
-    :type b: int
-    :param c: Node of the CuboidFace.
-    :type c: int
-    :param d: Node of the CuboidFace.
-    :type d: int
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            edge = CuboidFace(0, 1, 2, 3)
-    """
 
     def __init__(self, a: int, b: int, c: int, d: int):
+        """
+        CuboidFace for a single :class:`~supervisely.geometry.cuboid.Cuboid`.
+
+        :param a: Node of the CuboidFace.
+        :type a: int
+        :param b: Node of the CuboidFace.
+        :type b: int
+        :param c: Node of the CuboidFace.
+        :type c: int
+        :param d: Node of the CuboidFace.
+        :type d: int
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                edge = CuboidFace(0, 1, 2, 3)
+        """
         self._a = a
         self._b = b
         self._c = c
@@ -136,38 +136,6 @@ class CuboidFace:
 
 
 class Cuboid(Geometry):
-    """
-    Cuboid geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.cuboid.Cuboid` class object is immutable.
-
-    :param points: List or tuple of :class:`~supervisely.geometry.point_location.PointLocation` objects.
-    :type points: List[:class:`~supervisely.geometry.point_location.PointLocation`] or Tuple[:class:`~supervisely.geometry.point_location.PointLocation`]
-    :param faces: List or tuple of :class:`~supervisely.geometry.cuboid.CuboidFace` objects.
-    :type faces: List[:class:`~supervisely.geometry.cuboid.CuboidFace`] or Tuple[:class:`~supervisely.geometry.cuboid.CuboidFace`]
-    :param sly_id: Cuboid ID in Supervisely server.
-    :type sly_id: int, optional
-    :param class_id: ID for ObjClass to which belongs Cuboid.
-    :type class_id: int, optional
-    :param labeler_login: Login of the user who created :class:`~supervisely.geometry.cuboid.Cuboid`.
-    :type labeler_login: str, optional
-    :param updated_at: Date and Time when Cuboid was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
-    :type updated_at: str, optional
-    :param created_at: Date and Time when Cuboid was created. Date Format is the same as in "updated_at" parameter.
-    :type created_at: str, optional
-    :raises ValueError: if len(:class:`~supervisely.geometry.cuboid.CuboidFace` objects) != 3. A cuboid must have exactly 3 faces. Instead got {len(faces)} faces.
-    :raises ValueError: if point index is out of bounds for cuboid face. Got {len(points)!r} points, but the index is {point_idx!r}.
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import supervisely as sly
-            from supervisely.geometry.cuboid import CuboidFace
-
-            nodes = [[277, 273], [840, 273], [840, 690], [277, 690], [688, 168], [1200, 168], [1200, 522]]
-            edges = [CuboidFace(0, 1, 2, 3), CuboidFace(0, 4, 5, 1), CuboidFace(1, 5, 6, 2)]
-            pl_nodes = (sly.PointLocation(node[0], node[1]) for node in nodes)
-            figure = sly.Cuboid(pl_nodes, edges)
-    """
 
     @staticmethod
     def geometry_name():
@@ -184,6 +152,38 @@ class Cuboid(Geometry):
         updated_at: Optional[str] = None,
         created_at: Optional[str] = None,
     ):
+        """
+        Cuboid geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.cuboid.Cuboid` class object is immutable.
+
+        :param points: List or tuple of :class:`~supervisely.geometry.point_location.PointLocation` objects.
+        :type points: List[:class:`~supervisely.geometry.point_location.PointLocation`] or Tuple[:class:`~supervisely.geometry.point_location.PointLocation`]
+        :param faces: List or tuple of :class:`~supervisely.geometry.cuboid.CuboidFace` objects.
+        :type faces: List[:class:`~supervisely.geometry.cuboid.CuboidFace`] or Tuple[:class:`~supervisely.geometry.cuboid.CuboidFace`]
+        :param sly_id: Cuboid ID in Supervisely server.
+        :type sly_id: int, optional
+        :param class_id: ID for ObjClass to which belongs Cuboid.
+        :type class_id: int, optional
+        :param labeler_login: Login of the user who created :class:`~supervisely.geometry.cuboid.Cuboid`.
+        :type labeler_login: str, optional
+        :param updated_at: Date and Time when Cuboid was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
+        :type updated_at: str, optional
+        :param created_at: Date and Time when Cuboid was created. Date Format is the same as in "updated_at" parameter.
+        :type created_at: str, optional
+        :raises ValueError: if len(:class:`~supervisely.geometry.cuboid.CuboidFace` objects) != 3. A cuboid must have exactly 3 faces. Instead got {len(faces)} faces.
+        :raises ValueError: if point index is out of bounds for cuboid face. Got {len(points)!r} points, but the index is {point_idx!r}.
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+                from supervisely.geometry.cuboid import CuboidFace
+
+                nodes = [[277, 273], [840, 273], [840, 690], [277, 690], [688, 168], [1200, 168], [1200, 522]]
+                edges = [CuboidFace(0, 1, 2, 3), CuboidFace(0, 4, 5, 1), CuboidFace(1, 5, 6, 2)]
+                pl_nodes = (sly.PointLocation(node[0], node[1]) for node in nodes)
+                figure = sly.Cuboid(pl_nodes, edges)
+        """
 
         super().__init__(
             sly_id=sly_id,

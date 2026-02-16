@@ -197,46 +197,6 @@ def _get_effective_ann_name(img_name, ann_names):
 
 
 class Dataset(KeyObject):
-    """
-    Dataset is where your labeled and unlabeled images and other data files live. :class:`~supervisely.project.project.Dataset` object is immutable.
-
-    :param directory: Path to dataset directory.
-    :type directory: str
-    :param mode: Determines working mode for the given dataset.
-    :type mode: :class:`~supervisely.project.project.OpenMode`, optional. If not provided, dataset_id must be provided.
-    :param parents: List of parent directories, e.g. ["ds1", "ds2", "ds3"].
-    :type parents: List[str]
-    :param dataset_id: Dataset ID if the Dataset is opened in API mode.
-        If dataset_id is specified then api must be specified as well.
-    :type dataset_id: Optional[int]
-    :param api: API object if the Dataset is opened in API mode.
-    :type api: :class:`~supervisely.api.api.Api`, optional.
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import os
-            from dotenv import load_dotenv
-
-            import supervisely as sly
-
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            if sly.is_development():
-                load_dotenv(os.path.expanduser("~/supervisely.env"))
-
-            api = sly.Api.from_env()
-
-            dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
-
-            # Open Dataset locally in read mode
-            ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
-
-            # Open Dataset with API
-            ds = sly.Dataset(dataset_path, dataset_id=1, api=api)
-    """
-
     annotation_class = Annotation
     item_info_class = ImageInfo
 
@@ -256,6 +216,45 @@ class Dataset(KeyObject):
         dataset_id: Optional[int] = None,
         api: Optional[sly.Api] = None,
     ):
+        """
+        Dataset is where your labeled and unlabeled images and other data files live. :class:`~supervisely.project.project.Dataset` object is immutable.
+
+        :param directory: Path to dataset directory.
+        :type directory: str
+        :param mode: Determines working mode for the given dataset.
+        :type mode: :class:`~supervisely.project.project.OpenMode`, optional. If not provided, dataset_id must be provided.
+        :param parents: List of parent directories, e.g. ["ds1", "ds2", "ds3"].
+        :type parents: List[str]
+        :param dataset_id: Dataset ID if the Dataset is opened in API mode.
+            If dataset_id is specified then api must be specified as well.
+        :type dataset_id: Optional[int]
+        :param api: API object if the Dataset is opened in API mode.
+        :type api: :class:`~supervisely.api.api.Api`, optional.
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import os
+                from dotenv import load_dotenv
+
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
+
+                # Open Dataset locally in read mode
+                ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
+
+                # Open Dataset with API
+                ds = sly.Dataset(dataset_path, dataset_id=1, api=api)
+        """
         if dataset_id is not None:
             raise NotImplementedError(
                 "Opening dataset from the API is not implemented yet. Please use the local mode "
@@ -2240,24 +2239,6 @@ class Dataset(KeyObject):
 
 
 class Project:
-    """
-    Project is a parent directory for dataset. Project object is immutable.
-
-    :param directory: Path to project directory.
-    :type directory: str
-    :param mode: Determines working mode for the given project.
-    :type mode: :class:`~supervisely.project.project.OpenMode`
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import supervisely as sly
-
-            project_path = "/home/admin/work/supervisely/projects/lemons_annotated"
-            project = sly.Project(project_path, sly.OpenMode.READ)
-    """
-
     dataset_class = Dataset
     blob_dir_name = "blob"
 
@@ -2282,6 +2263,23 @@ class Project:
         project_id: Optional[int] = None,
         api: Optional[sly.Api] = None,
     ):
+        """
+        Project is a parent directory for dataset. Project object is immutable.
+
+        :param directory: Path to project directory.
+        :type directory: str
+        :param mode: Determines working mode for the given project.
+        :type mode: :class:`~supervisely.project.project.OpenMode`
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                project_path = "/home/admin/work/supervisely/projects/lemons_annotated"
+                project = sly.Project(project_path, sly.OpenMode.READ)
+        """
         if project_id is not None:
             raise NotImplementedError(
                 "Opening project from the API is not implemented yet. Please use local mode "

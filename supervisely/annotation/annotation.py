@@ -72,61 +72,6 @@ class AnnotationJsonFields:
 
 
 class Annotation:
-    """
-    Annotation for a single image. :class:`~supervisely.annotation.annotation.Annotation` object is immutable.
-
-    :param img_size: Size of the image (height, width).
-    :type img_size: Tuple[int, int] or List[int, int]
-    :param labels: List of :class:`~supervisely.annotation.label.Label` objects.
-    :type labels: List[:class:`~supervisely.annotation.label.Label`]
-    :param img_tags: :class:`~supervisely.annotation.tag_collection.TagCollection` object or list of
-        :class:`~supervisely.annotation.tag.Tag` objects.
-    :type img_tags: :class:`~supervisely.annotation.tag_collection.TagCollection` or List[:class:`~supervisely.annotation.tag.Tag`]
-    :param img_description: Image description.
-    :type img_description: str, optional
-    :param pixelwise_scores_labels: List of :class:`~supervisely.annotation.label.Label` objects with pixel-wise scores.
-    :type pixelwise_scores_labels: List[:class:`~supervisely.annotation.label.Label`]
-    :param custom_data: Custom data.
-    :type custom_data: dict, optional
-    :param image_id: Id of the image.
-    :type image_id: int, optional
-    :raises TypeError: if image size is not tuple or list
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            # Simple Annotation example
-            import supervisely as sly
-
-            height, width = 500, 700
-            ann = sly.Annotation((height, width))
-
-            # More complex Annotation example
-            # TagCollection
-            meta_lemon = sly.TagMeta('lemon_tag', sly.TagValueType.ANY_STRING)
-            tag_lemon = sly.Tag(meta_lemon, 'Hello')
-            tags = sly.TagCollection([tag_lemon])
-            # or tags = [tag_lemon]
-
-            # ObjClass
-            class_lemon = sly.ObjClass('lemon', sly.Rectangle)
-
-            # Label
-            label_lemon = sly.Label(sly.Rectangle(100, 100, 200, 200), class_lemon)
-
-            # Annotation
-            height, width = 300, 400
-            ann = sly.Annotation((height, width), [label_lemon], tags, 'example annotaion')
-            # 'points': {'exterior': [[100, 100], [200, 200]], 'interior': []}
-
-            # If Label geometry is out of image size bounds, it will be cropped
-            label_lemon = sly.Label(sly.Rectangle(100, 100, 700, 900), class_lemon)
-            height, width = 300, 400
-
-            ann = sly.Annotation((height, width), [label_lemon], tags, 'example annotaion')
-            # 'points': {'exterior': [[100, 100], [399, 299]], 'interior': []}
-    """
 
     def __init__(
         self,
@@ -138,6 +83,61 @@ class Annotation:
         custom_data: Optional[Dict] = None,
         image_id: Optional[int] = None,
     ):
+        """
+        Annotation for a single image. :class:`~supervisely.annotation.annotation.Annotation` object is immutable.
+
+        :param img_size: Size of the image (height, width).
+        :type img_size: Tuple[int, int] or List[int, int]
+        :param labels: List of :class:`~supervisely.annotation.label.Label` objects.
+        :type labels: List[:class:`~supervisely.annotation.label.Label`]
+        :param img_tags: :class:`~supervisely.annotation.tag_collection.TagCollection` object or list of
+            :class:`~supervisely.annotation.tag.Tag` objects.
+        :type img_tags: :class:`~supervisely.annotation.tag_collection.TagCollection` or List[:class:`~supervisely.annotation.tag.Tag`]
+        :param img_description: Image description.
+        :type img_description: str, optional
+        :param pixelwise_scores_labels: List of :class:`~supervisely.annotation.label.Label` objects with pixel-wise scores.
+        :type pixelwise_scores_labels: List[:class:`~supervisely.annotation.label.Label`]
+        :param custom_data: Custom data.
+        :type custom_data: dict, optional
+        :param image_id: Id of the image.
+        :type image_id: int, optional
+        :raises TypeError: if image size is not tuple or list
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                # Simple Annotation example
+                import supervisely as sly
+
+                height, width = 500, 700
+                ann = sly.Annotation((height, width))
+
+                # More complex Annotation example
+                # TagCollection
+                meta_lemon = sly.TagMeta('lemon_tag', sly.TagValueType.ANY_STRING)
+                tag_lemon = sly.Tag(meta_lemon, 'Hello')
+                tags = sly.TagCollection([tag_lemon])
+                # or tags = [tag_lemon]
+
+                # ObjClass
+                class_lemon = sly.ObjClass('lemon', sly.Rectangle)
+
+                # Label
+                label_lemon = sly.Label(sly.Rectangle(100, 100, 200, 200), class_lemon)
+
+                # Annotation
+                height, width = 300, 400
+                ann = sly.Annotation((height, width), [label_lemon], tags, 'example annotaion')
+                # 'points': {'exterior': [[100, 100], [200, 200]], 'interior': []}
+
+                # If Label geometry is out of image size bounds, it will be cropped
+                label_lemon = sly.Label(sly.Rectangle(100, 100, 700, 900), class_lemon)
+                height, width = 300, 400
+
+                ann = sly.Annotation((height, width), [label_lemon], tags, 'example annotaion')
+                # 'points': {'exterior': [[100, 100], [399, 299]], 'interior': []}
+        """
         if not isinstance(img_size, (tuple, list)):
             raise TypeError(
                 '{!r} has to be a tuple or a list. Given type "{}".'.format(

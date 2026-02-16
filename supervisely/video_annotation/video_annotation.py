@@ -29,127 +29,6 @@ from supervisely.video_annotation.video_tag_collection import VideoTagCollection
 
 
 class VideoAnnotation:
-    """
-    VideoAnnotation for a single video. :class:`~supervisely.video_annotation.video_annotation.VideoAnnotation` object is immutable.
-
-    :param img_size: Size of the image (height, width).
-    :type img_size: Tuple[int, int] or List[int, int]
-    :param frames_count: Number of frames in VideoAnnotation.
-    :type frames_count: int
-    :param objects: VideoObjectCollection object.
-    :type objects: :class:`~supervisely.video_annotation.video_object_collection.VideoObjectCollection`, optional
-    :param frames: FrameCollection object.
-    :type frames: :class:`~supervisely.video_annotation.frame_collection.FrameCollection`, optional
-    :param tags: VideoTagCollection object.
-    :type tags: :class:`~supervisely.video_annotation.video_tag_collection.VideoTagCollection`, optional
-    :param description: Video description.
-    :type description: str, optional
-    :param key: UUID object.
-    :type key: UUID, optional
-    :raises TypeError: if img_size is not tuple or list
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import supervisely as sly
-            from supervisely.video_annotation.video_tag import VideoTag
-            from supervisely.video_annotation.video_tag_collection import VideoTagCollection
-
-            # Simple VideoAnnotation example
-            height, width = 500, 700
-            frames_count = 10
-            video_ann = sly.VideoAnnotation((height, width), frames_count)
-            print(video_ann.to_json())
-            # Output: {
-            #     "size": {
-            #         "height": 500,
-            #         "width": 700
-            #     },
-            #     "description": "",
-            #     "key": "abef780b01ad4063b4b961ab2ba2f410",
-            #     "tags": [],
-            #     "objects": [],
-            #     "frames": [],
-            #     "framesCount": 10
-            # }
-
-            # More complex VideoAnnotation example
-            height, width = 500, 700
-            frames_count = 1
-            # VideoObjectCollection
-            obj_class_car = sly.ObjClass('car', sly.Rectangle)
-            video_obj_car = sly.VideoObject(obj_class_car)
-            objects = sly.VideoObjectCollection([video_obj_car])
-
-            # FrameCollection
-            fr_index = 7
-            geometry = sly.Rectangle(0, 0, 100, 100)
-            video_figure_car = sly.VideoFigure(video_obj_car, geometry, fr_index)
-            frame = sly.Frame(fr_index, figures=[video_figure_car])
-            frames = sly.FrameCollection([frame])
-
-            # VideoTagCollection
-            meta_car = sly.TagMeta('car_tag', sly.TagValueType.ANY_STRING)
-            vid_tag = VideoTag(meta_car, value='acura')
-            video_tags = VideoTagCollection([vid_tag])
-
-            # Description
-            descr = 'car example'
-
-            video_ann = sly.VideoAnnotation((height, width), frames_count, objects, frames, video_tags, descr)
-            print(video_ann.to_json())
-            # Output: {
-            #     "size": {
-            #         "height": 500,
-            #         "width": 700
-            #     },
-            #     "description": "car example",
-            #     "key": "a85b282e5e174e7ebad6f878b6919244",
-            #     "tags": [
-            #         {
-            #             "name": "car_tag",
-            #             "value": "acura",
-            #             "key": "540a8212b0344788953996cea220ea8b"
-            #         }
-            #     ],
-            #     "objects": [
-            #         {
-            #             "key": "7c74b8a495044ea0ac127f32751c8f5c",
-            #             "classTitle": "car",
-            #             "tags": []
-            #         }
-            #     ],
-            #     "frames": [
-            #         {
-            #             "index": 7,
-            #             "figures": [
-            #                 {
-            #                     "key": "82dcbf2e3c5f42a99eeea2ad34173793",
-            #                     "objectKey": "7c74b8a495044ea0ac127f32751c8f5c",
-            #                     "geometryType": "rectangle",
-            #                     "geometry": {
-            #                         "points": {
-            #                             "exterior": [
-            #                                 [
-            #                                     0,
-            #                                     0
-            #                                 ],
-            #                                 [
-            #                                     100,
-            #                                     100
-            #                                 ]
-            #                             ],
-            #                             "interior": []
-            #                         }
-            #                     }
-            #                 }
-            #             ]
-            #         }
-            #     ],
-            #     "framesCount": 1
-            # }
-    """
 
     def __init__(
         self,
@@ -161,6 +40,127 @@ class VideoAnnotation:
         description: Optional[str] = "",
         key: Optional[UUID] = None,
     ):
+        """
+        VideoAnnotation for a single video. :class:`~supervisely.video_annotation.video_annotation.VideoAnnotation` object is immutable.
+
+        :param img_size: Size of the image (height, width).
+        :type img_size: Tuple[int, int] or List[int, int]
+        :param frames_count: Number of frames in VideoAnnotation.
+        :type frames_count: int
+        :param objects: VideoObjectCollection object.
+        :type objects: :class:`~supervisely.video_annotation.video_object_collection.VideoObjectCollection`, optional
+        :param frames: FrameCollection object.
+        :type frames: :class:`~supervisely.video_annotation.frame_collection.FrameCollection`, optional
+        :param tags: VideoTagCollection object.
+        :type tags: :class:`~supervisely.video_annotation.video_tag_collection.VideoTagCollection`, optional
+        :param description: Video description.
+        :type description: str, optional
+        :param key: UUID object.
+        :type key: UUID, optional
+        :raises TypeError: if img_size is not tuple or list
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+                from supervisely.video_annotation.video_tag import VideoTag
+                from supervisely.video_annotation.video_tag_collection import VideoTagCollection
+
+                # Simple VideoAnnotation example
+                height, width = 500, 700
+                frames_count = 10
+                video_ann = sly.VideoAnnotation((height, width), frames_count)
+                print(video_ann.to_json())
+                # Output: {
+                #     "size": {
+                #         "height": 500,
+                #         "width": 700
+                #     },
+                #     "description": "",
+                #     "key": "abef780b01ad4063b4b961ab2ba2f410",
+                #     "tags": [],
+                #     "objects": [],
+                #     "frames": [],
+                #     "framesCount": 10
+                # }
+
+                # More complex VideoAnnotation example
+                height, width = 500, 700
+                frames_count = 1
+                # VideoObjectCollection
+                obj_class_car = sly.ObjClass('car', sly.Rectangle)
+                video_obj_car = sly.VideoObject(obj_class_car)
+                objects = sly.VideoObjectCollection([video_obj_car])
+
+                # FrameCollection
+                fr_index = 7
+                geometry = sly.Rectangle(0, 0, 100, 100)
+                video_figure_car = sly.VideoFigure(video_obj_car, geometry, fr_index)
+                frame = sly.Frame(fr_index, figures=[video_figure_car])
+                frames = sly.FrameCollection([frame])
+
+                # VideoTagCollection
+                meta_car = sly.TagMeta('car_tag', sly.TagValueType.ANY_STRING)
+                vid_tag = VideoTag(meta_car, value='acura')
+                video_tags = VideoTagCollection([vid_tag])
+
+                # Description
+                descr = 'car example'
+
+                video_ann = sly.VideoAnnotation((height, width), frames_count, objects, frames, video_tags, descr)
+                print(video_ann.to_json())
+                # Output: {
+                #     "size": {
+                #         "height": 500,
+                #         "width": 700
+                #     },
+                #     "description": "car example",
+                #     "key": "a85b282e5e174e7ebad6f878b6919244",
+                #     "tags": [
+                #         {
+                #             "name": "car_tag",
+                #             "value": "acura",
+                #             "key": "540a8212b0344788953996cea220ea8b"
+                #         }
+                #     ],
+                #     "objects": [
+                #         {
+                #             "key": "7c74b8a495044ea0ac127f32751c8f5c",
+                #             "classTitle": "car",
+                #             "tags": []
+                #         }
+                #     ],
+                #     "frames": [
+                #         {
+                #             "index": 7,
+                #             "figures": [
+                #                 {
+                #                     "key": "82dcbf2e3c5f42a99eeea2ad34173793",
+                #                     "objectKey": "7c74b8a495044ea0ac127f32751c8f5c",
+                #                     "geometryType": "rectangle",
+                #                     "geometry": {
+                #                         "points": {
+                #                             "exterior": [
+                #                                 [
+                #                                     0,
+                #                                     0
+                #                                 ],
+                #                                 [
+                #                                     100,
+                #                                     100
+                #                                 ]
+                #                             ],
+                #                             "interior": []
+                #                         }
+                #                     }
+                #                 }
+                #             ]
+                #         }
+                #     ],
+                #     "framesCount": 1
+                # }
+        """
         if not isinstance(img_size, (tuple, list)):
             raise TypeError(
                 '{!r} has to be a tuple or a list. Given type "{}".'.format(

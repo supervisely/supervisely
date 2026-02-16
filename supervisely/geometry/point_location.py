@@ -5,14 +5,15 @@ from __future__ import annotations
 
 from copy import deepcopy
 from math import floor
-from typing import Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
 
-import supervisely as sly
 from supervisely._utils import unwrap_if_numpy
 from supervisely.geometry import validation
 from supervisely.geometry.constants import EXTERIOR, INTERIOR, POINTS
-from supervisely.imaging import image as sly_image
 from supervisely.io.json import JsonSerializable
+
+if TYPE_CHECKING:
+    from supervisely.geometry.image_rotator import ImageRotator
 
 
 class PointLocation(JsonSerializable):
@@ -196,7 +197,7 @@ class PointLocation(JsonSerializable):
         """
         return PointLocation(row=(self.row + drow), col=(self.col + dcol))
 
-    def rotate(self, rotator: sly.geometry.image_rotator.ImageRotator) -> PointLocation:
+    def rotate(self, rotator: ImageRotator) -> PointLocation:
         """
         Rotates current PointLocation object.
 
@@ -238,6 +239,8 @@ class PointLocation(JsonSerializable):
                 out_height, out_width = 600, 800
                 resize_loc = loc.resize((in_height, in_width), (out_height, out_width))
         """
+        from supervisely.imaging import image as sly_image
+
         new_size = sly_image.restore_proportional_size(in_size=in_size, out_size=out_size)
         frow = new_size[0] / in_size[0]
         fcol = new_size[1] / in_size[1]

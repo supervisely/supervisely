@@ -74,57 +74,6 @@ from supervisely.template.experiment.experiment_generator import ExperimentGener
 
 
 class TrainApp:
-    """
-    High-level wrapper for building Supervisely training applications.
-
-    ``TrainApp`` is designed to be used inside a Supervisely App.
-    **It connects:**
-
-    - **GUI** (model selector, hyperparameters editor, train/val split selector, class/tag selectors)
-    - **Data preparation** (project download, optional conversion, splitting, collections creation)
-    - **Training lifecycle** (prepare data → run user training code → validate & upload artifacts)
-    - **Optional extras**: export (ONNX/TensorRT), model benchmark, TensorBoard
-
-    Typical usage
-    -------------
-
-    .. code-block:: python
-
-        from supervisely.nn.training.train_app import TrainApp
-
-        train_app = TrainApp(
-            framework_name="My Framework", # e.g "YOLO"
-            models="models.json",
-            hyperparameters="hyperparameters.yaml",
-            app_options="app_options.yaml",
-        )
-
-        @train_app.start
-        def train():
-            # Access data via train_app.project_dir
-            # Access hyperparameters via train_app.hyperparameters (dict)
-            # Access model files via train_app.model_files (dict)
-            # Train your model, save checkpoints locally, and return experiment_info.
-            return {
-                "model_name": train_app.model_name,
-                "task_type": train_app.task_type,   # TaskType (string-like enum)
-                "checkpoints": "/path/to/checkpoints_dir",  # or list of file paths
-                "best_checkpoint": "checkpoint_best.pth",
-                # optional: return config if model requires it
-                # "model_files": {"config": "/path/to/config.yaml", ...},
-            }
-
-    :param framework_name: Name of the ML framework used (stored in experiment metadata).
-    :type framework_name: str
-    :param models: Path to ``.json`` file (or a Python list) with model configurations for the model selector.
-    :type models: Union[str, List[Dict[str, Any]]]
-    :param hyperparameters: Path to hyperparameters YAML file (``.yaml``/``.yml``). The GUI allows editing before training.
-    :type hyperparameters: str
-    :param app_options: Path to options YAML file or a dict with UI/behavior options.
-    :type app_options: Optional[Union[str, Dict[str, Any]]]
-    :param work_dir: Local working directory used to store downloaded data, model files, logs and output artifacts.
-    :type work_dir: Optional[str]
-    """
 
     def __init__(
         self,
@@ -134,6 +83,57 @@ class TrainApp:
         app_options: Optional[Union[str, Dict[str, Any]]] = None,
         work_dir: Optional[str] = None,
     ):
+        """
+        High-level wrapper for building Supervisely training applications.
+
+        ``TrainApp`` is designed to be used inside a Supervisely App.
+        **It connects:**
+
+        - **GUI** (model selector, hyperparameters editor, train/val split selector, class/tag selectors)
+        - **Data preparation** (project download, optional conversion, splitting, collections creation)
+        - **Training lifecycle** (prepare data → run user training code → validate & upload artifacts)
+        - **Optional extras**: export (ONNX/TensorRT), model benchmark, TensorBoard
+
+        Typical usage
+        -------------
+
+        .. code-block:: python
+
+            from supervisely.nn.training.train_app import TrainApp
+
+            train_app = TrainApp(
+                framework_name="My Framework", # e.g "YOLO"
+                models="models.json",
+                hyperparameters="hyperparameters.yaml",
+                app_options="app_options.yaml",
+            )
+
+            @train_app.start
+            def train():
+                # Access data via train_app.project_dir
+                # Access hyperparameters via train_app.hyperparameters (dict)
+                # Access model files via train_app.model_files (dict)
+                # Train your model, save checkpoints locally, and return experiment_info.
+                return {
+                    "model_name": train_app.model_name,
+                    "task_type": train_app.task_type,   # TaskType (string-like enum)
+                    "checkpoints": "/path/to/checkpoints_dir",  # or list of file paths
+                    "best_checkpoint": "checkpoint_best.pth",
+                    # optional: return config if model requires it
+                    # "model_files": {"config": "/path/to/config.yaml", ...},
+                }
+
+        :param framework_name: Name of the ML framework used (stored in experiment metadata).
+        :type framework_name: str
+        :param models: Path to ``.json`` file (or a Python list) with model configurations for the model selector.
+        :type models: Union[str, List[Dict[str, Any]]]
+        :param hyperparameters: Path to hyperparameters YAML file (``.yaml``/``.yml``). The GUI allows editing before training.
+        :type hyperparameters: str
+        :param app_options: Path to options YAML file or a dict with UI/behavior options.
+        :type app_options: Optional[Union[str, Dict[str, Any]]]
+        :param work_dir: Local working directory used to store downloaded data, model files, logs and output artifacts.
+        :type work_dir: Optional[str]
+        """
 
         # Init
         self._api = Api.from_env()

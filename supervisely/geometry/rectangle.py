@@ -5,12 +5,11 @@ from __future__ import annotations
 
 from copy import deepcopy
 from math import ceil, floor
-from typing import Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
 
 import cv2
 import numpy as np
 
-import supervisely as sly
 from supervisely.geometry import validation
 from supervisely.geometry.constants import (
     CLASS_ID,
@@ -24,6 +23,9 @@ from supervisely.geometry.constants import (
 )
 from supervisely.geometry.geometry import Geometry
 from supervisely.geometry.point_location import PointLocation, points_to_row_col_list
+
+if TYPE_CHECKING:
+    from supervisely.geometry.image_rotator import ImageRotator
 
 
 class Rectangle(Geometry):
@@ -255,7 +257,7 @@ class Rectangle(Geometry):
             PointLocation(row=self.bottom, col=self.left),
         ]
 
-    def rotate(self, rotator: sly.geometry.image_rotator.ImageRotator) -> Rectangle:
+    def rotate(self, rotator: ImageRotator) -> Rectangle:
         """
         Rotates current Rectangle.
 

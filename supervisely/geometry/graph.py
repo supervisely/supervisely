@@ -9,7 +9,7 @@ from typing import Dict, List, Optional, Tuple, Union
 import cv2
 import numpy as np
 
-from supervisely import logger
+from supervisely.sly_logger import logger
 from supervisely.geometry.constants import (
     CLASS_ID,
     CREATED_AT,
@@ -37,26 +37,6 @@ COLOR = "color"
 
 
 class Node(JsonSerializable):
-    """
-    Node for a single :class:`~supervisely.geometry.graph.GraphNodes`.
-
-    :param location: Location of Node.
-    :type location: :class:`~supervisely.geometry.point_location.PointLocation`
-    :param disabled: Determines whether to display the Node when drawing or not.
-    :type disabled: bool, optional
-    :param label: str
-    :param row: int
-    :param col: int
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import supervisely as sly
-            from supervisely.geometry.graph import Node
-
-            vertex = Node(sly.PointLocation(5, 5))
-    """
 
     def __init__(
         self,
@@ -66,6 +46,26 @@ class Node(JsonSerializable):
         row: Optional[int] = None,
         col: Optional[int] = None,
     ):
+        """
+        Node for a single :class:`~supervisely.geometry.graph.GraphNodes`.
+
+        :param location: Location of Node.
+        :type location: :class:`~supervisely.geometry.point_location.PointLocation`
+        :param disabled: Determines whether to display the Node when drawing or not.
+        :type disabled: bool, optional
+        :param label: str
+        :param row: int
+        :param col: int
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+                from supervisely.geometry.graph import Node
+
+                vertex = Node(sly.PointLocation(5, 5))
+        """
         if None not in (location, row, col) or all(item is None for item in (location, row, col)):
             raise ValueError("Either location or row and col must be specified")
         self._location = location
@@ -168,36 +168,6 @@ def _maybe_transform_colors(elements, process_fn):
 
 
 class GraphNodes(Geometry):
-    """
-    GraphNodes geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.graph.GraphNodes` class object is immutable.
-
-    :param nodes: Dict or List containing nodes of graph
-    :type nodes: dict
-    :param sly_id: GraphNodes ID in Supervisely server.
-    :type sly_id: int, optional
-    :param class_id: ID of ObjClass to which GraphNodes belongs.
-    :type class_id: int, optional
-    :param labeler_login: Login of the user who created :class:`~supervisely.geometry.graph.GraphNodes`.
-    :type labeler_login: str, optional
-    :param updated_at: Date and Time when GraphNodes was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
-    :type updated_at: str, optional
-    :param created_at: Date and Time when GraphNodes was created. Date Format is the same as in "updated_at" parameter.
-    :type created_at: str, optional
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import supervisely as sly
-            from supervisely.geometry.graph import Node, GraphNodes
-
-            vertex_1 = Node(sly.PointLocation(5, 5))
-            vertex_2 = Node(sly.PointLocation(100, 100))
-            vertex_3 = Node(sly.PointLocation(200, 250))
-            nodes = {0: vertex_1, 1: vertex_2, 2: vertex_3}
-            figure = GraphNodes(nodes)
-    """
-
     items_json_field = NODES
 
     @staticmethod
@@ -213,6 +183,35 @@ class GraphNodes(Geometry):
         updated_at: Optional[str] = None,
         created_at: Optional[str] = None,
     ):
+        """
+        GraphNodes geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.graph.GraphNodes` class object is immutable.
+
+        :param nodes: Dict or List containing nodes of graph
+        :type nodes: dict
+        :param sly_id: GraphNodes ID in Supervisely server.
+        :type sly_id: int, optional
+        :param class_id: ID of ObjClass to which GraphNodes belongs.
+        :type class_id: int, optional
+        :param labeler_login: Login of the user who created :class:`~supervisely.geometry.graph.GraphNodes`.
+        :type labeler_login: str, optional
+        :param updated_at: Date and Time when GraphNodes was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
+        :type updated_at: str, optional
+        :param created_at: Date and Time when GraphNodes was created. Date Format is the same as in "updated_at" parameter.
+        :type created_at: str, optional
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+                from supervisely.geometry.graph import Node, GraphNodes
+
+                vertex_1 = Node(sly.PointLocation(5, 5))
+                vertex_2 = Node(sly.PointLocation(100, 100))
+                vertex_3 = Node(sly.PointLocation(200, 250))
+                nodes = {0: vertex_1, 1: vertex_2, 2: vertex_3}
+                figure = GraphNodes(nodes)
+        """
 
         super().__init__(
             sly_id=sly_id,

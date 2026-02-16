@@ -31,80 +31,6 @@ class KeyObject:
 
 
 class KeyIndexedCollection:
-    """
-    Base class for :class:`~supervisely.annotation.obj_class_collection.ObjClassCollection`, :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection`  and :class:`~supervisely.annotation.tag_collection.TagCollection` instances.
-    It is an analogue of python's standard Dict. It allows to store objects inherited from :class:`~supervisely.collection.key_indexed_collection.KeyObject`.
-
-    :param items: List of :class:`~supervisely.annotation.obj_class_collection.ObjClassCollection`, TagMetaCollection  and :class:`~supervisely.annotation.tag_collection.TagCollection` objects.
-    :type items: list, optional
-    :raises :class:`~supervisely.collection.key_indexed_collection.DuplicateKeyError`, when trying to add object with already existing key
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import supervisely as sly
-
-            item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
-            item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
-            collection = sly.collection.key_indexed_collection.KeyIndexedCollection([item_cat, item_turtle])
-            print(collection.to_json())
-            # Output: [
-            #     {
-            #         "name": "cat",
-            #         "value_type": "none",
-            #         "color": "#8A0F12",
-            #         "hotkey": "",
-            #         "applicable_type": "all",
-            #         "classes": []
-            #     },
-            #     {
-            #         "name": "turtle",
-            #         "value_type": "any_string",
-            #         "color": "#8A860F",
-            #         "hotkey": "",
-            #         "applicable_type": "all",
-            #         "classes": []
-            #     }
-            # ]
-
-            # Try to add item with a key that already exists in the collection
-            dublicate_item = sly.ObjClass('cat', sly.Rectangle)
-            new_collection = collection.add(dublicate_item)
-            # Output:
-            # DuplicateKeyError: "Key 'cat' already exists"
-
-            # Add item with a key that not exist in the collection
-            item_dog = sly.ObjClass('dog', sly.Rectangle)
-            new_collection = collection.add(item_dog)
-            print(new_collection.to_json())
-            # Output: [
-            #     {
-            #         "name": "cat",
-            #         "value_type": "none",
-            #         "color": "#668A0F",
-            #         "hotkey": "",
-            #         "applicable_type": "all",
-            #         "classes": []
-            #     },
-            #     {
-            #         "name": "turtle",
-            #         "value_type": "any_string",
-            #         "color": "#4D0F8A",
-            #         "hotkey": "",
-            #         "applicable_type": "all",
-            #         "classes": []
-            #     },
-            #     {
-            #         "title": "dog",
-            #         "shape": "rectangle",
-            #         "color": "#0F7F8A",
-            #         "geometry_config": {},
-            #         "hotkey": ""
-            #     }
-            # ]
-    """
-
     item_type = KeyObject
     """
     The type of items that can be storred in collection. Defaul value is 
@@ -114,6 +40,79 @@ class KeyIndexedCollection:
     """
 
     def __init__(self, items: Optional[List[KeyObject]] = None):
+        """
+        Base class for :class:`~supervisely.annotation.obj_class_collection.ObjClassCollection`, :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection`  and :class:`~supervisely.annotation.tag_collection.TagCollection` instances.
+        It is an analogue of python's standard Dict. It allows to store objects inherited from :class:`~supervisely.collection.key_indexed_collection.KeyObject`.
+
+        :param items: List of :class:`~supervisely.annotation.obj_class_collection.ObjClassCollection`, TagMetaCollection  and :class:`~supervisely.annotation.tag_collection.TagCollection` objects.
+        :type items: list, optional
+        :raises :class:`~supervisely.collection.key_indexed_collection.DuplicateKeyError`, when trying to add object with already existing key
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
+                item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
+                collection = sly.collection.key_indexed_collection.KeyIndexedCollection([item_cat, item_turtle])
+                print(collection.to_json())
+                # Output: [
+                #     {
+                #         "name": "cat",
+                #         "value_type": "none",
+                #         "color": "#8A0F12",
+                #         "hotkey": "",
+                #         "applicable_type": "all",
+                #         "classes": []
+                #     },
+                #     {
+                #         "name": "turtle",
+                #         "value_type": "any_string",
+                #         "color": "#8A860F",
+                #         "hotkey": "",
+                #         "applicable_type": "all",
+                #         "classes": []
+                #     }
+                # ]
+
+                # Try to add item with a key that already exists in the collection
+                dublicate_item = sly.ObjClass('cat', sly.Rectangle)
+                new_collection = collection.add(dublicate_item)
+                # Output:
+                # DuplicateKeyError: "Key 'cat' already exists"
+
+                # Add item with a key that not exist in the collection
+                item_dog = sly.ObjClass('dog', sly.Rectangle)
+                new_collection = collection.add(item_dog)
+                print(new_collection.to_json())
+                # Output: [
+                #     {
+                #         "name": "cat",
+                #         "value_type": "none",
+                #         "color": "#668A0F",
+                #         "hotkey": "",
+                #         "applicable_type": "all",
+                #         "classes": []
+                #     },
+                #     {
+                #         "name": "turtle",
+                #         "value_type": "any_string",
+                #         "color": "#4D0F8A",
+                #         "hotkey": "",
+                #         "applicable_type": "all",
+                #         "classes": []
+                #     },
+                #     {
+                #         "title": "dog",
+                #         "shape": "rectangle",
+                #         "color": "#0F7F8A",
+                #         "geometry_config": {},
+                #         "hotkey": ""
+                #     }
+                # ]
+        """
         self._collection = {}
         self._add_items_impl(self._collection, take_with_default(items, []))
 
@@ -557,53 +556,53 @@ class KeyIndexedCollection:
 
 
 class MultiKeyIndexedCollection(KeyIndexedCollection):
-    """
-    Base class for :class:`~supervisely.annotation.tag_collection.TagCollection` instances. MultiKeyIndexedCollection makes it possible to add an object with an already existing key.
-
-    :param items: List of :class:`~supervisely.annotation.obj_class_collection.ObjClassCollection`, TagMetaCollection  and :class:`~supervisely.annotation.tag_collection.TagCollection` objects.
-    :type items: list, optional
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import supervisely as sly
-
-            item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
-            item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
-
-            # Create item with same key 'cat'
-            other_cat = sly.ObjClass('cat', sly.Rectangle)
-            collection = sly.collection.key_indexed_collection.MultiKeyIndexedCollection([item_cat, item_turtle, other_cat])
-            print(collection.to_json())
-            # Output: [
-            #     {
-            #         "name": "cat",
-            #         "value_type": "none",
-            #         "color": "#0F198A",
-            #         "hotkey": "",
-            #         "applicable_type": "all",
-            #         "classes": []
-            #     },
-            #     {
-            #         "title": "cat",
-            #         "shape": "rectangle",
-            #         "color": "#0F8A6B",
-            #         "geometry_config": {},
-            #         "hotkey": ""
-            #     },
-            #     {
-            #         "name": "turtle",
-            #         "value_type": "any_string",
-            #         "color": "#0F658A",
-            #         "hotkey": "",
-            #         "applicable_type": "all",
-            #         "classes": []
-            #     }
-            # ]
-    """
 
     def __init__(self, items: Optional[List] = None):
+        """
+        Base class for :class:`~supervisely.annotation.tag_collection.TagCollection` instances. MultiKeyIndexedCollection makes it possible to add an object with an already existing key.
+
+        :param items: List of :class:`~supervisely.annotation.obj_class_collection.ObjClassCollection`, TagMetaCollection  and :class:`~supervisely.annotation.tag_collection.TagCollection` objects.
+        :type items: list, optional
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                item_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
+                item_turtle = sly.TagMeta('turtle', sly.TagValueType.ANY_STRING)
+
+                # Create item with same key 'cat'
+                other_cat = sly.ObjClass('cat', sly.Rectangle)
+                collection = sly.collection.key_indexed_collection.MultiKeyIndexedCollection([item_cat, item_turtle, other_cat])
+                print(collection.to_json())
+                # Output: [
+                #     {
+                #         "name": "cat",
+                #         "value_type": "none",
+                #         "color": "#0F198A",
+                #         "hotkey": "",
+                #         "applicable_type": "all",
+                #         "classes": []
+                #     },
+                #     {
+                #         "title": "cat",
+                #         "shape": "rectangle",
+                #         "color": "#0F8A6B",
+                #         "geometry_config": {},
+                #         "hotkey": ""
+                #     },
+                #     {
+                #         "name": "turtle",
+                #         "value_type": "any_string",
+                #         "color": "#0F658A",
+                #         "hotkey": "",
+                #         "applicable_type": "all",
+                #         "classes": []
+                #     }
+                # ]
+        """
         self._collection = defaultdict(list)
         self._add_items_impl(self._collection, take_with_default(items, []))
 
