@@ -1,7 +1,4 @@
 # coding: utf-8
-"""Annotation for a single image."""
-
-# docs
 from __future__ import annotations
 
 import itertools
@@ -72,6 +69,7 @@ class AnnotationJsonFields:
 
 
 class Annotation:
+    """Annotation for a single image."""
 
     def __init__(
         self,
