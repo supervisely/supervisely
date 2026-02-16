@@ -1760,7 +1760,7 @@ class Annotation:
         :param thresh: Side threshold to filter.
         :type thresh: int
         :param filter_operator: Type of filter operation.
-        :type filter_operator: operator
+        :type filter_operator: Callable
         :param classes: List of Labels names to apply filter.
         :type classes: List[str]
         :returns: New instance of :class:`~supervisely.annotation.annotation.Annotation`

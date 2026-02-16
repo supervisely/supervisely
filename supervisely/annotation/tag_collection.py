@@ -13,130 +13,135 @@ from supervisely.collection.key_indexed_collection import MultiKeyIndexedCollect
 
 
 class TagCollection(MultiKeyIndexedCollection):
-    """
-    Collection with :class:`Tag<~supervisely.annotation.tag.Tag>` instances. :class:`TagCollection<~supervisely.annotation.tag_collection.TagCollection>` object is immutable.
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import supervisely as sly
-
-            # Create TagMetas (see class TagMeta for additional information about creating TagMetas)
-            meta_weather = sly.TagMeta('Weather', sly.TagValueType.ANY_STRING)
-
-            seasons = ["Winter", "Spring", "Summer", "Autumn"]
-            meta_season = sly.TagMeta('Season', sly.TagValueType.ONEOF_STRING, possible_values=seasons)
-
-            # Create Tags
-            tag_weather = sly.Tag(meta_weather, value="Sunny")
-            tag_season = sly.Tag(meta_season, value="Spring")
-            tags_arr = [tag_weather, tag_season]
-
-            # Create TagCollection from Tags
-            tags = sly.TagCollection(tags_arr)
-
-            # Add item to TagCollection
-            meta_potato = sly.TagMeta('potato', sly.TagValueType.NONE)
-            tag_potato =sly.Tag(meta_potato)
-
-            # Remember that TagCollection is immutable, and we need to assign new instance of TagCollection to a new variable
-            tags = tags.add(tag_potato)
-
-            # You can also add multiple items to collection
-            meta_cabbage = sly.TagMeta('cabbage', sly.TagValueType.NONE)
-            meta_carrot = sly.TagMeta('carrot', sly.TagValueType.NONE)
-            meta_turnip = sly.TagMeta('turnip', sly.TagValueType.NONE)
-
-            tag_cabbage = sly.Tag(meta_cabbage)
-            tag_carrot = sly.Tag(meta_carrot)
-            tag_turnip = sly.Tag(meta_turnip)
-
-            additional_veggies = [tag_cabbage, tag_carrot, tag_turnip]
-
-            tags = tags.add_items(additional_veggies)
-
-            # Has key, checks if given key exist in collection
-            tags.has_key("cabbage")
-            # Output: True
-
-            # Find intersection of given list of instances with collection items
-            meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE)
-            tag_dog = sly.Tag(meta_dog)
-
-            meta_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
-            tag_cat = sly.Tag(meta_cat)
-
-            meta_turtle = sly.TagMeta('turtle', sly.TagValueType.NONE)
-            tag_turtle = sly.Tag(meta_turtle)
-
-
-            tags_animals = sly.TagCollection([tag_dog, tag_cat, tag_turtle])
-
-            tags_intersections = tags.intersection(tags_animals)
-            print(tags_intersections.to_json())
-            # Output: []
-
-            # Let's add the potato Tag from another collection and compare them again
-            tags_animals = tags_animals.add(tag_potato)
-
-            tags_intersections = tags.intersection(tags_animals)
-            print(tags_intersections.to_json())
-            # Output: [
-            #     {
-            #         "name":"potato"
-            #     }
-            # ]
-
-            # Find difference between collection and given list of Tags or TagCollection
-            meta_car = sly.TagMeta('car', sly.TagValueType.NONE)
-            tag_car = sly.Tag(meta_car)
-
-            meta_bicycle = sly.TagMeta('bicycle', sly.TagValueType.NONE)
-            tag_bicycle = sly.Tag(meta_bicycle)
-
-            tags_vehicles = sly.TagCollection([tag_car, tag_bicycle])
-
-            meta_pedestrian = sly.TagMeta('pedestrian', sly.TagValueType.NONE)
-            tag_pedestrian = sly.Tag(meta_pedestrian)
-
-            meta_road = sly.TagMeta('road', sly.TagValueType.NONE)
-            tag_road = sly.Tag(meta_road)
-
-            difference = tags_vehicles.difference([tag_pedestrian, tag_road])
-            print(difference.to_json())
-            # Output: [
-            #     {
-            #         "name":"car"
-            #     },
-            #     {
-            #         "name":"bicycle"
-            #     }
-            # ]
-
-            # Merge collection and given list of TagMetas
-            tags_vehicles = sly.TagMetaCollection([tag_car, tag_bicycle])
-            tags_merge = sly.TagMetaCollection([tag_pedestrian, tag_road])
-
-            merged_collections = tags_vehicles.merge(tags_merge)
-            print(merged_collections.to_json())
-            # Output: [
-            #     {
-            #         "name":"pedestrian"
-            #     },
-            #     {
-            #         "name":"road"
-            #     },
-            #     {
-            #         "name":"car"
-            #     },
-            #     {
-            #         "name":"bicycle"
-            #     }
-            # ]
-    """
-
     item_type = Tag
+
+    def __init__(self, items: Optional[List[Tag]] = None):
+        """
+        Collection with :class:`Tag<~supervisely.annotation.tag.Tag>` instances. :class:`TagCollection<~supervisely.annotation.tag_collection.TagCollection>` object is immutable.
+
+        :param items: List of Tags.
+        :type items: List[:class:`~supervisely.annotation.tag.Tag`]
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                # Create TagMetas (see class TagMeta for additional information about creating TagMetas)
+                meta_weather = sly.TagMeta('Weather', sly.TagValueType.ANY_STRING)
+
+                seasons = ["Winter", "Spring", "Summer", "Autumn"]
+                meta_season = sly.TagMeta('Season', sly.TagValueType.ONEOF_STRING, possible_values=seasons)
+
+                # Create Tags
+                tag_weather = sly.Tag(meta_weather, value="Sunny")
+                tag_season = sly.Tag(meta_season, value="Spring")
+                tags_arr = [tag_weather, tag_season]
+
+                # Create TagCollection from Tags
+                tags = sly.TagCollection(tags_arr)
+
+                # Add item to TagCollection
+                meta_potato = sly.TagMeta('potato', sly.TagValueType.NONE)
+                tag_potato =sly.Tag(meta_potato)
+
+                # Remember that TagCollection is immutable, and we need to assign new instance of TagCollection to a new variable
+                tags = tags.add(tag_potato)
+
+                # You can also add multiple items to collection
+                meta_cabbage = sly.TagMeta('cabbage', sly.TagValueType.NONE)
+                meta_carrot = sly.TagMeta('carrot', sly.TagValueType.NONE)
+                meta_turnip = sly.TagMeta('turnip', sly.TagValueType.NONE)
+
+                tag_cabbage = sly.Tag(meta_cabbage)
+                tag_carrot = sly.Tag(meta_carrot)
+                tag_turnip = sly.Tag(meta_turnip)
+
+                additional_veggies = [tag_cabbage, tag_carrot, tag_turnip]
+
+                tags = tags.add_items(additional_veggies)
+
+                # Has key, checks if given key exist in collection
+                tags.has_key("cabbage")
+                # Output: True
+
+                # Find intersection of given list of instances with collection items
+                meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE)
+                tag_dog = sly.Tag(meta_dog)
+
+                meta_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
+                tag_cat = sly.Tag(meta_cat)
+
+                meta_turtle = sly.TagMeta('turtle', sly.TagValueType.NONE)
+                tag_turtle = sly.Tag(meta_turtle)
+
+
+                tags_animals = sly.TagCollection([tag_dog, tag_cat, tag_turtle])
+
+                tags_intersections = tags.intersection(tags_animals)
+                print(tags_intersections.to_json())
+                # Output: []
+
+                # Let's add the potato Tag from another collection and compare them again
+                tags_animals = tags_animals.add(tag_potato)
+
+                tags_intersections = tags.intersection(tags_animals)
+                print(tags_intersections.to_json())
+                # Output: [
+                #     {
+                #         "name":"potato"
+                #     }
+                # ]
+
+                # Find difference between collection and given list of Tags or TagCollection
+                meta_car = sly.TagMeta('car', sly.TagValueType.NONE)
+                tag_car = sly.Tag(meta_car)
+
+                meta_bicycle = sly.TagMeta('bicycle', sly.TagValueType.NONE)
+                tag_bicycle = sly.Tag(meta_bicycle)
+
+                tags_vehicles = sly.TagCollection([tag_car, tag_bicycle])
+
+                meta_pedestrian = sly.TagMeta('pedestrian', sly.TagValueType.NONE)
+                tag_pedestrian = sly.Tag(meta_pedestrian)
+
+                meta_road = sly.TagMeta('road', sly.TagValueType.NONE)
+                tag_road = sly.Tag(meta_road)
+
+                difference = tags_vehicles.difference([tag_pedestrian, tag_road])
+                print(difference.to_json())
+                # Output: [
+                #     {
+                #         "name":"car"
+                #     },
+                #     {
+                #         "name":"bicycle"
+                #     }
+                # ]
+
+                # Merge collection and given list of TagMetas
+                tags_vehicles = sly.TagMetaCollection([tag_car, tag_bicycle])
+                tags_merge = sly.TagMetaCollection([tag_pedestrian, tag_road])
+
+                merged_collections = tags_vehicles.merge(tags_merge)
+                print(merged_collections.to_json())
+                # Output: [
+                #     {
+                #         "name":"pedestrian"
+                #     },
+                #     {
+                #         "name":"road"
+                #     },
+                #     {
+                #         "name":"car"
+                #     },
+                #     {
+                #         "name":"bicycle"
+                #     }
+                # ]
+        """
+        super().__init__(items)
 
     def to_json(self) -> List[Dict]:
         """

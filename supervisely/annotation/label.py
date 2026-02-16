@@ -941,14 +941,19 @@ class LabelBase:
         """
         Smart Tool parameters that were used for labeling.
 
-        Example:
+        :Usage Example:
 
-            {
-                'crop': [[85.69912274538524, 323.07711452375236], [1108.5635719011857, 1543.1199742240174]],
-                'visible': True,
-                'negative': [],
-                'positive': [[597, 933], [474.5072466934964, 1381.6437133813354]]
-            }
+            .. code-block:: python
+
+                smtool_input = {
+                    "crop": [
+                        [85.69912274538524, 323.07711452375236],
+                        [1108.5635719011857, 1543.1199742240174],
+                    ],
+                    "visible": True,
+                    "negative": [],
+                    "positive": [[597, 933], [474.5072466934964, 1381.6437133813354]],
+                }
         """
         return self._smart_tool_input
 

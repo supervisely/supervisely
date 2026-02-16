@@ -14,160 +14,165 @@ from supervisely.io.json import JsonSerializable
 
 
 class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
-    """
-    Collection with :class:`TagMeta<~supervisely.annotation.tag_meta.TagMeta>` instances. :class:`TagMetaCollection<~supervisely.annotation.tag_meta_collection.TagMetaCollection>` object is immutable.
-
-    :raises :class:`~supervisely.collection.key_indexed_collection.DuplicateKeyError`: if instance with given name already exists
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import supervisely as sly
-
-            # Create TagMetas
-            meta_weather = sly.TagMeta('Weather', sly.TagValueType.ANY_STRING)
-
-            season_values = ["Winter", "Spring", "Summer", "Autumn"]
-            meta_season = sly.TagMeta('Season', sly.TagValueType.ONEOF_STRING, possible_values=season_values)
-
-            # Create TagMetaCollection from TagMetas
-            tag_metas = sly.TagMetaCollection([meta_weather, meta_season])
-
-            # Add items to TagMetaCollection
-            meta_potato = sly.TagMeta('potato', sly.TagValueType.NONE)
-
-            # Remember that TagMetaCollection is immutable, and we need to assign new instance of TagMetaCollection to a new variable
-            tag_metas = tag_metas.add(meta_potato)
-
-            # You can also add multiple items to collection
-            meta_cabbage = sly.TagMeta('cabbage', sly.TagValueType.NONE)
-            meta_carrot = sly.TagMeta('carrot', sly.TagValueType.NONE)
-            meta_turnip = sly.TagMeta('turnip', sly.TagValueType.NONE)
-
-            tag_metas = tag_metas.add_items([meta_cabbage, meta_carrot, meta_turnip])
-
-            # Has key, checks if given key exist in collection
-            tag_metas.has_key("cabbage")
-            # Output: True
-
-            # Intersection, finds intersection of given list of instances with collection items
-            meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE)
-            meta_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
-            meta_turtle = sly.TagMeta('turtle', sly.TagValueType.NONE)
-
-            tag_metas_animals = sly.TagMetaCollection([meta_dog, meta_cat, meta_turtle])
-
-            metas_intersections = tag_metas.intersection(tag_metas_animals)
-            print(metas_intersections.to_json())
-            # Output: []
-
-            # Let's add the potato TagMeta from another collection and compare them again
-            tag_metas_animals = tag_metas_animals.add(meta_potato)
-
-            metas_intersections = tag_metas.intersection(tag_metas_animals)
-            print(metas_intersections.to_json())
-            # Output: [
-            #     {
-            #         "name":"potato",
-            #         "value_type":"none",
-            #         "color":"#8A710F",
-            #         "hotkey":"",
-            #         "applicable_type":"all",
-            #         "classes":[]
-            #     }
-            # ]
-
-            # Difference, finds difference between collection and given list of TagMetas or TagMetaCollection
-            meta_car = sly.TagMeta('car', sly.TagValueType.NONE)
-            meta_bicycle = sly.TagMeta('bicycle', sly.TagValueType.NONE)
-
-            tag_metas_vehicles = sly.TagMetaCollection([meta_car, meta_bicycle])
-
-            meta_pedestrian = sly.TagMeta('pedestrian', sly.TagValueType.NONE)
-            meta_road = sly.TagMeta('road', sly.TagValueType.NONE)
-
-            difference = tag_metas_vehicles.difference([meta_pedestrian, meta_road])
-            print(difference.to_json())
-            # Output: [
-            #     {
-            #         "name":"car",
-            #         "value_type":"none",
-            #         "color":"#0F138A",
-            #         "hotkey":"",
-            #         "applicable_type":"all",
-            #         "classes":[]
-            #     },
-            #     {
-            #         "name":"bicycle",
-            #         "value_type":"none",
-            #         "color":"#0F8A25",
-            #         "hotkey":"",
-            #         "applicable_type":"all",
-            #         "classes":[]
-            #     }
-            # ]
-
-            # Merge, merges collection and given list of TagMetas
-            tag_metas_vehicles = sly.TagMetaCollection([meta_car, meta_bicycle])
-            tag_metas_merge = sly.TagMetaCollection([meta_pedestrian, meta_road])
-
-            merged_collections = tag_metas_vehicles.merge(tag_metas_merge)
-            print(merged_collections.to_json())
-            # Output: [
-            #     {
-            #         "name":"pedestrian",
-            #         "value_type":"none",
-            #         "color":"#698A0F",
-            #         "hotkey":"",
-            #         "applicable_type":"all",
-            #         "classes":[]
-            #     },
-            #     {
-            #         "name":"road",
-            #         "value_type":"none",
-            #         "color":"#0F8A59",
-            #         "hotkey":"",
-            #         "applicable_type":"all",
-            #         "classes":[]
-            #     },
-            #     {
-            #         "name":"car",
-            #         "value_type":"none",
-            #         "color":"#0F138A",
-            #         "hotkey":"",
-            #         "applicable_type":"all",
-            #         "classes":[]
-            #     },
-            #     {
-            #         "name":"bicycle",
-            #         "value_type":"none",
-            #         "color":"#0F8A25",
-            #         "hotkey":"",
-            #         "applicable_type":"all",
-            #         "classes":[]
-            #     }
-            # ]
-
-            # Merge will raise ValueError if item name from given list is in collection but items in both are different
-            meta_bicycle_1 = sly.TagMeta('bicycle', sly.TagValueType.NONE)
-            meta_bicycle_2 = sly.TagMeta('bicycle', sly.TagValueType.ANY_STRING)
-
-            tag_metas_1 = sly.TagMetaCollection([meta_bicycle_1])
-            tag_metas_2 = sly.TagMetaCollection([meta_bicycle_2])
-
-            test_merge = tag_metas_1.merge(tag_metas_2)
-            # Output: ValueError: Error during merge for key 'bicycle': values are different
-
-            # Let's try to create now a collection where TagMetas have identical names
-            meta_cow = sly.TagMeta('cow', sly.TagValueType.NONE)
-            meta_chicken = sly.TagMeta('cow', sly.TagValueType.NONE)
-
-            tag_metas = sly.TagMetaCollection([meta_cow, meta_chicken])
-            # Output: DuplicateKeyError: "Key 'cow' already exists"
-    """
-
     item_type = TagMeta
+
+    def __init__(self, items: Optional[List[TagMeta]] = None):
+        """
+        Collection with :class:`TagMeta<~supervisely.annotation.tag_meta.TagMeta>` instances. :class:`TagMetaCollection<~supervisely.annotation.tag_meta_collection.TagMetaCollection>` object is immutable.
+
+        :param items: List of TagMetas.
+        :type items: List[:class:`~supervisely.annotation.tag_meta.TagMeta`]
+
+        :raises :class:`~supervisely.collection.key_indexed_collection.DuplicateKeyError`: if instance with given name already exists
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                # Create TagMetas
+                meta_weather = sly.TagMeta('Weather', sly.TagValueType.ANY_STRING)
+
+                season_values = ["Winter", "Spring", "Summer", "Autumn"]
+                meta_season = sly.TagMeta('Season', sly.TagValueType.ONEOF_STRING, possible_values=season_values)
+
+                # Create TagMetaCollection from TagMetas
+                tag_metas = sly.TagMetaCollection([meta_weather, meta_season])
+
+                # Add items to TagMetaCollection
+                meta_potato = sly.TagMeta('potato', sly.TagValueType.NONE)
+
+                # Remember that TagMetaCollection is immutable, and we need to assign new instance of TagMetaCollection to a new variable
+                tag_metas = tag_metas.add(meta_potato)
+
+                # You can also add multiple items to collection
+                meta_cabbage = sly.TagMeta('cabbage', sly.TagValueType.NONE)
+                meta_carrot = sly.TagMeta('carrot', sly.TagValueType.NONE)
+                meta_turnip = sly.TagMeta('turnip', sly.TagValueType.NONE)
+
+                tag_metas = tag_metas.add_items([meta_cabbage, meta_carrot, meta_turnip])
+
+                # Has key, checks if given key exist in collection
+                tag_metas.has_key("cabbage")
+                # Output: True
+
+                # Intersection, finds intersection of given list of instances with collection items
+                meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE)
+                meta_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
+                meta_turtle = sly.TagMeta('turtle', sly.TagValueType.NONE)
+
+                tag_metas_animals = sly.TagMetaCollection([meta_dog, meta_cat, meta_turtle])
+
+                metas_intersections = tag_metas.intersection(tag_metas_animals)
+                print(metas_intersections.to_json())
+                # Output: []
+
+                # Let's add the potato TagMeta from another collection and compare them again
+                tag_metas_animals = tag_metas_animals.add(meta_potato)
+
+                metas_intersections = tag_metas.intersection(tag_metas_animals)
+                print(metas_intersections.to_json())
+                # Output: [
+                #     {
+                #         "name":"potato",
+                #         "value_type":"none",
+                #         "color":"#8A710F",
+                #         "hotkey":"",
+                #         "applicable_type":"all",
+                #         "classes":[]
+                #     }
+                # ]
+
+                # Difference, finds difference between collection and given list of TagMetas or TagMetaCollection
+                meta_car = sly.TagMeta('car', sly.TagValueType.NONE)
+                meta_bicycle = sly.TagMeta('bicycle', sly.TagValueType.NONE)
+
+                tag_metas_vehicles = sly.TagMetaCollection([meta_car, meta_bicycle])
+
+                meta_pedestrian = sly.TagMeta('pedestrian', sly.TagValueType.NONE)
+                meta_road = sly.TagMeta('road', sly.TagValueType.NONE)
+
+                difference = tag_metas_vehicles.difference([meta_pedestrian, meta_road])
+                print(difference.to_json())
+                # Output: [
+                #     {
+                #         "name":"car",
+                #         "value_type":"none",
+                #         "color":"#0F138A",
+                #         "hotkey":"",
+                #         "applicable_type":"all",
+                #         "classes":[]
+                #     },
+                #     {
+                #         "name":"bicycle",
+                #         "value_type":"none",
+                #         "color":"#0F8A25",
+                #         "hotkey":"",
+                #         "applicable_type":"all",
+                #         "classes":[]
+                #     }
+                # ]
+
+                # Merge, merges collection and given list of TagMetas
+                tag_metas_vehicles = sly.TagMetaCollection([meta_car, meta_bicycle])
+                tag_metas_merge = sly.TagMetaCollection([meta_pedestrian, meta_road])
+
+                merged_collections = tag_metas_vehicles.merge(tag_metas_merge)
+                print(merged_collections.to_json())
+                # Output: [
+                #     {
+                #         "name":"pedestrian",
+                #         "value_type":"none",
+                #         "color":"#698A0F",
+                #         "hotkey":"",
+                #         "applicable_type":"all",
+                #         "classes":[]
+                #     },
+                #     {
+                #         "name":"road",
+                #         "value_type":"none",
+                #         "color":"#0F8A59",
+                #         "hotkey":"",
+                #         "applicable_type":"all",
+                #         "classes":[]
+                #     },
+                #     {
+                #         "name":"car",
+                #         "value_type":"none",
+                #         "color":"#0F138A",
+                #         "hotkey":"",
+                #         "applicable_type":"all",
+                #         "classes":[]
+                #     },
+                #     {
+                #         "name":"bicycle",
+                #         "value_type":"none",
+                #         "color":"#0F8A25",
+                #         "hotkey":"",
+                #         "applicable_type":"all",
+                #         "classes":[]
+                #     }
+                # ]
+
+                # Merge will raise ValueError if item name from given list is in collection but items in both are different
+                meta_bicycle_1 = sly.TagMeta('bicycle', sly.TagValueType.NONE)
+                meta_bicycle_2 = sly.TagMeta('bicycle', sly.TagValueType.ANY_STRING)
+
+                tag_metas_1 = sly.TagMetaCollection([meta_bicycle_1])
+                tag_metas_2 = sly.TagMetaCollection([meta_bicycle_2])
+
+                test_merge = tag_metas_1.merge(tag_metas_2)
+                # Output: ValueError: Error during merge for key 'bicycle': values are different
+
+                # Let's try to create now a collection where TagMetas have identical names
+                meta_cow = sly.TagMeta('cow', sly.TagValueType.NONE)
+                meta_chicken = sly.TagMeta('cow', sly.TagValueType.NONE)
+
+                tag_metas = sly.TagMetaCollection([meta_cow, meta_chicken])
+                # Output: DuplicateKeyError: "Key 'cow' already exists"
+        """
+        super().__init__(items)
 
     def to_json(self) -> List[Dict]:
         """

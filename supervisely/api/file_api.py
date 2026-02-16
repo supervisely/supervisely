@@ -845,10 +845,10 @@ class FileApi(ModuleApiBase):
 
         :param team_id: Team ID in Supervisely.
         :type team_id: int
-        :param src: Local source file paths.
-        :type src: List[str]
-        :param dst: Destination paths for Files to Team Files.
-        :type dst: List[str]
+        :param src_paths: Local source file paths.
+        :type src_paths: List[str]
+        :param dst_paths: Destination paths for Files to Team Files.
+        :type dst_paths: List[str]
         :param progress_cb: Function for tracking upload progress.
         :type progress_cb: tqdm or callable, optional
         :returns: Information about uploaded files.
@@ -1237,8 +1237,8 @@ class FileApi(ModuleApiBase):
 
         :param team_id: Team ID in Supervisely.
         :type team_id: int
-        :param remote_path: Remote path to directory in Team Files.
-        :type remote_path: str
+        :param remote_directory: Remote path to directory in Team Files.
+        :type remote_directory: str
         :param recursive: If True makes more checks and slower, if False makes less checks and faster.
         :type recursive: bool
         :returns: True if directory exists, otherwise False

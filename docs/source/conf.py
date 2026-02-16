@@ -6,6 +6,7 @@
 
 import os
 import sys
+import inspect
 
 # -- Path setup --------------------------------------------------------------
 PATH_HERE = os.path.abspath(os.path.dirname(__file__))
@@ -27,7 +28,6 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx.ext.viewcode",
     "sphinx_copybutton",
-    "sphinx_autodoc_typehints",
     "myst_parser",
 ]
 
@@ -52,7 +52,9 @@ myst_all_links_external = True
 source_encoding = "utf-8"
 master_doc = "index"
 language = "en"
-default_role = "any"
+default_role = "literal"
+
+suppress_warnings = ["myst.header"]
 
 html_use_index = False
 html_copy_source = False
@@ -72,11 +74,10 @@ autosummary_generate = True
 autoclass_content = "class"
 html_show_sourcelink = True
 autodoc_inherit_docstrings = False
-set_type_checking_flag = True
 nbsphinx_allow_errors = True
 add_module_names = False
 autodoc_member_order = "groupwise"
-autodoc_class_signature = "separated"
+autodoc_class_signature = "mixed"
 
 html_domain_indices = True
 autodoc_typehints = "none"
@@ -86,7 +87,45 @@ autodoc_default_options = {
     "members": True,
     "methods": True,
     "show-inheritance": True,
+    "exclude-members": "from_bytes,to_bytes",
 }
+
+
+def _strip_defaults_from_signature(sig: inspect.Signature) -> inspect.Signature:
+    """Return signature with defaults removed to stabilize param-name matching.
+
+    Sphinx can emit warnings like:
+    "Parameter name 'foo' does not match any of the parameters defined in the signature:
+    ['foo=<built-in function ...>']"
+    when defaults are rendered into the signature string.
+    """
+    params = []
+    for p in sig.parameters.values():
+        if p.default is inspect._empty:
+            params.append(p)
+        else:
+            params.append(p.replace(default=inspect._empty))
+    return sig.replace(parameters=params)
+
+
+def process_signature(app, what, name, obj, options, signature, return_annotation):
+    """Normalize signatures to avoid docstring/param mismatch noise."""
+    try:
+        sig = inspect.signature(obj)
+    except Exception:
+        return (signature, return_annotation)
+
+    try:
+        sig = _strip_defaults_from_signature(sig)
+    except Exception:
+        return (signature, return_annotation)
+
+    return (str(sig), return_annotation)
+
+
+def setup(app):
+    app.connect("autodoc-process-signature", process_signature)
+
 
 html_css_files = [
     "css/custom.css",

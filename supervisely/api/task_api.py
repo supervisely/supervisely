@@ -268,8 +268,8 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         """
         Check status of Task by ID.
 
-        :param id: Task ID in Supervisely.
-        :type id: int
+        :param task_id: Task ID in Supervisely.
+        :type task_id: int
         :returns: Status object
         :rtype: :class:`Status`
 
@@ -1053,41 +1053,43 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         :returns: Server response JSON.
         :rtype: dict
 
-        Example:
+        :Usage Example:
 
-            experiment_info = {
-                "experiment_name": "247 Lemons RT-DETRv2-M",
-                "framework_name": "RT-DETRv2",
-                "model_name": "RT-DETRv2-M",
-                "task_type": "object detection",
-                "project_id": 76,
-                "project_version": {"id": 222, "version": 4},
-                "task_id": 247,
-                "model_files": {"config": "model_config.yml"},
-                "checkpoints": [
-                    "checkpoints/best.pth",
-                    "checkpoints/checkpoint0025.pth",
-                    "checkpoints/checkpoint0050.pth",
-                    "checkpoints/last.pth",
-                ],
-                "best_checkpoint": "best.pth",
-                "export": {"ONNXRuntime": "export/best.onnx"},
-                "app_state": "app_state.json",
-                "model_meta": "model_meta.json",
-                "train_val_split": "train_val_split.json",
-                "train_size": 4,
-                "val_size": 2,
-                "train_collection_id": 530,
-                "val_collection_id": 531,
-                "hyperparameters": "hyperparameters.yaml",
-                "artifacts_dir": "/experiments/76_Lemons/247_RT-DETRv2/",
-                "datetime": "2025-01-22 18:13:43",
-                "evaluation_report_id": 12961,
-                "evaluation_report_link": "https://app.supervisely.com/model-benchmark?id=12961",
-                "evaluation_metrics": {"mAP": 0.994, "AP50": 1.0, "AP75": 1.0}, # And other metrics
-                "primary_metric": "mAP",
-                "logs": {"type": "tensorboard", "link": "/experiments/76_Lemons/247_RT-DETRv2/logs/"},
-            }
+            .. code-block:: python
+
+                experiment_info = {
+                    "experiment_name": "247 Lemons RT-DETRv2-M",
+                    "framework_name": "RT-DETRv2",
+                    "model_name": "RT-DETRv2-M",
+                    "task_type": "object detection",
+                    "project_id": 76,
+                    "project_version": {"id": 222, "version": 4},
+                    "task_id": 247,
+                    "model_files": {"config": "model_config.yml"},
+                    "checkpoints": [
+                        "checkpoints/best.pth",
+                        "checkpoints/checkpoint0025.pth",
+                        "checkpoints/checkpoint0050.pth",
+                        "checkpoints/last.pth",
+                    ],
+                    "best_checkpoint": "best.pth",
+                    "export": {"ONNXRuntime": "export/best.onnx"},
+                    "app_state": "app_state.json",
+                    "model_meta": "model_meta.json",
+                    "train_val_split": "train_val_split.json",
+                    "train_size": 4,
+                    "val_size": 2,
+                    "train_collection_id": 530,
+                    "val_collection_id": 531,
+                    "hyperparameters": "hyperparameters.yaml",
+                    "artifacts_dir": "/experiments/76_Lemons/247_RT-DETRv2/",
+                    "datetime": "2025-01-22 18:13:43",
+                    "evaluation_report_id": 12961,
+                    "evaluation_report_link": "https://app.supervisely.com/model-benchmark?id=12961",
+                    "evaluation_metrics": {"mAP": 0.994, "AP50": 1.0, "AP75": 1.0},  # and other metrics
+                    "primary_metric": "mAP",
+                    "logs": {"type": "tensorboard", "link": "/experiments/76_Lemons/247_RT-DETRv2/logs/"},
+                }
         """
         output = {
             ApiField.EXPERIMENT: {ApiField.DATA: {**experiment_info}},

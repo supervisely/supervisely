@@ -567,7 +567,7 @@ class AppApi(TaskApi):
             If the instance is not compatible, the function will not be executed.
 
             :param min_instance_version: Determine the minimum instance version that accepts the workflow method.
-            If not specified, the minimum version will be "6.9.31".
+                If not specified, the minimum version will be "6.9.31".
             :type min_instance_version: Optional[str]
             """
 
