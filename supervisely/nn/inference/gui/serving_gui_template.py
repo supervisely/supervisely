@@ -81,8 +81,7 @@ class ServingGUITemplate(ServingGUI):
 
         # Custom models
         if use_custom_models:
-            # experiments = get_experiment_infos(self.api, self.team_id, self.framework_name)
-            experiments = []
+            experiments = get_experiment_infos(self.api, self.team_id, self.framework_name)
             self.experiment_selector = ExperimentSelector(self.api, self.team_id, experiments)
         else:
             self.experiment_selector = None
