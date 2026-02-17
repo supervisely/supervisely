@@ -1,16 +1,36 @@
 # ============================================================================
 # STAGE 1: Builder Stage
 # ============================================================================
-ARG tag_ref_name=6.73.531
+ARG tag_ref_name
 
-FROM supervisely/base-py-sdk-light:$tag_ref_name AS builder
+FROM python:3.10-slim-bookworm AS builder
+
+ENV LANG=C.UTF-8 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_PREFER_BINARY=1
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
   build-essential \
+  ca-certificates \
   git \
   libaec-dev \
+  libavcodec59 \
   libgeos-c1v5 \
+  libglib2.0-0 \
+  libgl1 \
+  libmagic1 \
+  libsm6 \
+  libxext6 \
   && rm -rf /var/lib/apt/lists/*
+
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+RUN pip install pip==26.0.1
+RUN pip install setuptools==78.1.1 wheel==0.46.2
 
 # Install runtime dependencies
 RUN pip install --no-build-isolation pycocotools==2.0.6
@@ -49,31 +69,24 @@ RUN pip install fastapi==0.129.0
 RUN pip install starlette==0.49.1
 
 # ============================================================================
-# STAGE 2: Runtime Stage (Minimal & Hardened)
+# STAGE 2: Runtime Stage (Hardened)
 # ============================================================================
-FROM python:3.12-slim-bookworm AS runtime
+FROM supervisely/py-sdk-hardened:${tag_ref_name} AS runtime
 
-ENV PYTHONUNBUFFERED=1
+ENV LANG=C.UTF-8 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
 
-# Copy ONLY required system libraries from builder
-COPY --from=builder /usr/lib/x86_64-linux-gnu/libSM.so.* /usr/lib/x86_64-linux-gnu/
-COPY --from=builder /usr/lib/x86_64-linux-gnu/libXext.so.6 /usr/lib/x86_64-linux-gnu/
-COPY --from=builder /usr/lib/x86_64-linux-gnu/libgeos_c.so.1 /usr/lib/x86_64-linux-gnu/
-COPY --from=builder /usr/lib/x86_64-linux-gnu/libavcodec.so.* /usr/lib/x86_64-linux-gnu/
-COPY --from=builder /usr/lib/x86_64-linux-gnu/libmagic.so.1 /usr/lib/x86_64-linux-gnu/
+# Copy required system libraries from builder
+COPY --from=builder /usr/lib/*-linux-gnu/libSM.so.* /usr/lib/
+COPY --from=builder /usr/lib/*-linux-gnu/libXext.so.* /usr/lib/
+COPY --from=builder /usr/lib/*-linux-gnu/libgeos_c.so.* /usr/lib/
+COPY --from=builder /usr/lib/*-linux-gnu/libavcodec.so.* /usr/lib/
+COPY --from=builder /usr/lib/*-linux-gnu/libmagic.so.* /usr/lib/
+COPY --from=builder /usr/lib/*-linux-gnu/libGL.so.* /usr/lib/
+COPY --from=builder /usr/lib/*-linux-gnu/libEGL.so.* /usr/lib/
+COPY --from=builder /usr/lib/*-linux-gnu/libGLdispatch.so.* /usr/lib/
 
-# Copy Python packages from builder
-COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
-COPY --from=builder /usr/local/bin /usr/local/bin
-
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends \
-    libc6 \
-    libc-bin \
-    libglib2.0-0 \
-    libgl1 \
-    libsqlite3-0 \
-    zlib1g \
-  && rm -rf /var/lib/apt/lists/*
-
-RUN python -m pip install --no-cache-dir --upgrade pip==26.0.1
+# Copy Python environment from builder
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
