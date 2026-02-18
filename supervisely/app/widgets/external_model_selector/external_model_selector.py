@@ -16,9 +16,13 @@ class ExternalModelSelector(Widget):
         self.widgets = []
 
         # Model name input
-        # self.model_name_input = Input(placeholder="Enter model name")
-        # self.model_name_field = Field(title="Model name", description="Name of the model that was used to train this checkpoint", content=self.model_name_input)
-        # self.widgets.append(self.model_name_field)
+        self.model_name_input = Input(placeholder="Enter model name")
+        self.model_name_field = Field(
+            title="Model name",
+            description="Model name is used to identify the model in model benchmark and comparison.",
+            content=self.model_name_input,
+        )
+        self.widgets.append(self.model_name_field)
 
         # Task type selector
         if len(task_types) == 0:
@@ -76,18 +80,18 @@ class ExternalModelSelector(Widget):
 
     def get_json_state(self):
         return {
-            "modelName": "External Model",
+            "modelName": self.get_model_name(),
             "taskType": self.get_task_type(),
             "checkpointPath": self.get_checkpoint_path(),
             "configPath": self.get_config_path(),
             "classesPath": self.get_classes_path(),
         }
 
-    # def get_model_name(self):
-    #     return self.model_name_input.get_value()
+    def get_model_name(self):
+        return self.model_name_input.get_value()
 
-    # def set_model_name(self, model_name: str):
-    #     self.model_name_input.set_value(model_name)
+    def set_model_name(self, model_name: str):
+        self.model_name_input.set_value(model_name)
 
     def get_task_type(self):
         if len(self.task_types) == 1:
@@ -126,7 +130,7 @@ class ExternalModelSelector(Widget):
             raise ValueError("Enable classes path is required")
 
     def get_deploy_params(self):
-        model_info = {"model_name": "External Model", "task_type": self.get_task_type()}
+        model_info = {"model_name": self.get_model_name(), "task_type": self.get_task_type()}
         model_files = {"checkpoint": self.get_checkpoint_path()}
         if self.need_config:
             model_files["config"] = self.get_config_path()

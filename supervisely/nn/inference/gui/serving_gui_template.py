@@ -97,6 +97,7 @@ class ServingGUITemplate(ServingGUI):
                 need_config=need_config,
                 need_classes=need_classes,
             )
+            self.external_models_selector.set_model_name(f"{self.framework_name} External Model")
         else:
             self.external_models_selector = None
 
