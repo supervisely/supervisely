@@ -388,7 +388,9 @@ class Inference:
                 elif runtime.lower() in ["trt", RuntimeType.TENSORRT.lower()]:
                     runtime = RuntimeType.TENSORRT
                 else:
-                    raise ValueError(f"Invalid runtime: {runtime}. Please use one of the following values: {RuntimeType.PYTORCH}, {RuntimeType.ONNXRUNTIME}, {RuntimeType.TENSORRT}.")
+                    raise ValueError(
+                        f"Invalid runtime: {runtime}. Please use one of the following values: {RuntimeType.PYTORCH}, {RuntimeType.ONNXRUNTIME}, {RuntimeType.TENSORRT}."
+                    )
             return runtime
 
         def get_pretrained_model(model: str) -> dict:
@@ -424,7 +426,9 @@ class Inference:
         # Custom Models
         checkpoint_path = model
         checkpoint_name = sly_fs.get_file_name_with_ext(checkpoint_path)
-        deploy_params = self._get_deploy_parameters_from_custom_checkpoint(checkpoint_path, device, runtime)
+        deploy_params = self._get_deploy_parameters_from_custom_checkpoint(
+            checkpoint_path, device, runtime
+        )
         logger.debug(f"Deploying custom model '{checkpoint_name}'...")
         self._load_model_headless(**deploy_params)
         self._schedule_freeze_on_inactivity()
@@ -812,6 +816,10 @@ class Inference:
                         )
                         logger.info(f"Found model checkpoint for '{deploy_params['runtime']}'")
             return self._download_custom_model(deploy_params["model_files"], log_progress)
+        elif deploy_params["model_source"] == ModelSource.EXTERNAL:
+            return self._download_custom_model(
+                deploy_params["model_files"], log_progress, ModelSource.EXTERNAL
+            )
 
     def _download_pretrained_model(
         self, model_files: dict, log_progress: bool = True, headless: bool = False
@@ -903,7 +911,12 @@ class Inference:
                 unit_scale=True,
             ) as download_pbar:
                 self.gui.download_progress.show()
-                self.api.file.download(team_id, remote_checkpoint_path, local_checkpoint_path, progress_cb=download_pbar.update)
+                self.api.file.download(
+                    team_id,
+                    remote_checkpoint_path,
+                    local_checkpoint_path,
+                    progress_cb=download_pbar.update,
+                )
                 self.gui.download_progress.hide()
         else:
             self.api.file.download(team_id, remote_checkpoint_path, local_checkpoint_path)
@@ -922,7 +935,9 @@ class Inference:
         if os.path.exists(engine_path):
             sly_fs.silent_remove(engine_path)
 
-    def _download_custom_model(self, model_files: dict, log_progress: bool = True):
+    def _download_custom_model(
+        self, model_files: dict, log_progress: bool = True, model_source: str = ModelSource.CUSTOM
+    ):
         """
         Downloads the custom model data.
         """
@@ -957,7 +972,7 @@ class Inference:
             else:
                 self.api.file.download(team_id, file_url, file_path)
 
-            if file == "checkpoint":
+            if file == "checkpoint" and model_source == ModelSource.CUSTOM:
                 try:
                     extracted_files = self._extract_model_files_from_checkpoint(file_path)
                     local_model_files.update(extracted_files)
@@ -966,12 +981,16 @@ class Inference:
                         return local_model_files
                 except _pickle.UnpicklingError as e:
                     # TODO: raise error - checkpoint is corrupted
-                    logger.warning(f"Couldn't load '{file_name}'. Checkpoint might be corrupted. Error: {repr(e)}")
+                    logger.warning(
+                        f"Couldn't load '{file_name}'. Checkpoint might be corrupted. Error: {repr(e)}"
+                    )
                     logger.warning("Model files will be downloaded from Team Files")
                     local_model_files[file] = file_path
                     continue
                 except Exception as e:
-                    logger.warning(f"Failed to process checkpoint '{file_name}' to extract auxiliary files: {repr(e)}")
+                    logger.warning(
+                        f"Failed to process checkpoint '{file_name}' to extract auxiliary files: {repr(e)}"
+                    )
                     logger.warning("Model files will be downloaded from Team Files")
                     local_model_files[file] = file_path
                     continue
@@ -981,7 +1000,9 @@ class Inference:
             self.gui.download_progress.hide()
         return local_model_files
 
-    def _get_deploy_parameters_from_custom_checkpoint(self, checkpoint_path: str, device: str, runtime: str) -> dict:
+    def _get_deploy_parameters_from_custom_checkpoint(
+        self, checkpoint_path: str, device: str, runtime: str
+    ) -> dict:
         def _read_experiment_info(artifacts_dir: str) -> Optional[dict]:
             exp_path = os.path.join(artifacts_dir, "experiment_info.json")
             if sly_fs.file_exists(exp_path):
@@ -1031,7 +1052,9 @@ class Inference:
             # model files
             logger.debug("Getting model files...")
             remote_files_rel = experiment_info.get("model_files", {})
-            remote_files_full = _compose_model_files(artifacts_dir, checkpoint_path, remote_files_rel)
+            remote_files_full = _compose_model_files(
+                artifacts_dir, checkpoint_path, remote_files_rel
+            )
             local_model_files = self._download_custom_model(remote_files_full, False)
             model_files = local_model_files
             model_info = experiment_info
@@ -1050,20 +1073,28 @@ class Inference:
                     model_info["model_meta"] = self._load_json_file(meta_path)
                 logger.debug("Deploy parameters extracted from state dict successfully")
             except:
-                logger.debug(f"Failed to read model metadata from checkpoint '{checkpoint_path}'. Trying to find local files...")
+                logger.debug(
+                    f"Failed to read model metadata from checkpoint '{checkpoint_path}'. Trying to find local files..."
+                )
                 experiment_info = _read_experiment_info(artifacts_dir)
                 if experiment_info:
                     logger.debug("Reading experiment_info.json...")
-                    model_files = _compose_model_files(artifacts_dir, checkpoint_path, experiment_info.get("model_files", {}))
+                    model_files = _compose_model_files(
+                        artifacts_dir, checkpoint_path, experiment_info.get("model_files", {})
+                    )
                     meta_name = experiment_info.get("model_meta") or "model_meta.json"
                     meta_path = os.path.join(artifacts_dir, meta_name)
                     if not sly_fs.file_exists(meta_path):
                         raise FileNotFoundError(f"Model meta file not found: '{meta_path}'")
                     experiment_info["model_meta"] = self._load_json_file(meta_path)
                     model_info = experiment_info
-                    logger.debug("Deploy parameters extracted from experiment_info.json successfully")
+                    logger.debug(
+                        "Deploy parameters extracted from experiment_info.json successfully"
+                    )
                 else:
-                    raise FileNotFoundError(f"'experiment_info.json' not found in '{artifacts_dir}'")
+                    raise FileNotFoundError(
+                        f"'experiment_info.json' not found in '{artifacts_dir}'"
+                    )
 
         deploy_params = {
             "model_source": ModelSource.CUSTOM,
@@ -1252,11 +1283,14 @@ class Inference:
             "runtime": runtime,
             **kwargs,
         }
-        if model_source == ModelSource.CUSTOM:
+        if model_source == ModelSource.PRETRAINED:
+            self._set_checkpoint_info_pretrained(deploy_params)
+        elif model_source == ModelSource.CUSTOM:
             self._set_model_meta_custom_model(model_info)
             self._set_checkpoint_info_custom_model(deploy_params)
-        elif model_source == ModelSource.PRETRAINED:
-            self._set_checkpoint_info_pretrained(deploy_params)
+        elif model_source == ModelSource.EXTERNAL:
+            self._set_model_meta_external_model(model_files.get("classes"))
+            self._set_checkpoint_info_external_model(deploy_params)
 
         try:
             if is_production():
@@ -1302,6 +1336,49 @@ class Inference:
         self._get_confidence_tag_meta()
         self.classes = [obj_class.name for obj_class in self._model_meta.obj_classes]
 
+    def _set_model_meta_external_model(self, classes_path: Optional[str] = None):
+        if classes_path is None:
+            # Some frameworks can derive classes from the checkpoint itself.
+            return
+        if not os.path.isfile(classes_path):
+            raise ValueError(f"Classes file not found: '{classes_path}'")
+
+        classes_data = sly_json.load_json_file(classes_path)
+        class_names = self._extract_external_class_names(classes_data)
+        if len(class_names) == 0:
+            raise ValueError(f"No classes found in file: '{classes_path}'")
+
+        classes = [ObjClass(name, self._get_obj_class_shape()) for name in class_names]
+        self._model_meta = ProjectMeta(classes)
+        self._get_confidence_tag_meta()
+        self.classes = class_names
+
+    def _extract_external_class_names(self, classes_data: Any) -> List[str]:
+        if not isinstance(classes_data, dict):
+            raise ValueError(
+                "Invalid classes format. Expected mapping like {'0': 'person', '1': 'car'}"
+            )
+
+        def _sort_key(item):
+            key = item[0]
+            try:
+                return (0, int(key))
+            except (TypeError, ValueError):
+                return (1, str(key))
+
+        class_names = []
+        seen_names = set()
+        for _, value in sorted(classes_data.items(), key=_sort_key):
+            if isinstance(value, str) and value:
+                if value in seen_names:
+                    logger.warning(
+                        f"Duplicate class name '{value}' found in classes mapping. Skipping duplicate."
+                    )
+                    continue
+                seen_names.add(value)
+                class_names.append(value)
+        return class_names
+
     def _set_checkpoint_info_custom_model(self, deploy_params: dict):
         model_info = deploy_params.get("model_info", {})
         model_files = deploy_params.get("model_files", {})
@@ -1341,6 +1418,21 @@ class Inference:
             architecture=self.FRAMEWORK_NAME,
             checkpoint_url=checkpoint_url,
             model_source=model_source,
+        )
+
+    def _set_checkpoint_info_external_model(self, deploy_params: dict):
+        model_files = deploy_params.get("model_files", {})
+        checkpoint_path = model_files.get("checkpoint")
+        if checkpoint_path is None:
+            return
+
+        self.checkpoint_info = CheckpointInfo(
+            checkpoint_name=os.path.basename(checkpoint_path),
+            model_name="External Model",
+            architecture=self.FRAMEWORK_NAME,
+            checkpoint_url=None,
+            custom_checkpoint_path=checkpoint_path,
+            model_source=ModelSource.EXTERNAL,
         )
 
     def shutdown_model(self):
@@ -2004,7 +2096,9 @@ class Inference:
         else:
             n_frames = frames_reader.frames_count()
 
-        inference_request.tracker = self._tracker_init(state.get("tracker", None), state.get("tracker_settings", {}))
+        inference_request.tracker = self._tracker_init(
+            state.get("tracker", None), state.get("tracker_settings", {})
+        )
 
         progress_total = (n_frames + step - 1) // step
         inference_request.set_stage(InferenceRequest.Stage.INFERENCE, 0, progress_total)
@@ -2249,7 +2343,9 @@ class Inference:
         else:
             n_frames = video_info.frames_count
 
-        inference_request.tracker = self._tracker_init(state.get("tracker", None), state.get("tracker_settings", {}))
+        inference_request.tracker = self._tracker_init(
+            state.get("tracker", None), state.get("tracker_settings", {})
+        )
 
         logger.debug(
             f"Video info:",
@@ -2359,7 +2455,9 @@ class Inference:
         else:
             n_frames = video_info.frames_count
 
-        inference_request.tracker = self._tracker_init(state.get("tracker", None), state.get("tracker_settings", {}))
+        inference_request.tracker = self._tracker_init(
+            state.get("tracker", None), state.get("tracker_settings", {})
+        )
 
         logger.debug(
             f"Video info:",
@@ -3279,7 +3377,9 @@ class Inference:
                     self._inference_by_cli_deploy_args()
                     exit(0)
                 else:
-                    logger.error("Predict mode requires one of the following arguments: --input, --project_id, --dataset_id, --image_id")
+                    logger.error(
+                        "Predict mode requires one of the following arguments: --input, --project_id, --dataset_id, --image_id"
+                    )
                     exit(0)
 
         if isinstance(self.gui, GUI.InferenceGUI):
@@ -4260,7 +4360,9 @@ class Inference:
                     "Team ID not found in env. Required for remote custom checkpoints."
                 )
             if self.api is None:
-                raise ValueError("API is not initialized. Please provide .env file with 'API_TOKEN' and 'SERVER_ADDRESS' environment variables.")
+                raise ValueError(
+                    "API is not initialized. Please provide .env file with 'API_TOKEN' and 'SERVER_ADDRESS' environment variables."
+                )
             file_info = self.api.file.get_info_by_path(team_id, checkpoint_path)
             if not file_info:
                 raise ValueError(
@@ -4398,7 +4500,9 @@ class Inference:
                 raise ValueError("Draw visualization is not supported for project inference")
 
             if dataset_ids:
-                logger.info(f"Predicting Dataset(s) by ID(s): '{', '.join(str(dataset_id) for dataset_id in dataset_ids)}'")
+                logger.info(
+                    f"Predicting Dataset(s) by ID(s): '{', '.join(str(dataset_id) for dataset_id in dataset_ids)}'"
+                )
             else:
                 logger.info(f"Predicting Project by ID: {project_id}")
 
@@ -4440,7 +4544,9 @@ class Inference:
             draw: bool = False,
             upload: bool = False,
         ):
-            logger.info(f"Predicting Dataset(s) by ID(s): {', '.join(str(dataset_id) for dataset_id in dataset_ids)}")
+            logger.info(
+                f"Predicting Dataset(s) by ID(s): {', '.join(str(dataset_id) for dataset_id in dataset_ids)}"
+            )
             if draw:
                 raise ValueError("Draw visualization is not supported for dataset inference")
             if self.api is None:
@@ -4585,10 +4691,7 @@ class Inference:
             track_ids = [match["track_id"] for match in matches]
             tracked_labels = [match["label"] for match in matches]
 
-            filtered_annotation = ann.clone(
-                labels=tracked_labels,
-                custom_data=track_ids
-            )
+            filtered_annotation = ann.clone(labels=tracked_labels, custom_data=track_ids)
             updated_anns.append(filtered_annotation)
         return updated_anns
 
@@ -4620,7 +4723,10 @@ class Inference:
 
     def _set_checkpoint_from_experiment_info(self, experiment_info: ExperimentInfo):
         try:
-            if not isinstance(self.gui, GUI.ServingGUITemplate) or self.gui.experiment_selector is None:
+            if (
+                not isinstance(self.gui, GUI.ServingGUITemplate)
+                or self.gui.experiment_selector is None
+            ):
                 return
 
             task_id = experiment_info.task_id

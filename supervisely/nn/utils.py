@@ -6,6 +6,7 @@ import psutil
 class ModelSource:
     PRETRAINED = "Pretrained models"
     CUSTOM = "Custom models"
+    EXTERNAL = "External models"
 
 
 class RuntimeType:

@@ -167,3 +167,6 @@ from supervisely.app.widgets.ecosystem_model_selector.ecosystem_model_selector i
     EcosystemModelSelector,
 )
 from supervisely.app.widgets.heatmap.heatmap import Heatmap
+from supervisely.app.widgets.external_model_selector.external_model_selector import (
+    ExternalModelSelector,
+)
