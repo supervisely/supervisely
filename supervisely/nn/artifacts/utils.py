@@ -16,6 +16,8 @@ from supervisely.nn.artifacts import (
 
 
 class FrameworkName:
+    """String constants for supported training frameworks."""
+
     YOLOV5 = "YOLOv5"
     YOLOV5V2 = "YOLOv5 2.0"
     YOLOV8 = "YOLOv8+"
@@ -31,6 +33,8 @@ class FrameworkName:
 
 
 class FrameworkMapper:
+    """Factory that maps a framework name to its :class:`~supervisely.nn.artifacts.artifacts.BaseTrainArtifacts` class."""
+
     _map = {
         FrameworkName.YOLOV5: YOLOv5,
         FrameworkName.YOLOV5V2: YOLOv5v2,

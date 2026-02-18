@@ -451,6 +451,7 @@ class PolygonTest(unittest.TestCase):
 
 
 class BitmapTest(unittest.TestCase):
+    """Unit tests for :class:`~supervisely.geometry.bitmap.Bitmap` geometry operations."""
     def setUp(self):
         self.origin = PointLocation(0, 4)
         self.mask = np.array([[0, 0, 0, 1, 0, 0, 0],
@@ -587,6 +588,7 @@ class BitmapTest(unittest.TestCase):
 
 
 class MultichannelBitmapTest(unittest.TestCase):
+    """Unit tests for :class:`~supervisely.geometry.multichannel_bitmap.MultichannelBitmap` geometry operations."""
     def setUp(self):
         self.origin = PointLocation(row=0, col=4)
         self.data = np.array([[[0.0, 0.1], [0.2, 0.3], [0.4, 0.5]],

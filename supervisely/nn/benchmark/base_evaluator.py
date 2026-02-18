@@ -18,6 +18,8 @@ from supervisely.task.progress import tqdm_sly
 
 
 class BaseEvalResult:
+    """Base container for evaluation outputs loaded from an evaluator result directory."""
+
     PRIMARY_METRIC = None
 
     def __init__(self, directory: Optional[str] = None):
@@ -160,6 +162,8 @@ class BaseEvalResult:
 
 
 class BaseEvaluator:
+    """Base class for benchmark evaluators that compare ground truth and prediction projects."""
+
     EVALUATION_PARAMS_YAML_PATH: Optional[str] = None
     eval_result_cls = BaseEvalResult
 
