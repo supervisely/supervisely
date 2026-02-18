@@ -12,7 +12,7 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
 class TagApi(ModuleApi):
-    """"""
+    """Base API module for working with tag metas and appending tags to entities/objects."""
 
     _entity_id_field = None
     """"""

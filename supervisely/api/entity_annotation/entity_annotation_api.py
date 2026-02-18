@@ -11,7 +11,7 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
 class EntityAnnotationAPI(ModuleApi):
-    """"""
+    """Base API module for downloading/appending annotations for an entity type (image, video, pointcloud, etc.)."""
 
     _method_download_bulk = None
     """"""

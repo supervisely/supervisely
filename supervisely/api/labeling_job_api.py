@@ -50,6 +50,8 @@ from supervisely.sly_logger import logger
 
 
 class LabelingJobInfo(NamedTuple):
+    """NamedTuple describing a labeling job returned by the API."""
+
     id: int
     name: str
     readme: str

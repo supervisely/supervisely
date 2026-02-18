@@ -19,6 +19,8 @@ from supervisely.project.project_type import ProjectType
 
 
 class LabelingQueueInfo(NamedTuple):
+    """NamedTuple describing a labeling queue returned by the API."""
+
     id: int
     name: str
     team_id: int

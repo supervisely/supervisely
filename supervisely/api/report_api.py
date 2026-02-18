@@ -11,7 +11,7 @@ from supervisely.collection.str_enum import StrEnum
 
 
 class NotificationType(StrEnum):
-    """ """
+    """Notification severity/type values used in report widgets."""
 
     INFO = "info"
     """"""

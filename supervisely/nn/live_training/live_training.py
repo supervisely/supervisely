@@ -18,12 +18,15 @@ from .loss_plateau_detector import LossPlateauDetector
 from pathlib import Path
 
 class Phase:
+    """String constants describing the live-training lifecycle phases."""
+
     READY_TO_START = "ready_to_start"
     WAITING_FOR_SAMPLES = "waiting_for_samples"
     INITIAL_TRAINING = "initial_training"
     TRAINING = "training"
 
 class LiveTraining:
+    """Base implementation of an interactive/live training loop driven by requests (start/add sample/predict/status)."""
     
     from torch import nn  # pylint: disable=import-error
     task_type: str = None  # Should be set in subclass

@@ -15,6 +15,8 @@ BATCH_SIZE_LOG = 50
 
 
 class LogQueue:
+    """Thread-safe queue that batches structured log records for submission."""
+
     def __init__(self):
         self.q = queue.Queue()  # no limit
 
@@ -43,6 +45,8 @@ class LogQueue:
 
 
 class SlyApiHandler(logging.Handler):
+    """Logging handler that asynchronously forwards task logs to the Supervisely API."""
+
     def __init__(self, api):
         super().__init__()
         self._api = api

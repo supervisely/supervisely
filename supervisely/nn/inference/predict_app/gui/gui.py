@@ -38,6 +38,8 @@ from supervisely.video_annotation.video_annotation import VideoAnnotation
 
 
 class StepFlow:
+    """Small stepper/lock manager for the Predict App wizard UI."""
+
     def __init__(self):
         self._stepper = None
         self.steps = {}
@@ -154,6 +156,8 @@ class StepFlow:
 
 
 class PredictAppGui:
+    """End-to-end GUI for running model inference and writing predictions back to a Supervisely project."""
+
     def __init__(self, api: Api, static_dir: str = "static"):
         self.api = api
         self.static_dir = static_dir

@@ -13,6 +13,7 @@ from .kalman_filter import KalmanFilter
 
 
 class STrack(BaseTrack):
+    """Single-object track with Kalman filtering and optional re-ID appearance features (BoT-SORT)."""
 
     shared_kalman = KalmanFilter()
 
@@ -230,6 +231,8 @@ class STrack(BaseTrack):
 
 
 class BoTSORT(object):
+    """BoT-SORT multi-object tracker implementation used in the BotSORT tracking module."""
+
     def __init__(self, args, frame_rate=30):
 
         self.tracked_stracks = []  # type: list[STrack]

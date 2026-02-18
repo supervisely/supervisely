@@ -14,6 +14,8 @@ except ImportError:
 
 
 class OsnetReIDModel:
+    """OSNet re-identification model wrapper that extracts normalized appearance embeddings for detections."""
+
     def __init__(self, weights_path: Path = None, device: torch.device = torch.device("cpu"), half: bool = False):
         self.device = device
         self.half = half
@@ -72,6 +74,8 @@ class OsnetReIDModel:
 
 
 class OsnetReIDInterface:
+    """Small facade around :class:`OsnetReIDModel` used by trackers to compute embeddings for detections."""
+
     def __init__(self, weights: Path, device: str = "cpu", fp16: bool = False):
         self.device = torch.device(device)
         self.fp16 = fp16

@@ -400,6 +400,8 @@ def report_checkpoint_saved(checkpoint_idx, subdir, sizeb, best_now, optional_da
 
 
 class SlyWrapFile:
+    """File-like wrapper that redirects tqdm-style output to Supervisely logger."""
+
     def __init__(self) -> None:
         self._pattern = "\\r(.*?)\\:"
 
@@ -411,6 +413,8 @@ class SlyWrapFile:
 
 
 class tqdm_sly(tqdm, Progress):
+    """tqdm-compatible progress bar that also reports progress via :class:`~supervisely.task.progress.Progress`."""
+
     def __init__(
         self,
         *args,

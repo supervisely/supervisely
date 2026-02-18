@@ -127,6 +127,8 @@ def _dprint(json_data):
 
 
 class NpEncoder(json.JSONEncoder):
+    """JSON encoder that converts NumPy scalars/arrays to built-in Python types for serialization."""
+
     def default(self, obj):
         if isinstance(obj, np.integer):
             return int(obj)

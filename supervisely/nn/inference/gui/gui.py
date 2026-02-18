@@ -22,6 +22,8 @@ except ImportError:
 
 
 class BaseInferenceGUI:
+    """Minimal interface for building a model-deployment GUI (serve button, progress, and UI layout)."""
+
     @property
     def serve_button(self) -> Widgets.Button:
         # return self._serve_button
@@ -48,6 +50,8 @@ CallbackT = Callable[[BaseInferenceGUI], None]
 
 
 class InferenceGUI(BaseInferenceGUI):
+    """Default GUI to select a model/device and deploy it, with optional tabs for pretrained/custom models."""
+
     def __init__(
         self,
         models: Union[List[Dict[str, str]], Dict[str, List[Dict[str, str]]]],

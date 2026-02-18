@@ -74,6 +74,8 @@ class PointcloudTagApi(TagApi):
 
 
 class PointcloudObjectTagApi(TagApi):
+    """API module for tags attached to pointcloud (and episode) annotation objects."""
+
     _entity_id_field = ApiField.OBJECT_ID
     _method_bulk_add = "annotation-objects.tags.bulk.add"
 

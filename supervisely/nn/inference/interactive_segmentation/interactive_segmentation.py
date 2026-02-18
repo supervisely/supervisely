@@ -29,7 +29,11 @@ except ImportError:
 
 
 class InteractiveSegmentation(Inference):
+    """Inference server base for click-based interactive segmentation (smart tool) backends."""
+
     class Click:
+        """Single user click point (x/y) with positive/negative flag."""
+
         def __init__(self, x, y, is_positive):
             self.x = x
             self.y = y

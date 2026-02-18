@@ -11,6 +11,8 @@ from jinja2.nodes import CallBlock
 
 
 class MarkdownExtension(Extension):
+    """Jinja2 extension that renders a `{% markdown %}` block to HTML using Python-Markdown."""
+
     EXTENSIONS = [
         "admonition",
         "attr_list",
@@ -67,6 +69,8 @@ class MarkdownExtension(Extension):
 
 
 class AutoSidebarExtension(Extension):
+    """Jinja2 extension that injects an autosidebar placeholder into the rendered HTML."""
+
     tags = {"autosidebar"}
 
     def parse(self, parser):

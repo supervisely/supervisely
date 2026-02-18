@@ -266,6 +266,8 @@ class AgentRPCServicer(AgentRPCServicerBase):
 
 
 class SmarttoolRPCServicer(AgentRPCServicerBase):
+    """RPC servicer that forwards requests to a SmartTool model applier (custom inference API)."""
+
     def _do_single_img_inference(self, img, in_msg):
         inference_result = self.model_applier.inference(img, in_msg)
         return inference_result.to_json()
@@ -275,6 +277,8 @@ class SmarttoolRPCServicer(AgentRPCServicerBase):
 
 
 class InactiveRPCServicer(AgentRPCServicer):
+    """Servicer variant that disables RPC loop (used for internal wiring/tests)."""
+
     def __init__(self, logger, model_applier: SingleImageInferenceInterface, conn_config, cache):
         self.logger = logger
         self.model_applier = model_applier

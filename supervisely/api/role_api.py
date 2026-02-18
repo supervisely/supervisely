@@ -11,6 +11,8 @@ from supervisely.api.module_api import ApiField, ModuleApiBase
 
 
 class RoleInfo(NamedTuple):
+    """NamedTuple describing a role entry returned by the API."""
+
     id: int
     role: str
     created_at: str
