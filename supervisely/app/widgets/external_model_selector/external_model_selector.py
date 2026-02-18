@@ -16,7 +16,7 @@ class ExternalModelSelector(Widget):
         self.widgets = []
 
         # Model name input
-        self.model_name_input = Input(placeholder="Enter model name")
+        self.model_name_input = Input(value="External Model", placeholder="Enter model name")
         self.model_name_field = Field(
             title="Model name",
             description="Model name is used to identify the model in model benchmark and comparison.",
@@ -65,7 +65,7 @@ class ExternalModelSelector(Widget):
             self.classes_input = Input(placeholder="Enter classes")
             self.classes_field = Field(
                 title="Model classes",
-                description="Path to '.json' file with classes. File should contain classes mapping (e.g {'0': 'person', '1': 'car', '2': 'pizza'})",
+                description="Path to '.json' file with classes in Team Files. File should contain classes mapping (e.g {'0': 'person', '1': 'car', '2': 'pizza'})",
                 content=self.classes_input,
             )
             self.widgets.append(self.classes_field)
