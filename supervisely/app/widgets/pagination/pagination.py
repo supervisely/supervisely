@@ -9,7 +9,11 @@ except ImportError:
 
 
 class Pagination(Widget):
+    """Pagination widget that manages current page and page size and emits change callbacks."""
+
     class Routes:
+        """Callback route names used by the widget frontend to notify Python."""
+
         CURRENT_CHANGE = "current_change"
         SIZE_CHANGE = "size_change"
 

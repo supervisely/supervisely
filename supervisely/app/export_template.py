@@ -8,8 +8,11 @@ from supervisely.sly_logger import logger
 
 
 class Export:
+    """Base template for building simple export apps that produce a downloadable file."""
 
     class Context:
+        """Export run context derived from environment (team/workspace/project/dataset IDs)."""
+
         def __init__(
             self, team_id: int, workspace_id: int, project_id: int, dataset_id: Optional[int] = None
         ):

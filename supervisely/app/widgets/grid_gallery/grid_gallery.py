@@ -10,7 +10,11 @@ from supervisely.app.content import StateJson
 
 
 class GridGallery(Widget):
+    """Gallery widget that displays images in a grid with optional annotations, zoom, and synchronized views."""
+
     class Routes:
+        """Callback route names used by the widget frontend to notify Python."""
+
         IMAGE_CLICKED = "image_clicked_cb"
 
     def __init__(

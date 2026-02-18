@@ -46,7 +46,11 @@ DATA_TYPES = ["folder", "file"]
 
 
 class Import(Application):
+    """Template app for importing data into a Supervisely project/dataset with a step-by-step UI."""
+
     class Context:
+        """Import run context (destination IDs + selected remote path + progress widget)."""
+
         def __init__(
             self,
             team_id: int,

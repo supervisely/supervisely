@@ -12,6 +12,8 @@ from typing import Union, List
 
 
 class MatchTagMetasOrClasses(Widget):
+    """Widget to compare and match TagMetas or ObjClasses between two collections (with optional suffix matching)."""
+
     def __init__(
         self,
         left_collection: Union[TagMetaCollection, ObjClassCollection, None] = None,
@@ -281,6 +283,8 @@ class MatchTagMetasOrClasses(Widget):
 
 
 class MatchTagMetas(MatchTagMetasOrClasses):
+    """Specialization of :class:`MatchTagMetasOrClasses` for matching :class:`~supervisely.annotation.tag_meta.TagMeta`."""
+
     def __init__(
         self,
         left_collection: Union[TagMetaCollection, List[TagMeta], None] = None,
@@ -344,6 +348,8 @@ class MatchTagMetas(MatchTagMetasOrClasses):
 
 
 class MatchObjClasses(MatchTagMetasOrClasses):
+    """Specialization of :class:`MatchTagMetasOrClasses` for matching :class:`~supervisely.annotation.obj_class.ObjClass`."""
+
     def __init__(
         self,
         left_collection: Union[ObjClassCollection, List[ObjClass], None] = None,

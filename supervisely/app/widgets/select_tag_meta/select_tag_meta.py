@@ -14,7 +14,11 @@ from supervisely.project.project_meta import ProjectMeta
 
 
 class SelectTagMeta(Widget):
+    """Widget to select one or multiple TagMetas from a project meta (by project ID or provided meta)."""
+
     class Routes:
+        """Callback route names used by the widget frontend to notify Python."""
+
         VALUE_CHANGED = "value_changed"
 
     def __init__(

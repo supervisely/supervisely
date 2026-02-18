@@ -32,6 +32,8 @@ class ExperimentSelector(Widget):
     """
 
     class COLUMN:
+        """Column names used in the experiments table."""
+
         NAME = "TASK ID"
         MODEL = "MODEL"
         TRAINING_DATA = "TRAINING DATA"
@@ -49,6 +51,8 @@ class ExperimentSelector(Widget):
     ]
 
     class ModelRow:
+        """One table row representing a single experiment and its artifacts (checkpoints, session link, report)."""
+
         def __init__(
             self,
             api: Api,

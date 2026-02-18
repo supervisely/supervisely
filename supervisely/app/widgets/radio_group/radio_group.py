@@ -11,11 +11,16 @@ except ImportError:
 
 
 class RadioGroup(ConditionalWidget):
+    """Radio-button group widget that selects one of provided items (optionally with per-item content)."""
 
     class Routes:
+        """Callback route names used by the widget frontend to notify Python."""
+
         VALUE_CHANGED = "value_changed"
     
     class Item(ConditionalItem):
+        """Item type alias for radio group options."""
+
         pass
 
     def __init__(

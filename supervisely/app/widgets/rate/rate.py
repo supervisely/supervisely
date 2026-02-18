@@ -4,7 +4,11 @@ from typing import List, Union
 
 
 class Rate(Widget):
+    """Star rating widget (optionally half-precision) that emits value-changed callbacks."""
+
     class Routes:
+        """Callback route names used by the widget frontend to notify Python."""
+
         VALUE_CHANGED = "value_changed"
 
     def __init__(

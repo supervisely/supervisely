@@ -5,8 +5,11 @@ from supervisely.app.widgets import Widget
 
 
 class InputNumber(Widget):
+    """Numeric input widget with min/max/step/precision and value-changed callback."""
 
     class Routes:
+        """Callback route names used by the widget frontend to notify Python."""
+
         VALUE_CHANGED = "value_changed"
 
     def __init__(

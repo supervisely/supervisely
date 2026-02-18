@@ -27,6 +27,8 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
 class TrackerInterface:
+    """Base helper that applies tracking across video frames by fetching figures/frames and appending new geometries."""
+
     def __init__(
         self,
         context,
@@ -340,6 +342,8 @@ class TrackerInterface:
 
 
 class ThreadSafeStopIndicator:
+    """Thread-safe stop flag with an optional reason for cancellation."""
+
     def __init__(self):
         self._stopped = False
         self._reason = None
@@ -365,6 +369,8 @@ FrameImage = namedtuple("FrameImage", ["frame_index", "image"])
 
 
 class TrackerInterfaceV2:
+    """Improved tracker interface that uses a cache and background frame loading for video tracking workflows."""
+
     UPLOAD_SLEEP_TIME = 0.001  # 1ms
     NOTIFY_SLEEP_TIME = 1  # 1s
 

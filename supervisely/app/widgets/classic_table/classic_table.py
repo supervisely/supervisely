@@ -9,6 +9,8 @@ from supervisely.app.widgets import Widget
 
 
 class PackerUnpacker:
+    """Helpers to (un)pack supported ClassicTable input types (dict, pandas DataFrame) into a common JSON shape."""
+
     SUPPORTED_TYPES = tuple([dict, pd.DataFrame])
 
     @staticmethod
@@ -122,6 +124,8 @@ class ClassicTable(Widget):
     """
 
     class Routes:
+        """HTTP routes used by the widget frontend for callbacks."""
+
         CELL_CLICKED = "cell_clicked_cb"
 
     def __init__(

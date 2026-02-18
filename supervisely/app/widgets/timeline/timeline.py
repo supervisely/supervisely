@@ -4,7 +4,11 @@ from supervisely.app.content import StateJson, DataJson
 
 
 class Timeline(Widget):
+    """Timeline widget that visualizes colored frame intervals and supports pointer/segment selection."""
+
     class Routes:
+        """Callback route names used by the widget frontend to notify Python."""
+
         SEGMENT_SELECTED = "segment_selected_cb"
         CLICK = "click"
 

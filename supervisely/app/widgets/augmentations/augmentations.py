@@ -15,6 +15,8 @@ from supervisely.app.widgets import Container, Widget, RadioTabs, Editor, GridGa
 
 
 class Augmentations(Widget):
+    """Widget to load an imgaug augmentation pipeline and preview its effect on a random image."""
+
     def __init__(
         self,
         globals,
@@ -191,6 +193,8 @@ class Augmentations(Widget):
 
 
 class AugmentationsWithTabs(Widget):
+    """Augmentations widget with tabs for choosing a template or loading a custom pipeline from Team Files."""
+
     def __init__(
         self,
         globals,

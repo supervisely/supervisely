@@ -55,7 +55,11 @@ available_geometry_types = [
 
 
 class ClassesListSelector(Widget):
+    """Widget to select existing object classes (and optionally create new classes) from a project meta."""
+
     class Routes:
+        """Callback route names used by the widget frontend to notify Python."""
+
         CHECKBOX_CHANGED = "checkbox_cb"
         CLASS_CREATED = "class_created_cb"
 

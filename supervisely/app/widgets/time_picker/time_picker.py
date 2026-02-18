@@ -8,7 +8,11 @@ except ImportError:
 
 
 class TimePicker(Widget):
+    """Time picker widget for selecting a time-of-day string in ``hh:mm`` format."""
+
     class Routes:
+        """Callback route names used by the widget frontend to notify Python."""
+
         VALUE_CHANGED = "value_changed"
 
     def __init__(

@@ -21,6 +21,8 @@ from supervisely.sly_logger import logger
 
 
 class SessionJSON:
+    """Client for running inference on a deployed model and returning raw JSON predictions."""
+
     def __init__(
         self,
         api: sly.Api,
@@ -663,6 +665,8 @@ class SessionJSON:
 
 
 class AsyncInferenceIterator:
+    """Iterator over async inference results that polls pending results from a :class:`SessionJSON`."""
+
     def __init__(self, total, nn_api: SessionJSON, process_fn=None):
         self.total = total
         self.nn_api = nn_api
@@ -702,6 +706,8 @@ class AsyncInferenceIterator:
 
 
 class Session(SessionJSON):
+    """Inference client that converts model outputs into :class:`~supervisely.annotation.annotation.Annotation` objects."""
+
     def __init__(
         self,
         api: sly.Api,

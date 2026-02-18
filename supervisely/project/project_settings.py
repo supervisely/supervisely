@@ -15,6 +15,8 @@ from supervisely.sly_logger import logger
 
 
 class LabelingInterface(str, StrEnum):
+    """Enumerates supported labeling UI interfaces for a project (images, multiview, medical, etc.)."""
+
     DEFAULT = "default"
     MEDICAL_IMAGING_SINGLE = "medical_imaging_single"
     IMAGES_WITH_16_COLOR = "images_with_16_color"
@@ -25,6 +27,8 @@ class LabelingInterface(str, StrEnum):
 
 
 class ProjectSettingsJsonFields:
+    """JSON field names used in :class:`~supervisely.project.project_settings.ProjectSettings` serialization."""
+
     MULTI_VIEW = "multiView"
     ENABLED = "enabled"
     TAG_ID = "tagId"
@@ -34,6 +38,8 @@ class ProjectSettingsJsonFields:
 
 
 class ProjectSettingsRequiredSchema:
+    """JSON schema for validating serialized :class:`~supervisely.project.project_settings.ProjectSettings`."""
+
     SCHEMA = {
         "type": "object",
         "properties": {

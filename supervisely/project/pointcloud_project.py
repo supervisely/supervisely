@@ -44,6 +44,8 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
 class PointcloudItemPaths(NamedTuple):
+    """Paths to a point cloud item, its annotation, and related images directory."""
+
     #: str: Full pointcloud file path of item
     pointcloud_path: str
 
@@ -55,6 +57,8 @@ class PointcloudItemPaths(NamedTuple):
 
 
 class PointcloudItemInfo(NamedTuple):
+    """Basic info about a point cloud item and where its files are stored on disk."""
+
     #: str: Item's dataset name
     dataset_name: str
 
@@ -575,6 +579,8 @@ class PointcloudProject(VideoProject):
     dataset_class = PointcloudDataset
 
     class DatasetDict(KeyIndexedCollection):
+        """Collection of :class:`~supervisely.project.pointcloud_project.PointcloudDataset` by name."""
+
         item_type = PointcloudDataset
 
     def __init__(self, directory: str, mode: OpenMode):

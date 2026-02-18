@@ -15,14 +15,20 @@ ALLOWED_POINTCLOUD_EXTENSIONS = [".pcd"]
 
 
 class PointcloudExtensionError(Exception):
+    """Raised when a point cloud file extension is invalid or unsupported."""
+
     pass
 
 
 class UnsupportedPointcloudFormat(Exception):
+    """Raised when a point cloud file format/extension is not supported by the SDK."""
+
     pass
 
 
 class PointcloudReadException(Exception):
+    """Raised when a point cloud file cannot be read or decoded."""
+
     pass
 
 

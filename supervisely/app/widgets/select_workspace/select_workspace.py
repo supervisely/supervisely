@@ -12,7 +12,11 @@ from supervisely.app.widgets.select_sly_utils import _get_int_or_env
 
 
 class SelectWorkspace(Widget):
+    """Widget to select a workspace (optionally coupled to a team selector) and notify on changes."""
+
     class Routes:
+        """Callback route names used by the widget frontend to notify Python."""
+
         VALUE_CHANGED = "value_changed"
 
     def __init__(

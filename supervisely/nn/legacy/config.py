@@ -22,6 +22,8 @@ def _extend_with_default(validator_class):
 
 
 class MultiTypeValidator(object):
+    """JSON schema validator that holds multiple named validators loaded from a single schema file."""
+
     DEFINITIONS = 'definitions'
 
     def __init__(self, schema_fpath):
@@ -47,6 +49,8 @@ class MultiTypeValidator(object):
 
 
 class JsonConfigValidator(MultiTypeValidator):
+    """Validator for training and inference configs based on bundled JSON schemas."""
+
     def __init__(self, schema_fpath=None):
         super().__init__(schema_fpath or '/workdir/src/schemas.json')
 
@@ -60,6 +64,8 @@ class JsonConfigValidator(MultiTypeValidator):
 
 
 class AlwaysPassingConfigValidator:
+    """Validator stub that accepts any config (used when schema validation is unavailable/disabled)."""
+
     @classmethod
     def validate_train_cfg(cls, config):
         pass

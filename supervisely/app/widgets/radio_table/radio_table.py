@@ -6,7 +6,11 @@ from supervisely.app.widgets import Widget
 
 
 class RadioTable(Widget):
+    """Table widget that lets the user pick one row (radio selection) and notifies on changes."""
+
     class Routes:
+        """Callback route names used by the widget frontend to notify Python."""
+
         VALUE_CHANGED = "value_changed"
 
     def __init__(

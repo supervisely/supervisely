@@ -6,7 +6,11 @@ from supervisely.app.widgets import Widget
 
 
 class MembersListSelector(Widget):
+    """Widget to select one or multiple team members from a provided list of users."""
+
     class Routes:
+        """Callback route names used by the widget frontend to notify Python."""
+
         CHECKBOX_CHANGED = "checkbox_cb"
 
     def __init__(

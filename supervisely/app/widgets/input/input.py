@@ -8,7 +8,11 @@ except ImportError:
 
 
 class Input(Widget):
+    """Single-line or textarea input widget with optional value-changed callback."""
+
     class Routes:
+        """Callback route names used by the widget frontend to notify Python."""
+
         VALUE_CHANGED = "value_changed"
 
     def __init__(

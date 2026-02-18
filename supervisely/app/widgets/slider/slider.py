@@ -4,7 +4,11 @@ from typing import Union, List
 
 
 class Slider(Widget):
+    """Slider widget for selecting a numeric value or a range, with value-changed callback."""
+
     class Routes:
+        """Callback route names used by the widget frontend to notify Python."""
+
         VALUE_CHANGED = "value_changed"
 
     def __init__(

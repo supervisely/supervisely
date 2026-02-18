@@ -14,7 +14,11 @@ from supervisely.app.widgets.fast_table.fast_table import FastTable
 
 
 class EcosystemModelSelector(Widget):
+    """Widget to browse and select models from the Supervisely Ecosystem with table filtering."""
+
     class COLUMN:
+        """Column keys used in the internal models table."""
+
         MODEL_NAME = "name"
         FRAMEWORK = "framework"
         TASK_TYPE = "task"

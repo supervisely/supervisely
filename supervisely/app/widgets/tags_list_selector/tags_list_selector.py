@@ -14,7 +14,11 @@ VALUE_TYPE_NAME = {
 
 
 class TagsListSelector(Widget):
+    """Widget to select one or multiple TagMetas from a provided list."""
+
     class Routes:
+        """Callback route names used by the widget frontend to notify Python."""
+
         CHECKBOX_CHANGED = "checkbox_cb"
 
     def __init__(

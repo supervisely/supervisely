@@ -130,13 +130,13 @@ class ActivityAction:
 
 
 class UsageInfo(NamedTuple):
-    """ """
+    """Team usage/plan information returned by the API."""
 
     plan: Optional[str]
 
 
 class TeamInfo(NamedTuple):
-    """ """
+    """Team information returned by the API (basic fields + optional usage info)."""
 
     id: int
     name: str

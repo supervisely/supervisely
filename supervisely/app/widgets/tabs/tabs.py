@@ -13,10 +13,16 @@ except ImportError:
 
 
 class Tabs(Widget):
+    """Tabs widget that shows one of several content panes and supports click callbacks."""
+
     class Routes:
+        """Callback route names used by the widget frontend to notify Python."""
+
         CLICK = "tab_clicked_cb"
 
     class TabPane:
+        """One tab pane (label + content widget)."""
+
         def __init__(self, label: str, content: Widget):
             self.label = label
             self.name = label  # identifier corresponding to the active tab

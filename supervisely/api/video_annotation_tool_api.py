@@ -7,6 +7,8 @@ from supervisely.collection.str_enum import StrEnum
 
 
 class VideoAnnotationToolAction(StrEnum):
+    """Action names supported by the Video Annotation Tool for remote UI control."""
+
     JOBS_DISABLE_CONTROLS = "jobs/disableControls"
     """"""
     JOBS_ENABLE_CONTROLS = "jobs/enableControls"
@@ -25,6 +27,8 @@ class VideoAnnotationToolAction(StrEnum):
 
 
 class VideoAnnotationToolApi(ModuleApiBase):
+    """API wrapper for sending actions/commands to a running Video Annotation Tool session."""
+
     def disable_job_controls(self, session_id: str) -> Dict[str, Any]:
         """Disables controls of the labeling jobs. Buttons: Sumbit job, Confirm video.
 

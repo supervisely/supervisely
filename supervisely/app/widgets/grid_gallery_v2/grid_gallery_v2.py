@@ -14,7 +14,11 @@ from supervisely.project.project_meta import ProjectMeta
 
 
 class GridGalleryV2(Widget):
+    """Grid gallery widget (v2) that renders images with annotations, filters, and object bindings."""
+
     class Routes:
+        """Callback route names used by the widget frontend to notify Python."""
+
         IMAGE_CLICKED = "image_clicked_cb"
 
     def __init__(

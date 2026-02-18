@@ -6,7 +6,11 @@ from supervisely.app.widgets import Widget
 
 
 class FileViewer(Widget):
+    """Widget for browsing and selecting files/folders from a provided file tree list."""
+
     class Routes:
+        """Callback route names used by the widget frontend to notify Python."""
+
         VALUE_CHANGED = "value_changed"
         PATH_CHANGED = "path_changed"
 

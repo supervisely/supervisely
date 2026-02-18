@@ -9,7 +9,11 @@ from supervisely.app.widgets import Widget
 
 
 class SelectAppSession(Widget):
+    """Widget to select an app session by tags within a team (returns selected session ID)."""
+
     class Routes:
+        """Callback route names used by the widget frontend to notify Python."""
+
         VALUE_CHANGED = "value_changed"
 
     def __init__(

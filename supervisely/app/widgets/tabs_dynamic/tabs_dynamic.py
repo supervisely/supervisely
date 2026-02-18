@@ -19,6 +19,8 @@ def initialize():
         raise ModuleNotFoundError('This dependency not provided by Supervisely SDK.\nPlease, install it manually if nedeed.\npip install ruamel.yaml')
     
     class MyYAML(YAML):
+        """Small wrapper around ruamel YAML that can return a dumped string when no stream is provided."""
+
         def dump(self, data, stream=None, **kw):
             inefficient = False
             if stream is None:
@@ -30,7 +32,11 @@ def initialize():
     return MyYAML(), CommentedMap
 
 class TabsDynamic(Widget):
+    """Widget that renders YAML fragments in editable tabs and can merge them back into a single YAML document."""
+
     class TabPane:
+        """One tab pane (label + content widget)."""
+
         def __init__(self, label: str, content: Widget):
             self.label = label
             self.name = label  # identifier corresponding to the active tab

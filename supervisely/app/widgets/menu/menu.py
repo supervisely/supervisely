@@ -34,7 +34,11 @@ menu = sly.app.widgets.Menu(groups=[g1, g2])
 
 
 class Menu(Widget):
+    """Sidebar menu widget with items optionally grouped into sections."""
+
     class Item:
+        """Single menu item descriptor (title + optional icon and content widget)."""
+
         def __init__(
             self,
             title: str,
@@ -60,6 +64,8 @@ class Menu(Widget):
             }
 
     class Group:
+        """Group of menu items displayed under a section title."""
+
         def __init__(self, title: str, items: List[Menu.Item] = None) -> Menu.Group:
             self.title = title
             self.items = items

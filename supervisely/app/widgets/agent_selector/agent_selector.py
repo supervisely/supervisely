@@ -6,7 +6,11 @@ from supervisely.app.widgets import Widget
 
 
 class AgentSelector(Widget):
+    """Widget for selecting an Agent in a team with optional filtering (GPU/running/compact)."""
+
     class Routes:
+        """Callback route names used by the widget frontend to notify Python."""
+
         VALUE_CHANGED = "value_changed"
 
     def __init__(

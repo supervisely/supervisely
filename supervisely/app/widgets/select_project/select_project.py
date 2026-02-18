@@ -18,7 +18,11 @@ from supervisely.app.widgets.select_sly_utils import _get_int_or_env
 
 
 class SelectProject(Widget):
+    """Widget to select a project (optionally filtered by project types), with an optional workspace selector."""
+
     class Routes:
+        """Callback route names used by the widget frontend to notify Python."""
+
         VALUE_CHANGED = "value_changed"
 
     def __init__(

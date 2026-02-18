@@ -39,10 +39,16 @@ chart = sly.app.widgets.Apexchart(
 
 
 class Apexchart(Widget):
+    """Interactive chart widget based on ApexCharts with optional click callback support."""
+
     class Routes:
+        """Callback route names used by the widget frontend to notify Python."""
+
         CLICK = "chart_clicked_cb"
 
     class ClickedDataPoint(NamedTuple):
+        """Payload describing a clicked point in the chart series."""
+
         series_index: int
         series_name: str
         data_index: int

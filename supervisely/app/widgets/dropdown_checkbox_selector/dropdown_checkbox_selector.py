@@ -5,10 +5,16 @@ from supervisely.app.widgets.widget import Widget
 
 
 class DropdownCheckboxSelector(Widget):
+    """Dropdown widget that lets a user select one or multiple items via checkboxes."""
+
     class Routes:
+        """Callback route names used by the widget frontend to notify Python."""
+
         VALUE_CHANGED = "value_changed"
 
     class Item:
+        """Selectable item descriptor (id + optional display name/description)."""
+
         def __init__(self, id: str, name: str = None, description: str = None):
             self.id = id
             if name is None:

@@ -14,7 +14,11 @@ from supervisely.sly_logger import logger
 
 
 class SelectDataset(Widget):
+    """Widget to select one or multiple datasets, optionally coupled to a project selector."""
+
     class Routes:
+        """Callback route names used by the widget frontend to notify Python."""
+
         VALUE_CHANGED = "value_changed"
 
     def __init__(

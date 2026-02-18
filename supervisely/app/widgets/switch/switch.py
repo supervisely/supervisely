@@ -5,7 +5,11 @@ from typing import List, Dict, Union
 
 
 class Switch(ConditionalWidget):
+    """On/off switch widget that can show different content for each state."""
+
     class Routes:
+        """Callback route names used by the widget frontend to notify Python."""
+
         VALUE_CHANGED = "value_changed"
 
     def __init__(

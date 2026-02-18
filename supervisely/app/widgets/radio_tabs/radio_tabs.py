@@ -8,10 +8,16 @@ from supervisely.app.widgets import Widget
 
 
 class RadioTabs(Widget):
+    """Tabs-like widget that switches between panes and notifies on selection changes."""
+
     class Routes:
+        """Callback route names used by the widget frontend to notify Python."""
+
         VALUE_CHANGED = "value_changed_cb"
 
     class RadioTabPane:
+        """One selectable tab pane (title + content widget + optional subtitle)."""
+
         def __init__(
             self,
             title: str,

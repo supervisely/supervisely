@@ -10,7 +10,11 @@ from supervisely.app.widgets_context import JinjaWidgets
 
 
 class ImageRegionSelector(Widget):
+    """Widget to select a region in an image via bounding box and optional positive/negative points."""
+
     class Routes:
+        """Callback route names used by the widget frontend to notify Python."""
+
         BBOX_CHANGED = "bbox-changed"
         POSITIVE_CHANGED = "positive-updated"
         NEGATIVE_CHANGED = "negative-updated"

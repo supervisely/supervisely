@@ -43,11 +43,16 @@ columns = [
 
 
 class CustomModelsSelector(Widget):
+    """Widget for selecting a custom trained model checkpoint from Team Files / training sessions."""
+
     class Routes:
+        """Callback route names used by the widget frontend to notify Python."""
+
         TASK_TYPE_CHANGED = "task_type_changed"
         VALUE_CHANGED = "value_changed"
 
     class ModelRow:
+        """One table row representing a single training run and its available checkpoints."""
 
         def __init__(
             self,
