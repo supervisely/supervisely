@@ -33,7 +33,11 @@ from supervisely.project.project_settings import LabelingInterface
 
 
 class BagConverter(PointcloudConverter):
+    """Converter for ROS bag files containing PointCloud2 messages (and optional Supervisely annotations topics)."""
+
     class Item(PointcloudConverter.Item):
+        """Bag item that stores the selected ROS topic name (and optional annotation topic)."""
+
         def __init__(
             self,
             item_path,

@@ -32,7 +32,10 @@ from supervisely.pointcloud_annotation.pointcloud_tag import PointcloudTag
 
 
 class LyftConverter(PointcloudConverter):
+    """Converter for Lyft Lidar datasets (bin pointclouds + scene-based cuboid annotations)."""
+
     class Item(PointcloudConverter.Item):
+        """Lyft pointcloud item with the source scene name for dataset grouping."""
 
         def __init__(
             self,

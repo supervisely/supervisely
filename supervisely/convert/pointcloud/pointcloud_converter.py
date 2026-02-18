@@ -26,10 +26,14 @@ CONVERTIBLE_EXTENSIONS = [".bin"]
 
 
 class PointcloudConverter(BaseConverter):
+    """Base converter for pointcloud projects (uploads pointclouds, annotations, and optional related images)."""
+
     allowed_exts = ALLOWED_POINTCLOUD_EXTENSIONS + CONVERTIBLE_EXTENSIONS
     modality = "pointclouds"
 
     class Item(BaseConverter.BaseItem):
+        """Base pointcloud item: path + optional annotation data and related images bundle."""
+
         def __init__(
             self,
             item_path,

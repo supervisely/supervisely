@@ -25,7 +25,11 @@ from supervisely.project.project_settings import LabelingInterface
 
 
 class PascalVOCConverter(ImageConverter):
+    """Converter for Pascal VOC datasets (XML bboxes + optional segmentation/instance masks)."""
+
     class Item(ImageConverter.Item):
+        """Pascal VOC image item extended with segmentation/instance mask paths when present."""
+
         def __init__(
             self,
             *args,

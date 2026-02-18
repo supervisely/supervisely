@@ -30,8 +30,10 @@ from supervisely.project.project_settings import LabelingInterface
 
 
 class CSVConverter(ImageConverter):
+    """Converter for image datasets described by a CSV/TSV/TXT file (paths/links + optional tags)."""
 
     class Item(ImageConverter.Item):
+        """Single CSV row mapped to an image item and its optional annotation/meta fields."""
 
         def __init__(
             self,

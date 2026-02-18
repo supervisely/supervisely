@@ -56,6 +56,8 @@ class NiiPlaneStructuredConverter(NiiConverter, VolumeConverter):
     """
 
     class Item(VolumeConverter.BaseItem):
+        """Volume item extended with NIfTI-specific flags and a prepared ``volume_meta`` for annotations."""
+
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
             self._is_semantic = False
@@ -223,6 +225,8 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
     """
 
     class Item(VolumeConverter.BaseItem):
+        """Annotation item for a single plane-structured NIfTI mask (or scores table) with conversion flags."""
+
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
             self._is_semantic = False

@@ -28,11 +28,15 @@ from supervisely.video.video import ALLOWED_VIDEO_EXTENSIONS, get_info
 
 
 class VideoConverter(BaseConverter):
+    """Base converter for video projects (uploads videos and optional video annotations to Supervisely)."""
+
     allowed_exts = ALLOWED_VIDEO_EXTENSIONS + [".mpg"]
     base_video_extension = ".mp4"
     modality = "videos"
 
     class Item(BaseConverter.BaseItem):
+        """Video item with cached shape/frame count and optional annotation/meta for upload."""
+
         def __init__(
             self,
             item_path,

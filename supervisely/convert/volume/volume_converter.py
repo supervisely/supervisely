@@ -17,10 +17,14 @@ from supervisely.volume.volume import ALLOWED_VOLUME_EXTENSIONS, read_nrrd_serie
 
 
 class VolumeConverter(BaseConverter):
+    """Base converter for volume projects (uploads NRRD series volumes and optional volume annotations)."""
+
     allowed_exts = ALLOWED_VOLUME_EXTENSIONS
     modality = "volumes"
 
     class Item(BaseConverter.BaseItem):
+        """Volume item holding NRRD-series path, volume meta/shape, and optional mask/interpolation dirs."""
+
         def __init__(
             self,
             item_path: str,

@@ -25,12 +25,15 @@ from supervisely.project.project_settings import LabelingInterface
 
 
 class ImageConverter(BaseConverter):
+    """Base converter for image projects (collects images and uploads images + annotations to Supervisely)."""
+
     allowed_exts = [
         ext for ext in SUPPORTED_IMG_EXTS + image_helper.EXT_TO_CONVERT if ext != ".nrrd"
     ]
     modality = "images"
 
     class Item(BaseConverter.BaseItem):
+        """Base image item used by image converters (path + optional annotation/meta and image shape)."""
 
         def __init__(
             self,

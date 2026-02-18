@@ -23,10 +23,14 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
 class PointcloudEpisodeConverter(BaseConverter):
+    """Base converter for pointcloud episodes (frame-indexed pointclouds + a shared episode annotation)."""
+
     allowed_exts = ALLOWED_POINTCLOUD_EXTENSIONS
     modality = "pointcloud episodes"
 
     class Item(BaseConverter.BaseItem):
+        """Base pointcloud-episode item with frame index and optional related images bundle."""
+
         def __init__(
             self,
             item_path,

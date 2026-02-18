@@ -21,8 +21,10 @@ from supervisely.pointcloud_annotation.pointcloud_episode_frame import Pointclou
 from supervisely.pointcloud_annotation.pointcloud_figure import PointcloudFigure
 
 class KITTI360Converter(PointcloudEpisodeConverter):
+    """Converter for KITTI-360 pointcloud episodes (per-scene frames + 3D bounding boxes + photocontext)."""
 
     class Item:
+        """Parsed KITTI-360 scene bundle (frame paths, 3D annotations, poses, and optional related images)."""
 
         def __init__(
             self,
