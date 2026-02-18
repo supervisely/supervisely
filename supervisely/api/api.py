@@ -259,7 +259,7 @@ class UserSession:
 
 
 class Api:
-    """Supervisely API client."""
+    """Main Supervisely API client (aggregates sub-APIs and handles auth, retries and common configuration)."""
 
     _checked_servers = set()
 

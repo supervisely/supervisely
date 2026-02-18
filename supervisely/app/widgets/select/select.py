@@ -44,10 +44,16 @@ except ImportError:
 
 
 class Select(ConditionalWidget):
+    """Dropdown select widget with optional grouping, filtering and multi-select support."""
+
     class Routes:
+        """Callback route names used by the widget frontend to notify Python."""
+
         VALUE_CHANGED = "value_changed"
 
     class Item:
+        """A selectable option (value + label) with optional right-side text and embedded content widget."""
+
         def __init__(
             self,
             value,
@@ -73,6 +79,8 @@ class Select(ConditionalWidget):
             }
 
     class Group:
+        """A labeled group of select items."""
+
         def __init__(self, label, items: List[Select.Item] = None) -> Select.Item:
             self.label = label
             self.items = items
@@ -253,6 +261,8 @@ class Select(ConditionalWidget):
 
 
 class SelectString(Select):
+    """Convenience Select wrapper for a list of string values (and optional labels)."""
+
     def __init__(
         self,
         values: List[str],

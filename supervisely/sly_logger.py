@@ -13,12 +13,16 @@ from enum import Enum
 from pythonjsonlogger import jsonlogger
 
 class ServiceType(Enum):
+    """Service kinds that emit logs/events in Supervisely."""
+
     AGENT = 1
     TASK = 2
     EXPORT = 3
 
 
 class EventType(Enum):
+    """Event categories used in structured logs (task lifecycle, progress, metrics, etc.)."""
+
     LOGJ = 1
     LOGS = 2
     TASK_STARTED = 3
@@ -115,6 +119,8 @@ def _get_default_logging_fields():
 
 
 class CustomJsonFormatter(jsonlogger.JsonFormatter):
+    """JSON log formatter that normalizes Supervisely fields (timestamp, level, stack) and adds extra metadata."""
+
     additional_fields = {}
 
     def __init__(self, format_string):

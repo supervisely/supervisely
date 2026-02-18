@@ -43,7 +43,7 @@ DEFAULT_IMG_EXT = ".png"
 
 
 class CornerAnchorMode:
-    """ """
+    """String constants describing which corner to use as an anchor (tl/tr/bl/br)."""
 
     TOP_LEFT = "tl"
     TOP_RIGHT = "tr"
@@ -52,7 +52,7 @@ class CornerAnchorMode:
 
 
 class RotateMode(Enum):
-    """ """
+    """Policies for handling black regions created by rotation."""
 
     KEEP_BLACK = 0
     """"""
@@ -63,19 +63,19 @@ class RotateMode(Enum):
 
 
 class ImageExtensionError(Exception):
-    """ """
+    """Raised when an image file extension is not supported."""
 
     pass
 
 
 class UnsupportedImageFormat(Exception):
-    """ """
+    """Raised when an image format is not supported even if the extension looks valid."""
 
     pass
 
 
 class ImageReadException(Exception):
-    """ """
+    """Raised when an image cannot be read or decoded."""
 
     pass
 

@@ -4,18 +4,24 @@ import psutil
 
 
 class ModelSource:
+    """String constants describing where a model comes from (pretrained/custom/external)."""
+
     PRETRAINED = "Pretrained models"
     CUSTOM = "Custom models"
     EXTERNAL = "External models"
 
 
 class RuntimeType:
+    """String constants for supported inference runtimes."""
+
     PYTORCH = "PyTorch"
     ONNXRUNTIME = "ONNXRuntime"
     TENSORRT = "TensorRT"
 
 
 class ModelPrecision:
+    """String constants for supported numeric precisions used at inference time."""
+
     FP32 = "FP32"
     FP16 = "FP16"
     INT8 = "INT8"
@@ -42,6 +48,8 @@ class CheckpointInfo:
 
 @dataclass
 class DeployInfo:
+    """Deployment configuration (checkpoint + runtime + device + precision + additional deploy parameters)."""
+
     checkpoint_name: str
     model_name: str
     architecture: str

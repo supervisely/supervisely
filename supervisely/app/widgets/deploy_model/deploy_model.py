@@ -31,8 +31,10 @@ from supervisely.nn.model.model_api import ModelAPI
 
 
 class DeployModel(Widget):
+    """UI widget to deploy or connect to a model and return a ready-to-use :class:`~supervisely.nn.model.model_api.ModelAPI`."""
 
     class DeployMode:
+        """Strategy interface for different deployment sources (connect, pretrained, custom)."""
 
         def deploy(self, agent_id: int = None) -> ModelAPI:
             raise NotImplementedError("This method should be implemented in subclasses.")
@@ -48,8 +50,10 @@ class DeployModel(Widget):
             raise NotImplementedError("This property should be implemented in subclasses.")
 
     class Connect(DeployMode):
+        """Deploy mode that connects to an already deployed model session."""
 
         class COLUMN:
+            """Column names for the deployed sessions table."""
             SESSION_ID = "Session ID"
             APP_NAME = "App Name"
             FRAMEWORK = "Framework"
@@ -142,8 +146,10 @@ class DeployModel(Widget):
             self.sessions_table.select_row_by_value(str(self.COLUMN.SESSION_ID), session_id)
 
     class Pretrained(DeployMode):
+        """Deploy mode that deploys a pretrained model from the ecosystem model catalog."""
         class COLUMN:
             # TODO: columns are the same as in EcosystemModelSelector, make a common base class
+            """Column names for the pretrained model selector table."""
             FRAMEWORK = "Framework"
             MODEL_NAME = "Model"
             TASK_TYPE = "Task Type"
@@ -197,6 +203,7 @@ class DeployModel(Widget):
             return model_api
 
     class Custom(DeployMode):
+        """Deploy mode that deploys a model from a user experiment checkpoint."""
         def __init__(self, deploy_model: "DeployModel"):
             self.api = deploy_model.api
             self.team_id = deploy_model.team_id
@@ -270,6 +277,7 @@ class DeployModel(Widget):
                 raise ValueError("Invalid data format for loading custom model.")
 
     class MODE:
+        """Supported deployment modes for the widget."""
         CONNECT = "connect"
         PRETRAINED = "pretrained"
         CUSTOM = "custom"

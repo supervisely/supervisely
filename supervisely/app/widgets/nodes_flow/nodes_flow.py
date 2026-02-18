@@ -21,44 +21,62 @@ from supervisely.app.widgets.nodes_flow.option_components import (
 
 
 class NodesFlow(Widget):
+    """Widget to render and interact with a node-based flow (nodes + connections) in the UI."""
+
     class OptionComponent(OptionComponent):
+        """Alias for :class:`~supervisely.app.widgets.nodes_flow.option_components.OptionComponent` for convenience."""
         pass
 
     class HtmlOptionComponent(HtmlOptionComponent):
+        """HTML option component for node settings panels."""
         pass
 
     class WidgetOptionComponent(WidgetOptionComponent):
+        """Widget-based option component for node settings panels."""
         pass
 
     class ButtonOptionComponent(ButtonOptionComponent):
+        """Button option component for node settings panels."""
         pass
 
     class CheckboxOptionComponent(CheckboxOptionComponent):
+        """Checkbox option component for node settings panels."""
         pass
 
     class InputOptionComponent(InputOptionComponent):
+        """Text input option component for node settings panels."""
         pass
 
     class IntegerOptionComponent(IntegerOptionComponent):
+        """Integer input option component for node settings panels."""
         pass
 
     class NumberOptionComponent(NumberOptionComponent):
+        """Numeric input option component for node settings panels."""
         pass
 
     class SelectOptionComponent(SelectOptionComponent):
+        """Select/dropdown option component for node settings panels."""
         pass
 
     class SliderOptionComponent(SliderOptionComponent):
+        """Slider option component for node settings panels."""
         pass
 
     class TextOptionComponent(TextOptionComponent):
+        """Static text option component for node settings panels."""
         pass
 
     class SidebarNodeInfoOptionComponent(SidebarNodeInfoOptionComponent):
+        """Sidebar node info option component for node settings panels."""
         pass
 
     class Node:
+        """A node definition for the NodesFlow graph (inputs, outputs and options)."""
+
         class Input:
+            """Input port definition for a node."""
+
             def __init__(self, name, label: Optional[str] = None, color: Optional[str] = None):
                 self.name = name
                 self.label = label
@@ -73,9 +91,12 @@ class NodesFlow(Widget):
                 return j
 
         class Output(Input):
+            """Output port definition for a node."""
             pass
 
         class Option:
+            """A named option attached to a node, rendered using an option component."""
+
             def __init__(self, name: str, option_component: OptionComponent):
                 if isinstance(option_component, NodesFlow.SidebarNodeInfoOptionComponent):
                     name = "sidebarNodeInfo"
@@ -137,6 +158,8 @@ class NodesFlow(Widget):
             self._position = position
 
     class Routes:
+        """Callback route names used by the widget frontend to communicate events to Python."""
+
         SAVE = "save_cb"
         FLOW_CHANGED = "flow_changed_cb"
         FLOW_STATE_CHANGED = "flow_state_changed_cb"

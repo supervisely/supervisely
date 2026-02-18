@@ -5,8 +5,8 @@ from supervisely.annotation.renamer import Renamer
 
 
 class ObjClassMapper:
-    """
-    """
+    """Strategy interface for mapping a source :class:`~supervisely.annotation.obj_class.ObjClass` to a destination one."""
+
     def map(self, src: ObjClass) -> ObjClass:
         """
         """
@@ -14,9 +14,7 @@ class ObjClassMapper:
 
 
 class RenamingObjClassMapper(ObjClassMapper):
-    """
-    This is a class for renaming ObjClass in given ObjClassCollection
-    """
+    """Map object classes by renaming their names using a :class:`~supervisely.annotation.renamer.Renamer`."""
 
     def __init__(self, dest_obj_classes: ObjClassCollection, renamer: Renamer):
         """

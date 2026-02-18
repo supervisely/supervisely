@@ -219,7 +219,7 @@ class NiiPlaneStructuredConverter(NiiConverter, VolumeConverter):
 
 class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
     """
-    Upload NIfTI Annotations
+    Converter for NIfTI-based 3D mask annotations stored as plane-structured volumes.
     """
 
     class Item(VolumeConverter.BaseItem):

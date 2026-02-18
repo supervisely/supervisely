@@ -38,7 +38,7 @@ from supervisely.sly_logger import logger
 
 class AnnotationInfo(NamedTuple):
     """
-    AnnotationInfo
+    Basic annotation information for an image (IDs, timestamps, and raw annotation JSON).
     """
 
     image_id: int

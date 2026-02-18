@@ -68,19 +68,19 @@ from supervisely.project.project_type import (
 
 
 class ProjectNotFound(Exception):
-    """ """
+    """Raised when a project with the requested ID/name cannot be found."""
 
     pass
 
 
 class ExpectedProjectTypeMismatch(Exception):
-    """ """
+    """Raised when a project type does not match the expected type for an operation."""
 
     pass
 
 
 class ProjectInfo(NamedTuple):
-    """ """
+    """Project information returned by the API (metadata, counts, settings and links)."""
 
     id: int
     name: str

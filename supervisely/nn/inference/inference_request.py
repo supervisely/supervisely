@@ -14,11 +14,15 @@ from supervisely.task.progress import Progress
 
 
 class InferenceRequest:
+    """State container for a single inference run (progress, results queue, lifecycle stage and cancellation)."""
+
     PAUSE_SLEEP_INTERVAL = 1.0
     PAUSE_SLEEP_MAX_WAIT = 60 * 60  # 1 hour
     PENDING_RESULTS_MAX_SIZE = 500
 
     class Stage:
+        """Human-readable stage labels used for progress reporting."""
+
         PREPARING = "Preparing model for inference..."
         INFERENCE = "Running inference..."
         FINISHED = "Finished"
@@ -281,6 +285,8 @@ class InferenceRequest:
 
 
 class GlobalProgress:
+    """Aggregated progress indicator for all inference requests managed by a server instance."""
+
     def __init__(self):
         self.progress = Progress(message="Ready", total_cnt=1)
         self._lock = threading.Lock()
@@ -332,6 +338,7 @@ class GlobalProgress:
 
 
 class InferenceRequestsManager:
+    """Thread-safe registry and monitor for active :class:`InferenceRequest` instances."""
 
     def __init__(self, executor: ThreadPoolExecutor = None):
         if executor is None:

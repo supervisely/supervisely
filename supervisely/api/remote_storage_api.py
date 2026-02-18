@@ -13,7 +13,7 @@ from supervisely.io.fs import ensure_base_path, get_file_name_with_ext
 
 
 class Provider(StrEnum):
-    """Provider"""
+    """Remote storage provider prefixes supported in Supervisely links (s3://, gcs://, etc.)."""
 
     S3 = "s3"
     """S3"""
@@ -45,7 +45,7 @@ class Provider(StrEnum):
 
 
 class RemoteStorageApi(ModuleApiBase):
-    """RemoteStorageApi"""
+    """API for listing and downloading files from remote/cloud storages connected to a team."""
 
     def _convert_json_info(self, info: dict):
         """_convert_json_info"""

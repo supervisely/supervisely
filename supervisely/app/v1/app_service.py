@@ -37,10 +37,14 @@ from supervisely.io.fs_cache import FileCache
 
 
 class ConnectionClosedByServerException(Exception):
+    """Raised when the server closes the app RPC request stream unexpectedly."""
+
     pass
 
 
 class AppCommandNotFound(Exception):
+    """Raised when an incoming app command has no registered callback handler."""
+
     pass
 
 
@@ -56,6 +60,8 @@ def _default_stop(api: Api, task_id, context, state, app_logger):
 
 
 class AppService:
+    """Legacy app service runtime that receives commands/events and sends UI/state updates to Supervisely."""
+
     NETW_CHUNK_SIZE = 1048576
     QUEUE_MAX_SIZE = 2000  # Maximum number of in-flight requests to avoid exhausting server memory.
     DEFAULT_EVENTS = [STOP_COMMAND, *IMAGE_ANNOTATION_EVENTS]

@@ -22,14 +22,20 @@ _SUPPORTED_CODECS = {"h264", "vp8", "vp9", "h265", "hevc", "av1"}
 
 
 class VideoExtensionError(Exception):
+    """Raised when a video file extension is not supported."""
+
     pass
 
 
 class UnsupportedVideoFormat(Exception):
+    """Raised when a video container/extension is not supported by the SDK."""
+
     pass
 
 
 class VideoReadException(Exception):
+    """Raised when a video file cannot be read or decoded."""
+
     pass
 
 
@@ -537,6 +543,8 @@ def get_labeling_tool_link(url: str, name: Optional[str] = "open in labeling too
 
 
 class VideoFrameReader:
+    """Read video frames efficiently using Decord when available, with an OpenCV fallback."""
+
     def __init__(self, video_path: str, frame_indexes: List[int] = None):
         self.video_path = video_path
         self.frame_indexes = frame_indexes

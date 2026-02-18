@@ -23,7 +23,7 @@ from supervisely.nn.experiments import ExperimentInfo
 
 class TrainInfo(NamedTuple):
     """
-    TrainInfo
+    Metadata about a training run and its exported artifacts (checkpoints, config, links).
     """
 
     app_name: str

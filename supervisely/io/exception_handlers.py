@@ -18,6 +18,11 @@ from supervisely.sly_logger import EventType, logger
 
 
 class HandleException:
+    """
+    Base wrapper for an exception enriched with a user-facing error code, title and message.
+
+    Used by :class:`ErrorHandler` to present consistent errors in UI (DialogWindowError) and logs.
+    """
     def __init__(
         self,
         exception: Exception,
@@ -96,8 +101,13 @@ class HandleException:
 
 
 class ErrorHandler:
+    """
+    Namespaced collection of typed error wrappers used to convert raw exceptions into user-facing messages.
+    """
     class APP:
+        """Errors originating from app/runtime logic (UI, files, archives, etc.)."""
         class UnsupportedShapes(HandleException):
+            """Raised when project classes contain unsupported geometry shapes."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 1001
                 self.title = "Unsupported class shapes"
@@ -112,6 +122,7 @@ class ErrorHandler:
                 )
 
         class UnsupportedArchiveFormat(HandleException):
+            """Raised when an input archive has an unsupported format."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 1002
                 self.title = "Unsupported archive format"
@@ -126,6 +137,7 @@ class ErrorHandler:
                 )
 
         class UnicodeDecodeError(HandleException):
+            """Raised when reading a text file fails due to encoding issues."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 1003
                 self.title = "Unicode decode error"
@@ -143,6 +155,7 @@ class ErrorHandler:
                 )
 
         class CallUndeployedModelError(HandleException):
+            """Raised when an inference request is made to a model that is not deployed/serving."""
             def __init__(
                 self, exception: Exception, stack: List[traceback.FrameSummary] = None, **kwargs
             ):
@@ -158,6 +171,7 @@ class ErrorHandler:
                 )
 
         class FailedToReadArchive(HandleException):
+            """Raised when an archive cannot be read (corrupted or unsupported content)."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 1005
                 self.title = "Failed to read archive"
@@ -175,6 +189,7 @@ class ErrorHandler:
                 )
 
         class FailedToUnpackArchive(HandleException):
+            """Raised when an archive cannot be unpacked (corrupted or unsupported content)."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 1006
                 self.title = "Failed to unpack archive"
@@ -192,7 +207,9 @@ class ErrorHandler:
                 )
 
     class API:
+        """Errors originating from Supervisely API requests and server-side constraints."""
         class TeamFilesFileNotFound(HandleException):
+            """Raised when a requested Team Files path does not exist."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 2001
                 self.title = "Requested file was not found in Team Files"
@@ -210,6 +227,7 @@ class ErrorHandler:
                 )
 
         class TaskSendRequestError(HandleException):
+            """Raised when the app cannot send a request to a running task/session."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 2002
                 self.title = "Task send request error. Check the logs for more information."
@@ -229,6 +247,7 @@ class ErrorHandler:
                 )
 
         class FileSizeTooLarge(HandleException):
+            """Raised when uploading a file exceeds the plan/file size limits."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 2003
                 self.title = "File size limit exceeded"
@@ -247,6 +266,7 @@ class ErrorHandler:
                 )
 
         class ImageFilesSizeTooLarge(HandleException):
+            """Raised when uploading an image exceeds size limits."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 2004
                 self.title = "Image files size limit exceeded"
@@ -263,6 +283,7 @@ class ErrorHandler:
                 )
 
         class VideoFilesSizeTooLarge(HandleException):
+            """Raised when uploading a video exceeds size limits."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 2005
                 self.title = "Video files size limit exceeded"
@@ -277,6 +298,7 @@ class ErrorHandler:
                 )
 
         class VolumeFilesSizeTooLarge(HandleException):
+            """Raised when uploading a volume exceeds size limits."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 2006
                 self.title = "Volume files size limit exceeded"
@@ -291,6 +313,7 @@ class ErrorHandler:
                 )
 
         class OutOfMemory(HandleException):
+            """Raised when an operation fails due to OOM (CPU or GPU) on the agent machine."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 device_prefix = (
                     "GPU memory"
@@ -310,6 +333,7 @@ class ErrorHandler:
                 )
 
         class DockerRuntimeError(HandleException):
+            """Raised when agent-side Docker runtime is unavailable or malfunctioning."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 2008
                 self.title = "Docker runtime error"
@@ -327,6 +351,7 @@ class ErrorHandler:
                 )
 
         class AppSetFieldError(HandleException):
+            """Raised when updating app/task fields via API fails (often due to connectivity)."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 2009
                 self.title = "App set field error. Check the logs for more information."
@@ -346,6 +371,7 @@ class ErrorHandler:
                 )
 
         class TeamFilesDirectoryDownloadError(HandleException):
+            """Raised when downloading a Team Files directory fails."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 2010
                 self.title = "Team files directory download error"
@@ -360,6 +386,7 @@ class ErrorHandler:
                 )
 
         class PointcloudsUploadError(HandleException):
+            """Raised when point cloud upload API fails."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 2011
                 self.title = "Pointclouds uploading error"
@@ -374,6 +401,7 @@ class ErrorHandler:
                 )
 
         class AnnotationUploadError(HandleException):
+            """Raised when annotation upload API fails."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 2012
                 self.title = "Annotation uploading error"
@@ -388,6 +416,7 @@ class ErrorHandler:
                 )
 
         class AnnotationNotFound(HandleException):
+            """Raised when annotation file(s) are not found for upload/download."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 2013
                 self.title = "Annotation not found"
@@ -402,6 +431,7 @@ class ErrorHandler:
                 )
 
         class ServerOverload(HandleException):
+            """Raised for transient server overload conditions; suggests retry later."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 2014
                 self.title = "High load on the server"
@@ -416,6 +446,7 @@ class ErrorHandler:
                 )
 
         class ProjectNotFound(HandleException):
+            """Raised when a project cannot be accessed (missing/archived/permissions)."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 2015
                 self.title = "Project not found"
@@ -430,6 +461,7 @@ class ErrorHandler:
                 )
 
         class DatasetNotFound(HandleException):
+            """Raised when a dataset cannot be accessed (missing/archived/permissions)."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 2016
                 self.title = "Dataset not found"
@@ -444,6 +476,7 @@ class ErrorHandler:
                 )
 
         class TaskFinished(HandleException):
+            """Raised when attempting to operate on a task that has already finished."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 2017
                 self.title = "Task finished"
@@ -458,6 +491,7 @@ class ErrorHandler:
                 )
 
         class PaymentRequired(HandleException):
+            """Raised when plan usage limits are reached and an upgrade is required."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 2018
                 self.title = "Usage limits reached"
@@ -472,6 +506,7 @@ class ErrorHandler:
                 )
 
         class FreePlanImagesUploadLinksError(HandleException):
+            """Raised when trying to upload remote images on a non-PRO plan."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 2019
                 self.title = "Upload remote images is only available for PRO teams"
@@ -488,6 +523,7 @@ class ErrorHandler:
                 )
 
         class FreePlanVideosUploadsLinkError(HandleException):
+            """Raised when trying to upload remote videos on a non-PRO plan."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 2020
                 self.title = "Upload remote videos is only available for PRO teams"
@@ -504,7 +540,9 @@ class ErrorHandler:
                 )
 
     class SDK:
+        """Errors produced by SDK-side parsing, conversion and local project structure checks."""
         class ProjectStructureError(HandleException):
+            """Raised when a local project structure is invalid or incomplete."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 3001
                 self.title = "Project structure error"
@@ -519,6 +557,7 @@ class ErrorHandler:
                 )
 
         class ConversionNotImplemented(HandleException):
+            """Raised when a requested geometry conversion is not implemented."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 3002
                 self.title = "Not implemented error"
@@ -536,6 +575,7 @@ class ErrorHandler:
                 )
 
         class JsonAnnotationReadError(HandleException):
+            """Raised when reading an annotation JSON fails (invalid JSON or schema)."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 3003
                 self.title = "JSON annotation read error"
@@ -552,6 +592,7 @@ class ErrorHandler:
                 )
 
         class LabelFromJsonFailed(HandleException):
+            """Raised when deserializing a Label from JSON fails."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 3004
                 self.title = "Label deserialize error"
@@ -566,6 +607,7 @@ class ErrorHandler:
                 )
 
         class FileNameTooLong(HandleException):
+            """Raised when file system operations fail due to excessively long file names."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 3005
                 self.title = "File name too long"
@@ -580,6 +622,7 @@ class ErrorHandler:
                 )
 
         class AnnotationFromJsonFailed(HandleException):
+            """Raised when deserializing an Annotation from JSON fails."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 3005
                 self.title = "Annotation deserialize error"
@@ -594,6 +637,7 @@ class ErrorHandler:
                 )
 
     class AgentDocker:
+        """Errors related to Docker operations performed by an Agent."""
         @classmethod
         def parse_docker_exception(cls, docker_exception: Exception) -> str:
             default_msg = str(docker_exception)
@@ -607,6 +651,7 @@ class ErrorHandler:
             return default_msg
 
         class ImageNotFound(HandleException):
+            """Raised when a required Docker image cannot be found/pulled by the agent."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 4001
                 self.title = "Docker image not found"
@@ -621,6 +666,7 @@ class ErrorHandler:
                 )
 
         class NetworkNotFound(HandleException):
+            """Raised when a required Docker network is missing or was deleted."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 4002
                 self.title = "Docker image not found"
@@ -645,7 +691,9 @@ class ErrorHandler:
                 )
 
     class Agent:
+        """Errors caused by Agent runtime issues (auth, memory limits, etc.)."""
         class AgentError(HandleException):
+            """Raised for general agent-side failures."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 5001
                 self.title = "Agent issue"
@@ -663,6 +711,7 @@ class ErrorHandler:
                 )
 
         class MemoryExceeded(HandleException):
+            """Raised when the task process is killed due to high memory usage (e.g. exit 137)."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
                 self.code = 5002
                 self.title = "Process terminated due to high memory usage"

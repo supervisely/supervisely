@@ -17,6 +17,8 @@ from supervisely.geometry.constants import POINTS, EXTERIOR, INTERIOR, BITMAP, D
 if not hasattr(np, 'bool'): np.bool = np.bool_
 
 class PointTest(unittest.TestCase):
+    """Unit tests for :class:`~supervisely.geometry.point.Point` geometry operations."""
+
     def setUp(self):
         self.point = Point(row=10,  col=5)
 
@@ -116,6 +118,8 @@ class PointTest(unittest.TestCase):
 
 
 class RectangleTest(unittest.TestCase):
+    """Unit tests for :class:`~supervisely.geometry.rectangle.Rectangle` geometry operations."""
+
     def setUp(self):
         self.rect = Rectangle(top=5, left=10, bottom=30, right=30)
 
@@ -236,6 +240,8 @@ class RectangleTest(unittest.TestCase):
 
 
 class PolygonTest(unittest.TestCase):
+    """Unit tests for :class:`~supervisely.geometry.polygon.Polygon` geometry operations."""
+
     def setUp(self):
         self.exterior = [[10, 10], [40, 10], [30, 40], [10, 30]]
         self.interiors = [[[20, 20], [30, 20], [30, 30], [20, 30]]]

@@ -50,10 +50,14 @@ FRAME_INDEX = 'frame_index'
 
 
 class ConnectionClosedByServerException(Exception):
+    """Raised when the server closes the RPC request stream unexpectedly."""
+
     pass
 
 
 class AgentRPCServicerBase:
+    """Base implementation of the agent RPC loop for single-image inference requests."""
+
     NETW_CHUNK_SIZE = 1048576
     QUEUE_MAX_SIZE = 2000  # Maximum number of in-flight requests to avoid exhausting server memory.
 
@@ -227,6 +231,8 @@ class AgentRPCServicerBase:
 
 
 class AgentRPCServicer(AgentRPCServicerBase):
+    """Default Agent RPC servicer that applies a model via an InferenceMode pipeline."""
+
     @staticmethod
     def _in_project_meta_from_msg(in_msg):
         pr_meta_json = in_msg.get('meta')

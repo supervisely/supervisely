@@ -7,7 +7,7 @@ ALLOWED_VIDEO_EXTENSIONS = ['.avi', '.mkv', '.mp4']
 
 
 class VideoExtensionError(Exception):
-    """Video extension error."""
+    """Raised when a video file extension is not in :data:`ALLOWED_VIDEO_EXTENSIONS`."""
     pass
 
 

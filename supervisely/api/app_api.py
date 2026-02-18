@@ -172,7 +172,7 @@ def check_workflow_compatibility(api, min_instance_version: str) -> bool:
 
 
 class AppInfo(NamedTuple):
-    """AppInfo"""
+    """App instance information returned by the API (running app + related task metadata)."""
 
     id: int
     created_by_id: int
@@ -189,7 +189,7 @@ class AppInfo(NamedTuple):
 
 
 class ModuleInfo(NamedTuple):
-    """ModuleInfo in Ecosystem"""
+    """Ecosystem module information (app listing metadata, config and repository links)."""
 
     id: int
     slug: str
@@ -339,7 +339,7 @@ class ModuleInfo(NamedTuple):
 
 
 class SessionInfo(NamedTuple):
-    """SessionInfo"""
+    """Information about an app session (task) and its associated app/module identifiers."""
 
     task_id: int
     user_id: int
@@ -478,7 +478,7 @@ class WorkflowMeta:
 
 
 class AppApi(TaskApi):
-    """AppApi"""
+    """API for launching and managing Supervisely Apps (built on top of :class:`~supervisely.api.task_api.TaskApi`)."""
 
     class Workflow:
         """The workflow functionality is used to create connections between the states of projects and tasks (application sessions) that interact with them in some way.

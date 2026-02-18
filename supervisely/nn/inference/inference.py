@@ -119,9 +119,13 @@ except ImportError:
 
 @dataclass
 class AutoRestartInfo:
+    """Parsed autorestart information returned by the deployment endpoint (used to detect deploy param changes)."""
+
     deploy_params: dict
 
     class Fields:
+        """JSON field names used to store autorestart info in API payloads."""
+
         AUTO_RESTART_INFO = "autoRestartInfo"
         DEPLOY_PARAMS = "deployParams"
 
@@ -145,6 +149,8 @@ class AutoRestartInfo:
 
 
 class Inference:
+    """Base inference app/server implementation used by framework-specific inference integrations."""
+
     FRAMEWORK_NAME: str = None
     """Name of framework to register models in Supervisely"""
     MODELS: str = None
@@ -5428,6 +5434,8 @@ def update_classes(api: Api, ann: Annotation, meta: ProjectMeta, project_id: int
 
 
 class Timer:
+    """Context manager for measuring elapsed time (milliseconds)."""
+
     def __enter__(self):
         self.start = time.time()
         return self
@@ -5441,6 +5449,8 @@ class Timer:
 
 
 class TempImageWriter:
+    """Write temporary images into a per-instance temp directory and clean it up when done."""
+
     def __init__(self, format: str = "png"):
         self.format = format
         self.temp_dir = os.path.join(get_data_dir(), rand_str(10))

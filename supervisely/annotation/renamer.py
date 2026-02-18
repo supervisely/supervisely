@@ -11,7 +11,7 @@ def is_name_included(name, enabled_names):
 
 class Renamer:
     """
-    This is a class for renaming ObjClass object names.
+    Rule-based name transformer used by mappers when cloning metas/classes.
     """
 
     ADD_SUFFIX = 'add_suffix'

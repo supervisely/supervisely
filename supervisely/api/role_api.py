@@ -44,7 +44,7 @@ class RoleApi(ModuleApiBase):
     """
 
     class DefaultRole(IntEnum):
-        """class DefaultRole"""
+        """Built-in role IDs used by the platform (admin/developer/annotator/viewer)."""
 
         ADMIN = 1
         """"""

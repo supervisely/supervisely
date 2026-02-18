@@ -6,8 +6,7 @@ from supervisely.annotation.tag_meta_collection import TagMetaCollection
 
 
 class TagMetaMapper:
-    """
-    """
+    """Strategy interface for mapping a source :class:`~supervisely.annotation.tag_meta.TagMeta` to a destination one."""
 
     def map(self, src: TagMeta) -> TagMeta:
         """
@@ -16,9 +15,7 @@ class TagMetaMapper:
 
 
 class RenamingTagMetaMapper(TagMetaMapper):
-    """
-    This is a class for renaming TagMeta in given TagMetaCollection
-    """
+    """Map tag metas by renaming their names using a :class:`~supervisely.annotation.renamer.Renamer`."""
 
     def __init__(self, dest_tag_meta_dict: TagMetaCollection, renamer: Renamer):
         self._dest_tag_meta_dict = dest_tag_meta_dict

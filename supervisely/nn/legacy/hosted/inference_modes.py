@@ -142,6 +142,8 @@ def _get_annotation_for_bbox(img: np.ndarray, roi: Rectangle, model) -> Annotati
 
 
 class InferenceModeBase:
+    """Base class for legacy hosted inference modes (inference + post-processing strategy)."""
+
     @staticmethod
     def mode_name():
         raise NotImplementedError()
@@ -213,6 +215,8 @@ class InferenceModeBase:
 
 
 class InfModeFullImage(InferenceModeBase):
+    """Inference mode that runs the model on the full image in a single pass."""
+
     @staticmethod
     def mode_name():
         return 'full_image'
@@ -243,6 +247,8 @@ class InfModeFullImage(InferenceModeBase):
 
 
 class InfModeRoi(InferenceModeBase):
+    """Inference mode that runs inference within a single ROI and maps results back."""
+
     @staticmethod
     def mode_name():
         return 'roi'
@@ -289,6 +295,8 @@ class InfModeRoi(InferenceModeBase):
 
 
 class InfModeBboxes(InferenceModeBase):
+    """Inference mode that runs inference on a set of bounding box ROIs and merges results."""
+
     @staticmethod
     def mode_name():
         return 'bboxes'
@@ -374,6 +382,8 @@ class InfModeBboxes(InferenceModeBase):
 
 
 class InfModeSlidinglWindowBase(InferenceModeBase):
+    """Base class for sliding-window inference (tile image into windows and merge predictions)."""
+
     def __init__(self, config: dict, in_meta: ProjectMeta, model: SingleImageInferenceBase):
         super().__init__(config, in_meta, model)
 
@@ -406,6 +416,8 @@ class InfModeSlidinglWindowBase(InferenceModeBase):
 
 # This only makes sense for image segmentation that return per-pixel class probabilities.
 class InfModeSlidingWindowSegmentation(InfModeSlidinglWindowBase):
+    """Sliding-window inference mode for segmentation models."""
+
     @staticmethod
     def mode_name():
         return 'sliding_window'
@@ -458,6 +470,8 @@ class InfModeSlidingWindowSegmentation(InfModeSlidinglWindowBase):
 
 
 class InfModeSlidingWindowDetection(InfModeSlidinglWindowBase):
+    """Sliding-window inference mode for detection models (optionally with NMS)."""
+
     @staticmethod
     def mode_name():
         return 'sliding_window_det'
@@ -552,6 +566,8 @@ class InfModeSlidingWindowDetection(InfModeSlidinglWindowBase):
 
 
 class InferenceModeFactory:
+    """Factory for constructing inference mode instances from config."""
+
     mapping = {inference_mode_cls.mode_name(): inference_mode_cls
                for inference_mode_cls in [InfModeFullImage,
                                           InfModeRoi,

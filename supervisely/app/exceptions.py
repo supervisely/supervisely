@@ -5,6 +5,8 @@ except ImportError:
 
 
 class DialogWindowBase(Exception):
+    """Base exception that can be displayed to the user as an in-app dialog window."""
+
     def __init__(self, title, description, status):
         self.title = title
         self.description = description
@@ -19,17 +21,23 @@ class DialogWindowBase(Exception):
 
 
 class DialogWindowError(DialogWindowBase):
+    """Dialog window exception with `error` status."""
+
     def __init__(self, title, description):
         super().__init__(title, description, "error")
 
 
 class DialogWindowWarning(DialogWindowBase):
+    """Dialog window exception with `warning` status."""
+
     def __init__(self, title, description):
         super().__init__(title, description, "warning")
 
 
 # for compatibility
 class DialogWindowMessage(DialogWindowError):
+    """Backwards-compatible alias for informational dialog exceptions."""
+
     def __init__(self, title, description):
         super().__init__(title, description, "info")  # pylint: disable=too-many-function-args
 

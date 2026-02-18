@@ -26,6 +26,8 @@ from flask_restful import Resource, Api, reqparse
 
 
 class RestInferenceServer:
+    """Simple Flask REST server that exposes legacy inference endpoints for a single-image model."""
+
     def __init__(self, model: SingleImageInferenceInterface, name, port=None):
         self._app = Flask(name)
         if port == '':
@@ -44,6 +46,8 @@ class RestInferenceServer:
         self._app.run(debug=False, port=self._port, host='0.0.0.0')
 
     class GetOutputMeta(Resource):
+        """Endpoint handler that returns model output metadata (`out_meta`) for a given input meta/mode."""
+
         def __init__(self, model):
             self._model = model
             self._parser = reqparse.RequestParser()
@@ -71,6 +75,8 @@ class RestInferenceServer:
 
 
     class Inference(Resource):
+        """Endpoint handler that runs inference on an uploaded image and returns prediction JSON."""
+
         def __init__(self, model):
             from werkzeug.datastructures import FileStorage
             self._model = model
@@ -100,6 +106,8 @@ class RestInferenceServer:
 
 
 class ModelRest(ModelDeploy):
+    """Legacy deployment wrapper that configures a model for REST inference (not runnable as a standalone app)."""
+
     def load_config(self):
         gpu_device = os.getenv(GPU_DEVICE, 0)
         self.config = deepcopy(ModelDeploy.config)

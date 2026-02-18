@@ -36,6 +36,8 @@ KITTI_ITEM_DIR_NAME = "velodyne"
 
 
 class EpisodeItemPaths(NamedTuple):
+    """Paths and frame index for a point cloud item inside an episode dataset."""
+
     #: str: Full pointcloud file path of item
     pointcloud_path: str
 
@@ -47,6 +49,8 @@ class EpisodeItemPaths(NamedTuple):
 
 
 class EpisodeItemInfo(NamedTuple):
+    """Basic info about a point cloud item and where it is stored in an episode dataset."""
+
     #: str: Item's dataset name
     dataset_name: str
 
@@ -64,6 +68,8 @@ class EpisodeItemInfo(NamedTuple):
 
 
 class PointcloudEpisodeDataset(PointcloudDataset):
+    """Dataset directory for point cloud episode frames with a single shared episode annotation."""
+
     #: str: Items data directory name
     item_dir_name = "pointcloud"
 
@@ -290,9 +296,13 @@ class PointcloudEpisodeDataset(PointcloudDataset):
 
 
 class PointcloudEpisodeProject(PointcloudProject):
+    """Local Supervisely project for point cloud episodes (sequences of point clouds with shared timeline)."""
+
     dataset_class = PointcloudEpisodeDataset
 
     class DatasetDict(KeyIndexedCollection):
+        """Collection of :class:`~supervisely.project.pointcloud_episode_project.PointcloudEpisodeDataset` by name."""
+
         item_type = PointcloudEpisodeDataset
 
     def __init__(self, directory: str, mode: OpenMode):

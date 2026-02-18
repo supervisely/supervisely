@@ -119,7 +119,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
     """
 
     class Status(StrEnum):
-        """Labeling Job status."""
+        """Labeling job lifecycle status values returned by the API."""
 
         PENDING = "pending"
         """"""

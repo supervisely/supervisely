@@ -6,7 +6,7 @@ from supervisely.geometry.validation import is_2d_int_coords_valid
 
 class SlidingWindows:
     """
-    Sliding windows.
+    Generate a grid of sliding-window rectangles over a 2D source (image) with a minimum overlap.
     """
     def __init__(self, window_shape, min_overlap):
         """

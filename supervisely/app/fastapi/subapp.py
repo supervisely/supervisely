@@ -76,6 +76,8 @@ _USER_API_CACHE = TTLCache(maxsize=500, ttl=60 * 15)  # Cache up to 15 minutes
 
 
 class ReadyzFilter(logging.Filter):
+    """Adjust log level for readiness/liveness probe requests."""
+
     def filter(self, record):
         if "/readyz" in record.getMessage() or "/livez" in record.getMessage():
             record.levelno = logging.DEBUG  # Change log level to DEBUG
@@ -84,6 +86,8 @@ class ReadyzFilter(logging.Filter):
 
 
 class ResponseTimeFilter(logging.Filter):
+    """Attach response time from context to uvicorn access logs (if available)."""
+
     def filter(self, record):
         # Check if this is an HTTP access log line by logger name
         if getattr(record, "name", "") == "uvicorn.access":
@@ -105,6 +109,8 @@ _init_uvicorn_logger()
 
 
 class PrefixRouter(APIRouter):
+    """APIRouter that prefixes routes with instance path prefix (except health endpoints)."""
+
     def add_api_route(self, path, *args, **kwargs):
         allowed_paths = ["/livez", "/is_alive", "/is_running", "/readyz", "/is_ready"]
         if path in allowed_paths:
@@ -115,8 +121,13 @@ class PrefixRouter(APIRouter):
 
 
 class Event:
+    """Typed payload classes for common Supervisely UI/tool events delivered via webhooks."""
+
     class Brush:
+        """Brush tool events (e.g. bitmap brush interactions)."""
+
         class DrawLeftMouseReleased:
+            """Payload for bitmap brush change event (left mouse released)."""
             endpoint = "/tools_bitmap_brush_figure_changed"
 
             def __init__(
@@ -203,7 +214,10 @@ class Event:
                 )
 
     class ManualSelected:
+        """Events for manual selection changes in labeling tools."""
+
         class VideoChanged:
+            """Payload for manual selection change event for videos."""
             endpoint = "/manual_selected_entity_changed"
 
             def __init__(
@@ -252,6 +266,7 @@ class Event:
                 )
 
         class FigureChanged:
+            """Payload for manual selection change event for a figure."""
             endpoint = "/manual_selected_figure_changed"
 
             def __init__(
@@ -370,6 +385,7 @@ class Event:
                 )
 
     class FigureCreated:
+        """Payload for a new figure creation event in labeling tools."""
         endpoint = "/figure_created"
 
         def __init__(
@@ -436,8 +452,13 @@ class Event:
             )
 
     class Tools:
+        """Tool-specific events grouped by tool name."""
+
         class Rectangle:
+            """Events produced by the rectangle labeling tool (create/update rectangle figures)."""
+
             class FigureChanged:
+                """Payload for rectangle tool figure changed event."""
                 endpoint = "/tools_rectangle_figure_changed"
 
                 def __init__(
@@ -495,7 +516,10 @@ class Event:
                     )
 
     class Entity:
+        """Events related to entity navigation (e.g. video frame changes)."""
+
         class FrameChanged:
+            """Payload for entity frame changed event."""
             endpoint = "/entity_frame_changed"
 
             def __init__(
@@ -553,7 +577,10 @@ class Event:
                 )
 
     class JobEntity:
+        """Events related to labeling job entities (e.g. status changes)."""
+
         class StatusChanged:
+            """Payload for job entity status change event."""
             endpoint = "/job_entity_status_changed"
 
             def __init__(
@@ -940,6 +967,8 @@ def _init(
 
 
 class _MainServer(metaclass=Singleton):
+    """Singleton wrapper around a FastAPI server instance used by the app runtime."""
+
     def __init__(self):
         self._server = FastAPI()
         self._server.router = PrefixRouter()
@@ -949,6 +978,8 @@ class _MainServer(metaclass=Singleton):
 
 
 class Application(metaclass=Singleton):
+    """Supervisely application runtime built on top of FastAPI and widgets."""
+
     class StopException(Exception):
         """Raise to stop the function from running in app.handle_stop"""
 
@@ -1226,6 +1257,8 @@ class Application(metaclass=Singleton):
         """Setup filter to hide health check logs for info level."""
 
         class HealthCheckFilter(logging.Filter):
+            """Hide health check requests from access logs in non-debug mode."""
+
             def __init__(self, app_instance):
                 super().__init__()
                 self.app: Application = app_instance

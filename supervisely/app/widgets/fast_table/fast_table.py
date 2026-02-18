@@ -14,13 +14,16 @@ from supervisely.sly_logger import logger
 
 
 class EventLinstenerError(Exception):
+    """Raised when multiple conflicting FastTable event listeners are registered."""
+
     def __init__(self, message="An exception occurred due to conflicting event listeners."):
         self.message = message
         super().__init__(self.message)
 
 
 class FastTable(Widget):
-    """FastTable widget in Supervisely allows for displaying and manipulating data of various
+    """
+    FastTable widget in Supervisely allows for displaying and manipulating data of various
     dataset statistics and processing it on the server side.
 
     Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/tables/fasttable>`_
@@ -88,12 +91,16 @@ class FastTable(Widget):
     """
 
     class Routes:
+        """Callback route names used by the widget frontend to notify Python."""
+
         SELECTION_CHANGED = "selection_changed_cb"
         ROW_CLICKED = "row_clicked_cb"
         CELL_CLICKED = "cell_clicked_cb"
         UPDATE_DATA = "update_data_cb"
 
     class ClickedRow:
+        """Payload describing a clicked table row."""
+
         def __init__(
             self,
             row: List,
@@ -103,6 +110,8 @@ class FastTable(Widget):
             self.row_index = row_index
 
     class ClickedCell:
+        """Payload describing a clicked table cell."""
+
         def __init__(
             self,
             row: List,
@@ -118,6 +127,8 @@ class FastTable(Widget):
             self.column_value = column_value
 
     class ColumnData:
+        """Column descriptor (plain column or widget-backed column) used for rendering."""
+
         def __init__(self, name, is_widget=False, widget: Widget = None):
             self.name = name
             self.is_widget = is_widget

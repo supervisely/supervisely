@@ -17,6 +17,8 @@ from supervisely.io.env import task_id as env_task_id
 
 
 class DebouncedEventHandler:
+    """Aggregate frequent events and call a handler once per debounce interval."""
+
     def __init__(self, debounce_time: float = 0.1):
         self._event_queue = []
         self._debounce_time = debounce_time
@@ -35,6 +37,8 @@ class DebouncedEventHandler:
 
 
 class SelectedIds(BaseModel):
+    """Pydantic model for selected point IDs returned from the Bokeh frontend."""
+
     selected_ids: List[int]
 
 
@@ -102,10 +106,14 @@ class Bokeh(Widget):
     """
 
     class Routes:
+        """HTTP routes used by the widget to serve HTML and receive selection events."""
+
         VALUE_CHANGED = "value_changed"
         HTML_ROUTE = "bokeh.html"
 
     class Plot(ABC):
+        """Base class for Bokeh plot layers that can be added to a figure with a shared data source."""
+
         def __init__(self, name: Optional[str] = None, **kwargs):
 
             self._name = name or str(uuid4())
@@ -120,6 +128,8 @@ class Bokeh(Widget):
             return self._name
 
     class Circle(Plot):
+        """Circle plot layer (grouped by `names` field in the data source)."""
+
         def add(self, plot, source) -> None:
             from bokeh.models import (  # pylint: disable=import-error
                 CDSView,
@@ -140,6 +150,8 @@ class Bokeh(Widget):
             )
 
     class Scatter(Plot):
+        """Scatter plot layer (grouped by `names` field in the data source)."""
+
         def add(self, plot, source) -> None:
             from bokeh.models import (  # pylint: disable=import-error
                 CDSView,
@@ -159,6 +171,8 @@ class Bokeh(Widget):
             )
 
     class Line(Plot):
+        """Line plot layer (grouped by `names` field in the data source)."""
+
         def add(self, plot, source) -> None:
             from bokeh.models import (  # pylint: disable=import-error
                 CDSView,

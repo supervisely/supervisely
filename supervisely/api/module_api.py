@@ -1352,7 +1352,7 @@ class ModuleApi(ModuleApiBase):
 
 # Base class for entities that do not have a parent object in the system.
 class ModuleNoParent(ModuleApiBase):
-    """ModuleNoParent"""
+    """Base API module for entities that are not nested under a parent object (parent_id not required)."""
 
     def get_info_by_name(self, name):
         """get_info_by_name"""

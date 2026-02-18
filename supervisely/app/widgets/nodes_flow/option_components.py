@@ -3,6 +3,8 @@ from supervisely.app.widgets import Widget
 
 
 class OptionComponent:
+    """Base option component configuration used by NodesFlow node settings."""
+
     def __init__(
         self,
         component_name: str,
@@ -25,6 +27,8 @@ class OptionComponent:
 
 
 class HtmlOptionComponent(OptionComponent):
+    """Option component rendered from arbitrary HTML (optionally with a sidebar component)."""
+
     def __init__(
         self,
         html: str,
@@ -47,6 +51,8 @@ class HtmlOptionComponent(OptionComponent):
 
 
 class WidgetOptionComponent(HtmlOptionComponent):
+    """Option component rendered from a Supervisely widget's HTML."""
+
     def __init__(self, widget: Widget, sidebar_component=None, sidebar_width: Optional[int] = None):
         super().__init__(
             widget.to_html(), sidebar_component=sidebar_component, sidebar_width=sidebar_width
@@ -132,6 +138,8 @@ class SelectOptionComponent(OptionComponent):
     """A dropdown select which allows the user to choose one of predefined values."""
 
     class Item:
+        """Select option item (value + display label)."""
+
         def __init__(self, value: str, label: Optional[str] = None):
             self.value = value
             self.label = value if label is None else label
@@ -177,6 +185,8 @@ class TextOptionComponent(OptionComponent):
 
 
 class SidebarNodeInfoOptionComponent(OptionComponent):
+    """Special option component used to render node info in the sidebar."""
+
     def __init__(self, sidebar_template: str, sidebar_width: Optional[int] = None):
         options = {
             "sidebarTemplate": f"<div>{sidebar_template}</div>", 

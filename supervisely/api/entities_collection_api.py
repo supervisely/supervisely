@@ -23,17 +23,23 @@ if TYPE_CHECKING:
 
 
 class CollectionType:
+    """String constants for supported entities collection types."""
+
     DEFAULT = "default"
     AI_SEARCH = "aiSearch"
     ALL = "all"
 
 
 class CollectionTypeFilter:
+    """Filter keys used by the API to select collections by type."""
+
     AI_SEARCH = "entities_ai_search_collection"
     DEFAULT = "entities_collection"
 
 
 class AiSearchThresholdDirection:
+    """Direction for AI-search threshold filtering (above/below the threshold)."""
+
     ABOVE = "above"
     BELOW = "below"
 

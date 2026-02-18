@@ -70,7 +70,7 @@ class AgentApi(ModuleApi, ModuleWithStatus):
     """
 
     class Status(Enum):
-        """Agent status."""
+        """Agent runtime status values returned by the platform."""
 
         WAITING = "waiting"
         """"""

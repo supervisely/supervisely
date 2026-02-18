@@ -31,6 +31,8 @@ UNITS = ["B", "KB", "MB", "GB", "TB"]
 
 
 class _slyProgressBarIO:
+    """File-like adapter used by tqdm to report progress into Supervisely `DataJson` and logs."""
+
     def __init__(self, widget_id, message=None, total=None, unit=None, unit_scale=None):
         self.widget_id = widget_id
 
@@ -147,6 +149,8 @@ class _slyProgressBarIO:
 
 
 class CustomTqdm(tqdm):
+    """tqdm subclass that streams progress updates to a Supervisely progress-bar widget."""
+
     def __init__(self, widget_id, message, *args, **kwargs):
         extracted_total = copy.copy(
             tqdm(iterable=kwargs["iterable"], total=kwargs["total"], disable=True).total
@@ -228,6 +232,8 @@ class CustomTqdm(tqdm):
 
 
 class SlyTqdm(Widget):
+    """Widget wrapper around tqdm that renders progress in the Supervisely UI."""
+
     # @TODO: track all active sessions for one object and close them if new object inited
     def __init__(self, message: str = None, show_percents: bool = False, widget_id: str = None):
         """
@@ -331,6 +337,8 @@ class SlyTqdm(Widget):
 
 
 class Progress(SlyTqdm):
+    """Convenience progress widget that can automatically hide itself when finished."""
+
     def __init__(
         self,
         message: str = None,

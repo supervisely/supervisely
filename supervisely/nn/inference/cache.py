@@ -23,6 +23,8 @@ from supervisely.video.video import VideoFrameReader
 
 
 class PersistentImageLRUCache(LRUCache):
+    """LRU cache that persists image values to disk and loads them on access."""
+
     __marker = object()
 
     def __init__(self, maxsize, filepath: Path, getsizeof=None):
@@ -65,6 +67,8 @@ class PersistentImageLRUCache(LRUCache):
 
 
 class PersistentImageTTLCache(TTLCache):
+    """TTL cache that persists cached file paths on disk and deletes expired items' files."""
+
     def __init__(self, maxsize: int, ttl: int, filepath: Path):
         super().__init__(maxsize, ttl)
         self._base_dir = filepath
@@ -206,7 +210,11 @@ class PersistentImageTTLCache(TTLCache):
 
 
 class InferenceImageCache:
+    """Disk-backed cache used by inference apps to store images/frames/videos and related metadata."""
+
     class _LoadType(Enum):
+        """Internal enum describing how a cached image should be loaded (by ID/hash/frame/video)."""
+
         ImageId: str = "IMAGE"
         ImageHash: str = "HASH"
         Frame: str = "FRAME"

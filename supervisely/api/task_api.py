@@ -56,7 +56,7 @@ class KubernetesSettings(BaseModel):
 
 
 class TaskFinishedWithError(Exception):
-    """TaskFinishedWithError"""
+    """Raised when a task finishes in an error state while waiting/polling."""
 
     pass
 
@@ -88,7 +88,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
     """
 
     class RestartPolicy(StrEnum):
-        """RestartPolicy"""
+        """Task restart policy used for app deployments."""
 
         NEVER = "never"
         """"""
@@ -96,7 +96,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         """"""
 
     class PluginTaskType(StrEnum):
-        """PluginTaskType"""
+        """Task type for plugin-based tasks (train/inference/smarttool/etc.)."""
 
         TRAIN = "train"
         """"""
@@ -110,7 +110,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         """"""
 
     class Status(StrEnum):
-        """Status"""
+        """Task lifecycle status values returned by the API."""
 
         QUEUED = "queued"
         """Application is queued for execution"""

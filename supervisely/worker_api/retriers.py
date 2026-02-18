@@ -8,6 +8,8 @@ import requests
 
 # should be stateless
 class RetrierAbstract:
+    """Base class for retry policies used around network/API calls."""
+
     def __init__(self, retry_cnt, wait_sec_first, wait_sec_max, timeout, swallow_exc=False):
         self.retry_cnt = int(retry_cnt)
         self.wait_sec = (wait_sec_first, wait_sec_max)
@@ -36,6 +38,8 @@ class RetrierAbstract:
 
 
 class RetrierAlways(RetrierAbstract):
+    """Retry on any exception until attempts are exhausted."""
+
     def request(self, cback, *args, **kwargs):
         for att in range(self.retry_cnt):
             try:
@@ -47,6 +51,8 @@ class RetrierAlways(RetrierAbstract):
 
 
 class RetrierAlwaysYield(RetrierAbstract):
+    """Retry on any exception for generator-style (streaming) callbacks."""
+
     def request(self, cback, *args, **kwargs):
         for att in range(self.retry_cnt):
             try:
@@ -59,6 +65,8 @@ class RetrierAlwaysYield(RetrierAbstract):
 
 
 class RetrierConnTO(RetrierAbstract):
+    """Retry only on connection/connect-timeout errors."""
+
     def request(self, cback, *args, **kwargs):
         for att in range(self.retry_cnt):
             try:
@@ -70,6 +78,8 @@ class RetrierConnTO(RetrierAbstract):
 
 
 class RetrierConnTOYield(RetrierAbstract):
+    """Retry only on connection/connect-timeout errors for streaming callbacks."""
+
     def request(self, cback, *args, **kwargs):
         for att in range(self.retry_cnt):
             try:

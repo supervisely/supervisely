@@ -14,6 +14,8 @@ from supervisely.task.progress import tqdm_sly
 
 
 class MatchedPairData:
+    """Container for a matched ground-truth/prediction pair (images + annotations), optionally including a diff."""
+
     def __init__(
         self,
         gt_image_info: ImageInfo = None,
@@ -32,6 +34,7 @@ class MatchedPairData:
 
 
 class BaseVisMetrics:
+    """Base container for one or more visualization metrics and their associated widgets."""
 
     def __init__(
         self,
@@ -48,6 +51,8 @@ class BaseVisMetrics:
 
 
 class BaseVisMetric(BaseVisMetrics):
+    """Single-metric visualization wrapper around one evaluation result."""
+
     def __init__(
         self,
         vis_texts,
@@ -60,6 +65,8 @@ class BaseVisMetric(BaseVisMetrics):
 
 
 class BaseVisualizer:
+    """Base class for generating and uploading model evaluation visualization reports."""
+
     cv_task = None
     report_name = "Model Evaluation Report.lnk"
 

@@ -28,6 +28,8 @@ from supervisely.task.progress import Progress
 
 
 class AvailableImageConverters:
+    """Names of supported image dataset converters."""
+
     SLY = "supervisely"
     COCO = "coco"
     FAST_COCO = "coco (fast)"
@@ -46,6 +48,8 @@ class AvailableImageConverters:
 
 
 class AvailableVideoConverters:
+    """Names of supported video dataset converters."""
+
     SLY = "supervisely"
     MOT = "mot"
     DAVIS = "davis"
@@ -53,6 +57,8 @@ class AvailableVideoConverters:
 
 
 class AvailablePointcloudConverters:
+    """Names of supported point cloud dataset converters."""
+
     SLY = "supervisely"
     LAS = "las/laz"
     PLY = "ply"
@@ -63,6 +69,8 @@ class AvailablePointcloudConverters:
 
 
 class AvailablePointcloudEpisodesConverters:
+    """Names of supported point cloud episode dataset converters."""
+
     SLY = "supervisely"
     BAG = "rosbag"
     LYFT = "lyft"
@@ -70,15 +78,25 @@ class AvailablePointcloudEpisodesConverters:
 
 
 class AvailableVolumeConverters:
+    """Names of supported 3D volume dataset converters."""
+
     SLY = "supervisely"
     DICOM = "dicom"
     NII = "nii"
 
 
 class BaseConverter:
+    """
+    Base class for dataset format converters into Supervisely projects.
+
+    Detects input format, validates annotations, builds :class:`~supervisely.project.project_meta.ProjectMeta`
+    and provides methods to upload converted data.
+    """
     unsupported_exts = [".gif", ".html", ".htm"]
 
     class BaseItem:
+        """Represents a single convertible item (data path + raw annotation data + optional shape/custom_data)."""
+
         def __init__(
             self,
             item_path: str,

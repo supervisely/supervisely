@@ -52,11 +52,15 @@ from supervisely.video_annotation.video_annotation import KeyIdMap, VideoAnnotat
 
 
 class InferenceMode:
+    """String constants for supported inference modes in the GUI."""
+
     FULL_IMAGE = "Full Image"
     SLIDING_WINDOW = "Sliding Window"
 
 
 class AddPredictionsMode:
+    """String constants describing how new predictions should be merged with existing annotations."""
+
     APPEND = "Merge with existing labels"
     REPLACE = "Replace existing labels"
     IOU_MERGE = "Merge by IoU threshold"
@@ -64,6 +68,8 @@ class AddPredictionsMode:
 
 
 class Preview:
+    """UI component that generates and displays a quick preview of model predictions on a random item."""
+
     lock_message = "Select previous step to unlock"
 
     def __init__(
@@ -573,6 +579,8 @@ class Preview:
 
 
 class SettingsSelector:
+    """Inference settings step for Predict App (mode selection, merge options, advanced settings and preview)."""
+
     title = "Inference (settings + preview)"
     description = "Select additional settings for model inference"
     lock_message = "Select previous step to unlock"
