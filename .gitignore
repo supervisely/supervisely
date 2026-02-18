@@ -56,4 +56,4 @@ panda.deb
 /test*.py
 .python-version
 
-trivy_report.json
+docker_images/vuln_logs/*

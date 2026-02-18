@@ -31,17 +31,14 @@ RUN pip install seaborn==0.12.2 ftfy==6.1.1 regex==2023.6.3
 RUN pip install git+https://github.com/supervisely-ecosystem/depends-CLIP.git
 RUN pip install imutils==0.5.4 loguru==0.7.0
 
-# Supervisely
-RUN pip install --upgrade supervisely==$tag_ref_name
+# RUN pip install --upgrade supervisely==$tag_ref_name
+# todo: remove; test only
+RUN pip install git+https://github.com/supervisely/supervisely.git@hardened-docker-images
 
 # ============================================================================
 # STAGE 2: Runtime Stage (Hardened)
 # ============================================================================
 FROM supervisely/py-sdk-hardened:${tag_ref_name} AS runtime
-
-ENV LANG=C.UTF-8 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
 
 # Copy Python environment from builder
 COPY --from=builder /opt/venv /opt/venv

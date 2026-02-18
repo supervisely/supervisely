@@ -28,18 +28,15 @@ RUN pip install moviepy==1.0.3 imageio-ffmpeg==0.4.7
 RUN pip install imutils==0.5.4
 RUN pip install decord==0.6.0
 
-# Supervisely
-RUN pip install --upgrade supervisely==$tag_ref_name
-RUN pip install --upgrade supervisely[docs]==$tag_ref_name
+# RUN pip install --upgrade supervisely==$tag_ref_name
+# RUN pip install --upgrade supervisely[docs]==$tag_ref_name
+# todo: remove; test only
+RUN pip install git+https://github.com/supervisely/supervisely.git@hardened-docker-images
 
 # ============================================================================
 # STAGE 2: Runtime Stage (Hardened)
 # ============================================================================
 FROM supervisely/py-sdk-hardened:${tag_ref_name} AS runtime
-
-ENV LANG=C.UTF-8 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
 
 # Copy required system libraries from builder
 COPY --from=builder /usr/lib/*-linux-gnu/libzbar.so.* /usr/lib/

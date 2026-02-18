@@ -24,17 +24,14 @@ RUN pip install setuptools==78.1.1 wheel==0.46.2
 
 RUN pip install dropbox==11.36.2
 
-# Supervisely
-RUN pip install --upgrade supervisely==$tag_ref_name
+# RUN pip install --upgrade supervisely==$tag_ref_name
+# todo: remove; test only
+RUN pip install git+https://github.com/supervisely/supervisely.git@hardened-docker-images
 
 # ============================================================================
 # STAGE 2: Runtime Stage (Hardened)
 # ============================================================================
 FROM supervisely/py-sdk-hardened:${tag_ref_name} AS runtime
-
-ENV LANG=C.UTF-8 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
 
 # Copy Python environment from builder
 COPY --from=builder /opt/venv /opt/venv

@@ -61,31 +61,14 @@ RUN pip install nuscenes-devkit==1.1.11 --no-deps
 RUN pip install lxml==5.2.2
 RUN pip install scikit-image==0.23.2
 
+# RUN pip install --upgrade supervisely==$tag_ref_name
 # todo: remove; test only
 RUN pip install git+https://github.com/supervisely/supervisely.git@hardened-docker-images
-RUN pip install protobuf==6.33.5
-RUN pip install pillow==12.1.1
-RUN pip install fastapi==0.129.0
-RUN pip install starlette==0.49.1
 
 # ============================================================================
 # STAGE 2: Runtime Stage (Hardened)
 # ============================================================================
 FROM supervisely/py-sdk-hardened:${tag_ref_name} AS runtime
-
-ENV LANG=C.UTF-8 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
-
-# Copy required system libraries from builder
-COPY --from=builder /usr/lib/*-linux-gnu/libSM.so.* /usr/lib/
-COPY --from=builder /usr/lib/*-linux-gnu/libXext.so.* /usr/lib/
-COPY --from=builder /usr/lib/*-linux-gnu/libgeos_c.so.* /usr/lib/
-COPY --from=builder /usr/lib/*-linux-gnu/libavcodec.so.* /usr/lib/
-COPY --from=builder /usr/lib/*-linux-gnu/libmagic.so.* /usr/lib/
-COPY --from=builder /usr/lib/*-linux-gnu/libGL.so.* /usr/lib/
-COPY --from=builder /usr/lib/*-linux-gnu/libEGL.so.* /usr/lib/
-COPY --from=builder /usr/lib/*-linux-gnu/libGLdispatch.so.* /usr/lib/
 
 # Copy Python environment from builder
 COPY --from=builder /opt/venv /opt/venv

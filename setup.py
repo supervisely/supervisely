@@ -238,7 +238,7 @@ setup(
         ],
         "apps": [
             "uvicorn[standard]>=0.18.2, <1.0.0",
-            "fastapi>=0.79.0, <1.0.0",
+            "fastapi>=0.129.0, <1.0.0",
             "websockets>=10.3, <=13.1",
             "jinja2>=3.1.6, <4.0.0",
             "psutil>=5.9.0, <6.0.0",
