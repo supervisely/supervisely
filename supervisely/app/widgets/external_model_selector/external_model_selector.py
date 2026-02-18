@@ -13,10 +13,12 @@ class ExternalModelSelector(Widget):
     def __init__(self, task_types: List[str], need_config: bool = True, need_classes: bool = True, widget_id: str = None):
         self.need_config = need_config
         self.need_classes = need_classes
+        self.widgets = []
 
         # Model name input
-        self.model_name_input = Input(placeholder="Enter model name")
-        self.model_name_field = Field(title="Model name", description="Name of the model that was used to train this checkpoint", content=self.model_name_input)
+        # self.model_name_input = Input(placeholder="Enter model name")
+        # self.model_name_field = Field(title="Model name", description="Name of the model that was used to train this checkpoint", content=self.model_name_input)
+        # self.widgets.append(self.model_name_field)
 
         # Task type selector
         if len(task_types) == 0:
@@ -26,34 +28,46 @@ class ExternalModelSelector(Widget):
                 raise ValueError(f"Invalid task type: {task_type}. Available task types: {AVAILABLE_TASK_TYPES}")
 
         self.task_types = task_types
-        select_items = [Select.Item(value=task_type, label=task_type) for task_type in task_types]
-        self.task_type_selector = Select(items=select_items)
-        self.task_type_field = Field(title="Task type", description="Task type of the model", content=self.task_type_selector)
+
+        if len(task_types) > 1:
+            select_items = [
+                Select.Item(value=task_type, label=task_type) for task_type in task_types
+            ]
+            self.task_type_selector = Select(items=select_items)
+            self.task_type_field = Field(
+                title="Task type",
+                description="Task type of the model",
+                content=self.task_type_selector,
+            )
+            self.widgets.append(self.task_type_field)
 
         # Checkpoint input
         self.checkpoint_input = Input(placeholder="Enter checkpoint path")
         self.checkpoint_field = Field(title="Checkpoint", description="Path to the checkpoint in Team Files", content=self.checkpoint_input)
+        self.widgets.append(self.checkpoint_field)
 
         # Config input
-        self.config_input = Input(placeholder="Enter config path")
-        self.config_field = Field(title="Config", description="Path to the model config in Team Files", content=self.config_input)
+        if need_config:
+            self.config_input = Input(placeholder="Enter config path")
+            self.config_field = Field(
+                title="Config",
+                description="Path to the model config in Team Files",
+                content=self.config_input,
+            )
+            self.widgets.append(self.config_field)
 
         # Classes input
-        self.classes_input = Input(placeholder="Enter classes")
-        self.classes_field = Field(
-            title="Model classes",
-            description="Path to '.json' file with classes. File should contain classes mapping (e.g {'0': 'person', '1': 'car', '2': 'pizza'})",
-            content=self.classes_input,
-        )
+        if need_classes:
+            self.classes_input = Input(placeholder="Enter classes")
+            self.classes_field = Field(
+                title="Model classes",
+                description="Path to '.json' file with classes. File should contain classes mapping (e.g {'0': 'person', '1': 'car', '2': 'pizza'})",
+                content=self.classes_input,
+            )
+            self.widgets.append(self.classes_field)
 
         # Layout
-        widgets = [self.model_name_field, self.task_type_field, self.checkpoint_field]
-        if need_config:
-            widgets.append(self.config_field)
-        if need_classes:
-            widgets.append(self.classes_field)
-
-        self.layout = Container(widgets)
+        self.layout = Container(self.widgets)
 
         super().__init__(widget_id=widget_id)
 
@@ -62,20 +76,22 @@ class ExternalModelSelector(Widget):
 
     def get_json_state(self):
         return {
-            "modelName": self.get_model_name(),
+            "modelName": "External Model",
             "taskType": self.get_task_type(),
             "checkpointPath": self.get_checkpoint_path(),
             "configPath": self.get_config_path(),
             "classesPath": self.get_classes_path(),
         }
 
-    def get_model_name(self):
-        return self.model_name_input.get_value()
+    # def get_model_name(self):
+    #     return self.model_name_input.get_value()
 
-    def set_model_name(self, model_name: str):
-        self.model_name_input.set_value(model_name)
+    # def set_model_name(self, model_name: str):
+    #     self.model_name_input.set_value(model_name)
 
     def get_task_type(self):
+        if len(self.task_types) == 1:
+            return self.task_types[0]
         return self.task_type_selector.get_value()
 
     def set_task_type(self, task_type: str):
@@ -110,7 +126,7 @@ class ExternalModelSelector(Widget):
             raise ValueError("Enable classes path is required")
 
     def get_deploy_params(self):
-        model_info = {"model_name": self.get_model_name(), "task_type": self.get_task_type()}
+        model_info = {"model_name": "External Model", "task_type": self.get_task_type()}
         model_files = {"checkpoint": self.get_checkpoint_path()}
         if self.need_config:
             model_files["config"] = self.get_config_path()
