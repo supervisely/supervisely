@@ -149,6 +149,9 @@ class CustomUnpickler(pickle.Unpickler):
 
 # @TODO: rename img_path to item_path (maybe convert namedtuple to class and create fields and props)
 class ItemPaths(NamedTuple):
+    """
+    Paths to an item's data file and its annotation file within a local Supervisely dataset.
+    """
     #: str: Full image file path of item
     img_path: str
 
@@ -157,6 +160,9 @@ class ItemPaths(NamedTuple):
 
 
 class ItemInfo(NamedTuple):
+    """
+    Basic information about a dataset item and where it is stored on disk.
+    """
     #: str: Item's dataset name
     dataset_name: str
 
@@ -197,6 +203,11 @@ def _get_effective_ann_name(img_name, ann_names):
 
 
 class Dataset(KeyObject):
+    """
+    A dataset directory inside a local Supervisely project.
+
+    Provides access to items (e.g. images), their annotations and related metadata on disk.
+    """
     annotation_class = Annotation
     item_info_class = ImageInfo
 
@@ -2239,6 +2250,11 @@ class Dataset(KeyObject):
 
 
 class Project:
+    """
+    A local Supervisely project directory that contains one or more datasets.
+
+    Provides access to project metadata and a collection of datasets on disk.
+    """
     dataset_class = Dataset
     blob_dir_name = "blob"
 

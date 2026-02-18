@@ -10,7 +10,9 @@ from supervisely.geometry.geometry import Geometry
 
 class Vector3d:
     """
-    This is a class for creating and using Vector3d objects for Cuboid3d class objects
+    A simple 3D vector (x, y, z) used by :class:`~supervisely.geometry.cuboid_3d.Cuboid3d`.
+
+    Stores three coordinates and supports JSON (de)serialization via :meth:`to_json` / :meth:`from_json`.
     """
     def __init__(self, x, y, z):
         """

@@ -40,6 +40,9 @@ from supervisely.video_annotation.video_annotation import VideoAnnotation
 
 
 class VideoItemPaths(NamedTuple):
+    """
+    Paths to a video's data file and its annotation file within a local Supervisely dataset.
+    """
     video_path: str
     # Full video file path of item
     ann_path: str
@@ -47,6 +50,11 @@ class VideoItemPaths(NamedTuple):
 
 
 class VideoDataset(Dataset):
+    """
+    A dataset directory for video items inside a local Supervisely video project.
+
+    Stores videos, per-video annotations and related metadata on disk.
+    """
     #: str: Items data directory name
     item_dir_name = "video"
 
@@ -785,6 +793,12 @@ class VideoDataset(Dataset):
 
 
 class VideoProject(Project):
+    """
+    A local Supervisely project for video data.
+
+    Contains one or more :class:`~supervisely.project.video_project.VideoDataset` datasets with videos
+    and their annotations.
+    """
     dataset_class = VideoDataset
 
     class DatasetDict(KeyIndexedCollection):

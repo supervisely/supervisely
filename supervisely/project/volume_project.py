@@ -44,6 +44,11 @@ VolumeItemPaths = namedtuple("VolumeItemPaths", ["volume_path", "ann_path"])
 
 
 class VolumeDataset(VideoDataset):
+    """
+    A dataset directory for 3D volume items inside a local Supervisely volume project.
+
+    Stores volumes, their annotations and auxiliary data such as masks/interpolations on disk.
+    """
     item_dir_name = "volume"
     interpolation_dir = "interpolation"
     interpolation_dir_name = interpolation_dir
@@ -155,6 +160,12 @@ class VolumeDataset(VideoDataset):
 
 
 class VolumeProject(VideoProject):
+    """
+    A local Supervisely project for 3D volume data.
+
+    Contains one or more :class:`~supervisely.project.volume_project.VolumeDataset` datasets with volumes
+    and their annotations. Also provides binary snapshot export/import via :meth:`download_bin` / :meth:`upload_bin`.
+    """
     dataset_class = VolumeDataset
 
     class DatasetDict(KeyIndexedCollection):

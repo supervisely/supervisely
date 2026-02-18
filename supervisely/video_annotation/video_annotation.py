@@ -29,6 +29,12 @@ from supervisely.video_annotation.video_tag_collection import VideoTagCollection
 
 
 class VideoAnnotation:
+    """
+    Annotation for a single video in Supervisely format.
+
+    Stores video-level tags, objects and per-frame figures, and supports JSON (de)serialization
+    via :meth:`to_json` / :meth:`from_json`.
+    """
 
     def __init__(
         self,

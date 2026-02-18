@@ -72,6 +72,11 @@ class PointcloudItemInfo(NamedTuple):
 
 
 class PointcloudDataset(VideoDataset):
+    """
+    A dataset directory for point cloud items inside a local Supervisely point cloud project.
+
+    Stores point clouds, their annotations and (optionally) related images for each item.
+    """
     #: str: Items data directory name
     item_dir_name = "pointcloud"
 
@@ -561,6 +566,12 @@ class PointcloudDataset(VideoDataset):
 
 
 class PointcloudProject(VideoProject):
+    """
+    A local Supervisely project for point cloud data.
+
+    Contains one or more :class:`~supervisely.project.pointcloud_project.PointcloudDataset` datasets
+    with point clouds and their annotations.
+    """
     dataset_class = PointcloudDataset
 
     class DatasetDict(KeyIndexedCollection):

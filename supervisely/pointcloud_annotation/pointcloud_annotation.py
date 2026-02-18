@@ -28,6 +28,12 @@ from supervisely.video_annotation.video_annotation import VideoAnnotation
 
 
 class PointcloudAnnotation(VideoAnnotation):
+    """
+    Annotation for a single point cloud item in Supervisely format.
+
+    Stores point cloud-level tags, objects and figures (e.g. cuboids) and supports
+    JSON (de)serialization via :meth:`to_json` / :meth:`from_json`.
+    """
 
     def __init__(
         self,

@@ -1042,6 +1042,9 @@ class LabelBase:
 
 
 class Label(LabelBase):
+    """
+    Supervisely Label. Contains geometry and tags for the object on the image.
+    """
     def _validate_geometry_type(self):
         """
         Checks geometry type for correctness
@@ -1056,6 +1059,9 @@ class Label(LabelBase):
 
 
 class PixelwiseScoresLabel(LabelBase):
+    """
+    Label with pixelwise scores.
+    """
     def _validate_geometry_type(self):
         if type(self._geometry) is not MultichannelBitmap:
             raise RuntimeError(

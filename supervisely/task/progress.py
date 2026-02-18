@@ -19,6 +19,11 @@ def epoch_float(epoch, train_it, train_its):
 
 
 class Progress:
+    """
+    Progress reporter for long-running operations.
+
+    Can be used as a callback to increment and log progress (optionally with size-based labels).
+    """
 
     def __init__(
         self,

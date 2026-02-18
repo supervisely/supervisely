@@ -30,6 +30,12 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
 class PointcloudEpisodeAnnotation:
+    """
+    Annotation for a point cloud episode (a sequence of frames) in Supervisely format.
+
+    Stores episode-level objects, per-frame data and tags, and supports JSON (de)serialization
+    via :meth:`to_json` / :meth:`from_json`.
+    """
 
     def __init__(
         self,

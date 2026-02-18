@@ -42,11 +42,11 @@ class VersionInfo(NamedTuple):
 
 
 class DataVersion(ModuleApiBase):
-
     """
     Class for managing project versions.
     This class provides methods for creating, restoring, and managing project versions.
     """
+
     PROJECT_NAME_TEMPLATE = "{project_name}, from ver. {version_num}"
     PROJECT_DESC_TEMPLATE = (
         "Restored from version {version_num}. "

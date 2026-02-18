@@ -19,6 +19,12 @@ ALLOWED_KEY_TYPES = [TAGS, OBJECTS, VIDEOS, FIGURES]
 
 # @TODO: reimplement to support different item types - videos, volumes, 3d episodes, ...
 class KeyIdMap:
+    """
+    Bidirectional mapping between UUID keys and integer IDs for video annotations.
+
+    Used to keep stable references between objects/figures/tags (UUID keys) and server-side IDs
+    during JSON (de)serialization and API interactions.
+    """
 
     def __init__(self):
         """

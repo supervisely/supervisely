@@ -31,6 +31,13 @@ if not hasattr(np, "bool"):
 
 
 class CuboidFace:
+    """
+    A single face of a :class:`~supervisely.geometry.cuboid.Cuboid`.
+
+    The face is defined by four integer indices (``a``, ``b``, ``c``, ``d``) referencing cuboid nodes.
+    This lightweight helper is used to store faces and serialize/deserialize them in Supervisely
+    annotation format (see :meth:`to_json` / :meth:`from_json`).
+    """
 
     def __init__(self, a: int, b: int, c: int, d: int):
         """

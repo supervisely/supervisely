@@ -19,6 +19,9 @@ from supervisely.project.project_type import ProjectType
 
 
 class ProjectMetaJsonFields:
+    """
+    JSON field names used in :class:`~supervisely.project.project_meta.ProjectMeta` serialization.
+    """
     OBJ_CLASSES = "classes"
     IMG_TAGS = "tags_images"
     OBJ_TAGS = "tags_objects"
@@ -47,6 +50,11 @@ def _merge_img_obj_tag_metas(
 
 
 class ProjectMeta(JsonSerializable):
+    """
+    Project-level metadata: object classes, tag metas, project type and settings.
+
+    This schema is used to validate and interpret annotations across a Supervisely project.
+    """
 
     def __init__(
         self,
