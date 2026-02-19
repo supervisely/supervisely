@@ -12,7 +12,7 @@ except ImportError:
 
 class SelectUser(Widget):
     """
-    SelectUser is a dropdown widget for selecting users from a team.
+    Dropdown for selecting users from a team.
     Extends the Select widget with user-specific functionality.
 
     :param users: Initial list of :class:`~supervisely.api.user_api.UserInfo` instances

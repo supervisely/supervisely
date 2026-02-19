@@ -9,7 +9,7 @@ ERROR = "error"
 
 
 class DoneLabel(Widget):
-    """DoneLabel is a widget in Supervisely that is used to display messages about completed tasks or operations.
+    """Displays completion messages (success, done).
 
     Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/status-elements/donelabel>`_
         (including screenshots and examples).

@@ -9,7 +9,7 @@ from supervisely.annotation.tag_meta import TagValueType
 
 
 class TagsTable(Widget):
-    """TagsTable widget in Supervisely allows users to display all tags from given project in a table format.
+    """Table displaying tags from a project.
 
     Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/tables/TagsTable>`_
         (including screenshots and examples).

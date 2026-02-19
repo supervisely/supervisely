@@ -5,7 +5,7 @@ from typing import List, Union
 
 
 class Polyline3D(Geometry):
-    """Polyline3D is a geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.polyline_3d.Polyline3D` object is immutable."""
+    """3D polyline: sequence of connected line segments in 3D space. Immutable."""
 
     @staticmethod
     def geometry_name():

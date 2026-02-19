@@ -5,7 +5,7 @@ from supervisely.geometry.geometry import Geometry
 
 # pointcloud mask (segmentation)
 class Pointcloud(Geometry):
-    """Pointcloud is a geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.pointcloud.Pointcloud` object is immutable."""
+    """3D point cloud geometry: reference to external point cloud file. Immutable."""
 
     @staticmethod
     def geometry_name():

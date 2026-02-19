@@ -12,7 +12,7 @@ from supervisely.project.project_type import ProjectType
 
 
 class SelectDatasetTree(Widget):
-    """SelectDatasetTree widget in Supervisely is a widget that allows users to select datasets from a tree-like structure.
+    """Tree selector for datasets.
     Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/selection/selectdatasettree>`_
         (including screenshots and examples).
 

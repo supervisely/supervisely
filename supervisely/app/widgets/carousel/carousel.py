@@ -12,7 +12,7 @@ except ImportError:
 
 
 class Carousel(Widget):
-    """Carousel is a widget in Supervisely that allows loop a series of images or texts in a limited space on the UI.
+    """Cycles through a series of images or text in limited space.
 
     Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/media/carousel>`_
         (including screenshots and examples).

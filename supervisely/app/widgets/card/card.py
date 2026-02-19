@@ -6,7 +6,7 @@ from supervisely.sly_logger import logger
 
 
 class Card(Widget):
-    """Card widget in Supervisely is a simple widget that can be used to display information or content in a compact format.
+    """Compact container for displaying content with optional title, description, and collapsible section.
 
     Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/layouts-and-containers/card>`_
         (including screenshots and examples).

@@ -10,7 +10,7 @@ from supervisely.geometry.constants import MULTICHANNEL_BITMAP
 
 
 class MultichannelBitmap(BitmapBase):
-    """MultichannelBitmap is a geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.multichannel_bitmap.MultichannelBitmap` object is immutable."""
+    """Bitmap mask with multiple channels (e.g. multi-class segmentation). Immutable."""
     @staticmethod
     def geometry_name():
         """

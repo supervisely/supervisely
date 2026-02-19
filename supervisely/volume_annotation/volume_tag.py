@@ -10,7 +10,7 @@ from supervisely.volume_annotation.constants import ID, KEY
 
 class VolumeTag(Tag):
     """
-    VolumeTag object for :class:`~supervisely.volume_annotation.volume_annotation.VolumeAnnotation`. :class:`~supervisely.volume_annotation.volume_tag.VolumeTag` object is immutable.
+    Tag on a volume annotation (meta, value). Immutable.
 
     :param meta: General information about Volume Tag.
     :type meta: :class:`~supervisely.annotation.tag_meta.TagMeta`

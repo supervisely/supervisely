@@ -5,7 +5,7 @@ from supervisely.app.widgets import Widget
 
 
 class Dialog(Widget):
-    """Dialog is a widget that allows to show a dialog window that contain any other widgets.
+    """Dialog window that can contain any other widgets.
     It can be used to show a message to the user or to ask for confirmation.
 
     Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/layouts-and-containers/dialog>`_

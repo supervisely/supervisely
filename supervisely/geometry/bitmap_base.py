@@ -68,7 +68,7 @@ def resize_origin_and_bitmap(
 
 
 class BitmapBase(Geometry):
-    """BitmapBase is a base class of :class:`~supervisely.geometry.bitmap.Bitmap` geometry. :class:`~supervisely.geometry.bitmap_base.BitmapBase` class object is immutable."""
+    """Base class for bitmap-like geometries (Bitmap, AlphaMask, MultichannelBitmap); mask + origin. Immutable."""
 
     def __init__(
         self,

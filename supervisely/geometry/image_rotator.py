@@ -14,7 +14,7 @@ from supervisely.geometry.point_location import PointLocation
 # output image will contain all 'pixels' from source img
 class ImageRotator:
     """
-    ImageRotator for rotating images and geometry figures.
+    Rotates images and geometry figures around image center by a given angle.
 
     :param imsize: Shape of the image (height, width)
     :type imsize: Tuple[int, int] or List[int, int]

@@ -6,7 +6,7 @@ from supervisely.app.widgets import Widget
 
 
 class ClassBalance(Widget):
-    """ClassBalance is a widget in Supervisely that allows for displaying input data classes balance on the UI.
+    """Visualizes class distribution / balance of input data.
 
     Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/compare-data/classbalance>`_
         (including screenshots and examples).

@@ -57,7 +57,7 @@ def _find_mask_tight_bbox(raw_mask: np.ndarray) -> Rectangle:
 
 
 class Bitmap(BitmapBase):
-    """Bitmap geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.bitmap.Bitmap` object is immutable."""
+    """Binary or grayscale 2D mask with origin; used for segmentation. Immutable."""
 
     def __init__(
         self,

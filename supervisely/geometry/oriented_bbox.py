@@ -26,7 +26,7 @@ from supervisely.geometry.rectangle import Rectangle
 
 
 class OrientedBBox(Rectangle):
-    """Rotated Bounding Box is a geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.oriented_bbox.OrientedBBox` object is immutable."""
+    """2D bounding box with rotation angle; axis-aligned coordinates plus angle. Immutable."""
 
     @staticmethod
     def geometry_name():

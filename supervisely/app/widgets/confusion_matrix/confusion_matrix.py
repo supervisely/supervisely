@@ -99,7 +99,7 @@ DATATYPE_TO_UNPACKER = {
 
 
 class ConfusionMatrix(Widget):
-    """ConfusionMatrix is a widget that display a given confusion matrix with color-coded visualization for better interpretation.
+    """Color-coded confusion matrix visualization.
     It also shows row and column totals.
 
     Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/charts-and-plots/confusionmatrix>`_

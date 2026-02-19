@@ -36,7 +36,7 @@ if not hasattr(np, "bool"):
 
 
 class PointVolume(JsonSerializable):
-    """PointVolume is a geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.mask_3d.PointVolume` object is immutable."""
+    """3D point coordinate (x, y, z) in volume space. Immutable."""
 
     def __init__(self, x: Union[int, float], y: Union[int, float], z: Union[int, float]):
         """
@@ -170,7 +170,7 @@ class PointVolume(JsonSerializable):
 
 
 class Mask3D(Geometry):
-    """Mask3D is a geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.mask_3d.Mask3D` object is immutable."""
+    """3D volumetric mask (voxel data). Immutable."""
 
     def __init__(
         self,

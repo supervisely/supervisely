@@ -5,9 +5,7 @@ from supervisely.geometry.constants import ANY_SHAPE
 
 
 class AnyGeometry(Geometry):
-    """
-    AnyGeometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.any_geometry.AnyGeometry` class object is immutable.
-    """
+    """Placeholder geometry that accepts any shape type. Used for labels with flexible geometry. Immutable."""
     @staticmethod
     def geometry_name():
         """

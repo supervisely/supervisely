@@ -13,7 +13,7 @@ from supervisely.volume_annotation.volume_tag_collection import VolumeTagCollect
 
 class VolumeObject(VideoObject):
     """
-    VolumeObject object for :class:`VolumeAnnotation<~supervisely.volume_annotation.volume_annotation.VolumeAnnotation>`. :class:`VolumeObject<~supervisely.volume_annotation.volume_object.VolumeObject>` object is immutable.
+    Object in volume annotation: obj_class, optional Mask3D geometry, tags. Immutable.
 
     :param obj_class: ObjClass object.
     :type obj_class: :class:`~supervisely.annotation.obj_class.ObjClass`

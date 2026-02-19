@@ -10,7 +10,7 @@ from supervisely.app.widgets import Widget
 
 
 class Button(Widget):
-    """Button widget in Supervisely is a user interface element that allows users to create clickable buttons in the applications.
+    """Clickable button with configurable text, style, and icon.
 
     Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/controls/button>`_
         (including screenshots and examples).

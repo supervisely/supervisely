@@ -23,9 +23,7 @@ from supervisely.geometry.rectangle import Rectangle
 
 
 class VectorGeometry(Geometry):
-    """
-    VectorGeometry is a base class of geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.vector_geometry.VectorGeometry` object is immutable.
-    """
+    """Base class for vector geometries (polygon, polyline) defined by exterior/interior contours. Immutable."""
 
     def __init__(
         self,

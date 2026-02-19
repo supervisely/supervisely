@@ -27,7 +27,7 @@ from supervisely.video_annotation.video_tag_collection import VideoTagCollection
 
 class VideoObject(KeyObject):
     """
-    VideoObject object for VideoAnnotation. VideoObject object is immutable.
+    Tracked object across video frames; obj_class plus optional tags. Immutable.
 
     :param obj_class: ObjClass object.
     :type obj_class: :class:`~supervisely.annotation.obj_class.ObjClass`

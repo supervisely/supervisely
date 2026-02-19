@@ -11,7 +11,7 @@ from supervisely.app.widgets import Widget
 
 
 class TreeSelect(Widget):
-    """TreeSelect widget in Supervisely is a widget that allows users to select items from a tree-like structure.
+    """Dropdown for selecting items from a tree-like structure.
     Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/selection/treeselect>`_
         (including screenshots and examples).
 

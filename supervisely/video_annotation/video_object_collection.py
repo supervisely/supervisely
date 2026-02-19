@@ -11,7 +11,7 @@ from supervisely.video_annotation.video_object import VideoObject
 
 class VideoObjectCollection(KeyIndexedCollection):
     """
-    Collection with VideoObject instances. VideoObjectCollection object is immutable.
+    Collection of VideoObject instances indexed by key. Immutable.
 
     :Usage Example:
 

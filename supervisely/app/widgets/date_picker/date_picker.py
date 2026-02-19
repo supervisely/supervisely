@@ -6,7 +6,7 @@ from supervisely.app.widgets import Widget
 
 
 class DatePicker(Widget):
-    """DatePicker widget in Supervsely is a user-friendly and customizable date input solution for Supervisely app developers.
+    """Date picker input.
 
     Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/input/datepicker>`_
         (including screenshots and examples).

@@ -16,7 +16,7 @@ from supervisely.video_annotation.video_object_collection import VideoObjectColl
 
 class FrameCollection(KeyIndexedCollection):
     """
-    Collection with Frame instances. FrameCollection object is immutable.
+    Collection of Frame instances indexed by frame index. Immutable.
 
     :Usage Example:
 

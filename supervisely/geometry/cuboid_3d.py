@@ -69,9 +69,7 @@ class Vector3d:
 
 
 class Cuboid3d(Geometry):
-    """
-    Cuboid3d is a geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.cuboid_3d.Cuboid3d` object is immutable.
-    """
+    """3D cuboid with position, rotation, and dimensions (Vector3d). Immutable."""
 
     @staticmethod
     def geometry_name():

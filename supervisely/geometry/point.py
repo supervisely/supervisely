@@ -23,7 +23,7 @@ from supervisely.geometry.rectangle import Rectangle
 
 
 class Point(Geometry):
-    """Point geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.point.Point` object is immutable."""
+    """2D point at (row, col). Immutable."""
 
     def __init__(
         self,

@@ -7,7 +7,7 @@ from supervisely.app.widgets import Widget
 
 
 class Field(Widget):
-    """Field widget within Supervisely is a type of form which has the ability to contain various other widgets.
+    """Form field with title, description, and optional icon; wraps another widget.
 
     Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/layouts-and-containers/field>`_
         (including screenshots and examples).
@@ -38,7 +38,7 @@ class Field(Widget):
     """
 
     class Icon:
-        """Icon for Field widget which can be either Material Design Icon or image.
+        """Material Design Icon or image for Field header.
 
         :param zmdi_class: Material Design Icon class name
         :type zmdi_class: Optional[str]

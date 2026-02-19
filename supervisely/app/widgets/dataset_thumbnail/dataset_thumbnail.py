@@ -8,7 +8,7 @@ from supervisely.project.project import Dataset, Project
 
 
 class DatasetThumbnail(Widget):
-    """DatasetThumbnail widget in Supervisely is a widget that allows to display a thumbnail image that represents supervisely dataset.
+    """Thumbnail image for a dataset.
 
     Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/thumbnails/datasetthumbnail>`_
         (including screenshots and examples).

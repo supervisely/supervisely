@@ -12,7 +12,7 @@ from supervisely.geometry.constants import (
 
 
 class ClosedSurfaceMesh(Geometry):
-    """ClosedSurfaceMesh is a geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.closed_surface_mesh.ClosedSurfaceMesh` object is immutable."""
+    """3D closed surface mesh (triangular faces). Immutable."""
 
     @staticmethod
     def geometry_name():

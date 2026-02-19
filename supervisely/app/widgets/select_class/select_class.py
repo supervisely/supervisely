@@ -61,8 +61,7 @@ available_geometry_types = [
 
 class SelectClass(Widget):
     """
-    SelectClass is a compact dropdown widget for selecting object classes with an option to create
-    new classes on the fly.
+    Compact dropdown for selecting object classes; can create new classes on the fly.
 
     :param classes: Initial list of obj class instances
     :type classes: Optional[Union[List[:class:`~supervisely.annotation.obj_class.ObjClass`], :class:`~supervisely.annotation.obj_class_collection.ObjClassCollection`]]

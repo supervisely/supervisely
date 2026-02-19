@@ -5,7 +5,7 @@ from supervisely.app.widgets import GridGallery
 
 
 class CompareAnnotations(GridGallery):
-    """CompareAnnotations is a simple widget that allows you to compare different annotations for one image.
+    """Side-by-side comparison of annotations for one image.
 
     Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/compare-data/compareannotations>`_
         (including screenshots and examples).

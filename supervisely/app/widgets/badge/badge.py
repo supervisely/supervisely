@@ -5,7 +5,7 @@ from supervisely.app.widgets import Widget
 
 
 class Badge(Widget):
-    """Badge widget in Supervisely is a versatile tool for displaying notifications or counts on elements such as buttons, text.
+    """Displays notification count or dot on buttons, text, or other elements.
     Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/status-elements/badge>`_
         (including screenshots and examples).
 

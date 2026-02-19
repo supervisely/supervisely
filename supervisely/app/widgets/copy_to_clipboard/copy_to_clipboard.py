@@ -4,7 +4,7 @@ from supervisely.app.widgets import Editor, Input, Text, TextArea, Widget
 
 
 class CopyToClipboard(Widget):
-    """CopyToClipboard widget allows you to wrap your widgets (Editor, Text, TextArea, or Input) and str text with a copy button.
+    """Wraps Editor, Text, TextArea, or Input with a copy-to-clipboard button.
 
     Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/text-elements/copytoclipboard>`_
         (including screenshots and examples).

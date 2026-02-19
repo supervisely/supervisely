@@ -6,7 +6,7 @@ from supervisely.app.widgets import Widget
 
 
 class DateTimePicker(Widget):
-    """DateTimePicker is a widget in Supervisely that allows you to choose a date and time on the UI.
+    """Date and time picker input.
 
     Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/input/datetimepicker>`_
         (including screenshots and examples).

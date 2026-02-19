@@ -29,7 +29,7 @@ type_to_zmdi_icon = {
 
 
 class ClassesTable(Widget):
-    """ClassesTable widget in Supervisely allows users to display all classes from given project in a table format.
+    """Table displaying object classes from a project.
 
     Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/tables/classestable>`_
         (including screenshots and examples).

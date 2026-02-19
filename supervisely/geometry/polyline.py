@@ -32,7 +32,7 @@ from supervisely.geometry.vector_geometry import VectorGeometry
 
 
 class Polyline(VectorGeometry):
-    """Polyline is a geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.polyline.Polyline` object is immutable."""
+    """Open 2D polyline (sequence of connected line segments). Immutable."""
 
     @staticmethod
     def geometry_name():

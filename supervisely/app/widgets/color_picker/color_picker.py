@@ -5,7 +5,7 @@ from supervisely.app.widgets import Empty, Widget
 
 
 class ColorPicker(Widget):
-    """ColorPicker is a color selector supporting multiple color formats.
+    """Color selector supporting multiple formats (hex, rgb, etc.).
 
     Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/input/colorpicker>`_
         (including screenshots and examples).

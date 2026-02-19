@@ -15,7 +15,7 @@ from supervisely.video_annotation.video_object_collection import VideoObjectColl
 
 class Frame(KeyObject):
     """
-    Frame object for VideoAnnotation. Frame object is immutable.
+    Single frame in a video annotation; holds figures at a given index. Immutable.
 
     :param index: Index of the Frame.
     :type index: int

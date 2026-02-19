@@ -5,7 +5,7 @@ from supervisely.app.widgets import Button, Widget
 
 
 class Editor(Widget):
-    """Editor widget in Supervisely allows users to input and edit code with syntax highlighting.
+    """Code editor with syntax highlighting.
 
     Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/input/editor>`_
         (including screenshots and examples).

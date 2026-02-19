@@ -13,7 +13,7 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 
 class PointcloudTag(Tag):
     """
-    PointcloudTag object for :class:`~supervisely.pointcloud_annotation.pointcloud_annotation.PointcloudAnnotation`. :class:`~supervisely.pointcloud_annotation.pointcloud_tag.PointcloudTag` object is immutable.
+    Tag on point cloud annotation (meta, value). Immutable.
 
     :param meta: General information about :class:`~supervisely.geometry.pointcloud.Pointcloud` :class:`~supervisely.annotation.tag.Tag`.
     :type meta: :class:`~supervisely.annotation.tag_meta.TagMeta`

@@ -7,7 +7,7 @@ from supervisely.app.widgets import Widget
 
 
 class Dropdown(Widget):
-    """Dropdown is a widget in Supervisely that allows for selecting action from dropdown menu on the UI.
+    """Dropdown menu for selecting an action.
 
     Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/selection/dropdown>`_
         (including screenshots and examples).

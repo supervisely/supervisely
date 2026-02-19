@@ -34,9 +34,7 @@ from supervisely.io.fs import (
 
 
 class KubernetesSettings(BaseModel):
-    """
-    KubernetesSettings for application resource limits and requests.
-    """
+    """Application resource limits and requests (CPUs, memory, GPU, storage) for tasks."""
 
     use_health_check: Optional[bool] = Field(None, alias="useHealthCheck")
     request_cpus: Optional[int] = Field(None, alias="requestCpus")

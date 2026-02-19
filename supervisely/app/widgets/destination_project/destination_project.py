@@ -7,8 +7,7 @@ from supervisely.project.project_type import ProjectType
 
 
 class DestinationProject(Widget):
-    """DestinationProject widget in Supervisely provides several options for selecting
-    the destination project and dataset when transferring data.
+    """Selector for destination project and dataset when transferring data.
 
     Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/input/destinationproject>`_
         (including screenshots and examples).
@@ -68,8 +67,7 @@ class DestinationProject(Widget):
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def get_json_data(self) -> None:
-        """DestinationProject widget in Supervisely has no JSON data,
-        the method returns None."""
+        """Returns None; this widget has no JSON data."""
         return None
 
     def get_json_state(self) -> Dict[str, Union[str, int, bool]]:

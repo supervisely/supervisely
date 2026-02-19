@@ -9,7 +9,7 @@ from supervisely.pointcloud_annotation.pointcloud_object import PointcloudObject
 
 class PointcloudEpisodeObject(PointcloudObject):
     """
-    PointcloudEpisodeObject object for :class:`~supervisely.pointcloud_annotation.pointcloud_episode_annotation.PointcloudEpisodeAnnotation`. :class:`~supervisely.pointcloud_annotation.pointcloud_episode_object.PointcloudEpisodeObject` object is immutable.
+    Object tracked across point cloud episode frames (obj_class + tags). Immutable.
 
     :param obj_class: Object class.
     :type obj_class: :class:`~supervisely.annotation.obj_class.ObjClass`

@@ -42,7 +42,7 @@ CUBOID2D_EDGES_MAPPING = [
 
 
 class Cuboid2d(GraphNodes):
-    """Cuboid2d is a geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.cuboid_2d.Cuboid2d` object is immutable."""
+    """2D projection of cuboid as a graph of keypoints (eight corners). Immutable."""
 
     items_json_field = VERTICES
 

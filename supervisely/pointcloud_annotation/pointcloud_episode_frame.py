@@ -13,7 +13,7 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 
 class PointcloudEpisodeFrame(Frame):
     """
-    PointcloudEpisodeFrame object for :class:`~supervisely.pointcloud_annotation.pointcloud_episode_annotation.PointcloudEpisodeAnnotation`. :class:`~supervisely.pointcloud_annotation.pointcloud_episode_frame.PointcloudEpisodeFrame` object is immutable.
+    Single frame in point cloud episode; holds figures at given index. Immutable.
 
     :param index: Index of the :class:`~supervisely.pointcloud_annotation.pointcloud_episode_frame.PointcloudEpisodeFrame`.
     :type index: int

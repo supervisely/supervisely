@@ -35,7 +35,7 @@ class OutOfImageBoundsException(Exception):
 
 class VideoFigure:
     """
-    VideoFigure object for VideoAnnotation. VideoFigure object is immutable.
+    Figure in video annotation: geometry tied to a VideoObject at a frame index. Immutable.
 
     :param video_object: VideoObject object.
     :type video_object: :class:`~supervisely.video_annotation.video_object.VideoObject`

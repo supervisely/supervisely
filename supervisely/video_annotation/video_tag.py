@@ -18,7 +18,7 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 
 class VideoTag(Tag):
     """
-    VideoTag object for :class:`~supervisely.video_annotation.video_annotation.VideoAnnotation`. :class:`~supervisely.video_annotation.video_tag.VideoTag` object is immutable.
+    Tag applied to video or frame range (meta, value, frame_range). Immutable.
 
     :param meta: General information about Video.
     :type meta: :class:`~supervisely.annotation.tag_meta.TagMeta`

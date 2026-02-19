@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
 
 class PointLocation(JsonSerializable):
-    """PointLocation in (row, col) position. :class:`~supervisely.geometry.point_location.PointLocation` object is immutable."""
+    """2D pixel coordinate (row, col); used for point positions and polygon vertices. Immutable."""
 
     def __init__(self, row: int, col: int):
         """

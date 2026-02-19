@@ -5,7 +5,7 @@ from supervisely.app.widgets import Widget
 
 
 class Modal(Widget):
-    """Modal is a widget that displays content in a modal overlay window with a close button.
+    """Modal overlay with close button for displaying content.
     It can contain any other widgets, similar to Container, and provides programmatic control
     to show/hide the modal.
 

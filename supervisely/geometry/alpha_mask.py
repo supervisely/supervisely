@@ -20,7 +20,7 @@ from supervisely.imaging.image import read
 
 
 class AlphaMask(Bitmap):
-    """AlphaMask geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.alpha_mask.AlphaMask` object is immutable."""
+    """Bitmap mask with per-pixel alpha; used for semi-transparent segmentation. Immutable."""
 
     @staticmethod
     def geometry_name():

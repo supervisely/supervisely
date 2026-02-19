@@ -9,7 +9,7 @@ SUPPORTED_TAG_WIDGET_TYPES = ["primary", "gray", "success", "warning", "danger"]
 
 
 class ElementTagsList(Widget):
-    """ElementTagsList widget in Supervisely is a widget that allows users to display multiple elements tags in the UI.
+    """Displays multiple element tags in a list.
 
     Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/text-elements/elementtagslist>`_
         (including screenshots and examples).

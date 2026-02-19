@@ -15,7 +15,7 @@ from supervisely.geometry.constants import LABELER_LOGIN, UPDATED_AT, CREATED_AT
 
 class PointcloudObject(VideoObject):
     """
-    PointcloudObject object for :class:`~supervisely.pointcloud_annotation.pointcloud_annotation.PointcloudAnnotation`. :class:`~supervisely.pointcloud_annotation.pointcloud_object.PointcloudObject` object is immutable.
+    Object in point cloud annotation (obj_class + tags). Immutable.
 
     :param obj_class: Object class.
     :type obj_class: :class:`~supervisely.annotation.obj_class.ObjClass`

@@ -34,9 +34,7 @@ from supervisely.sly_logger import logger
 
 
 class Polygon(VectorGeometry):
-    """
-    Polygon is a geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.polygon.Polygon` object is immutable.
-    """
+    """Closed 2D polygon with exterior contour and optional interior holes. Immutable."""
 
     @staticmethod
     def geometry_name():

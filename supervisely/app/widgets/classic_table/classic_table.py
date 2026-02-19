@@ -75,7 +75,7 @@ DATATYPE_TO_UNPACKER = {
 
 
 class ClassicTable(Widget):
-    """ClassicTable is a widget in Supervisely that is used for displaying and manipulating data in a table format.
+    """Table for displaying and editing tabular data.
     It is similar to the Table widget but with fewer customization options and functionalities.
 
     Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/tables/classictable>`_

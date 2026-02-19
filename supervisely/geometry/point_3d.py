@@ -6,9 +6,7 @@ from supervisely.geometry.constants import LABELER_LOGIN, UPDATED_AT, CREATED_AT
 
 
 class Point3d(Geometry):
-    """
-    Point3d is a geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.point_3d.Point3d` object is immutable.
-    """
+    """3D point (x, y, z) in volume or point cloud space. Immutable."""
 
     @staticmethod
     def geometry_name():

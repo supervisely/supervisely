@@ -4,7 +4,7 @@ from supervisely.app.widgets import Widget
 
 
 class Container(Widget):
-    """Container widget in Supervisely is a flexible tool that allows for organizing other widgets within it.
+    """Flexible container for organizing child widgets.
 
     Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/layouts-and-containers/container>`_
         (including screenshots and examples).

@@ -11,7 +11,7 @@ from supervisely.project.project_type import ProjectType
 
 
 class SelectCollection(Widget):
-    """SelectCollection widget in Supervisely is a widget that allows users to select one or multiple collections (entities collections).
+    """Selector for one or multiple collections (entities).
     Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/selection/selectCollection>`_
         (including screenshots and examples).
 

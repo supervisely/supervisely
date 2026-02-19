@@ -37,7 +37,7 @@ from supervisely.io.json import dump_json_file
 
 class VolumeAnnotation:
     """
-    VolumeAnnotation for a single volume. :class:`~supervisely.volume_annotation.volume_annotation.VolumeAnnotation` object is immutable.
+    Annotation for a 3D volume: objects, tags, planes, spatial figures. Immutable.
 
     :param volume_meta: Metadata of the volume.
     :type volume_meta: dict

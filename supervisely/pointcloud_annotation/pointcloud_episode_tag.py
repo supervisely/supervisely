@@ -13,7 +13,7 @@ from supervisely.video_annotation.video_tag import VideoTag
 
 class PointcloudEpisodeTag(VideoTag):
     """
-    PointcloudEpisodeTag object for :class:`~supervisely.pointcloud_annotation.pointcloud_episode_annotation.PointcloudEpisodeAnnotation`. :class:`~supervisely.pointcloud_annotation.pointcloud_episode_tag.PointcloudEpisodeTag` object is immutable.
+    Tag on point cloud episode or frame range (meta, value, frame_range). Immutable.
 
     :param meta: General information about point cloud episodes :class:`~supervisely.annotation.tag.Tag`.
     :type meta: :class:`~supervisely.annotation.tag_meta.TagMeta`

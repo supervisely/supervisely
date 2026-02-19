@@ -143,7 +143,7 @@ class CuboidFace:
 
 
 class Cuboid(Geometry):
-    """Cuboid is a geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.cuboid.Cuboid` object is immutable."""
+    """3D cuboid defined by eight corner points and six faces. Immutable."""
 
     @staticmethod
     def geometry_name():

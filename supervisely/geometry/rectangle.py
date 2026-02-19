@@ -30,7 +30,7 @@ if TYPE_CHECKING:
 
 class Rectangle(Geometry):
     """
-    Rectangle geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.rectangle.Rectangle` object is immutable.
+    Axis-aligned 2D bounding box (top, left, bottom, right). Used as geometry for a single :class:`~supervisely.annotation.label.Label`. Immutable.
 
     :param top: Minimal vertical value of Rectangle.
     :type top: int or float

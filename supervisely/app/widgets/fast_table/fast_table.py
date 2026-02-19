@@ -23,8 +23,7 @@ class EventLinstenerError(Exception):
 
 class FastTable(Widget):
     """
-    FastTable widget in Supervisely allows for displaying and manipulating data of various
-    dataset statistics and processing it on the server side.
+    Table for displaying and editing dataset data with server-side processing.
 
     Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/tables/fasttable>`_
         (including screenshots and examples).

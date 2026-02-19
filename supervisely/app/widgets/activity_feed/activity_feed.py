@@ -12,7 +12,7 @@ except ImportError:
 
 
 class ActivityFeed(Widget):
-    """ActivityFeed is a widget that displays a vertical list of activity items with status indicators.
+    """Vertical list of activity items with status indicators (pending, in progress, completed, failed).
     Similar to a timeline or activity log showing sequential events with their current status.
 
     Each item can contain a custom widget as content and displays a status indicator (pending, in process, completed, failed).

@@ -7,7 +7,7 @@ SUPPORTED_TAG_WIDGET_TYPES = ["primary", "gray", "success", "warning", "danger"]
 
 
 class ElementTag(Widget):
-    """ElementTag widget in Supervisely is a widget that allows users to display elements tag in the UI.
+    """Displays a single element tag.
 
     Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/text-elements/elementtag>`_
         (including screenshots and examples).

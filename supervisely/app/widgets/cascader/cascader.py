@@ -12,7 +12,7 @@ except ImportError:
 
 
 class Cascader(Widget):
-    """Cascader is a dropdown list with hierarchical options.
+    """Dropdown with hierarchical options (cascading levels).
 
     Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/selection/cascader>`_
         (including screenshots and examples).

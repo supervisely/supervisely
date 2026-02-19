@@ -22,9 +22,7 @@ from supervisely.video_annotation.video_figure import VideoFigure
 
 class PointcloudFigure(VideoFigure):
     """
-    PointcloudFigure object for
-    :class:`~supervisely.pointcloud_annotation.pointcloud_annotation.PointcloudAnnotation` or :class:`~supervisely.pointcloud_annotation.pointcloud_episode_annotation.PointcloudEpisodeAnnotation`.
-    :class:`~supervisely.pointcloud_annotation.pointcloud_figure.PointcloudFigure` objects is immutable.
+    Figure in point cloud annotation: 3D geometry (e.g. Cuboid3d) at a frame. Immutable.
 
     :param parent_object: Pointcloud object or :class:`~supervisely.pointcloud_annotation.pointcloud_object.PointcloudObject` object.
     :type parent_object: Union[:class:`~supervisely.pointcloud_annotation.pointcloud_object.PointcloudObject`, :class:`~supervisely.pointcloud_annotation.pointcloud_episode_object.PointcloudEpisodeObject`]

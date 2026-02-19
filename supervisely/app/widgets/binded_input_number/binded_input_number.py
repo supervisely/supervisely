@@ -6,8 +6,7 @@ from supervisely.app.widgets import Widget
 
 class BindedInputNumber(Widget):
     """
-    BindedInputNumber widget in Supervisely is a user interface element that allows users
-    to input two numerical values and customize their behavior using the proportional, min, and max properties.
+    Paired numeric inputs (e.g. width/height) with optional proportional linking and min/max bounds.
 
     Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/input/bindedinputnumber>`_
         (including screenshots and examples).

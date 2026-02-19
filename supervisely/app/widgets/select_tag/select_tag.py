@@ -23,8 +23,7 @@ available_value_types = [
 
 class SelectTag(Widget):
     """
-    SelectTag is a compact dropdown widget for selecting tag metadata with an option to create
-    new tags on the fly.
+    Compact dropdown for selecting tag metadata; can create new tags on the fly.
 
     :param tags: Initial list of tag metas or a tag meta collection
     :type tags: Optional[Union[List[:class:`~supervisely.annotation.tag_meta.TagMeta`], :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection`]]
