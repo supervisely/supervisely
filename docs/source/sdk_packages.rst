@@ -3,8 +3,7 @@ SDK Reference
 
 Annotation
 ----------
-**Annnotation**
-- Working with labeling data of individual images. Annotation is the class that wraps all the labeling data for a given image: its Labels (geometrical objects) and Tags.
+Working with labeling data of individual images. Annotation wraps all the labeling data for a given image: its Labels (geometrical objects) and Tags.
 
 .. currentmodule:: supervisely.annotation.annotation
 
@@ -87,8 +86,7 @@ Annotation
 
 API
 ---
-**API**
-- Python wrappers to script your interactions with the Supervisely web instance. Instead of clicking around, you can write a script to request, via the API, a sequence of tasks, like training up a neural network and then running inference on a validation dataset.
+Python wrappers to script your interactions with the Supervisely web instance. Instead of clicking around, you can write a script to request, via the API, a sequence of tasks (e.g. training a neural network and then running inference on a validation dataset).
 
 .. currentmodule:: supervisely.api.api
 
@@ -124,7 +122,7 @@ API
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
-    AppApi    
+    AppApi
     WorkflowSettings
     WorkflowMeta
 
@@ -331,8 +329,7 @@ API
 
 Neural Networks API
 -------------------
-**Neural Networks API**
-- API for working with videos in Supervisely.
+APIs for deploying models, running inference, and working with model metadata in Supervisely.
 
 .. currentmodule:: supervisely.api.nn.deploy_api
 
@@ -341,7 +338,7 @@ Neural Networks API
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
-    DeployApi 
+    DeployApi
 
 .. currentmodule:: supervisely.api.nn.neural_network_api
 
@@ -350,7 +347,7 @@ Neural Networks API
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
-    NeuralNetworkApi 
+    NeuralNetworkApi
 
 .. currentmodule:: supervisely.nn.model.model_api
 
@@ -373,8 +370,7 @@ Neural Networks API
 
 Training
 --------
-**Training**
-- High-level wrappers and helpers for building training applications (GUI, data prep, artifacts upload, benchmarking).
+High-level wrappers and helpers for building training applications (GUI, data prep, artifacts upload, benchmarking).
 
 .. currentmodule:: supervisely.nn.training.train_app
 
@@ -388,8 +384,7 @@ Training
 
 Video API
 ---------
-**Video API**
-- API for working with videos in Supervisely.
+API for working with videos in Supervisely.
 
 .. currentmodule:: supervisely.api.video.video_api
 
@@ -449,8 +444,7 @@ Video API
 
 Volume API
 ----------
-**Volume API**
-- API for working with volumes in Supervisely.
+API for working with volumes in Supervisely.
 
 .. currentmodule:: supervisely.api.volume.volume_api
 
@@ -500,8 +494,7 @@ Volume API
 
 Pointcloud API
 --------------
-**Pointcloud API**
-- API for working with pointclouds in Supervisely.
+API for working with pointclouds in Supervisely.
 
 .. currentmodule:: supervisely.api.pointcloud.pointcloud_api
 
@@ -569,8 +562,7 @@ Pointcloud API
 
 Augmentation
 ------------
-**Augmentation**
-- Data augmentations to create more data variety for neural networks training.
+Data augmentations to create more data variety for neural networks training.
 
 .. currentmodule:: supervisely.aug
 
@@ -582,6 +574,7 @@ Augmentation
 
 Collection
 ----------
+Key-indexed collections and helpers used across the SDK.
 
 .. currentmodule:: supervisely.collection.key_indexed_collection
 
@@ -597,6 +590,7 @@ Collection
 
 Decorators
 ----------
+Small utility decorators (e.g. profiling helpers).
 
 .. currentmodule:: supervisely.decorators
 
@@ -609,8 +603,7 @@ Decorators
 
 Geometry
 --------
-**Geometry**
-- All the logic concerned with working with geometric objects - compute statistics like object area, transform (rotate, scale, shift), extract bounding boxes, compute intersections and more.
+All the logic concerned with working with geometric objects - compute statistics like object area, transform (rotate, scale, shift), extract bounding boxes, compute intersections and more.
 
 .. currentmodule:: supervisely.geometry.any_geometry
 
@@ -772,8 +765,7 @@ Geometry
 
 Imaging
 -------
-**Imaging**
-- Our wrappers for working with images. IO, transformations, text rendering, color conversions.
+Wrappers for working with images: IO, transformations, text rendering, color conversions.
 
 .. currentmodule:: supervisely.imaging
 
@@ -788,8 +780,7 @@ Imaging
 
 IO
 --
-**IO**
-- Low-level convenience IO wrappers that we found useful internally.
+Low-level convenience IO wrappers that are used across the SDK.
 
 .. currentmodule:: supervisely.io
 
@@ -804,6 +795,7 @@ IO
 
 Labeling Jobs
 -------------
+Helpers for working with labeling jobs and related utilities.
 
 .. currentmodule:: supervisely.labeling_jobs
 
@@ -817,6 +809,7 @@ Labeling Jobs
 
 Pointcloud
 ----------
+Core pointcloud-related helpers and utilities.
 
 .. currentmodule:: supervisely.pointcloud
 
@@ -829,6 +822,7 @@ Pointcloud
 
 Pointcloud Annotation
 ---------------------
+Data model for pointcloud annotations (figures, objects, tags, episodes).
 
 .. currentmodule:: supervisely.pointcloud_annotation.pointcloud_annotation
 
@@ -932,6 +926,7 @@ Pointcloud Annotation
 
 Pointcloud Episodes
 -------------------
+Helpers and data structures for pointcloud episodes.
 
 .. currentmodule:: supervisely.pointcloud_episodes
 
@@ -944,8 +939,7 @@ Pointcloud Episodes
 
 Project
 -------
-**Project**
-- Working with Supervisely projects on disk.
+Working with Supervisely projects on disk.
 
 .. currentmodule:: supervisely.project.project
 
@@ -1023,8 +1017,7 @@ Project
 
 Task
 ----
-**Task**
-- Constants defining the directories where a plugin should expect the input and output data to be. Also helpers to stream progress data from a running plugin back to the web instance.
+Constants defining the directories where a plugin should expect the input and output data to be, plus helpers to stream progress data from a running plugin back to the web instance.
 
 .. currentmodule:: supervisely.task.progress
 
@@ -1037,6 +1030,7 @@ Task
 
 User
 ----
+User-related data structures and constants.
 
 .. currentmodule:: supervisely.user.user
 
@@ -1049,6 +1043,7 @@ User
 
 Video
 -----
+Core video-related helpers and utilities.
 
 .. currentmodule:: supervisely.video
 
@@ -1061,6 +1056,7 @@ Video
 
 Video Annotation
 ----------------
+Data model for video annotations (frames, objects, figures, tags).
 
 .. currentmodule:: supervisely.video_annotation.video_annotation
 
@@ -1123,7 +1119,7 @@ Video Annotation
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
-      VideoObjectCollection
+    VideoObjectCollection
 
 .. currentmodule:: supervisely.video_annotation.video_tag
 
@@ -1141,10 +1137,11 @@ Video Annotation
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
-      VideoTagCollection
+    VideoTagCollection
 
 Volume
 ------
+Core volume-related helpers and utilities.
 
 .. currentmodule:: supervisely.volume
 
@@ -1157,6 +1154,7 @@ Volume
 
 Volume Annotation
 -----------------
+Data model for volume annotations (objects, figures, tags, and slices).
 
 .. currentmodule:: supervisely.volume_annotation.volume_annotation
 
@@ -1192,7 +1190,7 @@ Volume Annotation
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
-      VolumeObjectCollection
+    VolumeObjectCollection
 
 .. currentmodule:: supervisely.volume_annotation.volume_tag
 
@@ -1210,7 +1208,7 @@ Volume Annotation
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
-      VolumeTagCollection
+    VolumeTagCollection
 
 .. currentmodule:: supervisely.volume_annotation.plane
 
@@ -1219,7 +1217,7 @@ Volume Annotation
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
-      Plane
+    Plane
 
 .. currentmodule:: supervisely.volume_annotation.slice
 
@@ -1228,11 +1226,11 @@ Volume Annotation
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
-      Slice
+    Slice
 
 Utility Functions
 -----------------
-**A collection of useful utility functions for common tasks in the Supervisely SDK**
+A collection of useful utility functions for common tasks in the Supervisely SDK.
 
 .. currentmodule:: supervisely.project.download
 
