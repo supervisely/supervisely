@@ -12,10 +12,10 @@ def build_segmentation_loader(
 ):
     import torch  # pylint: disable=import-error
 
-        class SegmentationLoader(torch.utils.data.Dataset):
-            """PyTorch Dataset yielding (prediction, ground-truth) mask pairs from pred_dir and gt_dir."""
+    class SegmentationLoader(torch.utils.data.Dataset):
+        """PyTorch Dataset yielding (prediction, ground-truth) mask pairs from pred_dir and gt_dir."""
 
-            def __init__(
+        def __init__(
             self,
             pred_dir,
             gt_dir,

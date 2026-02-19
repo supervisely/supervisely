@@ -177,36 +177,31 @@ class VolumeInfo(NamedTuple):
 
 
 class VolumeApi(RemoveableBulkModuleApi):
-    """
-    API for working with volumes. :class:`~supervisely.api.volume.volume_api.VolumeApi` object is immutable.
-
-    :param api: API connection to the server.
-    :type api: :class:`~supervisely.api.api.Api`
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import os
-            from dotenv import load_dotenv
-
-            import supervisely as sly
-
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            if sly.is_development():
-                load_dotenv(os.path.expanduser("~/supervisely.env"))
-
-            api = sly.Api.from_env()
-
-            volume_id = 19581134
-            volume_info = api.volume.get_info_by_id(volume_id) # api usage example
-    """
+    """API for working with volumes. :class:`~supervisely.api.volume.volume_api.VolumeApi` object is immutable."""
 
     def __init__(self, api):
         """
-        :param api: Api object
+        :param api: API connection to the server.
         :type api: :class:`~supervisely.api.api.Api`
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import os
+                from dotenv import load_dotenv
+
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                volume_id = 19581134
+                volume_info = api.volume.get_info_by_id(volume_id) # api usage example
         """
         super().__init__(api)
         self.annotation = VolumeAnnotationAPI(api)

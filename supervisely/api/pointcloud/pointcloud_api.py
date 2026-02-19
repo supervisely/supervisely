@@ -131,35 +131,31 @@ class PointcloudInfo(NamedTuple):
 
 
 class PointcloudApi(RemoveableBulkModuleApi):
-    """
-    API for working with point clouds. :class:`~supervisely.api.pointcloud.pointcloud_api.PointcloudApi` object is immutable.
-
-    :param api: API connection to the server.
-    :type api: :class:`~supervisely.api.api.Api`
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import os
-            from dotenv import load_dotenv
-
-            import supervisely as sly
-
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            if sly.is_development():
-                load_dotenv(os.path.expanduser("~/supervisely.env"))
-
-            api = sly.Api.from_env()
-
-            pcd_id = 19618654
-            pcd_info = api.pointcloud.get_info_by_id(pcd_id) # api usage example
-    """
+    """API for working with point clouds. :class:`~supervisely.api.pointcloud.pointcloud_api.PointcloudApi` object is immutable."""
 
     def __init__(self, api):
         """
-        :param api: :class:`~supervisely.api.api.Api` class object
+        :param api: API connection to the server.
+        :type api: :class:`~supervisely.api.api.Api`
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import os
+                from dotenv import load_dotenv
+
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                pcd_id = 19618654
+                pcd_info = api.pointcloud.get_info_by_id(pcd_id) # api usage example
         """
         super().__init__(api)
         self.annotation = PointcloudAnnotationAPI(api)

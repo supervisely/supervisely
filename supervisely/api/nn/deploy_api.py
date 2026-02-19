@@ -74,9 +74,6 @@ class DeployApi:
     - deploy a pretrained model into a new serving task,
     - deploy a custom checkpoint (from team files or experiment artifacts),
     - load/replace model inside an existing serving task.
-
-    :param api: API client.
-    :type api: :class:`~supervisely.api.api.Api`
     """
 
     def __init__(self, api: "Api"):
