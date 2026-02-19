@@ -296,7 +296,7 @@ def read_bytes(image_bytes: str, keep_alpha: Optional[bool] = False) -> np.ndarr
 
             import supervisely as sly
 
-            im_bytes = '\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\...\xd9'
+            im_bytes = '\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\\...\xd9'
             im = sly.image.read_bytes(im_bytes)
     """
     if image_bytes.startswith(b"NRRD"):

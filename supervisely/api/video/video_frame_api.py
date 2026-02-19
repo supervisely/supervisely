@@ -305,7 +305,7 @@ class VideoFrameAPI(ModuleApi):
                 frame_indexes = [1,2,3,4,5,10,11,12,13,14,15]
                 frames_bytes = api.video.frame.download_bytes(video_id=video_id, frame_indexes=frame_indexes)
                 print(frames_bytes)
-                # Output: [b'\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\...]
+                # Output: [b'\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\\...']
         """
 
         if len(frame_indexes) == 0:

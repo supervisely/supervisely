@@ -1266,7 +1266,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
                 img_bytes = api.image.download_bytes(dataset_id, [770918])
                 print(img_bytes)
-                # Output: [b'\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\ ...']
+                # Output: [b'\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\\ ...']
         """
         if len(ids) == 0:
             return []

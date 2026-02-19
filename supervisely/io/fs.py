@@ -1287,7 +1287,7 @@ def parse_agent_id_and_path(remote_path: str) -> Tuple[int, str]:
     """
     if is_on_agent(remote_path) is False:
         raise ValueError("agent path have to starts with 'agent://<agent-id>/'")
-    search = re.search("agent://(\d+)(.*)", remote_path)
+    search = re.search(r"agent://(\d+)(.*)", remote_path)
     agent_id = int(search.group(1))
     path_in_agent_folder = search.group(2)
     if not path_in_agent_folder.startswith("/"):

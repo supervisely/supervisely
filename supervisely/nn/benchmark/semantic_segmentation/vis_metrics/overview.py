@@ -24,7 +24,7 @@ class Overview(SemanticSegmVisMetric):
         link_text = self.eval_result.inference_info.get("custom_checkpoint_path")
         if link_text is None:
             link_text = url or ""
-        link_text = link_text.replace("_", "\_")
+        link_text = link_text.replace("_", r"\_")
 
         model_name = self.eval_result.inference_info.get("model_name") or "Custom"
         checkpoint_name = self.eval_result.checkpoint_name
@@ -33,8 +33,8 @@ class Overview(SemanticSegmVisMetric):
         classes_str, note_about_images, starter_app_info = self._get_overview_info()
 
         formats = [
-            model_name.replace("_", "\_"),
-            checkpoint_name.replace("_", "\_"),
+model_name.replace("_", r"\_"),
+                checkpoint_name.replace("_", r"\_"),
             self.eval_result.inference_info.get("architecture"),
             self.eval_result.inference_info.get("task_type"),
             self.eval_result.inference_info.get("runtime"),

@@ -22,7 +22,7 @@ class Overview(DetectionVisMetric):
         link_text = self.eval_result.inference_info.get("custom_checkpoint_path")
         if link_text is None:
             link_text = url or ""
-        link_text = link_text.replace("_", "\_")
+        link_text = link_text.replace("_", r"\_")
 
         model_name = self.eval_result.inference_info.get("model_name") or "Custom"
         checkpoint_name = self.eval_result.checkpoint_name
@@ -48,8 +48,8 @@ class Overview(DetectionVisMetric):
             conf_text += f"\n- **Custom confidence threshold**: {custom_conf_thrs}"
 
         formats = [
-            model_name.replace("_", "\_"),
-            checkpoint_name.replace("_", "\_"),
+model_name.replace("_", r"\_"),
+                checkpoint_name.replace("_", r"\_"),
             self.eval_result.inference_info.get("architecture"),
             self.eval_result.inference_info.get("task_type"),
             self.eval_result.inference_info.get("runtime"),
