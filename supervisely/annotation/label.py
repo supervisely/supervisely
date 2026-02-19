@@ -929,6 +929,7 @@ class LabelBase:
 
     @property
     def binding_key(self):
+        """Keyboard shortcut key for binding the label to the object."""
         return self._binding_key
 
     @binding_key.setter
@@ -968,6 +969,7 @@ class LabelBase:
 
     @property
     def labeler_login(self):
+        """Labeler login. Specifies the login of the user who labeled the label."""
         return self.geometry.labeler_login
 
     @property

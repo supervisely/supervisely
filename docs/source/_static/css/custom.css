@@ -133,3 +133,23 @@
 /*!*    overflow: auto;*!*/
 /*!*    color: #404040;*!*/
 /*!*}*!*/
+
+/* Autosummary tables: make them full-width and visually continuous */
+table.autosummary {
+    width: 100% !important;
+    min-width: 100% !important;
+    margin: 0 !important;
+    display: table !important;
+}
+
+table.autosummary + table.autosummary {
+    margin-top: 0 !important;
+}
+
+/* Theme-specific wrapper (sphinx-immaterial) */
+.md-typeset table.autosummary {
+    width: 100% !important;
+    min-width: 100% !important;
+    margin: 0 !important;
+    display: table !important;
+}

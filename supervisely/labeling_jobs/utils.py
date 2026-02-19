@@ -172,6 +172,9 @@ def rejected_items_count(job_info: NamedTuple) -> int:
 
 
 def is_on_labeling_desc() -> str:
+    """
+    Description about number of Labeling Jobs with status 'IN PROGRESS'
+    """
     return "LABELING IN PROGRESS", "the number of jobs with status IN_PROGRESS"
 
 
@@ -628,6 +631,9 @@ def images_summary(jobs: List[NamedTuple]) -> DataFrame:
 
 
 def classes_summary(stats: List) -> DataFrame:
+    """
+    Get summary statistics about given Labeling Jobs classes.
+    """
     import pandas as pd
 
     class_id_stats = {}
@@ -676,6 +682,9 @@ def classes_summary(stats: List) -> DataFrame:
 
 
 def tags_summary(stats: List) -> DataFrame:
+    """
+    Get summary statistics about given Labeling Jobs tags.
+    """
     import pandas as pd
 
     tag_id_stats = {}

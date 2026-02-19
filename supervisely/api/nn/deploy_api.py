@@ -585,15 +585,41 @@ class DeployApi:
         logger.info("Model loaded successfully")
 
     def find_serving_app_by_framework(self, framework: str):
+        """
+        Find the serving app by framework.
+
+        :param framework: Framework name.
+        :type framework: str
+        :returns: Serving app info
+        :rtype: Dict[str, Any]
+        """
         modules = find_apps_by_framework(self._api, framework, ["serve"])
         if not modules:
             return None
         return modules[0]
 
     def find_serving_app_by_slug(self, slug: str) -> int:
+        """
+        Find the serving app by slug.
+
+        :param slug: Slug of the serving app.
+        :type slug: str
+        :returns: Serving app ID
+        :rtype: int
+        """
         return self._api.app.get_ecosystem_module_id(slug)
 
     def get_serving_app_by_train_app(self, app_name: Optional[str] = None, module_id: int = None):
+        """
+        Get the serving app by train app.
+
+        :param app_name: App name in Supervisely.
+        :type app_name: Optional[str]
+        :param module_id: Module ID in Supervisely.
+        :type module_id: int
+        :returns: Serving app info
+        :rtype: Dict[str, Any]
+        """
         if app_name is None and module_id is None:
             raise ValueError("Either app_name or module_id must be provided.")
         if app_name is not None:
@@ -793,6 +819,16 @@ class DeployApi:
             raise ValueError(f"Unknown checkpoint format: '{checkpoint_path}'")
 
     def wait(self, model_id, target: Literal["started", "deployed"] = "started", timeout=5 * 60):
+        """
+        Wait for the model to be started or deployed.
+
+        :param model_id: Model ID.
+        :type model_id: int
+        :param target: Target status.
+        :type target: Literal["started", "deployed"]
+        :param timeout: Timeout in seconds.
+        :type timeout: int
+        """
         t = time.monotonic()
         method = "is_alive" if target == "started" else "is_ready"
         while time.monotonic() - t < timeout:

@@ -318,11 +318,17 @@ class Dataset(KeyObject):
 
     @classmethod
     def ignorable_dirs(cls) -> List[str]:
+        """
+        Returns the list of ignorable directories.
+        """
         ignorable_dirs = [getattr(cls, attr) for attr in dir(cls) if attr.endswith("_dir_name")]
         return [p for p in ignorable_dirs if isinstance(p, str)]
 
     @classmethod
     def datasets_dir(cls) -> List[str]:
+        """
+        Returns the name of the datasets directory.
+        """
         return cls.datasets_dir_name
 
     @property
@@ -411,8 +417,10 @@ class Dataset(KeyObject):
         relative_path = os.path.sep.join(f"{parent}/datasets" for parent in parents)
         return os.path.join(relative_path, dataset_name)
 
-    def key(self):
-        # TODO: add docstring
+    def key(self) -> str:
+        """
+        Returns the key (name) of the dataset.
+        """
         return self.name
 
     @property
@@ -1261,6 +1269,19 @@ class Dataset(KeyObject):
         return_figures_count: Optional[bool] = True,
         return_items_count: Optional[bool] = True,
     ):
+        """
+        Get classes stats for the project.
+
+        :param project_meta: Project meta.
+        :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
+        :param return_objects_count: Return objects count.
+        :type return_objects_count: bool
+        :param return_figures_count: Return figures count.
+        :type return_figures_count: bool
+        :param return_items_count: Return items count.
+        :type return_items_count: bool
+        :returns: Dictionary with classes stats.
+        """
         if project_meta is None:
             project = Project(self.project_dir, OpenMode.READ)
             project_meta = project.meta
@@ -2604,6 +2625,41 @@ class Project:
         return_figures_count: Optional[bool] = True,
         return_items_count: Optional[bool] = True,
     ):
+        """
+        Get classes stats for the project.
+
+        :param dataset_names: List of dataset names.
+        :type dataset_names: List[str]
+        :param return_objects_count: Return objects count.
+        :type return_objects_count: bool
+        :param return_figures_count: Return figures count.
+        :type return_figures_count: bool
+        :param return_items_count: Return items count.
+        :type return_items_count: bool
+        :returns: Dictionary with classes stats.
+        :rtype: dict
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                project = sly.Project("/home/admin/work/supervisely/projects/lemons_annotated", sly.OpenMode.READ)
+                classes_stats = project.get_classes_stats()
+                print(classes_stats)
+                # Output:
+                # {
+                #     "images": {
+                #         "apple": 10,
+                #         "banana": 20,
+                #     },
+                #     "labels": {
+                #         "apple": 10,
+                #         "banana": 20,
+                #     },
+                # }
+        """
         result = {}
         for ds in self.datasets:
             ds: Dataset
@@ -3259,6 +3315,9 @@ class Project:
         )
 
     def get_item_paths(self, item_name) -> ItemPaths:
+        """
+        Get item paths for the project. Not Implemented for Project class.
+        """
         # TODO: remove?
         raise NotImplementedError("Method available only for dataset")
 
