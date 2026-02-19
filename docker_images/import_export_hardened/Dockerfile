@@ -32,7 +32,12 @@ ENV PATH="/opt/venv/bin:$PATH"
 RUN pip install pip==26.0.1
 RUN pip install setuptools==78.1.1 wheel==0.46.2
 
+# RUN pip install --upgrade supervisely==$tag_ref_name
+# todo: remove; test only
+RUN pip install git+https://github.com/supervisely/supervisely.git@hardened-docker-images
+
 # Install runtime dependencies
+RUN pip install cython==3.0.11
 RUN pip install --no-build-isolation pycocotools==2.0.6
 RUN pip install htmllistparse==0.6.0
 RUN pip install google-cloud-storage==1.35.0
@@ -61,9 +66,13 @@ RUN pip install nuscenes-devkit==1.1.11 --no-deps
 RUN pip install lxml==5.2.2
 RUN pip install scikit-image==0.23.2
 
-# RUN pip install --upgrade supervisely==$tag_ref_name
-# todo: remove; test only
-RUN pip install git+https://github.com/supervisely/supervisely.git@hardened-docker-images
+RUN pip install --upgrade \
+  "protobuf>=6.33.5" \
+  "jaraco.context>=6.1.0" \
+  wheel==0.46.2 \
+  && rm -rf \
+  /opt/venv/lib/python3.10/site-packages/setuptools/_vendor/jaraco.context* \
+  /opt/venv/lib/python3.10/site-packages/setuptools/_vendor/wheel*
 
 # ============================================================================
 # STAGE 2: Runtime Stage (Hardened)

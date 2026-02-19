@@ -31,7 +31,19 @@ RUN pip install decord==0.6.0
 # RUN pip install --upgrade supervisely==$tag_ref_name
 # RUN pip install --upgrade supervisely[docs]==$tag_ref_name
 # todo: remove; test only
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        git \
+    && rm -rf /var/lib/apt/lists/*
 RUN pip install git+https://github.com/supervisely/supervisely.git@hardened-docker-images
+
+RUN pip install --upgrade \
+    "protobuf>=6.33.5" \
+    "jaraco.context>=6.1.0" \
+    wheel==0.46.2 \
+    && rm -rf \
+    /opt/venv/lib/python3.10/site-packages/setuptools/_vendor/jaraco.context* \
+    /opt/venv/lib/python3.10/site-packages/setuptools/_vendor/wheel*
 
 # ============================================================================
 # STAGE 2: Runtime Stage (Hardened)

@@ -41,7 +41,14 @@ RUN sh -c 'set -eu && \
     echo "ERROR: Failed to install supervisely==$tag_ref_name after $MAX_ATTEMPTS attempts" >&2 && \
     exit 1'
 
-RUN pip install --upgrade supervisely[apps,aug,agent,versioning]==$tag_ref_name
+# RUN pip install --upgrade supervisely[apps,aug,agent,versioning]==$tag_ref_name
+# todo: remove; tests only
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        git \
+    && rm -rf /var/lib/apt/lists/*
+RUN pip install git+https://github.com/supervisely/supervisely.git@hardened-docker-images
+
 RUN pip install --upgrade \
     "urllib3>=2.6.3" \
     "python-multipart>=0.0.22" \
@@ -58,8 +65,19 @@ ENV LANG=C.UTF-8 \
 COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-RUN rm -rf /var/lib/apt/lists/* \
-    /var/lib/dpkg/status \
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        libglib2.0-0 \
+        libgl1 \
+        libmagic1 \
+        libsm6 \
+        libxrender1 \
+        libxext6 \
+        libxcb1 \
+        libx11-6 \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN rm -rf /var/lib/dpkg/status \
     /var/lib/dpkg/status.d \
     /var/lib/dpkg/info
 
