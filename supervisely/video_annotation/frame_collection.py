@@ -166,7 +166,7 @@ class FrameCollection(KeyIndexedCollection):
         :param default: The value that is returned if there is no key in the collection.
         :type default:  Optional[Any]
         :returns: Frame, Slice or PointcloudEpisodeFrame object
-        :rtype: :class:`KeyObject<~supervisely.collection.key_indexed_collection.KeyObject>`
+        :rtype: :class:`~supervisely.collection.key_indexed_collection.KeyObject`
 
         :Usage Example:
 
@@ -262,7 +262,7 @@ class FrameCollection(KeyIndexedCollection):
         :param key_id_map: KeyIdMap object.
         :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
         :returns: FrameCollection object.
-        :rtype: :class:`~supervisely.video_annotation.frame_collection.FrameCollection` object
+        :rtype: :class:`~supervisely.video_annotation.frame_collection.FrameCollection`
 
         :Usage Example:
 

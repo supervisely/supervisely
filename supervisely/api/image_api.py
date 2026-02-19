@@ -474,7 +474,7 @@ class ImageApi(RemoveableBulkModuleApi):
     @staticmethod
     def info_tuple_name():
         """
-        Get string name of :class:`ImageInfo<~supervisely.api.image_api.ImageInfo>` NamedTuple.
+        Get string name of :class:`~supervisely.api.image_api.ImageInfo` NamedTuple.
 
         :returns: NamedTuple name.
         :rtype: str
@@ -664,7 +664,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param extra_fields: List of extra fields to return. If None, returns no extra fields.
         :type extra_fields: List[str], optional
         :returns: Objects with image information from Supervisely.
-        :rtype: :class:`List[ImageInfo]<~supervisely.api.image_api.ImageInfo>`
+        :rtype: :class:`~supervisely.api.image_api.ImageInfo`
 
         :Usage Example:
 
@@ -814,7 +814,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param project_id: Project ID in which the Images are located.
         :type project_id: int
         :returns: Objects with image information from Supervisely.
-        :rtype: :class:`List[ImageInfo]<~supervisely.api.image_api.ImageInfo>`
+        :rtype: :class:`~supervisely.api.image_api.ImageInfo`
 
         :Usage Example:
 
@@ -888,7 +888,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param id: Image ID in Supervisely.
         :type id: int
         :returns: Object with image information from Supervisely.
-        :rtype: :class:`ImageInfo<~supervisely.api.image_api.ImageInfo>`
+        :rtype: :class:`~supervisely.api.image_api.ImageInfo`
 
         :Usage Example:
 
@@ -936,7 +936,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param force_metadata_for_links: If True, returns full_storage_url and path_original fields in :class:`~supervisely.api.image_api.ImageInfo`.
         :type force_metadata_for_links: bool, optional
         :returns: Object with image information from Supervisely.
-        :rtype: :class:`ImageInfo<~supervisely.api.image_api.ImageInfo>`
+        :rtype: :class:`~supervisely.api.image_api.ImageInfo`
         """
         return self._get_info_by_name(
             get_info_by_filters_fn=lambda module_name: self._get_info_by_filters(
@@ -961,7 +961,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param progress_cb: Function for tracking the progress.
         :type progress_cb: tqdm or callable, optional
         :returns: Objects with image information from Supervisely.
-        :rtype: :class:`List[ImageInfo]`
+        :rtype: List[:class:`~supervisely.api.image_api.ImageInfo`]
 
         :Usage Example:
 
@@ -2314,7 +2314,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param conflict_resolution: The strategy to resolve upload conflicts. 'Replace' option will replace the existing images in the dataset with the new images. The images that are being deleted are logged. 'Skip' option will ignore the upload of new images that would result in a conflict. An original image's ImageInfo list will be returned instead. 'Rename' option will rename the new images to prevent any conflict.
         :type conflict_resolution: Optional[Literal["rename", "skip", "replace"]]
         :returns: List with information about Images.
-        :rtype: :class:`List[ImageInfo]`
+        :rtype: List[:class:`~supervisely.api.image_api.ImageInfo`]
 
         :Usage Example:
 

@@ -111,7 +111,7 @@ class PointLocation(JsonSerializable):
         :param data: PointLocation in json format as a dict.
         :type data: dict
         :returns: PointLocation from json.
-        :rtype: :class:`PointLocation<~supervisely.geometry.point_location.PointLocation>`
+        :rtype: :class:`~supervisely.geometry.point_location.PointLocation`
 
         :Usage Example:
 
@@ -147,7 +147,7 @@ class PointLocation(JsonSerializable):
         :param factor: Scale parameter.
         :type factor: float
         :returns: Scaled PointLocation.
-        :rtype: :class:`PointLocation<~supervisely.geometry.point_location.PointLocation>`
+        :rtype: :class:`~supervisely.geometry.point_location.PointLocation`
 
         :Usage Example:
 
@@ -361,7 +361,7 @@ def row_col_list_to_points(
     :param do_round: Round PointLocation params if True.
     :type do_round: bool, optional
     :returns: List of PointLocation objects.
-    :rtype: :class:`List[PointLocation]`
+    :rtype: List[:class:`~supervisely.geometry.point_location.PointLocation`]
 
         :Usage Example:
 

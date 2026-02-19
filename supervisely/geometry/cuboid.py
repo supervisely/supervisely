@@ -229,7 +229,7 @@ class Cuboid(Geometry):
         List of :class:`~supervisely.geometry.point_location.PointLocation` objects.
 
         :returns: Cuboid nodes
-        :rtype: :class:`List[:class:`~supervisely.geometry.point_location.PointLocation`]`
+        :rtype: List[:class:`~supervisely.geometry.point_location.PointLocation`]
         """
         return self._points.copy()
 
@@ -239,7 +239,7 @@ class Cuboid(Geometry):
         List of :class:`~supervisely.geometry.cuboid.CuboidFace` objects.
 
         :returns: Cuboid edges
-        :rtype: :class:`List[:class:`~supervisely.geometry.cuboid.CuboidFace`]`
+        :rtype: List[:class:`~supervisely.geometry.cuboid.CuboidFace`]
         """
         return self._faces.copy()
 
@@ -353,7 +353,7 @@ class Cuboid(Geometry):
         :param rect: Rectangle for crop.
         :type rect: :class:`~supervisely.geometry.rectangle.Rectangle`
         :returns: List of Cuboids after crop.
-        :rtype: :class:`List[:class:`~supervisely.geometry.cuboid.Cuboid`]`
+        :rtype: List[:class:`~supervisely.geometry.cuboid.Cuboid`]
 
         :Usage Example:
 
@@ -416,7 +416,7 @@ class Cuboid(Geometry):
         :param out_size: Desired output image size (height, width) to which belongs :class:`~supervisely.geometry.cuboid.Cuboid` object.
         :type out_size: Tuple[int, int]
         :returns: Cuboid after resize.
-        :rtype: :class:`Cuboid<~supervisely.geometry.cuboid.Cuboid>`
+        :rtype: :class:`~supervisely.geometry.cuboid.Cuboid`
 
         :Usage Example:
 

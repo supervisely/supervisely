@@ -1,5 +1,5 @@
 # coding: utf-8
-"""Tag can be attached to whole image and/or to individual :class:`Label<~supervisely.annotation.label.Label>`"""
+"""Tag can be attached to whole image and/or to individual :class:`~supervisely.annotation.label.Label`"""
 
 # docs
 from __future__ import annotations
@@ -13,7 +13,7 @@ from supervisely.collection.key_indexed_collection import KeyObject
 
 
 class TagJsonFields:
-    """Json fields for :class:`Annotation<~supervisely.annotation.tag.Tag>`"""
+    """Json fields for :class:`~supervisely.annotation.tag.Tag`"""
 
     TAG_NAME = "name"
     """"""
@@ -93,10 +93,10 @@ class Tag(KeyObject):
     @property
     def meta(self) -> TagMeta:
         """
-        General information about Tag. When creating a new Tag, it's value is automatically cross-checked against :class:`TagValueType<~supervisely.annotation.tag_meta.TagValueType>` to make sure that value is valid.
+        General information about Tag. When creating a new Tag, it's value is automatically cross-checked against :class:`~supervisely.annotation.tag_meta.TagValueType` to make sure that value is valid.
 
         :returns: TagMeta object
-        :rtype: :class:`TagMeta<~supervisely.annotation.tag_meta.TagMeta>`
+        :rtype: :class:`~supervisely.annotation.tag_meta.TagMeta`
 
         :Usage Example:
 
@@ -114,7 +114,7 @@ class Tag(KeyObject):
     @property
     def value(self) -> str or int or float:
         """
-        Tag value. Return type depends on :class:`TagValueType<~supervisely.annotation.tag_meta.TagValueType>`.
+        Tag value. Return type depends on :class:`~supervisely.annotation.tag_meta.TagValueType`.
 
         :returns: Tag value
         :rtype: str, int or float or None
@@ -238,7 +238,7 @@ class Tag(KeyObject):
         :param tag_meta_collection: TagMetaCollection object.
         :type tag_meta_collection: :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection`
         :returns: Tag object
-        :rtype: :class:`Tag<~supervisely.annotation.tag.Tag>`
+        :rtype: :class:`~supervisely.annotation.tag.Tag`
 
         :Usage Example:
 
@@ -398,7 +398,7 @@ class Tag(KeyObject):
         :param created_at: Date and Time when Tag was created. Date Format is the same as in "updated_at" parameter.
         :type created_at: str, optional
         :returns: New instance of Tag object
-        :rtype: :class:`Tag<~supervisely.annotation.tag.Tag>`
+        :rtype: :class:`~supervisely.annotation.tag.Tag`
 
         :Usage Example:
 

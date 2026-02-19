@@ -184,7 +184,7 @@ class Mask3D(Geometry):
         convert_to_ras: bool = True,
     ):
         """
-        Mask 3D geometry for a single :class:`Label<~supervisely.annotation.label.Label>`. :class:`Mask3D<~supervisely.geometry.mask_3d.Mask3D>` object is immutable.
+        Mask 3D geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.mask_3d.Mask3D` object is immutable.
 
         :param data: Mask 3D mask data. Must be a numpy array with only 2 unique values: [0, 1] or [0, 255] or [False, True].
         :type data: np.ndarray
@@ -366,7 +366,7 @@ class Mask3D(Geometry):
         Load figure geometry from file.
 
         :param figure: Spatial figure
-        :type figure: :class:`~supervisely.volume_annotation.volume_figure.VolumeFigure`
+        :type figure: :class:`~supervisely.geometry.volume_figure.VolumeFigure`
         :param file_path: Path to nrrd file with data
         :type file_path: str
         """

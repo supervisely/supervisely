@@ -20,7 +20,7 @@ from supervisely.sly_logger import logger
 
 
 class ObjClassJsonFields:
-    """Json fields for :class:`Annotation<~supervisely.annotation.obj_class.ObjClass>`"""
+    """Json fields for :class:`~supervisely.annotation.obj_class.ObjClass`"""
 
     ID = "id"
     """"""
@@ -434,7 +434,7 @@ class ObjClass(KeyObject, JsonSerializable):
 
         :param name: Class name.
         :type name: str
-        :param geometry_type: Defines the shape of ObjClass: :class:`Bitmap<~supervisely.geometry.bitmap.Bitmap>`, :class:`Cuboid<~supervisely.geometry.cuboid.Cuboid>`, :class:`Point<~supervisely.geometry.point.Point>`, :class:`Polygon<~supervisely.geometry.polygon.Polygon>`, :class:`Polyline<~supervisely.geometry.polyline.Polyline>`, :class:`Rectangle<~supervisely.geometry.rectangle.Rectangle>`.
+        :param geometry_type: Defines the shape of ObjClass: :class:`~supervisely.geometry.bitmap.Bitmap>`, :class:`~supervisely.geometry.cuboid.Cuboid>`, :class:`~supervisely.geometry.point.Point>`, :class:`~supervisely.geometry.polygon.Polygon>`, :class:`~supervisely.geometry.polyline.Polyline>`, :class:`~supervisely.geometry.rectangle.Rectangle>`.
         :type geometry_type: type
         :param color: :class:`[R, G, B]`, generates random color by default.
         :type color: List[int, int, int], optional
@@ -447,7 +447,7 @@ class ObjClass(KeyObject, JsonSerializable):
         :param description: Description of the class.
         :type description: str, optional
         :returns: New instance of ObjClass object
-        :rtype: :class:`ObjClass<~supervisely.annotation.obj_class.ObjClass>`
+        :rtype: :class:`~supervisely.annotation.obj_class.ObjClass`
 
         :Usage Example:
 

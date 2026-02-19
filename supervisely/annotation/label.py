@@ -717,7 +717,7 @@ class LabelBase:
         :param img_size: Input image size (height, width) of the Annotation to which Label belongs.
         :type img_size: Tuple[int, int]
         :returns: New instance of Label with flipped geometry
-        :rtype: :class:`Label<~supervisely.annotation.label.LabelBase>`
+        :rtype: :class:`~supervisely.annotation.label.LabelBase`
         """
         return self.clone(geometry=self.geometry.fliplr(img_size))
 
@@ -729,7 +729,7 @@ class LabelBase:
         :param img_size: Input image size (height, width) of the Annotation to which Label belongs.
         :type img_size: Tuple[int, int]
         :returns: New instance of Label with flipped geometry
-        :rtype: :class:`Label<~supervisely.annotation.label.LabelBase>`
+        :rtype: :class:`~supervisely.annotation.label.LabelBase`
         """
         return self.clone(geometry=self.geometry.flipud(img_size))
 
@@ -1034,7 +1034,7 @@ class LabelBase:
     #     However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
 
     #     :returns: New instance of Label with subpixel precision geometry
-    #     :rtype: :class:`Label<~supervisely.annotation.label.LabelBase>`
+    #     :rtype: :class:`~supervisely.annotation.label.LabelBase`
     #     """
     #     new_geometry = self.geometry._to_subpixel_coordinate_system()
     #     label = self.clone(geometry=new_geometry)

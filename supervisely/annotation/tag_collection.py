@@ -12,16 +12,17 @@ from supervisely.collection.key_indexed_collection import MultiKeyIndexedCollect
 
 
 class TagCollection(MultiKeyIndexedCollection):
-    """Collection with :class:`Tag<~supervisely.annotation.tag.Tag>` instances."""
+    """Collection with :class:`~supervisely.annotation.tag.Tag` instances."""
 
     item_type = Tag
 
     def __init__(self, items: Optional[List[Tag]] = None):
         """
-        Collection with :class:`Tag<~supervisely.annotation.tag.Tag>` instances. :class:`TagCollection<~supervisely.annotation.tag_collection.TagCollection>` object is immutable.
+        Collection with :class:`~supervisely.annotation.tag.Tag` instances. :class:`~supervisely.annotation.tag_collection.TagCollection` object is immutable.
 
-        :param items: List of Tags.
-        :type items: List[:class:`~supervisely.annotation.tag.Tag`]
+        :param items: List of :class:`~supervisely.annotation.tag.Tag` instances.
+        :type items: list, optional
+        :raises :class:`~supervisely.collection.key_indexed_collection.DuplicateKeyError`: if instance with given name already exist
 
         :Usage Example:
 
@@ -192,7 +193,7 @@ class TagCollection(MultiKeyIndexedCollection):
         :param tag_meta_collection: TagMetaCollection object.
         :type tag_meta_collection: :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection`
         :returns: TagCollection object
-        :rtype: :class:`TagCollection<~supervisely.annotation.tag_collection.TagCollection>`
+        :rtype: :class:`~supervisely.annotation.tag_collection.TagCollection`
 
         :Usage Example:
 

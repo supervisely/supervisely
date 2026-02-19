@@ -158,7 +158,7 @@ class PointcloudTagCollection(TagCollection):
     #     :param tag_name: Pointcloud Tag name.
     #     :type tag_name: str
     #     :returns: List of Pointcloud Tags.
-    #     :rtype: :class:`List[PointcloudTag]<~supervisely.pointcloud_annotation.pointcloud_tag.PointcloudTag>`
+    #     :rtype: List[:class:`~supervisely.pointcloud_annotation.pointcloud_tag.PointcloudTag`]
     #     """
     #     res = []
     #     for tag in self:
@@ -174,7 +174,7 @@ class PointcloudTagCollection(TagCollection):
     #     :param tag_name: Pointcloud Tag name.
     #     :type tag_name: str
     #     :returns: PointcloudTag object or None If no elements with provided name in collection.
-    #     :rtype: :class:`PointcloudTag<~supervisely.pointcloud_annotation.pointcloud_tag.PointcloudTag>` or :class:`NoneType<NoneType>`
+    #     :rtype: :class:`~supervisely.pointcloud_annotation.pointcloud_tag.PointcloudTag` or :class:`NoneType`
     #     :raises ValueError: If collection contains more than 1 tag with provided name.
     #     """
     #     res = []
@@ -197,7 +197,7 @@ class PointcloudTagCollection(TagCollection):
         :param key_id_map: Key ID map.
         :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`
         :returns: List of dictionaries in json format.
-        :rtype: :class:`List[Dict]`
+        :rtype: List[Dict]
 
         :Usage Example:
 
@@ -245,7 +245,7 @@ class PointcloudTagCollection(TagCollection):
         Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: List with dicts in json format.
-        :type data: :class:`List[Dict]`
+        :type data: List[Dict]
         :param tag_meta_collection: Tag metadata collection.
         :type tag_meta_collection: :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection`
         :param key_id_map: Key ID map.

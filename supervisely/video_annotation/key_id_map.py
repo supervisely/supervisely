@@ -672,7 +672,7 @@ class KeyIdMap:
     @classmethod
     def add_objects_to(cls, key_id_map: KeyIdMap, keys: List[UUID], ids: List[int]) -> None:
         """
-        Add :class:`VideoObject<~supervisely.video_annotation.video_object.VideoObject>` type of instances with given values(keys, ids) to KeyIdMap object.
+        Add :class:`~supervisely.video_annotation.video_object.VideoObject` type of instances with given values(keys, ids) to KeyIdMap object.
 
         :param key_id_map: KeyIdMap object.
         :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`
@@ -833,7 +833,7 @@ class KeyIdMap:
         ids: Optional[List[int]] = None,
     ) -> None:
         """
-        Remove :class:`VideoTag<~supervisely.video_annotation.video_tag.VideoTag>` type of instances with given keys or ids from KeyIdMap object.
+        Remove :class:`~supervisely.video_annotation.video_tag.VideoTag` type of instances with given keys or ids from KeyIdMap object.
 
         :param key_id_map: KeyIdMap object.
         :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`
@@ -868,7 +868,7 @@ class KeyIdMap:
         cls, key_id_map: KeyIdMap, key: Optional[UUID] = None, id: Optional[int] = None
     ) -> None:
         """
-        Remove :class:`VideoTag<~supervisely.video_annotation.video_tag.VideoTag>` type of instance with given key from KeyIdMap object.
+        Remove :class:`~supervisely.video_annotation.video_tag.VideoTag` type of instance with given key from KeyIdMap object.
 
         :param key_id_map: KeyIdMap object.
         :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`

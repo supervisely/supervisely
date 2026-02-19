@@ -252,7 +252,7 @@ class GraphNodes(Geometry):
         :param data: GraphNodes in json format as a dict.
         :type data: dict
         :returns: GraphNodes from json.
-        :rtype: :class:`GraphNodes<~supervisely.geometry.graph.GraphNodes>`
+        :rtype: :class:`~supervisely.geometry.graph.GraphNodes`
 
         :Usage Example:
 
@@ -377,7 +377,6 @@ class GraphNodes(Geometry):
         :type transform_fn: function
         :returns: GraphNodes after transformation.
         :rtype: :class:`~supervisely.geometry.graph.GraphNodes`
-        :rtype: :class:`GraphNodes<~supervisely.geometry.graph.GraphNodes>`
         """
         return self.__class__(
             nodes={node_id: transform_fn(node) for node_id, node in self._nodes.items()}
@@ -389,7 +388,6 @@ class GraphNodes(Geometry):
         :type transform_fn: function
         :returns: GraphNodes after transformation.
         :rtype: :class:`~supervisely.geometry.graph.GraphNodes`
-        :rtype: :class:`GraphNodes<~supervisely.geometry.graph.GraphNodes>`
         """
         return self.transform(lambda kp: kp.transform_location(transform_fn))
 
@@ -403,7 +401,6 @@ class GraphNodes(Geometry):
         :type out_size: Tuple[int, int]
         :returns: GraphNodes after resize.
         :rtype: :class:`~supervisely.geometry.graph.GraphNodes`
-        :rtype: :class:`GraphNodes<~supervisely.geometry.graph.GraphNodes>`
 
         :Usage Example:
 

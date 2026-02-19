@@ -457,7 +457,7 @@ class AnnotationApi(ModuleApi):
         :type force_metadata_for_links: bool, optional
 
         :returns: Information about Annotations.
-        :rtype: :class:`List[AnnotationInfo]`
+        :rtype: List[:class:`~supervisely.api.annotation_api.AnnotationInfo`]
 
         :Usage Example:
 
@@ -581,7 +581,7 @@ class AnnotationApi(ModuleApi):
         :type force_metadata_for_links: bool, optional
 
         :returns: Information about Annotations.
-        :rtype: :class:`List[Dict]`
+        :rtype: List[:class:`~supervisely.api.annotation_api.AnnotationInfo`]
 
         :Usage Example:
 

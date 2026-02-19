@@ -133,7 +133,7 @@ class Point(Geometry):
         :param created_at: Date and Time when Point was created. Date Format is the same as in "updated_at" parameter.
         :type created_at: str, optional
         :returns: :class:`~supervisely.geometry.point.Point` object
-        :rtype: :class:`Point<~supervisely.geometry.point.Point>`
+        :rtype: :class:`~supervisely.geometry.point.Point`
 
         :Usage Example:
 
@@ -182,7 +182,7 @@ class Point(Geometry):
         :param rect: Rectangle to crop Point from.
         :type rect: :class:`~supervisely.geometry.rectangle.Rectangle`
         :returns: List of Points from Rectangle.
-        :rtype: :class:`List[Point]`
+        :rtype: List[:class:`~supervisely.geometry.point.Point`]
 
         :Usage Example:
 

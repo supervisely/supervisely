@@ -387,7 +387,7 @@ class ProjectMeta(JsonSerializable):
         :param data: ProjectMeta in json format as a dict.
         :type data: dict
         :returns: ProjectMeta object
-        :rtype: :class:`ProjectMeta<~supervisely.project.project_meta.ProjectMeta>`
+        :rtype: :class:`~supervisely.project.project_meta.ProjectMeta`
 
         :Usage Example:
 

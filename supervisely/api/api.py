@@ -275,7 +275,7 @@ class Api:
         check_instance_version: Union[bool, str] = False,
     ):
         """
-        An API connection to the server with which you can communicate with your teams, workspaces and projects. :class:`Api<~supervisely.api.api.Api>` object is immutable.
+        An API connection to the server with which you can communicate with your teams, workspaces and projects. :class:`~supervisely.api.api.Api` object is immutable.
 
         :param server_address: Address of the server.
         :type server_address: str

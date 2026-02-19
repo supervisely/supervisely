@@ -1549,8 +1549,8 @@ class Dataset(KeyObject):
 
         :param item_name: Item name.
         :type item_name: str
-        :param ann: :class:`~supervisely.annotation.annotation.Annotation` object.
-        :type ann: :class:`Annotation<~supervisely.annotation.annotation.Annotation>`
+        :param ann: Annotation object.
+        :type ann: :class:`~supervisely.annotation.annotation.Annotation`
         :returns: None
         :rtype: NoneType
 
@@ -1642,12 +1642,12 @@ class Dataset(KeyObject):
 
     def get_item_paths(self, item_name: str) -> ItemPaths:
         """
-        Generates :class:`ItemPaths<~supervisely.project.project.ItemPaths>` object with paths to item and annotation directories for item with given name.
+        Generates :class:`~supervisely.project.project.ItemPaths` object with paths to item and annotation directories for item with given name.
 
         :param item_name: Item name.
         :type item_name: str
-        :returns: :class:`~supervisely.project.project.ItemPaths` object
-        :rtype: :class:`ItemPaths<~supervisely.project.project.ItemPaths>`
+        :returns: ItemPaths object
+        :rtype: :class:`~supervisely.project.project.ItemPaths`
 
         :Usage Example:
 
@@ -1708,7 +1708,7 @@ class Dataset(KeyObject):
 
     def delete_item(self, item_name: str) -> bool:
         """
-        Delete image, image info and annotation from :class:`Dataset<~supervisely.project.project.Dataset>`.
+        Delete image, image info and annotation from :class:`~supervisely.project.project.Dataset`.
 
         :param item_name: Item name.
         :type item_name: str
@@ -1846,8 +1846,8 @@ class Dataset(KeyObject):
 
         :param item_name: Item name.
         :type item_name: str
-        :param ann: :class:`~supervisely.annotation.annotation.Annotation` object.
-        :type ann: :class:`Annotation<~supervisely.annotation.annotation.Annotation>`
+        :param ann: Annotation object.
+        :type ann: :class:`~supervisely.annotation.annotation.Annotation`
         :returns: None
         :rtype: NoneType
 
@@ -3513,7 +3513,7 @@ class Project:
         Download project from Supervisely to the given directory.
 
         :param api: Supervisely API address and token.
-        :type api: :class:`Api<~supervisely.api.api.Api>`
+        :type api: :class:`~supervisely.api.api.Api`
         :param project_id: Supervisely downloadable project ID.
         :type project_id: int
         :param dest_dir: Destination directory.
@@ -4052,7 +4052,7 @@ class Project:
         :param dir: Path to project directory.
         :type dir: str
         :param api: Supervisely API address and token.
-        :type api: :class:`Api<~supervisely.api.api.Api>`
+        :type api: :class:`~supervisely.api.api.Api`
         :param workspace_id: Workspace ID, where project will be uploaded.
         :type workspace_id: int
         :param project_name: Name of the project in Supervisely. Can be changed if project with the same name is already exists.

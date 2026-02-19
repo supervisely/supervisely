@@ -48,7 +48,7 @@ class AlphaMask(Bitmap):
 
         :param data: AlphaMask mask data. Must be a numpy array with values in range [0, 255].
         :type data: np.ndarray
-        :param origin: :class:`PointLocation<~supervisely.geometry.point_location.PointLocation>`: top, left corner of AlphaMask. Position of the AlphaMask within image.
+        :param origin: :class:`~supervisely.geometry.point_location.PointLocation`: top, left corner of AlphaMask. Position of the AlphaMask within image.
         :type origin: :class:`~supervisely.geometry.point_location.PointLocation`, optional
         :param sly_id: AlphaMask ID in Supervisely server.
         :type sly_id: int, optional

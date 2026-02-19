@@ -1,5 +1,4 @@
 # coding: utf-8
-"""General information about :class:`Tag<~supervisely.annotation.tag.Tag>`"""
 
 from __future__ import annotations
 
@@ -29,7 +28,7 @@ class TagValueType:
 
 class TagMetaJsonFields:
     """
-    Json fields for :class:`TagMeta<~supervisely.annotation.tag_meta.TagMeta>`
+    Json fields for :class:`~supervisely.annotation.tag_meta.TagMeta`
     """
 
     ID = "id"
@@ -218,7 +217,7 @@ class TagMeta(KeyObject, JsonSerializable):
     @property
     def value_type(self) -> str:
         """
-        Value type. See possible value types in :class:`TagValueType<~supervisely.annotation.tag_meta.TagValueType>`.
+        Value type. See possible value types in :class:`~supervisely.annotation.tag_meta.TagValueType`.
 
         :returns: Value type
         :rtype: str
@@ -464,7 +463,7 @@ class TagMeta(KeyObject, JsonSerializable):
         :param data: TagMeta in json format as a dict.
         :type data: dict
         :returns: TagMeta object
-        :rtype: :class:`TagMeta<~supervisely.annotation.tag_meta.TagMeta>`
+        :rtype: :class:`~supervisely.annotation.tag_meta.TagMeta`
 
         :Usage Example:
 
@@ -533,7 +532,7 @@ class TagMeta(KeyObject, JsonSerializable):
         :type value: str
         :raises ValueError: if object's value type is not "oneof_string" or already exists in a list
         :returns: New instance of TagMeta object
-        :rtype: :class:`TagMeta<~supervisely.annotation.tag_meta.TagMeta>`
+        :rtype: :class:`~supervisely.annotation.tag_meta.TagMeta`
 
         :Usage Example:
 
@@ -724,7 +723,7 @@ class TagMeta(KeyObject, JsonSerializable):
         :param applicable_classes: Defines applicability of Tag only to certain classes.
         :type applicable_classes: List[str], optional
         :returns: New instance of TagMeta object
-        :rtype: :class:`TagMeta<~supervisely.annotation.tag_meta.TagMeta>`
+        :rtype: :class:`~supervisely.annotation.tag_meta.TagMeta`
 
         :Usage Example:
 

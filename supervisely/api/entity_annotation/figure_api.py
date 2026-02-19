@@ -89,7 +89,7 @@ class FigureInfo(NamedTuple):
 
 class FigureApi(RemoveableBulkModuleApi):
     """
-    Figure object for :class:`VideoAnnotation<~supervisely.video_annotation.video_annotation.VideoAnnotation>`.
+    Figure object for :class:`~supervisely.video_annotation.video_annotation.VideoAnnotation`.
     """
 
     def _remove_batch_api_method_name(self):

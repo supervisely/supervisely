@@ -1,5 +1,5 @@
 # coding: utf-8
-"""collection with :class:`ObjClass<~supervisely.annotation.obj_class.ObjClass>` instances"""
+"""collection with :class:`~supervisely.annotation.obj_class.ObjClass` instances"""
 
 # docs
 from __future__ import annotations
@@ -17,14 +17,16 @@ from supervisely.io.json import JsonSerializable
 
 
 class ObjClassCollection(KeyIndexedCollection, JsonSerializable):
-    """Collection with :class:`ObjClass<~supervisely.annotation.obj_class.ObjClass>` instances. :class:`ObjClassCollection<~supervisely.annotation.obj_class_collection.ObjClassCollection>` object is immutable."""
+    """Collection with :class:`~supervisely.annotation.obj_class.ObjClass` instances. :class:`~supervisely.annotation.obj_class_collection.ObjClassCollection` object is immutable."""
 
     item_type = ObjClass
 
     def __init__(self, items: Optional[List[ObjClass]] = None):
         """
-        Collection with :class:`ObjClass<~supervisely.annotation.obj_class.ObjClass>` instances. :class:`ObjClassCollection<~supervisely.annotation.obj_class_collection.ObjClassCollection>` object is immutable.
+        Collection with :class:`~supervisely.annotation.obj_class.ObjClass` instances. :class:`~supervisely.annotation.obj_class_collection.ObjClassCollection` object is immutable.
 
+        :param items: List of :class:`~supervisely.annotation.obj_class.ObjClass` instances.
+        :type items: list, optional
         :raises :class:`~supervisely.collection.key_indexed_collection.DuplicateKeyError`: if instance with given name already exist
 
         :Usage Example:
@@ -217,7 +219,7 @@ class ObjClassCollection(KeyIndexedCollection, JsonSerializable):
         :param data: List with dicts in json format.
         :type data: List[dict]
         :returns: ObjClassCollection object
-        :rtype: :class:`ObjClassCollection<~supervisely.annotation.obj_class_collection.ObjClassCollection>`
+        :rtype: :class:`~supervisely.annotation.obj_class_collection.ObjClassCollection`
 
         :Usage Example:
 

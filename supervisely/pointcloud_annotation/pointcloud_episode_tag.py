@@ -154,7 +154,7 @@ class PointcloudEpisodeTag(VideoTag):
 
         :param meta: General information about pointcloud episode tag.
         :type meta: :class:`~supervisely.annotation.tag_meta.TagMeta`, optional
-        :param value: PointcloudEpisodeTag value. Depends on TagValueType of :class:`TagMeta<~supervisely.annotation.tag_meta.TagMeta>`.
+        :param value: PointcloudEpisodeTag value. Depends on TagValueType of :class:`~supervisely.annotation.tag_meta.TagMeta`.
         :type value: Optional[Union[str, int, float]]
         :param frame_range: PointcloudEpisodeTag frame range.
         :type frame_range: Optional[Union[Tuple[int, int], List[int, int]]]

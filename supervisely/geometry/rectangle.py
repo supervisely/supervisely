@@ -485,7 +485,7 @@ class Rectangle(Geometry):
         """
         Create Rectangle from given geometry objects.
 
-        :param geometries: List of geometry type objects: :class:`Bitmap<~supervisely.geometry.bitmap.Bitmap>`, :class:`Cuboid<~supervisely.geometry.cuboid.Cuboid>`, :class:`Point<~supervisely.geometry.point.Point>`, :class:`Polygon<~supervisely.geometry.polygon.Polygon>`, :class:`Polyline<~supervisely.geometry.polyline.Polyline>`, :class:`Rectangle<~supervisely.geometry.rectangle.Rectangle>`, :class:`Graph<~supervisely.geometry.graph.GraphNodes>`.
+        :param geometries: List of geometry type objects: :class:`~supervisely.geometry.bitmap.Bitmap>`, :class:`~supervisely.geometry.cuboid.Cuboid>`, :class:`~supervisely.geometry.point.Point>`, :class:`~supervisely.geometry.polygon.Polygon>`, :class:`~supervisely.geometry.polyline.Polyline>`, :class:`~supervisely.geometry.rectangle.Rectangle>`, :class:`~supervisely.geometry.graph.GraphNodes>`.
         :type geometries: List[:class:`~supervisely.geometry.geometry.Geometry`]
         :returns: Rectangle from given geometry objects.
         :rtype: :class:`~supervisely.geometry.rectangle.Rectangle`

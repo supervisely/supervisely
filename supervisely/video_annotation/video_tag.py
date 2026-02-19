@@ -363,7 +363,7 @@ class VideoTag(Tag):
 
         :param meta: General information about VideoTag.
         :type meta: :class:`~supervisely.annotation.tag_meta.TagMeta`, optional
-        :param value: VideoTag value. Depends on TagValueType of :class:`TagMeta<~supervisely.annotation.tag_meta.TagMeta>`.
+        :param value: VideoTag value. Depends on TagValueType of :class:`~supervisely.annotation.tag_meta.TagMeta`.
         :type value: str or int or float or None, optional
         :param frame_range: VideoTag frame range.
         :type frame_range: Tuple[int, int] or List[int, int], optional

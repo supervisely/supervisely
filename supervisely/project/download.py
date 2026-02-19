@@ -303,7 +303,7 @@ def download_fast(
     Automatically detects project type.
 
     :param api: Supervisely API address and token.
-    :type api: :class:`Api<~supervisely.api.api.Api>`
+    :type api: :class:`~supervisely.api.api.Api`
     :param project_id: Supervisely downloadable project ID.
     :type project_id: int
     :param dest_dir: Destination directory.
@@ -315,7 +315,7 @@ def download_fast(
     :param progress_cb: Function for tracking download progress.
     :type progress_cb: tqdm or callable, optional
     :param semaphore: Semaphore to limit the number of concurrent downloads of items.
-    :type semaphore: :class:`asyncio.Semaphore`, optional
+    :type semaphore: asyncio.Semaphore, optional
     :param only_image_tags: Download project with only images tags (without objects tags).
     :type only_image_tags: bool, optional
     :param save_image_info: Download images infos or not.

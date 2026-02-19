@@ -12,13 +12,13 @@ from supervisely.io.json import JsonSerializable
 
 
 class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
-    """Collection with :class:`TagMeta<~supervisely.annotation.tag_meta.TagMeta>` instances."""
+    """Collection with :class:`~supervisely.annotation.tag_meta.TagMeta` instances."""
 
     item_type = TagMeta
 
     def __init__(self, items: Optional[List[TagMeta]] = None):
         """
-        Collection with :class:`TagMeta<~supervisely.annotation.tag_meta.TagMeta>` instances. :class:`TagMetaCollection<~supervisely.annotation.tag_meta_collection.TagMetaCollection>` object is immutable.
+        Collection with :class:`~supervisely.annotation.tag_meta.TagMeta` instances. :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection` object is immutable.
 
         :param items: List of TagMetas.
         :type items: List[:class:`~supervisely.annotation.tag_meta.TagMeta`]
@@ -219,7 +219,7 @@ class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
         :param data: List with dicts in json format.
         :type data: List[dict]
         :returns: TagMetaCollection object
-        :rtype: :class:`TagMetaCollection<~supervisely.annotation.tag_meta_collection.TagMetaCollection>`
+        :rtype: :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection`
 
         :Usage Example:
 

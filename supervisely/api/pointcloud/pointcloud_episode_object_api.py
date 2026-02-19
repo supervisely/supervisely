@@ -6,7 +6,7 @@ from supervisely.api.pointcloud.pointcloud_episode_tag_api import PointcloudEpis
 
 class PointcloudEpisodeObjectApi(PointcloudObjectApi):
     """
-    PointcloudEpisodeObject for :class:`PointcloudEpisodeAnnotation<~supervisely.pointcloud_annotation.pointcloud_episode_annotation.PointcloudEpisodeAnnotation>`.
+    PointcloudEpisodeObject for :class:`~supervisely.pointcloud_annotation.pointcloud_episode_annotation.PointcloudEpisodeAnnotation`.
     """
 
     def __init__(self, api):

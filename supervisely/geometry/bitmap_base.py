@@ -36,9 +36,9 @@ def resize_origin_and_bitmap(
     :type origin: :class:`~supervisely.geometry.point_location.PointLocation`
     :param bitmap: Numpy array to resize.
     :type bitmap: np.ndarray
-    :param in_size: Input image size (height, width) to which belongs :class:`PointLocation<~supervisely.geometry.point_location.PointLocation>` object and numpy array.
+    :param in_size: Input image size (height, width) to which belongs :class:`~supervisely.geometry.point_location.PointLocation` object and numpy array.
     :type in_size: Tuple[int, int]
-    :param out_size: Desired output image size (height, width) to which belongs :class:`PointLocation<~supervisely.geometry.point_location.PointLocation>` object and numpy array.
+    :param out_size: Desired output image size (height, width) to which belongs :class:`~supervisely.geometry.point_location.PointLocation` object and numpy array.
     :type out_size: Tuple[int, int]
     :returns: Point location and numpy array
     :rtype: :class:`~supervisely.geometry.point_location.PointLocation`, :class:`np.ndarray`
