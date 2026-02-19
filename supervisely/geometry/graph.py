@@ -628,6 +628,7 @@ class GraphNodes(Geometry):
     def validate(self, name: str, settings: Dict) -> None:
         """
         Checks the graph for correctness and compliance with the template
+
         :param name: Name of the geometry.
         :type name: str
         :param settings: Settings of the geometry.
@@ -669,6 +670,7 @@ class GraphNodes(Geometry):
     def config_from_json(config: Dict) -> Dict:
         """
         Convert graph template from json format
+
         :param config: dictionary(graph template) in json format
         :type config: dict
         :returns: dictionary(graph template) in json format
@@ -687,7 +689,8 @@ class GraphNodes(Geometry):
     @staticmethod
     def config_to_json(config: Dict) -> Dict:
         """
-        Convert graph template in json format
+        Convert graph template to json format
+
         :param config: dictionary(graph template)
         :type config: dict
         :returns: dictionary(graph template) in json format
@@ -698,9 +701,7 @@ class GraphNodes(Geometry):
     @classmethod
     def allowed_transforms(cls):
         """
-        allowed_transforms
-        :returns: List of allowed transforms
-        :rtype: List[Type[Geometry]]
+        Returns the allowed transforms for the GraphNodes.
         """
         from supervisely.geometry.any_geometry import AnyGeometry
         from supervisely.geometry.rectangle import Rectangle

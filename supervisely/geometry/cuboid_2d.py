@@ -332,8 +332,11 @@ class Cuboid2d(GraphNodes):
     def config_from_json(config: Dict) -> Dict:
         """
         Convert graph template from json format
+
         :param config: dictionary(graph template) in json format
-        :returns: dictionary(graph template)
+        :type config: dict
+        :returns: dictionary(graph template) in json format
+        :rtype: dict
         """
 
         try:
@@ -348,8 +351,10 @@ class Cuboid2d(GraphNodes):
     @staticmethod
     def config_to_json(config: Dict) -> Dict:
         """
-        Convert graph template in json format
+        Convert graph template to json format
+
         :param config: dictionary(graph template)
+        :type config: dict
         :returns: dictionary(graph template) in json format
         """
         return Cuboid2d._transform_config_colors(config, rgb2hex)
@@ -357,7 +362,7 @@ class Cuboid2d(GraphNodes):
     @classmethod
     def allowed_transforms(cls):
         """
-        allowed_transforms
+        Returns the allowed transforms for the Cuboid2d.
         """
         from supervisely.geometry.any_geometry import AnyGeometry
         from supervisely.geometry.rectangle import Rectangle

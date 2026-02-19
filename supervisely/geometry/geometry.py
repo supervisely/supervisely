@@ -275,29 +275,64 @@ class Geometry(JsonSerializable):
         return deepcopy(self)
 
     def validate(self, obj_class_shape, settings):
-        """ """
+        """
+        Validate geometry.
+
+        :param obj_class_shape: Object class shape.
+        :type obj_class_shape: str
+        :param settings: Settings.
+        :type settings: dict
+        :raises ValueError: if geometry validation error
+        """
         if obj_class_shape != ANY_SHAPE:
             if self.geometry_name() != obj_class_shape:
                 raise ValueError("Geometry validation error: shape names are mismatched!")
 
     @staticmethod
     def config_from_json(config):
-        """ """
+        """
+        Convert geometry config from json format
+
+        :param config: dictionary(geometry config) in json format
+        :type config: dict
+        :returns: dictionary(geometry config) in json format
+        :rtype: dict
+        """
         return config
 
     @staticmethod
     def config_to_json(config):
-        """ """
+        """
+        Convert geometry config to json format
+
+        :param config: dictionary(geometry config)
+        :type config: dict
+        :returns: dictionary(geometry config) in json format
+        :rtype: dict
+        """
         return config
 
     @classmethod
     def allowed_transforms(cls):
-        """ """
+        """
+        Returns the allowed transforms for the Geometry.
+        """
         # raise NotImplementedError("{!r}".format(cls.geometry_name()))
         return []
 
     def convert(self, new_geometry, contour_radius=0, approx_epsilon=None):
-        """ """
+        """
+        Convert geometry to another geometry shape.
+
+        :param new_geometry: New geometry shape.
+        :type new_geometry: :class:`~supervisely.geometry.geometry.Geometry`
+        :param contour_radius: Radius of the contour.
+        :type contour_radius: int
+        :param approx_epsilon: Approximation epsilon.
+        :type approx_epsilon: float
+        :returns: List of geometries.
+        :rtype: List[:class:`~supervisely.geometry.geometry.Geometry`]
+        """
         from supervisely.geometry.any_geometry import AnyGeometry
 
         if type(self) == new_geometry or new_geometry == AnyGeometry:

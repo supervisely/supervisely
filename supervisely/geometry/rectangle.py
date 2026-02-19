@@ -737,7 +737,9 @@ class Rectangle(Geometry):
 
     @classmethod
     def allowed_transforms(cls):
-        """ """
+        """
+        Returns the allowed transforms for the Rectangle.
+        """
         from supervisely.geometry.alpha_mask import AlphaMask
         from supervisely.geometry.any_geometry import AnyGeometry
         from supervisely.geometry.bitmap import Bitmap

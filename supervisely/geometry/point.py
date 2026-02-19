@@ -422,7 +422,9 @@ class Point(Geometry):
 
     @classmethod
     def allowed_transforms(cls):
-        """ """
+        """
+        Returns the allowed transforms for the Point.
+        """
         from supervisely.geometry.any_geometry import AnyGeometry
 
         return [AnyGeometry]

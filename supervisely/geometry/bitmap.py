@@ -571,7 +571,7 @@ class Bitmap(BitmapBase):
 
     @classmethod
     def allowed_transforms(cls):
-        """allowed_transforms"""
+        """Returns the allowed transforms for the AlphaMask."""
         from supervisely.geometry.alpha_mask import AlphaMask
         from supervisely.geometry.any_geometry import AnyGeometry
         from supervisely.geometry.polygon import Polygon
