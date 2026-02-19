@@ -45,7 +45,7 @@ from supervisely.imaging import image as sly_image
 
 class PointcloudInfo(NamedTuple):
     """
-    Object with :class:`~supervisely.pointcloud.pointcloud.Pointcloud` parameters from Supervisely.
+    NamedTuple with pointcloud information from Supervisely.
 
     :Usage Example:
 

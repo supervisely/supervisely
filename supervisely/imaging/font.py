@@ -1,4 +1,4 @@
-"""Font module."""
+"""Font utilities."""
 
 # coding: utf-8
 

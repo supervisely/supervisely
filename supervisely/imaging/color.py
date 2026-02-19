@@ -1,4 +1,4 @@
-"""Color module."""
+"""Color utilities."""
 
 # coding: utf-8
 from __future__ import annotations

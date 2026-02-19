@@ -277,7 +277,7 @@ class BlobImageInfo:
 
 class ImageInfo(NamedTuple):
     """
-    Object with image parameters from Supervisely.
+    NamedTuple with image information from Supervisely.
 
     :Usage Example:
 

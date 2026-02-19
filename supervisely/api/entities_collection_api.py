@@ -119,7 +119,7 @@ class CollectionItem:
 
 class EntitiesCollectionInfo(NamedTuple):
     """
-    Object with entitites collection parameters from Supervisely.
+    NamedTuple with entities collection information from Supervisely.
 
     :Usage Example:
 

@@ -39,7 +39,7 @@ except ImportError:
 
 class VolumeInfo(NamedTuple):
     """
-    Object with :class:`~supervisely.volume.volume.Volume` parameters from Supervisely.
+    NamedTuple with Volume information from Supervisely.
 
     :Usage Example:
 

@@ -73,7 +73,7 @@ from supervisely.video.video import (
 
 class VideoInfo(NamedTuple):
     """
-    Object with :class:`~supervisely.video.video.Video` parameters from Supervisely.
+    NamedTuple with video information from Supervisely.
 
     :Usage Example:
 
