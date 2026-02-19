@@ -371,6 +371,10 @@ class Cuboid2dTemplate(Cuboid2d, Geometry):
     """
 
     def __init__(self, color: List[int]):
+        """Initialize Cuboid2dTemplate.
+
+        :param color: RGB color for template vertices [r, g, b].
+        """
         _validate_color(color)
         self._point_names = []
         self._config = self._create_template(color)

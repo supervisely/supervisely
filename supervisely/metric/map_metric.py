@@ -19,6 +19,13 @@ class MAPMetric(MetricsBase):
     """Computes mean average precision for object detection given class mapping and IoU threshold."""
 
     def __init__(self, class_mapping, iou_threshold, confidence_tag_name='confidence', confidence_threshold=0.0):
+        """Initialize MAPMetric.
+
+        :param class_mapping: Dict mapping ground-truth class names to prediction class names (1-to-1).
+        :param iou_threshold: IoU threshold for matching boxes.
+        :param confidence_tag_name: Tag name for detection confidence.
+        :param confidence_threshold: Min confidence for predictions.
+        """
         if len(class_mapping) < 1:
             raise RuntimeError('At least one classes pair should be defined!')
         self._gt_to_pred_class_mapping = class_mapping.copy()

@@ -28,6 +28,21 @@ class SelectWorkspace(Widget):
         size: Literal["large", "small", "mini"] = None,
         widget_id: str = None,
     ):
+        """Initialize SelectWorkspace.
+
+        :param default_id: Initial workspace ID.
+        :type default_id: int, optional
+        :param team_id: Team to list workspaces from.
+        :type team_id: int, optional
+        :param compact: If True, compact layout (requires team_id).
+        :type compact: bool
+        :param show_label: If True, show label.
+        :type show_label: bool
+        :param size: Size: "large", "small", or "mini".
+        :type size: Literal["large", "small", "mini"], optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         self._api = Api()
         self._default_id = default_id
         self._team_id = team_id

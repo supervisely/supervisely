@@ -5,31 +5,7 @@ from supervisely.app.widgets import Widget
 
 
 class Badge(Widget):
-    """Displays notification count or dot on buttons, text, or other elements.
-    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/status-elements/badge>`_
-        (including screenshots and examples).
-
-    :param value: Value to be displayed on the badge.
-    :type value: Optional[Union[int, str, float]]
-    :param widget: Widget to be displayed on the badge.
-    :type widget: Optional[:class:`~supervisely.app.widgets.widget.Widget`]
-    :param max: Maximum value of the badge. If value is greater than max, max will be displayed on the badge.
-    :type max: Optional[Union[int, float]]
-    :param is_dot: If True, the badge will be displayed as a dot.
-    :type is_dot: Optional[bool]
-    :param hidden: If True, the badge will be hidden.
-    :type hidden: Optional[bool]
-    :param widget_id: Unique widget identifier.
-    :type widget_id: Optional[str]
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            from supervisely.app.widgets import Badge
-
-            badge = Badge(value=5, max=10)
-    """
+    """Displays notification count or dot on buttons, text, or other elements."""
 
     def __init__(
         self,
@@ -40,6 +16,27 @@ class Badge(Widget):
         hidden: Optional[bool] = False,
         widget_id: Optional[str] = None,
     ):
+        """
+        :param value: Value to display on the badge.
+        :type value: Union[int, str, float], optional
+        :param widget: Widget to wrap with badge (shows dot if value is None).
+        :type widget: Widget, optional
+        :param max: Max value; if value > max, shows max instead.
+        :type max: Union[int, float], optional
+        :param is_dot: Show as dot instead of number.
+        :type is_dot: bool, optional
+        :param hidden: Hide the badge.
+        :type hidden: bool, optional
+        :param widget_id: Widget identifier.
+        :type widget_id: str, optional
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import Badge
+                badge = Badge(value=5, max=10)
+        """
         self._value = value
         self._widget = widget
         self._max = max if type(max) in [int, float] else None

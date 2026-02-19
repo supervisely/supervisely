@@ -65,32 +65,23 @@ class FileInfo(NamedTuple):
 
 
 class FileApi(ModuleApiBase):
-    """
-    API for working with files. :class:`~supervisely.api.file_api.FileApi` object is immutable.
+    """API for working with files in Team Files."""
 
-    :param api: API connection to the server.
-    :type api: :class:`~supervisely.api.api.Api`
+    def __init__(self, api):
+        """Initialize FileApi.
 
-    :Usage Example:
+        :param api: API connection to the server.
+        :type api: :class:`~supervisely.api.api.Api`
 
-        .. code-block:: python
+        :Usage Example:
 
-            import os
-            from dotenv import load_dotenv
+            .. code-block:: python
 
-            import supervisely as sly
-
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            if sly.is_development():
-                load_dotenv(os.path.expanduser("~/supervisely.env"))
-
-            api = sly.Api.from_env()
-
-            team_id = 8
-            file_path = "/999_App_Test/"
-            files = api.file.list(team_id, file_path)
-    """
+                import supervisely as sly
+                api = sly.Api.from_env()
+                files = api.file.list(team_id, file_path)
+        """
+        super().__init__(api)
 
     @staticmethod
     def info_sequence():

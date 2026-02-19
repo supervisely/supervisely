@@ -9,31 +9,23 @@ from supervisely.api.module_api import ApiField, ModuleApi
 
 
 class PluginApi(ModuleApi):
-    """
-    API for working with plugins. :class:`~supervisely.api.plugin_api.PluginApi` object is immutable.
+    """API for working with plugins."""
 
-    :param api: API connection to the server
-    :type api: :class:`~supervisely.api.api.Api`
+    def __init__(self, api):
+        """Initialize PluginApi.
 
-    :Usage Example:
+        :param api: API connection to the server.
+        :type api: :class:`~supervisely.api.api.Api`
 
-        .. code-block:: python
+        :Usage Example:
 
-            import os
-            from dotenv import load_dotenv
+            .. code-block:: python
 
-            import supervisely as sly
-
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            if sly.is_development():
-                load_dotenv(os.path.expanduser("~/supervisely.env"))
-
-            api = sly.Api.from_env()
-
-            team_id = 8
-            plugin_info = api.plugin.get_list(team_id)
-    """
+                import supervisely as sly
+                api = sly.Api.from_env()
+                plugin_info = api.plugin.get_list(team_id)
+        """
+        super().__init__(api)
 
     @staticmethod
     def info_sequence():

@@ -35,6 +35,19 @@ class EcosystemModelSelector(Widget):
     ]
 
     def __init__(self, frameworks: List[str] = None, task_types: List[str] = None, models: List[Dict] = None, api: Api = None, widget_id: str = None):
+        """Initialize EcosystemModelSelector.
+
+        :param frameworks: Optional list of framework names to filter by.
+        :type frameworks: List[str], optional
+        :param task_types: Optional list of task types to filter by.
+        :type task_types: List[str], optional
+        :param models: Optional pre-loaded models list.
+        :type models: List[Dict], optional
+        :param api: Supervisely API. Defaults to Api().
+        :type api: Api, optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         if api is None:
             api = Api()
         self.api = api

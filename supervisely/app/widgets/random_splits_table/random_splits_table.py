@@ -14,6 +14,19 @@ class RandomSplitsTable(Widget):
         disabled: Optional[bool] = False,
         widget_id: Optional[int] = None,
     ):
+        """Initialize RandomSplitsTable.
+
+        :param items_count: Total number of items.
+        :type items_count: int
+        :param start_train_percent: Initial train split percent (1-99).
+        :type start_train_percent: int, optional
+        :param disabled: If True, widget is disabled.
+        :type disabled: bool, optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: int, optional
+
+        :raises ValueError: If start_train_percent not in [1, 99].
+        """
         self._disabled = disabled
         if 1 <= start_train_percent <= 99:
             pass

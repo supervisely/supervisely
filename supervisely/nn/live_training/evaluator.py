@@ -23,6 +23,7 @@ class LiveEvaluator:
         ignore_index: int = 255,
         score_thr: float = None,
     ):
+        """Initialize LiveEvaluator. :param task_type: SEMANTIC_SEGMENTATION or OBJECT_DETECTION. :param class2idx: Class name to index. :param ema_alpha: EMA smoothing. :param ignore_index: Ignored class index. :param score_thr: Detection score threshold."""
         if not 0 < ema_alpha <= 1:
             raise ValueError(f"ema_alpha must be in (0, 1], got {ema_alpha}")
 

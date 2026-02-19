@@ -13,6 +13,13 @@ class RadioGroupWidget(BaseWidget):
         switch_keys: List[str],
         default_key: str = None,
     ) -> None:
+        """Initialize RadioGroupWidget.
+
+        :param name: Widget name.
+        :param radio_group: Group ID for state.
+        :param switch_keys: Keys for radio options.
+        :param default_key: Default selected key.
+        """
         super().__init__(name)
         self.radio_group = radio_group
         self.switch_keys = switch_keys

@@ -31,7 +31,19 @@ class RadioGroup(ConditionalWidget):
         gap: int = 10,
         widget_id: str = None,
     ) -> RadioGroup:
+        """Initialize RadioGroup.
 
+        :param items: List of RadioGroup.Item (value, label, optional content).
+        :type items: List[RadioGroup.Item]
+        :param size: Button size: "large", "small", or "mini".
+        :type size: Literal["large", "small", "mini"], optional
+        :param direction: "vertical" or "horizontal" layout.
+        :type direction: Literal["vertical", "horizontal"]
+        :param gap: Gap between buttons in pixels.
+        :type gap: int
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         self._changes_handled = False
         self._size = size
         self._gap = gap

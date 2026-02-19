@@ -95,6 +95,13 @@ class _PatchableJson(dict):
     """Base dict that can compute JSON patches and broadcast changes via websockets."""
 
     def __init__(self, field: Field, *args, **kwargs):
+        """Initialize _PatchableJson.
+
+        :param field: Field enum (STATE, DATA, or CONTEXT).
+        :type field: Field
+        :param args: Passed to dict().
+        :param kwargs: Passed to dict().
+        """
         super().__init__(*args, **kwargs)
         self._ws = WebsocketManager()
         self._last = copy.deepcopy(dict(self))

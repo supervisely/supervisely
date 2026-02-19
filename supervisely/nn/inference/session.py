@@ -668,6 +668,7 @@ class AsyncInferenceIterator:
     """Iterator over async inference results that polls pending results from a :class:`SessionJSON`."""
 
     def __init__(self, total, nn_api: SessionJSON, process_fn=None):
+        """Initialize AsyncInferenceIterator. :param total: Total items. :param nn_api: SessionJSON. :param process_fn: Optional result processor."""
         self.total = total
         self.nn_api = nn_api
         self.results_queue = []

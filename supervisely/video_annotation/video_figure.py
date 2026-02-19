@@ -34,70 +34,7 @@ class OutOfImageBoundsException(Exception):
 
 
 class VideoFigure:
-    """
-    Figure in video annotation: geometry tied to a VideoObject at a frame index. Immutable.
-
-    :param video_object: VideoObject object.
-    :type video_object: :class:`~supervisely.video_annotation.video_object.VideoObject`
-    :param geometry: Label Geometry object.
-    :type geometry: :class:`~supervisely.geometry.geometry.Geometry`
-    :param frame_index: Index of Frame to which VideoFigure belongs.
-    :type frame_index: int
-    :param key_id_map: KeyIdMap object.
-    :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
-    :param class_id: ID of VideoObject to which VideoFigure belongs.
-    :type class_id: int, optional
-    :param labeler_login: Login of the user who created VideoFigure.
-    :type labeler_login: str, optional
-    :param updated_at: Date and Time when VideoFigure was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
-    :type updated_at: str, optional
-    :param created_at: Date and Time when VideoFigure was created. Date Format is the same as in "updated_at" parameter.
-    :type created_at: str, optional
-    :param track_id: ID of the track to which VideoFigure belongs.
-    :type track_id: str, optional
-    :param smart_tool_input: Smart Tool parameters that were used for labeling.
-    :type smart_tool_input: dict, optional
-    :param priority: Priority of the figure (position of the figure relative to other overlapping or underlying figures).
-    :type priority: int, optional
-    :param status: Sets labeling status. Shows how label was created and corrected.
-    :type status: :class:`~supervisely.annotation.label.LabelingStatus`, optional
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import supervisely as sly
-
-            obj_class_car = sly.ObjClass('car', sly.Rectangle)
-            video_obj_car = sly.VideoObject(obj_class_car)
-            fr_index = 7
-            geometry = sly.Rectangle(0, 0, 100, 100)
-            video_figure_car = sly.VideoFigure(video_obj_car, geometry, fr_index)
-            video_figure_car_json = video_figure_car.to_json()
-            print(video_figure_car_json)
-            # Output: {
-            #     "key": "5e8afd2e26a54ab18154b355fa9665f8",
-            #     "objectKey": "5860b7a5519b4de7b3d9c1720a40b38a",
-            #     "geometryType": "rectangle",
-            #     "geometry": {
-            #         "points": {
-            #             "exterior": [
-            #                 [
-            #                     0,
-            #                     0
-            #                 ],
-            #                 [
-            #                     100,
-            #                     100
-            #                 ]
-            #             ],
-            #             "interior": []
-            #         }
-            #     },
-            #    "nnCreated": false,
-            #    "nnUpdated": false
-            # }
-    """
+    """Figure in video annotation: geometry tied to a VideoObject at a frame index. Immutable."""
 
     def __init__(
         self,
@@ -114,6 +51,46 @@ class VideoFigure:
         priority: Optional[int] = None,
         status: Optional[LabelingStatus] = None,
     ):
+        """
+        :param video_object: VideoObject for this figure.
+        :type video_object: :class:`~supervisely.video_annotation.video_object.VideoObject`
+        :param geometry: Geometry (Rectangle, Polygon, etc.).
+        :type geometry: :class:`~supervisely.geometry.geometry.Geometry`
+        :param frame_index: Index of frame to which figure belongs.
+        :type frame_index: int
+        :param key: UUID key. Auto-generated if not provided.
+        :type key: uuid.UUID, optional
+        :param class_id: ID of VideoObject class.
+        :type class_id: int, optional
+        :param labeler_login: Login of user who created the figure.
+        :type labeler_login: str, optional
+        :param updated_at: Last modification timestamp.
+        :type updated_at: str, optional
+        :param created_at: Creation timestamp.
+        :type created_at: str, optional
+        :param track_id: Track ID for tracking.
+        :type track_id: str, optional
+        :param smart_tool_input: Smart Tool parameters from labeling.
+        :type smart_tool_input: dict, optional
+        :param priority: Figure draw order (higher = on top).
+        :type priority: int, optional
+        :param status: Labeling status (manual, corrected, etc.).
+        :type status: :class:`~supervisely.annotation.label.LabelingStatus`, optional
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                obj_class_car = sly.ObjClass('car', sly.Rectangle)
+                video_obj_car = sly.VideoObject(obj_class_car)
+                fr_index = 7
+                geometry = sly.Rectangle(0, 0, 100, 100)
+                video_figure_car = sly.VideoFigure(video_obj_car, geometry, fr_index)
+                video_figure_car_json = video_figure_car.to_json()
+                print(video_figure_car_json)
+        """
         self._video_object = video_object
         self._set_geometry_inplace(geometry)
         self._frame_index = frame_index

@@ -37,32 +37,23 @@ from supervisely.volume_annotation.volume_object_collection import (
 
 
 class VolumeAnnotationAPI(EntityAnnotationAPI):
-    """
-    API for working with :class:`~supervisely.volume_annotation.volume_annotation.VolumeAnnotation`.
-    :class:`~supervisely.api.volume.volume_annotation_api.VolumeAnnotationAPI` object is immutable.
+    """API for working with VolumeAnnotation."""
 
-    :param api: API connection to the server.
-    :type api: :class:`~supervisely.api.api.Api`
+    def __init__(self, api):
+        """Initialize VolumeAnnotationAPI.
 
-    :Usage Example:
+        :param api: API connection to the server.
+        :type api: :class:`~supervisely.api.api.Api`
 
-        .. code-block:: python
+        :Usage Example:
 
-            import os
-            from dotenv import load_dotenv
+            .. code-block:: python
 
-            import supervisely as sly
-
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            if sly.is_development():
-                load_dotenv(os.path.expanduser("~/supervisely.env"))
-
-            api = sly.Api.from_env()
-
-            volume_id = 19581134
-            ann_info = api.volume.annotation.download(volume_id)
-    """
+                import supervisely as sly
+                api = sly.Api.from_env()
+                ann_info = api.volume.annotation.download(volume_id)
+        """
+        super().__init__(api)
 
     _method_download_bulk = "volumes.annotations.bulk.info"
     _entity_ids_str = ApiField.VOLUME_IDS

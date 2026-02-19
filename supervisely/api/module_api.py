@@ -783,6 +783,11 @@ class ModuleApiBase(_JsonConvertibleModule):
             pass
 
     def __init__(self, api: "Api"):
+        """Initialize ModuleApiBase.
+
+        :param api: API connection to the server.
+        :type api: :class:`~supervisely.api.api.Api`
+        """
         self._api = api
 
     def _add_sort_param(self, data):
@@ -1517,6 +1522,11 @@ class UpdateableModule(_JsonConvertibleModule):
     """API for updating entities."""
 
     def __init__(self, api):
+        """Initialize UpdateableModule.
+
+        :param api: API connection to the server.
+        :type api: :class:`~supervisely.api.api.Api`
+        """
         self._api = api
 
     def _get_update_method(self):

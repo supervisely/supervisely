@@ -8,49 +8,7 @@ from supervisely.nn.utils import ModelSource, _get_model_name
 
 
 class PretrainedModelsSelector(Widget):
-    """Widget for selecting pretrained models from a list of models. Groups models by architecture and task type.
-
-    :param models_list: List of models to display in the widget. See usage example for the expected format.
-    :type models_list: List[Dict]
-    :param widget_id: Unique identifier for the widget. If not provided, a unique ID will be generated.
-    :type widget_id: str, optional
-    :param sort_models: Whether to sort the task types within each architecture by name. Default is False.
-    :type sort_models: bool, optional
-
-    Usage example:
-
-    .. code-block:: python
-
-        from supervisely.app.widgets import PretrainedModelsSelector
-
-        models_list = [
-            {
-                "Model": "YOLOv8n-det",
-                "Size (pixels)": "640",
-                "mAP": "37.3",
-                "params (M)": "3.2",
-                "FLOPs (B)": "8.7",
-                "meta": {
-                    "taskType": "object detection",
-                    "weightsURL": "https://github.com/ultralytics/assets/releases/download/v0.0.0/YOLOv8n.pt",
-                },
-            },
-            {
-                "Model": "YOLOv8s-det",
-                "Size (pixels)": "640",
-                "mAP": "44.9",
-                "params (M)": "11.2",
-                "FLOPs (B)": "28.6",
-                "meta": {
-                    "taskType": "object detection",
-                    "weightsURL": "https://github.com/ultralytics/assets/releases/download/v0.0.0/YOLOv8s.pt",
-                },
-            },
-        ]
-
-        pretrained_models_selector = PretrainedModelsSelector(models_list=models_list, sort_models=False)
-
-    """
+    """Widget for selecting pretrained models from a list. Groups models by architecture and task type."""
 
     class Routes:
         """Route name constants for this widget."""
@@ -64,6 +22,27 @@ class PretrainedModelsSelector(Widget):
         widget_id: str = None,
         sort_models: bool = False,
     ):
+        """Initialize the PretrainedModelsSelector widget.
+
+        :param models_list: List of models to display. See usage example for expected format.
+        :type models_list: List[Dict]
+        :param widget_id: Unique identifier for the widget.
+        :type widget_id: str, optional
+        :param sort_models: Whether to sort task types within each architecture by name.
+        :type sort_models: bool, optional
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import PretrainedModelsSelector
+
+                models_list = [
+                    {"Model": "YOLOv8n-det", "meta": {"taskType": "object detection", "weightsURL": "https://..."}},
+                    {"Model": "YOLOv8s-det", "meta": {"taskType": "object detection", "weightsURL": "https://..."}},
+                ]
+                pretrained_models_selector = PretrainedModelsSelector(models_list=models_list, sort_models=False)
+        """
         self._api = Api.from_env()
 
         self._models = models_list

@@ -22,6 +22,7 @@ class TableWidget(BaseWidget):
         width: Optional[Union[int, str]] = None,
         page_size: int = 10,
     ) -> None:
+        """Initialize TableWidget. :param name: Widget name. :param data: Table data. :param click_data: Click-to-gallery data. :param click_gallery_id: Gallery ID. :param fix_columns: Frozen columns count. :param show_header_controls: Show header. :param main_column: Main column. :param width: Column width. :param page_size: Rows per page."""
         super().__init__(name=name)
         self.data = data
         self.fix_columns = fix_columns

@@ -27,6 +27,35 @@ class Slider(Widget):
         widget_id: str = None,
         style: str = "padding: 20px",
     ):
+        """Initialize Slider.
+
+        :param value: Initial value (int or [min, max] if range=True).
+        :type value: Union[int, List[int]]
+        :param min: Minimum value.
+        :type min: int
+        :param max: Maximum value.
+        :type max: int
+        :param step: Step size.
+        :type step: int
+        :param show_input: If True, show numeric input.
+        :type show_input: bool
+        :param show_input_controls: If True, show +/- buttons.
+        :type show_input_controls: bool
+        :param show_stops: If True, show stop marks.
+        :type show_stops: bool
+        :param show_tooltip: If True, show value tooltip.
+        :type show_tooltip: bool
+        :param range: If True, select range [min, max].
+        :type range: bool
+        :param vertical: If True, vertical orientation.
+        :type vertical: bool
+        :param height: Height in px (for vertical).
+        :type height: int, optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        :param style: CSS style string.
+        :type style: str
+        """
         self._value = value
         self._min = min
         self._max = max

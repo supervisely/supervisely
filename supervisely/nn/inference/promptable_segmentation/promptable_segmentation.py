@@ -23,6 +23,7 @@ class PromptableSegmentation(Inference):
         sliding_window_mode: Optional[Literal["basic", "advanced", "none"]] = "basic",
         use_gui: Optional[bool] = False,
     ):
+        """See :class:`~supervisely.nn.inference.inference.Inference` for params."""
         Inference.__init__(self, model_dir, custom_inference_settings, sliding_window_mode, use_gui)
         logger.debug(
             "Smart cache params",

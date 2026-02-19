@@ -21,6 +21,19 @@ class AgentSelector(Widget):
         compact: bool = False,
         widget_id=None,
     ):
+        """Initialize AgentSelector.
+
+        :param team_id: Team ID to list agents from.
+        :type team_id: int
+        :param show_only_gpu: If True, show only agents with GPU.
+        :type show_only_gpu: bool
+        :param show_only_running: If True, show only running agents.
+        :type show_only_running: bool
+        :param compact: If True, use compact display mode.
+        :type compact: bool
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         self._team_id = team_id
         self._show_any_status = not show_only_running
         self._show_public = True

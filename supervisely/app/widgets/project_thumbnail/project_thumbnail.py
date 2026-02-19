@@ -16,6 +16,17 @@ class ProjectThumbnail(Widget):
         remove_margins: bool = False,
         description: str = None,
     ):
+        """Initialize ProjectThumbnail.
+
+        :param info: ProjectInfo to display. Can be set later with set().
+        :type info: ProjectInfo, optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        :param remove_margins: If True, remove card margins.
+        :type remove_margins: bool
+        :param description: Custom description. Overrides default from info.
+        :type description: str, optional
+        """
         self._info: ProjectInfo = None
         self._id: int = None
         self._name: str = None

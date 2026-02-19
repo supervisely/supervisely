@@ -46,6 +46,15 @@ class VideoConverter(BaseConverter):
             frame_count=None,
             metadata=None,
         ):
+            """Initialize Item (video converter).
+
+            :param item_path: Path to video file.
+            :param ann_data: Annotation path or data.
+            :param shape: (height, width). Inferred from video if None.
+            :param custom_data: Extra data.
+            :param frame_count: Frame count. Inferred if None.
+            :param metadata: Optional metadata path.
+            """
             self._path = item_path
             self._name: str = None
             self._ann_data = ann_data
@@ -107,6 +116,7 @@ class VideoConverter(BaseConverter):
         upload_as_links: bool,
         remote_files_map: Optional[Dict[str, str]] = None,
     ):
+        """Initialize VideoConverter. See :class:`~supervisely.convert.base_converter.BaseConverter` for params."""
         super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
         self._key_id_map: KeyIdMap = None
 

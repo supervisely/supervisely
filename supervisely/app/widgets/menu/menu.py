@@ -47,6 +47,17 @@ class Menu(Widget):
             index: str = None,
             icon: str = None,
         ) -> Menu.Item:
+            """Initialize Menu.Item.
+
+            :param title: Item title.
+            :type title: str
+            :param content: Optional widget to show when item is selected.
+            :type content: Widget, optional
+            :param index: Unique index for routing. Defaults to title.
+            :type index: str, optional
+            :param icon: Icon class (e.g. zmdi).
+            :type icon: str, optional
+            """
             self.title = title
             # self.heading = title if heading is None else heading
             self.index = index
@@ -67,6 +78,13 @@ class Menu(Widget):
         """Group of menu items displayed under a section title."""
 
         def __init__(self, title: str, items: List[Menu.Item] = None) -> Menu.Group:
+            """Initialize Menu.Group.
+
+            :param title: Group section title.
+            :type title: str
+            :param items: List of Menu.Item in this group.
+            :type items: List[Menu.Item], optional
+            """
             self.title = title
             self.items = items
 
@@ -84,6 +102,21 @@ class Menu(Widget):
         width_percent: int = 25,
         widget_id: str = None,
     ):
+        """Initialize Menu.
+
+        :param items: Flat list of menu items. Mutually exclusive with groups.
+        :type items: List[Menu.Item], optional
+        :param groups: List of Menu.Group. Mutually exclusive with items.
+        :type groups: List[Menu.Group], optional
+        :param index: Initially selected item index.
+        :type index: str, optional
+        :param width_percent: Sidebar width as percent (0–100).
+        :type width_percent: int
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+
+        :raises ValueError: If both items and groups are None, or both provided.
+        """
         if items is None and groups is None:
             raise ValueError("One of the arguments has to be defined: items or groups")
 

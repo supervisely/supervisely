@@ -75,53 +75,7 @@ DATATYPE_TO_UNPACKER = {
 
 
 class ClassicTable(Widget):
-    """Table for displaying and editing tabular data.
-    It is similar to the Table widget but with fewer customization options and functionalities.
-
-    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/tables/classictable>`_
-        (including screenshots and examples).
-
-    :param data: Data of table in different formats, see Usage examples.
-    :type data: Optional[Union[pd.DataFrame, Dict[str, List[Any]]]]
-    :param columns: List of column names.
-    :type columns: Optional[List]
-    :param fixed_columns_num: Number of fixed columns.
-    :type fixed_columns_num: Optional[int]
-    :param widget_id: The ID of the widget.
-    :type widget_id: Optional[str]
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            from supervisely.app.widgets import ClassicTable
-
-            # Usage example 1: Pandas DataFrame
-            table_data = pd.DataFrame(
-                data=[
-                    ["row_1_column_1", "row_1_column_2", "row_1_column_3"],
-                    ["row_2_column_1", "row_2_column_2", "row_2_column_3"],
-                    ["row_3_column_1", "row_3_column_2", "row_3_column_3"],
-                ], 
-                columns=["col_name_1", "col_name_2", "col_name_3"]
-            )
-
-            classic_table = ClassicTable(data=table_data)
-
-            # Usage example 2: Python dict
-            table_data =  {
-                "columns_names": ["col_name_1", "col_name_2"],
-                "values_by_rows": [
-                    ["row_1_column_1", "row_1_column_2"],
-                    ["row_2_column_1", "row_2_column_2"],
-                ]
-            }
-
-            columns = ["col_name_1", "col_name_2"]
-
-            classic_table = ClassicTable(data=table_data, columns=columns)
-
-    """
+    """Table for displaying and editing tabular data (DataFrame or dict)."""
 
     class Routes:
         """HTTP routes used by the widget frontend for callbacks."""
@@ -135,6 +89,20 @@ class ClassicTable(Widget):
         fixed_columns_num: Optional[int] = None,
         widget_id: Optional[str] = None,
     ):
+        """
+        :param data: pd.DataFrame or dict with "columns" and "data" keys.
+        :param columns: Column names (for dict data).
+        :param fixed_columns_num: Number of fixed (frozen) columns.
+        :param widget_id: Widget identifier.
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import ClassicTable
+                import pandas as pd
+                table = ClassicTable(data=pd.DataFrame(...))
+        """
         self._supported_types = PackerUnpacker.SUPPORTED_TYPES
 
         self._parsed_data = None

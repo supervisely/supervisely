@@ -177,7 +177,18 @@ class Inference:
         device: Optional[str] = None,
         runtime: Optional[str] = None,
     ):
+        """Initialize Inference.
 
+        :param model_dir: Path to model directory.
+        :param custom_inference_settings: Dict or path to .yml with inference settings.
+        :param sliding_window_mode: 'basic', 'advanced', or 'none'.
+        :param use_gui: Enable GUI.
+        :param multithread_inference: Allow multi-threaded inference.
+        :param use_serving_gui_template: Use serving GUI template.
+        :param model: Deploy model name.
+        :param device: Deploy device.
+        :param runtime: Deploy runtime.
+        """
         self.pretrained_models = self._load_models_json_file(self.MODELS) if self.MODELS else None
         self._args, self._is_cli_deploy = self._parse_cli_deploy_args()
         if model_dir is None:
@@ -5452,6 +5463,7 @@ class TempImageWriter:
     """Write temporary images into a per-instance temp directory and clean it up when done."""
 
     def __init__(self, format: str = "png"):
+        """Initialize TempImageWriter. :param format: Image format (e.g. 'png')."""
         self.format = format
         self.temp_dir = os.path.join(get_data_dir(), rand_str(10))
         sly_fs.mkdir(self.temp_dir)

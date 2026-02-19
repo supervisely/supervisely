@@ -19,6 +19,7 @@ class IncrementalDataset:
             data_dir: str,
             save_masks_as_images: bool = False,
         ):
+        """Initialize IncrementalDataset. :param class2idx: Class name to index. :param data_dir: Root data directory. :param save_masks_as_images: Save masks as images."""
         self.class2idx = class2idx
         self.data_dir = Path(data_dir)
         self.save_masks_as_images = save_masks_as_images

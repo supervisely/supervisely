@@ -8,19 +8,7 @@ from supervisely.imaging.color import rgb2hex
 
 
 class InputTagList(Widget):
-    """Store and manage a list of input tags. Class accepts a list of TagMeta objects and provides methods to interact with them.
-
-    :param tag_metas: List of tag metas or a tag meta collection, defaults to an empty list
-    :type tag_metas: Union[List[:class:`~supervisely.annotation.tag_meta.TagMeta`], :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection`], optional
-    :param max_width: Maximum width of the widget in pixels, defaults to 300
-    :type max_width: int, optional
-    :param max_height: Maximum height of the widget in pixels, defaults to 50
-    :type max_height: int, optional
-    :param multiple: Whether to allow multiple tags to be selected, defaults to False
-    :type multiple: bool, optional
-    :param widget_id: Unique identifier for the widget, defaults to None
-    :type widget_id: int, optional
-    """
+    """Store and manage a list of input tags based on TagMeta objects."""
 
     class VALUE_TYPES:
         """Value types for input tags. Classifies the different types of values that tags can have."""
@@ -73,6 +61,19 @@ class InputTagList(Widget):
         multiple: bool = False,
         widget_id: int = None,
     ):
+        """Initialize the InputTagList widget.
+
+        :param tag_metas: List of tag metas or a tag meta collection, defaults to an empty list
+        :type tag_metas: Union[List[:class:`~supervisely.annotation.tag_meta.TagMeta`], :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection`], optional
+        :param max_width: Maximum width of the widget in pixels, defaults to 300
+        :type max_width: int, optional
+        :param max_height: Maximum height of the widget in pixels, defaults to 50
+        :type max_height: int, optional
+        :param multiple: Whether to allow multiple tags to be selected, defaults to False
+        :type multiple: bool, optional
+        :param widget_id: Unique identifier for the widget, defaults to None
+        :type widget_id: int, optional
+        """
         self._tag_metas = tag_metas
         self._max_width = self._get_max_width(max_width)
         self._max_height = self._get_max_height(max_height)

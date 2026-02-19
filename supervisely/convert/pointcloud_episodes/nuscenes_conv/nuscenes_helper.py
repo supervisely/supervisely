@@ -113,25 +113,24 @@ class AnnotationObject:
 
 
 class CamData:
-    """
-    This class handles camera sensor data from the nuScenes dataset, including coordinate system
-    transformations from lidar to camera space and extraction of camera calibration parameters.
-
-    :param nuscenes: The nuScenes dataset instance
-    :type nuscenes: NuScenes
-    :param sensor_name: The name of the camera sensor
-    :type sensor_name: str
-    :param sensor_token: The token identifying the specific sensor sample
-    :type sensor_token: str
-    :param cs_record: The calibrated sensor record for the lidar
-    :type cs_record: dict
-    :param ego_record: The ego pose record for the lidar
-    :type ego_record: dict
-    """
+    """Handles camera sensor data from nuScenes, including lidar-to-camera transformations."""
 
     def __init__(
         self, nuscenes, sensor_name: str, sensor_token: str, cs_record: dict, ego_record: dict
     ):
+        """Initialize CamData.
+
+        :param nuscenes: The nuScenes dataset instance.
+        :type nuscenes: NuScenes
+        :param sensor_name: The name of the camera sensor.
+        :type sensor_name: str
+        :param sensor_token: The token identifying the specific sensor sample.
+        :type sensor_token: str
+        :param cs_record: The calibrated sensor record for the lidar.
+        :type cs_record: dict
+        :param ego_record: The ego pose record for the lidar.
+        :type ego_record: dict
+        """
         from nuscenes import NuScenes  # pylint: disable=import-error
         from nuscenes.utils.data_classes import (  # pylint: disable=import-error
             transform_matrix,

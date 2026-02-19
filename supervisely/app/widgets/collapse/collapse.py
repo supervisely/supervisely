@@ -7,49 +7,21 @@ from supervisely.app.widgets import Widget
 
 
 class Collapse(Widget):
-    """A Collapse widget allows users to efficiently manage and navigate content by toggling between
-    hidden and visible states, promoting a more compact and organized user interface.
-
-    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/layouts-and-containers/collapse>`_
-        (including screenshots and examples).
-
-    :param items: list of items to be displayed in the widget
-    :type items: List[:class:`~supervisely.app.widgets.collapse.collapse.Collapse.Item`]
-    :param accordion: if True, only one panel could be active at a time
-    :type accordion: bool
-    :param widget_id: An identifier of the widget.
-    :type widget_id: str, optional
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            from supervisely.app.widgets import Collapse
-
-            items = [
-                Collapse.Item("item1", "Item 1", "Content of item 1"),
-                Collapse.Item("item2", "Item 2", "Content of item 2"),
-            ]
-            collapse = Collapse(items)
-
-    """
+    """Collapsible panels for compact UI; toggle content visibility."""
 
     class Routes:
         """Route name constants for this widget."""
         VALUE_CHANGED = "value_changed"
 
     class Item(object):
-        """Represents an item of Collapse widget.
-
-        :param name: unique identification of the panel
-        :type name: str
-        :param title: title of the panel
-        :type title: str
-        :param content: content of the panel
-        :type content: Optional[Union[:class:`~supervisely.app.widgets.widget.Widget`, str]]
-        """
+        """Single collapsible panel (name, title, content)."""
 
         def __init__(self, name: str, title: str, content: Optional[Union[Widget, str]]):
+            """
+            :param name: Unique panel ID.
+            :param title: Panel header text.
+            :param content: Widget or text string.
+            """
             self.name = name
             self.title = title
             self.content = content
@@ -80,6 +52,22 @@ class Collapse(Widget):
         accordion: Optional[bool] = False,
         widget_id: Optional[str] = None,
     ):
+        """
+        :param items: List of Collapse.Item. Each item needs unique name.
+        :param accordion: If True, only one panel open at a time.
+        :param widget_id: Widget identifier.
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import Collapse
+                items = [
+                    Collapse.Item("item1", "Item 1", "Content 1"),
+                    Collapse.Item("item2", "Item 2", "Content 2"),
+                ]
+                collapse = Collapse(items, accordion=True)
+        """
         if items is None:
             items = [Collapse.Item("default", "Empty default item", "")]
 

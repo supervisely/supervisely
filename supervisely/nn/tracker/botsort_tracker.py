@@ -47,6 +47,7 @@ class BotSortTracker(BaseTracker):
     """BoT-SORT tracker implementation for video object tracking with ReID and camera motion compensation."""
 
     def __init__(self, settings: dict = None, device: str = None):
+        """See BaseTracker for params."""
         super().__init__(settings=settings, device=device)
 
         from supervisely.nn.tracker import TRACKING_LIBS_INSTALLED

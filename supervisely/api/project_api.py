@@ -258,6 +258,11 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         return "ProjectInfo"
 
     def __init__(self, api):
+        """Initialize ProjectApi.
+
+        :param api: API connection to the server.
+        :type api: :class:`~supervisely.api.api.Api`
+        """
         from supervisely.project.data_version import DataVersion
 
         CloneableModuleApi.__init__(self, api)

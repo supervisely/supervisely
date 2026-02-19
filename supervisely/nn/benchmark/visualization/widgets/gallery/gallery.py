@@ -24,6 +24,16 @@ class GalleryWidget(BaseWidget):
         opacity: Optional[float] = 0.4,
         limit: Optional[int] = None,
     ):
+        """Initialize GalleryWidget.
+
+        :param name: Widget name.
+        :param filters: Optional tag filters.
+        :param is_modal: Show as modal.
+        :param columns_number: Gallery columns.
+        :param click_gallery_id: Gallery ID for click handler.
+        :param opacity: Annotation opacity.
+        :param limit: Max items in click gallery.
+        """
         super().__init__(name)
         self.reference = self.id
         self.is_modal = is_modal

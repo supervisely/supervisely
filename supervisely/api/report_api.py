@@ -25,20 +25,20 @@ class NotificationType(StrEnum):
 
 # @TODO: standardise title/description/name and so on for everyone the same way
 class ReportApi(ModuleApiBase):
-    """
-    API for working with Reports. :class:`ReportApi<~supervisely.api.report_api.ReportApi>` object is immutable.
-
-    :param api: API connection to the server
-    :type api: :class:`~supervisely.api.api.Api`
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            report = api.report
-    """
+    """API for working with Reports."""
 
     def __init__(self, api):
+        """Initialize ReportApi.
+
+        :param api: API connection to the server.
+        :type api: :class:`~supervisely.api.api.Api`
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                report = api.report
+        """
         ModuleApiBase.__init__(self, api)
 
     # https://developer.mozilla.org/en-US/docs/Web/CSS/grid-template

@@ -6,44 +6,29 @@ from supervisely.app.content import DataJson, StateJson
 
 
 class ReloadableArea(DynamicWidget):
-    """Widget for dynamic content reloading. It allows to update the content of the widget without reloading the whole
-    UI of the app. It can be used when the widgets are needed to be added or removed dynamically.
-
-    :param content: a Widget to be set as content of the ReloadableArea. Defaults to None.
-    :type content: :class:`~supervisely.app.widgets.widget.Widget`, optional
-    :param widget_id: The id of the widget. Defaults to None.
-    :type widget_id: str, optional
-
-    :Methods:
-    reload(): Reloads the widget in UI.
-    set_content(): Replaces content of the ReloadableArea with new widget.
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            from supervisely.app.widgets import ReloadableArea, Container, Button
-
-            # Creating button, which will be added to widget at initialization.
-            button_plus = Button("plus")
-            buttons_container = Container(widgets=[button_plus])
-
-            # Initializing ReloadableArea with buttons_container as content.
-            reloadable_area = ReloadableArea(content=buttons_container)
-
-            # Now we need to create new widget, after UI was initialized.
-            button_minus = Button("minus")
-            buttons_container._widgets.append(button_minus)
-
-            # Widget of new button was added to container, but it will not appear in UI
-            # until we reload the ReloadableArea.
-
-            reloadable_area.reload()
-
-            # Now the new button will appear in UI.
-    """
+    """Widget for dynamic content reloading without reloading the whole app UI."""
 
     def __init__(self, content: Widget = None, widget_id: str = None):
+        """Initialize the ReloadableArea widget.
+
+        :param content: Widget to set as content. Defaults to None.
+        :type content: :class:`~supervisely.app.widgets.widget.Widget`, optional
+        :param widget_id: The id of the widget. Defaults to None.
+        :type widget_id: str, optional
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import ReloadableArea, Container, Button
+
+                button_plus = Button("plus")
+                buttons_container = Container(widgets=[button_plus])
+                reloadable_area = ReloadableArea(content=buttons_container)
+                button_minus = Button("minus")
+                buttons_container._widgets.append(button_minus)
+                reloadable_area.reload()
+        """
         self._content = content
         super().__init__(widget_id=widget_id, file_path=__file__)
 

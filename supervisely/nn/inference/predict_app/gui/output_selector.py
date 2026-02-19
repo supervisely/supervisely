@@ -26,6 +26,7 @@ class OutputSelector:
     lock_message = "Select previous step to unlock"
 
     def __init__(self, api: Api):
+        """Initialize OutputSelector. :param api: Supervisely API."""
         # Init Step
         self.api = api
         self.display_widgets: List[Any] = []

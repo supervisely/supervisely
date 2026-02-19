@@ -24,6 +24,11 @@ class Jinja2Templates(_fastapi_Jinja2Templates, metaclass=Singleton):
     """FastAPI Jinja2 templates with Supervisely widget context and custom variable delimiters ({{{ }}})."""
 
     def __init__(self, directory: typing.Union[str, PathLike] = "templates") -> None:
+        """Initialize Jinja2Templates.
+
+        :param directory: Path to templates directory.
+        :type directory: Union[str, PathLike]
+        """
         super().__init__(directory)
 
     def _create_env(self, directory: typing.Union[str, PathLike]) -> "jinja2.Environment":

@@ -216,22 +216,7 @@ class StepFlow:
 
 
 class TrainGUI:
-    """
-    A class representing the GUI for training workflows.
-
-    This class sets up and manages GUI components such as project selection,
-    train/validation split selection, model selection, hyperparameters selection,
-    and the training process.
-
-    :param framework_name: Name of the ML framework being used.
-    :type framework_name: str
-    :param models: List of available models.
-    :type models: list
-    :param hyperparameters: Hyperparameters for training.
-    :type hyperparameters: dict
-    :param app_options: Application options for customization.
-    :type app_options: dict, optional
-    """
+    """GUI for training workflows: project, split, model, hyperparameters, and training process."""
 
     def __init__(
         self,
@@ -240,6 +225,17 @@ class TrainGUI:
         hyperparameters: dict,
         app_options: dict = None,
     ):
+        """Initialize TrainGUI.
+
+        :param framework_name: Name of the ML framework being used.
+        :type framework_name: str
+        :param models: List of available models.
+        :type models: list
+        :param hyperparameters: Hyperparameters for training.
+        :type hyperparameters: dict
+        :param app_options: Application options for customization.
+        :type app_options: dict, optional
+        """
         self._api = Api.from_env()
         if is_production():
             self.task_id = sly_env.task_id()

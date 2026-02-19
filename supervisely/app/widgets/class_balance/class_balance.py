@@ -6,88 +6,7 @@ from supervisely.app.widgets import Widget
 
 
 class ClassBalance(Widget):
-    """Visualizes class distribution / balance of input data.
-
-    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/compare-data/classbalance>`_
-        (including screenshots and examples).
-
-    :param segments: List of segments to be displayed in the widget.
-    :type segments: Optional[List[Dict]]
-    :param rows_data: List of rows to be displayed in the widget.
-    :type rows_data: Optional[List[Dict]]
-    :param slider_data: Dictionary of slider data to be displayed in the widget.
-    :type slider_data: Optional[Dict[str, List]]
-    :param max_value: Maximum value of the widget.
-    :type max_value: Optional[int]
-    :param max_height: Maximum height of the widget in pixels.
-    :type max_height: Optional[int]
-    :param rows_height: Height of the rows in pixels.
-    :type rows_height: Optional[int]
-    :param selectable: If True, the widget will be selectable.
-    :type selectable: Optional[bool]
-    :param collapsable: If True, the widget will be collapsable.
-    :type collapsable: Optional[bool]
-    :param clickable_name: If True, the widget will be clickable by name.
-    :type clickable_name: Optional[bool]
-    :param clickable_segment: If True, the widget will be clickable by segment.
-    :type clickable_segment: Optional[bool]
-    :param widget_id: Unique widget identifier.
-    :type widget_id: str
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            from supervisely.app.widgets import ClassBalance
-
-            max_value = 1000
-            segments = [
-                {"name": "train", "key": "train", "color": "#1892f8"},
-                {"name": "val", "key": "val", "color": "#25e298"},
-                {"name": "test", "key": "test", "color": "#fcaf33"},
-            ]
-
-            rows_data = [
-                {
-                    "nameHtml": "<strong>black-pawn</strong>",
-                    "name": "black-pawn",
-                    "total": 1000,
-                    "disabled": False,
-                    "segments": {"train": 600, "val": 350, "test": 50},
-                },
-                {
-                    "nameHtml": "<strong>white-pawn</strong>",
-                    "name": "white-pawn",
-                    "total": 700,
-                    "disabled": False,
-                    "segments": {"train": 400, "val": 250, "test": 50},
-                },
-            ]
-
-            slider_data = {
-                "black-pawn": [
-                    {
-                        "moreExamples": ["https://www.w3schools.com/howto/img_nature.jpg"],
-                        "preview": "https://www.w3schools.com/howto/img_nature.jpg",
-                    }
-                ],
-                "white-pawn": [
-                    {
-                        "moreExamples": ["https://i.imgur.com/35pUPD2.jpg"],
-                        "preview": "https://i.imgur.com/35pUPD2.jpg",
-                    }
-                ],
-            }
-
-            class_balance_1 = ClassBalance(
-                max_value=max_value,
-                segments=segments,
-                rows_data=rows_data,
-                slider_data=slider_data,
-                max_height=700,
-                collapsable=True,
-            )
-    """
+    """Visualizes class distribution / balance of input data."""
 
     class Routes:
         """Route name constants for this widget."""
@@ -107,6 +26,28 @@ class ClassBalance(Widget):
         clickable_segment: Optional[bool] = False,
         widget_id: Optional[str] = None,
     ):
+        """
+        :param segments: List of segments (name, key, color).
+        :param rows_data: List of row dicts (name, total, segments).
+        :param slider_data: Per-class slider/preview data.
+        :param max_value: Max value for scale.
+        :param max_height: Max height in pixels.
+        :param rows_height: Row height in pixels.
+        :param selectable: Enable selection.
+        :param collapsable: Enable collapse.
+        :param clickable_name: Enable name click.
+        :param clickable_segment: Enable segment click.
+        :param widget_id: Widget identifier.
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import ClassBalance
+                segments = [{"name": "train", "key": "train", "color": "#1892f8"}]
+                rows_data = [{"name": "class1", "total": 100, "segments": {"train": 100}}]
+                cb = ClassBalance(segments=segments, rows_data=rows_data, collapsable=True)
+        """
         self._segments = segments
         self._rows_data = rows_data
         self._slider_data = slider_data

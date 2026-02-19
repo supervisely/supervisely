@@ -17,33 +17,23 @@ from supervisely.sly_logger import logger
 
 
 class StorageApi(FileApi):
-    """
-    API for working with files and folders in Team Files and Cloud Storage.
-    :class:`~supervisely.api.storage_api.StorageApi` object is immutable.
+    """API for working with files and folders in Team Files and Cloud Storage."""
 
-    :param api: API connection to the server.
-    :type api: :class:`~supervisely.api.api.Api`
+    def __init__(self, api):
+        """Initialize StorageApi.
 
-    :Usage Example:
+        :param api: API connection to the server.
+        :type api: :class:`~supervisely.api.api.Api`
 
-        .. code-block:: python
+        :Usage Example:
 
-            import os
-            from dotenv import load_dotenv
+            .. code-block:: python
 
-            import supervisely as sly
-
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            if sly.is_development():
-                load_dotenv(os.path.expanduser("~/supervisely.env"))
-
-            api = sly.Api.from_env()
-
-            team_id = 8
-            file_path = "/999_App_Test/"
-            files = api.storage.list(team_id, file_path)
-    """
+                import supervisely as sly
+                api = sly.Api.from_env()
+                files = api.storage.list(team_id, file_path)
+        """
+        super().__init__(api)
 
     def list2(self, team_id: int, path: str, recursive: bool = True) -> List[FileInfo]:
         """

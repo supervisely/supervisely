@@ -15,6 +15,17 @@ class ClassesMappingPreview(Widget):
         max_height: str = "128px",
         widget_id: Optional[str] = None,
     ):
+        """Initialize ClassesMappingPreview.
+
+        :param classes: List of ObjClass instances or ObjClassCollection.
+        :type classes: Optional[Union[List[ObjClass], ObjClassCollection]]
+        :param mapping: Dict mapping class names to display values.
+        :type mapping: dict, optional
+        :param max_height: Max height of the preview area.
+        :type max_height: str
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         self._classes = classes
         self._mapping = mapping
         self._max_height = max_height

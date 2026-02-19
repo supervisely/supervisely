@@ -67,6 +67,11 @@ class DeployModel(Widget):
         ]
 
         def __init__(self, deploy_model: "DeployModel"):
+            """Initialize Connect (connect to existing deployed session).
+
+            :param deploy_model: Parent DeployModel widget.
+            :type deploy_model: DeployModel
+            """
             self.api = deploy_model.api
             self.team_id = deploy_model.team_id
             self._cache = deploy_model._cache
@@ -166,6 +171,11 @@ class DeployModel(Widget):
         ]
 
         def __init__(self, deploy_model: "DeployModel"):
+            """Initialize Pretrained (deploy from ecosystem models).
+
+            :param deploy_model: Parent DeployModel widget.
+            :type deploy_model: DeployModel
+            """
             self.api = deploy_model.api
             self.team_id = deploy_model.team_id
             self._cache = deploy_model._cache
@@ -205,6 +215,11 @@ class DeployModel(Widget):
     class Custom(DeployMode):
         """Deploy mode that deploys a model from a user experiment checkpoint."""
         def __init__(self, deploy_model: "DeployModel"):
+            """Initialize Custom (deploy from experiment checkpoint).
+
+            :param deploy_model: Parent DeployModel widget.
+            :type deploy_model: DeployModel
+            """
             self.api = deploy_model.api
             self.team_id = deploy_model.team_id
             self._cache = deploy_model._cache
@@ -296,6 +311,17 @@ class DeployModel(Widget):
         modes: List[Literal["connect", "pretrained", "custom"]] = None,
         widget_id: str = None,
     ):
+        """Initialize DeployModel.
+
+        :param api: Supervisely API instance. Defaults to Api.from_env().
+        :type api: :class:`~supervisely.api.api.Api`, optional
+        :param team_id: Team ID. Defaults to env.team_id().
+        :type team_id: int, optional
+        :param modes: List of deployment modes: "connect", "pretrained", "custom".
+        :type modes: List[Literal["connect", "pretrained", "custom"]], optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         self.modes: Dict[str, DeployModel.DeployMode] = {}
         if modes is None:
             modes = self.MODES.copy()

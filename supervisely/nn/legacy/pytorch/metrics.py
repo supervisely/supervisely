@@ -3,17 +3,16 @@ import numpy as np
 
 
 class MultiClassAccuracy:
-    """
-    Compute multi class accuracy for image segmentation task.
+    """Compute multi-class accuracy for image segmentation."""
 
-    :param ignore_index: Target value that is ignored and does not contribute to the accuracy value.
-    :type ignore_index: int
-    :param squeeze_targets: Whether to squeeze targets array along 1st dimension.
-    :type squeeze_targets: bool
-    :returns: Multi class accuracy
-    :rtype: float
-    """
     def __init__(self, ignore_index: int=None, squeeze_targets: bool=True):
+        """Initialize MultiClassAccuracy.
+
+        :param ignore_index: Target value that is ignored and does not contribute to accuracy.
+        :type ignore_index: int
+        :param squeeze_targets: Whether to squeeze targets array along 1st dimension.
+        :type squeeze_targets: bool
+        """
         self._ignore_index = ignore_index
         self._squeeze_targets = squeeze_targets
 

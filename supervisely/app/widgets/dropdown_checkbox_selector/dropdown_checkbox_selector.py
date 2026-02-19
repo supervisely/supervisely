@@ -16,6 +16,15 @@ class DropdownCheckboxSelector(Widget):
         """Selectable item descriptor (id + optional display name/description)."""
 
         def __init__(self, id: str, name: str = None, description: str = None):
+            """Initialize Item.
+
+            :param id: Unique item identifier.
+            :type id: str
+            :param name: Display name. Defaults to id.
+            :type name: str, optional
+            :param description: Optional description text.
+            :type description: str, optional
+            """
             self.id = id
             if name is None:
                 name = id
@@ -40,6 +49,17 @@ class DropdownCheckboxSelector(Widget):
     def __init__(
         self, items: List[Item], label: str = None, widget_id: str = None, multiple: bool = True
     ):
+        """Initialize DropdownCheckboxSelector.
+
+        :param items: List of Item objects.
+        :type items: List[Item]
+        :param label: Optional label for the dropdown.
+        :type label: str, optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        :param multiple: If True, allow multiple selection.
+        :type multiple: bool
+        """
         self._items = items
         self._label = label
         self._multiple = multiple

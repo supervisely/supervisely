@@ -29,35 +29,7 @@ type_to_zmdi_icon = {
 
 
 class ClassesTable(Widget):
-    """Table displaying object classes from a project.
-
-    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/tables/classestable>`_
-        (including screenshots and examples).
-
-    :param project_meta: Project meta object from which classes will be taken.
-    :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
-    :param project_id: Project id from which classes will be taken.
-    :type project_id: int
-    :param project_fs: Local supervisely project from which classes will be taken.
-    :type project_fs: :class:`~supervisely.project.project.Project`
-    :param allowed_types: List of allowed geometry types to be displayed in table.
-    :type allowed_types: List[:class:`~supervisely.geometry.geometry.Geometry`]
-    :param selectable: If True, user can select classes from table.
-    :type selectable: bool
-    :param disabled: If True, the elements in the table will be disabled.
-    :type disabled: bool
-    :param widget_id: Unique widget identifier.
-    :type widget_id: str
-    :raises ValueError: If both project_id and project_fs parameters are provided.
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            from supervisely.app.widgets import ClassesTable
-
-            classes_table = ClassesTable(project_id=123, selectable=True)
-    """
+    """Table displaying object classes from a project."""
 
     class Routes:
         """Route name constants for this widget."""
@@ -74,6 +46,24 @@ class ClassesTable(Widget):
         widget_id: Optional[str] = None,
         dataset_ids: Optional[List[int]] = None,
     ):
+        """
+        :param project_meta: ProjectMeta with classes.
+        :param project_id: Project ID (load meta from server).
+        :param project_fs: Local Project path.
+        :param allowed_types: Filter by geometry types.
+        :param selectable: Enable row selection.
+        :param disabled: Disable all rows.
+        :param dataset_ids: Filter by dataset IDs.
+        :param widget_id: Widget identifier.
+        :raises ValueError: If both project_id and project_fs provided.
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import ClassesTable
+                table = ClassesTable(project_id=123, selectable=True)
+        """
         if project_id is not None and project_fs is not None:
             raise ValueError(
                 "You can not provide both project_id and project_fs parameters to Classes Table widget."

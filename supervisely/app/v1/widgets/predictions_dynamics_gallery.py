@@ -23,6 +23,14 @@ class PredictionsDynamicsGallery:
     """v1 widget for comparing ground-truth vs predictions across training iterations."""
 
     def __init__(self, task_id, api: Api, v_model: str, project_meta: ProjectMeta):
+        """Initialize PredictionsDynamicsGallery (v1).
+
+        :param task_id: Task ID.
+        :param api: Api instance.
+        :param v_model: Vue model path (must start with "data.").
+        :param project_meta: ProjectMeta for annotations.
+        :type project_meta: ProjectMeta
+        """
         self._task_id = task_id
         self._api = api
         self._v_model = v_model

@@ -83,6 +83,7 @@ class PredictionSession:
     class Iterator:
         """Internal iterator that fetches pending results in chunks."""
         def __init__(self, total, session: "PredictionSession", tqdm: tqdm = None):
+            """Initialize Iterator. :param total: Total items. :param session: PredictionSession. :param tqdm: Optional progress bar."""
             self.total = total
             self.session = session
             self.results_queue = []

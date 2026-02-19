@@ -236,6 +236,11 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
         return "EntitiesCollectionInfo"
 
     def __init__(self, api: Api):
+        """Initialize EntitiesCollectionApi.
+
+        :param api: API connection to the server.
+        :type api: :class:`~supervisely.api.api.Api`
+        """
         ModuleApi.__init__(self, api)
         self._api = api
 

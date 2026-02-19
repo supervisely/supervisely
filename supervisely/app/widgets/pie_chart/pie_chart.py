@@ -61,6 +61,23 @@ class PieChart(Apexchart):
         height: Union[int, str] = 350,
         type: Literal["pie", "donut"] = "pie",
     ):
+        """Initialize PieChart.
+
+        :param title: Chart title.
+        :type title: str
+        :param series: List of dicts with "name" and "data" (numeric value).
+        :type series: List[Dict[str, Union[int, float]]]
+        :param stroke_width: Stroke width between slices.
+        :type stroke_width: int
+        :param data_labels: If True, show data labels.
+        :type data_labels: bool
+        :param height: Chart height (px or CSS).
+        :type height: Union[int, str]
+        :param type: Chart type: "pie" or "donut".
+        :type type: Literal["pie", "donut"]
+
+        :raises ValueError: If type is not "pie" or "donut".
+        """
         self._title = title
         self._series = series
         self._stroke_width = stroke_width

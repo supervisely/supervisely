@@ -95,30 +95,7 @@ class LabelingJobInfo(NamedTuple):
 
 
 class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
-    """
-    API for working with labeling jobs. :class:`~supervisely.api.labeling_job_api.LabelingJobApi` object is immutable.
-
-    :param api: API connection to the server.
-    :type api: :class:`~supervisely.api.api.Api`
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import os
-            from dotenv import load_dotenv
-
-            import supervisely as sly
-
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            if sly.is_development():
-                load_dotenv(os.path.expanduser("~/supervisely.env"))
-
-            api = sly.Api.from_env()
-
-            jobs = api.labeling_job.get_list(9) # api usage example
-    """
+    """API for working with labeling jobs."""
 
     class Status(StrEnum):
         """Labeling job lifecycle status values returned by the API."""
@@ -238,6 +215,19 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         return "LabelingJobInfo"
 
     def __init__(self, api):
+        """Initialize LabelingJobApi.
+
+        :param api: API connection to the server.
+        :type api: :class:`~supervisely.api.api.Api`
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+                api = sly.Api.from_env()
+                jobs = api.labeling_job.get_list(9)
+        """
         ModuleApi.__init__(self, api)
 
     def _convert_json_info(self, info: Dict, skip_missing: Optional[bool] = True):

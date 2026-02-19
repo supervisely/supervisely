@@ -158,6 +158,7 @@ class InferenceModeBase:
         }
 
     def __init__(self, config: dict, in_meta: ProjectMeta, model: SingleImageInferenceBase):
+        """Initialize InferenceModeBase. :param config: Mode config. :param in_meta: Input project meta. :param model: SingleImageInferenceBase instance."""
         validation_schema_path = pkg_resources.resource_filename(
             __name__, 'inference_modes_schemas/{}.json'.format(self.mode_name()))
         MultiTypeValidator(validation_schema_path).val(INFERENCE_MODE_CONFIG, config)
@@ -270,6 +271,7 @@ class InfModeRoi(InferenceModeBase):
         return config
 
     def __init__(self, config: dict, in_meta: ProjectMeta, model: SingleImageInferenceBase):
+        """See InferenceModeBase for params."""
         super().__init__(config, in_meta, model)
         self._intermediate_bbox_class = _maybe_make_intermediate_bbox_class(self._config)
         if self._intermediate_bbox_class is not None:
@@ -319,6 +321,7 @@ class InfModeBboxes(InferenceModeBase):
         return config
 
     def __init__(self, config: dict, in_meta: ProjectMeta, model: SingleImageInferenceBase):
+        """See InferenceModeBase for params."""
         super().__init__(config, in_meta, model)
 
         # If saving the bounding boxes on which inference was called is requested, create separate classes
@@ -385,6 +388,7 @@ class InfModeSlidinglWindowBase(InferenceModeBase):
     """Base class for sliding-window inference (tile image into windows and merge predictions)."""
 
     def __init__(self, config: dict, in_meta: ProjectMeta, model: SingleImageInferenceBase):
+        """See InferenceModeBase for params."""
         super().__init__(config, in_meta, model)
 
         window_shape = (self._config[WINDOW][HEIGHT], self._config[WINDOW][WIDTH])

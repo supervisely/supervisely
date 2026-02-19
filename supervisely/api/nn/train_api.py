@@ -162,15 +162,16 @@ class _TrainValSplit:
 
 
 class RandomSplit(_TrainValSplit):
-    """Split dataset randomly by percent.
-
-    :param percent: Percent of the dataset to split into train.
-    :type percent: int
-    :param split: Split method: "train" or "val".
-    :type split: str
-    """
+    """Split dataset randomly by percent."""
 
     def __init__(self, percent: int = 80, split: str = "train"):
+        """Initialize RandomSplit.
+
+        :param percent: Percent of the dataset to split into train.
+        :type percent: int
+        :param split: Split method: "train" or "val".
+        :type split: str
+        """
         self.percent = percent
         self.split = split
 
@@ -183,15 +184,16 @@ class RandomSplit(_TrainValSplit):
         }
 
 class DatasetsSplit(_TrainValSplit):
-    """Split by explicit train/val dataset ids inside the project.
-
-    :param train_datasets: List of dataset ids to split into train.
-    :type train_datasets: List[int]
-    :param val_datasets: List of dataset ids to split into val.
-    :type val_datasets: List[int]
-    """
+    """Split by explicit train/val dataset ids inside the project."""
 
     def __init__(self, train_datasets: List[int], val_datasets: List[int]):
+        """Initialize DatasetsSplit.
+
+        :param train_datasets: List of dataset ids to split into train.
+        :type train_datasets: List[int]
+        :param val_datasets: List of dataset ids to split into val.
+        :type val_datasets: List[int]
+        """
         self.train_datasets = train_datasets
         self.val_datasets = val_datasets
 
@@ -204,18 +206,18 @@ class DatasetsSplit(_TrainValSplit):
         }
 
 class TagsSplit(_TrainValSplit):
-    """
-    Split by tags: items with `train_tag` go to train, `val_tag` to val.
-
-    :param train_tag: Tag to split into train.
-    :type train_tag: str
-    :param val_tag: Tag to split into val.
-    :type val_tag: str
-    :param untagged_action: Action to take for untagged items: "train", "val", "ignore".
-    :type untagged_action: Literal["train", "val", "ignore"]
-    """
+    """Split by tags: items with train_tag go to train, val_tag to val."""
 
     def __init__(self, train_tag: str, val_tag: str, untagged_action: Literal["train", "val", "ignore"]):
+        """Initialize TagsSplit.
+
+        :param train_tag: Tag to split into train.
+        :type train_tag: str
+        :param val_tag: Tag to split into val.
+        :type val_tag: str
+        :param untagged_action: Action for untagged items: "train", "val", "ignore".
+        :type untagged_action: Literal["train", "val", "ignore"]
+        """
         self.train_tag = train_tag
         self.val_tag = val_tag
         self.untagged_action = untagged_action
@@ -230,16 +232,16 @@ class TagsSplit(_TrainValSplit):
         }
 
 class CollectionsSplit(_TrainValSplit):
-    """
-    Split by entity collections (train collections vs val collections).
-
-    :param train_collections: List of collection ids to split into train.
-    :type train_collections: List[int]
-    :param val_collections: List of collection ids to split into val.
-    :type val_collections: List[int]
-    """
+    """Split by entity collections (train collections vs val collections)."""
 
     def __init__(self, train_collections: List[int], val_collections: List[int]):
+        """Initialize CollectionsSplit.
+
+        :param train_collections: List of collection ids to split into train.
+        :type train_collections: List[int]
+        :param val_collections: List of collection ids to split into val.
+        :type val_collections: List[int]
+        """
         self.train_collections = train_collections
         self.val_collections = val_collections
 

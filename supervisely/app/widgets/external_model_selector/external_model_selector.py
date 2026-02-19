@@ -13,6 +13,17 @@ class ExternalModelSelector(Widget):
     """Widget for selecting external models by task type, checkpoint path, config, and classes."""
 
     def __init__(self, task_types: List[str], need_config: bool = True, need_classes: bool = True, widget_id: str = None):
+        """Initialize ExternalModelSelector.
+
+        :param task_types: List of task types (e.g. from AVAILABLE_TASK_TYPES).
+        :type task_types: List[str]
+        :param need_config: If True, show config path input.
+        :type need_config: bool
+        :param need_classes: If True, show classes file input.
+        :type need_classes: bool
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         self.need_config = need_config
         self.need_classes = need_classes
         self.widgets = []

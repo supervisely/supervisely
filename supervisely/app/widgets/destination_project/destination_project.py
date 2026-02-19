@@ -8,28 +8,7 @@ from supervisely.project.project_type import ProjectType
 
 class DestinationProject(Widget):
     """Selector for destination project and dataset when transferring data.
-
-    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/input/destinationproject>`_
-        (including screenshots and examples).
-
-    :param workspace_id: workspace id
-    :type workspace_id: int
-    :param project_type: project type, one of: images, videos, volumes, point_clouds, point_cloud_episodes, default: images
-    :type project_type: Optional[Literal["images", "videos", "volumes", "point_clouds", "point_cloud_episodes"]]
-    :param widget_id: An identifier of the widget.
-    :type widget_id: str, optional
-
-    :Usage Example:
-
-        .. code-block:: python
-
-                from supervisely.app.widgets import DestinationProject
-
-                destination_project = DestinationProject(
-                    workspace_id=1,
-                    project_type="images",
-                )
-
+    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/input/destinationproject>`_.
     """
 
     def __init__(
@@ -46,6 +25,26 @@ class DestinationProject(Widget):
         ] = ProjectType.IMAGES,
         widget_id: Optional[str] = None,
     ):
+        """Initialize the DestinationProject widget.
+
+        :param workspace_id: workspace id
+        :type workspace_id: int
+        :param project_type: project type, one of: images, videos, volumes, point_clouds, point_cloud_episodes, default: images
+        :type project_type: Optional[Literal["images", "videos", "volumes", "point_clouds", "point_cloud_episodes"]]
+        :param widget_id: An identifier of the widget.
+        :type widget_id: str, optional
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import DestinationProject
+
+                destination_project = DestinationProject(
+                    workspace_id=1,
+                    project_type="images",
+                )
+        """
         self._api = Api()
 
         self._project_mode = "new_project"

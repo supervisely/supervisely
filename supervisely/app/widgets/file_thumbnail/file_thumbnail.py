@@ -10,6 +10,13 @@ class FileThumbnail(Widget):
     """Compact card showing a Team Files file: name, path, and link to open it."""
 
     def __init__(self, info: FileInfo = None, widget_id: str = None):
+        """Initialize FileThumbnail.
+
+        :param info: FileInfo from Team Files. Can be set later with set().
+        :type info: FileInfo, optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         self._id: int = None
         self._info: FileInfo = None
         self._description: str = None

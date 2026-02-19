@@ -15,6 +15,7 @@ class ObjectTracking3D(Inference):
         model_dir: Optional[str] = None,
         custom_inference_settings: Optional[Union[Dict[str, Any], str]] = None,
     ):
+        """See :class:`~supervisely.nn.inference.inference.Inference` for params."""
         super().__init__(
             model_dir,
             custom_inference_settings,

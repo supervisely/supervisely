@@ -35,6 +35,15 @@ class KITTI360Converter(PointcloudEpisodeConverter):
             related_images: Optional[tuple] = None,
             custom_data: Optional[dict] = None,
         ):
+            """Initialize Item (KITTI-360 episode).
+
+            :param scene_name: Scene identifier.
+            :param frame_paths: Paths to frame pointclouds.
+            :param ann_data: Annotation3D instance.
+            :param poses_path: Path to poses file.
+            :param related_images: Optional related images.
+            :param custom_data: Extra data.
+            """
             self._scene_name = scene_name
             self._frame_paths = frame_paths
             self._ann_data = ann_data

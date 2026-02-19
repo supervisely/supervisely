@@ -26,6 +26,17 @@ class SelectTeam(Widget):
         size: Literal["large", "small", "mini"] = None,
         widget_id: str = None,
     ):
+        """Initialize SelectTeam.
+
+        :param default_id: Initial team ID (or from context.teamId).
+        :type default_id: int, optional
+        :param show_label: If True, show label.
+        :type show_label: bool
+        :param size: Size: "large", "small", or "mini".
+        :type size: Literal["large", "small", "mini"], optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         self._api = Api()
         self._default_id = default_id
         self._show_label = show_label

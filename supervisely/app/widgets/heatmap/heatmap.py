@@ -62,82 +62,7 @@ def to_json_safe(val):
 
 
 class Heatmap(Widget):
-    """
-    Supervisely widget that displays an interactive heatmap overlay on top of a background image.
-
-    :param background_image: Background image to display under the heatmap. Can be a path to an image file or a NumPy array
-    :type background_image: Union[str, np.ndarray], optional
-    :param heatmap_mask: NumPy array representing the heatmap mask values
-    :type heatmap_mask: np.ndarray, optional
-    :param vmin: Minimum value for normalizing the heatmap. If None, it is inferred from the mask
-    :type vmin: Any, optional
-    :param vmax: Maximum value for normalizing the heatmap. If None, it is inferred from the mask
-    :type vmax: Any, optional
-    :param transparent_low: Whether to make low values in the heatmap transparent
-    :type transparent_low: bool, optional
-    :param colormap: OpenCV colormap used to colorize the heatmap (e.g., cv2.COLORMAP_JET)
-    :type colormap: int, optional
-    :param width: Width of the output heatmap in pixels
-    :type width: int, optional
-    :param height: Height of the output heatmap in pixels
-    :type height: int, optional
-    :param blur_ksize: Kernel size for Gaussian blur applied to the heatmap mask. Set to None to disable blurring
-    :type blur_ksize: Optional[Union[tuple, None]], optional
-    :param blur_function: Custom function to apply blurring to the heatmap mask. Overrides blur_ksize if provided
-    :type blur_function: Optional[Callable[[np.ndarray], np.ndarray]], optional
-    :param widget_id: Unique identifier for the widget instance
-    :type widget_id: str, optional
-
-    This widget provides an interactive visualization for numerical data as colored overlays.
-    Users can click on the heatmap to get exact values at specific coordinates.
-    The widget supports various colormaps, transparency controls, and value normalization.
-
-    Blurring can be applied to the heatmap visualization using either a Gaussian kernel (specified by `blur_ksize`)
-    or a custom blurring function (specified by `blur_function`). If both are provided, the custom function takes precedence.
-    Blurring only affects the visual representation of the heatmap and does not modify the underlying data.
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import numpy as np
-            from supervisely.app.widgets import Heatmap
-
-            # Create temperature heatmap
-            temp_data = np.random.uniform(-20, 40, size=(100, 100))
-            heatmap = Heatmap(
-                background_image="/path/to/background.jpg",
-                heatmap_mask=temp_data,
-                vmin=-20,
-                vmax=40,
-                colormap=cv2.COLORMAP_JET
-            )
-
-            @heatmap.click
-            def handle_click(y: int, x: int, value: float):
-            print(f"Temperature at ({x}, {y}): {value:.1f}°C")
-
-
-    :Custom blur function example:
-
-        .. code-block:: python
-
-            from functools import partial
-            import cv2
-
-            # Using a predefined OpenCV function with fixed kernel size
-            blur_f = partial(cv2.medianBlur, ksize=5)
-            # Or define a custom blur function
-            def blur_f(img):
-                ksize = img.shape[0] // 20
-                if ksize % 2 == 0:
-                    ksize += 1
-                return cv2.GaussianBlur(img, (ksize, ksize), 0)
-            heatmap = Heatmap(
-                heatmap_mask=temp_data,
-                blur_function=blur_f
-            )
-    """
+    """Interactive heatmap overlay on top of a background image. Supports colormaps, transparency, and blurring."""
 
     class Routes:
         """Route name constants for this widget."""
@@ -157,6 +82,50 @@ class Heatmap(Widget):
         blur_function: Optional[Callable[[np.ndarray], np.ndarray]] = None,
         widget_id: str = None,
     ):
+        """Initialize the Heatmap widget.
+
+        :param background_image: Background image path or NumPy array
+        :type background_image: Union[str, np.ndarray], optional
+        :param heatmap_mask: NumPy array with heatmap mask values
+        :type heatmap_mask: np.ndarray, optional
+        :param vmin: Minimum value for normalization. If None, inferred from mask
+        :type vmin: Any, optional
+        :param vmax: Maximum value for normalization. If None, inferred from mask
+        :type vmax: Any, optional
+        :param transparent_low: Whether to make low values transparent
+        :type transparent_low: bool, optional
+        :param colormap: OpenCV colormap (e.g., cv2.COLORMAP_JET)
+        :type colormap: int, optional
+        :param width: Width in pixels
+        :type width: int, optional
+        :param height: Height in pixels
+        :type height: int, optional
+        :param blur_ksize: Gaussian blur kernel size. None to disable
+        :type blur_ksize: Optional[Union[tuple, None]], optional
+        :param blur_function: Custom blur function. Overrides blur_ksize if provided
+        :type blur_function: Optional[Callable[[np.ndarray], np.ndarray]], optional
+        :param widget_id: Unique identifier for the widget instance
+        :type widget_id: str, optional
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import numpy as np
+                from supervisely.app.widgets import Heatmap
+
+                temp_data = np.random.uniform(-20, 40, size=(100, 100))
+                heatmap = Heatmap(
+                    background_image="/path/to/background.jpg",
+                    heatmap_mask=temp_data,
+                    vmin=-20,
+                    vmax=40,
+                    colormap=cv2.COLORMAP_JET,
+                )
+                @heatmap.click
+                def handle_click(y: int, x: int, value: float):
+                    print(f"Temperature at ({x}, {y}): {value:.1f}°C")
+        """
         self._background_url = None
         self._heatmap_url = None
         self._mask_data = None  # Store numpy array for efficient value lookup

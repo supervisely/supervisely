@@ -91,6 +91,7 @@ class CustomUnpickler(pickle.Unpickler):
     """
 
     def __init__(self, file, **kwargs):
+        """Initialize CustomUnpickler. :param file: File-like object. :param kwargs: Passed to Unpickler."""
         super().__init__(file, **kwargs)
         self.warned_classes = set()  # To prevent multiple warnings for the same class
         self.sdk_update_notified = False

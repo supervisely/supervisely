@@ -17,6 +17,21 @@ class ClassesListPreview(Widget):
         show_shape_icon: bool = True,
         widget_id: Optional[str] = None,
     ):
+        """Initialize ClassesListPreview.
+
+        :param classes: List of ObjClass instances or ObjClassCollection.
+        :type classes: Optional[Union[List[ObjClass], ObjClassCollection]]
+        :param max_height: Max height of the preview area.
+        :type max_height: str
+        :param empty_text: Text to show when no classes.
+        :type empty_text: str, optional
+        :param show_shape_title: Whether to show shape type labels.
+        :type show_shape_title: bool
+        :param show_shape_icon: Whether to show shape icons.
+        :type show_shape_icon: bool
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         self._classes = [
             ObjectClassView(cls, show_shape_title, show_shape_icon).get_json_data()
             for cls in classes

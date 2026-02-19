@@ -28,32 +28,7 @@ from supervisely.sly_logger import logger
 
 
 class Plane(FrameCollection):
-    """
-    A class representing a plane in medical image data.
-
-    :param plane_name: Name of the plane, should be one of "sagittal", "coronal", "axial", or None for spatial figures.
-    :type plane_name: Union[str, None]
-    :param img_size: Size of the plane image
-    :type img_size: Optional[Union[Tuple[int, int], None]]
-    :param slices_count: Number of slices in the plane.
-    :type slices_count: Optional[Union[int, None]]
-    :param items: List of Slice objects representing the slices in the plane.
-    :type items: Oprional[List[:class:`~supervisely.volume_annotation.slice.Slice`]]
-    :param volume_meta: Metadata of the volume.
-    :type volume_meta: Optional[dict]
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import supervisely as sly
-            from supervisely.volume_annotation.plane import Plane
-            path = "/Users/almaz/Downloads/my volumes/ds11111/Demo volumes_ds1_CTChest.nrrd"
-            vol, meta  = sly.volume.read_nrrd_serie_volume(path)
-
-            plane = Plane(sly.Plane.AXIAL, volume_meta=meta)
-            print(plane.name) # axial
-    """
+    """Plane in volume (sagittal, coronal, axial); collection of Slices."""
 
     item_type = Slice
 
@@ -103,6 +78,30 @@ class Plane(FrameCollection):
         items: Optional[List[Slice]] = None,
         volume_meta: Optional[dict] = None,
     ):
+        """
+        Plane in volume annotation.
+
+        :param plane_name: One of "sagittal", "coronal", "axial", or None for spatial figures.
+        :type plane_name: Union[str, None]
+        :param img_size: Plane image size (height, width). Inferred from volume_meta if not provided.
+        :type img_size: Tuple[int, int] or List[int, int], optional
+        :param slices_count: Number of slices. Inferred from volume_meta if not provided.
+        :type slices_count: int, optional
+        :param items: List of Slice objects. Default empty collection.
+        :type items: List[:class:`~supervisely.volume_annotation.slice.Slice`], optional
+        :param volume_meta: Volume metadata. Required if img_size/slices_count not provided.
+        :type volume_meta: dict, optional
+        :raises ValueError: If plane_name invalid or both img_size and volume_meta are None.
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                vol, meta = sly.volume.read_nrrd_serie_volume(path)
+                plane = sly.Plane(sly.Plane.AXIAL, volume_meta=meta)
+        """
         Plane.validate_name(plane_name)
         self._name = plane_name
 

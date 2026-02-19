@@ -43,6 +43,7 @@ class LiveTraining:
             initial_samples: int = 2,
             filter_classes_by_task: bool = True,
         ):
+        """Initialize LiveTraining. :param initial_samples: Min samples before training. :param filter_classes_by_task: Filter obj classes by task geometry."""
         from torch import nn  # pylint: disable=import-error
         self.initial_samples = initial_samples
         self.filter_classes_by_task = filter_classes_by_task

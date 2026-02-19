@@ -12,6 +12,7 @@ class MMDetection(BaseTrainArtifacts):
     """Training artifacts descriptor for MMDetection sessions (object detection / instance segmentation)."""
 
     def __init__(self, team_id: int):
+        """See :class:`~supervisely.nn.artifacts.artifacts.BaseTrainArtifacts` for params."""
         super().__init__(team_id)
 
         self._app_name = "Train MMDetection"
@@ -65,6 +66,7 @@ class MMDetection3(BaseTrainArtifacts):
     """Training artifacts descriptor for MMDetection 3.0 sessions with benchmark evaluation support."""
 
     def __init__(self, team_id: int):
+        """See :class:`~supervisely.nn.artifacts.artifacts.BaseTrainArtifacts` for params."""
         super().__init__(team_id)
 
         self._app_name = "Train MMDetection 3.0"

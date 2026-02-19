@@ -159,6 +159,7 @@ class PredictAppGui:
     """End-to-end GUI for running model inference and writing predictions back to a Supervisely project."""
 
     def __init__(self, api: Api, static_dir: str = "static"):
+        """Initialize PredictAppGui. :param api: Supervisely API. :param static_dir: Static assets directory."""
         self.api = api
         self.static_dir = static_dir
 

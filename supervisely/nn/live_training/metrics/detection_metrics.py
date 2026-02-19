@@ -5,6 +5,7 @@ class DetectionMetrics:
     """Detection metrics for Evaluator (IoU, precision, recall, F1, assistance score)."""
 
     def __init__(self, iou_min: float = 0.7, iou_perfect: float = 0.9):
+        """Initialize DetectionMetrics. :param iou_min: Min IoU for match. :param iou_perfect: IoU for perfect match."""
         self.iou_min = iou_min
         self.iou_perfect = iou_perfect
         self.score_weights = {

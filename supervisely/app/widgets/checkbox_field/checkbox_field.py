@@ -7,17 +7,7 @@ from supervisely.app.widgets import Text, Widget
 
 
 class CheckboxField(Widget):
-    """This widget is a checkbox with a description.
-
-    :param title: Title of the checkbox.
-    :type title: str
-    :param description: Description of the checkbox.
-    :type description: str
-    :param checked: Initial state of the checkbox.
-    :type checked: Optional[bool]
-    :param widget_id: Unique widget identifier.
-    :type widget_id: str
-    """
+    """Checkbox with title and description."""
 
     class Routes:
         """Route name constants for this widget."""
@@ -30,6 +20,19 @@ class CheckboxField(Widget):
         checked: Optional[bool] = False,
         widget_id: Optional[str] = None,
     ):
+        """
+        :param title: Checkbox title.
+        :param description: Checkbox description.
+        :param checked: Initial checked state.
+        :param widget_id: Widget identifier.
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import CheckboxField
+                cb = CheckboxField("Title", "Description", checked=False)
+        """
         self._title = title
         self._description = description
         self._checked = checked

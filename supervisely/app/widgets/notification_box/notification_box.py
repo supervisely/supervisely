@@ -29,6 +29,19 @@ class NotificationBox(Widget):
         box_type: Literal["success", "info", "warning", "error"] = INFO,
         widget_id: str = None,
     ):
+        """Initialize NotificationBox.
+
+        :param title: Box title.
+        :type title: str, optional
+        :param description: Box description text.
+        :type description: str, optional
+        :param box_type: Type: "success", "info", "warning", or "error".
+        :type box_type: Literal["success", "info", "warning", "error"]
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+
+        :raises ValueError: If box_type is not one of the supported types.
+        """
         self._title = title
         self._description = description
         # if self._title is None and self._description is None:

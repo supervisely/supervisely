@@ -8,6 +8,7 @@ class ChunkSplitter:
     """Iterator over (offset, size) pairs to split a byte stream into fixed-size chunks."""
 
     def __init__(self, tot_size, chunk_size):
+        """Initialize ChunkSplitter. :param tot_size: Total byte size. :param chunk_size: Chunk size."""
         self.tot_size = tot_size
         self.chunk_size = chunk_size
 
@@ -28,6 +29,7 @@ class ChunkedFileWriter:
     """Write protobuf-like chunks to a file and validate final size on close."""
 
     def __init__(self, file_path):
+        """Initialize ChunkedFileWriter. :param file_path: Output file path."""
         self.handler = None
         self.path = file_path
 
@@ -63,6 +65,7 @@ class ChunkedFileReader:
     """Read a file and yield its contents as fixed-size byte chunks."""
 
     def __init__(self, fpath, chunk_size):
+        """Initialize ChunkedFileReader. :param fpath: File path. :param chunk_size: Chunk size in bytes."""
         self.fpath = fpath
         self.file_size = sly.fs.get_file_size(fpath)  # bytes
         self.splitter = ChunkSplitter(self.file_size, chunk_size)

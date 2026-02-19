@@ -43,31 +43,7 @@ class AgentNotRunning(Exception):
 
 
 class AgentApi(ModuleApi, ModuleWithStatus):
-    """
-    API for working with agents. :class:`~supervisely.api.agent_api.AgentApi` object is immutable.
-
-    :param api: API connection to the server
-    :type api: :class:`~supervisely.api.api.Api`
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import os
-            from dotenv import load_dotenv
-
-            import supervisely as sly
-
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            if sly.is_development():
-                load_dotenv(os.path.expanduser("~/supervisely.env"))
-
-            api = sly.Api.from_env()
-
-            team_id = 8
-            agents = api.agent.get_list(team_id)
-    """
+    """API for working with agents."""
 
     class Status(Enum):
         """Agent runtime status values returned by the platform."""
@@ -121,6 +97,19 @@ class AgentApi(ModuleApi, ModuleWithStatus):
         return "AgentInfo"
 
     def __init__(self, api):
+        """Initialize AgentApi.
+
+        :param api: API connection to the server
+        :type api: :class:`~supervisely.api.api.Api`
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+                api = sly.Api.from_env()
+                agents = api.agent.get_list(team_id=8)
+        """
         ModuleApi.__init__(self, api)
         ModuleWithStatus.__init__(self)
 

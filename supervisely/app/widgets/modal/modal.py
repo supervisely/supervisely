@@ -5,49 +5,7 @@ from supervisely.app.widgets import Widget
 
 
 class Modal(Widget):
-    """Modal overlay with close button for displaying content.
-    It can contain any other widgets, similar to Container, and provides programmatic control
-    to show/hide the modal.
-
-    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/layouts-and-containers/modal>`_
-        (including screenshots and examples).
-
-    :param title: Modal window title
-    :type title: str
-    :param widgets: List of widgets to be displayed inside the modal
-    :type widgets: Optional[List[:class:`~supervisely.app.widgets.widget.Widget`]]
-    :param size: Modal size, one of: tiny, small, large, full
-    :type size: Literal["tiny", "small", "large", "full"]
-    :param widget_id: An identifier of the widget.
-    :type widget_id: str, optional
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            from supervisely.app.widgets import Modal, Text, Button, Input, Container
-
-            # Create widgets to show in modal
-            input_widget = Input("Enter value")
-            text_widget = Text("This is modal content")
-
-            # Create modal with multiple widgets
-            modal = Modal(
-                title="My Modal Window",
-                widgets=[text_widget, input_widget],
-                size="small"
-            )
-
-            # Show modal programmatically
-            modal.show()
-
-            # Hide modal programmatically
-            modal.hide()
-
-            # Alternative methods
-            modal.show_modal()
-            modal.close_modal()
-    """
+    """Modal overlay with close button; contains widgets, show/hide programmatically."""
 
     class Routes:
         """Route name constants for this widget."""
@@ -61,6 +19,20 @@ class Modal(Widget):
         size: Optional[Literal["tiny", "small", "large", "full"]] = "small",
         widget_id: Optional[str] = None,
     ):
+        """
+        :param title: Modal title.
+        :param widgets: List of content widgets.
+        :param size: tiny, small, large, or full.
+        :param widget_id: Widget identifier.
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import Modal, Text, Input
+                modal = Modal(title="Title", widgets=[Text("Content"), Input("")], size="small")
+                modal.show()
+        """
         self._title = title
         self._widgets = widgets if widgets is not None else []
         self._size = size

@@ -18,6 +18,7 @@ class HyperparametersSelector:
     lock_message = "Select previous step to unlock"
 
     def __init__(self, hyperparameters: dict, app_options: dict = {}):
+        """Initialize HyperparametersSelector. :param hyperparameters: Hyperparameters dict. :param app_options: App options."""
         # Init widgets
         self.editor = None
         self.run_model_benchmark_checkbox = None

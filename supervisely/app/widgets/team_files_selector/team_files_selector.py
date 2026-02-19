@@ -27,6 +27,29 @@ class TeamFilesSelector(Widget):
         widget_id: str = None,
         initial_folder: str = None,
     ):
+        """Initialize TeamFilesSelector.
+
+        :param team_id: Team ID for Team Files.
+        :type team_id: int
+        :param multiple_selection: If True, allow multiple selection.
+        :type multiple_selection: bool
+        :param max_height: Max height in pixels.
+        :type max_height: int
+        :param selection_file_type: Filter: "folder" or "file".
+        :type selection_file_type: Literal["folder", "file"], optional
+        :param hide_header: If True, hide table header.
+        :type hide_header: bool
+        :param hide_empty_table: If True, hide when empty.
+        :type hide_empty_table: bool
+        :param additional_fields: Extra columns to show.
+        :type additional_fields: List[Literal]
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        :param initial_folder: Initial folder path.
+        :type initial_folder: str, optional
+
+        :raises ValueError: If additional_fields contains invalid field names.
+        """
         self._api = Api()
         self._team_id = team_id
 

@@ -63,36 +63,23 @@ class IssueInfo(NamedTuple):
 
 
 class IssuesApi(ModuleApiBase):
-    """Class for working with issues in Supervisely.
+    """API for working with annotation issues and comments."""
 
-    :param api: API connection to the server.
-    :type api: :class:`~supervisely.api.api.Api`
+    def __init__(self, api):
+        """Initialize IssuesApi.
 
-    :Usage Example:
+        :param api: API connection to the server.
+        :type api: :class:`~supervisely.api.api.Api`
 
-        .. code-block:: python
+        :Usage Example:
 
-            import os
-            from dotenv import load_dotenv
+            .. code-block:: python
 
-            import supervisely as sly
-
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            if sly.is_development():
-                load_dotenv(os.path.expanduser("~/supervisely.env"))
-
-            api = sly.Api.from_env()
-
-            # Get list of issues in specified team.
-            issues = api.issues.get_list(team_id=1)
-
-            # Get information about issue by its ID.
-            issue_info = api.issues.get_info_by_id(id=1)
-
-            # Add new issue.
-            new_issue = api.issues.add(team_id=1, issue_name="New issue", comment="Some comment")
-    """
+                import supervisely as sly
+                api = sly.Api.from_env()
+                issues = api.issues.get_list(team_id=1)
+        """
+        super().__init__(api)
 
     @staticmethod
     def info_sequence():

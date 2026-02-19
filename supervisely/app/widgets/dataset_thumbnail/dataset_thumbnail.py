@@ -8,35 +8,7 @@ from supervisely.project.project import Dataset, Project
 
 
 class DatasetThumbnail(Widget):
-    """Thumbnail image for a dataset.
-
-    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/thumbnails/datasetthumbnail>`_
-        (including screenshots and examples).
-
-    :param project_info: project info
-    :type project_info: Optional[:class:`~supervisely.api.project_api.ProjectInfo`]
-    :param dataset_info: dataset info
-    :type dataset_info: Optional[:class:`~supervisely.api.dataset_api.DatasetInfo`]
-    :param show_project_name: if True, project name will be shown
-    :type show_project_name: Optional[bool]
-    :param remove_margins: if True, removes margins around the widget
-    :type remove_margins: bool, optional
-    :param custom_name: custom name for the dataset (if None, actual dataset name will be used)
-    :type custom_name: str, optional
-    :param widget_id: An identifier of the widget.
-    :type widget_id: str, optional
-
-    :Usage Example:
-
-        .. code-block:: python
-
-                from supervisely.app.widgets import DatasetThumbnail
-
-                dataset_thumbnail = DatasetThumbnail(
-                    project_info=project_info,
-                    dataset_info=dataset_info,
-                )
-    """
+    """Thumbnail image for a dataset."""
 
     def __init__(
         self,
@@ -47,6 +19,21 @@ class DatasetThumbnail(Widget):
         custom_name: str = None,
         widget_id: Optional[str] = None,
     ):
+        """
+        :param project_info: ProjectInfo for context.
+        :param dataset_info: DatasetInfo (required for thumbnail).
+        :param show_project_name: Show project name above thumbnail.
+        :param remove_margins: Remove widget margins.
+        :param custom_name: Override dataset name.
+        :param widget_id: Widget identifier.
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import DatasetThumbnail
+                thumb = DatasetThumbnail(project_info=proj_info, dataset_info=ds_info)
+        """
         self._project_info: ProjectInfo = None
         self._dataset_info: DatasetInfo = None
         self._id: int = None

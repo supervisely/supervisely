@@ -15,6 +15,17 @@ class ImageAnnotationPreview(Widget):
         line_width: int = 1,
         widget_id: str = None,
     ):
+        """Initialize ImageAnnotationPreview.
+
+        :param annotations_opacity: Opacity of annotation overlays (0–1).
+        :type annotations_opacity: float
+        :param enable_zoom: If True, enable zoom.
+        :type enable_zoom: bool
+        :param line_width: Line width for shapes.
+        :type line_width: int
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         self._image_url = None
         self._annotation = None
         self._project_meta = None

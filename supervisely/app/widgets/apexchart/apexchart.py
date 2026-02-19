@@ -64,6 +64,19 @@ class Apexchart(Widget):
         height: Union[int, str] = "300",
         sly_options: dict = {},
     ):
+        """Initialize Apexchart.
+
+        :param series: Chart series data.
+        :type series: List[dict]
+        :param options: ApexCharts options dict.
+        :type options: dict
+        :param type: Chart type (e.g., "line", "bar", "pie").
+        :type type: str
+        :param height: Chart height in pixels or CSS value.
+        :type height: Union[int, str]
+        :param sly_options: Supervisely-specific options (e.g., tooltip).
+        :type sly_options: dict
+        """
         self._series = series
         self._options = options
         self._type = type

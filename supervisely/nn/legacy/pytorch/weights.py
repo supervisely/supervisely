@@ -6,15 +6,16 @@ from torch.nn import Parameter
 
 
 class WeightsRW:
-    """
-    Help to load weights for PyTorch model from file and save current model state dict into given place.
+    """Load/save PyTorch model weights from/to file."""
 
-    :param model_dir: Path to the folder for storing weights.
-    :type model_dir: str
-    :param model_file: Name of weights file(default: model.pt).
-    :type model_file: str
-    """
     def __init__(self, model_dir, model_file=None):
+        """Initialize WeightsRW.
+
+        :param model_dir: Path to the folder for storing weights.
+        :type model_dir: str
+        :param model_file: Name of weights file (default: model.pt).
+        :type model_file: str
+        """
         self._weights_fpath = os.path.join(model_dir, model_file or 'model.pt')
 
     def save(self, model):

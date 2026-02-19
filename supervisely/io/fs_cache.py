@@ -13,6 +13,11 @@ class FSCache:
     """Base filesystem-backed cache that stores objects under a hash-derived directory layout."""
 
     def __init__(self, name, storage_root):
+        """Initialize FSCache.
+
+        :param name: Cache name/identifier.
+        :param storage_root: Root directory for cached objects.
+        """
         self._name = name
         self._storage_root = storage_root
 

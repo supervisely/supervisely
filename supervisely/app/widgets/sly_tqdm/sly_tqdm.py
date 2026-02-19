@@ -34,6 +34,14 @@ class _slyProgressBarIO:
     """File-like adapter used by tqdm to report progress into Supervisely `DataJson` and logs."""
 
     def __init__(self, widget_id, message=None, total=None, unit=None, unit_scale=None):
+        """Initialize _slyProgressBarIO.
+
+        :param widget_id: Progress widget ID.
+        :param message: Progress message.
+        :param total: Total iterations/size.
+        :param unit: Unit string (e.g. "it", "B").
+        :param unit_scale: If True, scale units (B, KB, MB...).
+        """
         self.widget_id = widget_id
 
         self.progress = {
@@ -152,6 +160,13 @@ class CustomTqdm(tqdm):
     """tqdm subclass that streams progress updates to a Supervisely progress-bar widget."""
 
     def __init__(self, widget_id, message, *args, **kwargs):
+        """Initialize CustomTqdm.
+
+        :param widget_id: Progress widget ID to sync with.
+        :param message: Progress message.
+        :param args: Passed to tqdm (e.g. iterable).
+        :param kwargs: Passed to tqdm (e.g. total, unit, unit_scale).
+        """
         extracted_total = copy.copy(
             tqdm(iterable=kwargs["iterable"], total=kwargs["total"], disable=True).total
         )
@@ -346,6 +361,17 @@ class Progress(SlyTqdm):
         hide_on_finish=True,
         widget_id: str = None,
     ):
+        """Initialize Progress.
+
+        :param message: Progress message.
+        :type message: str, optional
+        :param show_percents: If True, show percentage.
+        :type show_percents: bool
+        :param hide_on_finish: If True, hide widget when done.
+        :type hide_on_finish: bool
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         self.hide_on_finish = hide_on_finish
         super().__init__(message=message, show_percents=show_percents, widget_id=widget_id)
 

@@ -17,60 +17,7 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
 class VideoTag(Tag):
-    """
-    Tag applied to video or frame range (meta, value, frame_range). Immutable.
-
-    :param meta: General information about Video.
-    :type meta: :class:`~supervisely.annotation.tag_meta.TagMeta`
-    :param value: Video Tag value. Depends on TagValueType of TagMeta.
-    :type value: str or int or float or None, optional
-    :param frame_range: Video Tag frame range.
-    :type frame_range: Tuple[int, int] or List[int, int], optional
-    :param key: uuid.UUID object.
-    :type key: uuid.UUID, optional
-    :param sly_id: Video Tag ID in Supervisely.
-    :type sly_id: int, optional
-    :param labeler_login: Login of user who created VideoTag.
-    :type labeler_login: str, optional
-    :param updated_at: Date and Time when VideoTag was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
-    :type updated_at: str, optional
-    :param created_at: Date and Time when VideoTag was created. Date Format is the same as in "updated_at" parameter.
-    :type created_at: str, optional
-    :param is_finished: Video Tag is finished or not (applicable for range tags).
-    :type is_finished: bool, optional
-    :param non_final_value: Video Tag value is final or not. Can be useful to create tag without value.
-    :type non_final_value: bool, optional
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import supervisely as sly
-            from supervisely.video_annotation.video_tag import VideoTag
-
-            meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE)
-            # Now we can create a VideoTag using our TagMeta
-            tag_dog = VideoTag(meta_dog)
-            # When you are creating a new Tag
-            # Tag.value is automatically cross-checked against your TagMeta value type to make sure the value is valid.
-            # If we now try to add a value to our newly created Tag, we receive "ValueError", because our TagMeta value type is "NONE"
-            tag_dog = VideoTag(meta_dog, value="Husky")
-            # Output: ValueError: Tag dog can not have value Husky
-
-            # Let's create another Tag with a string value type and frame range
-            meta_cat = sly.TagMeta('cat', sly.TagValueType.ANY_STRING)
-            tag_cat = VideoTag(meta_cat, value="Fluffy", frame_range=(5, 10))
-
-            # Now let's create a Tag using TagMeta with "ONEOF_STRING" value type
-            # In order to use "oneof_string value type", you must initialize a variable with possible values(see class TagMeta for more information)
-            colors = ["brown", "white", "black", "red", "chocolate", "gold", "grey"]
-            meta_coat_color = sly.TagMeta('coat color', sly.TagValueType.ONEOF_STRING, possible_values=colors)
-            tag_coat_color = VideoTag(meta_coat_color, value="white", frame_range=(15, 20))
-
-            # If given value is not in a list of possible Tags, ValueError will be raised
-            tag_coat_color = VideoTag(meta_coat_color, value="yellow")
-            # Output: ValueError: Tag coat color can not have value yellow
-    """
+    """Tag applied to video or frame range (meta, value, frame_range). Immutable."""
 
     _SUPPORT_UNFINISHED_TAGS = True
 
@@ -87,6 +34,46 @@ class VideoTag(Tag):
         is_finished: Optional[bool] = None,
         non_final_value: Optional[bool] = None,
     ):
+        """
+        Tag applied to video or frame range.
+
+        :param meta: Tag metadata (name, value type).
+        :type meta: :class:`~supervisely.annotation.tag_meta.TagMeta`
+        :param value: Tag value; type depends on TagValueType of TagMeta.
+        :type value: str or int or float or None, optional
+        :param frame_range: Frame range (start, end) where tag applies.
+        :type frame_range: Tuple[int, int] or List[int, int], optional
+        :param key: UUID key. Auto-generated if not provided.
+        :type key: uuid.UUID, optional
+        :param sly_id: Server-side tag ID.
+        :type sly_id: int, optional
+        :param labeler_login: Login of user who created the tag.
+        :type labeler_login: str, optional
+        :param updated_at: Last modification timestamp (ISO format).
+        :type updated_at: str, optional
+        :param created_at: Creation timestamp (ISO format).
+        :type created_at: str, optional
+        :param is_finished: Whether range tag is finalized (for range tags).
+        :type is_finished: bool, optional
+        :param non_final_value: Whether tag value is temporary.
+        :type non_final_value: bool, optional
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE)
+                tag_dog = sly.VideoTag(meta_dog)
+
+                meta_cat = sly.TagMeta('cat', sly.TagValueType.ANY_STRING)
+                tag_cat = sly.VideoTag(meta_cat, value="Fluffy", frame_range=(5, 10))
+
+                colors = ["brown", "white", "black"]
+                meta_coat = sly.TagMeta('coat color', sly.TagValueType.ONEOF_STRING, possible_values=colors)
+                tag_coat = sly.VideoTag(meta_coat, value="white", frame_range=(15, 20))
+        """
         super(VideoTag, self).__init__(
             meta,
             value=value,

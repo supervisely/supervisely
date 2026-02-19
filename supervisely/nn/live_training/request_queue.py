@@ -16,6 +16,7 @@ class RequestType(Enum):
 class Request:
     """A simple representation of an API request."""
     def __init__(self, request_type: RequestType, data: Optional[dict] = None, future: Optional[asyncio.Future] = None):
+        """Initialize Request. :param request_type: RequestType enum. :param data: Optional request data. :param future: Optional Future for response."""
         self.type = request_type
         self.data = data
         self.future = future

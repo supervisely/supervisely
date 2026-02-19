@@ -39,35 +39,7 @@ class ObjClassJsonFields:
 
 
 class ObjClass(KeyObject, JsonSerializable):
-    """
-    General information about object class. ObjClass object is immutable.
-
-    :param name: Class name.
-    :type name: str
-    :param geometry_type: Defines the shape of ObjClass: :class:`Bitmap<~supervisely.geometry.bitmap.Bitmap>`, :class:`Cuboid<~supervisely.geometry.cuboid.Cuboid>`, :class:`Graph<~supervisely.geometry.graph.GraphNodes>`, :class:`Point<~supervisely.geometry.point.Point>`, :class:`Polygon<~supervisely.geometry.polygon.Polygon>`, :class:`Polyline<~supervisely.geometry.polyline.Polyline>`, :class:`Rectangle<~supervisely.geometry.rectangle.Rectangle>`.
-    :type geometry_type: dict, optional
-    :param color: :class:`[R, G, B]`, generates random color by default.
-    :type color: List[int, int, int], optional
-    :param geometry_config: Additional settings of the geometry.
-    :type geometry_config: dict, optional
-    :param sly_id: ID in Supervisely server.
-    :type sly_id: int, optional
-    :param hotkey: Hotkey for ObjClass in annotation tool UI.
-    :type hotkey: str, optional
-    :raises ValueError: if color is not list or tuple, or doesn't have exactly 3 values
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import supervisely as sly
-
-            # Simple ObjClass example
-            class_lemon = sly.ObjClass('lemon', sly.Rectangle)
-
-            # More complex ObjClass example
-            class_cucumber = sly.ObjClass('cucumber', sly.Bitmap, color=[128, 0, 255], hotkey='d')
-    """
+    """Object class: name, geometry type (Rectangle, Polygon, etc.), color. Immutable."""
 
     def __init__(
         self,
@@ -79,6 +51,34 @@ class ObjClass(KeyObject, JsonSerializable):
         hotkey: Optional[str] = None,
         description: Optional[str] = None,
     ):
+        """
+        Object class definition for annotations.
+
+        :param name: Class name (e.g. 'car', 'person').
+        :type name: str
+        :param geometry_type: Geometry type: Rectangle, Polygon, Bitmap, Point, Polyline, Cuboid, GraphNodes, etc.
+        :type geometry_type: type
+        :param color: RGB color [R, G, B]. Random color if not provided.
+        :type color: List[int, int, int], optional
+        :param geometry_config: Extra geometry settings (e.g. KeypointsTemplate for GraphNodes).
+        :type geometry_config: dict, optional
+        :param sly_id: Server-side class ID.
+        :type sly_id: int, optional
+        :param hotkey: Hotkey in annotation UI.
+        :type hotkey: str, optional
+        :param description: Class description.
+        :type description: str, optional
+        :raises ValueError: If color has invalid format or GraphNodes has no geometry_config.
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                class_lemon = sly.ObjClass('lemon', sly.Rectangle)
+                class_cucumber = sly.ObjClass('cucumber', sly.Bitmap, color=[128, 0, 255], hotkey='d')
+        """
         self._name = name
         self._geometry_type = geometry_type
         self._color = random_rgb() if color is None else deepcopy(color)

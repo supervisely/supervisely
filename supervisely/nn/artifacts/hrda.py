@@ -9,6 +9,7 @@ class HRDA(BaseTrainArtifacts):
     # not enough info to implement
 
     def __init__(self, team_id: int):
+        """See BaseTrainArtifacts for params. Not fully implemented."""
         raise NotImplementedError
         # super().__init__(team_id)
         # self._app_name = "Train HRDA"

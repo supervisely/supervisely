@@ -7,35 +7,7 @@ SUPPORTED_TAG_WIDGET_TYPES = ["primary", "gray", "success", "warning", "danger"]
 
 
 class ElementTag(Widget):
-    """Displays a single element tag.
-
-    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/text-elements/elementtag>`_
-        (including screenshots and examples).
-
-    :param text: Tag text
-    :type text: Optional[str]
-    :param type: Tag type, one of: primary, gray, success, warning, danger
-    :type type: Optional[Literal["primary", "gray", "success", "warning", "danger"]]
-    :param hit: If True, tag will be highlighted
-    :type hit: Optional[bool]
-    :param color: Tag color
-    :type color: Optional[str]
-    :param widget_id: An identifier of the widget.
-    :type widget_id: str, optional
-
-    :Usage Example:
-
-        .. code-block:: python
-
-                from supervisely.app.widgets import ElementTag
-
-                element_tag = ElementTag(
-                    text="Tag",
-                    type="primary",
-                    hit=True,
-                    color="#20a0ff",
-                )
-    """
+    """Displays a single element tag."""
 
     class Routes:
         """Route name constants for this widget."""
@@ -49,6 +21,20 @@ class ElementTag(Widget):
         color: Optional[str] = "",
         widget_id: Optional[str] = None,
     ):
+        """
+        :param text: Tag text.
+        :param type: primary, gray, success, warning, danger.
+        :param hit: Highlight tag.
+        :param color: Custom color (e.g. "#20a0ff").
+        :param widget_id: Widget identifier.
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import ElementTag
+                tag = ElementTag(text="Tag", type="primary")
+        """
         self._text = text
         self._validate_type(type)
         self._type = type

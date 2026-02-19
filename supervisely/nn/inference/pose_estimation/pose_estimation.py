@@ -37,6 +37,7 @@ class PoseEstimation(Inference):
         keypoints_template: Optional[KeypointsTemplate] = None,
         use_gui: Optional[bool] = False,
     ):
+        """Initialize PoseEstimation. See Inference for model_dir, custom_inference_settings, use_gui. :param keypoints_template: Optional KeypointsTemplate for keypoint layout."""
         super().__init__(
             model_dir=model_dir,
             custom_inference_settings=custom_inference_settings,

@@ -9,12 +9,16 @@ from supervisely.api.module_api import ApiField
 
 
 class ProjectClassApi(ModuleApi):
-    """
-    API for working with classes in Project. :class:`ProjectClassApi<~supervisely.api.project_class_api.ProjectClassApi>` object is immutable.
+    """API for working with classes in a project."""
 
-    :param api: API connection to the server
-    :type api: :class:`~supervisely.api.api.Api`
-    """
+    def __init__(self, api):
+        """Initialize ProjectClassApi.
+
+        :param api: API connection to the server.
+        :type api: :class:`~supervisely.api.api.Api`
+        """
+        super().__init__(api)
+
     @staticmethod
     def info_sequence():
         return [ApiField.ID,

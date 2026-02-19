@@ -71,6 +71,19 @@ class ClassesListSelector(Widget):
         allow_new_classes: Optional[bool] = False,
         widget_id: Optional[str] = None,
     ):
+        """Initialize ClassesListSelector.
+
+        :param classes: List of ObjClass instances or ObjClassCollection.
+        :type classes: Optional[Union[List[ObjClass], ObjClassCollection]]
+        :param multiple: If True, allow multiple class selection.
+        :type multiple: bool, optional
+        :param empty_notification: NotificationBox to show when no classes.
+        :type empty_notification: NotificationBox, optional
+        :param allow_new_classes: If True, show option to create new classes.
+        :type allow_new_classes: bool, optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         # Convert to list for internal use to allow mutations when adding new classes
         if isinstance(classes, ObjClassCollection):
             self._classes = list(classes)

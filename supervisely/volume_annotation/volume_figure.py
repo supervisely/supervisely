@@ -31,64 +31,7 @@ from supervisely.volume_annotation.volume_object_collection import (
 
 
 class VolumeFigure(VideoFigure):
-    """
-    Figure in volume annotation: geometry (Mask3D/ClosedSurfaceMesh) at a slice or spatial position. Immutable.
-
-    :param volume_object: VolumeObject object.
-    :type volume_object: :class:`~supervisely.volume_annotation.volume_object.VolumeObject`
-    :param geometry: Geometry object.
-    :type geometry: :class:`Geometry<~supervisely.geometry>`
-    :param plane_name: Name of the volume plane.
-    :type plane_name: str
-    :param slice_index: Index of slice to which VolumeFigure belongs.
-    :type slice_index: int
-    :param key: The UUID key associated with the :class:`~supervisely.volume_annotation.volume_figure.VolumeFigure`.
-    :type key: UUID, optional
-    :param class_id: ID of VolumeObject to which VolumeFigure belongs.
-    :type class_id: int, optional
-    :param labeler_login: Login of the user who created VolumeFigure.
-    :type labeler_login: str, optional
-    :param updated_at: Date and Time when VolumeFigure was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
-    :type updated_at: str, optional
-    :param created_at: Date and Time when VolumeFigure was created. Date Format is the same as in "updated_at" parameter.
-    :type created_at: str, optional
-    :param custom_data: Custom data associated with the VolumeFigure.
-    :type custom_data: dict, optional
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import supervisely as sly
-
-            obj_class_heart = sly.ObjClass('heart', sly.Rectangle)
-            volume_obj_heart = sly.VolumeObject(obj_class_heart)
-            slice_index = 7
-            plane_name = "axial"
-            geometry = sly.Rectangle(0, 0, 100, 100)
-            volume_figure_heart = sly.VolumeFigure(volume_obj_heart, geometry, plane_name, slice_index)
-            volume_figure_heart_json = volume_figure_heart.to_json()
-            print(volume_figure_heart_json)
-            # Output: {
-            #     "geometry": {
-            #         "points": {
-            #         "exterior": [
-            #             [0, 0],
-            #             [100, 100]
-            #         ],
-            #         "interior": []
-            #         }
-            #     },
-            #     "geometryType": "rectangle",
-            #     "key": "158e6cf4f4ac4c639fc6994aad127c16",
-            #     "meta": {
-            #         "normal": { "x": 0, "y": 0, "z": 1 },
-            #         "planeName": "axial",
-            #         "sliceIndex": 7
-            #     },
-            #     "objectKey": "bf63ffe342e949899d3ddcb6b0f73f54"
-            # }
-    """
+    """Figure in volume annotation: geometry (Mask3D/ClosedSurfaceMesh) at a slice or spatial position. Immutable."""
 
     def __init__(
         self,
@@ -104,6 +47,43 @@ class VolumeFigure(VideoFigure):
         custom_data: Optional[dict] = None,
         **kwargs,
     ):
+        """
+        Figure in volume annotation.
+
+        :param volume_object: Volume object this figure belongs to.
+        :type volume_object: :class:`~supervisely.volume_annotation.volume_object.VolumeObject`
+        :param geometry: Geometry (Rectangle, Mask3D, ClosedSurfaceMesh, etc.).
+        :type geometry: :class:`~supervisely.geometry.geometry.Geometry`
+        :param plane_name: Plane name: "axial", "sagittal", or "coronal". Required for non-Mask3D geometries.
+        :type plane_name: str, optional
+        :param slice_index: Slice index. Required for non-Mask3D geometries.
+        :type slice_index: int, optional
+        :param key: UUID key. Auto-generated if not provided.
+        :type key: uuid.UUID, optional
+        :param class_id: Server-side class ID.
+        :type class_id: int, optional
+        :param labeler_login: Login of user who created the figure.
+        :type labeler_login: str, optional
+        :param updated_at: Last modification timestamp (ISO format).
+        :type updated_at: str, optional
+        :param created_at: Creation timestamp (ISO format).
+        :type created_at: str, optional
+        :param custom_data: Custom data.
+        :type custom_data: dict, optional
+        :raises TypeError: If plane_name/slice_index missing for non-Mask3D geometries.
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                obj_class_heart = sly.ObjClass('heart', sly.Rectangle)
+                volume_obj_heart = sly.VolumeObject(obj_class_heart)
+                geometry = sly.Rectangle(0, 0, 100, 100)
+                vol_fig = sly.VolumeFigure(volume_obj_heart, geometry, "axial", 7)
+                print(vol_fig.to_json())
+        """
         # only Mask3D can be created without 'plane_name' and 'slice_index'
         if not isinstance(geometry, (Mask3D, ClosedSurfaceMesh)):
             if plane_name is None and slice_index is None:

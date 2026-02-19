@@ -38,6 +38,37 @@ class GridGalleryV2(Widget):
         default_tag_filters: List[Union[str, dict]] = None,
         widget_id: str = None,
     ):
+        """Initialize GridGalleryV2.
+
+        :param columns_number: Number of columns in the grid.
+        :type columns_number: int
+        :param fit_on_resize: If True, fit images on resize.
+        :type fit_on_resize: bool
+        :param enable_zoom: If True, enable zoom.
+        :type enable_zoom: bool
+        :param show_opacity_slider: If True, show opacity slider.
+        :type show_opacity_slider: bool
+        :param show_zoom_slider: If True, show zoom slider.
+        :type show_zoom_slider: bool
+        :param annotations_opacity: Opacity of annotation overlays (0–1).
+        :type annotations_opacity: float
+        :param enable_pointer_events: If True, enable pointer events on overlays.
+        :type enable_pointer_events: bool
+        :param transparent_background: If True, use transparent background.
+        :type transparent_background: bool
+        :param show_filter: If True, show tag filter.
+        :type show_filter: bool
+        :param fill_rectangle: If True, fill rectangles.
+        :type fill_rectangle: bool
+        :param enable_panning: If True, enable panning.
+        :type enable_panning: bool
+        :param border_width: Border width for shapes.
+        :type border_width: int
+        :param default_tag_filters: Default tag filters applied.
+        :type default_tag_filters: List[Union[str, dict]], optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         self._data = []
         self._layout = []
         self._annotations = {}

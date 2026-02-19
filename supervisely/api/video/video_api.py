@@ -232,33 +232,22 @@ class VideoInfo(NamedTuple):
 
 
 class VideoApi(RemoveableBulkModuleApi):
-    """
-    API for working with videos. :class:`~supervisely.api.video.video_api.VideoApi` object is immutable.
-
-    :param api: API connection to the server.
-    :type api: :class:`~supervisely.api.api.Api`
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import os
-            from dotenv import load_dotenv
-
-            import supervisely as sly
-
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            if sly.is_development():
-                load_dotenv(os.path.expanduser("~/supervisely.env"))
-
-            api = sly.Api.from_env()
-
-            video_id = 19371139
-            video_info = api.video.get_info_by_id(video_id) # api usage example
-    """
+    """API for working with videos."""
 
     def __init__(self, api):
+        """Initialize VideoApi.
+
+        :param api: API connection to the server.
+        :type api: :class:`~supervisely.api.api.Api`
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+                api = sly.Api.from_env()
+                video_info = api.video.get_info_by_id(video_id)
+        """
         super().__init__(api)
         self.annotation = VideoAnnotationAPI(api)
         self.object = VideoObjectApi(api)

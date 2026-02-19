@@ -98,50 +98,7 @@ SUPPORTED_TARGET_TYPES = [
 
 
 class TagMeta(KeyObject, JsonSerializable):
-    """
-    General information about :class:`Tag<~supervisely.annotation.tag>`. :class:`TagMeta<~supervisely.annotation.tag_meta.TagMeta>` object is immutable.
-
-    :param name: Tag name.
-    :type name: str
-    :param value_type: Tag value type.
-    :type value_type: str
-    :param possible_values: List of possible values.
-    :type possible_values: List[str], optional
-    :param color: [R, G, B] color, generates random color by default.
-    :type color: List[int, int, int], optional
-    :param sly_id: Tag ID in Supervisely server.
-    :type sly_id: int, optional
-    :param hotkey: Hotkey for Tag in annotation tool UI.
-    :type hotkey: str, optional
-    :param applicable_to: Defines applicability of Tag only to images, objects or both.
-    :type applicable_to: str, optional
-    :param applicable_classes: Defines applicability of Tag only to certain classes.
-    :type applicable_classes: List[str], optional
-    :param target_type: Defines Tag target type (scope) - entities, frames or both.
-    :type target_type: str, optional
-    :raises ValueError: if color is not list, or doesn't have exactly 3 values
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import supervisely as sly
-
-            # TagMeta
-            meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE)
-
-            # TagMeta applicable only to Images example
-            meta_cat = sly.TagMeta('cat', sly.TagValueType.NONE, applicable_to=sly.TagApplicableTo.IMAGES_ONLY)
-
-            # TagMeta with string value applicable only to Objects example
-            meta_breed = sly.TagMeta('breed', sly.TagValueType.ANY_STRING, applicable_to=sly.TagApplicableTo.OBJECTS_ONLY)
-
-            # More complex TagMeta example
-            # Create a list with possible values in order to use "ONEOF_STRING" value type
-            coat_colors = ["brown", "white", "black", "red", "chocolate", "gold", "grey"]
-            # Note that "ONEOF_STRING" value type requires possible values, otherwise ValueError will be raised
-            meta_coat_color = sly.TagMeta('coat color', sly.TagValueType.ONEOF_STRING, coat_colors, [255,120,0], hotkey="M", applicable_to=sly.TagApplicableTo.OBJECTS_ONLY, applicable_classes=["dog", "cat"])
-    """
+    """Tag metadata: name, value type (NONE, ANY_STRING, etc.), optional possible values. Immutable."""
 
     def __init__(
         self,
@@ -155,6 +112,40 @@ class TagMeta(KeyObject, JsonSerializable):
         applicable_classes: Optional[List[str]] = None,
         target_type: Optional[str] = None,
     ):
+        """
+        Tag metadata definition.
+
+        :param name: Tag name.
+        :type name: str
+        :param value_type: TagValueType: NONE, ANY_STRING, ANY_NUMBER, ONEOF_STRING.
+        :type value_type: str
+        :param possible_values: Required for ONEOF_STRING; list of allowed values.
+        :type possible_values: List[str], optional
+        :param color: RGB color [R, G, B]. Random if not provided.
+        :type color: List[int, int, int], optional
+        :param sly_id: Server-side tag meta ID.
+        :type sly_id: int, optional
+        :param hotkey: Hotkey in annotation UI.
+        :type hotkey: str, optional
+        :param applicable_to: TagApplicableTo: ALL, IMAGES_ONLY, OBJECTS_ONLY.
+        :type applicable_to: str, optional
+        :param applicable_classes: Restrict to specific class names.
+        :type applicable_classes: List[str], optional
+        :param target_type: TagTargetType: ALL, FRAME_BASED, GLOBAL.
+        :type target_type: str, optional
+        :raises ValueError: If value_type or color is invalid; ONEOF_STRING requires possible_values.
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE)
+                meta_cat = sly.TagMeta('cat', sly.TagValueType.ANY_STRING, applicable_to=sly.TagApplicableTo.OBJECTS_ONLY)
+                colors = ["brown", "white", "black"]
+                meta_coat = sly.TagMeta('coat color', sly.TagValueType.ONEOF_STRING, possible_values=colors, color=[255, 120, 0])
+        """
         if value_type not in SUPPORTED_TAG_VALUE_TYPES:
             raise ValueError(
                 "value_type = {!r} is unknown, should be one of {}".format(

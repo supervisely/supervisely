@@ -20,30 +20,23 @@ class RoleInfo(NamedTuple):
 
 
 class RoleApi(ModuleApiBase):
-    """
-    API for working with roles. :class:`~supervisely.api.role_api.RoleApi` object is immutable.
+    """API for working with roles."""
 
-    :param api: API connection to the server
-    :type api: :class:`~supervisely.api.api.Api`
+    def __init__(self, api):
+        """Initialize RoleApi.
 
-    :Usage Example:
+        :param api: API connection to the server.
+        :type api: :class:`~supervisely.api.api.Api`
 
-        .. code-block:: python
+        :Usage Example:
 
-            import os
-            from dotenv import load_dotenv
+            .. code-block:: python
 
-            import supervisely as sly
-
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            if sly.is_development():
-                load_dotenv(os.path.expanduser("~/supervisely.env"))
-
-            api = sly.Api.from_env()
-
-            roles = api.role.get_list() # api usage example
-    """
+                import supervisely as sly
+                api = sly.Api.from_env()
+                roles = api.role.get_list()
+        """
+        super().__init__(api)
 
     class DefaultRole(IntEnum):
         """Built-in role IDs used by the platform (admin/developer/annotator/viewer)."""

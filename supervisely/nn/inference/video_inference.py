@@ -23,6 +23,7 @@ class InferenceVideoInterface:
         imgs_dir,
         preparing_progress,
     ):
+        """Initialize InferenceVideoInterface. :param api: Supervisely API. :param start_frame_index: Start frame. :param frames_count: Number of frames. :param frames_direction: 'forward' or 'backward'. :param video_info: Video metadata. :param imgs_dir: Temp directory for frames. :param preparing_progress: Progress callback."""
         self.api = api
 
         self.video_info = video_info

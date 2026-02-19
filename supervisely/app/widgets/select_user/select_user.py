@@ -11,53 +11,7 @@ except ImportError:
 
 
 class SelectUser(Widget):
-    """
-    Dropdown for selecting users from a team.
-    Extends the Select widget with user-specific functionality.
-
-    :param users: Initial list of :class:`~supervisely.api.user_api.UserInfo` instances
-    :type users: Optional[List[:class:`~supervisely.api.user_api.UserInfo`]]
-    :param team_id: Team ID to fetch users from
-    :type team_id: Optional[int]
-    :param roles: List of allowed user roles to filter by (e.g., ['admin', 'developer'])
-    :type roles: Optional[List[str]]
-    :param filterable: Enable search/filter functionality in dropdown
-    :type filterable: Optional[bool]
-    :param placeholder: Placeholder text when no user is selected
-    :type placeholder: Optional[str]
-    :param size: Size of the select dropdown
-    :type size: Optional[Literal["large", "small", "mini"]]
-    :param multiple: Enable multiple selection
-    :type multiple: bool
-    :param widget_id: Unique widget identifier
-    :type widget_id: Optional[str]
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import supervisely as sly
-            from supervisely.app.widgets import SelectUser
-
-            # Initialize with team_id and filter by roles
-            select_user = SelectUser(
-                team_id=123,
-                roles=['admin', 'developer'],
-                multiple=True
-            )
-
-            # Or initialize empty and set users later
-            select_user = SelectUser(roles=['annotator', 'reviewer'])
-            select_user.set_users(user_list)
-
-            # Handle selection changes
-            @select_user.value_changed
-            def on_user_selected(users):
-                if isinstance(users, list):
-                    print(f"Selected users: {[u.login for u in users]}")
-                else:
-                    print(f"Selected user: {users.login}")
-    """
+    """Dropdown for selecting users from a team. Extends the Select widget with user-specific functionality."""
 
     class Routes:
         """Route name constants for this widget."""
@@ -74,6 +28,41 @@ class SelectUser(Widget):
         multiple: bool = False,
         widget_id: Optional[str] = None,
     ):
+        """Initialize the SelectUser widget.
+
+        :param users: Initial list of :class:`~supervisely.api.user_api.UserInfo` instances
+        :type users: Optional[List[:class:`~supervisely.api.user_api.UserInfo`]]
+        :param team_id: Team ID to fetch users from
+        :type team_id: Optional[int]
+        :param roles: List of allowed user roles to filter by (e.g., ['admin', 'developer'])
+        :type roles: Optional[List[str]]
+        :param filterable: Enable search/filter functionality in dropdown
+        :type filterable: Optional[bool]
+        :param placeholder: Placeholder text when no user is selected
+        :type placeholder: Optional[str]
+        :param size: Size of the select dropdown
+        :type size: Optional[Literal["large", "small", "mini"]]
+        :param multiple: Enable multiple selection
+        :type multiple: bool
+        :param widget_id: Unique widget identifier
+        :type widget_id: Optional[str]
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+                from supervisely.app.widgets import SelectUser
+
+                select_user = SelectUser(team_id=123, roles=['admin', 'developer'], multiple=True)
+                # Or: select_user = SelectUser(roles=['annotator']); select_user.set_users(user_list)
+                @select_user.value_changed
+                def on_user_selected(users):
+                    if isinstance(users, list):
+                        print(f"Selected users: {[u.login for u in users]}")
+                    else:
+                        print(f"Selected user: {users.login}")
+        """
         self._users = []
         self._team_id = team_id
         self._allowed_roles = roles

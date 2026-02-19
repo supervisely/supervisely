@@ -14,41 +14,7 @@ from supervisely.geometry.constants import LABELER_LOGIN, UPDATED_AT, CREATED_AT
 
 
 class PointcloudObject(VideoObject):
-    """
-    Object in point cloud annotation (obj_class + tags). Immutable.
-
-    :param obj_class: Object class.
-    :type obj_class: :class:`~supervisely.annotation.obj_class.ObjClass`
-    :param tags: Pointcloud tags collection.
-    :type tags: :class:`~supervisely.video_annotation.video_tag_collection.VideoTagCollection`
-    :param key: UUID key associated with the object.
-    :type key: uuid.UUID
-    :param class_id: ID of pointcloud object to which PointcloudObject belongs.
-    :type class_id: int
-    :param labeler_login: Login of the user who created :class:`~supervisely.pointcloud_annotation.pointcloud_object.PointcloudObject`.
-    :type labeler_login: str, optional
-    :param updated_at: Date and Time when PointcloudObject was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
-    :type updated_at: str, optional
-    :param created_at: Date and Time when PointcloudObject was created. Date Format is the same as in "updated_at" parameter.
-    :type created_at: str, optional
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import supervisely as sly
-            from supervisely.geometry.cuboid_3d import Cuboid3d
-
-            obj_class_car = sly.ObjClass('car', Cuboid3d)
-            pointcloud_obj_car = sly.PointcloudObject(obj_class_car)
-            pointcloud_obj_car_json = pointcloud_obj_car.to_json()
-            print(pointcloud_obj_car_json)
-            # Output: {
-            #     "key": "6b819f1840f84d669b32cdec225385f0",
-            #     "classTitle": "car",
-            #     "tags": []
-            # }
-    """
+    """Object in point cloud annotation (obj_class + tags). Uses VideoObject constructor. Immutable."""
 
     tag_collection_type = PointcloudTagCollection
 

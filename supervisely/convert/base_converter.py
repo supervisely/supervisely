@@ -104,6 +104,17 @@ class BaseConverter:
             shape: Union[Tuple, List] = None,
             custom_data: Optional[dict] = None,
         ):
+            """Initialize BaseItem.
+
+            :param item_path: Path to the item file.
+            :type item_path: str
+            :param ann_data: Raw annotation (path, dict, or JSON string).
+            :type ann_data: Union[str, dict], optional
+            :param shape: Image/item shape (height, width).
+            :type shape: Union[Tuple, List], optional
+            :param custom_data: Extra per-item data.
+            :type custom_data: dict, optional
+            """
             self._path: str = item_path
             self._name: str = None
             self._ann_data: Union[str, dict, list] = ann_data
@@ -180,6 +191,19 @@ class BaseConverter:
         upload_as_links: bool = False,
         remote_files_map: Optional[Dict[str, str]] = None,
     ):
+        """Initialize BaseConverter.
+
+        :param input_data: Path to input directory or archive.
+        :type input_data: str
+        :param labeling_interface: Labeling interface preset.
+        :type labeling_interface: LabelingInterface, optional
+        :param upload_as_links: If True, upload as Team Files links.
+        :type upload_as_links: bool
+        :param remote_files_map: Map of local paths to remote paths for link upload.
+        :type remote_files_map: Dict[str, str], optional
+
+        :raises ValueError: If labeling_interface is invalid.
+        """
         self._input_data: str = input_data
         self._items: List[BaseConverter.BaseItem] = []
         self._meta: ProjectMeta = None

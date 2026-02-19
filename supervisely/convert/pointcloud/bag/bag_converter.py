@@ -45,6 +45,7 @@ class BagConverter(PointcloudConverter):
             related_images: list = None,
             custom_data: dict = None,
         ):
+            """Initialize Item (bag converter). See :class:`~supervisely.convert.pointcloud.pointcloud_converter.PointcloudConverter.Item` for params."""
             super().__init__(item_path, ann_data, related_images, custom_data)
             self._topic = None
             self._type = "point_cloud"
@@ -64,6 +65,7 @@ class BagConverter(PointcloudConverter):
             upload_as_links: bool,
             remote_files_map: Optional[Dict[str, str]] = None,
     ):
+        """Initialize BagConverter. See :class:`~supervisely.convert.base_converter.BaseConverter` for params."""
         super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
 
         self._total_msg_count = 0

@@ -99,56 +99,8 @@ DATATYPE_TO_UNPACKER = {
 
 
 class ConfusionMatrix(Widget):
-    """Color-coded confusion matrix visualization.
-    It also shows row and column totals.
-
-    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/charts-and-plots/confusionmatrix>`_
-        (including screenshots and examples).
-
-
-    :param data: Data of table in different formats (see usage example)
-    :type data: Optional[Union[pd.DataFrame, Dict]]
-    :param columns: List of column names
-    :type columns: Optional[List[str]]
-    :param x_label: Label for x axis
-    :type x_label: Optional[str]
-    :param y_label: Label for y axis
-    :type y_label: Optional[str]
-    :param widget_id: An unique identifier of the widget.
-    :type widget_id: str, optional
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            from supervisely.app.widgets import ConfusionMatrix
-
-            # Option 1: Python dict
-            confusion_matrix = ConfusionMatrix(
-                data={
-                    "columns": ["class_1", "class_2", "class_3"],
-                    "data": [
-                        ["1", "2", "3"],
-                        ["4", "5", "6"],
-                        ["7", "8", "9"],
-                    ],
-                },
-                x_label="Predicted Values",
-                y_label="Actual Values",
-            )
-
-            # Option 2: Pandas DataFrame
-            data = []
-            for row in b:
-                temp = [round(row * number, 1) for number in a]
-                data.append(temp)
-
-            a = [str(i) for i in a]
-            b = [str(i) for i in b]
-
-            data = pd.DataFrame(data=data, index=b, columns=a)
-            confusion_matrix = ConfusionMatrix(data=data)
-
+    """Color-coded confusion matrix visualization with row and column totals.
+    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/charts-and-plots/confusionmatrix>`_.
     """
 
     class Routes:
@@ -157,19 +109,7 @@ class ConfusionMatrix(Widget):
         CELL_CLICKED = "cell_clicked_cb"
 
     class ClickedDataPoint:
-        """Represents data point of clicked cell in ConfusionMatrix.
-
-        :param column_name: Name of column
-        :type column_name: str
-        :param column_index: Index of column
-        :type column_index: int
-        :param row_name: Name of row
-        :type row_name: str
-        :param row_index: Index of row
-        :type row_index: int
-        :param cell_value: Value of cell
-        :type cell_value: Any
-        """
+        """Represents data point of clicked cell in ConfusionMatrix."""
 
         def __init__(
             self,
@@ -179,6 +119,19 @@ class ConfusionMatrix(Widget):
             row_index: int,
             cell_value: Any,
         ):
+            """Initialize the ClickedDataPoint.
+
+            :param column_name: Name of column
+            :type column_name: str
+            :param column_index: Index of column
+            :type column_index: int
+            :param row_name: Name of row
+            :type row_name: str
+            :param row_index: Index of row
+            :type row_index: int
+            :param cell_value: Value of cell
+            :type cell_value: Any
+            """
             self.column_index = column_index
             self.column_name = column_name
             self.row_index = row_index
@@ -193,6 +146,38 @@ class ConfusionMatrix(Widget):
         y_label: Optional[str] = "Actual Values",
         widget_id: Optional[str] = None,
     ):
+        """Initialize the ConfusionMatrix widget.
+
+        :param data: Data of table in different formats (see usage example)
+        :type data: Optional[Union[pd.DataFrame, Dict]]
+        :param columns: List of column names
+        :type columns: Optional[List[str]]
+        :param x_label: Label for x axis
+        :type x_label: Optional[str]
+        :param y_label: Label for y axis
+        :type y_label: Optional[str]
+        :param widget_id: An unique identifier of the widget.
+        :type widget_id: str, optional
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import ConfusionMatrix
+
+                # Option 1: Python dict
+                confusion_matrix = ConfusionMatrix(
+                    data={
+                        "columns": ["class_1", "class_2", "class_3"],
+                        "data": [["1", "2", "3"], ["4", "5", "6"], ["7", "8", "9"]],
+                    },
+                    x_label="Predicted Values",
+                    y_label="Actual Values",
+                )
+                # Option 2: Pandas DataFrame
+                data = pd.DataFrame(data=data, index=b, columns=a)
+                confusion_matrix = ConfusionMatrix(data=data)
+        """
         self._supported_types = PackerUnpacker.SUPPORTED_TYPES
 
         self._parsed_data = None

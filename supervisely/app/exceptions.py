@@ -8,6 +8,12 @@ class DialogWindowBase(Exception):
     """Base exception that can be displayed to the user as an in-app dialog window."""
 
     def __init__(self, title, description, status):
+        """Initialize DialogWindowBase.
+
+        :param title: Dialog title.
+        :param description: Dialog description/message.
+        :param status: Status: "info", "success", "warning", or "error".
+        """
         self.title = title
         self.description = description
         self.status = status
@@ -24,6 +30,11 @@ class DialogWindowError(DialogWindowBase):
     """Dialog window exception with `error` status."""
 
     def __init__(self, title, description):
+        """Initialize DialogWindowError.
+
+        :param title: Dialog title.
+        :param description: Error message.
+        """
         super().__init__(title, description, "error")
 
 
@@ -31,6 +42,11 @@ class DialogWindowWarning(DialogWindowBase):
     """Dialog window exception with `warning` status."""
 
     def __init__(self, title, description):
+        """Initialize DialogWindowWarning.
+
+        :param title: Dialog title.
+        :param description: Warning message.
+        """
         super().__init__(title, description, "warning")
 
 
@@ -39,6 +55,11 @@ class DialogWindowMessage(DialogWindowError):
     """Backwards-compatible alias for informational dialog exceptions."""
 
     def __init__(self, title, description):
+        """Initialize DialogWindowMessage.
+
+        :param title: Dialog title.
+        :param description: Info message.
+        """
         super().__init__(title, description, "info")  # pylint: disable=too-many-function-args
 
 

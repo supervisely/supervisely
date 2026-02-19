@@ -20,6 +20,7 @@ class PytorchSegmentationApplier(SingleImageInferenceBase):
     """Legacy PyTorch semantic segmentation applier: loads model from factory, runs inference, returns labels."""
 
     def __init__(self, model_factory_fn):
+        """Initialize PytorchSegmentationApplier. :param model_factory_fn: Callable(num_classes, input_size, custom_model_config) -> model."""
         self._model_factory_fn = model_factory_fn
         super().__init__()
 

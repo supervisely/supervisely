@@ -28,6 +28,29 @@ class Input(Widget):
         icon: Literal["search", "edit"] = None,
         autosize_textarea: bool = True,
     ):
+        """Initialize Input.
+
+        :param value: Initial value.
+        :type value: str
+        :param minlength: Minimum length validation.
+        :type minlength: int
+        :param maxlength: Maximum length validation.
+        :type maxlength: int
+        :param placeholder: Placeholder text.
+        :type placeholder: str
+        :param size: Size: "mini", "small", or "large".
+        :type size: Literal["mini", "small", "large"], optional
+        :param readonly: If True, input is read-only.
+        :type readonly: bool
+        :param type: Input type: "text", "password", or "textarea".
+        :type type: Literal["text", "password", "textarea"]
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        :param icon: Optional icon: "search" or "edit".
+        :type icon: Literal["search", "edit"], optional
+        :param autosize_textarea: If True, textarea auto-resizes.
+        :type autosize_textarea: bool
+        """
         self._value = value  # initial value
         self._minlength = minlength
         self._maxlength = maxlength

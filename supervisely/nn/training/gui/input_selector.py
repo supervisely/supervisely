@@ -17,6 +17,7 @@ class InputSelector:
     lock_message = None
 
     def __init__(self, project_info: ProjectInfo, app_options: dict = {}):
+        """Initialize InputSelector. :param project_info: Project info. :param app_options: App options."""
         # Init widgets
         self.project_thumbnail = None
         self.use_cache_text = None

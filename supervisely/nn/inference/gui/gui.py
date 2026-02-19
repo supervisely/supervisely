@@ -62,6 +62,7 @@ class InferenceGUI(BaseInferenceGUI):
         add_content_to_custom_tab: Optional[Callable] = None,
         custom_model_link_type: Optional[Literal["file", "folder"]] = "file",
     ):
+        """Initialize InferenceGUI. :param models: Model list or dict. :param api: Supervisely API. :param support_pretrained_models: Enable pretrained tab. :param support_custom_models: Enable custom tab. :param add_content_to_pretrained_tab: Optional callback. :param add_content_to_custom_tab: Optional callback. :param custom_model_link_type: 'file' or 'folder'."""
         if isinstance(models, dict):
             self._support_submodels = True
         else:

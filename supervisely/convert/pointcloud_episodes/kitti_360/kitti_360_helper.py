@@ -230,6 +230,10 @@ class Annotation3D:
     """Loader/index for KITTI-360 3D bounding box annotations stored in XML."""
 
     def __init__(self, labelPath):
+        """Initialize Annotation3D.
+
+        :param labelPath: Path to KITTI-360 XML annotation file.
+        """
         from kitti360scripts.helpers.labels import labels  # pylint: disable=import-error
         import xml.etree.ElementTree as ET
 
@@ -280,6 +284,10 @@ class StaticTransformations:
     """Loads and caches KITTI-360 calibration matrices (cam2velo, perspective, cam2world) for coordinate transforms."""
 
     def __init__(self, calibrations_path):
+        """Initialize StaticTransformations.
+
+        :param calibrations_path: Path to calibration directory (calib_cam_to_velo.txt, perspective.txt).
+        """
         import kitti360scripts.devkits.commons.loadCalibration as lc  # pylint: disable=import-error
 
         cam2velo_path = os.path.join(calibrations_path, "calib_cam_to_velo.txt")

@@ -12,6 +12,7 @@ class TrainValSplitsSelector:
     lock_message = "Select previous step to unlock"
 
     def __init__(self, api: Api, project_id: int, app_options: dict = {}):
+        """Initialize TrainValSplitsSelector. :param api: Supervisely API. :param project_id: Project ID. :param app_options: App options."""
         # Init widgets
         self.train_val_splits = None
         self.validator_text = None

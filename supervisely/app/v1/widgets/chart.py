@@ -6,6 +6,18 @@ class Chart:
 
     def __init__(self, task_id, api: Api, v_model, title, series_names=None,
                  smoothing=None, yrange=None, ydecimals=None, xdecimals=None):
+        """Initialize Chart (v1).
+
+        :param task_id: Task ID.
+        :param api: Api instance.
+        :param v_model: Vue model path (e.g. "data.chart").
+        :param title: Chart title.
+        :param series_names: Optional list of series names.
+        :param smoothing: Smoothing weight.
+        :param yrange: Y-axis range.
+        :param ydecimals: Decimal places for Y.
+        :param xdecimals: Decimal places for X.
+        """
         self._task_id = task_id
         self._api = api
         self._v_model = v_model

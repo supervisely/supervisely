@@ -35,6 +35,16 @@ class VolumeConverter(BaseConverter):
             mask_dir: str = None,
             interpolation_dir: str = None,
         ):
+            """Initialize Item (volume converter).
+
+            :param item_path: Path to NRRD series.
+            :param ann_data: Annotation path.
+            :param shape: Volume shape. Inferred from meta if None.
+            :param custom_data: Extra data.
+            :param volume_meta: Pre-loaded volume meta. Read from file if None.
+            :param mask_dir: Path to mask directory.
+            :param interpolation_dir: Path to interpolation directory.
+            """
             self._path: str = item_path
             self._name: str = None
             self._ann_data: str = ann_data

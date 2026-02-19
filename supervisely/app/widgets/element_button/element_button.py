@@ -33,6 +33,19 @@ class ElementButton(Widget):
         plain: bool = False,
         widget_id: str = None,
     ):
+        """Initialize ElementButton.
+
+        :param text: Button label.
+        :type text: str
+        :param button_type: Style: "primary", "info", "warning", "danger", "success".
+        :type button_type: Literal["primary", "info", "warning", "danger", "success"]
+        :param button_size: Size: "mini", "small", or "large".
+        :type button_size: Literal["mini", "small", "large"], optional
+        :param plain: If True, use plain (outline) style.
+        :type plain: bool
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         self._widget_routes = {}
 
         self._text = text

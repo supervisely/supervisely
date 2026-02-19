@@ -12,72 +12,7 @@ from supervisely.project.project_type import ProjectType
 
 class SelectCollection(Widget):
     """Selector for one or multiple collections (entities).
-    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/selection/selectCollection>`_
-        (including screenshots and examples).
-
-    :param default_id: The ID of the collection to be selected by default.
-    :type default_id: Union[int, None]
-    :param project_id: The ID of the project to read collections from.
-    :type project_id: Union[int, None]
-    :param multiselect: Whether multiple collections can be selected.
-    :type multiselect: bool
-    :param compact: Whether the widget should be compact (e.g. no team, workspace, and project selectors).
-    :type compact: bool
-    :param select_all_collections: Whether all collections should be selected by default.
-    :type select_all_collections: bool
-    :param allowed_project_types: The list of project types that are allowed to be selected.
-    :type allowed_project_types: Optional[List[:class:`~supervisely.project.project_type.ProjectType`]]
-    :param team_is_selectable: Whether the team selector should be selectable.
-    :type team_is_selectable: bool
-    :param workspace_is_selectable: Whether the workspace selector should be selectable.
-    :type workspace_is_selectable: bool
-    :param widget_id: The unique identifier of the widget.
-    :type widget_id: Union[str, None]
-    :param show_select_all_collections_checkbox: Whether the checkbox to select all collections should be shown.
-    :type show_select_all_collections_checkbox: bool
-
-    :Public methods:
-    - `set_project_id(project_id: int) -> None`: Set the project ID to read collections from.
-    - `get_selected_ids() -> Optional[List[int]]`: Get the IDs of the selected collections.
-    - `get_selected_id() -> Optional[int]`: Get the ID of the selected collection.
-    - `value_changed(func: Callable) -> Callable`: Decorator to set the callback function for the value changed event.
-    - `set_collection_id(collection_id: int) -> None`: Set the ID of the collection to be selected by default.
-    - `set_collection_ids(collection_ids: List[int]) -> None`: Set the IDs of the collections to be selected by default.
-    - `get_selected_project_id() -> Optional[int]`: Get the ID of the selected project.
-    - `get_selected_team_id() -> int`: Get the ID of the selected team.
-    - `set_team_id(team_id: int) -> None`: Set the team ID to read workspaces from.
-    - `get_selected_workspace_id() -> int`: Get the ID of the selected workspace.
-    - `set_workspace_id(workspace_id: int) -> None`: Set the workspace ID to read projects from.
-    - `is_all_selected() -> bool`: Check if all collections are selected.
-    - `select_all() -> None`: Select all collections.
-    - `disable() -> None`: Disable the widget in the UI.
-    - `enable() -> None`: Enable the widget in the UI.
-    - `set_selected_id(collection_id: int) -> None`: Set the ID of the collection to be selected by default.
-    - `set_selected_ids(collection_ids: List[int]) -> None`: Set the IDs of the collections to be selected by default.
-
-    :Properties:
-    - `team_id`: The ID of the team selected in the widget.
-    - `workspace_id`: The ID of the workspace selected in the widget.
-    - `project_id`: The ID of the project selected in the widget.
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            from supervisely.app.widgets import SelectCollection
-
-            project_id = 123
-            collection_id = 456
-
-            select_collection = SelectCollection(
-                default_id=collection_id,
-                project_id=project_id,
-                multiselect=True,
-            )
-
-            @select_collection.value_changed
-            def on_change(selected_ids):
-                print(selected_ids) # Output: [456, 789]
+    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/selection/selectCollection>`_.
     """
 
     def __init__(
@@ -94,6 +29,45 @@ class SelectCollection(Widget):
         widget_id: Union[str, None] = None,
         width: int = 193,
     ):
+        """Initialize the SelectCollection widget.
+
+        :param default_id: The ID of the collection to be selected by default.
+        :type default_id: Union[int, None]
+        :param project_id: The ID of the project to read collections from.
+        :type project_id: Union[int, None]
+        :param multiselect: Whether multiple collections can be selected.
+        :type multiselect: bool
+        :param compact: Whether the widget should be compact.
+        :type compact: bool
+        :param select_all_collections: Whether all collections should be selected by default.
+        :type select_all_collections: bool
+        :param allowed_project_types: The list of project types that are allowed.
+        :type allowed_project_types: Optional[List[:class:`~supervisely.project.project_type.ProjectType`]]
+        :param team_is_selectable: Whether the team selector should be selectable.
+        :type team_is_selectable: bool
+        :param workspace_is_selectable: Whether the workspace selector should be selectable.
+        :type workspace_is_selectable: bool
+        :param widget_id: The unique identifier of the widget.
+        :type widget_id: Union[str, None]
+        :param show_select_all_collections_checkbox: Whether the select-all checkbox should be shown.
+        :type show_select_all_collections_checkbox: bool
+        :raises ValueError: If default_id is set without project_id, or if select_all_collections is True without multiselect.
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import SelectCollection
+
+                select_collection = SelectCollection(
+                    default_id=456,
+                    project_id=123,
+                    multiselect=True,
+                )
+                @select_collection.value_changed
+                def on_change(selected_ids):
+                    print(selected_ids)
+        """
         self._api = Api.from_env()
 
         if default_id is not None and project_id is None:

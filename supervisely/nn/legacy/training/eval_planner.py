@@ -6,15 +6,16 @@ VAL_EVERY = 'val_every'
 
 
 class EvalPlanner:
-    """
-    Helps determine whether to start validation in current train step or not.
+    """Determines whether to run validation in the current train step."""
 
-    :param epochs: Number of train epochs.
-    :type epochs: int
-    :param val_every: Validation period by epoch (value 0.5 mean 2 validations per epoch).
-    :type val_every: float
-    """
     def __init__(self, epochs, val_every):
+        """Initialize EvalPlanner.
+
+        :param epochs: Number of train epochs.
+        :type epochs: int
+        :param val_every: Validation period by epoch (0.5 = 2 validations per epoch).
+        :type val_every: float
+        """
         self.epochs = epochs
         self.val_every = val_every
         self.total_val_cnt = self.validations_cnt(epochs, val_every)

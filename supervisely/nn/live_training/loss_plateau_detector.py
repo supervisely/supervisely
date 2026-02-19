@@ -3,20 +3,7 @@ from typing import Callable
 
 
 class LossPlateauDetector:
-    """
-    Detect plateau in training loss using moving average comparison.
-
-    :param window_size: Number of iterations for moving average
-    :type window_size: int
-    :param threshold: Relative change threshold (e.g., 0.005 = 0.5%)
-    :type threshold: float
-    :param patience: Number of consecutive plateau detections before action
-    :type patience: int
-    :param check_interval: Check frequency (every N iterations)
-    :type check_interval: int
-    :returns: None
-    :rtype: None
-    """
+    """Detect plateau in training loss using moving average comparison."""
 
     def __init__(
         self,
@@ -25,6 +12,17 @@ class LossPlateauDetector:
         patience: int = 3,
         check_interval: int = 1,
     ):
+        """Initialize LossPlateauDetector.
+
+        :param window_size: Number of iterations for moving average.
+        :type window_size: int
+        :param threshold: Relative change threshold (e.g., 0.005 = 0.5%).
+        :type threshold: float
+        :param patience: Number of consecutive plateau detections before action.
+        :type patience: int
+        :param check_interval: Check frequency (every N iterations).
+        :type check_interval: int
+        """
         self.window_size = window_size
         self.threshold = threshold
         self.check_interval = check_interval

@@ -10,57 +10,32 @@ from supervisely.volume_annotation.constants import FIGURES, INDEX
 
 
 class Slice(Frame):
-    """
-    A class representing a single slice of a medical image.
-    Slice object for :class:`~supervisely.volume_annotation.volume_annotation.VolumeAnnotation`. :class:`~supervisely.video_annotation.frame.Frame` object is immutable.
-
-    :param index: Index of the :class:`~supervisely.volume_annotation.slice.Slice`.
-    :type index: int
-    :param figures: List of :class:`~supervisely.volume_annotation.volume_figure.VolumeFigure`.
-    :type figures: Optional[List[:class:`~supervisely.volume_annotation.volume_figure.VolumeFigure`]]
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import supervisely as sly
-
-            frame_index = 7
-            geometry = sly.Rectangle(0, 0, 100, 100)
-            class_car = sly.ObjClass('car', sly.Rectangle)
-            object_car = sly.VolumeObject(class_car)
-            figure_car = sly.VolumeFigure(object_car, geometry, frame_index)
-
-            frame = sly.Slice(frame_index, figures=[figure_car])
-            print(frame.to_json())
-            # Output: {
-            #     "figures": [
-            #         {
-            #         "geometry": {
-            #             "points": {
-            #             "exterior": [
-            #                 [0, 0],
-            #                 [100, 100]
-            #             ],
-            #             "interior": []
-            #             }
-            #         },
-            #         "geometryType": "rectangle",
-            #         "key": "eb0ab5f772054f70b6a9f5b583a47287",
-            #         "meta": {
-            #             "normal": { "x": 0, "y": 0, "z": 1 },
-            #             "planeName": "axial",
-            #             "sliceIndex": 7
-            #         },
-            #         "objectKey": "dbd236a6a6f440139fd0299905fcc46e"
-            #         }
-            #     ],
-            #     "index": 7
-            # }
-
-    """
+    """Single slice in volume plane; holds VolumeFigures at given index. Immutable."""
 
     figure_type = VolumeFigure
+
+    def __init__(self, index: int, figures: Optional[list] = None):
+        """
+        Same parameters as :class:`~supervisely.video_annotation.frame.Frame`.
+
+        :param index: Slice index.
+        :type index: int
+        :param figures: List of VolumeFigures.
+        :type figures: Optional[List[:class:`~supervisely.volume_annotation.volume_figure.VolumeFigure`]]
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                obj_class = sly.ObjClass('car', sly.Rectangle)
+                volume_obj = sly.VolumeObject(obj_class)
+                geometry = sly.Rectangle(0, 0, 100, 100)
+                figure = sly.VolumeFigure(volume_obj, geometry, "axial", 7)
+                slice_ = sly.Slice(7, figures=[figure])
+        """
+        super().__init__(index, figures)
 
     # @classmethod
     # def from_json(cls, data, objects, slices_count=None, key_id_map=None):

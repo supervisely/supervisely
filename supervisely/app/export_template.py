@@ -16,6 +16,17 @@ class Export:
         def __init__(
             self, team_id: int, workspace_id: int, project_id: int, dataset_id: Optional[int] = None
         ):
+            """Initialize Export.Context.
+
+            :param team_id: Team ID.
+            :type team_id: int
+            :param workspace_id: Workspace ID.
+            :type workspace_id: int
+            :param project_id: Project ID.
+            :type project_id: int
+            :param dataset_id: Dataset ID (optional for project-level export).
+            :type dataset_id: int, optional
+            """
             self._team_id = team_id
             self._workspace_id = workspace_id
             self._project_id = project_id

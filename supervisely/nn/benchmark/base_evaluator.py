@@ -23,6 +23,10 @@ class BaseEvalResult:
     PRIMARY_METRIC = None
 
     def __init__(self, directory: Optional[str] = None):
+        """Initialize BaseEvalResult.
+
+        :param directory: Path to evaluator result directory.
+        """
         self.directory = directory
         self.inference_info: Dict = {}
         self.speedtest_info: Optional[Dict] = None
@@ -177,6 +181,16 @@ class BaseEvaluator:
         classes_whitelist: Optional[List[str]] = None,
         evaluation_params: Optional[dict] = None,
     ):
+        """Initialize BaseEvaluator.
+
+        :param gt_project_path: Path to ground-truth project.
+        :param pred_project_path: Path to predictions project.
+        :param result_dir: Output directory for evaluation results.
+        :param progress: Progress callback.
+        :param items_count: Optional total items count.
+        :param classes_whitelist: Optional class filter.
+        :param evaluation_params: Optional evaluation config.
+        """
         self.eval_data: Optional[Dict] = None
         self.gt_project_path = gt_project_path
         self.pred_project_path = pred_project_path

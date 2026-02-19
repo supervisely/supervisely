@@ -20,6 +20,11 @@ class DebouncedEventHandler:
     """Aggregate frequent events and call a handler once per debounce interval."""
 
     def __init__(self, debounce_time: float = 0.1):
+        """Initialize DebouncedEventHandler.
+
+        :param debounce_time: Seconds to wait before calling handler.
+        :type debounce_time: float
+        """
         self._event_queue = []
         self._debounce_time = debounce_time
         self._task = None
@@ -43,67 +48,7 @@ class SelectedIds(BaseModel):
 
 
 class Bokeh(Widget):
-    """
-    Bokeh widget for creating interactive plots.
-
-    Note:
-        Only Bokeh version 3.1.1 is supported.
-
-    :param plots: List of plots to be displayed.
-    :type plots: List[Plot]
-    :param width: Width of the chart in pixels.
-    :type width: int
-    :param height: Height of the chart in pixels.
-    :type height: int
-    :param tools: List of tools to be displayed on the chart.
-    :type tools: List[str]
-    :param toolbar_location: Location of the toolbar.
-    :type toolbar_location: Literal["above", "below", "left", "right"]
-    :param x_axis_visible: If True, x-axis will be visible.
-    :type x_axis_visible: bool
-    :param y_axis_visible: If True, y-axis will be visible.
-    :type y_axis_visible: bool
-    :param grid_visible: If True, grid will be visible.
-    :type grid_visible: bool
-    :param widget_id: Unique widget identifier.
-    :type widget_id: str
-    :param show_legend: If True, ckickable legend widget will be displayed.
-    :type show_legend: bool
-    :param legend_location: Location of the clickable legend widget.
-    :type legend_location: Literal["left", "top", "right", "bottom"]
-    :param legend_click_policy: Click policy of the clickable legend widget.
-    :type legend_click_policy: Literal["hide", "mute"]
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            from supervisely.app.widgets import Bokeh, IFrame
-
-            data = {
-                "x": [1, 2, 3, 4, 5],
-                "y": [1, 2, 3, 4, 5],
-                "radius": [10, 20, 30, 40, 50],
-                "colors": ["red", "green", "blue", "yellow", "purple"],
-                "ids": [1, 2, 3, 4, 5],
-                "names": ["kiwi", "kiwi", "lemon", "lemon", "lemon"],
-            }
-
-            plot_lemon = Bokeh.Circle(name="lemon")
-            plot_kiwi = Bokeh.Circle(name="kiwi")
-            bokeh = Bokeh(
-                x_axis_visible=True,
-                y_axis_visible=True,
-                grid_visible=True,
-                show_legend=True,
-            )
-            bokeh.add_data(**data)
-            bokeh.add_plots([plot_lemon, plot_kiwi])
-
-            # To allow the widget to be interacted with, you need to add it to the IFrame widget.
-            iframe = IFrame()
-            iframe.set(bokeh.html_route_with_timestamp, height="650px", width="100%")
-    """
+    """Bokeh widget for creating interactive plots. Only Bokeh version 3.1.1 is supported."""
 
     class Routes:
         """HTTP routes used by the widget to serve HTML and receive selection events."""
@@ -115,7 +60,12 @@ class Bokeh(Widget):
         """Base class for Bokeh plot layers that can be added to a figure with a shared data source."""
 
         def __init__(self, name: Optional[str] = None, **kwargs):
+            """Initialize Plot.
 
+            :param name: Layer name. Auto-generated UUID if None.
+            :type name: str, optional
+            :param kwargs: Additional kwargs passed to Bokeh plot methods.
+            """
             self._name = name or str(uuid4())
             self.kwargs = kwargs
 
@@ -208,6 +158,53 @@ class Bokeh(Widget):
         legend_click_policy: Literal["hide", "mute"] = "hide",
         **kwargs,
     ):
+        """Initialize the Bokeh widget.
+
+        :param plots: List of plots to be displayed.
+        :type plots: List[Plot]
+        :param width: Width of the chart in pixels.
+        :type width: int
+        :param height: Height of the chart in pixels.
+        :type height: int
+        :param tools: List of tools to be displayed on the chart.
+        :type tools: List[str]
+        :param toolbar_location: Location of the toolbar.
+        :type toolbar_location: Literal["above", "below", "left", "right"]
+        :param x_axis_visible: If True, x-axis will be visible.
+        :type x_axis_visible: bool
+        :param y_axis_visible: If True, y-axis will be visible.
+        :type y_axis_visible: bool
+        :param grid_visible: If True, grid will be visible.
+        :type grid_visible: bool
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str
+        :param show_legend: If True, clickable legend widget will be displayed.
+        :type show_legend: bool
+        :param legend_location: Location of the clickable legend widget.
+        :type legend_location: Literal["left", "top", "right", "bottom"]
+        :param legend_click_policy: Click policy of the clickable legend widget.
+        :type legend_click_policy: Literal["hide", "mute"]
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import Bokeh, IFrame
+
+                data = {
+                    "x": [1, 2, 3, 4, 5], "y": [1, 2, 3, 4, 5],
+                    "radius": [10, 20, 30, 40, 50],
+                    "colors": ["red", "green", "blue", "yellow", "purple"],
+                    "ids": [1, 2, 3, 4, 5], "names": ["kiwi", "kiwi", "lemon", "lemon", "lemon"],
+                }
+                plot_lemon = Bokeh.Circle(name="lemon")
+                plot_kiwi = Bokeh.Circle(name="kiwi")
+                bokeh = Bokeh(x_axis_visible=True, y_axis_visible=True, grid_visible=True, show_legend=True)
+                bokeh.add_data(**data)
+                bokeh.add_plots([plot_lemon, plot_kiwi])
+                iframe = IFrame()
+                iframe.set(bokeh.html_route_with_timestamp, height="650px", width="100%")
+        """
         import bokeh  # pylint: disable=import-error
 
         # check Bokeh version compatibility (only 3.1.1 is supported)

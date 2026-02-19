@@ -5,50 +5,7 @@ from supervisely.app.widgets import Button, Widget
 
 
 class Editor(Widget):
-    """Code editor with syntax highlighting.
-
-    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/input/editor>`_
-        (including screenshots and examples).
-
-
-    :param initial_text: Initial text in the editor.
-    :type initial_text: Optional[str]
-    :param height_px: Height of the editor in pixels.
-    :type height_px: Optional[int]
-    :param height_lines: Overwrites height_px if specified. If >= 1000, all lines will be displayed.
-    :type height_lines: Optional[int]
-    :param language_mode: Language mode of the editor, one of: json, html, plain_text, yaml, python.
-    :type language_mode: Optional[Literal["json", "html", "plain_text", "yaml", "python"]]
-    :param readonly: If True, editor will be readonly.
-    :type readonly: Optional[bool]
-    :param show_line_numbers: If True, line numbers will be shown.
-    :type show_line_numbers: Optional[bool]
-    :param highlight_active_line: If True, active line will be highlighted.
-    :type highlight_active_line: Optional[bool]
-    :param restore_default_button: If True, button to restore default text will be shown.
-    :type restore_default_button: Optional[bool]
-    :param widget_id: An identifier of the widget.
-    :type widget_id: str, optional
-    :param auto_format: If True, the editor will automatically format JSON on initialization.
-    :type auto_format: bool
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            from supervisely.app.widgets import Editor
-
-            editor = Editor(
-                initial_text="print('Hello, world!')",
-                height_px=200,
-                language_mode="python",
-                readonly=False,
-                show_line_numbers=True,
-                highlight_active_line=True,
-                restore_default_button=True,
-            )
-
-    """
+    """Code editor with syntax highlighting."""
 
     def __init__(
         self,
@@ -63,6 +20,25 @@ class Editor(Widget):
         widget_id: Optional[int] = None,
         auto_format: bool = False,
     ):
+        """
+        :param initial_text: Initial content.
+        :param height_px: Height in pixels.
+        :param height_lines: Height in lines (overrides height_px; >=1000 shows all).
+        :param language_mode: json, html, plain_text, yaml, python.
+        :param readonly: Read-only mode.
+        :param show_line_numbers: Show line numbers.
+        :param highlight_active_line: Highlight current line.
+        :param restore_default_button: Show restore button.
+        :param auto_format: Auto-format JSON on init.
+        :param widget_id: Widget identifier.
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import Editor
+                editor = Editor(initial_text="print('hi')", language_mode="python")
+        """
         self._initial_code = initial_text
         self._current_code = initial_text
         self._height_px = height_px

@@ -32,56 +32,7 @@ class TagJsonFields:
 
 
 class Tag(KeyObject):
-    """
-    :class:`Tag<~supervisely.annotation.tag.Tag>` can be attached to whole image and/or to individual :class:`Label<~supervisely.annotation.label.LabelBase>`. :class:`Tag<~supervisely.annotation.tag.Tag>` object is immutable.
-
-    :param meta: General information about Tag.
-    :type meta: :class:`~supervisely.annotation.tag_meta.TagMeta`
-    :param value: Tag value. Depends on TagValueType of :class:`TagMeta<~supervisely.annotation.tag_meta.TagMeta>`.
-    :type value: Optional[Union[str, int, float]]
-    :param sly_id: Tag ID in Supervisely server.
-    :type sly_id: int, optional
-    :param labeler_login: Login of user who created Tag.
-    :type labeler_login: str, optional
-    :param updated_at: Date and Time when Tag was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
-    :type updated_at: str, optional
-    :param created_at: Date and Time when Tag was created. Date Format is the same as in "updated_at" parameter.
-    :type created_at: str, optional
-    :raises ValueError: if meta is None or if :class:`~supervisely.annotation.tag.Tag` has incompatible value against it's meta value type
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import supervisely as sly
-
-            # Let's create 3 Tags with different values
-            # First we need to initialize a TagMeta
-            meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE)
-
-            # Now we can create a Tag using our TagMeta
-            tag_dog = sly.Tag(meta_dog)
-
-            # When you are creating a new Tag
-            # Tag.value is automatically cross-checked against your TagMeta value type to make sure the value is valid.
-            # If we now try to add a value to our newly created Tag, we receive "ValueError", because our TagMeta value type is "NONE"
-            tag_dog = sly.Tag(meta_dog, value="Husky")
-            # Output: ValueError: Tag dog can not have value Husky
-
-            # Let's create another Tag with a string value type
-            meta_cat = sly.TagMeta('cat', sly.TagValueType.ANY_STRING)
-            tag_cat = sly.Tag(meta_cat, value="Fluffy")
-
-            # Now let's create a Tag using TagMeta with "ONEOF_STRING" value type
-            # In order to use "oneof_string value type", you must initialize a variable with possible values(see class TagMeta for more information)
-            colors = ["brown", "white", "black", "red", "chocolate", "gold", "grey"]
-            meta_coat_color = sly.TagMeta('coat color', sly.TagValueType.ONEOF_STRING, possible_values=colors)
-            tag_coat_color = sly.Tag(meta_coat_color, value="white")
-
-            # If given value is not in a list of possible Tags, ValueError will be raised
-            tag_coat_color = sly.Tag(meta_coat_color, value="yellow")
-            # Output: ValueError: Tag coat color can not have value yellow
-    """
+    """Tag attached to image or label; meta + value. Immutable."""
 
     _SUPPORT_UNFINISHED_TAGS = False
 
@@ -94,6 +45,39 @@ class Tag(KeyObject):
         updated_at: Optional[str] = None,
         created_at: Optional[str] = None,
     ):
+        """
+        Tag attached to image or label.
+
+        :param meta: Tag metadata (name, value type).
+        :type meta: :class:`~supervisely.annotation.tag_meta.TagMeta`
+        :param value: Tag value; type must match TagMeta.value_type.
+        :type value: str or int or float, optional
+        :param sly_id: Server-side tag ID.
+        :type sly_id: int, optional
+        :param labeler_login: Login of user who created the tag.
+        :type labeler_login: str, optional
+        :param updated_at: Last modification timestamp (ISO format).
+        :type updated_at: str, optional
+        :param created_at: Creation timestamp (ISO format).
+        :type created_at: str, optional
+        :raises ValueError: If meta is None or value is incompatible with TagMeta.value_type.
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE)
+                tag_dog = sly.Tag(meta_dog)
+
+                meta_cat = sly.TagMeta('cat', sly.TagValueType.ANY_STRING)
+                tag_cat = sly.Tag(meta_cat, value="Fluffy")
+
+                colors = ["brown", "white", "black"]
+                meta_coat = sly.TagMeta('coat color', sly.TagValueType.ONEOF_STRING, possible_values=colors)
+                tag_coat = sly.Tag(meta_coat, value="white")
+        """
         if meta is None:
             raise ValueError("TagMeta is None")
         self._meta = meta

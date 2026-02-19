@@ -9,30 +9,24 @@ ERROR = "error"
 
 
 class DoneLabel(Widget):
-    """Displays completion messages (success, done).
-
-    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/status-elements/donelabel>`_
-        (including screenshots and examples).
-
-    :param text: DoneLabel text
-    :type text: str
-    :param widget_id: An identifier of the widget.
-    :type widget_id: str, optional
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            from supervisely.app.widgets import DoneLabel
-
-            done_label = DoneLabel(text="Done!")
-    """
+    """Displays completion messages (success, done)."""
 
     def __init__(
         self,
         text: Optional[str] = None,
         widget_id: Optional[str] = None,
     ):
+        """
+        :param text: Message text.
+        :param widget_id: Widget identifier.
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import DoneLabel
+                label = DoneLabel(text="Done!")
+        """
         self._text = text
         super().__init__(widget_id=widget_id, file_path=__file__)
 

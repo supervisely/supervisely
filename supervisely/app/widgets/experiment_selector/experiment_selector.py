@@ -61,6 +61,19 @@ class ExperimentSelector(Widget):
             experiment_info: ExperimentInfo,
             project_info: Optional[ProjectInfo] = None,
         ):
+            """Initialize ModelRow.
+
+            :param api: Supervisely API instance.
+            :type api: :class:`~supervisely.api.api.Api`
+            :param team_id: Team ID.
+            :type team_id: int
+            :param task_type: Task type.
+            :type task_type: str
+            :param experiment_info: Experiment info from training run.
+            :type experiment_info: :class:`~supervisely.nn.experiments.ExperimentInfo`
+            :param project_info: Optional project info.
+            :type project_info: ProjectInfo, optional
+            """
             self._api = api
             self._team_id = team_id
             self._task_type = task_type
@@ -387,6 +400,17 @@ class ExperimentSelector(Widget):
         experiment_infos: List[ExperimentInfo] = [],
         widget_id: str = None,
     ):
+        """Initialize ExperimentSelector.
+
+        :param api: Supervisely API. Defaults to Api().
+        :type api: Api, optional
+        :param team_id: Team ID. Defaults to env.team_id().
+        :type team_id: int, optional
+        :param experiment_infos: List of experiment infos to display.
+        :type experiment_infos: List[ExperimentInfo]
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         if team_id is None:
             team_id = env.team_id()
         self.team_id = team_id

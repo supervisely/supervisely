@@ -27,6 +27,17 @@ class GridChart(Widget):
         gap: int = 10,
         widget_id: str = None,
     ):
+        """Initialize GridChart.
+
+        :param data: List of chart configs (dicts) or titles (str). Each dict is passed to LineChart.
+        :type data: List[Union[dict, str]]
+        :param columns: Number of columns in the grid.
+        :type columns: int
+        :param gap: Gap between charts in pixels.
+        :type gap: int
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         # TODO maybe generalize LineChart -> ApexChart ???
         self._widgets = {}
         self._columns = columns

@@ -10,6 +10,13 @@ class OneOf(Widget):
         conditional_widget: ConditionalWidget,
         widget_id: str = None,
     ):
+        """Initialize OneOf.
+
+        :param conditional_widget: Widget with conditional branches (e.g. radio + content map).
+        :type conditional_widget: ConditionalWidget
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         self._conditional_widget = conditional_widget
         super().__init__(widget_id=widget_id, file_path=__file__)
 

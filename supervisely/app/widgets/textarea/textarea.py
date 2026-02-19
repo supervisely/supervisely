@@ -14,6 +14,20 @@ class TextArea(Widget):
         readonly: bool = False,
         widget_id=None,
     ):
+        """Initialize TextArea.
+
+        :param value: Initial text value.
+        :type value: str, optional
+        :param placeholder: Placeholder when empty.
+        :type placeholder: str
+        :param rows: Number of visible rows.
+        :type rows: int
+        :param autosize: If True, auto-resize to content.
+        :type autosize: bool
+        :param readonly: If True, read-only mode.
+        :type readonly: bool
+        :param widget_id: Unique widget identifier.
+        """
         self._value = value
         self._placeholder = placeholder
         self._rows = rows

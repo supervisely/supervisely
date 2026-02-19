@@ -139,6 +139,13 @@ class Widget(Hidable, Disableable, Loading):
     """Base class for Supervisely UI widgets rendered via Jinja templates and synced via `DataJson`/`StateJson`."""
 
     def __init__(self, widget_id: str = None, file_path: str = __file__):
+        """Initialize Widget.
+
+        :param widget_id: Unique widget identifier. Auto-generated if None.
+        :type widget_id: str, optional
+        :param file_path: Path to widget template directory.
+        :type file_path: str
+        """
         super().__init__()
         self._sly_app = _MainServer()
         self.widget_id = widget_id
@@ -254,6 +261,15 @@ class ConditionalWidget(Widget):
     def __init__(
         self, items: List[ConditionalItem], widget_id: str = None, file_path: str = __file__
     ):
+        """Initialize ConditionalWidget.
+
+        :param items: List of ConditionalItem (value, label, optional content).
+        :type items: List[ConditionalItem]
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        :param file_path: Path to widget template directory.
+        :type file_path: str
+        """
         self._items = items
         super().__init__(widget_id=widget_id, file_path=file_path)
 
@@ -268,6 +284,14 @@ class ConditionalItem:
     """A single selectable item for :class:`~supervisely.app.widgets.widget.ConditionalWidget`."""
 
     def __init__(self, value, label: str = None, content: Widget = None) -> ConditionalItem:
+        """Initialize ConditionalItem.
+
+        :param value: Item value (any JSON-serializable).
+        :param label: Display label. Defaults to str(value).
+        :type label: str, optional
+        :param content: Optional widget to show when selected.
+        :type content: Widget, optional
+        """
         self.value = value
         self.label = label
         if label is None:
@@ -282,6 +306,13 @@ class DynamicWidget(Widget):
     """Widget that can be reloaded dynamically by updating its template/state."""
 
     def __init__(self, widget_id: str = None, file_path: str = __file__):
+        """Initialize DynamicWidget.
+
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        :param file_path: Path to widget template directory.
+        :type file_path: str
+        """
         self.reload = self.update_template_for_offline_session(self.reload)
         super().__init__(widget_id=widget_id, file_path=file_path)
 

@@ -19,6 +19,12 @@ class DICOMConverter(VolumeConverter):
         """Item class for DICOM series."""
 
         def __init__(self, serie_id: str, item_paths: List[str], volume_meta: dict):
+            """Initialize DICOM Item.
+
+            :param serie_id: Series UID from DICOM.
+            :param item_paths: Paths to DICOM slices.
+            :param volume_meta: Volume metadata (spacing, origin, etc.).
+            """
             item_path = item_paths[0] if len(item_paths) > 0 else None
             super().__init__(item_path, volume_meta=volume_meta)
 

@@ -17,32 +17,23 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
 class PointcloudAnnotationAPI(EntityAnnotationAPI):
-    """
-    API for working with :class:`~supervisely.pointcloud_annotation.pointcloud_annotation.PointcloudAnnotation`.
-    :class:`~supervisely.api.pointcloud.pointcloud_annotation_api.PointcloudAnnotationAPI` object is immutable.
+    """API for working with PointcloudAnnotation."""
 
-    :param api: API connection to the server.
-    :type api: :class:`~supervisely.api.api.Api`
+    def __init__(self, api):
+        """Initialize PointcloudAnnotationAPI.
 
-    :Usage Example:
+        :param api: API connection to the server.
+        :type api: :class:`~supervisely.api.api.Api`
 
-        .. code-block:: python
+        :Usage Example:
 
-            import os
-            from dotenv import load_dotenv
+            .. code-block:: python
 
-            import supervisely as sly
-
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            if sly.is_development():
-                load_dotenv(os.path.expanduser("~/supervisely.env"))
-
-            api = sly.Api.from_env()
-
-            pointcloud_id = 19618685
-            ann_info = api.pointcloud.annotation.download(src_pointcloud_id)
-    """
+                import supervisely as sly
+                api = sly.Api.from_env()
+                ann_info = api.pointcloud.annotation.download(pointcloud_id)
+        """
+        super().__init__(api)
 
     _method_download_bulk = "point-clouds.annotations.bulk.info"
     _entity_ids_str = ApiField.POINTCLOUD_IDS

@@ -19,6 +19,7 @@ class Overview(BaseVisMetrics):
     CHART = "chart_key_metrics"
 
     def __init__(self, vis_texts, eval_results: List[EvalResult]) -> None:
+        """Initialize Overview. See :class:`~supervisely.nn.benchmark.base_visualizer.BaseVisMetrics` for params."""
         super().__init__(vis_texts, eval_results)
 
     @property

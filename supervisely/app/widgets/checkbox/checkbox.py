@@ -7,18 +7,7 @@ from supervisely.app.widgets import Text, Widget
 
 
 class Checkbox(Widget):
-    """This widget is a simple and intuitive interface element that allows users to select given option.
-
-    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/controls/checkbox>`_
-        (including screenshots and examples).
-
-    :param content: Content of the checkbox.
-    :type content: Union[:class:`~supervisely.app.widgets.widget.Widget`, str]
-    :param checked: Initial state of the checkbox.
-    :type checked: Optional[bool]
-    :param widget_id: Unique widget identifier.
-    :type widget_id: str
-    """
+    """Checkbox for selecting an option."""
 
     class Routes:
         """Route name constants for this widget."""
@@ -30,6 +19,21 @@ class Checkbox(Widget):
         checked: Optional[bool] = False,
         widget_id: Optional[str] = None,
     ):
+        """
+        :param content: Label widget or text string.
+        :type content: Union[Widget, str]
+        :param checked: Initial checked state.
+        :type checked: bool, optional
+        :param widget_id: Widget identifier.
+        :type widget_id: str, optional
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import Checkbox
+                cb = Checkbox("Enable feature", checked=False)
+        """
         self._content = content
         self._checked = checked
         if type(self._content) is str:

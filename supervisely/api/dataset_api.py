@@ -101,31 +101,7 @@ class DatasetInfo(NamedTuple):
 
 
 class DatasetApi(UpdateableModule, RemoveableModuleApi):
-    """
-    API for working with datasets. :class:`~supervisely.api.dataset_api.DatasetApi` object is immutable.
-
-    :param api: API connection to the server.
-    :type api: :class:`~supervisely.api.api.Api`
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import os
-            from dotenv import load_dotenv
-
-            import supervisely as sly
-
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            if sly.is_development():
-                load_dotenv(os.path.expanduser("~/supervisely.env"))
-
-            api = sly.Api.from_env()
-
-            project_id = 1951
-            ds = api.dataset.get_list(project_id)
-    """
+    """API for working with datasets."""
 
     @staticmethod
     def info_sequence():
@@ -177,6 +153,19 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         return "DatasetInfo"
 
     def __init__(self, api):
+        """Initialize DatasetApi.
+
+        :param api: API connection to the server.
+        :type api: :class:`~supervisely.api.api.Api`
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+                api = sly.Api.from_env()
+                ds = api.dataset.get_list(project_id=1951)
+        """
         ModuleApi.__init__(self, api)
         UpdateableModule.__init__(self, api)
 

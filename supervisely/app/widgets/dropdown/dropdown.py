@@ -7,59 +7,14 @@ from supervisely.app.widgets import Widget
 
 
 class Dropdown(Widget):
-    """Dropdown menu for selecting an action.
-
-    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/selection/dropdown>`_
-        (including screenshots and examples).
-
-    :param items: List of items in the dropdown menu
-    :type items: Optional[List[:class:`~supervisely.app.widgets.dropdown.dropdown.Dropdown.Item`]]
-    :param header: Dropdown header text
-    :type header: Optional[str]
-    :param trigger: Dropdown trigger type, one of: hover, click
-    :type trigger: Optional[Literal["hover", "click"]]
-    :param menu_align: Dropdown menu alignment, one of: start, end
-    :type menu_align: Optional[Literal["start", "end"]]
-    :param hide_on_click: If True, dropdown menu will be hidden after click
-    :type hide_on_click: Optional[bool]
-    :param widget_id: An identifier of the widget.
-    :type widget_id: str, optional
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            from supervisely.app.widgets import Dropdown
-
-            dropdown = Dropdown(
-                items=[
-                    Dropdown.Item(text="Item 1", command="item1"),
-                    Dropdown.Item(text="Item 2", command="item2"),
-                    Dropdown.Item(text="Item 3", command="item3"),
-                ],
-                header="Dropdown List",
-                trigger="click",
-                menu_align="end",
-                hide_on_click=True,
-            )
-    """
+    """Dropdown menu for selecting an action."""
 
     class Routes:
         """Route name constants for this widget."""
         VALUE_CHANGED = "value_changed"
 
     class Item:
-        """Represents an item in the dropdown menu.
-
-        :param text: Item text
-        :type text: Optional[str]
-        :param disabled: If True, item will be disabled
-        :type disabled: Optional[bool]
-        :param divided: If True, item will be divided from the next one
-        :type divided: Optional[bool]
-        :param command: Item command
-        :type command: Optional[Union[str, int]]
-        """
+        """Single dropdown menu item."""
 
         def __init__(
             self,
@@ -68,6 +23,12 @@ class Dropdown(Widget):
             divided: Optional[bool] = False,
             command: Optional[Union[str, int]] = None,
         ) -> Dropdown.Item:
+            """
+            :param text: Item label.
+            :param disabled: Disable item.
+            :param divided: Show divider after item.
+            :param command: Value emitted on click.
+            """
             self.text = text
             self.disabled = disabled
             self.divided = divided
@@ -101,6 +62,21 @@ class Dropdown(Widget):
         hide_on_click: Optional[bool] = True,
         widget_id: Optional[str] = None,
     ):
+        """
+        :param items: List of Dropdown.Item.
+        :param header: Header text.
+        :param trigger: "hover" or "click".
+        :param menu_align: "start" or "end".
+        :param hide_on_click: Close menu after selection.
+        :param widget_id: Widget identifier.
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import Dropdown
+                dd = Dropdown(items=[Dropdown.Item("Opt 1", command="a")], header="Options")
+        """
         self._items = items
         self._header = header
         self._trigger = trigger

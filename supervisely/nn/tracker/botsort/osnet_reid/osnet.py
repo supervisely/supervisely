@@ -39,6 +39,7 @@ class ConvLayer(nn.Module):
         groups=1,
         IN=False,
     ):
+        """Initialize ConvLayer. PyTorch conv+bn+relu. :param in_channels: Input channels. :param out_channels: Output channels. :param kernel_size: Kernel size. :param stride: Stride. :param padding: Padding. :param groups: Groups. :param IN: Use InstanceNorm."""
         super(ConvLayer, self).__init__()
         self.conv = nn.Conv2d(
             in_channels,
@@ -66,6 +67,7 @@ class Conv1x1(nn.Module):
     """1x1 convolution + bn + relu."""
 
     def __init__(self, in_channels, out_channels, stride=1, groups=1):
+        """Initialize Conv1x1. 1x1 conv+bn+relu."""
         super(Conv1x1, self).__init__()
         self.conv = nn.Conv2d(
             in_channels,
@@ -90,6 +92,7 @@ class Conv1x1Linear(nn.Module):
     """1x1 convolution + bn (w/o non-linearity)."""
 
     def __init__(self, in_channels, out_channels, stride=1):
+        """Initialize Conv1x1Linear. 1x1 conv+bn."""
         super(Conv1x1Linear, self).__init__()
         self.conv = nn.Conv2d(
             in_channels, out_channels, 1, stride=stride, padding=0, bias=False
@@ -106,6 +109,7 @@ class Conv3x3(nn.Module):
     """3x3 convolution + bn + relu."""
 
     def __init__(self, in_channels, out_channels, stride=1, groups=1):
+        """Initialize Conv3x3. 3x3 conv+bn+relu."""
         super(Conv3x3, self).__init__()
         self.conv = nn.Conv2d(
             in_channels,
@@ -133,6 +137,7 @@ class LightConv3x3(nn.Module):
     """
 
     def __init__(self, in_channels, out_channels):
+        """Initialize LightConv3x3."""
         super(LightConv3x3, self).__init__()
         self.conv1 = nn.Conv2d(
             in_channels, out_channels, 1, stride=1, padding=0, bias=False
@@ -172,6 +177,7 @@ class ChannelGate(nn.Module):
         reduction=16,
         layer_norm=False,
     ):
+        """Initialize ChannelGate. Channel attention gate. :param in_channels: Input channels. :param num_gates: Output gates. :param return_gates: Return gates only. :param gate_activation: 'sigmoid'/'relu'/'linear'. :param reduction: FC reduction. :param layer_norm: Use LayerNorm."""
         super(ChannelGate, self).__init__()
         if num_gates is None:
             num_gates = in_channels
@@ -217,6 +223,7 @@ class OSBlock(nn.Module):
     def __init__(
         self, in_channels, out_channels, IN=False, bottleneck_reduction=4, **kwargs
     ):
+        """Initialize OSBlock. Omni-scale block. :param in_channels: Input channels. :param out_channels: Output channels. :param IN: InstanceNorm. :param bottleneck_reduction: Bottleneck ratio."""
         super(OSBlock, self).__init__()
         mid_channels = out_channels // bottleneck_reduction
         self.conv1 = Conv1x1(in_channels, mid_channels)
@@ -285,6 +292,7 @@ class OSNet(nn.Module):
         IN=False,
         **kwargs,
     ):
+        """Initialize OSNet. :param num_classes: Classification head classes. :param blocks: Block types. :param layers: Layers per stage. :param channels: Channels per stage. :param feature_dim: Embedding dim. :param loss: Loss type. :param IN: InstanceNorm."""
         super(OSNet, self).__init__()
         num_blocks = len(blocks)
         assert num_blocks == len(layers)

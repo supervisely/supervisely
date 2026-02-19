@@ -26,40 +26,7 @@ from supervisely.video_annotation.video_tag_collection import VideoTagCollection
 
 
 class VideoObject(KeyObject):
-    """
-    Tracked object across video frames; obj_class plus optional tags. Immutable.
-
-    :param obj_class: ObjClass object.
-    :type obj_class: :class:`~supervisely.annotation.obj_class.ObjClass`
-    :param tags: VideoTagCollection object.
-    :type tags: :class:`~supervisely.video_annotation.video_tag_collection.VideoTagCollection`, optional
-    :param key: UUID key associated with the object.
-    :type key: uuid.UUID
-    :param class_id: ID of ObjClass to which VideoObject belongs.
-    :type class_id: int, optional
-    :param labeler_login: Login of the user who created VideoObject.
-    :type labeler_login: str, optional
-    :param updated_at: Date and Time when VideoObject was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
-    :type updated_at: str, optional
-    :param created_at: Date and Time when VideoObject was created. Date Format is the same as in "updated_at" parameter.
-    :type created_at: str, optional
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import supervisely as sly
-
-            obj_class_car = sly.ObjClass('car', sly.Rectangle)
-            video_obj_car = sly.VideoObject(obj_class_car)
-            video_obj_car_json = video_obj_car.to_json()
-            print(video_obj_car_json)
-            # Output: {
-            #     "key": "6b819f1840f84d669b32cdec225385f0",
-            #     "classTitle": "car",
-            #     "tags": []
-            # }
-    """
+    """Tracked object across video frames; obj_class plus optional tags. Immutable."""
 
     def __init__(
         self,
@@ -71,6 +38,33 @@ class VideoObject(KeyObject):
         updated_at: Optional[str] = None,
         created_at: Optional[str] = None,
     ):
+        """
+        :param obj_class: Object class (e.g. 'car' with Rectangle geometry).
+        :type obj_class: :class:`~supervisely.annotation.obj_class.ObjClass`
+        :param tags: Tags for this object.
+        :type tags: :class:`~supervisely.video_annotation.video_tag_collection.VideoTagCollection`, optional
+        :param key: UUID key. Auto-generated if not provided.
+        :type key: uuid.UUID, optional
+        :param class_id: Server-side class ID.
+        :type class_id: int, optional
+        :param labeler_login: Login of user who created the object.
+        :type labeler_login: str, optional
+        :param updated_at: Last modification timestamp.
+        :type updated_at: str, optional
+        :param created_at: Creation timestamp.
+        :type created_at: str, optional
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                obj_class_car = sly.ObjClass('car', sly.Rectangle)
+                video_obj_car = sly.VideoObject(obj_class_car)
+                video_obj_car_json = video_obj_car.to_json()
+                print(video_obj_car_json)
+        """
         self.labeler_login = labeler_login
         self.updated_at = updated_at
         self.created_at = created_at

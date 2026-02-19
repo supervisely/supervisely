@@ -38,6 +38,7 @@ class BatchInferenceApplier:
 
     def __init__(self, single_image_inference: SingleImageInferenceBase, default_inference_mode_config: dict,
                  config_validator=None):
+        """Initialize BatchInferenceApplier. :param single_image_inference: Single-image inference instance. :param default_inference_mode_config: Default inference config. :param config_validator: Optional config validator."""
         self._single_image_inference = single_image_inference
         self._config_validator = config_validator or AlwaysPassingConfigValidator()
 

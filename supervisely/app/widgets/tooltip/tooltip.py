@@ -40,6 +40,31 @@ class Tooltip(Widget):
         hide_after: Optional[int] = 0,
         widget_id: Optional[str] = None,
     ):
+        """Initialize Tooltip.
+
+        :param text: Tooltip text or list of lines.
+        :type text: Union[str, List[str]]
+        :param content: Child widget to wrap.
+        :type content: Widget
+        :param color_theme: "dark" or "light".
+        :type color_theme: Literal["dark", "light"], optional
+        :param placement: Tooltip placement (top, bottom, left, right, etc.).
+        :param offset: Offset in pixels.
+        :type offset: int, optional
+        :param transition: Transition effect.
+        :param visible_arrow: If True, show arrow.
+        :type visible_arrow: bool, optional
+        :param open_delay: Delay before showing (ms).
+        :type open_delay: int, optional
+        :param enterable: If True, allow mouse enter.
+        :type enterable: bool, optional
+        :param hide_after: Auto-hide after ms (0 = never).
+        :type hide_after: int, optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+
+        :raises ValueError: If open_delay >= hide_after when hide_after != 0.
+        """
         self._text = text
         self._content = content
         self._color_theme = color_theme

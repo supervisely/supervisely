@@ -9,54 +9,14 @@ SUPPORTED_TAG_WIDGET_TYPES = ["primary", "gray", "success", "warning", "danger"]
 
 
 class ElementTagsList(Widget):
-    """Displays multiple element tags in a list.
-
-    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/text-elements/elementtagslist>`_
-        (including screenshots and examples).
-
-    :param tags: List of tags
-    :type tags: Optional[List[:class:`~supervisely.annotation.tag.Tag`]]
-    :param widget_id: An identifier of the widget.
-    :type widget_id: str, optional
-
-    :Usage Example:
-
-        .. code-block:: python
-
-                from supervisely.app.widgets import ElementTagsList
-
-                element_tags_list = ElementTagsList(
-                    tags=[
-                        ElementTagsList.Tag(
-                            text="Tag",
-                            type="primary",
-                            hit=True,
-                            color="#20a0ff",
-                        )
-                    ]
-                )
-    """
+    """Displays multiple element tags in a list."""
 
     class Routes:
         """Route name constants for this widget."""
         CLOSE = "tag_close_cb"
 
     class Tag:
-        """Represents tag in ElementTagsList widget.
-
-        :param text: Tag text
-        :type text: Optional[str]
-        :param type: Tag type, one of: primary, gray, success, warning, danger
-        :type type: Optional[Literal["primary", "gray", "success", "warning", "danger"]]
-        :param hit: If True, tag will be highlighted
-        :type hit: Optional[bool]
-        :param color: Tag color
-        :type color: Optional[str]
-        :param closable: If True, tag will be closable
-        :type closable: Optional[bool]
-        :param close_transition: If True, tag will be closable with transition
-        :type close_transition: Optional[bool]
-        """
+        """Single tag in ElementTagsList."""
 
         def __init__(
             self,
@@ -67,6 +27,14 @@ class ElementTagsList(Widget):
             closable: Optional[bool] = False,
             close_transition: Optional[bool] = False,
         ):
+            """
+            :param text: Tag text.
+            :param type: primary, gray, success, warning, danger.
+            :param hit: Highlight.
+            :param color: Custom color.
+            :param closable: Show close button.
+            :param close_transition: Animate on close.
+            """
             self._text = text
             self._type = type
             self._hit = hit
@@ -156,6 +124,18 @@ class ElementTagsList(Widget):
         tags: Optional[List[Tag]] = [],
         widget_id: Optional[str] = None,
     ):
+        """
+        :param tags: List of ElementTagsList.Tag.
+        :param widget_id: Widget identifier.
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import ElementTagsList
+                tags = [ElementTagsList.Tag("Tag1", type="primary")]
+                el = ElementTagsList(tags=tags)
+        """
         self._clicked_tag = None
 
         self._validate_tags(tags)

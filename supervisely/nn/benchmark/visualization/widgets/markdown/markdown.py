@@ -13,6 +13,12 @@ class MarkdownWidget(BaseWidget):
         title: str,
         text: str = None,
     ) -> None:
+        """Initialize MarkdownWidget.
+
+        :param name: Widget name.
+        :param title: Display title.
+        :param text: Markdown content.
+        """
         super().__init__(name, title)
         self.text = text
         self.data_source = f"/data/{self.name}_{self.id}.md"

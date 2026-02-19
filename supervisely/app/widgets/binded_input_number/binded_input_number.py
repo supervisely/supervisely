@@ -5,33 +5,7 @@ from supervisely.app.widgets import Widget
 
 
 class BindedInputNumber(Widget):
-    """
-    Paired numeric inputs (e.g. width/height) with optional proportional linking and min/max bounds.
-
-    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/input/bindedinputnumber>`_
-        (including screenshots and examples).
-
-    :param width: Width of the image in pixels.
-    :type width: Optional[int]
-    :param height: Height of the image in pixels.
-    :type height: Optional[int]
-    :param min: Minimum value of the input.
-    :type min: Optional[int]
-    :param max: Maximum value of the input.
-    :type max: Optional[int]
-    :param proportional: If True, the input will be proportional.
-    :type proportional: Optional[bool]
-    :param widget_id: Unique widget identifier.
-    :type widget_id: str
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            from supervisely.app.widgets import Badge
-
-            binded_input_number = BindedInputNumber(width=150, height=150, min=1, max=100, proportional=False)
-    """
+    """Paired numeric inputs (e.g. width/height) with optional proportional linking and min/max bounds."""
 
     def __init__(
         self,
@@ -42,6 +16,21 @@ class BindedInputNumber(Widget):
         proportional: Optional[bool] = False,
         widget_id: Optional[str] = None,
     ):
+        """
+        :param width: Initial width value.
+        :param height: Initial height value.
+        :param min: Minimum allowed value.
+        :param max: Maximum allowed value.
+        :param proportional: Keep width/height proportional when changing.
+        :param widget_id: Widget identifier.
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import BindedInputNumber
+                inp = BindedInputNumber(width=150, height=150, min=1, max=100, proportional=False)
+        """
         self._width = width
         self._height = height
         self._min = min

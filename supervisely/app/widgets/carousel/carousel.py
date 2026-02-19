@@ -12,64 +12,14 @@ except ImportError:
 
 
 class Carousel(Widget):
-    """Cycles through a series of images or text in limited space.
-
-    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/media/carousel>`_
-        (including screenshots and examples).
-
-    :param items: List of items to be displayed in the carousel.
-    :type items: List[:class:`~supervisely.app.widgets.carousel.carousel.Carousel.Item`]
-    :param height: Height of the carousel in pixels.
-    :type height: Optional[int]
-    :param initial_index: Index of the item to be displayed at initialization.
-    :type initial_index: Optional[int]
-    :param trigger: Trigger type to change the active item.
-    :type trigger: Optional[Literal["hover", "click"]]
-    :param autoplay: If True, the carousel will be autoplayed.
-    :type autoplay: Optional[bool]
-    :param interval: Time interval between each autoplay.
-    :type interval: Optional[int]
-    :param indicator_position: Position of the indicator.
-    :type indicator_position: Optional[Literal["outside", "none"]]
-    :param arrow: Arrow display type.
-    :type arrow: Optional[Literal["always", "hover", "never"]]
-    :param type: Carousel type.
-    :type type: Optional[Literal["card"]]
-    :param widget_id: Unique widget identifier.
-    :type widget_id: str
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            from supervisely.app.widgets import Carousel
-
-            carousel_items = [
-                Carousel.Item(name="item1", label="Item 1"),
-                Carousel.Item(name="item2", label="Item 2"),
-                Carousel.Item(name="item3", label="Item 3"),
-            ]
-
-            carousel = Carousel(
-                items=carousel_items, height=350, initial_index=0, trigger="click",
-                autoplay=False, interval=3000, indicator_position="none", arrow="hover", type=None
-                )
-    """
+    """Cycles through a series of images or text in limited space."""
 
     class Routes:
         """Route name constants for this widget."""
         VALUE_CHANGED = "value_changed"
 
     class Item:
-        """Represents an item in the carousel.
-
-        :param name: Name of the item.
-        :type name: Optional[str]
-        :param label: Label of the item.
-        :type label: Optional[str]
-        :param is_link: If True, the item will be displayed as a link.
-        :type is_link: Optional[bool]
-        """
+        """Single carousel item (name, label, is_link)."""
 
         def __init__(
             self,
@@ -77,6 +27,11 @@ class Carousel(Widget):
             label: Optional[str] = "",
             is_link: Optional[bool] = True,
         ):
+            """
+            :param name: Item name.
+            :param label: Item label.
+            :param is_link: Display as link.
+            """
             self.name = name
             self.label = label
             self.is_link = is_link
@@ -108,6 +63,26 @@ class Carousel(Widget):
         type: Optional[Literal["card"]] = None,
         widget_id: Optional[str] = None,
     ):
+        """
+        :param items: List of Carousel.Item.
+        :param height: Height in pixels.
+        :param initial_index: Initial visible item index.
+        :param trigger: "hover" or "click".
+        :param autoplay: Enable autoplay.
+        :param interval: Autoplay interval (ms).
+        :param indicator_position: "outside" or "none".
+        :param arrow: "always", "hover", or "never".
+        :param type: "card" or None.
+        :param widget_id: Widget identifier.
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import Carousel
+                items = [Carousel.Item(name="i1", label="Item 1"), Carousel.Item(name="i2", label="Item 2")]
+                carousel = Carousel(items=items, height=350, trigger="click")
+        """
         self._height = f"{height}px"
         self._items = items
         self._initial_index = initial_index

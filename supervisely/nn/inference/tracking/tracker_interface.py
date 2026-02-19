@@ -40,6 +40,7 @@ class TrackerInterface:
         frames_loader: Callable[[Api, int, List[int]], List[np.ndarray]] = None,
         should_notify: bool = True,
     ):
+        """Initialize TrackerInterface. :param context: Dict with frameIndex, frames, trackId, videoId, objectIds, figureIds, direction. :param api: Supervisely API. :param load_all_frames: Preload all frames. :param notify_in_predict: Notify during predict. :param per_point_polygon_tracking: Polygon tracking mode. :param frame_loader: Optional frame loader. :param frames_loader: Optional batch frame loader. :param should_notify: Enable notifications."""
         self.api: Api = api
         self.logger: Logger = api.logger
         self.frame_index = context["frameIndex"]
@@ -380,6 +381,7 @@ class TrackerInterfaceV2:
         context: Dict,
         cache: InferenceImageCache,
     ):
+        """Initialize TrackerInterfaceV2. :param api: Supervisely API. :param context: Tracking context dict. :param cache: InferenceImageCache for frames."""
         self.api = api
         self.context = context
         self.video_id = find_value_by_keys(context, ["videoId", "video_id"])

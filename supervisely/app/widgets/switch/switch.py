@@ -24,6 +24,27 @@ class Switch(ConditionalWidget):
         off_content: Widget = None,
         widget_id: str = None,
     ):
+        """Initialize Switch.
+
+        :param switched: Initial state (True=on, False=off).
+        :type switched: bool
+        :param width: Switch width in pixels.
+        :type width: int
+        :param on_text: Text when on.
+        :type on_text: str
+        :param off_text: Text when off.
+        :type off_text: str
+        :param on_color: Color when on.
+        :type on_color: str, optional
+        :param off_color: Color when off.
+        :type off_color: str, optional
+        :param on_content: Widget to show when on.
+        :type on_content: Widget, optional
+        :param off_content: Widget to show when off.
+        :type off_content: Widget, optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         self._switched = switched
         self._width = width
         self._on_text = on_text

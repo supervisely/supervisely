@@ -101,6 +101,7 @@ class BatchInferenceMultiprocessApplier:
 
     def __init__(self, single_image_inference_initializer, num_processes, default_inference_mode_config: dict,
                  config_validator=None):
+        """Initialize BatchInferenceMultiprocessApplier. :param single_image_inference_initializer: Callable returning inference instance. :param num_processes: Worker count. :param default_inference_mode_config: Default mode config. :param config_validator: Optional validator."""
         self._config_validator = config_validator or AlwaysPassingConfigValidator()
         self._inference_mode_config = determine_task_inference_mode_config(deepcopy(default_inference_mode_config))
 

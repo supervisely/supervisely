@@ -481,21 +481,7 @@ class AppApi(TaskApi):
     """API for launching and managing Supervisely Apps (built on top of :class:`~supervisely.api.task_api.TaskApi`)."""
 
     class Workflow:
-        """The workflow functionality is used to create connections between the states of projects and tasks (application sessions) that interact with them in some way.
-        By assigning connections to various entities, the workflow tab allows tracking the history of project changes.
-        The active task always acts as a node, for which input and output elements are defined.
-        There can be multiple input and output elements.
-        A task can also be used as an input or output element.
-        For example, an inference task takes a deployed model and a project as inputs, and the output is a new state of the project.
-        This functionality uses versioning optionally.
-
-        If instances are not compatible with the workflow features, the functionality will be disabled.
-
-        :param api: Supervisely API object
-        :type api: supervisely.api.api.:class:`~supervisely.api.api.Api`
-        :param min_instance_version: Minimum version of the instance that supports workflow features
-        :type min_instance_version: str
-        """
+        """Workflow functionality for connecting project states and task application sessions."""
 
         __custom_meta_schema = {
             "type": "object",
@@ -537,6 +523,11 @@ class AppApi(TaskApi):
         }
 
         def __init__(self, api):
+            """Initialize Workflow.
+
+            :param api: Supervisely API object
+            :type api: :class:`~supervisely.api.api.Api`
+            """
             self._api = api
             # minimum instance version that supports workflow features
             self._min_instance_version = "6.9.31"
@@ -1179,6 +1170,11 @@ class AppApi(TaskApi):
         # pylint: enable=redundant-keyword-arg
 
     def __init__(self, api):
+        """Initialize AppApi.
+
+        :param api: API connection to the server.
+        :type api: :class:`~supervisely.api.api.Api`
+        """
         super().__init__(api)
         self.workflow = self.Workflow(api)
 

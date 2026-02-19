@@ -29,41 +29,7 @@ if TYPE_CHECKING:
 
 
 class Rectangle(Geometry):
-    """
-    Axis-aligned 2D bounding box (top, left, bottom, right). Used as geometry for a single :class:`~supervisely.annotation.label.Label`. Immutable.
-
-    :param top: Minimal vertical value of Rectangle.
-    :type top: int or float
-    :param left: Minimal horizontal value of Rectangle.
-    :type left: int or float
-    :param bottom: Maximal vertical value of Rectangle.
-    :type bottom: int or float
-    :param right: Maximal horizontal value of Rectangle.
-    :type right: int or float
-    :param sly_id: Rectangle ID in Supervisely server.
-    :type sly_id: int, optional
-    :param class_id: ID of ObjClass to which Rectangle belongs.
-    :type class_id: int, optional
-    :param labeler_login: Login of the user who created Rectangle.
-    :type labeler_login: str, optional
-    :param updated_at: Date and Time when Rectangle was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
-    :type updated_at: str, optional
-    :param created_at: Date and Time when Rectangle was created. Date Format is the same as in "updated_at" parameter.
-    :type created_at: str, optional
-    :raises ValueError: Rectangle "top" argument must have less or equal value then "bottom", "left" argument must have less or equal value then "right".
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import supervisely as sly
-
-            top = 100
-            left = 100
-            bottom = 700
-            right = 900
-            figure = sly.Rectangle(top, left, bottom, right)
-    """
+    """Axis-aligned 2D bounding box (top, left, bottom, right). Immutable."""
 
     @staticmethod
     def geometry_name():
@@ -87,7 +53,37 @@ class Rectangle(Geometry):
         updated_at: Optional[str] = None,
         created_at: Optional[str] = None,
     ):
+        """
+        Axis-aligned 2D bounding box.
 
+        :param top: Top edge (min row).
+        :type top: int or float
+        :param left: Left edge (min col).
+        :type left: int or float
+        :param bottom: Bottom edge (max row).
+        :type bottom: int or float
+        :param right: Right edge (max col).
+        :type right: int or float
+        :param sly_id: Server-side rectangle ID.
+        :type sly_id: int, optional
+        :param class_id: ObjClass ID.
+        :type class_id: int, optional
+        :param labeler_login: Login of user who created the rectangle.
+        :type labeler_login: str, optional
+        :param updated_at: Last modification timestamp (ISO format).
+        :type updated_at: str, optional
+        :param created_at: Creation timestamp (ISO format).
+        :type created_at: str, optional
+        :raises ValueError: If top > bottom or left > right.
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                rect = sly.Rectangle(100, 100, 700, 900)
+        """
         if top > bottom:
             raise ValueError(
                 'Rectangle "top" argument must have less or equal value then "bottom"!'

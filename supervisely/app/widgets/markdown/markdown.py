@@ -18,6 +18,17 @@ class Markdown(Widget):
         widget_id: str = None,
         show_border: bool = True,
     ):
+        """Initialize Markdown.
+
+        :param content: Markdown content string.
+        :type content: str
+        :param height: Height in pixels or "fit-content".
+        :type height: Union[int, Literal["fit-content"]]
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        :param show_border: If True, show border around content.
+        :type show_border: bool
+        """
         self._content = content
         self._height = f"{height}px" if type(height) == int else height
         self._show_border = show_border

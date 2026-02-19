@@ -150,6 +150,26 @@ class Event:
                 geometry_type: str,
                 mask: np.ndarray,
             ):
+                """Initialize DrawLeftMouseReleased (brush tool payload).
+
+                :param team_id: Team ID.
+                :param workspace_id: Workspace ID.
+                :param project_id: Project ID.
+                :param dataset_id: Dataset ID.
+                :param image_id: Image ID.
+                :param label_id: Figure/label ID.
+                :param object_class_id: Object class ID.
+                :param object_class_title: Object class name.
+                :param tool_class_id: Tool class ID.
+                :param session_id: Session ID.
+                :param tool: Tool identifier.
+                :param user_id: User ID.
+                :param job_id: Job ID.
+                :param is_fill: If True, fill mode.
+                :param is_erase: If True, erase mode.
+                :param geometry_type: Geometry type string.
+                :param mask: Mask as numpy array.
+                """
                 self.dataset_id = dataset_id
                 self.team_id = team_id
                 self.workspace_id = workspace_id
@@ -235,6 +255,7 @@ class Event:
                 user_id: int,
                 job_id: int,
             ):
+                """Initialize VideoChanged (manual selection payload)."""
                 self.dataset_id = dataset_id
                 self.team_id = team_id
                 self.workspace_id = workspace_id
@@ -289,6 +310,7 @@ class Event:
                 job_id: int,
                 previous_figure: dict = None,
             ):
+                """Initialize FigureChanged (manual selection payload)."""
                 self.dataset_id = dataset_id
                 self.team_id = team_id
                 self.workspace_id = workspace_id
@@ -352,6 +374,7 @@ class Event:
                 user_id: int,
                 job_id: int,
             ):
+                """Initialize ImageChanged (image selection payload)."""
                 self.dataset_id = dataset_id
                 self.team_id = team_id
                 self.workspace_id = workspace_id
@@ -409,6 +432,7 @@ class Event:
             tool_state: dict,
             figure_state: dict,
         ):
+            """Initialize FigureCreated (figure creation payload)."""
             self.dataset_id = dataset_id
             self.team_id = team_id
             self.workspace_id = workspace_id
@@ -479,6 +503,7 @@ class Event:
                     tool_state: dict,
                     figure_state: dict,
                 ):
+                    """Initialize FigureChanged (rectangle tool payload)."""
                     self.dataset_id = dataset_id
                     self.team_id = team_id
                     self.workspace_id = workspace_id
@@ -540,6 +565,7 @@ class Event:
                 user_id: int,
                 job_id: int,
             ):
+                """Initialize FrameChanged (entity frame payload)."""
                 self.dataset_id = dataset_id
                 self.team_id = team_id
                 self.workspace_id = workspace_id
@@ -601,6 +627,7 @@ class Event:
                 job_id: int,
                 job_entity_status: str,
             ):
+                """Initialize StatusChanged (job entity status payload)."""
                 self.dataset_id = dataset_id
                 self.team_id = team_id
                 self.workspace_id = workspace_id
@@ -1260,6 +1287,10 @@ class Application(metaclass=Singleton):
             """Hide health check requests from access logs in non-debug mode."""
 
             def __init__(self, app_instance):
+                """Initialize HealthCheckFilter.
+
+                :param app_instance: Application instance for debug/endpoints check.
+                """
                 super().__init__()
                 self.app: Application = app_instance
 

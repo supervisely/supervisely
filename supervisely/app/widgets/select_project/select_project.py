@@ -35,6 +35,25 @@ class SelectProject(Widget):
         size: Literal["large", "small", "mini"] = None,
         widget_id: str = None,
     ):
+        """Initialize SelectProject.
+
+        :param default_id: Initial project ID.
+        :type default_id: int, optional
+        :param workspace_id: Workspace to list projects from.
+        :type workspace_id: int, optional
+        :param compact: If True, compact layout (requires workspace_id).
+        :type compact: bool
+        :param allowed_types: Filter by project types.
+        :type allowed_types: List[ProjectType]
+        :param show_label: If True, show label.
+        :type show_label: bool
+        :param size: Size: "large", "small", or "mini".
+        :type size: Literal["large", "small", "mini"], optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+
+        :raises ValueError: If compact is True and workspace_id is None.
+        """
         self._api = Api()
         self._default_id = default_id
         self._ws_id = workspace_id

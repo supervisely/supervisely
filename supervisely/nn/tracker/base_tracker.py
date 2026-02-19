@@ -7,6 +7,7 @@ class BaseTracker:
     """Base class for video object trackers; subclasses implement update, track, and get_default_params."""
 
     def __init__(self, settings: dict = None, device: str = None):
+        """Initialize BaseTracker. :param settings: Tracker settings. :param device: 'cpu', 'cuda', or 'auto'."""
         import torch  # pylint: disable=import-error
         self.settings = settings or {}
         auto_device = "cuda" if torch.cuda.is_available() else "cpu"

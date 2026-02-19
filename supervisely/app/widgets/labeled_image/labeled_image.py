@@ -23,6 +23,27 @@ class LabeledImage(GridGallery):
         widget_id: str = None,
         empty_message: str = "No image was provided",
     ):
+        """Initialize LabeledImage.
+
+        :param annotations_opacity: Opacity of annotation overlays (0–1).
+        :type annotations_opacity: float
+        :param show_opacity_slider: If True, show opacity slider.
+        :type show_opacity_slider: bool
+        :param enable_zoom: If True, enable zoom.
+        :type enable_zoom: bool
+        :param resize_on_zoom: If True, resize on zoom.
+        :type resize_on_zoom: bool
+        :param fill_rectangle: If True, fill rectangles.
+        :type fill_rectangle: bool
+        :param border_width: Border width for shapes.
+        :type border_width: int
+        :param view_height: Fixed view height. None for auto.
+        :type view_height: int, optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        :param empty_message: Message when no image.
+        :type empty_message: str
+        """
         self._image_id = None
         super().__init__(
             columns_number=1,

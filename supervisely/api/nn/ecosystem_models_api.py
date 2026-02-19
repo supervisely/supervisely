@@ -30,17 +30,14 @@ class ModelApiField:
 
 
 class EcosystemModelsApi(ModuleApi):
-    """
-    API for working with ecosystem models catalog.
-
-    Use :meth:`~.list_models` to list catalog entries and :meth:`~.add` / :meth:`~.update_model`
-    to create/update an entry.
-
-    :param api: API client.
-    :type api: :class:`~supervisely.api.api.Api`
-    """
+    """API for working with ecosystem models catalog."""
 
     def __init__(self, api: Api):
+        """Initialize EcosystemModelsApi.
+
+        :param api: API client.
+        :type api: :class:`~supervisely.api.api.Api`
+        """
         self._api = api
 
     def _convert_json_info(self, json_info):

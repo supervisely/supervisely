@@ -9,6 +9,7 @@ class MMSegmentation(BaseTrainArtifacts):
     """Train/serve artifacts handler for MMSegmentation instance segmentation models."""
 
     def __init__(self, team_id: int):
+        """See :class:`~supervisely.nn.artifacts.artifacts.BaseTrainArtifacts` for params."""
         super().__init__(team_id)
 
         self._app_name = "Train MMSegmentation"

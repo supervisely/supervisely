@@ -25,6 +25,15 @@ class MatchedPairData:
         pred_annotation: Annotation = None,
         diff_annotation: Annotation = None,
     ):
+        """Initialize MatchedPairData.
+
+        :param gt_image_info: Ground-truth image info.
+        :param pred_image_info: Prediction image info.
+        :param diff_image_info: Diff image info (optional).
+        :param gt_annotation: Ground-truth annotation.
+        :param pred_annotation: Prediction annotation.
+        :param diff_annotation: Diff annotation (optional).
+        """
         self.gt_image_info = gt_image_info
         self.pred_image_info = pred_image_info
         self.diff_image_info = diff_image_info
@@ -43,6 +52,13 @@ class BaseVisMetrics:
         explore_modal_table: GalleryWidget = None,
         diff_modal_table: GalleryWidget = None,
     ) -> None:
+        """Initialize BaseVisMetrics.
+
+        :param vis_texts: Text templates for reports.
+        :param eval_results: List of evaluation results.
+        :param explore_modal_table: Optional gallery for explore modal.
+        :param diff_modal_table: Optional gallery for diff modal.
+        """
         self.vis_texts = vis_texts
         self.eval_results = eval_results
         self.explore_modal_table = explore_modal_table
@@ -60,6 +76,7 @@ class BaseVisMetric(BaseVisMetrics):
         explore_modal_table: GalleryWidget = None,
         diff_modal_table: GalleryWidget = None,
     ) -> None:
+        """Initialize BaseVisMetric. See BaseVisMetrics for params (eval_result instead of eval_results)."""
         super().__init__(vis_texts, [eval_result], explore_modal_table, diff_modal_table)
         self.eval_result = eval_result
 
@@ -77,6 +94,13 @@ class BaseVisualizer:
         workdir="./visualizations",
         progress=None,
     ):
+        """Initialize BaseVisualizer.
+
+        :param api: Supervisely API.
+        :param eval_results: List of evaluation results.
+        :param workdir: Output directory for reports.
+        :param progress: Progress callback.
+        """
         self.api = api
         self.workdir = workdir
         self.eval_result = eval_results[0]  # for evaluation

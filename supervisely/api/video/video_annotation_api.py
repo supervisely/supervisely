@@ -20,32 +20,23 @@ from supervisely.video_annotation.video_tag_collection import VideoTagCollection
 
 
 class VideoAnnotationAPI(EntityAnnotationAPI):
-    """
-    API for working with :class:`~supervisely.video_annotation.video_annotation.VideoAnnotation`.
-    :class:`~supervisely.api.video.video_annotation_api.VideoAnnotationAPI` object is immutable.
+    """API for working with VideoAnnotation."""
 
-    :param api: API connection to the server.
-    :type api: :class:`~supervisely.api.api.Api`
+    def __init__(self, api):
+        """Initialize VideoAnnotationAPI.
 
-    :Usage Example:
+        :param api: API connection to the server.
+        :type api: :class:`~supervisely.api.api.Api`
 
-        .. code-block:: python
+        :Usage Example:
 
-            import os
-            from dotenv import load_dotenv
+            .. code-block:: python
 
-            import supervisely as sly
-
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            if sly.is_development():
-                load_dotenv(os.path.expanduser("~/supervisely.env"))
-
-            api = sly.Api.from_env()
-
-            video_id = 186648102
-            ann_info = api.video.annotation.download(video_id)
-    """
+                import supervisely as sly
+                api = sly.Api.from_env()
+                ann_info = api.video.annotation.download(video_id)
+        """
+        super().__init__(api)
 
     _method_download_bulk = "videos.annotations.bulk.info"
     _entity_ids_str = ApiField.VIDEO_IDS

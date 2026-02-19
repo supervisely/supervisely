@@ -16,56 +16,59 @@ from supervisely.video_annotation.video_object_collection import VideoObjectColl
 class Frame(KeyObject):
     """
     Single frame in a video annotation; holds figures at a given index. Immutable.
-
-    :param index: Index of the Frame.
-    :type index: int
-    :param figures: List of VideoFigures.
-    :type figures: list, optional
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import supervisely as sly
-
-            frame_index = 7
-            geometry = sly.Rectangle(0, 0, 100, 100)
-            class_car = sly.ObjClass('car', sly.Rectangle)
-            object_car = sly.VideoObject(class_car)
-            figure_car = sly.VideoFigure(object_car, geometry, frame_index)
-
-            frame = sly.Frame(frame_index, figures=[figure_car])
-            print(frame.to_json())
-            # Output: {
-            #     "index": 7,
-            #     "figures": [
-            #         {
-            #             "key": "39f3eb15791f4c72b7cdb98c17b3f0f1",
-            #             "objectKey": "319814af474941a98ca208c3fad5ed81",
-            #             "geometryType": "rectangle",
-            #             "geometry": {
-            #                 "points": {
-            #                     "exterior": [
-            #                         [
-            #                             0,
-            #                             0
-            #                         ],
-            #                         [
-            #                             100,
-            #                             100
-            #                         ]
-            #                     ],
-            #                     "interior": []
-            #                 }
-            #             }
-            #         }
-            #     ]
-            # }
     """
 
     figure_type = VideoFigure
 
     def __init__(self, index: int, figures: Optional[List[VideoFigure]] = None):
+        """
+        Single frame in a video annotation; holds figures at a given index. Immutable.
+
+        :param index: Index of the Frame.
+        :type index: int
+        :param figures: List of VideoFigures.
+        :type figures: list, optional
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                frame_index = 7
+                geometry = sly.Rectangle(0, 0, 100, 100)
+                class_car = sly.ObjClass('car', sly.Rectangle)
+                object_car = sly.VideoObject(class_car)
+                figure_car = sly.VideoFigure(object_car, geometry, frame_index)
+
+                frame = sly.Frame(frame_index, figures=[figure_car])
+                print(frame.to_json())
+                # Output: {
+                #     "index": 7,
+                #     "figures": [
+                #         {
+                #             "key": "39f3eb15791f4c72b7cdb98c17b3f0f1",
+                #             "objectKey": "319814af474941a98ca208c3fad5ed81",
+                #             "geometryType": "rectangle",
+                #             "geometry": {
+                #                 "points": {
+                #                     "exterior": [
+                #                         [
+                #                             0,
+                #                             0
+                #                         ],
+                #                         [
+                #                             100,
+                #                             100
+                #                         ]
+                #                     ],
+                #                     "interior": []
+                #                 }
+                #             }
+                #         }
+                #     ]
+                # }
+        """
         self._index = index
         self._figures = take_with_default(figures, [])
 

@@ -6,50 +6,7 @@ from supervisely.app.widgets import Widget
 
 
 class DateTimePicker(Widget):
-    """Date and time picker input.
-
-    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/input/datetimepicker>`_
-        (including screenshots and examples).
-
-    :param value: initial value
-    :type value: Optional[Union[int, str, datetime, list, tuple]]
-    :param readonly: if True, date picker will be readonly
-    :type readonly: Optional[bool]
-    :param disabled: if True, date picker will be disabled
-    :type disabled: Optional[bool]
-    :param editable: if True, date picker will be editable
-    :type editable: Optional[bool]
-    :param clearable: if True, date picker will be clearable
-    :type clearable: Optional[bool]
-    :param size: size of the input box, one of: large, small, mini
-    :type size: Optional[Literal["large", "small", "mini"]]
-    :param placeholder: placeholder text, default: "Select date and time"
-    :type placeholder: Optional[str]
-    :param w_type: picker type, one of: year, month, date, datetime, week, datetimerange, daterange, default: datetime
-    :type w_type: Optional[Literal["year", "month", "date", "datetime", "week", "datetimerange", "daterange"]]
-    :param format: date format, one of: yyyy, MM, dd, HH, mm, ss, default: yyyy-MM-dd HH:mm:ss
-    :type format: Optional[Literal["yyyy", "MM", "dd", "HH", "mm", "ss"]]
-    :param widget_id: An identifier of the widget.
-    :type widget_id: str, optional
-
-    :Usage Example:
-
-        .. code-block:: python
-
-                from supervisely.app.widgets import DateTimePicker
-
-                date_time_picker = DateTimePicker(
-                    value=datetime.now(),
-                    readonly=False,
-                    disabled=False,
-                    editable=False,
-                    clearable=True,
-                    size="small",
-                    placeholder="Select date and time",
-                    w_type="datetime",
-                    format="yyyy-MM-dd HH:mm:ss",
-                )
-    """
+    """Date and time picker input."""
 
     class Routes:
         """Route name constants for this widget."""
@@ -70,6 +27,25 @@ class DateTimePicker(Widget):
         format: Optional[Literal["yyyy", "MM", "dd", "HH", "mm", "ss"]] = "yyyy-MM-dd HH:mm:ss",
         widget_id: Optional[str] = None,
     ):
+        """
+        :param value: Initial value (datetime, str, or timestamp).
+        :param readonly: Read-only mode.
+        :param disabled: Disabled state.
+        :param editable: Allow manual edit.
+        :param clearable: Allow clearing.
+        :param size: large, small, or mini.
+        :param placeholder: Placeholder text.
+        :param w_type: year, month, date, datetime, week, datetimerange, daterange.
+        :param format: Date format string.
+        :param widget_id: Widget identifier.
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import DateTimePicker
+                dtp = DateTimePicker(value=datetime.now(), w_type="datetime")
+        """
         self._value = value
         self._readonly = readonly
         self._disabled = disabled

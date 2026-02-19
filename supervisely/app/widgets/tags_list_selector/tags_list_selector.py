@@ -28,6 +28,17 @@ class TagsListSelector(Widget):
         empty_notification: Optional[NotificationBox] = None,
         widget_id: Optional[str] = None,
     ):
+        """Initialize TagsListSelector.
+
+        :param tag_metas: List or TagMetaCollection to select from.
+        :type tag_metas: Union[List[TagMeta], TagMetaCollection], optional
+        :param multiple: If True, allow multiple selection.
+        :type multiple: bool, optional
+        :param empty_notification: Widget to show when no tags.
+        :type empty_notification: NotificationBox, optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         self._tag_metas = tag_metas
         self._multiple = multiple
         if empty_notification is None:

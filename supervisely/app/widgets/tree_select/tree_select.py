@@ -12,58 +12,7 @@ from supervisely.app.widgets import Widget
 
 class TreeSelect(Widget):
     """Dropdown for selecting items from a tree-like structure.
-    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/selection/treeselect>`_
-        (including screenshots and examples).
-
-    :param items: List of items to display in the tree.
-    :type items: List[:class:`~supervisely.app.widgets.tree_select.tree_select.TreeSelect.Item`], optional
-    :param multiple_select: Whether multiple items can be selected at once.
-    :type multiple_select: bool, optional
-    :param flat: If set to true, selecting a parent item will NOT select all its children.
-    :type flat: bool, optional
-    :param always_open: If set to true, the widget will be expanded by default.
-    :type always_open: bool, optional
-    :param width: The width of the widget.
-    :type width: int, optional
-    :param append_to_body: Determines where the popover is attached. If False, it is positioned inside the input's container. This can cause the popover to be hidden if the input is within a Card or a widget that restricts visibility.
-    :type append_to_body: bool, optional
-    :widget_id: The unique identifier of the widget.
-    :type widget_id: str, optional
-    :param placeholder: The placeholder text.
-
-    :Public methods:
-
-    - `get_selected() -> Union[List[TreeSelect.Item], TreeSelect.Item]`: Get the selected item(s).
-    - `set_selected(value: Union[List[TreeSelect.Item], TreeSelect.Item])`: Set the selected item(s).
-    - `set_items(items: List[TreeSelect.Item])`: Set the items (overwrite the existing items).
-    - `add_items(items: List[TreeSelect.Item])`: Add the items (append to the existing items).
-    - `clear_items()`: Clear the items.
-    - `get_item_by_id(item_id: str) -> Optional[TreeSelect.Item]`: Get the item by its ID.
-    - `set_selected_by_id(value: Union[List[str], str])`: Set the selected item(s) by their IDs.
-    - `clear_selected()`: Clear the selected item(s).
-    - `get_all_items() -> List[TreeSelect.Item]`: Get all items in the tree.
-    - `select_all()`: Select all items, including children.
-    - `is_all_selected() -> bool`: Check if all items are selected.
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            from supervisely.app.widgets import TreeSelect
-
-            items = [
-                TreeSelect.Item(id="1", label="First item", children=[
-                    TreeSelect.Item(id="1.1", label="First child"),
-                    TreeSelect.Item(id="1.2", label="Second child"),
-                ]),
-                TreeSelect.Item(id="2", label="Second item"),
-            ]
-
-            # Initialize the widget without items.
-            tree_select = TreeSelect(multiple_select=True, flat=True, always_open=True)
-
-            # Set the items.
-            tree_select.set_items(items)
+    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/selection/treeselect>`_.
     """
 
     class Routes:
@@ -72,24 +21,7 @@ class TreeSelect(Widget):
         VALUE_CHANGED = "value_changed"
 
     class Item:
-        """Class representing an item in the tree.
-
-        :param id: The unique identifier of the item.
-        :type id: str
-        :param label: The label of the item.
-        :type label: str, optional
-        :param children: The children of the item.
-        :type children: List[:class:`~supervisely.app.widgets.tree_select.tree_select.TreeSelect.Item`], optional
-
-        :Usage Example:
-
-            .. code-block:: python
-
-                item = TreeSelect.Item(id="1", label="First item", children=[
-                    TreeSelect.Item(id="1.1", label="First child"),
-                    TreeSelect.Item(id="1.2", label="Second child"),
-                ])
-        """
+        """Class representing an item in the tree."""
 
         def __init__(
             self,
@@ -97,6 +29,24 @@ class TreeSelect(Widget):
             label: Optional[str] = None,
             children: List[TreeSelect.Item] = None,
         ):
+            """Initialize TreeSelect.Item.
+
+            :param id: The unique identifier of the item.
+            :type id: str
+            :param label: The label of the item. If None, id is used.
+            :type label: str, optional
+            :param children: The children of the item.
+            :type children: List[:class:`~supervisely.app.widgets.tree_select.tree_select.TreeSelect.Item`], optional
+
+            :Usage Example:
+
+                .. code-block:: python
+
+                    TreeSelect.Item(id="1", label="First item", children=[
+                        TreeSelect.Item(id="1.1", label="First child"),
+                        TreeSelect.Item(id="1.2", label="Second child"),
+                    ])
+            """
             self.id = id
             self.label = label or id
             self.children = children or []
@@ -134,6 +84,43 @@ class TreeSelect(Widget):
         placeholder: Optional[str] = None,
         show_tooltip: bool = True,
     ):
+        """Initialize the TreeSelect widget.
+
+        :param items: List of items to display in the tree.
+        :type items: List[:class:`~supervisely.app.widgets.tree_select.tree_select.TreeSelect.Item`], optional
+        :param multiple_select: Whether multiple items can be selected at once.
+        :type multiple_select: bool, optional
+        :param flat: If True, selecting a parent will NOT select all its children.
+        :type flat: bool, optional
+        :param always_open: If True, the widget will be expanded by default.
+        :type always_open: bool, optional
+        :param width: The width of the widget.
+        :type width: int, optional
+        :param append_to_body: If False, popover is inside input container (may be hidden in Card).
+        :type append_to_body: bool, optional
+        :param widget_id: The unique identifier of the widget.
+        :type widget_id: str, optional
+        :param placeholder: The placeholder text.
+        :type placeholder: str, optional
+        :param show_tooltip: Whether to show tooltip.
+        :type show_tooltip: bool
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import TreeSelect
+
+                items = [
+                    TreeSelect.Item(id="1", label="First item", children=[
+                        TreeSelect.Item(id="1.1", label="First child"),
+                        TreeSelect.Item(id="1.2", label="Second child"),
+                    ]),
+                    TreeSelect.Item(id="2", label="Second item"),
+                ]
+                tree_select = TreeSelect(multiple_select=True, flat=True, always_open=True)
+                tree_select.set_items(items)
+        """
         self._items = items or []
         self._multiple = multiple_select
         self._flat = flat

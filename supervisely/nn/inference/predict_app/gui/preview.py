@@ -13,6 +13,7 @@ class Preview:
     lock_message = None
 
     def __init__(self, api: Api, static_dir: str):
+        """Initialize Preview. :param api: Supervisely API. :param static_dir: Static assets directory."""
         # Init Step
         self.api = api
         self.display_widgets: List[Any] = []

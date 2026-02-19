@@ -62,6 +62,7 @@ class AgentRPCServicerBase:
     QUEUE_MAX_SIZE = 2000  # Maximum number of in-flight requests to avoid exhausting server memory.
 
     def __init__(self, logger, model_applier: SingleImageInferenceInterface, conn_config, cache):
+        """Initialize AgentRPCServicerBase. :param logger: Logger. :param model_applier: SingleImageInferenceInterface. :param conn_config: Dict with server_address, token, task_id. :param cache: Image cache."""
         self.logger = logger
         self.server_address = conn_config['server_address']
         self.api = AgentAPI(token=conn_config['token'],
@@ -280,6 +281,7 @@ class InactiveRPCServicer(AgentRPCServicer):
     """Servicer variant that disables RPC loop (used for internal wiring/tests)."""
 
     def __init__(self, logger, model_applier: SingleImageInferenceInterface, conn_config, cache):
+        """See AgentRPCServicerBase for params."""
         self.logger = logger
         self.model_applier = model_applier
         self._default_inference_mode_config = InfModeFullImage.make_default_config(model_result_suffix=MODEL_RESULT_SUFFIX)

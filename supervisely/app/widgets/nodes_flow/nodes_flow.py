@@ -78,6 +78,14 @@ class NodesFlow(Widget):
             """Input port definition for a node."""
 
             def __init__(self, name, label: Optional[str] = None, color: Optional[str] = None):
+                """Initialize Input.
+
+                :param name: Input port identifier.
+                :param label: Display label.
+                :type label: str, optional
+                :param color: Port color/type.
+                :type color: str, optional
+                """
                 self.name = name
                 self.label = label
                 self.color = color
@@ -98,6 +106,13 @@ class NodesFlow(Widget):
             """A named option attached to a node, rendered using an option component."""
 
             def __init__(self, name: str, option_component: OptionComponent):
+                """Initialize Option.
+
+                :param name: Option identifier.
+                :type name: str
+                :param option_component: Component to render (Input, Slider, etc.).
+                :type option_component: OptionComponent
+                """
                 if isinstance(option_component, NodesFlow.SidebarNodeInfoOptionComponent):
                     name = "sidebarNodeInfo"
                 self.name = name
@@ -121,6 +136,29 @@ class NodesFlow(Widget):
             icon: Optional[str] = None,
             icon_background_color: Optional[str] = None,
         ):
+            """Initialize Node.
+
+            :param id: Unique node identifier.
+            :param name: Display name.
+            :param width: Node width in pixels.
+            :type width: int, optional
+            :param options: List of Option for node settings.
+            :type options: List[Option]
+            :param inputs: List of Input port definitions.
+            :param outputs: List of Output port definitions.
+            :param inputs_up: If True, inputs on top.
+            :type inputs_up: bool
+            :param position: Initial position {x, y}.
+            :type position: dict, optional
+            :param header_color: Header background color.
+            :type header_color: str, optional
+            :param header_text_color: Header text color.
+            :type header_text_color: str, optional
+            :param icon: Header icon class.
+            :type icon: str, optional
+            :param icon_background_color: Icon background color.
+            :type icon_background_color: str, optional
+            """
             self.id = id
             self.name = name
             self._width = width
@@ -179,6 +217,25 @@ class NodesFlow(Widget):
         show_save: bool = True,
         widget_id: str = None,
     ):
+        """Initialize NodesFlow.
+
+        :param nodes: List of Node definitions.
+        :type nodes: List[Node]
+        :param height: Widget height (CSS value).
+        :type height: str, optional
+        :param context_menu: Context menu items dict.
+        :type context_menu: dict, optional
+        :param color_theme: "light" or "dark".
+        :type color_theme: Literal["light", "dark"]
+        :param drag_and_drop_menu: Menu items for drag-and-drop node creation.
+        :type drag_and_drop_menu: dict, optional
+        :param drag_and_drop_menu_width: Width of D&D menu section.
+        :type drag_and_drop_menu_width: int
+        :param show_save: If True, show save button.
+        :type show_save: bool
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         self._nodes = nodes
         self._height = height if height is not None else "500px"
         self._context_menu = context_menu

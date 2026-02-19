@@ -22,57 +22,7 @@ available_value_types = [
 
 
 class SelectTag(Widget):
-    """
-    Compact dropdown for selecting tag metadata; can create new tags on the fly.
-
-    :param tags: Initial list of tag metas or a tag meta collection
-    :type tags: Optional[Union[List[:class:`~supervisely.annotation.tag_meta.TagMeta`], :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection`]]
-    :param filterable: Enable search/filter functionality in dropdown
-    :type filterable: Optional[bool]
-    :param placeholder: Placeholder text when no tag is selected
-    :type placeholder: Optional[str]
-    :param show_add_new_tag: Show "Add new tag" option at the end of the list
-    :type show_add_new_tag: Optional[bool]
-    :param size: Size of the select dropdown
-    :type size: Optional[Literal["large", "small", "mini"]]
-    :param multiple: Enable multiple selection
-    :type multiple: bool
-    :param widget_id: Unique widget identifier
-    :type widget_id: Optional[str]
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import supervisely as sly
-            from supervisely.app.widgets import SelectTag
-
-            # Create some initial tags
-            tag_weather = sly.TagMeta('weather', sly.TagValueType.ANY_STRING)
-            tag_count = sly.TagMeta('count', sly.TagValueType.ANY_NUMBER)
-
-            colors = ["red", "green", "blue"]
-            tag_color = sly.TagMeta('color', sly.TagValueType.ONEOF_STRING, possible_values=colors)
-
-            # Create SelectTag widget
-            select_tag = SelectTag(
-                tags=[tag_weather, tag_count, tag_color],
-                filterable=True,
-                show_add_new_tag=True
-            )
-
-            # Handle selection changes
-            @select_tag.value_changed
-            def on_tag_selected(tag_name):
-                print(f"Selected tag: {tag_name}")
-                selected_tag = select_tag.get_selected_tag()
-                print(f"Tag object: {selected_tag}")
-
-            # Handle new tag creation
-            @select_tag.tag_created
-            def on_tag_created(new_tag: sly.TagMeta):
-                print(f"New tag created: {new_tag.name}")
-    """
+    """Compact dropdown for selecting tag metadata; can create new tags on the fly."""
 
     class Routes:
         """Route name constants for this widget."""
@@ -89,6 +39,40 @@ class SelectTag(Widget):
         multiple: bool = False,
         widget_id: Optional[str] = None,
     ):
+        """Initialize the SelectTag widget.
+
+        :param tags: Initial list of tag metas or a tag meta collection
+        :type tags: Optional[Union[List[:class:`~supervisely.annotation.tag_meta.TagMeta`], :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection`]]
+        :param filterable: Enable search/filter functionality in dropdown
+        :type filterable: Optional[bool]
+        :param placeholder: Placeholder text when no tag is selected
+        :type placeholder: Optional[str]
+        :param show_add_new_tag: Show "Add new tag" option at the end of the list
+        :type show_add_new_tag: Optional[bool]
+        :param size: Size of the select dropdown
+        :type size: Optional[Literal["large", "small", "mini"]]
+        :param multiple: Enable multiple selection
+        :type multiple: bool
+        :param widget_id: Unique widget identifier
+        :type widget_id: Optional[str]
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+                from supervisely.app.widgets import SelectTag
+
+                tag_weather = sly.TagMeta('weather', sly.TagValueType.ANY_STRING)
+                tag_count = sly.TagMeta('count', sly.TagValueType.ANY_NUMBER)
+                select_tag = SelectTag(tags=[tag_weather, tag_count], filterable=True)
+                @select_tag.value_changed
+                def on_tag_selected(tag_name):
+                    selected_tag = select_tag.get_selected_tag()
+                @select_tag.tag_created
+                def on_tag_created(new_tag: sly.TagMeta):
+                    print(f"New tag created: {new_tag.name}")
+        """
         # Convert to list for internal use to allow mutations when adding new tags
         if isinstance(tags, TagMetaCollection):
             self._tags = list(tags)

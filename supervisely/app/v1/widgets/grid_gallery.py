@@ -11,6 +11,24 @@ class Gallery:
     def __init__(self, task_id, api: Api, v_model, project_meta: ProjectMeta, col_number: int, preview_info=False,
                  enable_zoom=False, resize_on_zoom=False, sync_views=False, show_preview=True, selectable=False,
                  opacity=0.5, show_opacity_header=True, fill_rectangle=False, border_width=3):
+        """Initialize Gallery (v1).
+
+        :param task_id: Task ID.
+        :param api: Api instance.
+        :param v_model: Vue model path.
+        :param project_meta: ProjectMeta for annotations.
+        :param col_number: Number of columns.
+        :param preview_info: If True, show preview info.
+        :param enable_zoom: If True, enable zoom.
+        :param resize_on_zoom: If True, resize on zoom.
+        :param sync_views: If True, sync views across images.
+        :param show_preview: If True, show preview panel.
+        :param selectable: If True, allow selection.
+        :param opacity: Annotation opacity.
+        :param show_opacity_header: If True, show opacity control.
+        :param fill_rectangle: If True, fill rectangles.
+        :param border_width: Border width for shapes.
+        """
         self._task_id = task_id
         self._api = api
         self._v_model = v_model

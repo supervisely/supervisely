@@ -49,6 +49,13 @@ class EvalResult:
         api: Api,
         progress: Optional[SlyTqdm] = None,
     ):
+        """Initialize EvalResult.
+
+        :param eval_dir: Path to evaluation directory.
+        :param workdir: Working directory for output.
+        :param api: Supervisely API.
+        :param progress: Progress callback.
+        """
         from pycocotools.coco import COCO  # pylint: disable=import-error
 
         self.eval_dir = eval_dir

@@ -34,6 +34,7 @@ class TrainingArtifacts:
     lock_message = "Artifacts will be available after training is completed"
 
     def __init__(self, api: Api, app_options: Dict[str, Any]):
+        """Initialize TrainingArtifacts. :param api: Supervisely API. :param app_options: App options."""
         # Init widgets
         self.artifacts_thumbnail = None
         self.artifacts_field = None

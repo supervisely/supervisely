@@ -44,6 +44,19 @@ class CSVConverter(ImageConverter):
             custom_data: dict | None = None,
             team_files: bool = False,
         ):
+            """Initialize Item (CSV converter).
+
+            :param item_path: Path or URL to image.
+            :type item_path: str
+            :param ann_data: Annotation data.
+            :type ann_data: str, optional
+            :param meta_data: Meta data.
+            :type meta_data: str | dict, optional
+            :param shape: Image shape.
+            :param custom_data: Extra data.
+            :param team_files: If True, path is in Team Files.
+            :type team_files: bool
+            """
             self._path: str = item_path
             self._name: str = get_file_name_with_ext(self._path)
             self._ann_data: Union[str,] = ann_data
@@ -87,6 +100,17 @@ class CSVConverter(ImageConverter):
         upload_as_links: bool,
         remote_files_map: Optional[Dict[str, str]] = None,
     ):
+        """Initialize CSVConverter.
+
+        :param input_data: Path to CSV/TSV/TXT or directory.
+        :type input_data: str
+        :param labeling_interface: Labeling interface.
+        :type labeling_interface: LabelingInterface, optional
+        :param upload_as_links: If True, upload as links.
+        :type upload_as_links: bool
+        :param remote_files_map: Map for link upload.
+        :type remote_files_map: Dict[str, str], optional
+        """
         super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
 
         self._supports_links = True

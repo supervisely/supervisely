@@ -47,6 +47,23 @@ class TrainValSplits(Widget):
         widget_id: Optional[int] = None,
         collections_splits: Optional[bool] = False,
     ):
+        """Initialize TrainValSplits.
+
+        :param project_id: Project ID (or use project_fs).
+        :type project_id: int, optional
+        :param project_fs: Local project instance instead of project_id.
+        :type project_fs: Union[Project, VideoProject, ...], optional
+        :param random_splits: If True, enable random split tab.
+        :type random_splits: bool, optional
+        :param tags_splits: If True, enable tag-based split tab.
+        :type tags_splits: bool, optional
+        :param datasets_splits: If True, enable dataset split tab.
+        :type datasets_splits: bool, optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: int, optional
+        :param collections_splits: If True, enable collections split tab.
+        :type collections_splits: bool, optional
+        """
         self._project_id = project_id
         self._project_fs = project_fs
 

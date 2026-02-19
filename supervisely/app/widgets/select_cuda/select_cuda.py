@@ -7,25 +7,7 @@ from supervisely.sly_logger import logger
 
 
 class SelectCudaDevice(Widget):
-    """
-    A widget for selecting a CUDA device.
-
-    This widget allows to select a CUDA device (and optional CPU device) from a list of detected devices on the machine.
-    It displays the devices along with their reserved/total RAM values.
-
-    :param get_list_on_init: Whether to retrieve and display the list of CUDA devices upon initialization.
-    :type get_list_on_init: bool, optional
-    :param sort_by_free_ram: Whether to sort the CUDA devices by their available free RAM.
-    :type sort_by_free_ram: bool, optional
-    :param include_cpu_option: Whether to include an option to select the CPU in the device list.
-    :type include_cpu_option: bool, optional
-    :param widget_id: The unique identifier for the widget instance.
-    :type widget_id: str, optional
-    :param multiple: Whether to allow selecting multiple devices.
-    :type multiple: bool
-    :param width_px: The width of the widget in pixels.
-    :type width_px: int, optional
-    """
+    """Widget for selecting a CUDA device (and optional CPU) from detected devices on the machine."""
 
     def __init__(
         self,
@@ -36,6 +18,21 @@ class SelectCudaDevice(Widget):
         multiple: bool = False,
         width_px: Optional[int] = None,
     ):
+        """Initialize the SelectCudaDevice widget.
+
+        :param get_list_on_init: Whether to retrieve CUDA devices upon initialization.
+        :type get_list_on_init: bool, optional
+        :param sort_by_free_ram: Whether to sort devices by available free RAM.
+        :type sort_by_free_ram: bool, optional
+        :param include_cpu_option: Whether to include CPU option in the list.
+        :type include_cpu_option: bool, optional
+        :param widget_id: Unique identifier for the widget instance.
+        :type widget_id: str, optional
+        :param multiple: Whether to allow selecting multiple devices.
+        :type multiple: bool
+        :param width_px: Width of the widget in pixels.
+        :type width_px: int, optional
+        """
         self._multiple = multiple
         placeholder = "Select device(s)" if self._multiple is True else "Select device"
         self._select = Select(

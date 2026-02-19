@@ -48,6 +48,7 @@ class SlyApiHandler(logging.Handler):
     """Logging handler that asynchronously forwards task logs to the Supervisely API."""
 
     def __init__(self, api):
+        """Initialize SlyApiHandler. :param api: Supervisely API for log submission."""
         super().__init__()
         self._api = api
         self._stop_log_event = threading.Event()

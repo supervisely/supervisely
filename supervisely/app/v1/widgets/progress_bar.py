@@ -14,6 +14,16 @@ class ProgressBar:
     """v1 widget for displaying progress (current/total, percent) in a Supervisely task."""
 
     def __init__(self, task_id, api: Api, v_model, message, total=None, is_size=False, min_report_percent=1):
+        """Initialize ProgressBar (v1).
+
+        :param task_id: Task ID.
+        :param api: Api instance.
+        :param v_model: Vue model path (must start with "data.").
+        :param message: Progress message.
+        :param total: Total count or size.
+        :param is_size: If True, treat as byte size.
+        :param min_report_percent: Min percent change to report.
+        """
         self._task_id = task_id
         self._api = api
         self._v_model = v_model

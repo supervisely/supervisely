@@ -12,6 +12,13 @@ class TaskLogs(Widget):
         task_id: int = None,
         widget_id: str = None,
     ):
+        """Initialize TaskLogs.
+
+        :param task_id: Supervisely task (job) ID to display logs for.
+        :type task_id: int, optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         self._task_id = task_id
         self._is_development = is_development()
         super().__init__(widget_id=widget_id, file_path=__file__)

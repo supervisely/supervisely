@@ -12,6 +12,7 @@ class ModelSelector:
     lock_message = "Select previous step to unlock"
 
     def __init__(self, api: Api, team_id: int):
+        """Initialize ModelSelector. :param api: Supervisely API. :param team_id: Team ID for models."""
         # Init Step
         self.api = api
         self.team_id = team_id

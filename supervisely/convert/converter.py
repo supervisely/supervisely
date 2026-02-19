@@ -48,6 +48,21 @@ class ImportManager:
         labeling_interface: LabelingInterface = LabelingInterface.DEFAULT,
         upload_as_links: bool = False,
     ):
+        """Initialize ImportManager.
+
+        :param input_data: Path(s) to input data (archives or directories).
+        :type input_data: Union[str, List[str]]
+        :param project_type: Project modality (IMAGES, VIDEOS, etc.).
+        :type project_type: ProjectType
+        :param team_id: Team ID for upload. Defaults to env.
+        :type team_id: int, optional
+        :param labeling_interface: Labeling interface preset.
+        :type labeling_interface: LabelingInterface
+        :param upload_as_links: If True, upload as links.
+        :type upload_as_links: bool
+
+        :raises ValueError: If team_id invalid or project type unsupported.
+        """
         self._api = Api.from_env()
         if team_id is not None:
             team_info = self._api.team.get_info_by_id(team_id)

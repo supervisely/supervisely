@@ -21,7 +21,19 @@ class RadioTable(Widget):
         column_formatters: Dict = {},
         widget_id: str = None,
     ):
+        """Initialize RadioTable.
 
+        :param columns: Column names.
+        :type columns: List[str]
+        :param rows: Rows as list of lists (each row is list of cell values).
+        :type rows: List[List[str]]
+        :param subtitles: Optional dict col_name -> subtitle or list.
+        :type subtitles: Union[Dict[str, str], List]
+        :param column_formatters: Custom formatters per column.
+        :type column_formatters: Dict
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         self._columns = columns
         self._rows = rows
         if len(subtitles) > 0:

@@ -13,6 +13,17 @@ class IFrame(Widget):
         width: Optional[Union[int, str]] = None,
         widget_id: str = None,
     ):
+        """Initialize IFrame.
+
+        :param path_to_html: Path or URL to HTML content.
+        :type path_to_html: str
+        :param height: Height in pixels or CSS value (e.g., "300px", "100%").
+        :type height: Union[int, str], optional
+        :param width: Width in pixels or CSS value.
+        :type width: Union[int, str], optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         self._path_to_html = path_to_html
         self._height, self._width = self._check_plot_size(height=height, width=width)
         super().__init__(widget_id=widget_id, file_path=__file__)

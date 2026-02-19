@@ -49,6 +49,31 @@ class ScatterChart(Apexchart):
         height: Union[int, str] = 350,
         decimalsInFloat: int = 2,
     ):
+        """Initialize ScatterChart.
+
+        :param title: Chart title.
+        :type title: str
+        :param series: List of series with "name" and "data" (list of {x, y}).
+        :type series: list
+        :param zoom: If True, enable zoom.
+        :type zoom: bool
+        :param markers_size: Data point marker size.
+        :type markers_size: int
+        :param data_labels: If True, show data labels.
+        :type data_labels: bool
+        :param xaxis_type: X-axis type: "numeric", "category", or "datetime".
+        :type xaxis_type: Literal["numeric", "category", "datetime"]
+        :param xaxis_title: X-axis title.
+        :type xaxis_title: str, optional
+        :param yaxis_title: Y-axis title.
+        :type yaxis_title: str, optional
+        :param yaxis_autorescale: If True, auto-scale Y-axis.
+        :type yaxis_autorescale: bool
+        :param height: Chart height (px or CSS).
+        :type height: Union[int, str]
+        :param decimalsInFloat: Decimal places for floats.
+        :type decimalsInFloat: int
+        """
         self._title = title
         self._series = series
         self._zoom = zoom

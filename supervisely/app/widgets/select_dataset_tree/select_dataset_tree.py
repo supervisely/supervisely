@@ -13,75 +13,7 @@ from supervisely.project.project_type import ProjectType
 
 class SelectDatasetTree(Widget):
     """Tree selector for datasets.
-    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/selection/selectdatasettree>`_
-        (including screenshots and examples).
-
-    :param default_id: The ID of the dataset to be selected by default.
-    :type default_id: Union[int, None]
-    :param project_id: The ID of the project to read datasets from.
-    :type project_id: Union[int, None]
-    :param multiselect: Whether multiple datasets can be selected.
-    :type multiselect: bool
-    :param compact: Whether the widget should be compact (e.g. no team, workspace, and project selectors).
-    :type compact: bool
-    :param select_all_datasets: Whether all datasets should be selected by default.
-    :type select_all_datasets: bool
-    :param allowed_project_types: The list of project types that are allowed to be selected.
-    :type allowed_project_types: Optional[List[:class:`~supervisely.project.project_type.ProjectType`]]
-    :param flat: Whether the dataset selector should be flat.
-    :type flat: bool
-    :param always_open: Whether the dataset selector should always be open.
-    :type always_open: bool
-    :param team_is_selectable: Whether the team selector should be selectable.
-    :type team_is_selectable: bool
-    :param workspace_is_selectable: Whether the workspace selector should be selectable.
-    :type workspace_is_selectable: bool
-    :param append_to_body: Determines where the popover is attached. If False, it is positioned inside the input's container. This can cause the popover to be hidden if the input is within a Card or a widget that restricts visibility.
-    :type append_to_body: bool
-    :param widget_id: The unique identifier of the widget.
-    :type widget_id: Union[str, None]
-    :param show_select_all_datasets_checkbox: Whether the checkbox to select all datasets should be shown.
-    :type show_select_all_datasets_checkbox: bool
-
-    :Public methods:
-    - `set_project_id(project_id: int) -> None`: Set the project ID to read datasets from.
-    - `get_selected_ids() -> Optional[List[int]]`: Get the IDs of the selected datasets.
-    - `get_selected_id() -> Optional[int]`: Get the ID of the selected dataset.
-    - `value_changed(func: Callable) -> Callable`: Decorator to set the callback function for the value changed event.
-    - `set_dataset_id(dataset_id: int) -> None`: Set the ID of the dataset to be selected by default.
-    - `set_dataset_ids(dataset_ids: List[int]) -> None`: Set the IDs of the datasets to be selected by default.
-    - `get_selected_project_id() -> Optional[int]`: Get the ID of the selected project.
-    - `get_selected_team_id() -> int`: Get the ID of the selected team.
-    - `set_team_id(team_id: int) -> None`: Set the team ID to read workspaces from.
-    - `get_selected_workspace_id() -> int`: Get the ID of the selected workspace.
-    - `set_workspace_id(workspace_id: int) -> None`: Set the workspace ID to read projects from.
-    - `is_all_selected() -> bool`: Check if all datasets are selected.
-    - `select_all() -> None`: Select all datasets.
-
-    :Properties:
-    - `team_id`: The ID of the team selected in the widget.
-    - `workspace_id`: The ID of the workspace selected in the widget.
-    - `project_id`: The ID of the project selected in the widget.
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            from supervisely.app.widgets import SelectDatasetTree
-
-            project_id = 123
-            dataset_id = 456
-
-            select_dataset_tree = SelectDatasetTree(
-                default_id=dataset_id,
-                project_id=project_id,
-                multiselect=True,
-                flat=True
-            )
-
-            @select_dataset_tree.value_changed
-            def on_change(selected_ids):
-                print(selected_ids) # Output: [456, 789]
+    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/selection/selectdatasettree>`_.
     """
 
     def __init__(
@@ -102,6 +34,52 @@ class SelectDatasetTree(Widget):
         width: int = 193,
         show_selectors_labels: bool = False,
     ):
+        """Initialize the SelectDatasetTree widget.
+
+        :param default_id: The ID of the dataset to be selected by default.
+        :type default_id: Union[int, None]
+        :param project_id: The ID of the project to read datasets from.
+        :type project_id: Union[int, None]
+        :param multiselect: Whether multiple datasets can be selected.
+        :type multiselect: bool
+        :param compact: Whether the widget should be compact.
+        :type compact: bool
+        :param select_all_datasets: Whether all datasets should be selected by default.
+        :type select_all_datasets: bool
+        :param allowed_project_types: The list of project types that are allowed.
+        :type allowed_project_types: Optional[List[:class:`~supervisely.project.project_type.ProjectType`]]
+        :param flat: Whether the dataset selector should be flat.
+        :type flat: bool
+        :param always_open: Whether the dataset selector should always be open.
+        :type always_open: bool
+        :param team_is_selectable: Whether the team selector should be selectable.
+        :type team_is_selectable: bool
+        :param workspace_is_selectable: Whether the workspace selector should be selectable.
+        :type workspace_is_selectable: bool
+        :param append_to_body: If False, popover is inside input container (may be hidden in Card).
+        :type append_to_body: bool
+        :param widget_id: The unique identifier of the widget.
+        :type widget_id: Union[str, None]
+        :param show_select_all_datasets_checkbox: Whether the select-all checkbox should be shown.
+        :type show_select_all_datasets_checkbox: bool
+        :raises ValueError: If default_id is set without project_id, or if select_all_datasets is True without multiselect.
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import SelectDatasetTree
+
+                select_dataset_tree = SelectDatasetTree(
+                    default_id=456,
+                    project_id=123,
+                    multiselect=True,
+                    flat=True,
+                )
+                @select_dataset_tree.value_changed
+                def on_change(selected_ids):
+                    print(selected_ids)
+        """
         self._api = Api.from_env()
 
         if default_id is not None and project_id is None:

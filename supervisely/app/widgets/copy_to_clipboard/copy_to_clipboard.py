@@ -4,32 +4,25 @@ from supervisely.app.widgets import Editor, Input, Text, TextArea, Widget
 
 
 class CopyToClipboard(Widget):
-    """Wraps Editor, Text, TextArea, or Input with a copy-to-clipboard button.
-
-    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/text-elements/copytoclipboard>`_
-        (including screenshots and examples).
-
-    :param content: content to be copied
-    :type content: Union[:class:`~supervisely.app.widgets.editor.editor.Editor`, :class:`~supervisely.app.widgets.text.text.Text`, :class:`~supervisely.app.widgets.textarea.textarea.TextArea`, :class:`~supervisely.app.widgets.input.input.Input`, str]
-    :param widget_id: An identifier of the widget.
-    :type widget_id: str, optional
-    :raises TypeError: if content is not str, :class:`~supervisely.app.widgets.editor.editor.Editor`, :class:`~supervisely.app.widgets.text.text.Text`, :class:`~supervisely.app.widgets.textarea.textarea.TextArea`, or :class:`~supervisely.app.widgets.input.input.Input`
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            from supervisely.app.widgets import CopyToClipboard, Text
-
-            text = Text("Text to be copied")
-            copy_to_clipboard = CopyToClipboard(text)
-    """
+    """Wraps Editor, Text, TextArea, or Input with a copy-to-clipboard button."""
 
     def __init__(
         self,
         content: Optional[Union[Editor, Text, TextArea, Input, str]] = "",
         widget_id: Optional[str] = None,
     ):
+        """
+        :param content: Editor, Text, TextArea, Input, or str.
+        :param widget_id: Widget identifier.
+        :raises TypeError: If content type not supported.
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import CopyToClipboard, Text
+                w = CopyToClipboard(Text("Copy me"))
+        """
         self._content = content
 
         if not isinstance(content, (str, Editor, Text, TextArea, Input)):

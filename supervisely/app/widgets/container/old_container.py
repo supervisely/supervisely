@@ -19,6 +19,21 @@ class Container(Widget):
         fractions: List[int] = None,
         widget_id: str = None,
     ):
+        """Initialize Container (legacy).
+
+        :param widgets: List of child widgets.
+        :type widgets: List[Widget]
+        :param direction: "vertical" or "horizontal".
+        :type direction: Literal["vertical", "horizontal"]
+        :param gap: Gap between widgets in pixels.
+        :type gap: int
+        :param fractions: Width fractions per widget (horizontal only).
+        :type fractions: List[int], optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+
+        :raises ValueError: If fractions used with vertical or len mismatch.
+        """
         self._widgets = widgets
         self._direction = direction
         self._gap = gap

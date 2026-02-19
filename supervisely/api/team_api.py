@@ -148,30 +148,24 @@ class TeamInfo(NamedTuple):
 
 
 class TeamApi(ModuleNoParent, UpdateableModule):
-    """
-    API for working with teams. :class:`~supervisely.api.team_api.TeamApi` object is immutable.
+    """API for working with teams."""
 
-    :param api: API connection to the server
-    :type api: :class:`~supervisely.api.api.Api`
+    def __init__(self, api):
+        """Initialize TeamApi.
 
-    :Usage Example:
+        :param api: API connection to the server.
+        :type api: :class:`~supervisely.api.api.Api`
 
-        .. code-block:: python
+        :Usage Example:
 
-            import os
-            from dotenv import load_dotenv
+            .. code-block:: python
 
-            import supervisely as sly
-
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            if sly.is_development():
-                load_dotenv(os.path.expanduser("~/supervisely.env"))
-
-            api = sly.Api.from_env()
-
-            team_info = api.team.get_info_by_id(team_id) # api usage example
-    """
+                import supervisely as sly
+                api = sly.Api.from_env()
+                team_info = api.team.get_info_by_id(team_id)
+        """
+        ModuleNoParent.__init__(self, api)
+        UpdateableModule.__init__(self, api)
 
     @staticmethod
     def info_sequence():
@@ -208,10 +202,6 @@ class TeamApi(ModuleNoParent, UpdateableModule):
         NamedTuple name - **TeamInfo**.
         """
         return "TeamInfo"
-
-    def __init__(self, api):
-        ModuleNoParent.__init__(self, api)
-        UpdateableModule.__init__(self, api)
 
     def get_list(self, filters: List[Dict[str, str]] = None) -> List[TeamInfo]:
         """

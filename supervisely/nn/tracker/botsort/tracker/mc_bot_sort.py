@@ -18,7 +18,7 @@ class STrack(BaseTrack):
     shared_kalman = KalmanFilter()
 
     def __init__(self, tlwh, score, cls, feat=None, feat_history=50):
-
+        """Initialize STrack. :param tlwh: Box [x,y,w,h]. :param score: Detection score. :param cls: Class. :param feat: ReID feature. :param feat_history: Feature history size."""
         # wait activate
         self._tlwh = np.asarray(tlwh, dtype=float)
         self.kalman_filter = None
@@ -234,7 +234,7 @@ class BoTSORT(object):
     """BoT-SORT multi-object tracker implementation used in the BotSORT tracking module."""
 
     def __init__(self, args, frame_rate=30):
-
+        """Initialize BoTSORT. :param args: Tracker args (SimpleNamespace). :param frame_rate: Video frame rate."""
         self.tracked_stracks = []  # type: list[STrack]
         self.lost_stracks = []  # type: list[STrack]
         self.removed_stracks = []  # type: list[STrack]

@@ -24,6 +24,11 @@ class NeuralNetworkApi:
     """
 
     def __init__(self, api: "Api"):
+        """Initialize NeuralNetworkApi.
+
+        :param api: API connection to the server.
+        :type api: :class:`~supervisely.api.api.Api`
+        """
         from supervisely.api.nn.deploy_api import DeployApi
         from supervisely.api.nn.ecosystem_models_api import EcosystemModelsApi
         from supervisely.api.nn.train_api import TrainApi

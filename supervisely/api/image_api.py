@@ -415,32 +415,22 @@ class ImageInfo(NamedTuple):
 
 
 class ImageApi(RemoveableBulkModuleApi):
-    """
-    API for working with images. :class:`~supervisely.api.image_api.ImageApi` object is immutable.
-
-    :param api: API connection to the server
-    :type api: :class:`~supervisely.api.api.Api`
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import os
-            from dotenv import load_dotenv
-
-            import supervisely as sly
-
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            if sly.is_development():
-                load_dotenv(os.path.expanduser("~/supervisely.env"))
-
-            api = sly.Api.from_env()
-
-            image_info = api.image.get_info_by_id(image_id) # api usage example
-    """
+    """API for working with images."""
 
     def __init__(self, api):
+        """Initialize ImageApi.
+
+        :param api: API connection to the server.
+        :type api: :class:`~supervisely.api.api.Api`
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+                api = sly.Api.from_env()
+                image_info = api.image.get_info_by_id(image_id)
+        """
         super().__init__(api)
         self.figure = FigureApi(api)  # @TODO: rename to object like in labeling UI
         self.tag = TagApi(api)

@@ -17,6 +17,17 @@ class GridPlot(Widget):
         gap: int = 10,
         widget_id: str = None,
     ):
+        """Initialize GridPlot.
+
+        :param data: List of plot configs (dicts) or titles (str). Each dict is passed to LinePlot.
+        :type data: List[Union[Dict, str]]
+        :param columns: Number of columns in the grid.
+        :type columns: int
+        :param gap: Gap between plots in pixels.
+        :type gap: int
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         self._widgets = {}
         self._columns = columns
         self._gap = gap

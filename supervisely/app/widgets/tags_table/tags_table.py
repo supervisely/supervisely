@@ -10,33 +10,7 @@ from supervisely.annotation.tag_meta import TagValueType
 
 class TagsTable(Widget):
     """Table displaying tags from a project.
-
-    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/tables/TagsTable>`_
-        (including screenshots and examples).
-
-    :param project_meta: Project meta object from which tags will be taken.
-    :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
-    :param project_id: Project id from which tags will be taken.
-    :type project_id: int
-    :param project_fs: Local supervisely project from which tags will be taken.
-    :type project_fs: :class:`~supervisely.project.project.Project`
-    :param allowed_types: List of allowed value types to be displayed in table.
-    :type allowed_types: List[:class:`~supervisely.annotation.tag_meta.TagValueType`]
-    :param selectable: If True, user can select tags from table.
-    :type selectable: bool
-    :param disabled: If True, the elements in the table will be disabled.
-    :type disabled: bool
-    :param widget_id: Unique widget identifier.
-    :type widget_id: str
-    :raises ValueError: If both project_id and project_fs parameters are provided.
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            from supervisely.app.widgets import TagsTable
-
-            tags_table = TagsTable(project_id=123, selectable=True)
+    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/tables/TagsTable>`_.
     """
 
     class Routes:
@@ -53,6 +27,32 @@ class TagsTable(Widget):
         disabled: Optional[bool] = False,
         widget_id: Optional[str] = None,
     ):
+        """Initialize the TagsTable widget.
+
+        :param project_meta: Project meta object from which tags will be taken.
+        :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
+        :param project_id: Project id from which tags will be taken.
+        :type project_id: int
+        :param project_fs: Local supervisely project from which tags will be taken.
+        :type project_fs: :class:`~supervisely.project.project.Project`
+        :param allowed_types: List of allowed value types to be displayed.
+        :type allowed_types: List[:class:`~supervisely.annotation.tag_meta.TagValueType`]
+        :param selectable: If True, user can select tags from table.
+        :type selectable: bool
+        :param disabled: If True, the elements in the table will be disabled.
+        :type disabled: bool
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str
+        :raises ValueError: If both project_id and project_fs parameters are provided.
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import TagsTable
+
+                tags_table = TagsTable(project_id=123, selectable=True)
+        """
         if project_id is not None and project_fs is not None:
             raise ValueError(
                 "You can not provide both project_id and project_fs parameters to Tags Table widget."

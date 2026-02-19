@@ -120,6 +120,19 @@ class Table(Widget):
         """Payload describing a clicked table cell and its row context."""
 
         def __init__(self, column_index: int, column_name: str, cell_value: Any, row: dict, row_index: int = None):
+            """Initialize ClickedDataPoint.
+
+            :param column_index: 0-based column index.
+            :type column_index: int
+            :param column_name: Column name.
+            :type column_name: str
+            :param cell_value: Cell value.
+            :type cell_value: Any
+            :param row: Full row as dict.
+            :type row: dict
+            :param row_index: 0-based row index.
+            :type row_index: int, optional
+            """
             self.column_index = column_index
             self.column_name = column_name
             self.cell_value = cell_value

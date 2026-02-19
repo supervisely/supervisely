@@ -13,21 +13,7 @@ from supervisely.geometry.point_location import PointLocation
 # to rotate image & objects wrt source img center
 # output image will contain all 'pixels' from source img
 class ImageRotator:
-    """
-    Rotates images and geometry figures around image center by a given angle.
-
-    :param imsize: Shape of the image (height, width)
-    :type imsize: Tuple[int, int] or List[int, int]
-    :param angle_degrees_ccw: Angle to rotate image.
-    :type angle_degrees_ccw: int
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            height, width = 300, 400
-            rotator = ImageRotator((height, width), 25)
-    """
+    """Rotates images and geometry figures around image center by a given angle."""
     # to get rect with max 'coloured' area in rotated img
     def _calc_inner_crop(self):
         """
@@ -97,6 +83,21 @@ class ImageRotator:
         return affine_matrix, new_canvas_size
 
     def __init__(self, imsize: Tuple[int, int], angle_degrees_ccw: int):
+        """
+        Create rotator for given image size and angle.
+
+        :param imsize: Image shape (height, width).
+        :type imsize: Tuple[int, int] or List[int, int]
+        :param angle_degrees_ccw: Rotation angle in degrees (counter-clockwise).
+        :type angle_degrees_ccw: int
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                rotator = ImageRotator((300, 400), 25)
+                rotated = rotator.rotate_img(img, use_inter_nearest=True)
+        """
         self.src_imsize = tuple(imsize)
         self.angle_degrees_ccw = angle_degrees_ccw
         # Transform matrix for the RHS (col, row) coordinate system.

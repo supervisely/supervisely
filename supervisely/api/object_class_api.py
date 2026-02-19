@@ -10,32 +10,23 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
 class ObjectClassApi(ModuleApi):
-    """
-    API for working with :class:`~supervisely.annotation.obj_class.ObjClass`.
-    :class:`~supervisely.api.object_class_api.ObjectClassApi` object is immutable.
+    """API for working with ObjClass objects."""
 
-    :param api: API connection to the server.
-    :type api: :class:`~supervisely.api.api.Api`
+    def __init__(self, api):
+        """Initialize ObjectClassApi.
 
-    :Usage Example:
+        :param api: API connection to the server.
+        :type api: :class:`~supervisely.api.api.Api`
 
-        .. code-block:: python
+        :Usage Example:
 
-            import os
-            from dotenv import load_dotenv
+            .. code-block:: python
 
-            import supervisely as sly
-
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            if sly.is_development():
-                load_dotenv(os.path.expanduser("~/supervisely.env"))
-
-            api = sly.Api.from_env()
-
-            project_id = 1951
-            obj_class_infos = api.object_class.get_list(project_id)
-    """
+                import supervisely as sly
+                api = sly.Api.from_env()
+                obj_class_infos = api.object_class.get_list(project_id)
+        """
+        super().__init__(api)
 
     @staticmethod
     def info_sequence():

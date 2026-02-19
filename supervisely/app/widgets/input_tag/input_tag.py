@@ -30,17 +30,7 @@ VALUE_TYPES = [
 
 
 class InputTag(Widget):
-    """Widget for inputting a single tag value based on its TagMeta information. Accepts various input types depending on the tag's value type. Returns the tag value when requested.
-
-    :param tag_meta: Tag metadata
-    :type tag_meta: :class:`~supervisely.annotation.tag_meta.TagMeta`
-    :param max_width: Maximum width of the widget in pixels, defaults to 300
-    :type max_width: int
-    :param hide_switch: Whether to hide the activation switch, defaults to False
-    :type hide_switch: bool
-    :param widget_id: Unique identifier for the widget, defaults to None
-    :type widget_id: int
-    """
+    """Widget for inputting a single tag value based on TagMeta. Accepts various input types depending on the tag's value type."""
 
     def __init__(
         self,
@@ -49,6 +39,17 @@ class InputTag(Widget):
         hide_switch: bool = False,
         widget_id: int = None,
     ):
+        """Initialize the InputTag widget.
+
+        :param tag_meta: Tag metadata
+        :type tag_meta: :class:`~supervisely.annotation.tag_meta.TagMeta`
+        :param max_width: Maximum width of the widget in pixels, defaults to 300
+        :type max_width: int
+        :param hide_switch: Whether to hide the activation switch, defaults to False
+        :type hide_switch: bool
+        :param widget_id: Unique identifier for the widget, defaults to None
+        :type widget_id: int
+        """
         self._input_widgets = {}
         self._init_input_components()
 

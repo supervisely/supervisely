@@ -24,6 +24,25 @@ class MatchTagMetasOrClasses(Widget):
         suffix: Union[str, None] = None,
         widget_id: str = None,
     ):
+        """Initialize MatchTagMetasOrClasses.
+
+        :param left_collection: Left TagMetaCollection or ObjClassCollection.
+        :type left_collection: Union[TagMetaCollection, ObjClassCollection, None]
+        :param right_collection: Right collection (same type as left).
+        :type right_collection: Union[TagMetaCollection, ObjClassCollection, None]
+        :param left_name: Label for left column.
+        :type left_name: str, optional
+        :param right_name: Label for right column.
+        :type right_name: str, optional
+        :param selectable: If True, rows are selectable.
+        :type selectable: bool
+        :param suffix: Optional suffix for matching.
+        :type suffix: str, optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+
+        :raises TypeError: If left_collection and right_collection types differ.
+        """
         if not type(left_collection) is type(right_collection):
             raise TypeError("Collections should be of same type")
         self._collections_type = type(left_collection)
@@ -295,6 +314,23 @@ class MatchTagMetas(MatchTagMetasOrClasses):
         suffix: Union[str, None] = None,
         widget_id: str = None,
     ):
+        """Initialize MatchTagMetas.
+
+        :param left_collection: Left TagMetaCollection or list of TagMeta.
+        :type left_collection: Union[TagMetaCollection, List[TagMeta], None]
+        :param right_collection: Right collection (same type as left).
+        :type right_collection: Union[TagMetaCollection, List[TagMeta], None]
+        :param left_name: Label for left column.
+        :type left_name: str, optional
+        :param right_name: Label for right column.
+        :type right_name: str, optional
+        :param selectable: If True, rows are selectable.
+        :type selectable: bool
+        :param suffix: Optional suffix for matching.
+        :type suffix: str, optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         if type(left_collection) is list:
             left_collection = TagMetaCollection(left_collection)
         if type(right_collection) is list:
@@ -360,6 +396,23 @@ class MatchObjClasses(MatchTagMetasOrClasses):
         suffix: Union[str, None] = None,
         widget_id: str = None,
     ):
+        """Initialize MatchObjClasses.
+
+        :param left_collection: Left ObjClassCollection or list of ObjClass.
+        :type left_collection: Union[ObjClassCollection, List[ObjClass], None]
+        :param right_collection: Right collection (same type as left).
+        :type right_collection: Union[ObjClassCollection, List[ObjClass], None]
+        :param left_name: Label for left column.
+        :type left_name: str, optional
+        :param right_name: Label for right column.
+        :type right_name: str, optional
+        :param selectable: If True, rows are selectable.
+        :type selectable: bool
+        :param suffix: Optional suffix for matching.
+        :type suffix: str, optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         if type(left_collection) is list:
             left_collection = ObjClassCollection(left_collection)
         if type(right_collection) is list:

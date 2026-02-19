@@ -15,6 +15,17 @@ class Grid(Widget):
         gap: int = 10,
         widget_id: str = None,
     ):
+        """Initialize Grid.
+
+        :param widgets: List of child widgets.
+        :type widgets: List[Widget]
+        :param columns: Number of columns in the grid.
+        :type columns: int
+        :param gap: Gap between widgets in pixels.
+        :type gap: int
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         self._widgets = widgets
         self._columns = columns
         self._gap = gap

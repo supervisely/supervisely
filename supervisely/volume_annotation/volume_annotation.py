@@ -36,118 +36,7 @@ from supervisely.io.json import dump_json_file
 
 
 class VolumeAnnotation:
-    """
-    Annotation for a 3D volume: objects, tags, planes, spatial figures. Immutable.
-
-    :param volume_meta: Metadata of the volume.
-    :type volume_meta: dict
-    :param objects: VolumeObjectCollection object.
-    :type objects: :class:`~supervisely.volume_annotation.volume_object_collection.VolumeObjectCollection`, optional
-    :param plane_sagittal: Sagittal plane of the volume.
-    :type plane_sagittal: Plane object, optional
-    :param plane_coronal: Coronal plane of the volume.
-    :type plane_coronal: Plane object, optional
-    :param plane_axial: Axial plane of the volume.
-    :type plane_axial: :class:`~supervisely.volume_annotation.plane.Plane`, optional
-    :param tags: VolumeTagCollection object.
-    :type tags: :class:`~supervisely.volume_annotation.volume_tag_collection.VolumeTagCollection`, optional
-    :param spatial_figures: List of spatial figures associated with the volume.
-    :type spatial_figures: List[:class:`~supervisely.volume_annotation.volume_figure.VolumeFigure`], optional
-    :param key: UUID key associated with the :class:`~supervisely.volume_annotation.volume_annotation.VolumeAnnotation`.
-    :type key: uuid.UUID, optional
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import supervisely as sly
-
-            # Simple VolumeAnnotation example
-            path = "/home/admin/work/volumes/vol_01.nrrd"
-            volume, volume_meta = sly.volume.read_nrrd_serie_volume_np(path)
-            volume_ann = sly.VolumeAnnotation(volume_meta)
-            print(volume_ann.to_json())
-            # Output: {
-            # {
-            #     "key": "56107223943346e5900fc256b8dcd7f0",
-            #     "objects": [],
-            #     "planes": [
-            #         { "name": "sagittal", "normal": { "x": 1, "y": 0, "z": 0 }, "slices": [] },
-            #         { "name": "coronal", "normal": { "x": 0, "y": 1, "z": 0 }, "slices": [] },
-            #         { "name": "axial", "normal": { "x": 0, "y": 0, "z": 1 }, "slices": [] }
-            #     ],
-            #     "spatialFigures": [],
-            #     "tags": [],
-            #     "volumeMeta": {
-            #         "ACS": "RAS",
-            #         "channelsCount": 1,
-            #         "dimensionsIJK": { "x": 512, "y": 512, "z": 139 },
-            #         "directions": [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0],
-            #         "intensity": { "max": 3071.0, "min": -3024.0 },
-            #         "origin": [-194.238403081894, -217.5384061336518, -347.7500000000001],
-            #         "rescaleIntercept": 0,
-            #         "rescaleSlope": 1,
-            #         "spacing": [0.7617189884185793, 0.7617189884185793, 2.5],
-            #         "windowCenter": 23.5,
-            #         "windowWidth": 6095.0
-            #     }
-            # }
-
-            # More complex VolumeAnnotation example
-
-            path = "/home/admin/work/volumes/vol_01.nrrd"
-            volume, volume_meta = sly.volume.read_nrrd_serie_volume_np(path)
-            # VolumeObjectCollection
-            obj_class = sly.ObjClass('brain', sly.Rectangle)
-            volume_obj = sly.VolumeObject(obj_class)
-            objects = sly.VolumeObjectCollection([volume_obj])
-            # VolumeTagCollection
-            brain_meta = sly.TagMeta('brain_tag', sly.TagValueType.ANY_STRING)
-            from supervisely.volume_annotation.volume_tag import VolumeTag
-            vol_tag = VolumeTag(brain_meta, value='human')
-            from supervisely.volume_annotation.volume_tag_collection import VolumeTagCollection
-            volume_tags = VolumeTagCollection([vol_tag])
-
-            volume_ann = sly.VolumeAnnotation(volume_meta, objects, volume_tags)
-            print(volume_ann.to_json())
-            # Output:
-            # {
-            #     "key": "4d4bb69e6fcd40e1a1cb076c07769903",
-            #     "objects": [
-            #         {
-            #         "classTitle": "brain",
-            #         "key": "22e1082a17f74279b00eed0bfb0ba11d",
-            #         "tags": []
-            #         }
-            #     ],
-            #     "planes": [
-            #         { "name": "sagittal", "normal": { "x": 1, "y": 0, "z": 0 }, "slices": [] },
-            #         { "name": "coronal", "normal": { "x": 0, "y": 1, "z": 0 }, "slices": [] },
-            #         { "name": "axial", "normal": { "x": 0, "y": 0, "z": 1 }, "slices": [] }
-            #     ],
-            #     "spatialFigures": [],
-            #     "tags": [
-            #         {
-            #         "key": "b9de6631d328441796119b4b0039fc61",
-            #         "name": "brain_tag",
-            #         "value": "human"
-            #         }
-            #     ],
-            #     "volumeMeta": {
-            #         "ACS": "RAS",
-            #         "channelsCount": 1,
-            #         "dimensionsIJK": { "x": 512, "y": 512, "z": 139 },
-            #         "directions": [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0],
-            #         "intensity": { "max": 3071.0, "min": -3024.0 },
-            #         "origin": [-194.238403081894, -217.5384061336518, -347.7500000000001],
-            #         "rescaleIntercept": 0,
-            #         "rescaleSlope": 1,
-            #         "spacing": [0.7617189884185793, 0.7617189884185793, 2.5],
-            #         "windowCenter": 23.5,
-            #         "windowWidth": 6095.0
-            #     }
-            # }
-    """
+    """Annotation for a 3D volume: objects, tags, planes, spatial figures. Immutable."""
 
     def __init__(
         self,
@@ -160,6 +49,44 @@ class VolumeAnnotation:
         spatial_figures=None,
         key=None,
     ):
+        """
+        Annotation for a 3D volume.
+
+        :param volume_meta: Volume metadata (dimensions, spacing, origin, etc.).
+        :type volume_meta: dict
+        :param objects: Collection of VolumeObjects.
+        :type objects: :class:`~supervisely.volume_annotation.volume_object_collection.VolumeObjectCollection`, optional
+        :param plane_sagittal: Sagittal plane. Default Plane created if not provided.
+        :type plane_sagittal: :class:`~supervisely.volume_annotation.plane.Plane`, optional
+        :param plane_coronal: Coronal plane. Default Plane created if not provided.
+        :type plane_coronal: :class:`~supervisely.volume_annotation.plane.Plane`, optional
+        :param plane_axial: Axial plane. Default Plane created if not provided.
+        :type plane_axial: :class:`~supervisely.volume_annotation.plane.Plane`, optional
+        :param tags: Collection of VolumeTags.
+        :type tags: :class:`~supervisely.volume_annotation.volume_tag_collection.VolumeTagCollection`, optional
+        :param spatial_figures: List of VolumeFigures (e.g. Mask3D).
+        :type spatial_figures: List[:class:`~supervisely.volume_annotation.volume_figure.VolumeFigure`], optional
+        :param key: UUID key. Auto-generated if not provided.
+        :type key: uuid.UUID, optional
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                volume, volume_meta = sly.volume.read_nrrd_serie_volume_np(path)
+                volume_ann = sly.VolumeAnnotation(volume_meta)
+
+                obj_class = sly.ObjClass('brain', sly.Rectangle)
+                volume_obj = sly.VolumeObject(obj_class)
+                vol_tag = sly.VolumeTag(sly.TagMeta('brain_tag', sly.TagValueType.ANY_STRING), value='human')
+                volume_ann = sly.VolumeAnnotation(
+                    volume_meta,
+                    sly.VolumeObjectCollection([volume_obj]),
+                    tags=sly.VolumeTagCollection([vol_tag]),
+                )
+        """
         self._volume_meta = volume_meta
         self._tags = take_with_default(tags, VolumeTagCollection())
         self._objects = take_with_default(objects, VolumeObjectCollection())

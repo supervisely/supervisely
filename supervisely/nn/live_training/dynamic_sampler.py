@@ -10,6 +10,7 @@ class DynamicSampler:
     """
     
     def __init__(self, dataset: Sized, shuffle: bool = True, seed: int = 0):
+        """Initialize DynamicSampler. :param dataset: Sized dataset. :param shuffle: Shuffle indices. :param seed: Random seed."""
         self.dataset = dataset
         self.shuffle = shuffle
         self.seed = seed

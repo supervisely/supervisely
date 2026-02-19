@@ -62,6 +62,18 @@ class Select(ConditionalWidget):
             right_text: str = None,
             disabled: bool = False,
         ) -> Select.Item:
+            """Initialize Select.Item.
+
+            :param value: Option value (any JSON-serializable).
+            :param label: Display label. Defaults to str(value).
+            :type label: str, optional
+            :param content: Optional embedded widget.
+            :type content: Widget, optional
+            :param right_text: Optional text on the right.
+            :type right_text: str, optional
+            :param disabled: If True, option is disabled.
+            :type disabled: bool
+            """
             self.value = value
             self.label = label
             if label is None:
@@ -82,6 +94,12 @@ class Select(ConditionalWidget):
         """A labeled group of select items."""
 
         def __init__(self, label, items: List[Select.Item] = None) -> Select.Item:
+            """Initialize Select.Group.
+
+            :param label: Group label.
+            :param items: List of Select.Item in this group.
+            :type items: List[Select.Item], optional
+            """
             self.label = label
             self.items = items
 
@@ -105,6 +123,31 @@ class Select(ConditionalWidget):
         width_percent: Optional[int] = None,
         width_px: Optional[int] = None,
     ) -> Select:
+        """Initialize Select.
+
+        :param items: Flat list of Select.Item. Mutually exclusive with groups.
+        :type items: List[Select.Item], optional
+        :param groups: List of Select.Group. Mutually exclusive with items.
+        :type groups: List[Select.Group], optional
+        :param filterable: If True, enable search/filter.
+        :type filterable: bool
+        :param placeholder: Placeholder when nothing selected.
+        :type placeholder: str
+        :param size: Size: "large", "small", or "mini".
+        :type size: Literal["large", "small", "mini"], optional
+        :param multiple: If True, allow multiple selection.
+        :type multiple: bool
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        :param items_links: Optional URLs for items.
+        :type items_links: List[str], optional
+        :param width_percent: Width as percent.
+        :type width_percent: int, optional
+        :param width_px: Width in pixels.
+        :type width_px: int, optional
+
+        :raises ValueError: If both items and groups are None, or both provided.
+        """
         if items is None and groups is None:
             raise ValueError("One of the arguments has to be defined: items or groups")
 
@@ -276,6 +319,31 @@ class SelectString(Select):
         items_links: List[str] = None,
         width_percent: Optional[int] = None,
     ):
+        """Initialize SelectString.
+
+        :param values: List of string values.
+        :type values: List[str]
+        :param labels: Optional display labels (length must match values).
+        :type labels: List[str], optional
+        :param filterable: If True, enable search.
+        :type filterable: bool, optional
+        :param placeholder: Placeholder when nothing selected.
+        :type placeholder: str, optional
+        :param size: Size: "large", "small", or "mini".
+        :type size: Literal["large", "small", "mini"], optional
+        :param multiple: If True, allow multiple selection.
+        :type multiple: bool, optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        :param items_right_text: Optional right-side text per item.
+        :type items_right_text: List[str], optional
+        :param items_links: Optional URLs per item.
+        :type items_links: List[str], optional
+        :param width_percent: Width as percent.
+        :type width_percent: int, optional
+
+        :raises ValueError: If lengths of values/labels or values/items_right_text mismatch.
+        """
         right_text = [None] * len(values)
         if items_right_text is not None:
             if len(values) != len(items_right_text):

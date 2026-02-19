@@ -73,6 +73,7 @@ class BaseTracking(Inference):
         model_dir: Optional[str] = None,
         custom_inference_settings: Optional[Union[Dict[str, Any], str]] = None,
     ):
+        """See :class:`~supervisely.nn.inference.inference.Inference` for params."""
         Inference.__init__(
             self,
             model_dir,

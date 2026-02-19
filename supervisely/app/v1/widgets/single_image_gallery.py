@@ -16,6 +16,14 @@ class SingleImageGallery:
     """v1 widget for displaying a single image with optional annotation overlay."""
 
     def __init__(self, task_id, api: Api, v_model, project_meta: ProjectMeta):
+        """Initialize SingleImageGallery (v1).
+
+        :param task_id: Task ID.
+        :param api: Api instance.
+        :param v_model: Vue model path.
+        :param project_meta: ProjectMeta for annotations.
+        :type project_meta: ProjectMeta
+        """
         self._task_id = task_id
         self._api = api
         self._v_model = v_model

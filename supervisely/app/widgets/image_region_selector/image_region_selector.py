@@ -31,6 +31,27 @@ class ImageRegionSelector(Widget):
         widget_width: str = "100%",
         widget_height: str = "100%",
     ):
+        """Initialize ImageRegionSelector.
+
+        :param image_info: Image to select region in.
+        :type image_info: sly.ImageInfo, optional
+        :param mask: Optional mask overlay.
+        :type mask: sly.Bitmap, optional
+        :param mask_opacity: Mask opacity (0–100).
+        :type mask_opacity: int
+        :param bbox: Initial bounding box [x, y, w, h].
+        :type bbox: List[int], optional
+        :param points_disabled: If True, disable positive/negative points.
+        :type points_disabled: bool
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        :param disabled: If True, disable the widget.
+        :type disabled: bool
+        :param widget_width: CSS width.
+        :type widget_width: str
+        :param widget_height: CSS height.
+        :type widget_height: str
+        """
         self._image_info = None
         self._image_link = None
         self._image_name = None

@@ -29,6 +29,7 @@ class TrainingProcess:
     lock_message = "Select previous step to unlock"
 
     def __init__(self, app_options: Dict[str, Any]):
+        """Initialize TrainingProcess. :param app_options: App options."""
         # Initialize widgets to None
         self.select_device = None
         self.select_device_field = None

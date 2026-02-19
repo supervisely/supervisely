@@ -17,6 +17,11 @@ class MetricProjectsApplier:
     """Applies a metric across two projects (ground truth and predictions) with compatible structure."""
 
     def __init__(self, metric: MetricsBase, config: dict):
+        """Initialize MetricProjectsApplier.
+
+        :param metric: Metric instance (IoUMetric, MAPMetric, etc.).
+        :param config: Dict with 'project_gt' and optionally 'project_pred' paths.
+        """
         self._metric = metric
         self._confg = config
         self._project_gt = self._get_project_or_die(PROJECT_GT)

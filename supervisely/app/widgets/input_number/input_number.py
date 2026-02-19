@@ -25,6 +25,29 @@ class InputNumber(Widget):
         widget_id: str = None,
         width: int = None,
     ):
+        """Initialize InputNumber.
+
+        :param value: Initial numeric value.
+        :type value: Union[int, float]
+        :param min: Minimum value. None for no limit.
+        :type min: Union[int, float, None], optional
+        :param max: Maximum value. None for no limit.
+        :type max: Union[int, float, None], optional
+        :param step: Step increment.
+        :type step: Union[int, float]
+        :param size: Size ("small", "large", etc.).
+        :type size: str
+        :param controls: If True, show +/- buttons.
+        :type controls: bool
+        :param debounce: Debounce delay in ms for value-changed callback.
+        :type debounce: int
+        :param precision: Decimal places for float values.
+        :type precision: int
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        :param width: Width in pixels. None for auto.
+        :type width: int, optional
+        """
         self._value = value
         self._min = min
         self._max = max

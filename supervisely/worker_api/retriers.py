@@ -11,6 +11,7 @@ class RetrierAbstract:
     """Base class for retry policies used around network/API calls."""
 
     def __init__(self, retry_cnt, wait_sec_first, wait_sec_max, timeout, swallow_exc=False):
+        """Initialize RetrierAbstract. :param retry_cnt: Max retries. :param wait_sec_first: Initial wait. :param wait_sec_max: Max wait. :param timeout: Request timeout. :param swallow_exc: If True, don't raise on final failure."""
         self.retry_cnt = int(retry_cnt)
         self.wait_sec = (wait_sec_first, wait_sec_max)
         if isinstance(timeout, list):  # requests lib timeout format

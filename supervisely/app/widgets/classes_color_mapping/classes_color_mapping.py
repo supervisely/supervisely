@@ -9,6 +9,15 @@ class ClassesColorMapping(Widget):
     """Widget for mapping classes to colors with optional greyscale mode."""
 
     def __init__(self, classes=[], greyscale=False, widget_id=None):
+        """Initialize ClassesColorMapping.
+
+        :param classes: List of ObjClass instances to map colors for.
+        :type classes: list
+        :param greyscale: If True, enable greyscale mode.
+        :type greyscale: bool
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         self._classes = classes
         self._greyscale = greyscale
         super().__init__(widget_id=widget_id, file_path=__file__)

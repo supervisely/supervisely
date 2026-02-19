@@ -40,6 +40,7 @@ class ServingGUITemplate(ServingGUI):
         models: Optional[list] = None,
         app_options: Optional[str] = None,
     ):
+        """Initialize ServingGUITemplate. :param framework_name: Framework display name. :param models: Optional model list. :param app_options: Optional app options JSON."""
         if not isinstance(framework_name, str):
             raise ValueError("'framework_name' must be a string")
         super().__init__()

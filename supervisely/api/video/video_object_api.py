@@ -18,6 +18,11 @@ class VideoObjectApi(ObjectApi):
     """
 
     def __init__(self, api):
+        """Initialize VideoObjectApi.
+
+        :param api: API connection to the server.
+        :type api: :class:`~supervisely.api.api.Api`
+        """
         super().__init__(api)
         self.tag = VideoObjectTagApi(api)
 

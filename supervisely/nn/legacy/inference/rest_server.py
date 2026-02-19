@@ -29,6 +29,7 @@ class RestInferenceServer:
     """Simple Flask REST server that exposes legacy inference endpoints for a single-image model."""
 
     def __init__(self, model: SingleImageInferenceInterface, name, port=None):
+        """Initialize RestInferenceServer. :param model: SingleImageInferenceInterface. :param name: Flask app name. :param port: Optional port."""
         self._app = Flask(name)
         if port == '':
             port = None
@@ -49,6 +50,7 @@ class RestInferenceServer:
         """Endpoint handler that returns model output metadata (`out_meta`) for a given input meta/mode."""
 
         def __init__(self, model):
+            """See RestInferenceServer for model param."""
             self._model = model
             self._parser = reqparse.RequestParser()
             self._parser.add_argument(META)
@@ -78,6 +80,7 @@ class RestInferenceServer:
         """Endpoint handler that runs inference on an uploaded image and returns prediction JSON."""
 
         def __init__(self, model):
+            """See RestInferenceServer for model param."""
             from werkzeug.datastructures import FileStorage
             self._model = model
             self._parser = reqparse.RequestParser()

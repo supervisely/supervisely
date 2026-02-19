@@ -24,6 +24,21 @@ class TagMetasList(Widget):
         columns: int = 1,  # 1 means vertical layout
         widget_id: str = None,
     ):
+        """Initialize TagMetasList.
+
+        :param tag_metas: TagMetaCollection or list of TagMeta.
+        :type tag_metas: Union[TagMetaCollection, List[TagMeta]]
+        :param show_type_text: If True, show value type in TagMetaView.
+        :type show_type_text: bool
+        :param limit_long_names: If True, truncate long names.
+        :type limit_long_names: bool
+        :param selectable: If True, show checkboxes.
+        :type selectable: bool
+        :param columns: Number of columns in grid (1 = vertical).
+        :type columns: int
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         self._tag_metas = tag_metas
         self._selectable = selectable
         self._columns = columns

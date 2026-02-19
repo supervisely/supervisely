@@ -75,6 +75,15 @@ class AppService:
         ignore_errors=False,
         ignore_task_id=False,
     ):
+        """Initialize AppService.
+
+        :param logger: Logger instance.
+        :param task_id: Task ID.
+        :param server_address: Server address.
+        :param agent_token: Agent token.
+        :param ignore_errors: If True, ignore errors.
+        :param ignore_task_id: If True, ignore task_id validation.
+        """
         self._ignore_task_id = ignore_task_id
         self.logger = take_with_default(logger, default_logger)
         self._ignore_errors = ignore_errors

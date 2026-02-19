@@ -6,26 +6,7 @@ from supervisely.app.widgets import Empty, Widget
 
 class ColorPicker(Widget):
     """Color selector supporting multiple formats (hex, rgb, etc.).
-
-    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/input/colorpicker>`_
-        (including screenshots and examples).
-
-    :param show_alpha: if True, alpha channel will be shown
-    :type show_alpha: bool
-    :param color_format: color format, one of: hex, hsl, hsv, rgb
-    :type color_format: Literal["hex", "hsl", "hsv", "rgb"]
-    :param compact: if True, compact mode will be enabled
-    :type compact: bool
-    :param widget_id: An identifier of the widget.
-    :type widget_id: str, optional
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            from supervisely.app.widgets import ColorPicker
-
-            color_picker = ColorPicker(color_format="rgb")
+    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/input/colorpicker>`_.
     """
 
     class Routes:
@@ -39,6 +20,26 @@ class ColorPicker(Widget):
         compact: Optional[bool] = False,
         widget_id: Optional[str] = None,
     ):
+        """Initialize the ColorPicker widget.
+
+        :param show_alpha: if True, alpha channel will be shown
+        :type show_alpha: bool
+        :param color_format: color format, one of: hex, hsl, hsv, rgb
+        :type color_format: Literal["hex", "hsl", "hsv", "rgb"]
+        :param compact: if True, compact mode will be enabled
+        :type compact: bool
+        :param widget_id: An identifier of the widget.
+        :type widget_id: str, optional
+        :raises TypeError: if color_format is not one of hex, hsl, hsv, rgb
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import ColorPicker
+
+                color_picker = ColorPicker(color_format="rgb")
+        """
         self._show_alpha = show_alpha
         self._color_format = color_format
         self._changes_handled = False

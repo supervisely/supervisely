@@ -6,42 +6,7 @@ from supervisely.sly_logger import logger
 
 
 class Card(Widget):
-    """Compact container for displaying content with optional title, description, and collapsible section.
-
-    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/layouts-and-containers/card>`_
-        (including screenshots and examples).
-
-
-    :param title: Title of the card, will be displayed in the UI.
-    :type title: Optional[str]
-    :param description: Description of the card, will be displayed in the UI.
-    :type description: Optional[str]
-    :param collapsable: If True, the card will be collapsable in the UI.
-    :type collapsable: Optional[bool]
-    :param content: Widget to be displayed in the card.
-    :type content: Optional[:class:`~supervisely.app.widgets.widget.Widget`]
-    :param content_top_right: Widget to be displayed in the top right corner of the card.
-    :type content_top_right: Optional[:class:`~supervisely.app.widgets.widget.Widget`]
-    :param lock_message: Message to be displayed when the card is locked.
-    :type lock_message: Optional[str]
-    :param remove_padding: If True, padding will be removed from the card.
-    :type remove_padding: Optional[bool]
-    :param overflow: Overflow property of the card. Can be "auto", "unset" or "scroll".
-    :type overflow: Optional[Literal["auto", "unset", "scroll"]]
-    :param style: CSS styles string of the card.
-    :type style: Optional[str]
-    :param widget_id: Unique widget identifier.
-    :type widget_id: str
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            from supervisely.app.widgets import Card, Text
-
-            text = Text("Hello, world!")
-            card = Card(title="Card title", description="Card description", content=text)
-    """
+    """Compact container with optional title, description, and collapsible section."""
 
     def __init__(
         self,
@@ -56,6 +21,35 @@ class Card(Widget):
         overflow: Optional[Literal["auto", "unset", "scroll"]] = "auto",
         style: Optional[str] = "",
     ):
+        """
+        :param title: Card title.
+        :type title: str, optional
+        :param description: Card description.
+        :type description: str, optional
+        :param collapsable: Enable collapsible section.
+        :type collapsable: bool, optional
+        :param content: Main content widget.
+        :type content: Widget, optional
+        :param content_top_right: Widget for top-right corner.
+        :type content_top_right: Widget, optional
+        :param lock_message: Message when content is locked.
+        :type lock_message: str, optional
+        :param remove_padding: Remove inner padding.
+        :type remove_padding: bool, optional
+        :param overflow: auto, unset, or scroll.
+        :type overflow: Literal, optional
+        :param style: Inline CSS.
+        :type style: str, optional
+        :param widget_id: Widget identifier.
+        :type widget_id: str, optional
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import Card, Text
+                card = Card(title="Title", description="Description", content=Text("Hello"))
+        """
         self._title = title
         self._description = description
         self._collapsable = collapsable

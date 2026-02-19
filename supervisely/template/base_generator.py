@@ -22,6 +22,7 @@ class BaseGenerator:
     LINK_FILE = "Open Report.lnk"
 
     def __init__(self, api: Api, output_dir: str):
+        """Initialize BaseGenerator. :param api: Supervisely API. :param output_dir: Output directory."""
         self.api = api
         self.output_dir = output_dir
         self.template_renderer = TemplateRenderer()

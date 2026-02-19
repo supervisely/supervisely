@@ -10,47 +10,7 @@ from supervisely.app.widgets import Widget
 
 
 class Button(Widget):
-    """Clickable button with configurable text, style, and icon.
-
-    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/controls/button>`_
-        (including screenshots and examples).
-
-    :param text: Text to be displayed on the button.
-    :type text: Optional[str]
-    :param button_type: Type of the button.
-    :type button_type: Optional[Literal["primary", "info", "warning", "danger", "success", "text"]]
-    :param button_size: Size of the button.
-    :type button_size: Optional[Literal["mini", "small", "large"]]
-    :param plain: If True, the button will be plain.
-    :type plain: Optional[bool]
-    :param show_loading: If True, the button will show loading animation.
-    :type show_loading: Optional[bool]
-    :param icon: Icon to be displayed on the button. E.g. "zmdi zmdi-play", "zmdi zmdi-stop", "zmdi zmdi-pause".
-        List of available icons can be found `here <http://zavoloklom.github.io/material-design-iconic-font/icons.html>`_.
-    :type icon: Optional[str]
-    :param icon_gap: Gap between the icon and the text in pixels.
-    :type icon_gap: Optional[int]
-    :param widget_id: Unique widget identifier.
-    :type widget_id: Optional[str]
-    :param link: Link to be opened on button click.
-    :type link: Optional[str]
-    :param emit_on_click: Name of the event to be emitted on button click.
-    :type emit_on_click: Optional[str]
-    :param style: CSS style to be applied to the button.
-    :type style: Optional[str]
-    :param call_on_click: Function to be called on button click.
-    :type call_on_click: Optional[str]
-    :param icon_color: Color of the icon.
-    :type icon_color: Optional[str]
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            from supervisely.app.widgets import Button
-
-            button = Button(text="Button", button_type="primary", button_size="large")
-    """
+    """Clickable button with configurable text, style, and icon."""
 
     class Routes:
         """Route name constants for this widget."""
@@ -76,6 +36,43 @@ class Button(Widget):
         visible_by_vue_field: Optional[str] = "",
         icon_color: Optional[str] = None,
     ):
+        """
+        Clickable button.
+
+        :param text: Button label.
+        :type text: str, optional
+        :param button_type: primary, info, warning, danger, success, or text.
+        :type button_type: Literal, optional
+        :param button_size: mini, small, or large.
+        :type button_size: Literal, optional
+        :param plain: Plain style (no fill).
+        :type plain: bool, optional
+        :param show_loading: Show loading spinner when processing.
+        :type show_loading: bool, optional
+        :param icon: Icon class (e.g. "zmdi zmdi-play").
+        :type icon: str, optional
+        :param icon_gap: Gap between icon and text (px).
+        :type icon_gap: int, optional
+        :param widget_id: Widget identifier.
+        :type widget_id: str, optional
+        :param link: URL to open on click.
+        :type link: str, optional
+        :param emit_on_click: Event name to emit on click.
+        :type emit_on_click: str, optional
+        :param style: Inline CSS.
+        :type style: str, optional
+        :param call_on_click: Callback name for click.
+        :type call_on_click: str, optional
+        :param icon_color: Icon color.
+        :type icon_color: str, optional
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import Button
+                button = Button(text="Run", button_type="primary", button_size="large")
+        """
         self._widget_routes = {}
 
         self._text = text

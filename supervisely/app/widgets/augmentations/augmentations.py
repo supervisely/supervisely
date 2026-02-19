@@ -24,7 +24,20 @@ class Augmentations(Widget):
         task_type: Optional[Literal['detection', 'segmentation']] = None,
         remote_preview_path: str = '/temp/preview_augs.jpg',
         widget_id=None
-    ):  
+    ):
+        """Initialize Augmentations.
+
+        :param globals: Globals object with api, project_meta, data_dir, team.
+        :type globals: object
+        :param image_info: Optional image for preview. If None, random image is used.
+        :type image_info: sly.ImageInfo, optional
+        :param task_type: Task type for annotation conversion: "detection" or "segmentation".
+        :type task_type: Literal["detection", "segmentation"], optional
+        :param remote_preview_path: Path in Team Files for uploaded preview.
+        :type remote_preview_path: str
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         self._globals = globals
         self._image_info = image_info
         self._task_type = task_type
@@ -203,7 +216,22 @@ class AugmentationsWithTabs(Widget):
         task_type: Optional[Literal['detection', 'segmentation']] = None,
         remote_preview_path: str = '/temp/preview_augs.jpg',
         widget_id=None
-    ):  
+    ):
+        """Initialize AugmentationsWithTabs.
+
+        :param globals: Globals object with api, project_meta, data_dir, team.
+        :type globals: object
+        :param templates: List of dicts with 'value' and 'label' for template selector.
+        :type templates: List[Dict[str, str]]
+        :param image_info: Optional image for preview.
+        :type image_info: sly.ImageInfo, optional
+        :param task_type: Task type: "detection" or "segmentation".
+        :type task_type: Literal["detection", "segmentation"], optional
+        :param remote_preview_path: Path in Team Files for preview upload.
+        :type remote_preview_path: str
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         self._globals = globals
         self._image_info = image_info
         self._templates = templates

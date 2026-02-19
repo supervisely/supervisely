@@ -12,72 +12,14 @@ except ImportError:
 
 
 class Cascader(Widget):
-    """Dropdown with hierarchical options (cascading levels).
-
-    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/selection/cascader>`_
-        (including screenshots and examples).
-
-    :param items: List of items to be displayed in the cascader.
-    :type items: Optional[List[:class:`~supervisely.app.widgets.cascader.cascader.Cascader.Item`]]
-    :param selected_items: List of selected items.
-    :type selected_items: Optional[List[str]]
-    :param filterable: If True, the cascader will be filterable.
-    :type filterable: Optional[bool]
-    :param placeholder: Placeholder text of the cascader.
-    :type placeholder: Optional[str]
-    :param size: Size of the cascader.
-    :type size: Optional[Literal["large", "small", "mini"]]
-    :param expand_trigger: Trigger type to expand the cascader.
-    :type expand_trigger: Optional[Literal["click", "hover"]]
-    :param clearable: If True, the cascader will be clearable.
-    :type clearable: Optional[bool]
-    :param show_all_levels: If True, all levels of the cascader will be displayed.
-    :type show_all_levels: Optional[bool]
-    :param parent_selectable: If True, parent items will be selectable.
-    :type parent_selectable: Optional[bool]
-    :param widget_id: Unique widget identifier.
-    :type widget_id: str
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            from supervisely.app.widgets import Cascader
-
-            cascader_items = [
-                Cascader.Item(value="cat", label="Cat", children=[
-                    Cascader.Item(value="black cat", label="Black Cat"),
-                    Cascader.Item(value="fluffy cat", label="Fluffy Cat"),
-                ]),
-                Cascader.Item(value="dog", label="Dog", children=[
-                    Cascader.Item(value="black dog", label="Black Dog"),
-                    Cascader.Item(value="fluffy dog", label="Fluffy Dog"),
-                ]),
-            ]
-
-            cascader = Cascader(
-                items=cascader_items, selected_items=[], filterable=True, placeholder="select",
-                size="small", expand_trigger="click", clearable=True, show_all_levels=True,
-                parent_selectable=False
-                )
-    """
+    """Dropdown with hierarchical options (cascading levels)."""
 
     class Routes:
         """Route name constants for this widget."""
         VALUE_CHANGED = "value_changed"
 
     class Item:
-        """Represents an item in the cascader.
-
-        :param value: Value of the item.
-        :type value: str
-        :param label: Label of the item.
-        :type label: Optional[str]
-        :param children: Children of the item.
-        :type children: Optional[List[:class:`~supervisely.app.widgets.cascader.cascader.Cascader.Item`]]
-        :param disabled: If True, the item will be disabled.
-        :type disabled: Optional[bool]
-        """
+        """Single cascader item (value, label, optional children)."""
 
         def __init__(
             self,
@@ -86,6 +28,12 @@ class Cascader(Widget):
             children: Optional[List[Cascader.Item]] = [],
             disabled: Optional[bool] = False,
         ) -> Cascader.Item:
+            """
+            :param value: Item value.
+            :param label: Display label (defaults to value).
+            :param children: Nested items.
+            :param disabled: Disable selection.
+            """
             self.value = value
             self.label = label
             if label is None:
@@ -128,6 +76,29 @@ class Cascader(Widget):
         parent_selectable: Optional[bool] = False,
         widget_id: Optional[str] = None,
     ):
+        """
+        :param items: List of Cascader.Item (hierarchical).
+        :param selected_items: Initially selected values.
+        :param filterable: Enable search/filter.
+        :param placeholder: Placeholder text.
+        :param size: large, small, or mini.
+        :param expand_trigger: click or hover.
+        :param clearable: Allow clearing selection.
+        :param show_all_levels: Show full path in selection.
+        :param parent_selectable: Allow selecting parent nodes.
+        :param widget_id: Widget identifier.
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import Cascader
+                items = [
+                    Cascader.Item("cat", "Cat", [Cascader.Item("black", "Black Cat")]),
+                    Cascader.Item("dog", "Dog"),
+                ]
+                cascader = Cascader(items=items, filterable=True, placeholder="Select")
+        """
         self._items = items
         self._selected_items = selected_items
         self._filterable = filterable

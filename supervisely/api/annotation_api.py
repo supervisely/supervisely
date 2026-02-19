@@ -66,31 +66,23 @@ class AnnotationInfo(NamedTuple):
 
 
 class AnnotationApi(ModuleApi):
-    """
-    API for working with image annotations. :class:`~supervisely.api.annotation_api.AnnotationApi` object is immutable.
+    """API for working with image annotations."""
 
-    :param api: API connection to the server.
-    :type api: :class:`~supervisely.api.api.Api`
+    def __init__(self, api):
+        """Initialize AnnotationApi.
 
-    :Usage Example:
+        :param api: API connection to the server.
+        :type api: :class:`~supervisely.api.api.Api`
 
-        .. code-block:: python
+        :Usage Example:
 
-            import os
-            from dotenv import load_dotenv
+            .. code-block:: python
 
-            import supervisely as sly
-
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            if sly.is_development():
-                load_dotenv(os.path.expanduser("~/supervisely.env"))
-
-            api = sly.Api.from_env()
-
-            dataset_id = 254737
-            ann_infos = api.annotation.get_list(dataset_id)
-    """
+                import supervisely as sly
+                api = sly.Api.from_env()
+                ann_infos = api.annotation.get_list(dataset_id=254737)
+        """
+        super().__init__(api)
 
     @staticmethod
     def info_sequence():

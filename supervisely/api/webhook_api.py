@@ -39,32 +39,27 @@ class WebhookInfo(NamedTuple):
 
 
 class WebhookApi(ModuleNoParent):
-    """
-    API for working with Webhooks. :class:`WebhookApi<WebhookApi>` object is immutable.
+    """API for working with webhooks."""
 
-    :param api: API connection to the server
-    :type api: Api
-    :Usage example:
+    def __init__(self, api):
+        """Initialize WebhookApi.
 
-     .. code-block:: python
+        :param api: API connection to the server.
+        :type api: :class:`~supervisely.api.api.Api`
 
-        import os
-        from dotenv import load_dotenv
+        :Usage Example:
 
-        import supervisely as sly
+            .. code-block:: python
 
-        # Load secrets and create API object from .env file (recommended)
-        if sly.is_development():
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-        api = sly.Api.from_env()
-
-        # Create a webhook
-        webhook = api.webhook.create(
-            team_id=123,
-            url="https://example.com/webhook",
-            action=sly.LABELING_JOB_COMPLETED
-        )
-    """
+                import supervisely as sly
+                api = sly.Api.from_env()
+                webhook = api.webhook.create(
+                    team_id=123,
+                    url="https://example.com/webhook",
+                    action=sly.LABELING_JOB_COMPLETED,
+                )
+        """
+        super().__init__(api)
 
     def get_list(
         self, team_id: int, filters: Optional[List[Dict]] = None

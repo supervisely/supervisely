@@ -60,30 +60,7 @@ class TaskFinishedWithError(Exception):
 
 
 class TaskApi(ModuleApiBase, ModuleWithStatus):
-    """
-    API for working with tasks. :class:`~supervisely.api.task_api.TaskApi` object is immutable.
-
-    :param api: API connection to the server.
-    :type api: :class:`~supervisely.api.api.Api`
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import os
-            from dotenv import load_dotenv
-            import supervisely as sly
-
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            if sly.is_development():
-                load_dotenv(os.path.expanduser("~/supervisely.env"))
-
-            api = sly.Api.from_env()
-
-            task_id = 121230
-            task_info = api.task.get_info_by_id(task_id)
-    """
+    """API for working with tasks."""
 
     class RestartPolicy(StrEnum):
         """Task restart policy used for app deployments."""
@@ -128,6 +105,19 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         """Application has been stopped"""
 
     def __init__(self, api):
+        """Initialize TaskApi.
+
+        :param api: API connection to the server.
+        :type api: :class:`~supervisely.api.api.Api`
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+                api = sly.Api.from_env()
+                task_info = api.task.get_info_by_id(task_id)
+        """
         ModuleApiBase.__init__(self, api)
         ModuleWithStatus.__init__(self)
 

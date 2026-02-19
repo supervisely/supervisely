@@ -29,6 +29,21 @@ class SelectItem(Widget):
         size: Literal["large", "small", "mini"] = None,
         widget_id: str = None,
     ):
+        """Initialize SelectItem.
+
+        :param dataset_id: Dataset ID to list items from.
+        :type dataset_id: int, optional
+        :param compact: If True, compact layout (requires dataset_id).
+        :type compact: bool
+        :param show_label: If True, show label.
+        :type show_label: bool
+        :param size: Size: "large", "small", or "mini".
+        :type size: Literal["large", "small", "mini"], optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+
+        :raises ValueError: If compact is True and dataset_id is None.
+        """
         self._api = Api()
         self._dataset_id = dataset_id
         self._compact = compact
