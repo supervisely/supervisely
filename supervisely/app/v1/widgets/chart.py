@@ -2,6 +2,8 @@ from supervisely.api.api import Api
 
 
 class Chart:
+    """v1 widget for plotting time-series charts with smoothing and axis options."""
+
     def __init__(self, task_id, api: Api, v_model, title, series_names=None,
                  smoothing=None, yrange=None, ydecimals=None, xdecimals=None):
         self._task_id = task_id

@@ -32,6 +32,7 @@ ComparisonEvalResult = Union[ObjectDetectionEvalResult, SemanticSegmentationEval
 
 
 class ModelComparison:
+    """Orchestrates loading and visualizing comparison of multiple model evaluations."""
 
     def __init__(
         self,

@@ -33,6 +33,8 @@ from supervisely.project.volume_project import VolumeProject
 
 
 class TrainValSplits(Widget):
+    """Widget for creating train/val splits: random, by tags, or by datasets; outputs to a new project."""
+
     def __init__(
         self,
         project_id: Optional[int] = None,

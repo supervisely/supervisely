@@ -38,6 +38,7 @@ class ElementTag(Widget):
     """
 
     class Routes:
+        """Route name constants for this widget."""
         CLOSE = "tag_close_cb"
 
     def __init__(

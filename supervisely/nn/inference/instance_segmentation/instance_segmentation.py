@@ -9,6 +9,8 @@ from supervisely.sly_logger import logger
 
 
 class InstanceSegmentation(Inference):
+    """Base class for instance segmentation inference (masks per object with optional tracking on videos)."""
+
     def get_info(self) -> dict:
         info = super().get_info()
         info["task type"] = "instance segmentation"

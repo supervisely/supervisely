@@ -8,6 +8,7 @@ from supervisely.metric.metric_base import MetricsBase
 
 
 class ConfusionMatrixMetric(MetricsBase):
+    """Computes a confusion matrix between ground-truth and prediction classes using IoU matching."""
 
     def __init__(self, class_mapping, iou_threshold):
         if len(class_mapping) < 1:

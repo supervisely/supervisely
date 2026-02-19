@@ -13,6 +13,8 @@ from supervisely.annotation.tag_meta_collection import TagMetaCollection
 
 
 class TagMetasList(Widget):
+    """Grid of TagMetaView cards with optional checkboxes for selection; supports select/deselect all."""
+
     def __init__(
         self,
         tag_metas: Union[TagMetaCollection, List[TagMeta]],

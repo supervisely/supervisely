@@ -4,6 +4,8 @@ from supervisely.nn.benchmark.visualization.widgets.widget import BaseWidget
 
 
 class ContainerWidget(BaseWidget):
+    """Layout container for benchmark widgets; supports horizontal/vertical stack or grid."""
+
     def __init__(
         self,
         widgets: List[BaseWidget],

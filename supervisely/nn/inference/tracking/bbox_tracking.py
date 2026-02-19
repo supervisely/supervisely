@@ -29,6 +29,8 @@ from supervisely.sly_logger import logger
 
 
 class BBoxTracking(BaseTracking):
+    """Video tracking for bounding-box geometries; uses model or IoU-based propagation per frame."""
+
     def _deserialize_geometry(self, data: dict):
         geometry_type_str = data["type"]
         geometry_json = data["data"]

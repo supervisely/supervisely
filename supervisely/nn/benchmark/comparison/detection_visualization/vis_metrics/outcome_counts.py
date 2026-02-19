@@ -9,6 +9,8 @@ from supervisely.nn.task_type import TaskType
 
 
 class OutcomeCounts(BaseVisMetrics):
+    """TP/FP/FN outcome counts and common-vs-different charts for detection comparison."""
+
     CHART_MAIN = "chart_outcome_counts"
     CHART_COMPARISON = "chart_outcome_counts_comparison"
 

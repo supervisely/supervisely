@@ -10,6 +10,8 @@ from .chunking import load_to_memory_chunked_image, load_to_memory_chunked
 
 
 class SimpleCache:
+    """In-memory cache with a fixed item-count limit; clears all entries when the limit is exceeded."""
+
     def __init__(self, item_cnt_limit):
         self.dct = {}
         self.item_cnt_limit = item_cnt_limit

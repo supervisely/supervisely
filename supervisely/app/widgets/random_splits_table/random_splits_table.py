@@ -5,6 +5,8 @@ from supervisely.app.widgets import Widget
 
 
 class RandomSplitsTable(Widget):
+    """Table showing train/val/total counts and percentages for a random split; supports adjusting train percent."""
+
     def __init__(
         self,
         items_count: int,

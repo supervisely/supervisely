@@ -18,6 +18,7 @@ from supervisely.volume.volume import is_nifti_file
 
 # @TODO: add group tags?
 class Medical2DImageConverter(ImageConverter):
+    """Imports medical 2D images (NRRD, NIfTI slices) with annotations into Supervisely; supports DICOM grouping."""
 
     def __init__(
             self,

@@ -5,6 +5,8 @@ from supervisely.app.widgets import Widget
 
 
 class Stepper(Widget):
+    """Step-by-step wizard: displays titles and content for each step; user advances via set_active_step()."""
+
     def __init__(
         self,
         titles: List = [],

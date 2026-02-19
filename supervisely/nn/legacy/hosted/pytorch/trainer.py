@@ -37,6 +37,8 @@ def _check_all_pixels_have_segmentation_class(targets):
 
 
 class PytorchSegmentationTrainer(SuperviselyModelTrainer):
+    """Legacy PyTorch semantic segmentation trainer: trains model, saves checkpoints, reports metrics."""
+
     @staticmethod
     def get_default_config():
         return {

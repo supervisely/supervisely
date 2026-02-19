@@ -7,6 +7,8 @@ from supervisely.app.widgets import Widget
 
 
 class FileThumbnail(Widget):
+    """Compact card showing a Team Files file: name, path, and link to open it."""
+
     def __init__(self, info: FileInfo = None, widget_id: str = None):
         self._id: int = None
         self._info: FileInfo = None

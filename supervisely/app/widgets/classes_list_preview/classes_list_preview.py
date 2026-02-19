@@ -6,6 +6,8 @@ from supervisely.app.widgets import Widget, ObjectClassView
 
 
 class ClassesListPreview(Widget):
+    """Widget that displays a scrollable preview list of ObjClasses with shape icons/titles."""
+
     def __init__(
         self,
         classes: Optional[Union[List[ObjClass], ObjClassCollection]] = [],

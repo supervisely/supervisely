@@ -12,6 +12,8 @@ from supervisely.nn.inference import Session
 
 
 class ModelInfo(Widget):
+    """Shows connected model details (name, checkpoint, task type) for a given session or team."""
+
     def __init__(
         self,
         session_id: int = None,

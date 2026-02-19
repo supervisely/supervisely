@@ -19,6 +19,8 @@ from supervisely.project.project_meta import ProjectType
 
 
 class OutputSelector:
+    """Predict app step: choose output mode (new project, annotations, etc.) and run/stop prediction."""
+
     title = "Result"
     description = "Select the output mode"
     lock_message = "Select previous step to unlock"

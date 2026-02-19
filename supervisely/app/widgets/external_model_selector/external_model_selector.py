@@ -10,6 +10,8 @@ from supervisely.app.widgets.container.container import Container
 from supervisely.app.widgets.select.select import Select
 
 class ExternalModelSelector(Widget):
+    """Widget for selecting external models by task type, checkpoint path, config, and classes."""
+
     def __init__(self, task_types: List[str], need_config: bool = True, need_classes: bool = True, widget_id: str = None):
         self.need_config = need_config
         self.need_classes = need_classes

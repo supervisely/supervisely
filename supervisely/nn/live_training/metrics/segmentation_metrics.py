@@ -2,6 +2,8 @@ import numpy as np
 import cv2
 
 class SegmentationMetrics:
+    """Computes segmentation metrics: mIoU, boundary IoU, pixel accuracy with optional ignore index."""
+
     def __init__(
         self,
         num_classes: int,

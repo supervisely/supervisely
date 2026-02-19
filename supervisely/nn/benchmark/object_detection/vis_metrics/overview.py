@@ -6,6 +6,7 @@ from supervisely.nn.benchmark.visualization.widgets import MarkdownWidget, Table
 
 
 class Overview(DetectionVisMetric):
+    """Overview header and model info for single-model detection reports."""
 
     def get_header(self, user_login: str) -> MarkdownWidget:
         current_date = datetime.datetime.now().strftime("%d %B %Y, %H:%M")

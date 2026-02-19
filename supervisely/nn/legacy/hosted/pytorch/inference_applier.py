@@ -17,6 +17,8 @@ from torchvision.transforms.functional import to_tensor
 # pylint: enable=import-error
 
 class PytorchSegmentationApplier(SingleImageInferenceBase):
+    """Legacy PyTorch semantic segmentation applier: loads model from factory, runs inference, returns labels."""
+
     def __init__(self, model_factory_fn):
         self._model_factory_fn = model_factory_fn
         super().__init__()

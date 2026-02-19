@@ -25,6 +25,8 @@ COCO_CAPTIONS_FILE = "coco_captions.json"
 
 
 class HiddenCocoPrints:
+    """Context manager that suppresses pycocotools stdout during COCO operations."""
+
     def __enter__(self):
         self._original_stdout = sys.stdout
         sys.stdout = open(os.devnull, "w")

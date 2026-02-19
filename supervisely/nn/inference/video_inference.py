@@ -11,6 +11,8 @@ from tqdm import tqdm
 
 
 class InferenceVideoInterface:
+    """Interface for video inference: downloads frames and manages frame indexes for batch processing."""
+
     def __init__(
         self,
         api,

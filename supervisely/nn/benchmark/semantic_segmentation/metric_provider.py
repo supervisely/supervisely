@@ -14,6 +14,8 @@ METRIC_NAMES = {
 
 
 class MetricProvider:
+    """Provides pixel accuracy, IoU, precision, recall, and error metrics for semantic segmentation evaluation."""
+
     def __init__(self, eval_data: Dict[str, Any]):
         # self.params = params
         self.metric_names = METRIC_NAMES

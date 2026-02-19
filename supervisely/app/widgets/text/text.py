@@ -39,6 +39,8 @@ type_to_text_color = {
 
 
 class Text(Widget):
+    """Text label with optional status styling (info, success, warning, error) and icon; updatable via set()."""
+
     def __init__(
         self,
         text: str = None,

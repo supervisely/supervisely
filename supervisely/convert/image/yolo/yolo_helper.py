@@ -30,6 +30,8 @@ YOLO_KEYPOINTS_MIN_COORDS_NUM = 6
 
 
 class YOLOTaskType:
+    """Enum-like class for YOLO task types: detect, segment, pose."""
+
     DETECT = "detect"
     SEGMENT = "segment"
     POSE = "pose"

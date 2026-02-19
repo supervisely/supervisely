@@ -6,6 +6,7 @@ from supervisely.nn.benchmark.visualization.widgets.widget import BaseWidget
 
 
 class SidebarWidget(BaseWidget):
+    """Benchmark report sidebar with anchor buttons to scroll to child widget sections."""
 
     def __init__(self, widgets: List[BaseWidget], anchors: List[str]) -> None:
         self.widgets = widgets

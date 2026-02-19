@@ -8,6 +8,7 @@ from supervisely.nn.benchmark.visualization.widgets import MarkdownWidget
 
 
 class Overview(SemanticSegmVisMetric):
+    """Overview header and model info for single-model semantic segmentation reports."""
 
     def get_header(self, user_login: str) -> MarkdownWidget:
         current_date = datetime.datetime.now().strftime("%d %B %Y, %H:%M")

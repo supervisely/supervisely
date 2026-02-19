@@ -112,6 +112,7 @@ class SelectClass(Widget):
     """
 
     class Routes:
+        """Route name constants for this widget."""
         VALUE_CHANGED = "value_changed"
         CLASS_CREATED = "class_created_cb"
 

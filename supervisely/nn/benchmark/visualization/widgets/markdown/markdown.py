@@ -5,6 +5,8 @@ from supervisely.nn.benchmark.visualization.widgets.widget import BaseWidget
 
 
 class MarkdownWidget(BaseWidget):
+    """Benchmark report widget that renders Markdown text from a data file."""
+
     def __init__(
         self,
         name: str,

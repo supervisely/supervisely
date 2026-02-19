@@ -802,6 +802,8 @@ class VideoProject(Project):
     dataset_class = VideoDataset
 
     class DatasetDict(KeyIndexedCollection):
+        """Key-indexed collection of :class:`~supervisely.project.video_project.VideoDataset` datasets."""
+
         item_type = VideoDataset
 
     def __init__(self, directory, mode: OpenMode):

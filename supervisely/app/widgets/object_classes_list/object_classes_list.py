@@ -56,6 +56,8 @@ classes_card = Card(
 
 
 class ObjectClassesList(Widget):
+    """Grid of ObjClass cards with optional checkboxes for selection; displays shape icons and colors."""
+
     def __init__(
         self,
         object_classes: Union[ObjClassCollection, List[ObjClass]],

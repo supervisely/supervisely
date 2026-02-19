@@ -13,6 +13,8 @@ from supervisely.volume.volume import (
 
 
 class DICOMConverter(VolumeConverter):
+    """Imports DICOM series (CT/MRI slices) into Supervisely volume project; groups by series UID."""
+
     class Item(VolumeConverter.Item):
         """Item class for DICOM series."""
 

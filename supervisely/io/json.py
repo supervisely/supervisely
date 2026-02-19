@@ -11,6 +11,8 @@ import jsonschema
 
 
 class JsonSerializable:
+    """Abstract base class for objects that can be serialized to and from JSON."""
+
     def to_json(self):
         """Serialize to JSON-compatible dict.
         :returns: dict

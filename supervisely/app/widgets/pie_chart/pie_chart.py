@@ -41,6 +41,8 @@ def show_selection(datapoint: sly.app.widgets.PieChart.ClickedDataPoint):
 
 
 class PieChart(Apexchart):
+    """Pie or donut chart; supports click events returning slice metadata (name, value, index)."""
+
     class ClickedDataPoint(NamedTuple):
         """Class, representing clicked datapoint, which contains information about series, data index and data itself.
         It will be returned after click event on datapoint in immutable namedtuple

@@ -8,6 +8,8 @@ from supervisely.sly_logger import logger
 
 
 class GridPlot(Widget):
+    """Grid of LinePlot widgets; displays multiple plots in columns for comparison."""
+
     def __init__(
         self,
         data: List[Union[Dict, str]] = [],

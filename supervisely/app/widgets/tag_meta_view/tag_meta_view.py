@@ -3,6 +3,8 @@ from supervisely.annotation.tag_meta import TagMeta
 
 
 class TagMetaView(Widget):
+    """Displays a TagMeta as a compact card with name, value type, and optional type text."""
+
     def __init__(
         self,
         tag_meta: TagMeta,

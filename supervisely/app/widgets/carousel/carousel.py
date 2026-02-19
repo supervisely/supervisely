@@ -57,6 +57,7 @@ class Carousel(Widget):
     """
 
     class Routes:
+        """Route name constants for this widget."""
         VALUE_CHANGED = "value_changed"
 
     class Item:

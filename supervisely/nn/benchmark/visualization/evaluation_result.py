@@ -40,6 +40,7 @@ from supervisely.task.progress import tqdm_sly
 
 
 class EvalResult:
+    """Holds benchmark evaluation data: project/dataset info, metrics, visualizations, and export paths."""
 
     def __init__(
         self,

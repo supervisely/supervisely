@@ -43,6 +43,8 @@ type_to_zmdi_icon = {
     OrientedBBox: "zmdi zmdi-rotate-cw",
 }
 class ClassesSelector:
+    """Predict app step: select which model classes to use for inference; filters by model meta."""
+
     title = "Classes"
     description = "Select classes that will be used for inference. This classes are defined by the deployed model"
     lock_message = "Select previous step to unlock"

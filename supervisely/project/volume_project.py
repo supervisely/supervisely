@@ -169,6 +169,8 @@ class VolumeProject(VideoProject):
     dataset_class = VolumeDataset
 
     class DatasetDict(KeyIndexedCollection):
+        """Key-indexed collection of :class:`~supervisely.project.volume_project.VolumeDataset` datasets."""
+
         item_type = VolumeDataset
 
     _SERIALIZATION_MAGIC = b"SLYVOLPAR"

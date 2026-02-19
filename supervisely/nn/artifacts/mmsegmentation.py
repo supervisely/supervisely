@@ -6,6 +6,8 @@ from supervisely.nn.artifacts.artifacts import BaseTrainArtifacts
 
 
 class MMSegmentation(BaseTrainArtifacts):
+    """Train/serve artifacts handler for MMSegmentation instance segmentation models."""
+
     def __init__(self, team_id: int):
         super().__init__(team_id)
 

@@ -12,6 +12,8 @@ from supervisely.sly_logger import logger
 
 
 class PromptableSegmentation(Inference):
+    """Base class for promptable (e.g. SAM-like) segmentation inference with points/boxes."""
+
     def __init__(
         self,
         model_dir: Optional[str] = None,

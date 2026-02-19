@@ -4,6 +4,7 @@ from supervisely import Annotation, VideoAnnotation
 import numpy as np
 
 class BaseTracker:
+    """Base class for video object trackers; subclasses implement update, track, and get_default_params."""
 
     def __init__(self, settings: dict = None, device: str = None):
         import torch  # pylint: disable=import-error

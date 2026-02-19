@@ -12,6 +12,8 @@ from supervisely.nn.benchmark.visualization.widgets import (
 
 
 class FrequentlyConfused(DetectionVisMetric):
+    """Frequently confused class pairs chart for detection reports."""
+
     MARKDOWN = "frequently_confused"
     MARKDOWN_EMPTY = "frequently_confused_empty"
     CHART = "frequently_confused"

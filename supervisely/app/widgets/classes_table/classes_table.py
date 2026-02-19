@@ -60,6 +60,7 @@ class ClassesTable(Widget):
     """
 
     class Routes:
+        """Route name constants for this widget."""
         CLASS_SELECTED = "class_selected_cb"
 
     def __init__(

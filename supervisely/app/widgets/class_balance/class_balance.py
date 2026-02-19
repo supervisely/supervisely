@@ -90,6 +90,7 @@ class ClassBalance(Widget):
     """
 
     class Routes:
+        """Route name constants for this widget."""
         CLICK = "class_balance_clicked_cb"
 
     def __init__(

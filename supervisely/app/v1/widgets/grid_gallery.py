@@ -6,6 +6,8 @@ from supervisely.annotation.annotation import Annotation
 
 
 class Gallery:
+    """v1 widget for displaying a grid of images with annotations, zoom, and sync options."""
+
     def __init__(self, task_id, api: Api, v_model, project_meta: ProjectMeta, col_number: int, preview_info=False,
                  enable_zoom=False, resize_on_zoom=False, sync_views=False, show_preview=True, selectable=False,
                  opacity=0.5, show_opacity_header=True, fill_rectangle=False, border_width=3):

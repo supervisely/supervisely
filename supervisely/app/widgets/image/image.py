@@ -4,6 +4,8 @@ from typing import Optional, Union
 
 
 class Image(Widget):
+    """Widget that displays an image from URL with optional height/width (px or percent)."""
+
     def __init__(
         self,
         url: str = "",

@@ -6,6 +6,8 @@ from supervisely.app.widgets import Widget
 
 
 class FileStorageUpload(Widget):
+    """Widget for uploading files to a Team Files path; supports conflict handling and path selection."""
+
     def __init__(
         self,
         team_id: int,

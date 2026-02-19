@@ -14,6 +14,8 @@ from supervisely.sly_logger import logger
 
 
 class ObjectDetection(Inference):
+    """Base class for 2D object detection inference; outputs rectangles with optional confidence; supports video tracking."""
+
     def get_info(self) -> dict:
         info = super().get_info()
         info["task type"] = "object detection"

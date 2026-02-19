@@ -8,6 +8,8 @@ import os
 
 
 class ObjectTracking3D(Inference):
+    """3D point cloud object tracking: propagates cuboid annotations across point cloud sequence frames."""
+
     def __init__(
         self,
         model_dir: Optional[str] = None,

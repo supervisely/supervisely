@@ -8,6 +8,7 @@ from supervisely.imaging.color import _validate_hex_color
 
 
 class ReportThumbnail(Widget):
+    """Compact card for an evaluation report (benchmark or experiment) with link and custom icon colors."""
 
     def __init__(
         self,

@@ -33,6 +33,8 @@ from supervisely.task.progress import Progress
 
 
 class PointTracking(BaseTracking):
+    """Video tracking for point-based geometries (Point, GraphNodes); propagates keypoints across frames."""
+
     def _deserialize_geometry(self, data: dict):
         geometry_type_str = data["type"]
         geometry_json = data["data"]

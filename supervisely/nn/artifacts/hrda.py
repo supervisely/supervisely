@@ -4,6 +4,8 @@ from supervisely.nn.artifacts.artifacts import BaseTrainArtifacts
 
 
 class HRDA(BaseTrainArtifacts):
+    """Placeholder for HRDA semantic segmentation artifacts (not yet implemented)."""
+
     # not enough info to implement
 
     def __init__(self, team_id: int):

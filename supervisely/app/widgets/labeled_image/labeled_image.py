@@ -9,6 +9,8 @@ from supervisely.app.widgets import GridGallery
 
 
 class LabeledImage(GridGallery):
+    """Single-image gallery view with annotation overlay, opacity slider, and zoom for detailed inspection."""
+
     def __init__(
         self,
         annotations_opacity: float = 0.5,

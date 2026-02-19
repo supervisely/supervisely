@@ -5,6 +5,8 @@ from supervisely import is_development
 
 
 class TaskLogs(Widget):
+    """Widget that displays live logs for a Supervisely task (job) by task ID."""
+
     def __init__(
         self,
         task_id: int = None,

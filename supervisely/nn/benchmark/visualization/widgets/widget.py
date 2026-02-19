@@ -4,6 +4,8 @@ from supervisely._utils import camel_to_snake, rand_str
 
 
 class BaseWidget:
+    """Base class for benchmark report widgets (chart, table, gallery, etc.); defines save_data, to_html, click data."""
+
     def __init__(self, name: str = None, title: Optional[str] = None) -> None:
         self.type = camel_to_snake(self.__class__.__name__)
         self.id = f"{self.type}_{rand_str(5)}"

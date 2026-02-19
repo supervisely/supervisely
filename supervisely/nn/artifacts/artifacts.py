@@ -37,6 +37,8 @@ class TrainInfo(NamedTuple):
 
 
 class BaseTrainArtifacts:
+    """Abstract base for framework-specific train artifacts (checkpoints, config paths, task metadata)."""
+
     def __init__(self, team_id: int):
         """
         This is a base class and is not intended to be instantiated directly.

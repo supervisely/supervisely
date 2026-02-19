@@ -204,6 +204,8 @@ def get_class_id_to_pixel_value_map(meta: ProjectMeta) -> dict:
 
 
 class AnnotationMatcher:
+    """Maps NIfTI annotation filenames to volume items for matching masks/labels during NIfTI import."""
+
     def __init__(self, items, dataset_id):
         self._ann_paths = defaultdict(list)
         self._item_by_filename = {}

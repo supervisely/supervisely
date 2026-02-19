@@ -6,6 +6,8 @@ from supervisely.app.widgets.empty.empty import Empty
 
 
 class Grid(Widget):
+    """Layout widget that arranges child widgets in a multi-column grid with configurable gap."""
+
     def __init__(
         self,
         widgets: List[Widget],

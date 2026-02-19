@@ -53,6 +53,7 @@ class PretrainedModelsSelector(Widget):
     """
 
     class Routes:
+        """Route name constants for this widget."""
         ARCH_TYPE_CHANGED = "arch_type_changed"
         TASK_TYPE_CHANGED = "task_type_changed"
         MODEL_CHANGED = "model_changed"

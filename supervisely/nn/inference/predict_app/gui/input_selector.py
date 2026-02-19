@@ -20,6 +20,8 @@ from supervisely.project.project import ProjectType
 
 
 class InputSelector:
+    """Predict app step: select workspace, project, dataset, or items as inference input."""
+
     title = "Input data"
     description = "Select input data on which to run model for prediction"
     lock_message = None

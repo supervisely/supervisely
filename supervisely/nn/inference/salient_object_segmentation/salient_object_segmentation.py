@@ -21,6 +21,8 @@ from supervisely.sly_logger import logger
 
 
 class SalientObjectSegmentation(SemanticSegmentation):
+    """Base for salient object segmentation (foreground/background); extends SemanticSegmentation."""
+
     def get_info(self) -> dict:
         info = super().get_info()
         info["task type"] = "salient object segmentation"

@@ -7,6 +7,8 @@ from supervisely.app.widgets import Widget
 
 
 class ProjectSelector(Widget):
+    """Selector for team, workspace, project and optionally datasets; returns selected IDs from state."""
+
     # @TODO: add Routes project changes events
     # class Routes:
     #     def __init__(self,

@@ -8,6 +8,8 @@ from supervisely.nn.benchmark.visualization.widgets.widget import BaseWidget
 
 
 class TableWidget(BaseWidget):
+    """Benchmark report widget that renders a data table with optional click-to-gallery binding."""
+
     def __init__(
         self,
         name: str,

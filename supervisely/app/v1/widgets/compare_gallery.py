@@ -18,6 +18,7 @@ from supervisely.annotation.annotation import Annotation
 
 
 class CompareGallery:
+    """v1 widget for side-by-side comparison of two images with overlaid annotations."""
 
     def __init__(self, task_id, api: Api, v_model, project_meta: ProjectMeta):
         self._task_id = task_id

@@ -4,6 +4,8 @@ from typing import Optional, Union
 
 
 class IFrame(Widget):
+    """Embeds external HTML content (e.g. saved plots, dashboards) in an iframe with configurable size."""
+
     def __init__(
         self,
         path_to_html: str = "",

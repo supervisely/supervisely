@@ -346,6 +346,8 @@ class VideoTagApi(TagApi):
 
 
 class VideoObjectTagApi(TagApi):
+    """API for managing tags on annotation objects within video annotations."""
+
     _entity_id_field = ApiField.ENTITY_ID
     _method_bulk_add = "annotation-objects.tags.bulk.add"
 

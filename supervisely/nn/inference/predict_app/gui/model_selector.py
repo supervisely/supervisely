@@ -5,6 +5,8 @@ from supervisely.app.widgets import Button, Card, Container, DeployModel, Text
 
 
 class ModelSelector:
+    """Predict app step: deploy or connect to a model via DeployModel widget."""
+
     title = "Model"
     description = "Connect to deployed model or deploy new model"
     lock_message = "Select previous step to unlock"

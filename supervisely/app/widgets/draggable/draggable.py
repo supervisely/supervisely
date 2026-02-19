@@ -3,6 +3,8 @@ from supervisely.app.widgets import Widget
 
 
 class Draggable(Widget):
+    """Wrapper widget that makes its content draggable within the UI."""
+
     def __init__(self, content: Widget, key: Any = None, widget_id: str = None):
         self._content = content
         self._key = key

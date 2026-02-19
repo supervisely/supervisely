@@ -38,6 +38,7 @@ from supervisely.task.progress import Progress
 
 
 class ImportManager:
+    """Manages import of external data (archives, folders) into Supervisely projects via modality-specific converters."""
 
     def __init__(
         self,

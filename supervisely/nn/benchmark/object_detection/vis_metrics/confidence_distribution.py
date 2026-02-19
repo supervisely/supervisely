@@ -7,6 +7,8 @@ from supervisely.nn.benchmark.visualization.widgets import ChartWidget, Markdown
 
 
 class ConfidenceDistribution(DetectionVisMetric):
+    """Confidence score distribution histogram for detection reports."""
+
     MARKDOWN = "confidence_distribution"
     CHART = "confidence_distribution"
 

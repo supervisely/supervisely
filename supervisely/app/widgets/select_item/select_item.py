@@ -19,6 +19,8 @@ from supervisely.app.widgets.select_sly_utils import _get_int_or_env
 
 
 class SelectItem(Widget):
+    """Selector for picking an item (image/video) from a dataset; optionally coupled to dataset selector."""
+
     def __init__(
         self,
         dataset_id: int = None,

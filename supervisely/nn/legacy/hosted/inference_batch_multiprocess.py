@@ -96,6 +96,7 @@ def populate_inference_requests_queue(in_project, inference_processes, request_q
 
 
 class BatchInferenceMultiprocessApplier:
+    """Runs batch inference using multiple worker processes; distributes requests via queue."""
     QUEUE_ELEMENTS_PER_PROCESS = 40
 
     def __init__(self, single_image_inference_initializer, num_processes, default_inference_mode_config: dict,

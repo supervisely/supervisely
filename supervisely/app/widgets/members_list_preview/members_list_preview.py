@@ -6,6 +6,8 @@ from supervisely.api.user_api import UserInfo
 
 
 class MembersListPreview(Widget):
+    """Displays a scrollable list of team members (login, role) from UserInfo objects."""
+
     def __init__(
         self,
         users: Optional[List[UserInfo]] = [],

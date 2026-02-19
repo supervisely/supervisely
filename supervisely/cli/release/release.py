@@ -20,6 +20,8 @@ from supervisely.io.fs import dir_exists, list_files_recursively, remove_dir
 
 
 class cd:
+    """Context manager that changes current working directory and optionally adds it to sys.path."""
+
     def __init__(self, new_path=None, add_to_path=False):
         self.new_path = new_path
         self.add_to_path = add_to_path

@@ -39,6 +39,8 @@ type_to_shape_text = {
 
 
 class ClassesMapping(Widget):
+    """Widget for mapping source ObjClasses to target ObjClasses with geometry compatibility checks."""
+
     def __init__(
         self,
         classes: Optional[Union[List[ObjClass], ObjClassCollection]] = [],

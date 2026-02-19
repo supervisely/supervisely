@@ -7,6 +7,8 @@ from supervisely._utils import abs_url
 
 
 class ProjectThumbnail(Widget):
+    """Compact card for a project: thumbnail, name, item count, and link to open it."""
+
     def __init__(
         self,
         info: ProjectInfo = None,

@@ -4,6 +4,7 @@ from supervisely.nn.benchmark.visualization.widgets.widget import BaseWidget
 
 
 class NotificationWidget(BaseWidget):
+    """Benchmark report widget showing a notification banner (title + description)."""
 
     def __init__(
         self,

@@ -16,7 +16,7 @@ from tqdm import tqdm
 
 
 class UserInfo(NamedTuple):
-    """ """
+    """NamedTuple describing a user returned by the API."""
 
     id: int
     login: str

@@ -22,6 +22,8 @@ ALLOWED_VOLUME_EXTENSIONS = [".nrrd", ".dcm"]
 
 
 class UnsupportedVolumeFormat(Exception):
+    """Raised when a volume file format is not supported by Supervisely."""
+
     pass
 
 

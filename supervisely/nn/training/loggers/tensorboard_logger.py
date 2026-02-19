@@ -8,6 +8,8 @@ except ImportError:
 
 
 class TensorboardLogger(BaseTrainLogger):
+    """Train logger that writes scalars to TensorBoard via tensorboardX."""
+
     def __init__(self, log_dir=None):
         if log_dir is None:
             self.log_dir = None

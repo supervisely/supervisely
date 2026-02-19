@@ -18,6 +18,8 @@ except ImportError:
 
 
 class GridChart(Widget):
+    """Grid of line charts; displays multiple charts in columns for side-by-side comparison."""
+
     def __init__(
         self,
         data: List[Union[dict, str]] = [],

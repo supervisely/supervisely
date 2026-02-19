@@ -140,6 +140,7 @@ class Heatmap(Widget):
     """
 
     class Routes:
+        """Route name constants for this widget."""
         CLICK = "heatmap_clicked_cb"
 
     def __init__(

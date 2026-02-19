@@ -9,7 +9,7 @@ from supervisely.api.module_api import ApiField, ModuleApi, UpdateableModule
 
 
 class WorkspaceInfo(NamedTuple):
-    """ """
+    """NamedTuple describing a workspace returned by the API."""
 
     id: int
     name: str

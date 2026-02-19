@@ -9,6 +9,8 @@ from supervisely.nn.benchmark.semantic_segmentation.visualizer import (
 
 
 class SemanticSegmentationBenchmark(BaseBenchmark):
+    """Benchmark for semantic segmentation models (inference, evaluation, visualization)."""
+
     visualizer_cls = SemanticSegmentationVisualizer
 
     @property

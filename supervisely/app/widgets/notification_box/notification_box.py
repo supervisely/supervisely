@@ -20,6 +20,8 @@ BOXTYPE2ICON = {
 
 
 class NotificationBox(Widget):
+    """Alert box with title/description and type (success, info, warning, error); shows matching icon."""
+
     def __init__(
         self,
         title: str = None,

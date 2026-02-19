@@ -22,6 +22,8 @@ from supervisely.video.sampling import SamplingSettings, sample_video_project
 
 
 class Sampling(Widget):
+    """Widget for configuring and running video sampling: input/output projects, frame interval, copy annotations."""
+
     def __init__(
         self,
         project_id: int = None,

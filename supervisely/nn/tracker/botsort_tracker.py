@@ -44,6 +44,7 @@ class TrackedObject:
 
 
 class BotSortTracker(BaseTracker):
+    """BoT-SORT tracker implementation for video object tracking with ReID and camera motion compensation."""
 
     def __init__(self, settings: dict = None, device: str = None):
         super().__init__(settings=settings, device=device)

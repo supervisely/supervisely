@@ -23,6 +23,7 @@ from supervisely.project.project_settings import LabelingInterface
 
 
 class CityscapesConverter(ImageConverter):
+    """Imports Cityscapes semantic segmentation format (images + JSON annotations) into Supervisely image project."""
 
     def __init__(
             self,

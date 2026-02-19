@@ -277,6 +277,8 @@ class Annotation3D:
         return [list(obj.values())[0] for obj in self.objects.values()]
 
 class StaticTransformations:
+    """Loads and caches KITTI-360 calibration matrices (cam2velo, perspective, cam2world) for coordinate transforms."""
+
     def __init__(self, calibrations_path):
         import kitti360scripts.devkits.commons.loadCalibration as lc  # pylint: disable=import-error
 

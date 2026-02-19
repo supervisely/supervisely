@@ -28,6 +28,8 @@ from supervisely.video_annotation.video_object_collection import VideoObjectColl
 
 
 class OutOfImageBoundsException(Exception):
+    """Raised when a figure or geometry lies outside the image/video bounds."""
+
     pass
 
 

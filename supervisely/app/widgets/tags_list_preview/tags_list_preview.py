@@ -16,6 +16,8 @@ VALUE_TYPE_NAME = {
 
 
 class TagsListPreview(Widget):
+    """Scrollable preview list of tag names; read-only display for TagMetas."""
+
     def __init__(
         self,
         tag_metas: Union[List[TagMeta], TagMetaCollection] = [],

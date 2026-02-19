@@ -52,6 +52,7 @@ class DateTimePicker(Widget):
     """
 
     class Routes:
+        """Route name constants for this widget."""
         VALUE_CHANGED = "value_changed"
 
     def __init__(

@@ -13,6 +13,7 @@ from supervisely.worker_api.agent_rpc import SimpleCache
 
 
 class ModelDeploy:
+    """Legacy model deployment: loads config, creates RPC servicer and model applier for inference tasks."""
 
     config = {
         'cache_limit': 500,

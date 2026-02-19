@@ -76,6 +76,7 @@ class SelectTag(Widget):
     """
 
     class Routes:
+        """Route name constants for this widget."""
         VALUE_CHANGED = "value_changed"
         TAG_CREATED = "tag_created_cb"
 

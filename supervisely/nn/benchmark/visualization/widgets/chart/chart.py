@@ -9,6 +9,8 @@ from supervisely.nn.benchmark.visualization.widgets.widget import BaseWidget
 
 
 class ChartWidget(BaseWidget):
+    """Benchmark report widget that renders a Plotly chart with optional click-to-gallery binding."""
+
     def __init__(
         self,
         name: str,

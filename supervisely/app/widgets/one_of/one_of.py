@@ -3,6 +3,8 @@ from typing import Dict
 
 
 class OneOf(Widget):
+    """Renders exactly one of several child widgets based on conditional state (e.g. radio selection)."""
+
     def __init__(
         self,
         conditional_widget: ConditionalWidget,

@@ -16,6 +16,8 @@ from supervisely.project.project_meta import ProjectMeta
 
 
 class BaseComparisonVisualizer:
+    """Base visualizer for model comparison reports combining multiple evaluations."""
+
     vis_texts = None
     ann_opacity = None
     report_name = "Model Comparison Report.lnk"

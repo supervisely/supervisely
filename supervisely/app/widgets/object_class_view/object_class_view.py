@@ -68,6 +68,8 @@ type_to_shape_text = {
 
 
 class ObjectClassView(Widget):
+    """Displays an ObjClass as a compact card with shape icon, color, and name."""
+
     def __init__(
         self,
         obj_class: ObjClass,

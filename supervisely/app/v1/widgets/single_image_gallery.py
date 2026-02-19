@@ -13,6 +13,7 @@ from supervisely.annotation.annotation import Annotation
 
 
 class SingleImageGallery:
+    """v1 widget for displaying a single image with optional annotation overlay."""
 
     def __init__(self, task_id, api: Api, v_model, project_meta: ProjectMeta):
         self._task_id = task_id

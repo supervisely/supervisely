@@ -19,6 +19,8 @@ chart = sly.app.widgets.HeatmapChart(
 
 
 class HeatmapChart(Apexchart):
+    """Heatmap visualization for 2D data (e.g. class vs count distribution) with row/table color scaling."""
+
     def __init__(
         self,
         title: str,

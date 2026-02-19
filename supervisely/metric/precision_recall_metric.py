@@ -12,6 +12,7 @@ RAW_COUNTERS = [TRUE_POSITIVE, TOTAL_GROUND_TRUTH, TOTAL_PREDICTIONS]
 
 
 class PrecisionRecallMetric(MetricsBase):
+    """Computes precision and recall for object detection using IoU-based label matching."""
 
     def __init__(self, class_mapping, iou_threshold):
         if len(class_mapping) < 1:

@@ -15,6 +15,7 @@ from supervisely.template.extensions import (
 
 
 class TemplateRenderer:
+    """Renders markdown/templates to HTML using Jinja2 with Supervisely extensions (tabs, sidebar, etc.)."""
 
     def __init__(
         self,

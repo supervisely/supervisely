@@ -13,6 +13,8 @@ RAW_COUNTERS = [TRUE_POSITIVE, TRUE_NEGATIVE, FALSE_POSITIVE, FALSE_NEGATIVE]
 
 
 class ClassificationMetrics(MetricsBase):
+    """Computes precision, recall, and F1 for image-level classification tags."""
+
     def __init__(self, tags_mapping, confidence_threshold=0):
         if len(tags_mapping) < 1:
             raise RuntimeError('At least one tags pair should be defined!')

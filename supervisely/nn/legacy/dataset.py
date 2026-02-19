@@ -54,6 +54,8 @@ def ensure_samples_nonempty(samples, tag_name, project_meta):
 
 
 class CorruptedSampleCatcher(object):
+    """Context helper that tolerates up to N corrupted samples before raising; tracks failed UIDs."""
+
     def __init__(self, allow_corrupted_cnt):
         self.fails_allowed = allow_corrupted_cnt
         self._failed_uids = set()

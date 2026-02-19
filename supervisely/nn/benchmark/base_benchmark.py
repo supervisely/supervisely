@@ -23,6 +23,8 @@ WORKSPACE_DESCRIPTION = "Technical workspace for model benchmarking. Contains pr
 
 
 class BaseBenchmark:
+    """Base class for model benchmarking: runs inference, evaluation, and visualization on a ground-truth project."""
+
     visualizer_cls = None
     EVALUATION_DIR_NAME = "evaluation"
     SPEEDTEST_DIR_NAME = "speedtest"

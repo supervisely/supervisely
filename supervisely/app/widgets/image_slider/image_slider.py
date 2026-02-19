@@ -7,6 +7,8 @@ from supervisely import logger
 
 
 class ImageSlider(Widget):
+    """Horizontal slider of image previews with optional extra examples per item; emits selection changes."""
+
     def __init__(
         self,
         previews: List[str] = None,

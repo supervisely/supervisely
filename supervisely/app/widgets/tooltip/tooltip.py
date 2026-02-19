@@ -4,6 +4,8 @@ from supervisely.app.widgets import Widget
 
 
 class Tooltip(Widget):
+    """Wraps a child widget and shows tooltip text on hover; configurable placement, theme, delay."""
+
     def __init__(
         self,
         text: Union[str, List[str]],

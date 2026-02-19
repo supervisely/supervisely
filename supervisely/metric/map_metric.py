@@ -16,6 +16,7 @@ MatchWithConfidence = namedtuple('MatchWithConfidence', ['is_correct', 'confiden
 
 
 class MAPMetric(MetricsBase):
+    """Computes mean average precision for object detection given class mapping and IoU threshold."""
 
     def __init__(self, class_mapping, iou_threshold, confidence_tag_name='confidence', confidence_threshold=0.0):
         if len(class_mapping) < 1:

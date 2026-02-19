@@ -11,6 +11,8 @@ from supervisely.app.fastapi.offline import get_offline_session_files_path
 
 
 class ImagePairSequence(Widget):
+    """Gallery of left/right image pairs from Team Files with slider to browse pairs and sync view."""
+
     def __init__(
         self,
         opacity: Optional[float] = 0.4,

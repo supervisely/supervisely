@@ -32,6 +32,8 @@ from supervisely.nn.utils import ModelSource, RuntimeType, _get_model_name
 
 
 class ServingGUITemplate(ServingGUI):
+    """Serving GUI with experiment selector, pretrained models, external model support; extends ServingGUI."""
+
     def __init__(
         self,
         framework_name: str,

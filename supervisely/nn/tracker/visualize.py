@@ -15,6 +15,7 @@ from supervisely.nn.tracker.utils import predictions_to_video_annotation
 
 
 class TrackingVisualizer:
+    """Renders tracking results onto video: boxes, trajectories, labels, frame numbers."""
 
     def __init__(
         self,

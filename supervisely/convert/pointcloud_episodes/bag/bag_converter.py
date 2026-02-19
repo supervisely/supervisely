@@ -11,6 +11,8 @@ class BagEpisodesConverter(BagConverter, PointcloudEpisodeConverter):
     """Converter for ROS bag files containing point cloud data to use for point cloud episodes."""
 
     class Item(BagConverter.Item):
+        """Episode item: point cloud frame from bag with frame number for episode ordering."""
+
         def __init__(
             self,
             item_path,

@@ -6,6 +6,8 @@ from supervisely.app.widgets import Button, Container, Card, Text, GridGallery
 
 
 class Preview:
+    """Predict app widget: run inference on a sample item and show preview before full run."""
+
     title = "Preview"
     description = "Preview the model output"
     lock_message = None

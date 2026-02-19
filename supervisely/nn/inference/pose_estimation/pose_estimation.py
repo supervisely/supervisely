@@ -26,6 +26,8 @@ except ImportError:
 
 
 class PoseEstimation(Inference):
+    """Base class for pose estimation inference with keypoints and optional KeypointsTemplate."""
+
     def __init__(
         self,
         model_dir: Optional[str] = None,

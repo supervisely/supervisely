@@ -14,7 +14,8 @@ from supervisely.app.widgets import Widget
 
 
 class Flexbox(Widget):
-    # https://www.w3schools.com/css/css3_flexbox.asp
+    """Flexbox layout widget for arranging child widgets vertically with configurable gap and alignment."""
+
     def __init__(
         self,
         widgets: List[Widget],

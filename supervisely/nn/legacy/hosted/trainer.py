@@ -29,6 +29,8 @@ WEIGHTS_INIT_TYPE = 'weights_init_type'
 
 
 class TrainCheckpoints:
+    """Manages checkpoint directories and save calls; reports to Supervisely progress; supports best-checkpoint tracking."""
+
     def __init__(self, base_out_dir):
         self._base_out_dir = base_out_dir
         # Checkpoint index does not correspond to epoch. Depending on training config, checkpoints may be saved more

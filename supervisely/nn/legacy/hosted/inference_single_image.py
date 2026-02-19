@@ -23,6 +23,8 @@ GPU_DEVICE = 'gpu_device'
 
 
 class SingleImageInferenceBase(SingleImageInferenceInterface):
+    """Legacy base for single-image inference: loads config, model, and implements inference() and get_out_meta()."""
+
     def __init__(self, task_model_config=None, _load_model_weights=True):
         logger.info('Starting base single image inference applier init.')
         task_model_config = self._load_task_model_config() if task_model_config is None else deepcopy(task_model_config)

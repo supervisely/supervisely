@@ -4,6 +4,7 @@ from supervisely.nn.benchmark.visualization.widgets.widget import BaseWidget
 
 
 class RadioGroupWidget(BaseWidget):
+    """Benchmark report widget that groups switchable content; one key active at a time."""
 
     def __init__(
         self,

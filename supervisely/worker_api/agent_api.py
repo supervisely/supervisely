@@ -12,6 +12,8 @@ from supervisely.io.network_exceptions import process_requests_exception, proces
 
 
 class AgentAPI:
+    """Client for communicating with the Supervisely agent service (image/data downloads, logging, etc.)."""
+
     def __init__(self, token, server_address: str, ext_logger: Logger, cfg_path=None):
         self.logger = ext_logger
         self._base_server_adress = server_address

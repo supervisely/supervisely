@@ -11,6 +11,8 @@ from supervisely.api.api import Api
 
 
 class TeamFilesSelector(Widget):
+    """File/folder picker for Team Files; supports single/multiple selection and optional file type filter."""
+
     def __init__(
         self,
         team_id: int,

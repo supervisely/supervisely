@@ -37,7 +37,7 @@ COLOR = "color"
 
 
 class Node(JsonSerializable):
-    """Node is a geometry for a single :class:`~supervisely.geometry.graph.GraphNodes`. :class:`~supervisely.geometry.graph.Node` object is immutable."""
+    """Single vertex in a keypoint graph: a labeled point (row, col) used as a building block for :class:`~supervisely.geometry.graph.GraphNodes` (e.g. pose keypoints, skeleton joints)."""
 
     def __init__(
         self,
@@ -169,7 +169,7 @@ def _maybe_transform_colors(elements, process_fn):
 
 
 class GraphNodes(Geometry):
-    """GraphNodes is a geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.graph.GraphNodes` object is immutable."""
+    """Geometry representing a graph of labeled keypoints: a collection of :class:`~supervisely.geometry.graph.Node` objects for pose estimation, skeletons, or structured point sets (e.g. nose, left_eye, right_shoulder)."""
 
     items_json_field = NODES
 
@@ -712,6 +712,8 @@ class GraphNodes(Geometry):
 
 
 class KeypointsTemplate(GraphNodes, Geometry):
+    """Graph geometry for defining keypoint templates (nodes, edges, labels) used in pose estimation."""
+
     def __init__(self):
         self._config = {self.items_json_field: {}, EDGES: []}
         self._point_names = []

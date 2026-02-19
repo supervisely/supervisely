@@ -11,6 +11,8 @@ from supervisely.task.progress import Progress
 
 
 class ProgressBar:
+    """v1 widget for displaying progress (current/total, percent) in a Supervisely task."""
+
     def __init__(self, task_id, api: Api, v_model, message, total=None, is_size=False, min_report_percent=1):
         self._task_id = task_id
         self._api = api

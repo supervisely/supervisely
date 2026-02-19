@@ -12,6 +12,8 @@ from supervisely.project.project_meta import ProjectMeta
 
 
 class GalleryWidget(BaseWidget):
+    """Benchmark report widget that displays image gallery with annotations and click-to-inspect binding."""
+
     def __init__(
         self,
         name: str,

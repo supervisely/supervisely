@@ -35,6 +35,8 @@ def refresh_images_table(datapoint: sly.app.widgets.LineChart.ClickedDataPoint):
 
 
 class LineChart(Apexchart):
+    """Line chart widget (ApexCharts) with series, zoom, axis types; supports click events on data points."""
+
     def __init__(
         self,
         title: str,

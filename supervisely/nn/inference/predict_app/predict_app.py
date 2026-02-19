@@ -12,6 +12,8 @@ from supervisely.nn.model.prediction import Prediction
 
 
 class PredictApp:
+    """FastAPI-based application for running model predictions with GUI and optional serving."""
+
     def __init__(self, api: Api):
         _static_dir = "static"
         sly_fs.mkdir(_static_dir, True)

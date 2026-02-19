@@ -14,6 +14,7 @@ PROJECT_PRED = 'project_pred'
 
 
 class MetricProjectsApplier:
+    """Applies a metric across two projects (ground truth and predictions) with compatible structure."""
 
     def __init__(self, metric: MetricsBase, config: dict):
         self._metric = metric

@@ -30,6 +30,7 @@ class Dialog(Widget):
             dialog.show()
     """
     class Routes:
+        """Route name constants for this widget."""
         ON_CLOSE = "close_cb"
 
     def __init__(

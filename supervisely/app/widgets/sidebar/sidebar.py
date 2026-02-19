@@ -3,6 +3,8 @@ from supervisely.app.widgets import Widget
 
 
 class Sidebar(Widget):
+    """Collapsible sidebar layout: left panel (narrow) and main content area; supports open/close toggle."""
+
     def __init__(
         self,
         left_content: Widget,

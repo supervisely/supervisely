@@ -40,6 +40,7 @@ class TagsTable(Widget):
     """
 
     class Routes:
+        """Route name constants for this widget."""
         TAG_SELECTED = "tag_selected_cb"
 
     def __init__(

@@ -10,6 +10,7 @@ from supervisely.io.fs import JUNK_FILES, get_file_ext, get_file_name
 
 
 class PlyConverter(PointcloudConverter):
+    """Imports PLY point cloud files (converts to PCD) with optional JSON annotations and RGB images."""
 
     def __str__(self) -> str:
         return AvailablePointcloudConverters.PLY

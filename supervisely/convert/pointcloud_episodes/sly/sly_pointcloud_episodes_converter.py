@@ -13,6 +13,7 @@ from supervisely.pointcloud.pointcloud import validate_ext as validate_pcd_ext
 
 
 class SLYPointcloudEpisodesConverter(PointcloudEpisodeConverter):
+    """Imports Supervisely point cloud episode project format (PCD sequences + JSON annotations) from local folder."""
 
     def __str__(self) -> str:
         return AvailablePointcloudEpisodesConverters.SLY

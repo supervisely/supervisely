@@ -33,6 +33,7 @@ def render_labels_as_binary_mask(labels, class_title, mask):
             label.geometry.draw(mask, True)
 
 class IoUMetric(MetricsBase):
+    """Computes Intersection over Union for semantic segmentation masks per class pair."""
 
     def __init__(self, class_mapping):
         self._class_mapping = class_mapping.copy()

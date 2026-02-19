@@ -9,6 +9,8 @@ from supervisely.app.singleton import Singleton
 
 
 class WebsocketManager(metaclass=Singleton):
+    """Singleton manager for WebSocket connections, broadcasting and user cookie mapping."""
+
     def __init__(self, path="/sly-app-ws"):
         self.app = None
         self.path = path

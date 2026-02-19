@@ -12,6 +12,7 @@ from supervisely.nn.benchmark.visualization.widgets import (
 
 
 class Overview(BaseVisMetrics):
+    """Overview section with model info and key metrics table for detection comparison."""
 
     MARKDOWN_OVERVIEW = "markdown_overview"
     MARKDOWN_OVERVIEW_INFO = "markdown_overview_info"

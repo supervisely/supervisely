@@ -6,6 +6,8 @@ from supervisely.app.widgets.classes_mapping.classes_mapping import type_to_shap
 
 
 class ClassesColorMapping(Widget):
+    """Widget for mapping classes to colors with optional greyscale mode."""
+
     def __init__(self, classes=[], greyscale=False, widget_id=None):
         self._classes = classes
         self._greyscale = greyscale

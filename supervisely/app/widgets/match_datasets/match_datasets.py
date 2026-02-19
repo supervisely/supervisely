@@ -5,6 +5,8 @@ from supervisely.app.widgets import Widget
 
 
 class MatchDatasets(Widget):
+    """Widget for matching items between two dataset lists; computes statistics and reports matches."""
+
     def __init__(
         self,
         left_datasets: List[DatasetInfo] = None,

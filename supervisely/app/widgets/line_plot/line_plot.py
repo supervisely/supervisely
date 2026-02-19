@@ -6,6 +6,8 @@ NumT = Union[int, float]
 
 
 class LinePlot(Widget):
+    """Line plot with smoothing, group-key sync, legend, and configurable axis formatting."""
+
     def __init__(
         self,
         title: str,

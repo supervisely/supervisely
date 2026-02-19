@@ -53,6 +53,8 @@ class Button(Widget):
     """
 
     class Routes:
+        """Route name constants for this widget."""
+
         CLICK = "button_clicked_cb"
 
     def __init__(

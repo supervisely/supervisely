@@ -3,6 +3,8 @@ from logging import Logger
 
 
 class Tracker3DInterface:
+    """Interface for 3D tracking requests: point cloud IDs, figure IDs, frame indexes, direction."""
+
     def __init__(
         self,
         context,

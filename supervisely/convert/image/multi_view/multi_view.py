@@ -12,6 +12,7 @@ from supervisely.project.project_settings import LabelingInterface
 
 
 class MultiViewImageConverter(ImageConverter):
+    """Imports multi-view image groups (multiple images per sample) for multiview labeling interface."""
 
     def __init__(
             self,

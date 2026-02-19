@@ -5,6 +5,8 @@ from enum import Enum
 
 
 class RequestType(Enum):
+    """Types of requests handled by the live training request queue."""
+
     START = "start"
     PREDICT = "predict"
     ADD_SAMPLE = "add-sample"

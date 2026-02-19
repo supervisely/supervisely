@@ -4,6 +4,8 @@ from typing import Optional
 
 
 class Icons(Widget):
+    """Widget that displays an icon (Material Design or custom image) with optional color and background."""
+
     def __init__(
         self,
         class_name: Optional[str] = None,

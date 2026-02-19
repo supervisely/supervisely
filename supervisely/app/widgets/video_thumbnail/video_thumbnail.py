@@ -7,6 +7,8 @@ from supervisely.video.video import get_labeling_tool_url, get_labeling_tool_lin
 
 
 class VideoThumbnail(Widget):
+    """Compact card for a video: preview image, name, duration, frame count, and link to open."""
+
     def __init__(self, info: VideoInfo = None, widget_id: str = None):
         self._info: VideoInfo = None
         self._id: int = None

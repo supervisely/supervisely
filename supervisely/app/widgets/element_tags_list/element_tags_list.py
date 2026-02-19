@@ -38,6 +38,7 @@ class ElementTagsList(Widget):
     """
 
     class Routes:
+        """Route name constants for this widget."""
         CLOSE = "tag_close_cb"
 
     class Tag:

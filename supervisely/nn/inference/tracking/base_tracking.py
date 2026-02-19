@@ -66,6 +66,8 @@ def handle_validation(func):
 
 
 class BaseTracking(Inference):
+    """Base for video object tracking: propagates annotations frame-to-frame via model or heuristic."""
+
     def __init__(
         self,
         model_dir: Optional[str] = None,

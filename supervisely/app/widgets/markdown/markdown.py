@@ -9,6 +9,8 @@ except ImportError:
 
 
 class Markdown(Widget):
+    """Renders Markdown content with optional fixed height or fit-content; updatable via set_content()."""
+
     def __init__(
         self,
         content: str = "",

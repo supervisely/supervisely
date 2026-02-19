@@ -53,6 +53,7 @@ except Exception as _:
 
 # @TODO: Partly supports unreleased apps
 class ExperimentGenerator(BaseGenerator):
+    """Generates experiment scaffolds: model config, config.json, train/val datasets, hyperparams, and entrypoint."""
 
     def __init__(
         self,

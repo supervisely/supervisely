@@ -11,6 +11,8 @@ from supervisely.app.widgets_context import JinjaWidgets
 
 
 class RunAppButton(Widget):
+    """Button that launches a Supervisely app (module) in team/workspace with optional payload and visibility control."""
+
     def __init__(
         self,
         team_id: int,

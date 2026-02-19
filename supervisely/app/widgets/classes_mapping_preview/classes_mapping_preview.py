@@ -6,6 +6,8 @@ from supervisely.app.widgets import Widget
 
 
 class ClassesMappingPreview(Widget):
+    """Widget that displays a read-only preview of class-to-value mapping."""
+
     def __init__(
         self,
         classes: Optional[Union[List[ObjClass], ObjClassCollection]] = [],

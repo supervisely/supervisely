@@ -4,6 +4,8 @@ from supervisely.app.content import DataJson
 
 
 class CircleProgress(Widget):
+    """Circular progress indicator widget showing Progress status (success/exception/none)."""
+
     def __init__(self, progress: Progress, widget_id=None):
         self.progress = progress
         super().__init__(widget_id=widget_id, file_path=__file__)

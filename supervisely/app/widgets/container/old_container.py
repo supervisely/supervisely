@@ -9,6 +9,8 @@ from supervisely.app.widgets import Widget
 
 
 class Container(Widget):
+    """Layout container for arranging child widgets vertically or horizontally with gap and fractions."""
+
     def __init__(
         self,
         widgets: List[Widget] = [],

@@ -20,6 +20,8 @@ from supervisely._utils import rand_str
 
 
 class PredictionsDynamicsGallery:
+    """v1 widget for comparing ground-truth vs predictions across training iterations."""
+
     def __init__(self, task_id, api: Api, v_model: str, project_meta: ProjectMeta):
         self._task_id = task_id
         self._api = api

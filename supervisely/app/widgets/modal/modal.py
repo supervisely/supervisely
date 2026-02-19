@@ -50,6 +50,7 @@ class Modal(Widget):
     """
 
     class Routes:
+        """Route name constants for this widget."""
         ON_CLOSE = "close_cb"
         VALUE_CHANGED = "value_changed"
 

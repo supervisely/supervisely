@@ -22,6 +22,8 @@ from supervisely.nn.benchmark.visualization.widgets import (
 
 
 class SemanticSegmentationComparisonVisualizer(BaseComparisonVisualizer):
+    """Visualizer for semantic segmentation model comparison reports."""
+
     vis_texts = texts
     ann_opacity = 0.7
 

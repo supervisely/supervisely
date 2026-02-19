@@ -22,6 +22,7 @@ from supervisely.project.project_settings import LabelingInterface
 
 
 class YOLOConverter(ImageConverter):
+    """Imports YOLO format (images + .txt per image, data.yaml) into Supervisely; supports detection and pose keypoints."""
 
     def __init__(
             self,

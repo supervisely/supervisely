@@ -33,6 +33,8 @@ def on_click(datapoint: ScatterChart.ClickedDataPoint):
 
 
 class ScatterChart(Apexchart):
+    """Scatter plot chart with series of x/y points; supports zoom and click events returning point data."""
+
     def __init__(
         self,
         title: str,

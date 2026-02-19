@@ -14,6 +14,8 @@ COCO_ANN_KEYS = ["images", "annotations"]
 
 
 class COCOConverter(ImageConverter):
+    """Imports COCO detection/segmentation format (images + annotations JSON) into Supervisely image project."""
+
     def __init__(
             self,
             input_data: str,

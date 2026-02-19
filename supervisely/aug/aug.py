@@ -708,6 +708,8 @@ def scale(
 
 # Rotate
 class RotationModes:
+    """Enum-like class for rotation behavior: KEEP (pad to fit) or CROP."""
+
     KEEP = "keep"
     CROP = "crop"
 
