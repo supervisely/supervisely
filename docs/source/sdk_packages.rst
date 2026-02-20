@@ -75,20 +75,6 @@ Python wrappers to script your interactions with the Supervisely web instance. I
     ~supervisely.api.workspace_api.WorkspaceApi
 
 
-Neural Networks API
--------------------
-APIs for deploying models, running inference, and working with model metadata in Supervisely.
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    ~supervisely.api.nn.neural_network_api.NeuralNetworkApi
-    ~supervisely.api.nn.deploy_api.DeployApi
-    ~supervisely.api.nn.train_api.TrainApi
-
-
 Training
 --------
 High-level wrappers and helpers for building training applications (GUI, data prep, artifacts upload, benchmarking).
