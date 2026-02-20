@@ -49,6 +49,7 @@ def get_release_commit(tag: str):
 
 
 def get_version():
+    return "0.0.0+readthedocs"
     version = os.getenv("RELEASE_VERSION", None)
     if version is not None:
         return version
