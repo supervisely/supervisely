@@ -18,6 +18,7 @@ ENV PATH="/opt/venv/bin:$PATH"
 
 RUN pip install pip==26.0.1
 RUN pip install setuptools==78.1.1 wheel==0.46.2
+RUN pip install pip-audit==2.7.3
 
 ARG tag_ref_name
 
@@ -64,6 +65,10 @@ ENV LANG=C.UTF-8 \
 
 COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
+
+# python3 symlink
+RUN ln -sf /usr/local/bin/python3 /usr/local/bin/python \
+    && ln -sf /usr/local/bin/python3 /usr/bin/python
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
