@@ -119,8 +119,7 @@ class ConfusionMatrix(Widget):
             row_index: int,
             cell_value: Any,
         ):
-            """Initialize the ClickedDataPoint.
-
+            """
             :param column_name: Name of column
             :type column_name: str
             :param column_index: Index of column
@@ -146,8 +145,7 @@ class ConfusionMatrix(Widget):
         y_label: Optional[str] = "Actual Values",
         widget_id: Optional[str] = None,
     ):
-        """Initialize the ConfusionMatrix widget.
-
+        """
         :param data: Data of table in different formats (see usage example)
         :type data: Optional[Union[pd.DataFrame, Dict]]
         :param columns: List of column names

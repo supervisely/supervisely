@@ -62,8 +62,7 @@ class Select(ConditionalWidget):
             right_text: str = None,
             disabled: bool = False,
         ) -> Select.Item:
-            """Initialize Select.Item.
-
+            """
             :param value: Option value (any JSON-serializable).
             :param label: Display label. Defaults to str(value).
             :type label: str, optional
@@ -94,9 +93,9 @@ class Select(ConditionalWidget):
         """A labeled group of select items."""
 
         def __init__(self, label, items: List[Select.Item] = None) -> Select.Item:
-            """Initialize Select.Group.
-
+            """
             :param label: Group label.
+            :type label: str
             :param items: List of Select.Item in this group.
             :type items: List[Select.Item], optional
             """
@@ -123,9 +122,7 @@ class Select(ConditionalWidget):
         width_percent: Optional[int] = None,
         width_px: Optional[int] = None,
     ) -> Select:
-        """Initialize Select.
-
-        :param items: Flat list of Select.Item. Mutually exclusive with groups.
+        """:param items: Flat list of Select.Item. Mutually exclusive with groups.
         :type items: List[Select.Item], optional
         :param groups: List of Select.Group. Mutually exclusive with items.
         :type groups: List[Select.Group], optional
@@ -319,9 +316,7 @@ class SelectString(Select):
         items_links: List[str] = None,
         width_percent: Optional[int] = None,
     ):
-        """Initialize SelectString.
-
-        :param values: List of string values.
+        """:param values: List of string values.
         :type values: List[str]
         :param labels: Optional display labels (length must match values).
         :type labels: List[str], optional

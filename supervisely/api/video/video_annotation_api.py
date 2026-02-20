@@ -20,12 +20,11 @@ from supervisely.video_annotation.video_tag_collection import VideoTagCollection
 
 
 class VideoAnnotationAPI(EntityAnnotationAPI):
-    """API for working with VideoAnnotation."""
+    """API for working with video annotations."""
 
     def __init__(self, api):
-        """Initialize VideoAnnotationAPI.
-
-        :param api: API connection to the server.
+        """
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
         :type api: :class:`~supervisely.api.api.Api`
 
         :Usage Example:

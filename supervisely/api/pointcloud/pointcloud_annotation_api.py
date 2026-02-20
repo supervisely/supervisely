@@ -20,9 +20,8 @@ class PointcloudAnnotationAPI(EntityAnnotationAPI):
     """API for working with PointcloudAnnotation."""
 
     def __init__(self, api):
-        """Initialize PointcloudAnnotationAPI.
-
-        :param api: API connection to the server.
+        """
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
         :type api: :class:`~supervisely.api.api.Api`
 
         :Usage Example:
@@ -40,11 +39,11 @@ class PointcloudAnnotationAPI(EntityAnnotationAPI):
 
     def download(self, pointcloud_id: int) -> Dict:
         """
-        Download information about PointcloudAnnotation by point cloud ID from API.
+        Download information about PointcloudAnnotation by point cloud ID from the Supervisely instance.
 
         :param pointcloud_id: Point cloud ID in Supervisely.
         :type pointcloud_id: int
-        :returns: Information about PointcloudAnnotation in json format
+        :returns: Information about PointcloudAnnotation in JSON format
         :rtype: dict
 
         :Usage Example:

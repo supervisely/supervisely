@@ -65,9 +65,7 @@ class ObjectClassesList(Widget):
         columns: int = 1,  # 1 means vertical layout
         widget_id: str = None,
     ):
-        """Initialize ObjectClassesList.
-
-        :param object_classes: ObjClassCollection or list of ObjClass.
+        """:param object_classes: ObjClassCollection or list of ObjClass.
         :type object_classes: Union[ObjClassCollection, List[ObjClass]]
         :param selectable: If True, show checkboxes for selection.
         :type selectable: bool

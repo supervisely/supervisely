@@ -22,15 +22,25 @@ class Editor(Widget):
     ):
         """
         :param initial_text: Initial content.
+        :type initial_text: Optional[str]
         :param height_px: Height in pixels.
+        :type height_px: Optional[int]
         :param height_lines: Height in lines (overrides height_px; >=1000 shows all).
-        :param language_mode: json, html, plain_text, yaml, python.
+        :type height_lines: Optional[int]
+        :param language_mode: Language mode of the editor, one of: json, html, plain_text, yaml, python.
+        :type language_mode: Optional[Literal["json", "html", "plain_text", "yaml", "python"]]
         :param readonly: Read-only mode.
+        :type readonly: Optional[bool]
         :param show_line_numbers: Show line numbers.
+        :type show_line_numbers: Optional[bool]
         :param highlight_active_line: Highlight current line.
+        :type highlight_active_line: Optional[bool]
         :param restore_default_button: Show restore button.
+        :type restore_default_button: Optional[bool]
         :param auto_format: Auto-format JSON on init.
-        :param widget_id: Widget identifier.
+        :type auto_format: bool, optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: Optional[str]
 
         :Usage Example:
 

@@ -21,18 +21,17 @@ class DatasetThumbnail(Widget):
     ):
         """
         :param project_info: ProjectInfo for context.
+        :type project_info: Optional[ProjectInfo]
         :param dataset_info: DatasetInfo (required for thumbnail).
+        :type dataset_info: Optional[DatasetInfo]
         :param show_project_name: Show project name above thumbnail.
+        :type show_project_name: Optional[bool]
         :param remove_margins: Remove widget margins.
+        :type remove_margins: bool
         :param custom_name: Override dataset name.
-        :param widget_id: Widget identifier.
-
-        :Usage Example:
-
-            .. code-block:: python
-
-                from supervisely.app.widgets import DatasetThumbnail
-                thumb = DatasetThumbnail(project_info=proj_info, dataset_info=ds_info)
+        :type custom_name: str, optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: Optional[str]
         """
         self._project_info: ProjectInfo = None
         self._dataset_info: DatasetInfo = None

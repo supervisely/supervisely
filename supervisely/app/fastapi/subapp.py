@@ -150,25 +150,41 @@ class Event:
                 geometry_type: str,
                 mask: np.ndarray,
             ):
-                """Initialize DrawLeftMouseReleased (brush tool payload).
-
+                """
                 :param team_id: Team ID.
+                :type team_id: int
                 :param workspace_id: Workspace ID.
+                :type workspace_id: int
                 :param project_id: Project ID.
+                :type project_id: int
                 :param dataset_id: Dataset ID.
+                :type dataset_id: int
                 :param image_id: Image ID.
+                :type image_id: int
                 :param label_id: Figure/label ID.
+                :type label_id: int
                 :param object_class_id: Object class ID.
+                :type object_class_id: int
                 :param object_class_title: Object class name.
+                :type object_class_title: str
                 :param tool_class_id: Tool class ID.
+                :type tool_class_id: int
                 :param session_id: Session ID.
+                :type session_id: int
                 :param tool: Tool identifier.
+                :type tool: str
                 :param user_id: User ID.
+                :type user_id: int
                 :param job_id: Job ID.
+                :type job_id: int
                 :param is_fill: If True, fill mode.
+                :type is_fill: bool
                 :param is_erase: If True, erase mode.
+                :type is_erase: bool
                 :param geometry_type: Geometry type string.
+                :type geometry_type: str
                 :param mask: Mask as numpy array.
+                :type mask: np.ndarray
                 """
                 self.dataset_id = dataset_id
                 self.team_id = team_id
@@ -255,7 +271,32 @@ class Event:
                 user_id: int,
                 job_id: int,
             ):
-                """Initialize VideoChanged (manual selection payload)."""
+                """
+                :param dataset_id: Dataset ID.
+                :type dataset_id: int
+                :param team_id: Team ID.
+                :type team_id: int
+                :param workspace_id: Workspace ID.
+                :type workspace_id: int
+                :param project_id: Project ID.
+                :type project_id: int
+                :param figure_id: Figure ID.
+                :type figure_id: int
+                :param video_id: Video ID.
+                :type video_id: int
+                :param frame: Frame number.
+                :type frame: int
+                :param tool_class_id: Tool class ID.
+                :type tool_class_id: int
+                :param session_id: Session ID.
+                :type session_id: str
+                :param tool: Tool identifier.
+                :type tool: str
+                :param user_id: User ID.
+                :type user_id: int
+                :param job_id: Job ID.
+                :type job_id: int
+                """
                 self.dataset_id = dataset_id
                 self.team_id = team_id
                 self.workspace_id = workspace_id
@@ -310,7 +351,42 @@ class Event:
                 job_id: int,
                 previous_figure: dict = None,
             ):
-                """Initialize FigureChanged (manual selection payload)."""
+                """
+                :param dataset_id: Dataset ID.
+                :type dataset_id: int
+                :param team_id: Team ID.
+                :type team_id: int
+                :param workspace_id: Workspace ID.
+                :type workspace_id: int
+                :param project_id: Project ID.
+                :type project_id: int
+                :param figure_id: Figure ID.
+                :type figure_id: int
+                :param figure_class_id: Figure class ID.
+                :type figure_class_id: int
+                :param figure_class_title: Figure class title.
+                :type figure_class_title: str
+                :param image_id: Image ID.
+                :type image_id: int
+                :param video_id: Video ID.
+                :type video_id: int
+                :param frame: Frame number.
+                :type frame: int
+                :param object_id: Object ID.
+                :type object_id: int
+                :param tool_class_id: Tool class ID.
+                :type tool_class_id: int
+                :param session_id: Session ID.
+                :type session_id: str
+                :param tool: Tool identifier.
+                :type tool: str
+                :param user_id: User ID.
+                :type user_id: int
+                :param job_id: Job ID.
+                :type job_id: int
+                :param previous_figure: Previous figure.
+                :type previous_figure: dict
+                """
                 self.dataset_id = dataset_id
                 self.team_id = team_id
                 self.workspace_id = workspace_id
@@ -374,7 +450,34 @@ class Event:
                 user_id: int,
                 job_id: int,
             ):
-                """Initialize ImageChanged (image selection payload)."""
+                """
+                :param dataset_id: Dataset ID.
+                :type dataset_id: int
+                :param team_id: Team ID.
+                :type team_id: int
+                :param workspace_id: Workspace ID.
+                :type workspace_id: int
+                :param project_id: Project ID.
+                :type project_id: int
+                :param image_id: Image ID.
+                :type image_id: int
+                :param figure_id: Figure ID.
+                :type figure_id: int
+                :param figure_class_id: Figure class ID.
+                :type figure_class_id: int
+                :param figure_class_title: Figure class title.
+                :type figure_class_title: str
+                :param tool_class_id: Tool class ID.
+                :type tool_class_id: int
+                :param session_id: Session ID.
+                :type session_id: str
+                :param tool: Tool identifier.
+                :type tool: str
+                :param user_id: User ID.
+                :type user_id: int
+                :param job_id: Job ID.
+                :type job_id: int
+                """
                 self.dataset_id = dataset_id
                 self.team_id = team_id
                 self.workspace_id = workspace_id
@@ -432,7 +535,44 @@ class Event:
             tool_state: dict,
             figure_state: dict,
         ):
-            """Initialize FigureCreated (figure creation payload)."""
+            """
+            :param dataset_id: Dataset ID.
+            :type dataset_id: int
+            :param team_id: Team ID.
+            :type team_id: int
+            :param workspace_id: Workspace ID.
+            :type workspace_id: int
+            :param project_id: Project ID.
+            :type project_id: int
+            :param figure_id: Figure ID.
+            :type figure_id: int
+            :param figure_class_id: Figure class ID.
+            :type figure_class_id: int
+            :param figure_class_title: Figure class title.
+            :type figure_class_title: str
+            :param image_id: Image ID.
+            :type image_id: int
+            :param video_id: Video ID.
+            :type video_id: int
+            :param frame: Frame number.
+            :type frame: int
+            :param object_id: Object ID.
+            :type object_id: int
+            :param tool_class_id: Tool class ID.
+            :type tool_class_id: int
+            :param session_id: Session ID.
+            :type session_id: str
+            :param tool: Tool identifier.
+            :type tool: str
+            :param user_id: User ID.
+            :type user_id: int
+            :param job_id: Job ID.
+            :type job_id: int
+            :param tool_state: Tool state.
+            :type tool_state: dict
+            :param figure_state: Figure state.
+            :type figure_state: dict
+            """
             self.dataset_id = dataset_id
             self.team_id = team_id
             self.workspace_id = workspace_id
@@ -503,7 +643,38 @@ class Event:
                     tool_state: dict,
                     figure_state: dict,
                 ):
-                    """Initialize FigureChanged (rectangle tool payload)."""
+                    """
+                    :param dataset_id: Dataset ID.
+                    :type dataset_id: int
+                    :param team_id: Team ID.
+                    :type team_id: int
+                    :param workspace_id: Workspace ID.
+                    :type workspace_id: int
+                    :param project_id: Project ID.
+                    :type project_id: int
+                    :param figure_id: Figure ID.
+                    :type figure_id: int
+                    :param figure_class_id: Figure class ID.
+                    :type figure_class_id: int
+                    :param figure_class_title: Figure class title.
+                    :type figure_class_title: str
+                    :param image_id: Image ID.
+                    :type image_id: int
+                    :param tool_class_id: Tool class ID.
+                    :type tool_class_id: int
+                    :param session_id: Session ID.
+                    :type session_id: str
+                    :param tool: Tool identifier.
+                    :type tool: str
+                    :param user_id: User ID.
+                    :type user_id: int
+                    :param job_id: Job ID.
+                    :type job_id: int
+                    :param tool_state: Tool state.
+                    :type tool_state: dict
+                    :param figure_state: Figure state.
+                    :type figure_state: dict
+                    """
                     self.dataset_id = dataset_id
                     self.team_id = team_id
                     self.workspace_id = workspace_id
@@ -565,7 +736,38 @@ class Event:
                 user_id: int,
                 job_id: int,
             ):
-                """Initialize FrameChanged (entity frame payload)."""
+                """
+                :param dataset_id: Dataset ID.
+                :type dataset_id: int
+                :param team_id: Team ID.
+                :type team_id: int
+                :param workspace_id: Workspace ID.
+                :type workspace_id: int
+                :param project_id: Project ID.
+                :type project_id: int
+                :param figure_id: Figure ID.
+                :type figure_id: int
+                :param figure_class_id: Figure class ID.
+                :type figure_class_id: int
+                :param figure_class_title: Figure class title.
+                :type figure_class_title: str
+                :param video_id: Video ID.
+                :type video_id: int
+                :param frame: Frame number.
+                :type frame: int
+                :param object_id: Object ID.
+                :type object_id: int
+                :param tool_class_id: Tool class ID.
+                :type tool_class_id: int
+                :param session_id: Session ID.
+                :type session_id: str
+                :param tool: Tool identifier.
+                :type tool: str
+                :param user_id: User ID.
+                :type user_id: int
+                :param job_id: Job ID.
+                :type job_id: int
+                """
                 self.dataset_id = dataset_id
                 self.team_id = team_id
                 self.workspace_id = workspace_id
@@ -627,7 +829,38 @@ class Event:
                 job_id: int,
                 job_entity_status: str,
             ):
-                """Initialize StatusChanged (job entity status payload)."""
+                """
+                :param dataset_id: Dataset ID.
+                :type dataset_id: int
+                :param team_id: Team ID.
+                :type team_id: int
+                :param workspace_id: Workspace ID.
+                :type workspace_id: int
+                :param project_id: Project ID.
+                :type project_id: int
+                :param figure_id: Figure ID.
+                :type figure_id: int
+                :param figure_class_id: Figure class ID.
+                :type figure_class_id: int
+                :param figure_class_title: Figure class title.
+                :type figure_class_title: str
+                :param image_id: Image ID.
+                :type image_id: int
+                :param entity_id: Entity ID.
+                :type entity_id: int
+                :param tool_class_id: Tool class ID.
+                :type tool_class_id: int
+                :param session_id: Session ID.
+                :type session_id: str
+                :param tool: Tool identifier.
+                :type tool: str
+                :param user_id: User ID.
+                :type user_id: int
+                :param job_id: Job ID.
+                :type job_id: int
+                :param job_entity_status: Job entity status.
+                :type job_entity_status: str
+                """
                 self.dataset_id = dataset_id
                 self.team_id = team_id
                 self.workspace_id = workspace_id
@@ -1025,8 +1258,7 @@ class Application(metaclass=Singleton):
         hide_health_check_logs: bool = True,  # whether to hide health check logs in info level
         health_check_endpoints: Optional[List[str]] = None,  # endpoints to check health of the app
     ):
-        """Initialize the Supervisely Application.
-
+        """
         :param layout: Main layout of the application.
         :type layout: :class:`~supervisely.app.widgets.widget.Widget`
         :param templates_dir: Directory with Jinja2 templates. It is preferred to use `layout` instead of `templates_dir`.
@@ -1287,9 +1519,9 @@ class Application(metaclass=Singleton):
             """Hide health check requests from access logs in non-debug mode."""
 
             def __init__(self, app_instance):
-                """Initialize HealthCheckFilter.
-
+                """
                 :param app_instance: Application instance for debug/endpoints check.
+                :type app_instance: :class:`~supervisely.app.fastapi.subapp.Application`
                 """
                 super().__init__()
                 self.app: Application = app_instance

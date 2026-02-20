@@ -14,9 +14,7 @@ class RandomSplitsTable(Widget):
         disabled: Optional[bool] = False,
         widget_id: Optional[int] = None,
     ):
-        """Initialize RandomSplitsTable.
-
-        :param items_count: Total number of items.
+        """:param items_count: Total number of items.
         :type items_count: int
         :param start_train_percent: Initial train split percent (1-99).
         :type start_train_percent: int, optional

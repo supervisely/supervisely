@@ -15,13 +15,12 @@ class FileStorageUpload(Widget):
         change_name_if_conflict: Optional[bool] = False,
         widget_id: str = None,
     ):
-        """Initialize FileStorageUpload.
-
+        """
         :param team_id: Team ID for upload destination.
         :type team_id: int
-        :param path: Initial path in Team Files.
+        :param path: Initial path in Team Files. Defaults to current directory.
         :type path: str
-        :param change_name_if_conflict: If True, auto-rename on conflict.
+        :param change_name_if_conflict: If True, auto-rename on conflict. Defaults to False.
         :type change_name_if_conflict: bool, optional
         :param widget_id: Unique widget identifier.
         :type widget_id: str, optional

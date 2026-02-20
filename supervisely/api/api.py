@@ -92,7 +92,12 @@ SUPERVISELY_ENV_FILE = os.path.join(Path.home(), "supervisely.env")
 
 
 class ApiContext:
-    """Context manager for the API object for optimization purposes."""
+    """
+    Context manager for the API object for optimization purposes.
+
+    Use this context manager when you need to perform a series of operations on the same project or dataset.
+    It allows you to avoid redundant API calls to get the same project or dataset info multiple times.
+    """
 
     def __init__(
         self,
@@ -103,10 +108,6 @@ class ApiContext:
         with_alpha_masks: Optional[bool] = True,
     ):
         """
-        Context manager for the API object for optimization purposes.
-        Use this context manager when you need to perform a series of operations on the same project or dataset.
-        It allows you to avoid redundant API calls to get the same project or dataset info multiple times.
-
         :param api: API object.
         :type api: :class:`~supervisely.api.api.Api`
         :param project_id: Project ID.
@@ -171,9 +172,9 @@ class UserSession:
 
     def __init__(self, server_address: str):
         """
-        :param server_address: Server url.
+        :param server_address: Server address.
         :type server_address: str
-        :raises RuntimeError: if server url is invalid.
+        :raises RuntimeError: if server address is invalid.
         """
         self.api_token = None
         self.team_id = None
@@ -191,9 +192,9 @@ class UserSession:
 
     def _normalize_and_validate_server_url(self) -> bool:
         """
-        Validate server url.
+        Validate server address.
 
-        :returns: True if server url is valid, False otherwise.
+        :returns: True if server address is valid, False otherwise.
         """
         self.server_address = Api.normalize_server_address(self.server_address)
         if not self.server_address.startswith("https://"):
@@ -259,7 +260,9 @@ class UserSession:
 
 
 class Api:
-    """Main Supervisely API client (aggregates sub-APIs and handles auth, retries and common configuration)."""
+    """
+    Main Supervisely API client (aggregates sub-APIs and handles auth, retries and common configuration).
+    """
 
     _checked_servers = set()
 
@@ -275,8 +278,6 @@ class Api:
         check_instance_version: Union[bool, str] = False,
     ):
         """
-        An API connection to the server with which you can communicate with your teams, workspaces and projects. :class:`~supervisely.api.api.Api` object is immutable.
-
         :param server_address: Address of the server.
         :type server_address: str
         :param token: Unique secret token associated with your agent.

@@ -62,8 +62,7 @@ class Import(Application):
             progress: SlyTqdm,
             is_on_agent: bool = False,
         ):
-            """Initialize Import.Context.
-
+            """
             :param team_id: Team ID.
             :type team_id: int
             :param workspace_id: Workspace ID.
@@ -170,8 +169,7 @@ class Import(Application):
         ] = None,
         allowed_data_type: Literal["folder", "file"] = None,
     ):
-        """Initialize Import (import template app).
-
+        """
         :param allowed_project_types: Project types to allow (max 5). Defaults to all.
         :type allowed_project_types: List[ProjectType], optional
         :param allowed_destination_options: Destination options (max 3). Defaults to all.

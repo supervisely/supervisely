@@ -31,26 +31,15 @@ class ImageRegionSelector(Widget):
         widget_width: str = "100%",
         widget_height: str = "100%",
     ):
-        """Initialize ImageRegionSelector.
-
+        """
         :param image_info: Image to select region in.
-        :type image_info: sly.ImageInfo, optional
+        :type image_info: :class:`~supervisely.api.image_info.ImageInfo`, optional
         :param mask: Optional mask overlay.
-        :type mask: sly.Bitmap, optional
-        :param mask_opacity: Mask opacity (0–100).
+        :type mask: :class:`~supervisely.api.bitmap.Bitmap`, optional
+        :param mask_opacity: Mask opacity (0-100).
         :type mask_opacity: int
         :param bbox: Initial bounding box [x, y, w, h].
         :type bbox: List[int], optional
-        :param points_disabled: If True, disable positive/negative points.
-        :type points_disabled: bool
-        :param widget_id: Unique widget identifier.
-        :type widget_id: str, optional
-        :param disabled: If True, disable the widget.
-        :type disabled: bool
-        :param widget_width: CSS width.
-        :type widget_width: str
-        :param widget_height: CSS height.
-        :type widget_height: str
         """
         self._image_info = None
         self._image_link = None
@@ -77,10 +66,10 @@ class ImageRegionSelector(Widget):
         super().__init__(widget_id=widget_id, file_path=__file__)
         if image_info is not None:
             self.image_update(image_info)
-        
+
         if mask is not None:
             self.set_mask(mask)
-        
+
         if bbox is not None:
             self.set_bbox(bbox)
 
@@ -115,7 +104,7 @@ class ImageRegionSelector(Widget):
 
         StateJson()[self.widget_id].update(self.get_json_state())
         StateJson().send_changes()
-    
+
     def set_image(self, image_info: sly.ImageInfo):
         self._image_info = image_info
         self._image_link = image_info.preview_url
@@ -127,14 +116,14 @@ class ImageRegionSelector(Widget):
         self._image_width = image_info.width
         self._image_height = image_info.height
         self._dataset_id = image_info.dataset_id
-        
+
         padding_pix = int(max([image_info.width, image_info.height]) * 0.1)
         self._original_bbox = [
             [padding_pix, padding_pix],
             [image_info.width - padding_pix, image_info.height - padding_pix],
         ]
         self._scaled_bbox = self._original_bbox
-        
+
         StateJson()[self.widget_id].update(self.get_json_state())
         StateJson().send_changes()
 
@@ -189,7 +178,7 @@ class ImageRegionSelector(Widget):
             func(res)
 
         return _click
-    
+
     def positive_points_changed(self, func, page_path=""):
         route_path = page_path + self.get_route_path(ImageRegionSelector.Routes.POSITIVE_CHANGED)
         server = self._sly_app.get_server()
@@ -201,7 +190,7 @@ class ImageRegionSelector(Widget):
             func(points)
 
         return _click
-    
+
     def negative_points_changed(self, func, page_path=""):
         route_path = page_path + self.get_route_path(ImageRegionSelector.Routes.NEGATIVE_CHANGED)
         server = self._sly_app.get_server()
@@ -324,7 +313,7 @@ class ImageRegionSelector(Widget):
             reshaped_contours.append(reshaped_contour.tolist())
 
         return reshaped_contours
-    
+
     def get_positive_points(self):
         return StateJson()[self.widget_id]["positivePoints"]
 

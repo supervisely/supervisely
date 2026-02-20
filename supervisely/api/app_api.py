@@ -523,9 +523,8 @@ class AppApi(TaskApi):
         }
 
         def __init__(self, api):
-            """Initialize Workflow.
-
-            :param api: Supervisely API object
+            """
+            :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
             :type api: :class:`~supervisely.api.api.Api`
             """
             self._api = api
@@ -1170,9 +1169,8 @@ class AppApi(TaskApi):
         # pylint: enable=redundant-keyword-arg
 
     def __init__(self, api):
-        """Initialize AppApi.
-
-        :param api: API connection to the server.
+        """
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
         :type api: :class:`~supervisely.api.api.Api`
         """
         super().__init__(api)
@@ -1180,7 +1178,7 @@ class AppApi(TaskApi):
 
     @staticmethod
     def info_sequence():
-        """info_sequence"""
+        """Sequence of fields that are returned by the API to represent AppInfo."""
         return [
             ApiField.ID,
             ApiField.CREATED_BY_ID,
@@ -1198,18 +1196,22 @@ class AppApi(TaskApi):
 
     @staticmethod
     def info_tuple_name():
-        """info_tuple_name"""
+        """Name of the tuple that represents AppInfo."""
         return "AppInfo"
 
     def _convert_json_info(self, info: dict, skip_missing=True) -> AppInfo:
-        """_convert_json_info"""
+        """Convert JSON info to AppInfo."""
         res = super(TaskApi, self)._convert_json_info(info, skip_missing=skip_missing)
         return AppInfo(**res._asdict())
 
     def get_info_by_id(self, id: int) -> AppInfo:
         """
-        :param id: int
-        :returns: application info by numeric id
+        Get application info by numeric ID.
+
+        :param id: Application ID.
+        :type id: int
+        :returns: Application info by numeric ID.
+        :rtype: :class:`~supervisely.api.app_api.AppInfo`
         """
         return self._get_info_by_id(id, "apps.info")
 
@@ -1229,15 +1231,15 @@ class AppApi(TaskApi):
         """
         Get list of applications for the specified team.
 
-        :param team_id: team id
+        :param team_id: Team ID.
         :type team_id: int
-        :param filter: list of filters
+        :param filter: List of filters.
         :type filter: Optional[List[dict]]
-        :param context: list of application contexts
+        :param context: List of application contexts.
         :type context: Optional[List[str]]
-        :param repository_key: repository key
+        :param repository_key: Repository key.
         :type repository_key: Optional[str]
-        :param show_disabled: show disabled applications
+        :param show_disabled: Show disabled applications.
         :type show_disabled: bool
         :param integrated_into: Destination(s) of the application. Available values:
 

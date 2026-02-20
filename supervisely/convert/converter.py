@@ -48,9 +48,7 @@ class ImportManager:
         labeling_interface: LabelingInterface = LabelingInterface.DEFAULT,
         upload_as_links: bool = False,
     ):
-        """Initialize ImportManager.
-
-        :param input_data: Path(s) to input data (archives or directories).
+        """:param input_data: Path(s) to input data (archives or directories).
         :type input_data: Union[str, List[str]]
         :param project_type: Project modality (IMAGES, VIDEOS, etc.).
         :type project_type: ProjectType

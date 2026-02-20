@@ -153,9 +153,8 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         return "DatasetInfo"
 
     def __init__(self, api):
-        """Initialize DatasetApi.
-
-        :param api: API connection to the server.
+        """
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
         :type api: :class:`~supervisely.api.api.Api`
 
         :Usage Example:

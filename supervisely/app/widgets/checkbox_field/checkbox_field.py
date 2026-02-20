@@ -22,9 +22,13 @@ class CheckboxField(Widget):
     ):
         """
         :param title: Checkbox title.
+        :type title: str
         :param description: Checkbox description.
+        :type description: str
         :param checked: Initial checked state.
-        :param widget_id: Widget identifier.
+        :type checked: bool, optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
 
         :Usage Example:
 

@@ -54,8 +54,7 @@ class LineChart(Apexchart):
         decimalsInFloat: int = 2,
         data_type: Literal["dict", "tuple"] = "dict",
     ):
-        """Initialize LineChart.
-
+        """
         :param title: Chart title.
         :type title: str
         :param series: List of series, each with "name" and "data".

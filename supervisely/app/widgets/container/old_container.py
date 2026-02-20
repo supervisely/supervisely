@@ -19,8 +19,7 @@ class Container(Widget):
         fractions: List[int] = None,
         widget_id: str = None,
     ):
-        """Initialize Container (legacy).
-
+        """
         :param widgets: List of child widgets.
         :type widgets: List[Widget]
         :param direction: "vertical" or "horizontal".

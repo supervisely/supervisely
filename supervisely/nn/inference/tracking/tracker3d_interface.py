@@ -10,7 +10,7 @@ class Tracker3DInterface:
         context,
         api,
     ):
-        """Initialize Tracker3DInterface. :param context: Dict with frameIndex, frames. :param api: Supervisely API."""
+        """:param context: Dict with frameIndex, frames. :param api: Supervisely API."""
         self.api: sly.Api = api
         self.logger: Logger = api.logger
         self.frame_index = context["frameIndex"]

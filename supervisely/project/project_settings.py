@@ -98,9 +98,7 @@ class ProjectSettings(JsonSerializable):
         multiview_is_synced: bool = False,
         labeling_interface: Optional[LabelingInterface] = None,
     ):
-        """Initialize ProjectSettings.
-
-        :param multiview_enabled: Enable multi-view mode.
+        """:param multiview_enabled: Enable multi-view mode.
         :type multiview_enabled: bool
         :param multiview_tag_name: Name of the tag used as group tag for multi-window mode.
         :type multiview_tag_name: str, optional

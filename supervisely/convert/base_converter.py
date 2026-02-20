@@ -104,9 +104,7 @@ class BaseConverter:
             shape: Union[Tuple, List] = None,
             custom_data: Optional[dict] = None,
         ):
-            """Initialize BaseItem.
-
-            :param item_path: Path to the item file.
+            """:param item_path: Path to the item file.
             :type item_path: str
             :param ann_data: Raw annotation (path, dict, or JSON string).
             :type ann_data: Union[str, dict], optional
@@ -191,9 +189,7 @@ class BaseConverter:
         upload_as_links: bool = False,
         remote_files_map: Optional[Dict[str, str]] = None,
     ):
-        """Initialize BaseConverter.
-
-        :param input_data: Path to input directory or archive.
+        """:param input_data: Path to input directory or archive.
         :type input_data: str
         :param labeling_interface: Labeling interface preset.
         :type labeling_interface: LabelingInterface, optional

@@ -39,8 +39,7 @@ class InputTag(Widget):
         hide_switch: bool = False,
         widget_id: int = None,
     ):
-        """Initialize the InputTag widget.
-
+        """
         :param tag_meta: Tag metadata
         :type tag_meta: :class:`~supervisely.annotation.tag_meta.TagMeta`
         :param max_width: Maximum width of the widget in pixels, defaults to 300

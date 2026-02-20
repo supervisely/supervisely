@@ -15,7 +15,7 @@ class Carousel(Widget):
     """Cycles through a series of images or text in limited space."""
 
     class Routes:
-        """Route name constants for this widget."""
+        """Callback route names used by the widget frontend to notify Python."""
         VALUE_CHANGED = "value_changed"
 
     class Item:

@@ -156,7 +156,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
     @staticmethod
     def info_sequence():
         """
-        NamedTuple ProjectInfo with API Fields containing information about Project.
+        Sequence of fields that are returned by the API to represent ProjectInfo.
 
         :Usage Example:
 
@@ -253,14 +253,13 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
     @staticmethod
     def info_tuple_name():
         """
-        NamedTuple name - **ProjectInfo**.
+        Name of the tuple that represents ProjectInfo.
         """
         return "ProjectInfo"
 
     def __init__(self, api):
-        """Initialize ProjectApi.
-
-        :param api: API connection to the server.
+        """
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
         :type api: :class:`~supervisely.api.api.Api`
         """
         from supervisely.project.data_version import DataVersion
@@ -277,7 +276,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         team_id: Optional[int] = None,
     ) -> List[ProjectInfo]:
         """
-        List of Projects in the given Workspace.
+        List of Projects in the given Workspace (without version info).
 
         *NOTE*: Version information is not available while getting list of projects.
         If you need version information, use :func:`get_info_by_id`.

@@ -35,7 +35,14 @@ class InteractiveSegmentation(Inference):
         """Single user click point (x/y) with positive/negative flag."""
 
         def __init__(self, x, y, is_positive):
-            """Initialize Click. :param x: X coordinate. :param y: Y coordinate. :param is_positive: True for foreground."""
+            """
+            :param x: X coordinate.
+            :type x: int
+            :param y: Y coordinate.
+            :type y: int
+            :param is_positive: True for foreground.
+            :type is_positive: bool
+            """
             self.x = x
             self.y = y
             self.is_positive = is_positive

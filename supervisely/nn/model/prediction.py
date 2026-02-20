@@ -39,7 +39,14 @@ from supervisely.video.video import VideoFrameReader
 
 
 class Prediction:
-    """A single prediction result."""
+    """
+    A single prediction result.
+
+    The prediction is primarily represented by ``annotation_json`` (Supervisely annotation format).
+    If you provide ``model_meta`` (a :class:`~supervisely.project.project_meta.ProjectMeta` or its JSON),
+    you can access the parsed :class:`~supervisely.annotation.annotation.Annotation` via
+    :attr:`~supervisely.nn.model.prediction.Prediction.annotation`.
+    """
     _temp_dir = os.path.join(tempfile.gettempdir(), "prediction_files")
     __cleanup_registered = False
 
@@ -60,13 +67,6 @@ class Prediction:
         **kwargs,
     ):
         """
-        A single prediction result.
-
-        The prediction is primarily represented by ``annotation_json`` (Supervisely annotation format).
-        If you provide ``model_meta`` (a :class:`~supervisely.project.project_meta.ProjectMeta` or its JSON),
-        you can access the parsed :class:`~supervisely.annotation.annotation.Annotation` via
-        :attr:`~supervisely.nn.model.prediction.Prediction.annotation`.
-
         :param annotation_json: Prediction in Supervisely annotation JSON format.
         :type annotation_json: dict or :class:`~supervisely.annotation.annotation.Annotation`
         :param source: Optional source descriptor (path, id, etc.), used as a hint for loading/visualization.

@@ -19,13 +19,21 @@ class Container(Widget):
     ):
         """
         :param widgets: List of child widgets.
+        :type widgets: Optional[List[Widget]]
         :param direction: "vertical" or "horizontal".
+        :type direction: Optional[Literal["vertical", "horizontal"]]
         :param gap: Gap between widgets (px).
+        :type gap: Optional[int]
         :param fractions: Width fractions for horizontal layout.
+        :type fractions: Optional[List[int]]
         :param overflow: "scroll" or "wrap".
+        :type overflow: Optional[Literal["scroll", "wrap"]]
         :param style: CSS for container.
+        :type style: Optional[str]
         :param widget_id: Widget identifier.
+        :type widget_id: Optional[str]
         :param widgets_style: CSS for child widgets.
+        :type widgets_style: Optional[str]
 
         :Usage Example:
 

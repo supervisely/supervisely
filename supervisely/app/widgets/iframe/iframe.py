@@ -13,8 +13,7 @@ class IFrame(Widget):
         width: Optional[Union[int, str]] = None,
         widget_id: str = None,
     ):
-        """Initialize IFrame.
-
+        """
         :param path_to_html: Path or URL to HTML content.
         :type path_to_html: str
         :param height: Height in pixels or CSS value (e.g., "300px", "100%").

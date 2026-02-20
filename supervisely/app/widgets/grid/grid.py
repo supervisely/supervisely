@@ -15,10 +15,9 @@ class Grid(Widget):
         gap: int = 10,
         widget_id: str = None,
     ):
-        """Initialize Grid.
-
+        """
         :param widgets: List of child widgets.
-        :type widgets: List[Widget]
+        :type widgets: List[:class:`~supervisely.app.widgets.widget.Widget`]
         :param columns: Number of columns in the grid.
         :type columns: int
         :param gap: Gap between widgets in pixels.

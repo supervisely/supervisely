@@ -47,9 +47,7 @@ class TrainValSplits(Widget):
         widget_id: Optional[int] = None,
         collections_splits: Optional[bool] = False,
     ):
-        """Initialize TrainValSplits.
-
-        :param project_id: Project ID (or use project_fs).
+        """:param project_id: Project ID (or use project_fs).
         :type project_id: int, optional
         :param project_fs: Local project instance instead of project_id.
         :type project_fs: Union[Project, VideoProject, ...], optional

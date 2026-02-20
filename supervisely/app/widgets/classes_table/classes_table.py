@@ -32,7 +32,7 @@ class ClassesTable(Widget):
     """Table displaying object classes from a project."""
 
     class Routes:
-        """Route name constants for this widget."""
+        """Callback route names used by the widget frontend to notify Python."""
         CLASS_SELECTED = "class_selected_cb"
 
     def __init__(
@@ -48,13 +48,21 @@ class ClassesTable(Widget):
     ):
         """
         :param project_meta: ProjectMeta with classes.
+        :type project_meta: sly.ProjectMeta, optional
         :param project_id: Project ID (load meta from server).
+        :type project_id: int, optional
         :param project_fs: Local Project path.
+        :type project_fs: sly.Project, optional
         :param allowed_types: Filter by geometry types.
+        :type allowed_types: List[Geometry], optional
         :param selectable: Enable row selection.
+        :type selectable: bool, optional
         :param disabled: Disable all rows.
+        :type disabled: bool, optional
         :param dataset_ids: Filter by dataset IDs.
-        :param widget_id: Widget identifier.
+        :type dataset_ids: List[int], optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
         :raises ValueError: If both project_id and project_fs provided.
 
         :Usage Example:

@@ -22,9 +22,7 @@ class Timeline(Widget):
         tooltip_content: Optional[Widget] = None,
         widget_id: str = None,
     ):
-        """Initialize Timeline.
-
-        :param frames_count: Total number of frames.
+        """:param frames_count: Total number of frames.
         :type frames_count: int
         :param intervals: List of [start, end] frame intervals.
         :type intervals: List[List[int]]

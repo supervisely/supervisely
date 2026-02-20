@@ -56,7 +56,7 @@ intersphinx_mapping = {
 }
 
 autosummary_generate = True
-autoclass_content = "class"
+autoclass_content = "both"
 autodoc_inherit_docstrings = False
 add_module_names = False
 autodoc_member_order = "groupwise"
@@ -125,22 +125,17 @@ html_logo = "_static/images/sly-top-logo-white.png"
 html_theme_options = {
     "icon": {
         "repo": "fontawesome/brands/github",
-        "edit": "material/file-edit-outline",
         "view": "material/file-eye-outline",
     },
     # NOTE: Set to the actual published docs root if you want sitemap.xml.
     "site_url": "https://supervisely.com/",
     "repo_url": "https://github.com/supervisely/supervisely",
     "repo_name": "Supervisely",
-    # Enables the "Edit this page" / "View source" actions.
-    # Path is concatenated with repo_url and the current page source path.
-    "edit_uri": "blob/master/docs/source/",
     "globaltoc_collapse": True,
     "features": [
         # Content UX
         "content.code.copy",
         "content.tooltips",
-        "content.action.edit",
         "content.action.view",
         # Navigation UX
         "navigation.sections",
@@ -188,8 +183,6 @@ html_theme_options = {
     "toc_title_is_page_title": True,
 }
 
-# Make large API pages less noisy: hide "Parameters/Returns/Raises" headings from TOC.
-# Also generate short synopses used in search results and tooltips.
 object_description_options = [
-    ("py:.*", dict(include_fields_in_toc=False, generate_synopses="first_sentence")),
+    ("py:.*", dict(generate_synopses="first_sentence")),
 ]

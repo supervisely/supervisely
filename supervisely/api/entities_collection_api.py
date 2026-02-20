@@ -173,30 +173,12 @@ class EntitiesCollectionInfo(NamedTuple):
 class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
     """
     API for working with entities collections.
-    :class:`~supervisely.api.entities_collection_api.EntitiesCollectionApi` object is immutable.
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import os
-            from dotenv import load_dotenv
-
-            import supervisely as sly
-
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            if sly.is_development():
-                load_dotenv(os.path.expanduser("~/supervisely.env"))
-
-            api = sly.Api.from_env()
-            collection = api.entities_collection.get_list(9)
     """
 
     @staticmethod
     def info_sequence():
         """
-        NamedTuple EntitiesCollectionInfo information about Entities Collection.
+        Sequence of fields that are returned by the API to represent EntitiesCollectionInfo.
 
         :Usage Example:
 
@@ -228,7 +210,7 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
     @staticmethod
     def info_tuple_name():
         """
-        Get string name of :class:`~supervisely.api.entities_collection_api.EntitiesCollectionInfo` NamedTuple.
+        Name of the tuple that represents EntitiesCollectionInfo.
 
         :returns: NamedTuple name.
         :rtype: str
@@ -236,9 +218,8 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
         return "EntitiesCollectionInfo"
 
     def __init__(self, api: Api):
-        """Initialize EntitiesCollectionApi.
-
-        :param api: API connection to the server.
+        """
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
         :type api: :class:`~supervisely.api.api.Api`
         """
         ModuleApi.__init__(self, api)
@@ -246,8 +227,14 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
 
     def _convert_json_info(self, info: dict, skip_missing=True) -> EntitiesCollectionInfo:
         """
-        Differs from the original method by using skip_missing equal to True by default.
-        Also unpacks 'meta' field to top level for fields in info_sequence.
+        Convert JSON info to EntitiesCollectionInfo.
+
+        :param info: JSON info to convert.
+        :type info: dict
+        :param skip_missing: If True, missing fields will be skipped. Defaults to True.
+        :type skip_missing: bool
+        :returns: EntitiesCollectionInfo object.
+        :rtype: :class:`~supervisely.api.entities_collection_api.EntitiesCollectionInfo`
         """
 
         def _get_value(dict, field_name, skip_missing):

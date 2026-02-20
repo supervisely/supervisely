@@ -29,15 +29,25 @@ class DateTimePicker(Widget):
     ):
         """
         :param value: Initial value (datetime, str, or timestamp).
+        :type value: Optional[Union[int, str, list, tuple]]
         :param readonly: Read-only mode.
+        :type readonly: Optional[bool]
         :param disabled: Disabled state.
+        :type disabled: Optional[bool]
         :param editable: Allow manual edit.
+        :type editable: Optional[bool]
         :param clearable: Allow clearing.
+        :type clearable: Optional[bool]
         :param size: large, small, or mini.
+        :type size: Optional[Literal["large", "small", "mini"]]
         :param placeholder: Placeholder text.
+        :type placeholder: Optional[str]
         :param w_type: year, month, date, datetime, week, datetimerange, daterange.
+        :type w_type: Optional[Literal["year", "month", "date", "datetime", "week", "datetimerange", "daterange"]]
         :param format: Date format string.
-        :param widget_id: Widget identifier.
+        :type format: Optional[Literal["yyyy", "MM", "dd", "HH", "mm", "ss"]]
+        :param widget_id: Unique widget identifier.
+        :type widget_id: Optional[str]
 
         :Usage Example:
 

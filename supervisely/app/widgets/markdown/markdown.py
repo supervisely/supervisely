@@ -18,8 +18,7 @@ class Markdown(Widget):
         widget_id: str = None,
         show_border: bool = True,
     ):
-        """Initialize Markdown.
-
+        """
         :param content: Markdown content string.
         :type content: str
         :param height: Height in pixels or "fit-content".

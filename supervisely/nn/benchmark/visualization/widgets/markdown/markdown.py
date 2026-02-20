@@ -13,9 +13,7 @@ class MarkdownWidget(BaseWidget):
         title: str,
         text: str = None,
     ) -> None:
-        """Initialize MarkdownWidget.
-
-        :param name: Widget name.
+        """:param name: Widget name.
         :param title: Display title.
         :param text: Markdown content.
         """

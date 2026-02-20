@@ -19,7 +19,16 @@ class Uploader:
         exception_handler: Callable = None,
         logger: Logger = None,
     ):
-        """Initialize Uploader. :param upload_f: Upload callable. :param notify_f: Optional notify callback. :param exception_handler: Optional exception handler. :param logger: Optional logger."""
+        """
+        :param upload_f: Upload callable.
+        :type upload_f: Callable
+        :param notify_f: Optional notify callback.
+        :type notify_f: Callable
+        :param exception_handler: Optional exception handler.
+        :type exception_handler: Callable
+        :param logger: Optional logger.
+        :type logger: Logger
+        """
         self._upload_f = upload_f
         self._notify_f = notify_f
         self._exception_handler = exception_handler
@@ -182,7 +191,17 @@ class Downloader:
         exception_handler: Callable = None,
         logger: Logger = None,
     ):
-        """Initialize Downloader. :param download_f: Download callable. :param max_workers: Worker threads. :param buffer_size: Queue size. :param exception_handler: Optional handler. :param logger: Optional logger."""
+        """
+        :param download_f: Download callable.
+        :type download_f: Callable
+        :param max_workers: Worker threads.
+        :type max_workers: int
+        :param buffer_size: Queue size.
+        :type buffer_size: int
+        :param exception_handler: Optional handler.
+        :param logger: Optional logger.
+        :type logger: Logger
+        """
         self._download_f = download_f
         self._max_workers = max_workers
         self._logger = logger

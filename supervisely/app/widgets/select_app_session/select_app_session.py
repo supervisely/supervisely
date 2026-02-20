@@ -25,9 +25,7 @@ class SelectAppSession(Widget):
         widget_id: str = None,
         operation: str = "or",
     ):
-        """Initialize SelectAppSession.
-
-        :param team_id: Team ID to list sessions from.
+        """:param team_id: Team ID to list sessions from.
         :type team_id: int
         :param tags: List of tag names to filter sessions.
         :type tags: List[str]

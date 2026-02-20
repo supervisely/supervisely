@@ -12,9 +12,8 @@ class ProjectClassApi(ModuleApi):
     """API for working with classes in a project."""
 
     def __init__(self, api):
-        """Initialize ProjectClassApi.
-
-        :param api: API connection to the server.
+        """
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
         :type api: :class:`~supervisely.api.api.Api`
         """
         super().__init__(api)
@@ -34,13 +33,13 @@ class ProjectClassApi(ModuleApi):
     @staticmethod
     def info_tuple_name():
         """
-        NamedTuple name - **ProjectClassInfo**.
+        Name of the tuple that represents ProjectClassInfo.
         """
         return 'ProjectClassInfo'
 
     def get_list(self, project_id: int, filters: Optional[List[Dict[str, str]]] = None) -> list:
         """
-        List of Classes in the given Project.
+        List of Object Classes in the given Project.
 
         :param project_id: Project ID in Supervisely.
         :type project_id: int

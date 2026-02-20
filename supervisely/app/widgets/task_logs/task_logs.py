@@ -12,9 +12,7 @@ class TaskLogs(Widget):
         task_id: int = None,
         widget_id: str = None,
     ):
-        """Initialize TaskLogs.
-
-        :param task_id: Supervisely task (job) ID to display logs for.
+        """:param task_id: Supervisely task (job) ID to display logs for.
         :type task_id: int, optional
         :param widget_id: Unique widget identifier.
         :type widget_id: str, optional

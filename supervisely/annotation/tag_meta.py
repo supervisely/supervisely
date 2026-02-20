@@ -112,8 +112,6 @@ class TagMeta(KeyObject, JsonSerializable):
         target_type: Optional[str] = None,
     ):
         """
-        Tag metadata definition.
-
         :param name: Tag name.
         :type name: str
         :param value_type: TagValueType: NONE, ANY_STRING, ANY_NUMBER, ONEOF_STRING.

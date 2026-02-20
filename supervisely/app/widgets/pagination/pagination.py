@@ -29,9 +29,7 @@ class Pagination(Widget):
         page_size_options: List[int] = [10, 20, 30, 40, 50, 100],
         widget_id: str = None,
     ):
-        """Initialize Pagination.
-
-        :param total: Total number of items.
+        """:param total: Total number of items.
         :type total: int
         :param page_size: Items per page.
         :type page_size: int

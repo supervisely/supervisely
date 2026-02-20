@@ -15,7 +15,7 @@ class PredictApp:
     """FastAPI-based application for running model predictions with GUI and optional serving."""
 
     def __init__(self, api: Api):
-        """Initialize PredictApp. :param api: Supervisely API."""
+        """:param api: Supervisely API."""
         _static_dir = "static"
         sly_fs.mkdir(_static_dir, True)
         self.api = api

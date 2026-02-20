@@ -95,12 +95,13 @@ class _PatchableJson(dict):
     """Base dict that can compute JSON patches and broadcast changes via websockets."""
 
     def __init__(self, field: Field, *args, **kwargs):
-        """Initialize _PatchableJson.
-
+        """
         :param field: Field enum (STATE, DATA, or CONTEXT).
-        :type field: Field
+        :type field: :class:`~supervisely.app.content.Field`, optional
         :param args: Passed to dict().
+        :type args: tuple, optional
         :param kwargs: Passed to dict().
+        :type kwargs: dict, optional
         """
         super().__init__(*args, **kwargs)
         self._ws = WebsocketManager()

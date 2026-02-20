@@ -6,12 +6,13 @@ from supervisely.api.pointcloud.pointcloud_episode_tag_api import PointcloudEpis
 
 class PointcloudEpisodeObjectApi(PointcloudObjectApi):
     """
-    PointcloudEpisodeObject for :class:`~supervisely.pointcloud_annotation.pointcloud_episode_annotation.PointcloudEpisodeAnnotation`.
+    API for working with point cloud episode objects.
     """
 
     def __init__(self, api):
         """
-        :param api: :class:`~supervisely.api.api.Api` class object
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
+        :type api: :class:`~supervisely.api.api.Api`
         """
         super().__init__(api)
         self.tag = PointcloudEpisodeObjectTagApi(api)

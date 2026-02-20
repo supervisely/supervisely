@@ -11,7 +11,10 @@ class TensorboardLogger(BaseTrainLogger):
     """Train logger that writes scalars to TensorBoard via tensorboardX."""
 
     def __init__(self, log_dir=None):
-        """Initialize TensorboardLogger. :param log_dir: TensorBoard log directory or None."""
+        """
+        :param log_dir: TensorBoard log directory or None.
+        :type log_dir: str
+        """
         if log_dir is None:
             self.log_dir = None
             self.writer = None
@@ -23,7 +26,7 @@ class TensorboardLogger(BaseTrainLogger):
     def set_log_dir(self, log_dir):
         self.log_dir = log_dir
         self.writer = SummaryWriter(log_dir)
-    
+
     def close(self):
         if self.writer is not None:
             self.writer.close()

@@ -24,10 +24,9 @@ class Flexbox(Widget):
         widget_id: str = None,
         vertical_alignment: Literal["start", "end", "center", "stretch", "baseline"] = None,
     ):
-        """Initialize Flexbox.
-
+        """
         :param widgets: List of child widgets.
-        :type widgets: List[Widget]
+        :type widgets: List[:class:`~supervisely.app.widgets.widget.Widget`]
         :param gap: Vertical gap between widgets in pixels.
         :type gap: int
         :param center_content: If True, center content horizontally.

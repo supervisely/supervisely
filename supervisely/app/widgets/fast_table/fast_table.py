@@ -17,8 +17,7 @@ class EventLinstenerError(Exception):
     """Raised when multiple conflicting FastTable event listeners are registered."""
 
     def __init__(self, message="An exception occurred due to conflicting event listeners."):
-        """Initialize EventLinstenerError.
-
+        """
         :param message: Error message.
         :type message: str
         """
@@ -47,8 +46,7 @@ class FastTable(Widget):
             row: List,
             row_index: int = None,
         ):
-            """Initialize ClickedRow.
-
+            """
             :param row: Row data (list of cell values).
             :type row: List
             :param row_index: 0-based row index.
@@ -68,8 +66,7 @@ class FastTable(Widget):
             column_name: int = None,
             column_value: int = None,
         ):
-            """Initialize ClickedCell.
-
+            """
             :param row: Full row data.
             :type row: List
             :param column_index: 0-based column index.
@@ -89,8 +86,7 @@ class FastTable(Widget):
         """Column descriptor (plain column or widget-backed column) used for rendering."""
 
         def __init__(self, name, is_widget=False, widget: Widget = None):
-            """Initialize ColumnData.
-
+            """
             :param name: Column name.
             :param is_widget: If True, column cells use widget rendering.
             :type is_widget: bool
@@ -138,8 +134,7 @@ class FastTable(Widget):
         max_selected_rows: Optional[int] = None,
         search_position: Optional[Literal["left", "right"]] = None,
     ):
-        """Initialize the FastTable widget.
-
+        """
         :param data: dataset or project data in different formats
         :type data: Union[pd.DataFrame, List]
         :param columns: List of column names

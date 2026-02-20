@@ -40,9 +40,7 @@ class Tooltip(Widget):
         hide_after: Optional[int] = 0,
         widget_id: Optional[str] = None,
     ):
-        """Initialize Tooltip.
-
-        :param text: Tooltip text or list of lines.
+        """:param text: Tooltip text or list of lines.
         :type text: Union[str, List[str]]
         :param content: Child widget to wrap.
         :type content: Widget

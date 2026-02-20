@@ -10,8 +10,7 @@ class FolderThumbnail(Widget):
     """Compact card showing a Team Files folder with path and link."""
 
     def __init__(self, info=None, widget_id: str = None):
-        """Initialize FolderThumbnail.
-
+        """
         :param info: FileInfo from Team Files (folder). Can be set later with set().
         :type info: FileInfo, optional
         :param widget_id: Unique widget identifier.

@@ -20,14 +20,13 @@ class ColorPicker(Widget):
         compact: Optional[bool] = False,
         widget_id: Optional[str] = None,
     ):
-        """Initialize the ColorPicker widget.
-
+        """
         :param show_alpha: if True, alpha channel will be shown
-        :type show_alpha: bool
+        :type show_alpha: bool, optional
         :param color_format: color format, one of: hex, hsl, hsv, rgb
         :type color_format: Literal["hex", "hsl", "hsv", "rgb"]
         :param compact: if True, compact mode will be enabled
-        :type compact: bool
+        :type compact: bool, optional
         :param widget_id: An identifier of the widget.
         :type widget_id: str, optional
         :raises TypeError: if color_format is not one of hex, hsl, hsv, rgb

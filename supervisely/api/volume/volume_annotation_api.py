@@ -37,12 +37,11 @@ from supervisely.volume_annotation.volume_object_collection import (
 
 
 class VolumeAnnotationAPI(EntityAnnotationAPI):
-    """API for working with VolumeAnnotation."""
+    """API for working with volume annotations."""
 
     def __init__(self, api):
-        """Initialize VolumeAnnotationAPI.
-
-        :param api: API connection to the server.
+        """
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
         :type api: :class:`~supervisely.api.api.Api`
 
         :Usage Example:

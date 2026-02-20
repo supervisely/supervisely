@@ -61,8 +61,7 @@ class ExperimentSelector(Widget):
             experiment_info: ExperimentInfo,
             project_info: Optional[ProjectInfo] = None,
         ):
-            """Initialize ModelRow.
-
+            """
             :param api: Supervisely API instance.
             :type api: :class:`~supervisely.api.api.Api`
             :param team_id: Team ID.
@@ -400,8 +399,7 @@ class ExperimentSelector(Widget):
         experiment_infos: List[ExperimentInfo] = [],
         widget_id: str = None,
     ):
-        """Initialize ExperimentSelector.
-
+        """
         :param api: Supervisely API. Defaults to Api().
         :type api: Api, optional
         :param team_id: Team ID. Defaults to env.team_id().
@@ -418,7 +416,7 @@ class ExperimentSelector(Widget):
         if api is None:
             api = Api()
         self.api = api
-        
+
         self._experiment_infos = experiment_infos
         self._checkpoint_changed_func = None
 

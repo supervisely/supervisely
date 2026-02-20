@@ -82,8 +82,7 @@ class Heatmap(Widget):
         blur_function: Optional[Callable[[np.ndarray], np.ndarray]] = None,
         widget_id: str = None,
     ):
-        """Initialize the Heatmap widget.
-
+        """
         :param background_image: Background image path or NumPy array
         :type background_image: Union[str, np.ndarray], optional
         :param heatmap_mask: NumPy array with heatmap mask values

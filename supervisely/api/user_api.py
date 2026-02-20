@@ -35,9 +35,8 @@ class UserApi(ModuleApiBase):
     """API for working with users."""
 
     def __init__(self, api):
-        """Initialize UserApi.
-
-        :param api: API connection to the server.
+        """
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
         :type api: :class:`~supervisely.api.api.Api`
 
         :Usage Example:
@@ -55,7 +54,7 @@ class UserApi(ModuleApiBase):
     @staticmethod
     def info_sequence():
         """
-        NamedTuple UserInfo information about User.
+        Sequence of fields that are returned by the API to represent UserInfo.
 
         :Usage Example:
 
@@ -92,7 +91,7 @@ class UserApi(ModuleApiBase):
     @staticmethod
     def info_tuple_name():
         """
-        NamedTuple name - **UserInfo**.
+        Name of the tuple that represents UserInfo.
         """
         return "UserInfo"
 
@@ -102,7 +101,7 @@ class UserApi(ModuleApiBase):
 
     def get_info_by_id(self, id: int) -> UserInfo:
         """
-        Get User information by ID.
+        Get User information by User ID.
 
         :param id: User ID in Supervisely.
         :type id: int
@@ -145,7 +144,7 @@ class UserApi(ModuleApiBase):
 
     def get_info_by_login(self, login: str) -> UserInfo:
         """
-        Get User information by login.
+        Get User information by User login.
 
         :param login: User login in Supervisely.
         :type login: str
@@ -190,7 +189,7 @@ class UserApi(ModuleApiBase):
 
     def get_member_info_by_login(self, team_id: int, login: str) -> UserInfo:
         """
-        Get information about team member by Team ID and User login.
+        Get information about team member by Team ID and User login by login.
 
         :param team_id: Team ID in Supervisely.
         :type team_id: int

@@ -61,8 +61,7 @@ class CustomModelsSelector(Widget):
             train_info: TrainInfo,
             task_type: str,
         ):
-            """Initialize ModelRow.
-
+            """
             :param api: Supervisely API instance.
             :type api: :class:`~supervisely.api.api.Api`
             :param team_id: Team ID.
@@ -273,8 +272,7 @@ class CustomModelsSelector(Widget):
         custom_checkpoint_task_types: List[str] = [],
         widget_id: str = None,
     ):
-        """Initialize CustomModelsSelector.
-
+        """
         :param team_id: Team ID to load training sessions from.
         :type team_id: int
         :param train_infos: List of training run infos.

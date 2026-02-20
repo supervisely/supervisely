@@ -54,9 +54,8 @@ class GuidesApi(ModuleApiBase):
     """API for working with Guides."""
 
     def __init__(self, api):
-        """Initialize GuidesApi.
-
-        :param api: API connection to the server.
+        """
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
         :type api: :class:`~supervisely.api.api.Api`
 
         :Usage Example:
@@ -72,7 +71,7 @@ class GuidesApi(ModuleApiBase):
     @staticmethod
     def info_sequence():
         """
-        NamedTuple GuideInfo information about Guide.
+        Sequence of fields that are returned by the API to represent GuideInfo.
 
         :Usage Example:
 
@@ -109,7 +108,7 @@ class GuidesApi(ModuleApiBase):
     @staticmethod
     def info_tuple_name():
         """
-        NamedTuple name - **GuideInfo**.
+        Name of the tuple that represents GuideInfo.
         """
         return "GuideInfo"
 
@@ -117,7 +116,7 @@ class GuidesApi(ModuleApiBase):
         self, team_id: int, filters: Optional[List[Dict[str, str]]] = None
     ) -> List[GuideInfo]:
         """
-        Get list of Guides in the given Team.
+        List of Guides in the given Team.
 
         :param team_id: Team ID in Supervisely.
         :type team_id: int

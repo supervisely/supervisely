@@ -47,8 +47,7 @@ class Menu(Widget):
             index: str = None,
             icon: str = None,
         ) -> Menu.Item:
-            """Initialize Menu.Item.
-
+            """
             :param title: Item title.
             :type title: str
             :param content: Optional widget to show when item is selected.
@@ -78,8 +77,7 @@ class Menu(Widget):
         """Group of menu items displayed under a section title."""
 
         def __init__(self, title: str, items: List[Menu.Item] = None) -> Menu.Group:
-            """Initialize Menu.Group.
-
+            """
             :param title: Group section title.
             :type title: str
             :param items: List of Menu.Item in this group.
@@ -102,8 +100,7 @@ class Menu(Widget):
         width_percent: int = 25,
         widget_id: str = None,
     ):
-        """Initialize Menu.
-
+        """
         :param items: Flat list of menu items. Mutually exclusive with groups.
         :type items: List[Menu.Item], optional
         :param groups: List of Menu.Group. Mutually exclusive with items.

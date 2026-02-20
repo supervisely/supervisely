@@ -7,8 +7,7 @@ class CircleProgress(Widget):
     """Circular progress indicator widget showing Progress status (success/exception/none)."""
 
     def __init__(self, progress: Progress, widget_id=None):
-        """Initialize CircleProgress.
-
+        """
         :param progress: Progress object to display status for.
         :type progress: :class:`~supervisely.app.widgets.progress.Progress`
         :param widget_id: Unique widget identifier.

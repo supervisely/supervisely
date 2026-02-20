@@ -26,7 +26,12 @@ class SingleImageInferenceBase(SingleImageInferenceInterface):
     """Legacy base for single-image inference: loads config, model, and implements inference() and get_out_meta()."""
 
     def __init__(self, task_model_config=None, _load_model_weights=True):
-        """Initialize SingleImageInferenceBase. :param task_model_config: Override config or None to load from task. :param _load_model_weights: If True, load model weights."""
+        """
+        :param task_model_config: Override config or None to load from task.
+        :type task_model_config: dict
+        :param _load_model_weights: If True, load model weights.
+        :type _load_model_weights: bool
+        """
         logger.info('Starting base single image inference applier init.')
         task_model_config = self._load_task_model_config() if task_model_config is None else deepcopy(task_model_config)
         self._config = update_recursively(self.get_default_config(), task_model_config)

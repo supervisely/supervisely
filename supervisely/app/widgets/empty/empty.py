@@ -9,7 +9,9 @@ class Empty(Widget):
     def __init__(self, widget_id: Optional[str] = None, style: Optional[str] = ""):
         """
         :param widget_id: Widget identifier.
+        :type widget_id: Optional[str]
         :param style: CSS styles.
+        :type style: Optional[str]
 
         :Usage Example:
 

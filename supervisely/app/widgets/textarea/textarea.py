@@ -14,9 +14,7 @@ class TextArea(Widget):
         readonly: bool = False,
         widget_id=None,
     ):
-        """Initialize TextArea.
-
-        :param value: Initial text value.
+        """:param value: Initial text value.
         :type value: str, optional
         :param placeholder: Placeholder when empty.
         :type placeholder: str

@@ -29,8 +29,7 @@ class HeatmapChart(Apexchart):
         color_range: Literal["table", "row"] = "row",
         tooltip: str = None,
     ):
-        """Initialize HeatmapChart.
-
+        """
         :param title: Chart title.
         :type title: str
         :param data_labels: If True, show data labels on cells.

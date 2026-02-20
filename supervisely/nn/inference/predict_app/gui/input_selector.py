@@ -27,7 +27,12 @@ class InputSelector:
     lock_message = None
 
     def __init__(self, workspace_id: int, api: Api):
-        """Initialize InputSelector. :param workspace_id: Workspace ID. :param api: Supervisely API."""
+        """
+        :param workspace_id: Workspace ID.
+        :type workspace_id: int
+        :param api: Supervisely API.
+        :type api: Api
+        """
         # Init Step
         self.workspace_id = workspace_id
         self.api = api

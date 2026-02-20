@@ -49,9 +49,7 @@ class EvalResult:
         api: Api,
         progress: Optional[SlyTqdm] = None,
     ):
-        """Initialize EvalResult.
-
-        :param eval_dir: Path to evaluation directory.
+        """:param eval_dir: Path to evaluation directory.
         :param workdir: Working directory for output.
         :param api: Supervisely API.
         :param progress: Progress callback.

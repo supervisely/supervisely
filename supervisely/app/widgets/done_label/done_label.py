@@ -18,7 +18,9 @@ class DoneLabel(Widget):
     ):
         """
         :param text: Message text.
-        :param widget_id: Widget identifier.
+        :type text: Optional[str]
+        :param widget_id: Unique widget identifier.
+        :type widget_id: Optional[str]
 
         :Usage Example:
 

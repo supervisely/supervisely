@@ -19,9 +19,13 @@ class Dialog(Widget):
     ):
         """
         :param title: Dialog title.
+        :type title: Optional[str]
         :param content: Content widget.
-        :param size: tiny, small, large, or full.
+        :type content: Optional[Widget]
+        :param size: Dialog size, one of: tiny, small, large, full.
+        :type size: Optional[Literal["tiny", "small", "large", "full"]]
         :param widget_id: Widget identifier.
+        :type widget_id: Optional[str]
 
         :Usage Example:
 

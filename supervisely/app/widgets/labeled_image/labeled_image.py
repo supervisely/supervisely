@@ -23,8 +23,7 @@ class LabeledImage(GridGallery):
         widget_id: str = None,
         empty_message: str = "No image was provided",
     ):
-        """Initialize LabeledImage.
-
+        """
         :param annotations_opacity: Opacity of annotation overlays (0–1).
         :type annotations_opacity: float
         :param show_opacity_slider: If True, show opacity slider.

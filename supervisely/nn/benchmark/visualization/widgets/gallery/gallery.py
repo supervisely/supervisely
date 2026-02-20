@@ -24,9 +24,7 @@ class GalleryWidget(BaseWidget):
         opacity: Optional[float] = 0.4,
         limit: Optional[int] = None,
     ):
-        """Initialize GalleryWidget.
-
-        :param name: Widget name.
+        """:param name: Widget name.
         :param filters: Optional tag filters.
         :param is_modal: Show as modal.
         :param columns_number: Gallery columns.

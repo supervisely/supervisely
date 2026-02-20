@@ -12,9 +12,7 @@ class LossPlateauDetector:
         patience: int = 3,
         check_interval: int = 1,
     ):
-        """Initialize LossPlateauDetector.
-
-        :param window_size: Number of iterations for moving average.
+        """:param window_size: Number of iterations for moving average.
         :type window_size: int
         :param threshold: Relative change threshold (e.g., 0.005 = 0.5%).
         :type threshold: float

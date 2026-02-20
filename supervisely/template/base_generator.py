@@ -22,12 +22,17 @@ class BaseGenerator:
     LINK_FILE = "Open Report.lnk"
 
     def __init__(self, api: Api, output_dir: str):
-        """Initialize BaseGenerator. :param api: Supervisely API. :param output_dir: Output directory."""
+        """
+        :param api: Supervisely API.
+        :type api: :class:`~supervisely.api.api.Api`
+        :param output_dir: Output directory.
+        :type output_dir: str
+        """
         self.api = api
         self.output_dir = output_dir
         self.template_renderer = TemplateRenderer()
         os.makedirs(self.output_dir, exist_ok=True)
-    
+
     @property
     def template_path(self) -> str:
         cls_dir = Path(inspect.getfile(self.__class__)).parent
@@ -35,10 +40,10 @@ class BaseGenerator:
 
     def context(self) -> dict:
         raise NotImplementedError("Subclasses must implement the context method.")
-    
+
     def state(self) -> dict:
         return {}
-        
+
     def generate(self):
         # Render
         content = self._render()
@@ -50,7 +55,7 @@ class BaseGenerator:
         state = self.state()
         state_path = f"{self.output_dir}/state.json"
         sly_json.dump_json_file(state, state_path)
-    
+
     def upload(self, remote_dir: str, team_id: Optional[int] = None, **kwargs):
         team_id = team_id or sly_env.team_id()
         self.api.file.upload_directory_fast(
@@ -70,7 +75,7 @@ class BaseGenerator:
         else:
             logger.warning("Subclasses must implement the `_report_url` method to upload a link file.")
         return template_id
-    
+
     def _render(self) -> str:
         context = self.context()
         content = self.template_renderer.render(self.template_path, context)
@@ -83,7 +88,7 @@ class BaseGenerator:
             f.write(url)
         self.api.file.upload(team_id=team_id, src=link_path, dst=self._link_file_dst_path(remote_dir))
         return url
-        
+
     def _link_file_dst_path(self, remote_dir: str) -> str:
         return f"{remote_dir}/{self.LINK_FILE}"
 

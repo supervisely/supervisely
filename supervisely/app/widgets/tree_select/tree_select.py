@@ -29,8 +29,7 @@ class TreeSelect(Widget):
             label: Optional[str] = None,
             children: List[TreeSelect.Item] = None,
         ):
-            """Initialize TreeSelect.Item.
-
+            """
             :param id: The unique identifier of the item.
             :type id: str
             :param label: The label of the item. If None, id is used.

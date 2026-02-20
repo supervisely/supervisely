@@ -16,10 +16,9 @@ class ProjectThumbnail(Widget):
         remove_margins: bool = False,
         description: str = None,
     ):
-        """Initialize ProjectThumbnail.
-
-        :param info: ProjectInfo to display. Can be set later with set().
-        :type info: ProjectInfo, optional
+        """
+        :param info: ProjectInfo to display. Can be set later with :meth:`~supervisely.app.widgets.project_thumbnail.project_thumbnail.ProjectThumbnail.set`.
+        :type info: :class:`~supervisely.api.project_api.ProjectInfo`, optional
         :param widget_id: Unique widget identifier.
         :type widget_id: str, optional
         :param remove_margins: If True, remove card margins.

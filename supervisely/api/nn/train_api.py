@@ -42,22 +42,20 @@ class Model:
         checkpoint_name: str = None
     ):
         """
-        Initialize a :class:`~supervisely.api.nn.train_api.Model` instance.
-
-        :param api: Supervisely API client.
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
         :type api: :class:`~supervisely.api.api.Api`
         :param source: Source of the model.
         :type source: str
         :param framework: Framework of the model.
-        :type framework: str
+        :type framework: str, optional
         :param model_name: Name of the model.
-        :type model_name: str
+        :type model_name: str, optional
         :param team_id: Team id of the model.
-        :type team_id: int
+        :type team_id: int, optional
         :param artifacts_dir: Artifacts directory of the model.
-        :type artifacts_dir: str
+        :type artifacts_dir: str, optional
         :param checkpoint_name: Checkpoint name of the model.
-        :type checkpoint_name: str
+        :type checkpoint_name: str, optional
         """
         self.api = api
         self.source: str = source
@@ -165,8 +163,7 @@ class RandomSplit(_TrainValSplit):
     """Split dataset randomly by percent."""
 
     def __init__(self, percent: int = 80, split: str = "train"):
-        """Initialize RandomSplit.
-
+        """
         :param percent: Percent of the dataset to split into train.
         :type percent: int
         :param split: Split method: "train" or "val".
@@ -187,8 +184,7 @@ class DatasetsSplit(_TrainValSplit):
     """Split by explicit train/val dataset ids inside the project."""
 
     def __init__(self, train_datasets: List[int], val_datasets: List[int]):
-        """Initialize DatasetsSplit.
-
+        """
         :param train_datasets: List of dataset ids to split into train.
         :type train_datasets: List[int]
         :param val_datasets: List of dataset ids to split into val.
@@ -209,8 +205,7 @@ class TagsSplit(_TrainValSplit):
     """Split by tags: items with train_tag go to train, val_tag to val."""
 
     def __init__(self, train_tag: str, val_tag: str, untagged_action: Literal["train", "val", "ignore"]):
-        """Initialize TagsSplit.
-
+        """
         :param train_tag: Tag to split into train.
         :type train_tag: str
         :param val_tag: Tag to split into val.
@@ -235,8 +230,7 @@ class CollectionsSplit(_TrainValSplit):
     """Split by entity collections (train collections vs val collections)."""
 
     def __init__(self, train_collections: List[int], val_collections: List[int]):
-        """Initialize CollectionsSplit.
-
+        """
         :param train_collections: List of collection ids to split into train.
         :type train_collections: List[int]
         :param val_collections: List of collection ids to split into val.
@@ -254,11 +248,12 @@ class CollectionsSplit(_TrainValSplit):
         }
 
 class TrainApi:
-    """High-level API to start a training application.
+    """
+    High-level API to start a training application on the Supervisely instance.
 
-    You can read more about the training API in the [Training API documentation](https://developer.supervisely.com/advanced-user-guide/automate-with-python-sdk-and-api/training-api).
+    You can read more about the training API in the `Training API documentation <https://developer.supervisely.com/advanced-user-guide/automate-with-python-sdk-and-api/training-api>`_.
 
-    This wrapper prepares the `params`/`state` payload expected by the training UI app
+    This wrapper prepares the `params`/`state` payload expected by the training UI application
     and starts an app task on a given agent.
 
     Typical usage:
@@ -270,9 +265,7 @@ class TrainApi:
 
     def __init__(self, api: "Api"):
         """
-        Create a :class:`~supervisely.api.nn.train_api.TrainApi` instance.
-
-        :param api: Supervisely API client.
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
         :type api: :class:`~supervisely.api.api.Api`
         """
         self._api = api
@@ -294,28 +287,28 @@ class TrainApi:
         autostart: bool = True,
     ):
         """
-        Build training app state payload.
+        Build training application state payload.
 
         The resulting structure is passed to the training app as `params` (task arguments).
-        It follows the `TrainApp`/GUI expected schema:
+        It follows the `TrainApp`/Training UI expected schema:
 
         - `state.slyProjectId`: project id
-        - `state.guiState`: UI state (model/classes/split/hyperparameters/options/experiment_name/start_training)
+        - `state.guiState`: Training UI state (model/classes/split/hyperparameters/options/experiment_name/start_training)
 
         Notes:
-            - `hyperparameters` is expected to be a YAML string (or `None` to keep defaults from training app).
+            - `hyperparameters` is expected to be a YAML string (or `None` to keep defaults from training application).
 
         :param project_id: Project id to train on.
         :type project_id: int
-        :param model: Parsed model reference.
+        :param model: Parsed model reference ready to be embedded into training application state.
         :type model: str
         :param classes: Class names to train on (filtered to project meta upstream).
         :type classes: List[str]
-        :param train_val_split: Train/Val split strategy for the GUI.
+        :param train_val_split: Train/Val split strategy for the Training UI.
         :type train_val_split: :class:`~supervisely.api.nn.train_api._TrainValSplit`
         :param experiment_name: Optional experiment name shown in UI and used for artifacts.
         :type experiment_name: str, optional
-        :param hyperparameters: Hyperparameters YAML string for the training app. If None, GUI keeps defaults.
+        :param hyperparameters: Hyperparameters YAML string for the training application. If None, Training UI keeps defaults.
         :type hyperparameters: str, optional
         :param convert_class_shapes: Whether to auto-convert shapes to framework requirements.
         :type convert_class_shapes: bool
@@ -391,7 +384,7 @@ class TrainApi:
         """
         Start a training application task for a project.
 
-        You can read more about the training API in the [Training API documentation](https://developer.supervisely.com/advanced-user-guide/automate-with-python-sdk-and-api/training-api).
+        You can read more about the training API in the `Training API documentation <https://developer.supervisely.com/advanced-user-guide/automate-with-python-sdk-and-api/training-api>`_.
 
         :param agent_id: Agent ID where the app task will run.
         :type agent_id: int

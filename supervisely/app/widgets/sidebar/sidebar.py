@@ -18,9 +18,7 @@ class Sidebar(Widget):
         show_open: bool = True,
         sidebar_left_padding: str = None,
     ):
-        """Initialize Sidebar.
-
-        :param left_content: Widget for sidebar (left panel).
+        """:param left_content: Widget for sidebar (left panel).
         :type left_content: Widget
         :param right_content: Widget for main content area.
         :type right_content: Widget

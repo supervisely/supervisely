@@ -61,8 +61,7 @@ class InputTagList(Widget):
         multiple: bool = False,
         widget_id: int = None,
     ):
-        """Initialize the InputTagList widget.
-
+        """
         :param tag_metas: List of tag metas or a tag meta collection, defaults to an empty list
         :type tag_metas: Union[List[:class:`~supervisely.annotation.tag_meta.TagMeta`], :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection`], optional
         :param max_width: Maximum width of the widget in pixels, defaults to 300

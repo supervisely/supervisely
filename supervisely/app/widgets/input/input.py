@@ -28,8 +28,7 @@ class Input(Widget):
         icon: Literal["search", "edit"] = None,
         autosize_textarea: bool = True,
     ):
-        """Initialize Input.
-
+        """
         :param value: Initial value.
         :type value: str
         :param minlength: Minimum length validation.

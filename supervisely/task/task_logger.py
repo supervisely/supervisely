@@ -48,7 +48,10 @@ class SlyApiHandler(logging.Handler):
     """Logging handler that asynchronously forwards task logs to the Supervisely API."""
 
     def __init__(self, api):
-        """Initialize SlyApiHandler. :param api: Supervisely API for log submission."""
+        """
+        :param api: Supervisely API for log submission.
+        :type api: :class:`~supervisely.api.api.Api`
+        """
         super().__init__()
         self._api = api
         self._stop_log_event = threading.Event()
@@ -116,6 +119,3 @@ def log_task_crashed(logger, e=None):
         e = Exception("Crashed without exception info")
     logger.critical('TASK_END', exc_info=True, extra={'event_type': EventType.TASK_CRASHED, 'exc_str': str(e)})
     _stop_and_wait_logger(logger)
-
-
-

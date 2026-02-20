@@ -25,9 +25,13 @@ class Dropdown(Widget):
         ) -> Dropdown.Item:
             """
             :param text: Item label.
+            :type text: Optional[str]
             :param disabled: Disable item.
+            :type disabled: Optional[bool]
             :param divided: Show divider after item.
+            :type divided: Optional[bool]
             :param command: Value emitted on click.
+            :type command: Optional[Union[str, int]]
             """
             self.text = text
             self.disabled = disabled
@@ -64,11 +68,17 @@ class Dropdown(Widget):
     ):
         """
         :param items: List of Dropdown.Item.
+        :type items: Optional[List[Dropdown.Item]]
         :param header: Header text.
-        :param trigger: "hover" or "click".
-        :param menu_align: "start" or "end".
-        :param hide_on_click: Close menu after selection.
-        :param widget_id: Widget identifier.
+        :type header: Optional[str]
+        :param trigger: Dropdown trigger type, one of: hover, click.
+        :type trigger: Optional[Literal["hover", "click"]]
+        :param menu_align: Dropdown menu alignment, one of: start, end.
+        :type menu_align: Optional[Literal["start", "end"]]
+        :param hide_on_click: If True, dropdown menu will be hidden after click.
+        :type hide_on_click: Optional[bool]
+        :param widget_id: Unique widget identifier.
+        :type widget_id: Optional[str]
 
         :Usage Example:
 

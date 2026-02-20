@@ -22,8 +22,6 @@ class Frame(KeyObject):
 
     def __init__(self, index: int, figures: Optional[List[VideoFigure]] = None):
         """
-        Single frame in a video annotation; holds figures at a given index. Immutable.
-
         :param index: Index of the Frame.
         :type index: int
         :param figures: List of VideoFigures.

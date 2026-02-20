@@ -2,7 +2,7 @@ import datetime
 import tempfile
 import threading
 from pathlib import Path
-from typing import Any, Dict, List, Literal
+from typing import Any, Dict, List, Literal, Optional
 
 import pandas as pd
 
@@ -67,10 +67,9 @@ class DeployModel(Widget):
         ]
 
         def __init__(self, deploy_model: "DeployModel"):
-            """Initialize Connect (connect to existing deployed session).
-
+            """
             :param deploy_model: Parent DeployModel widget.
-            :type deploy_model: DeployModel
+            :type deploy_model: DeployModel, optional
             """
             self.api = deploy_model.api
             self.team_id = deploy_model.team_id
@@ -171,10 +170,9 @@ class DeployModel(Widget):
         ]
 
         def __init__(self, deploy_model: "DeployModel"):
-            """Initialize Pretrained (deploy from ecosystem models).
-
+            """
             :param deploy_model: Parent DeployModel widget.
-            :type deploy_model: DeployModel
+            :type deploy_model: DeployModel, optional
             """
             self.api = deploy_model.api
             self.team_id = deploy_model.team_id
@@ -215,10 +213,9 @@ class DeployModel(Widget):
     class Custom(DeployMode):
         """Deploy mode that deploys a model from a user experiment checkpoint."""
         def __init__(self, deploy_model: "DeployModel"):
-            """Initialize Custom (deploy from experiment checkpoint).
-
+            """
             :param deploy_model: Parent DeployModel widget.
-            :type deploy_model: DeployModel
+            :type deploy_model: DeployModel, optional
             """
             self.api = deploy_model.api
             self.team_id = deploy_model.team_id
@@ -309,10 +306,9 @@ class DeployModel(Widget):
         api: Api = None,
         team_id: int = None,
         modes: List[Literal["connect", "pretrained", "custom"]] = None,
-        widget_id: str = None,
+        widget_id: Optional[str] = None,
     ):
-        """Initialize DeployModel.
-
+        """
         :param api: Supervisely API instance. Defaults to Api.from_env().
         :type api: :class:`~supervisely.api.api.Api`, optional
         :param team_id: Team ID. Defaults to env.team_id().

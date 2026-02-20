@@ -28,9 +28,7 @@ class PersistentImageLRUCache(LRUCache):
     __marker = object()
 
     def __init__(self, maxsize, filepath: Path, getsizeof=None):
-        """Initialize PersistentImageLRUCache.
-
-        :param maxsize: Max cache size.
+        """:param maxsize: Max cache size.
         :param filepath: Directory for persisted images.
         :param getsizeof: Optional size function for cache eviction.
         """
@@ -76,9 +74,7 @@ class PersistentImageTTLCache(TTLCache):
     """TTL cache that persists cached file paths on disk and deletes expired items' files."""
 
     def __init__(self, maxsize: int, ttl: int, filepath: Path):
-        """Initialize PersistentImageTTLCache.
-
-        :param maxsize: Max cache size.
+        """:param maxsize: Max cache size.
         :param ttl: Time-to-live in seconds.
         :param filepath: Directory for persisted files.
         """
@@ -240,9 +236,7 @@ class InferenceImageCache:
         base_folder: str = env.smart_cache_container_dir(),
         log_progress: bool = False,
     ) -> None:
-        """Initialize InferenceImageCache.
-
-        :param maxsize: Max cache size.
+        """:param maxsize: Max cache size.
         :param ttl: Time-to-live in seconds.
         :param is_persistent: If True, persist to disk.
         :param base_folder: Directory for persisted cache.

@@ -7,9 +7,7 @@ class CollapseWidget(BaseWidget):
     """Collapsible container for benchmark report widgets; each child has a foldable panel."""
 
     def __init__(self, widgets: List[BaseWidget]) -> None:
-        """Initialize CollapseWidget.
-
-        :param widgets: Child widgets with titles for panel headers.
+        """:param widgets: Child widgets with titles for panel headers.
         """
         super().__init__()
         self.widgets = widgets

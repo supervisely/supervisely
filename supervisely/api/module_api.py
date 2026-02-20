@@ -783,9 +783,8 @@ class ModuleApiBase(_JsonConvertibleModule):
             pass
 
     def __init__(self, api: "Api"):
-        """Initialize ModuleApiBase.
-
-        :param api: API connection to the server.
+        """
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
         :type api: :class:`~supervisely.api.api.Api`
         """
         self._api = api
@@ -1179,9 +1178,7 @@ class ModuleApi(ModuleApiBase):
 
     def __init__(self, api):
         """
-        ModuleApi is a base class for all module APIs.
-
-        :param api: API connection to the server.
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
         :type api: :class:`~supervisely.api.api.Api`
         """
         super().__init__(api)
@@ -1522,9 +1519,8 @@ class UpdateableModule(_JsonConvertibleModule):
     """API for updating entities."""
 
     def __init__(self, api):
-        """Initialize UpdateableModule.
-
-        :param api: API connection to the server.
+        """
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
         :type api: :class:`~supervisely.api.api.Api`
         """
         self._api = api

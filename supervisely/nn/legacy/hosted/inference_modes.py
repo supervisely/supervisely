@@ -158,7 +158,14 @@ class InferenceModeBase:
         }
 
     def __init__(self, config: dict, in_meta: ProjectMeta, model: SingleImageInferenceBase):
-        """Initialize InferenceModeBase. :param config: Mode config. :param in_meta: Input project meta. :param model: SingleImageInferenceBase instance."""
+        """
+        :param config: Mode config.
+        :type config: dict
+        :param in_meta: Input project meta.
+        :type in_meta: ProjectMeta
+        :param model: SingleImageInferenceBase instance.
+        :type model: SingleImageInferenceBase
+        """
         validation_schema_path = pkg_resources.resource_filename(
             __name__, 'inference_modes_schemas/{}.json'.format(self.mode_name()))
         MultiTypeValidator(validation_schema_path).val(INFERENCE_MODE_CONFIG, config)

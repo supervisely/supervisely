@@ -66,9 +66,8 @@ class IssuesApi(ModuleApiBase):
     """API for working with annotation issues and comments."""
 
     def __init__(self, api):
-        """Initialize IssuesApi.
-
-        :param api: API connection to the server.
+        """
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
         :type api: :class:`~supervisely.api.api.Api`
 
         :Usage Example:
@@ -83,7 +82,7 @@ class IssuesApi(ModuleApiBase):
 
     @staticmethod
     def info_sequence():
-        """List of fields that are returned by the API to represent IssueInfo."""
+        """Sequence of fields that are returned by the API to represent IssueInfo."""
         return [
             ApiField.ID,
             ApiField.STATUS,

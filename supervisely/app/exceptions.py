@@ -8,11 +8,13 @@ class DialogWindowBase(Exception):
     """Base exception that can be displayed to the user as an in-app dialog window."""
 
     def __init__(self, title, description, status):
-        """Initialize DialogWindowBase.
-
+        """
         :param title: Dialog title.
+        :type title: str
         :param description: Dialog description/message.
+        :type description: str
         :param status: Status: "info", "success", "warning", or "error".
+        :type status: str
         """
         self.title = title
         self.description = description
@@ -30,10 +32,11 @@ class DialogWindowError(DialogWindowBase):
     """Dialog window exception with `error` status."""
 
     def __init__(self, title, description):
-        """Initialize DialogWindowError.
-
+        """
         :param title: Dialog title.
+        :type title: str
         :param description: Error message.
+        :type description: str
         """
         super().__init__(title, description, "error")
 
@@ -42,10 +45,11 @@ class DialogWindowWarning(DialogWindowBase):
     """Dialog window exception with `warning` status."""
 
     def __init__(self, title, description):
-        """Initialize DialogWindowWarning.
-
+        """
         :param title: Dialog title.
+        :type title: str
         :param description: Warning message.
+        :type description: str
         """
         super().__init__(title, description, "warning")
 
@@ -55,10 +59,11 @@ class DialogWindowMessage(DialogWindowError):
     """Backwards-compatible alias for informational dialog exceptions."""
 
     def __init__(self, title, description):
-        """Initialize DialogWindowMessage.
-
+        """
         :param title: Dialog title.
+        :type title: str
         :param description: Info message.
+        :type description: str
         """
         super().__init__(title, description, "info")  # pylint: disable=too-many-function-args
 
@@ -66,6 +71,16 @@ class DialogWindowMessage(DialogWindowError):
 def show_dialog(
     title, description, status: Literal["info", "success", "warning", "error"] = "info"
 ):
+    """
+    Show a dialog window with the given title and message.
+
+    :param title: Dialog title.
+    :type title: str
+    :param description: Dialog description/message.
+    :type description: str
+    :param status: Status: "info", "success", "warning", or "error".
+    :type status: Literal["info", "success", "warning", "error"]
+    """
     from supervisely.app import StateJson, DataJson
 
     StateJson()["slyAppShowDialog"] = True

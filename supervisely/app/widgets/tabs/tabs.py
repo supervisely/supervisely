@@ -24,9 +24,7 @@ class Tabs(Widget):
         """One tab pane (label + content widget)."""
 
         def __init__(self, label: str, content: Widget):
-            """Initialize TabPane.
-
-            :param label: Tab label.
+            """:param label: Tab label.
             :type label: str
             :param content: Widget to display when tab is active.
             :type content: Widget
@@ -42,9 +40,7 @@ class Tabs(Widget):
         type: Optional[Literal["card", "border-card"]] = "border-card",
         widget_id=None,
     ):
-        """Initialize Tabs.
-
-        :param labels: List of tab labels (unique, max 10).
+        """:param labels: List of tab labels (unique, max 10).
         :type labels: List[str]
         :param contents: List of widgets, one per tab.
         :type contents: List[Widget]

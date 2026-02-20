@@ -20,11 +20,7 @@ class PointcloudEpisodeApi(PointcloudApi):
 
     def __init__(self, api):
         """
-        API for working with point cloud episodes.
-        :class:`~supervisely.api.pointcloud.pointcloud_episode_api.PointcloudEpisodeApi` object is immutable.
-        Inherits from :class:`~supervisely.api.pointcloud.pointcloud_api.PointcloudApi`.
-
-        :param api: API connection to the server.
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
         :type api: :class:`~supervisely.api.api.Api`
 
         :Usage Example:

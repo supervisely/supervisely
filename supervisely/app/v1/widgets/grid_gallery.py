@@ -11,23 +11,37 @@ class Gallery:
     def __init__(self, task_id, api: Api, v_model, project_meta: ProjectMeta, col_number: int, preview_info=False,
                  enable_zoom=False, resize_on_zoom=False, sync_views=False, show_preview=True, selectable=False,
                  opacity=0.5, show_opacity_header=True, fill_rectangle=False, border_width=3):
-        """Initialize Gallery (v1).
-
+        """
         :param task_id: Task ID.
+        :type task_id: int
         :param api: Api instance.
+        :type api: :class:`~supervisely.api.api.Api`
         :param v_model: Vue model path.
+        :type v_model: str
         :param project_meta: ProjectMeta for annotations.
+        :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
         :param col_number: Number of columns.
+        :type col_number: int
         :param preview_info: If True, show preview info.
+        :type preview_info: bool
         :param enable_zoom: If True, enable zoom.
+        :type enable_zoom: bool
         :param resize_on_zoom: If True, resize on zoom.
+        :type resize_on_zoom: bool
         :param sync_views: If True, sync views across images.
+        :type sync_views: bool
         :param show_preview: If True, show preview panel.
+        :type show_preview: bool
         :param selectable: If True, allow selection.
+        :type selectable: bool
         :param opacity: Annotation opacity.
+        :type opacity: float
         :param show_opacity_header: If True, show opacity control.
+        :type show_opacity_header: bool
         :param fill_rectangle: If True, fill rectangles.
+        :type fill_rectangle: bool
         :param border_width: Border width for shapes.
+        :type border_width: int
         """
         self._task_id = task_id
         self._api = api
@@ -56,7 +70,22 @@ class Gallery:
 
     def add_item(self, title, image_url, ann: Union[Annotation, dict] = None, col_index=None, custom_info: dict = None,
                  zoom_to_figure=None, title_url=None):
-
+        """
+        :param title: Image title.
+        :type title: str
+        :param image_url: Image URL.
+        :type image_url: str
+        :param ann: Annotation.
+        :type ann: :class:`~supervisely.annotation.annotation.Annotation`
+        :param col_index: Column index.
+        :type col_index: int
+        :param custom_info: Custom info.
+        :type custom_info: dict
+        :param zoom_to_figure: Zoom to figure.
+        :type zoom_to_figure: tuple
+        :param title_url: Title URL.
+        :type title_url: str
+        """
         if col_index is not None:
             if col_index <= 0 or col_index > self.col_number:
                 raise ValueError("Column number is not correct, check your input data")

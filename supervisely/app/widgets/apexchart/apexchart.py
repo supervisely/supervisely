@@ -64,9 +64,8 @@ class Apexchart(Widget):
         height: Union[int, str] = "300",
         sly_options: dict = {},
     ):
-        """Initialize Apexchart.
-
-        :param series: Chart series data.
+        """
+        :param series: List of series data. Each series is a dictionary with "name" and "data" keys.
         :type series: List[dict]
         :param options: ApexCharts options dict.
         :type options: dict

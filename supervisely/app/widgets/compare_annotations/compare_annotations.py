@@ -19,16 +19,15 @@ class CompareAnnotations(GridGallery):
         empty_message: Optional[str] = "No image was provided",
         widget_id: Optional[str] = None,
     ):
-        """Initialize the CompareAnnotations widget.
-
-        :param columns_number: number of columns in the grid
+        """
+        :param columns_number: Number of columns in the grid.
         :type columns_number: int
-        :param default_opacity: default opacity for annotations
-        :type default_opacity: float
+        :param default_opacity: Default opacity for annotations.
+        :type default_opacity: float, optional
         :param fill_rectangle: if True, rectangles will be filled with color
-        :type fill_rectangle: bool
-        :param border_width: border width for rectangles
-        :type border_width: int
+        :type fill_rectangle: bool, optional
+        :param border_width: Border width for rectangles.
+        :type border_width: int, optional
         :param view_height: height of the widget
         :type view_height: int
         :param empty_message: message to show when there is no data

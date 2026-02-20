@@ -10,7 +10,7 @@ class Collapse(Widget):
     """Collapsible panels for compact UI; toggle content visibility."""
 
     class Routes:
-        """Route name constants for this widget."""
+        """Callback route names used by the widget frontend to notify Python."""
         VALUE_CHANGED = "value_changed"
 
     class Item(object):
@@ -19,8 +19,11 @@ class Collapse(Widget):
         def __init__(self, name: str, title: str, content: Optional[Union[Widget, str]]):
             """
             :param name: Unique panel ID.
+            :type name: str
             :param title: Panel header text.
+            :type title: str
             :param content: Widget or text string.
+            :type content: Optional[Union[Widget, str]]
             """
             self.name = name
             self.title = title
@@ -54,8 +57,11 @@ class Collapse(Widget):
     ):
         """
         :param items: List of Collapse.Item. Each item needs unique name.
+        :type items: Optional[List[Collapse.Item]]
         :param accordion: If True, only one panel open at a time.
-        :param widget_id: Widget identifier.
+        :type accordion: Optional[bool]
+        :param widget_id: Unique widget identifier.
+        :type widget_id: Optional[str]
 
         :Usage Example:
 

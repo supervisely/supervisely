@@ -22,8 +22,6 @@ class LinePlot(Widget):
         yaxis_autorescale: bool = True,  # issue in apex, need to refresh page
     ):
         """
-        Create line plot.
-
         :param title: plot title
         :type title: str
         :param series: List of dicts in format

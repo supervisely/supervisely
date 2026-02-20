@@ -31,9 +31,7 @@ class RadioGroup(ConditionalWidget):
         gap: int = 10,
         widget_id: str = None,
     ) -> RadioGroup:
-        """Initialize RadioGroup.
-
-        :param items: List of RadioGroup.Item (value, label, optional content).
+        """:param items: List of RadioGroup.Item (value, label, optional content).
         :type items: List[RadioGroup.Item]
         :param size: Button size: "large", "small", or "mini".
         :type size: Literal["large", "small", "mini"], optional

@@ -25,9 +25,7 @@ class TagsListPreview(Widget):
         empty_text: str = None,
         widget_id: int = None,
     ):
-        """Initialize TagsListPreview.
-
-        :param tag_metas: List or TagMetaCollection to display.
+        """:param tag_metas: List or TagMetaCollection to display.
         :type tag_metas: Union[List[TagMeta], TagMetaCollection]
         :param max_width: Max width in pixels (min 150).
         :type max_width: int

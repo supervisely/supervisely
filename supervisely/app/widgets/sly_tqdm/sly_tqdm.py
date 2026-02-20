@@ -34,9 +34,7 @@ class _slyProgressBarIO:
     """File-like adapter used by tqdm to report progress into Supervisely `DataJson` and logs."""
 
     def __init__(self, widget_id, message=None, total=None, unit=None, unit_scale=None):
-        """Initialize _slyProgressBarIO.
-
-        :param widget_id: Progress widget ID.
+        """:param widget_id: Progress widget ID.
         :param message: Progress message.
         :param total: Total iterations/size.
         :param unit: Unit string (e.g. "it", "B").
@@ -160,9 +158,7 @@ class CustomTqdm(tqdm):
     """tqdm subclass that streams progress updates to a Supervisely progress-bar widget."""
 
     def __init__(self, widget_id, message, *args, **kwargs):
-        """Initialize CustomTqdm.
-
-        :param widget_id: Progress widget ID to sync with.
+        """:param widget_id: Progress widget ID to sync with.
         :param message: Progress message.
         :param args: Passed to tqdm (e.g. iterable).
         :param kwargs: Passed to tqdm (e.g. total, unit, unit_scale).
@@ -361,9 +357,7 @@ class Progress(SlyTqdm):
         hide_on_finish=True,
         widget_id: str = None,
     ):
-        """Initialize Progress.
-
-        :param message: Progress message.
+        """:param message: Progress message.
         :type message: str, optional
         :param show_percents: If True, show percentage.
         :type show_percents: bool

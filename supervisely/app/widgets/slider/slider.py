@@ -27,9 +27,7 @@ class Slider(Widget):
         widget_id: str = None,
         style: str = "padding: 20px",
     ):
-        """Initialize Slider.
-
-        :param value: Initial value (int or [min, max] if range=True).
+        """:param value: Initial value (int or [min, max] if range=True).
         :type value: Union[int, List[int]]
         :param min: Minimum value.
         :type min: int

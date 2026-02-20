@@ -15,14 +15,17 @@ class TrackingEvaluator:
     """
 
     def __init__(self, iou_threshold: float = 0.5):
-        """Initialize evaluator with IoU threshold for matching."""
+        """
+        :param iou_threshold: IoU threshold for matching.
+        :type iou_threshold: float
+        """
         from supervisely.nn.tracker import TRACKING_LIBS_INSTALLED
         if not TRACKING_LIBS_INSTALLED:
             raise ImportError(
                 "Tracking dependencies are not installed. "
                 "Please install supervisely with `pip install supervisely[tracking]`."
             )
-            
+
         if not 0.0 <= iou_threshold <= 1.0:
             raise ValueError("iou_threshold must be in [0.0, 1.0]")
         self.iou_threshold = iou_threshold

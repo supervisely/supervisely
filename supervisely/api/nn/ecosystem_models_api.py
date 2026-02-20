@@ -33,9 +33,8 @@ class EcosystemModelsApi(ModuleApi):
     """API for working with ecosystem models catalog."""
 
     def __init__(self, api: Api):
-        """Initialize EcosystemModelsApi.
-
-        :param api: API client.
+        """
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
         :type api: :class:`~supervisely.api.api.Api`
         """
         self._api = api
@@ -53,7 +52,7 @@ class EcosystemModelsApi(ModuleApi):
         return_first_response: bool = False,
     ):
         """
-        Get list of all or limited quantity entities from the Supervisely server.
+        Get list of all or limited quantity entities from the Supervisely instance.
 
         :param method: Request method name
         :type method: str
@@ -116,7 +115,7 @@ class EcosystemModelsApi(ModuleApi):
 
     def list_models(self, local=False):
         """
-        List models from the ecosystem catalog.
+        List models from the Ecosystem Models catalog on the Supervisely instance.
 
         :param local: If True, return only models available locally for the instance.
         :type local: bool, optional
@@ -148,7 +147,7 @@ class EcosystemModelsApi(ModuleApi):
         evaluation: dict = None,
     ):
         """
-        Create a new ecosystem model entry.
+        Create a new Ecosystem Model entry on the Supervisely instance.
 
         Required fields describe model identity and associated train/serve app modules.
         Optional fields describe architecture, metrics, tags, runtimes and files.
@@ -217,7 +216,7 @@ class EcosystemModelsApi(ModuleApi):
         evaluation: dict = None,
     ):
         """
-        Update an existing ecosystem model entry.
+        Update an existing Ecosystem Model entry on the Supervisely instance.
 
         Only non-None fields are sent to the server.
 

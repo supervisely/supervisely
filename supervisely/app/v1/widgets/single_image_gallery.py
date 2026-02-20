@@ -16,13 +16,15 @@ class SingleImageGallery:
     """v1 widget for displaying a single image with optional annotation overlay."""
 
     def __init__(self, task_id, api: Api, v_model, project_meta: ProjectMeta):
-        """Initialize SingleImageGallery (v1).
-
+        """
         :param task_id: Task ID.
+        :type task_id: int
         :param api: Api instance.
+        :type api: :class:`~supervisely.api.api.Api`
         :param v_model: Vue model path.
+        :type v_model: str
         :param project_meta: ProjectMeta for annotations.
-        :type project_meta: ProjectMeta
+        :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
         """
         self._task_id = task_id
         self._api = api
@@ -35,6 +37,20 @@ class SingleImageGallery:
 
     def set_options(self, enable_zoom=True, show_preview=True, selectable=False, opacity=0.5,
                     show_opacity_in_header=True, fill_rectangle=False):
+        """
+        :param enable_zoom: If True, enable zoom.
+        :type enable_zoom: bool
+        :param show_preview: If True, show preview panel.
+        :type show_preview: bool
+        :param selectable: If True, allow selection.
+        :type selectable: bool
+        :param opacity: Annotation opacity.
+        :type opacity: float
+        :param show_opacity_in_header: If True, show opacity control.
+        :type show_opacity_in_header: bool
+        :param fill_rectangle: If True, fill rectangles.
+        :type fill_rectangle: bool
+        """
         self._options = {
             "enableZoom": enable_zoom,
             "showPreview": show_preview,
@@ -46,13 +62,27 @@ class SingleImageGallery:
         self._options_initialized = False
 
     def update_project_meta(self, project_meta: ProjectMeta):
+        """
+        :param project_meta: ProjectMeta for annotations.
+        :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
+        """
         self._project_meta = project_meta.clone()
 
     def set_item(self, image_url, ann: Union[Annotation, dict] = None):
+        """
+        :param image_url: Image URL.
+        :type image_url: str
+        :param ann: Annotation.
+        :type ann: :class:`~supervisely.annotation.annotation.Annotation`
+        """
         self._image_url = image_url
         self.set_annotation(ann)
 
     def set_annotation(self, ann: Union[Annotation, dict] = None):
+        """
+        :param ann: Annotation.
+        :type ann: :class:`~supervisely.annotation.annotation.Annotation`
+        """
         if ann is not None:
             if type(ann) is dict:
                 res_ann = Annotation.from_json(ann, self._project_meta)

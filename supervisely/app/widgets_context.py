@@ -5,8 +5,7 @@ class JinjaWidgets(metaclass=Singleton):
     """Singleton context provider for Jinja2 templates with widget scripts and auto-assigned widget IDs."""
 
     def __init__(self, auto_widget_id=True):
-        """Initialize JinjaWidgets.
-
+        """
         :param auto_widget_id: If True, auto-generate widget IDs when None.
         :type auto_widget_id: bool
         """

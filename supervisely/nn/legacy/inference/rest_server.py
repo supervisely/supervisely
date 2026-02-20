@@ -24,12 +24,18 @@ from flask import Flask
 from flask_restful import Resource, Api, reqparse
 
 
-
 class RestInferenceServer:
     """Simple Flask REST server that exposes legacy inference endpoints for a single-image model."""
 
     def __init__(self, model: SingleImageInferenceInterface, name, port=None):
-        """Initialize RestInferenceServer. :param model: SingleImageInferenceInterface. :param name: Flask app name. :param port: Optional port."""
+        """
+        :param model: Single image inference interface.
+        :type model: :class:`~supervisely.worker_api.interfaces.SingleImageInferenceInterface`
+        :param name: Flask app name.
+        :type name: str
+        :param port: Optional port.
+        :type port: int
+        """
         self._app = Flask(name)
         if port == '':
             port = None
@@ -74,7 +80,6 @@ class RestInferenceServer:
             if 'output_meta' in response_json:
                 return response_json['output_meta']
             return response_json
-
 
     class Inference(Resource):
         """Endpoint handler that runs inference on an uploaded image and returns prediction JSON."""

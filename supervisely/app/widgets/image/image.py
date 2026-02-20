@@ -13,8 +13,7 @@ class Image(Widget):
         width: Optional[Union[int, str]] = None,
         widget_id: str = None,
     ):
-        """Initialize Image.
-
+        """
         :param url: Image URL or data URL.
         :type url: str
         :param height: Height in pixels or CSS value (e.g., "300px", "100%").

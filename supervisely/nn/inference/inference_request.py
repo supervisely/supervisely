@@ -35,7 +35,14 @@ class InferenceRequest:
         ttl: Union[int, None] = 60 * 60,
         manager: InferenceRequestsManager = None,
     ):
-        """Initialize InferenceRequest. :param uuid_: Request ID. :param ttl: Time-to-live in seconds. :param manager: Optional InferenceRequestsManager."""
+        """
+        :param uuid_: Request ID.
+        :type uuid_: str
+        :param ttl: Time-to-live in seconds.
+        :type ttl: Union[int, None]
+        :param manager: Optional InferenceRequestsManager.
+        :type manager: InferenceRequestsManager
+        """
         if uuid_ is None:
             uuid_ = uuid.uuid5(namespace=uuid.NAMESPACE_URL, name=f"{time.time()}").hex
         self._uuid = uuid_
@@ -342,7 +349,10 @@ class InferenceRequestsManager:
     """Thread-safe registry and monitor for active :class:`InferenceRequest` instances."""
 
     def __init__(self, executor: ThreadPoolExecutor = None):
-        """Initialize InferenceRequestsManager. :param executor: Thread pool for request execution."""
+        """
+        :param executor: Thread pool for request execution.
+        :type executor: ThreadPoolExecutor
+        """
         if executor is None:
             executor = ThreadPoolExecutor(max_workers=1)
         self._executor = executor

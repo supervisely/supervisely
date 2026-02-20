@@ -252,7 +252,6 @@ setup(
             "sphinx==8.2.3",
             "sphinx-immaterial==0.13.9",
             "myst-parser==5.0.0",
-            # "docutils>=0.19,<=0.21",
         ],
         "sdk-no-usages": [
             "grpcio>=1.53.2, <2.0.0",

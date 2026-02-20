@@ -10,7 +10,14 @@ class SegmentationMetrics:
         ignore_index: int = 255,
         boundary_dilation_ratio: float = 0.02,
     ):
-        """Initialize SegmentationMetrics. :param num_classes: Number of classes. :param ignore_index: Ignored label. :param boundary_dilation_ratio: Boundary dilation for boundary IoU."""
+        """
+        :param num_classes: Number of classes.
+        :type num_classes: int
+        :param ignore_index: Ignored label.
+        :type ignore_index: int
+        :param boundary_dilation_ratio: Boundary dilation for boundary IoU.
+        :type boundary_dilation_ratio: float
+        """
         self.num_classes = num_classes
         self.ignore_index = ignore_index
         self.boundary_dilation_ratio = boundary_dilation_ratio

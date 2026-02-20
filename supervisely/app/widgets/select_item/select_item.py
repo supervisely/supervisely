@@ -29,9 +29,7 @@ class SelectItem(Widget):
         size: Literal["large", "small", "mini"] = None,
         widget_id: str = None,
     ):
-        """Initialize SelectItem.
-
-        :param dataset_id: Dataset ID to list items from.
+        """:param dataset_id: Dataset ID to list items from.
         :type dataset_id: int, optional
         :param compact: If True, compact layout (requires dataset_id).
         :type compact: bool

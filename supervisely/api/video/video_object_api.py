@@ -12,15 +12,12 @@ from supervisely.video_annotation.video_object_collection import VideoObjectColl
 
 class VideoObjectApi(ObjectApi):
     """
-    API for working with :class:`~supervisely.video_annotation.video_object.VideoObject` in
-    :class:`~supervisely.video_annotation.video_annotation.VideoAnnotation`.
-    :class:`~supervisely.api.video.video_object_api.VideoObjectApi` object is immutable.
+    API for working with video objects.
     """
 
     def __init__(self, api):
-        """Initialize VideoObjectApi.
-
-        :param api: API connection to the server.
+        """
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
         :type api: :class:`~supervisely.api.api.Api`
         """
         super().__init__(api)
@@ -33,15 +30,15 @@ class VideoObjectApi(ObjectApi):
         key_id_map: Optional[KeyIdMap] = None,
     ) -> List[int]:
         """
-        Add Objects to Annotation Objects.
+        Add objects to annotation objects.
 
-        :param video_id: Video ID in Supervidely.
+        :param video_id: Video ID in Supervisely.
         :type video_id: int
-        :param objects: VideoObjectCollection objects.
+        :param objects: VideoObjectCollection objects collection.
         :type objects: :class:`~supervisely.video_annotation.video_object_collection.VideoObjectCollection`
         :param key_id_map: KeyIdMap object.
         :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
-        :returns: List of objects IDs
+        :returns: List of object IDs
         :rtype: List[int]
 
         :Usage Example:

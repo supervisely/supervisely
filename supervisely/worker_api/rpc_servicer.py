@@ -62,7 +62,16 @@ class AgentRPCServicerBase:
     QUEUE_MAX_SIZE = 2000  # Maximum number of in-flight requests to avoid exhausting server memory.
 
     def __init__(self, logger, model_applier: SingleImageInferenceInterface, conn_config, cache):
-        """Initialize AgentRPCServicerBase. :param logger: Logger. :param model_applier: SingleImageInferenceInterface. :param conn_config: Dict with server_address, token, task_id. :param cache: Image cache."""
+        """
+        :param logger: Logger.
+        :type logger: Logger
+        :param model_applier: SingleImageInferenceInterface.
+        :type model_applier: SingleImageInferenceInterface
+        :param conn_config: Dict with server_address, token, task_id.
+        :type conn_config: dict
+        :param cache: Image cache.
+        :type cache: ImageCache
+        """
         self.logger = logger
         self.server_address = conn_config['server_address']
         self.api = AgentAPI(token=conn_config['token'],

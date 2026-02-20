@@ -9,9 +9,7 @@ class WeightsRW:
     """Load/save PyTorch model weights from/to file."""
 
     def __init__(self, model_dir, model_file=None):
-        """Initialize WeightsRW.
-
-        :param model_dir: Path to the folder for storing weights.
+        """:param model_dir: Path to the folder for storing weights.
         :type model_dir: str
         :param model_file: Name of weights file (default: model.pt).
         :type model_file: str

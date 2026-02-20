@@ -13,9 +13,8 @@ class ObjectClassApi(ModuleApi):
     """API for working with ObjClass objects."""
 
     def __init__(self, api):
-        """Initialize ObjectClassApi.
-
-        :param api: API connection to the server.
+        """
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
         :type api: :class:`~supervisely.api.api.Api`
 
         :Usage Example:
@@ -31,7 +30,7 @@ class ObjectClassApi(ModuleApi):
     @staticmethod
     def info_sequence():
         """
-        NamedTuple ObjectClassInfo information about ObjectClass.
+        Sequence of fields that are returned by the API to represent ObjectClassInfo.
 
         :Usage Example:
 
@@ -62,7 +61,7 @@ class ObjectClassApi(ModuleApi):
     @staticmethod
     def info_tuple_name():
         """
-        NamedTuple name - **ObjectClassInfo**.
+        Name of the tuple that represents ObjectClassInfo.
         """
         return "ObjectClassInfo"
 
@@ -70,7 +69,7 @@ class ObjectClassApi(ModuleApi):
         self, project_id: int, filters: Optional[List[Dict[str, str]]] = None
     ) -> List[NamedTuple]:
         """
-        List of ObjClasses in the given Project.
+        List of Object Classes in the given Project.
 
         :param project_id: Project ID in which the ObjClasses are located.
         :type project_id: int

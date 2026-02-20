@@ -10,9 +10,7 @@ class VideoThumbnail(Widget):
     """Compact card for a video: preview image, name, duration, frame count, and link to open."""
 
     def __init__(self, info: VideoInfo = None, widget_id: str = None):
-        """Initialize VideoThumbnail.
-
-        :param info: VideoInfo to display. Can be set later with set_video().
+        """:param info: VideoInfo to display. Can be set later with set_video().
         :type info: VideoInfo, optional
         :param widget_id: Unique widget identifier.
         :type widget_id: str, optional

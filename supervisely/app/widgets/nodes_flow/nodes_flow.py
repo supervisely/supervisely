@@ -78,9 +78,7 @@ class NodesFlow(Widget):
             """Input port definition for a node."""
 
             def __init__(self, name, label: Optional[str] = None, color: Optional[str] = None):
-                """Initialize Input.
-
-                :param name: Input port identifier.
+                """:param name: Input port identifier.
                 :param label: Display label.
                 :type label: str, optional
                 :param color: Port color/type.
@@ -106,9 +104,7 @@ class NodesFlow(Widget):
             """A named option attached to a node, rendered using an option component."""
 
             def __init__(self, name: str, option_component: OptionComponent):
-                """Initialize Option.
-
-                :param name: Option identifier.
+                """:param name: Option identifier.
                 :type name: str
                 :param option_component: Component to render (Input, Slider, etc.).
                 :type option_component: OptionComponent
@@ -136,9 +132,7 @@ class NodesFlow(Widget):
             icon: Optional[str] = None,
             icon_background_color: Optional[str] = None,
         ):
-            """Initialize Node.
-
-            :param id: Unique node identifier.
+            """:param id: Unique node identifier.
             :param name: Display name.
             :param width: Node width in pixels.
             :type width: int, optional
@@ -217,9 +211,7 @@ class NodesFlow(Widget):
         show_save: bool = True,
         widget_id: str = None,
     ):
-        """Initialize NodesFlow.
-
-        :param nodes: List of Node definitions.
+        """:param nodes: List of Node definitions.
         :type nodes: List[Node]
         :param height: Widget height (CSS value).
         :type height: str, optional

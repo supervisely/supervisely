@@ -23,7 +23,22 @@ class InferenceVideoInterface:
         imgs_dir,
         preparing_progress,
     ):
-        """Initialize InferenceVideoInterface. :param api: Supervisely API. :param start_frame_index: Start frame. :param frames_count: Number of frames. :param frames_direction: 'forward' or 'backward'. :param video_info: Video metadata. :param imgs_dir: Temp directory for frames. :param preparing_progress: Progress callback."""
+        """
+        :param api: Supervisely API.
+        :type api: Api
+        :param start_frame_index: Start frame.
+        :type start_frame_index: int
+        :param frames_count: Number of frames.
+        :type frames_count: int
+        :param frames_direction: 'forward' or 'backward'.
+        :type frames_direction: str
+        :param video_info: Video metadata.
+        :type video_info: VideoInfo
+        :param imgs_dir: Temp directory for frames.
+        :type imgs_dir: str
+        :param preparing_progress: Progress callback.
+        :type preparing_progress: Callable
+        """
         self.api = api
 
         self.video_info = video_info
@@ -87,7 +102,7 @@ class InferenceVideoInterface:
         if len(self._frames_indexes) == 1:
             download_frame(0, self._frames_indexes[0])
             return
-        
+
         for index, frame_index in tqdm(
             enumerate(self._frames_indexes),
             desc="Downloading frames",

@@ -41,12 +41,15 @@ class PointcloudConverter(BaseConverter):
             related_images: Optional[list] = None,
             custom_data: Optional[dict] = None,
         ):
-            """Initialize Item (pointcloud converter).
-
+            """
             :param item_path: Path to pointcloud file.
+            :type item_path: str
             :param ann_data: Annotation path or data.
+            :type ann_data: str, optional
             :param related_images: List of related image tuples.
+            :type related_images: list, optional
             :param custom_data: Extra per-item data.
+            :type custom_data: dict, optional
             """
             self._name: str = None
             self._path = item_path

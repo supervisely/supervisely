@@ -82,8 +82,6 @@ class Annotation:
         image_id: Optional[int] = None,
     ):
         """
-        Annotation for a single image. :class:`~supervisely.annotation.annotation.Annotation` object is immutable.
-
         :param img_size: Size of the image (height, width).
         :type img_size: Tuple[int, int] or List[int, int]
         :param labels: List of :class:`~supervisely.annotation.label.Label` objects.

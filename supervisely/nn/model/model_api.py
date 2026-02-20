@@ -30,45 +30,10 @@ class ModelAPI:
 
     The instance can be created either from a Supervisely Task ID (to resolve the deployment URL
     automatically) or from a direct deployment URL.
-
-    :Task based usage:
-
-        .. code-block:: python
-
-            import os
-            from dotenv import load_dotenv
-
-            import supervisely as sly
-            from supervisely.nn.model.model_api import ModelAPI
-
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            if sly.is_development():
-                load_dotenv(os.path.expanduser("~/supervisely.env"))
-
-            api = sly.Api.from_env()
-
-            model = ModelAPI(api=api, task_id=12345)
-            meta = model.get_model_meta()
-            classes = model.get_classes()
-            predictions = model.predict(image_id=100500, classes=classes)
-
-    :Direct URL usage:
-
-        .. code-block:: python
-
-            from supervisely.nn.model.model_api import ModelAPI
-
-            model = ModelAPI(url='https://app.supervisely.com/net/<sessionToken>')
-            predictions = model.predict(input='/path/to/image.jpg')
     """
 
     def __init__(self, api: "Api" = None, task_id: int = None, url: str = None):
         """
-        Create a deployed model client.
-
-        Exactly one of ``task_id`` or ``url`` must be provided.
-
         :param api: API client. Required when ``task_id`` is used.
         :type api: :class:`~supervisely.api.api.Api`, optional
         :param task_id: Supervisely task id of a deployed model.
@@ -77,6 +42,37 @@ class ModelAPI:
         :type url: str, optional
         :raises AssertionError: If both ``task_id`` and ``url`` are provided, or neither is provided.
         :raises ValueError: If ``task_id`` is provided but the task is not found.
+
+        :Task based usage:
+
+            .. code-block:: python
+
+                import os
+                from dotenv import load_dotenv
+
+                import supervisely as sly
+                from supervisely.nn.model.model_api import ModelAPI
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                model = ModelAPI(api=api, task_id=12345)
+                meta = model.get_model_meta()
+                classes = model.get_classes()
+                predictions = model.predict(image_id=100500, classes=classes)
+
+        :Direct URL usage:
+
+            .. code-block:: python
+
+                from supervisely.nn.model.model_api import ModelAPI
+
+                model = ModelAPI(url='https://app.supervisely.com/net/<sessionToken>')
+                predictions = model.predict(input='/path/to/image.jpg')
         """
         assert not (task_id is None and url is None), "Either `task_id` or `url` must be passed."
         assert (

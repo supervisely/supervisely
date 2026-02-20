@@ -22,9 +22,7 @@ class FileViewer(Widget):
         widget_id: str = None,
     ):
         """
-        Widget for selecting files and folders in convenient GUI
-
-        :param files_list: list of dicts with files and folders info
+        :param files_list: List of dicts with files and folders info
         :type files_list: List[dict]
         :param selection_type: type of selection, defaults to None
         :type selection_type: Literal[None, "file", "folder"], optional

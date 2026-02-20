@@ -14,14 +14,13 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 
 class PointcloudObjectApi(ObjectApi):
     """
-    API for working with :class:`~supervisely.pointcloud_annotation.pointcloud_object.PointcloudObject` in
-    :class:`~supervisely.pointcloud_annotation.pointcloud_annotation.PointcloudAnnotation`.
-    :class:`~supervisely.api.pointcloud.pointcloud_object_api.PointcloudObjectApi` object is immutable.
+    API for working with point cloud objects.
     """
 
     def __init__(self, api):
         """
-        :param api: :class:`~supervisely.api.api.Api` class object
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
+        :type api: :class:`~supervisely.api.api.Api`
         """
         super().__init__(api)
         self.tag = PointcloudObjectTagApi(api)
@@ -33,15 +32,15 @@ class PointcloudObjectApi(ObjectApi):
         key_id_map: KeyIdMap = None,
     ) -> List[int]:
         """
-        Add pointcloud objects to Annotation Objects.
+        Add point cloud objects to annotation objects.
 
-        :param pointcloud_id: Point cloud ID in Supervidely.
+        :param pointcloud_id: Point cloud ID in Supervisely.
         :type pointcloud_id: int
-        :param objects: PointcloudObjectCollection objects.
+        :param objects: PointcloudObjectCollection objects collection.
         :type objects: :class:`~supervisely.pointcloud_annotation.pointcloud_object_collection.PointcloudObjectCollection`
         :param key_id_map: KeyIdMap object.
         :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
-        :returns: List of objects IDs
+        :returns: List of object IDs
         :rtype: :class:`List[int]`
 
         :Usage Example:

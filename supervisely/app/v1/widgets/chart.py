@@ -6,17 +6,25 @@ class Chart:
 
     def __init__(self, task_id, api: Api, v_model, title, series_names=None,
                  smoothing=None, yrange=None, ydecimals=None, xdecimals=None):
-        """Initialize Chart (v1).
-
+        """
         :param task_id: Task ID.
+        :type task_id: int
         :param api: Api instance.
+        :type api: :class:`~supervisely.api.api.Api`
         :param v_model: Vue model path (e.g. "data.chart").
+        :type v_model: str
         :param title: Chart title.
+        :type title: str
         :param series_names: Optional list of series names.
+        :type series_names: list
         :param smoothing: Smoothing weight.
+        :type smoothing: float
         :param yrange: Y-axis range.
+        :type yrange: int
         :param ydecimals: Decimal places for Y.
+        :type ydecimals: int
         :param xdecimals: Decimal places for X.
+        :type xdecimals: int
         """
         self._task_id = task_id
         self._api = api

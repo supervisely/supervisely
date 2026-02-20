@@ -61,9 +61,7 @@ class PieChart(Apexchart):
         height: Union[int, str] = 350,
         type: Literal["pie", "donut"] = "pie",
     ):
-        """Initialize PieChart.
-
-        :param title: Chart title.
+        """:param title: Chart title.
         :type title: str
         :param series: List of dicts with "name" and "data" (numeric value).
         :type series: List[Dict[str, Union[int, float]]]

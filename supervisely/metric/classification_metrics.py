@@ -16,9 +16,7 @@ class ClassificationMetrics(MetricsBase):
     """Computes precision, recall, and F1 for image-level classification tags."""
 
     def __init__(self, tags_mapping, confidence_threshold=0):
-        """Initialize ClassificationMetrics.
-
-        :param tags_mapping: Dict mapping ground-truth tag names to prediction tag names.
+        """:param tags_mapping: Dict mapping ground-truth tag names to prediction tag names.
         :param confidence_threshold: Min confidence for prediction tags (number type).
         """
         if len(tags_mapping) < 1:

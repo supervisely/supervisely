@@ -124,7 +124,10 @@ class CustomJsonFormatter(jsonlogger.JsonFormatter):
     additional_fields = {}
 
     def __init__(self, format_string):
-        """Initialize CustomJsonFormatter. :param format_string: JsonFormatter format string."""
+        """
+        :param format_string: JSON formatter format string.
+        :type format_string: str
+        """
         super().__init__(format_string)  # , json_serializer=dumps_ignore_nan)
 
     def process_log_record(self, log_record):

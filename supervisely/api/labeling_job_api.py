@@ -116,7 +116,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
     @staticmethod
     def info_sequence():
         """
-        NamedTuple LabelingJobInfo information about Labeling Job.
+        Sequence of fields that are returned by the API to represent LabelingJobInfo.
 
         :Usage Example:
 
@@ -210,14 +210,13 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
     @staticmethod
     def info_tuple_name():
         """
-        NamedTuple name - **LabelingJobInfo**.
+        Name of the tuple that represents LabelingJobInfo.
         """
         return "LabelingJobInfo"
 
     def __init__(self, api):
-        """Initialize LabelingJobApi.
-
-        :param api: API connection to the server.
+        """
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
         :type api: :class:`~supervisely.api.api.Api`
 
         :Usage Example:

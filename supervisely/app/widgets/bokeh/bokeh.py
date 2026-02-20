@@ -20,9 +20,8 @@ class DebouncedEventHandler:
     """Aggregate frequent events and call a handler once per debounce interval."""
 
     def __init__(self, debounce_time: float = 0.1):
-        """Initialize DebouncedEventHandler.
-
-        :param debounce_time: Seconds to wait before calling handler.
+        """
+        :param debounce_time: Time in seconds to wait before calling handler.
         :type debounce_time: float
         """
         self._event_queue = []
@@ -42,13 +41,17 @@ class DebouncedEventHandler:
 
 
 class SelectedIds(BaseModel):
-    """Pydantic model for selected point IDs returned from the Bokeh frontend."""
+    """Pydantic model for selected point IDs returned from the Bokeh widget."""
 
     selected_ids: List[int]
 
 
 class Bokeh(Widget):
-    """Bokeh widget for creating interactive plots. Only Bokeh version 3.1.1 is supported."""
+    """
+    Bokeh widget for creating interactive plots. Only Bokeh version 3.1.1 is supported.
+
+    This widget uses Bokeh library to create interactive plots.
+    """
 
     class Routes:
         """HTTP routes used by the widget to serve HTML and receive selection events."""
@@ -60,9 +63,8 @@ class Bokeh(Widget):
         """Base class for Bokeh plot layers that can be added to a figure with a shared data source."""
 
         def __init__(self, name: Optional[str] = None, **kwargs):
-            """Initialize Plot.
-
-            :param name: Layer name. Auto-generated UUID if None.
+            """
+            :param name: Name of the plot layer. Auto-generated UUID if None.
             :type name: str, optional
             :param kwargs: Additional kwargs passed to Bokeh plot methods.
             """
@@ -158,8 +160,7 @@ class Bokeh(Widget):
         legend_click_policy: Literal["hide", "mute"] = "hide",
         **kwargs,
     ):
-        """Initialize the Bokeh widget.
-
+        """
         :param plots: List of plots to be displayed.
         :type plots: List[Plot]
         :param width: Width of the chart in pixels.

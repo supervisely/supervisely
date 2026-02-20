@@ -25,8 +25,7 @@ class InputNumber(Widget):
         widget_id: str = None,
         width: int = None,
     ):
-        """Initialize InputNumber.
-
+        """
         :param value: Initial numeric value.
         :type value: Union[int, float]
         :param min: Minimum value. None for no limit.

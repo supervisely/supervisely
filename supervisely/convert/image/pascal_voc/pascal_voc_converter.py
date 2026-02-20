@@ -35,7 +35,7 @@ class PascalVOCConverter(ImageConverter):
             *args,
             **kwargs,
         ):
-            """Initialize Item. See :class:`~supervisely.convert.image.image_converter.ImageConverter.Item` for params."""
+            """See :class:`~supervisely.convert.image.image_converter.ImageConverter.Item` for params."""
             super().__init__(*args, **kwargs)
             self._segm_path = None
             self._inst_path = None
@@ -63,7 +63,7 @@ class PascalVOCConverter(ImageConverter):
         upload_as_links: bool,
         remote_files_map: Optional[Dict[str, str]] = None,
     ):
-        """Initialize PascalVOCConverter. See :class:`~supervisely.convert.base_converter.BaseConverter` for params."""
+        """See :class:`~supervisely.convert.base_converter.BaseConverter` for params."""
         super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
 
         self.color2class_name: Optional[Dict[str, str]] = None

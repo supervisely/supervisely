@@ -9,7 +9,7 @@ class ClassBalance(Widget):
     """Visualizes class distribution / balance of input data."""
 
     class Routes:
-        """Route name constants for this widget."""
+        """Callback route names used by the widget frontend to notify Python."""
         CLICK = "class_balance_clicked_cb"
 
     def __init__(
@@ -28,16 +28,27 @@ class ClassBalance(Widget):
     ):
         """
         :param segments: List of segments (name, key, color).
+        :type segments: List[Dict]
         :param rows_data: List of row dicts (name, total, segments).
+        :type rows_data: List[Dict]
         :param slider_data: Per-class slider/preview data.
+        :type slider_data: Dict[str, List]
         :param max_value: Max value for scale.
+        :type max_value: Optional[int]
         :param max_height: Max height in pixels.
+        :type max_height: Optional[int]
         :param rows_height: Row height in pixels.
+        :type rows_height: Optional[int]
         :param selectable: Enable selection.
+        :type selectable: Optional[bool]
         :param collapsable: Enable collapse.
+        :type collapsable: Optional[bool]
         :param clickable_name: Enable name click.
+        :type clickable_name: Optional[bool]
         :param clickable_segment: Enable segment click.
-        :param widget_id: Widget identifier.
+        :type clickable_segment: Optional[bool]
+        :param widget_id: Unique widget identifier.
+        :type widget_id: Optional[str]
 
         :Usage Example:
 

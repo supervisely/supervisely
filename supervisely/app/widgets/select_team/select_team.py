@@ -26,9 +26,7 @@ class SelectTeam(Widget):
         size: Literal["large", "small", "mini"] = None,
         widget_id: str = None,
     ):
-        """Initialize SelectTeam.
-
-        :param default_id: Initial team ID (or from context.teamId).
+        """:param default_id: Initial team ID (or from context.teamId).
         :type default_id: int, optional
         :param show_label: If True, show label.
         :type show_label: bool

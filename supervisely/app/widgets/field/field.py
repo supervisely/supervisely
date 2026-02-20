@@ -20,10 +20,14 @@ class Field(Widget):
             image_url: Optional[str] = None,
         ) -> Field.Icon:
             """
-            :param zmdi_class: Material Design Icon class (e.g. "zmdi zmdi-bike").
+            :param zmdi_class: Material Design Icon class name.
+            :type zmdi_class: Optional[str]
             :param color_rgb: Icon color [R, G, B].
+            :type color_rgb: Optional[List[int, int, int]]
             :param bg_color_rgb: Background color [R, G, B].
+            :type bg_color_rgb: Optional[List[int, int, int]]
             :param image_url: Image URL (alternative to zmdi_class).
+            :type image_url: Optional[str]
             :raises ValueError: If both or neither zmdi_class/image_url; invalid colors.
             """
             if zmdi_class is None and image_url is None:
@@ -86,12 +90,19 @@ class Field(Widget):
     ):
         """
         :param content: Child widget.
+        :type content: :class:`~supervisely.app.widgets.widget.Widget`
         :param title: Field title.
+        :type title: str
         :param description: Field description.
+        :type description: Optional[str]
         :param title_url: Link URL for title.
+        :type title_url: Optional[str]
         :param description_url: Link URL for description.
+        :type description_url: Optional[str]
         :param icon: Field.Icon for header.
+        :type icon: Optional[Field.Icon]
         :param widget_id: Widget identifier.
+        :type widget_id: Optional[str]
 
         :Usage Example:
 

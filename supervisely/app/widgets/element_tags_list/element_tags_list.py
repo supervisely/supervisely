@@ -29,11 +29,17 @@ class ElementTagsList(Widget):
         ):
             """
             :param text: Tag text.
-            :param type: primary, gray, success, warning, danger.
-            :param hit: Highlight.
+            :type text: str
+            :param type: Tag type, one of: primary, gray, success, warning, danger.
+            :type type: Optional[Literal["primary", "gray", "success", "warning", "danger"]]
+            :param hit: Highlight tag.
+            :type hit: Optional[bool]
             :param color: Custom color.
+            :type color: Optional[str]
             :param closable: Show close button.
+            :type closable: Optional[bool]
             :param close_transition: Animate on close.
+            :type close_transition: Optional[bool]
             """
             self._text = text
             self._type = type
@@ -126,7 +132,9 @@ class ElementTagsList(Widget):
     ):
         """
         :param tags: List of ElementTagsList.Tag.
-        :param widget_id: Widget identifier.
+        :type tags: Optional[List[ElementTagsList.Tag]]
+        :param widget_id: Unique widget identifier.
+        :type widget_id: Optional[str]
 
         :Usage Example:
 

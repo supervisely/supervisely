@@ -162,6 +162,7 @@ class Inference:
     INFERENCE_SETTINGS: str = None
     """Path to file with custom inference settings"""
     DEFAULT_IOU_MERGE_THRESHOLD: float = 0.9
+    """Default IOU merge threshold for inference"""
 
     def __init__(
         self,
@@ -177,17 +178,25 @@ class Inference:
         device: Optional[str] = None,
         runtime: Optional[str] = None,
     ):
-        """Initialize Inference.
-
+        """
         :param model_dir: Path to model directory.
+        :type model_dir: str
         :param custom_inference_settings: Dict or path to .yml with inference settings.
+        :type custom_inference_settings: Dict[str, Any] or str
         :param sliding_window_mode: 'basic', 'advanced', or 'none'.
+        :type sliding_window_mode: Literal["basic", "advanced", "none"]
         :param use_gui: Enable GUI.
+        :type use_gui: bool
         :param multithread_inference: Allow multi-threaded inference.
+        :type multithread_inference: bool
         :param use_serving_gui_template: Use serving GUI template.
+        :type use_serving_gui_template: bool
         :param model: Deploy model name.
+        :type model: str
         :param device: Deploy device.
+        :type device: str
         :param runtime: Deploy runtime.
+        :type runtime: str
         """
         self.pretrained_models = self._load_models_json_file(self.MODELS) if self.MODELS else None
         self._args, self._is_cli_deploy = self._parse_cli_deploy_args()
@@ -5463,7 +5472,10 @@ class TempImageWriter:
     """Write temporary images into a per-instance temp directory and clean it up when done."""
 
     def __init__(self, format: str = "png"):
-        """Initialize TempImageWriter. :param format: Image format (e.g. 'png')."""
+        """
+        :param format: Image format (e.g. 'png').
+        :type format: str
+        """
         self.format = format
         self.temp_dir = os.path.join(get_data_dir(), rand_str(10))
         sly_fs.mkdir(self.temp_dir)

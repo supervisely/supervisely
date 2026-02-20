@@ -9,7 +9,14 @@ class TagsSelector:
     lock_message = "Select previous step to unlock"
 
     def __init__(self, project_id: int, tags: list, app_options: dict = {}):
-        """Initialize TagsSelector. :param project_id: Project ID. :param tags: Pre-selected tags. :param app_options: App options."""
+        """
+        :param project_id: Project ID.
+        :type project_id: int
+        :param tags: Pre-selected tags.
+        :type tags: list
+        :param app_options: App options.
+        :type app_options: dict
+        """
         # Init widgets
         self.qa_stats_text = None
         self.tags_table = None

@@ -9,9 +9,7 @@ class EvalPlanner:
     """Determines whether to run validation in the current train step."""
 
     def __init__(self, epochs, val_every):
-        """Initialize EvalPlanner.
-
-        :param epochs: Number of train epochs.
+        """:param epochs: Number of train epochs.
         :type epochs: int
         :param val_every: Validation period by epoch (0.5 = 2 validations per epoch).
         :type val_every: float

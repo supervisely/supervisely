@@ -12,9 +12,7 @@ class OptionComponent:
         sidebar_component: Optional[str] = None,
         options: Optional[dict] = {},
     ):
-        """Initialize OptionComponent.
-
-        :param component_name: Name of the component type.
+        """:param component_name: Name of the component type.
         :type component_name: str
         :param default_value: Default value for the option.
         :type default_value: Any, optional
@@ -46,9 +44,7 @@ class HtmlOptionComponent(OptionComponent):
         sidebar_component: Optional[OptionComponent] = None,
         sidebar_width: Optional[int] = None,
     ):
-        """Initialize HtmlOptionComponent.
-
-        :param html: HTML string for the option.
+        """:param html: HTML string for the option.
         :type html: str
         :param sidebar_component: Optional sidebar option component.
         :type sidebar_component: OptionComponent, optional
@@ -74,9 +70,7 @@ class WidgetOptionComponent(HtmlOptionComponent):
     """Option component rendered from a Supervisely widget's HTML."""
 
     def __init__(self, widget: Widget, sidebar_component=None, sidebar_width: Optional[int] = None):
-        """Initialize WidgetOptionComponent.
-
-        :param widget: Widget to render as option.
+        """:param widget: Widget to render as option.
         :type widget: Widget
         :param sidebar_component: Optional sidebar component.
         :param sidebar_width: Sidebar width in pixels.
@@ -95,9 +89,7 @@ class ButtonOptionComponent(OptionComponent):
         sidebar_component: Optional[OptionComponent] = None,
         sidebar_width: Optional[int] = None,
     ):
-        """Initialize ButtonOptionComponent.
-
-        :param sidebar_component: Component to show in sidebar when clicked.
+        """:param sidebar_component: Component to show in sidebar when clicked.
         :type sidebar_component: OptionComponent, optional
         :param sidebar_width: Sidebar width in pixels.
         :type sidebar_width: int, optional
@@ -117,9 +109,7 @@ class CheckboxOptionComponent(OptionComponent):
     """A checkbox for setting boolean values."""
 
     def __init__(self, default_value: bool = False):
-        """Initialize CheckboxOptionComponent.
-
-        :param default_value: Initial checked state.
+        """:param default_value: Initial checked state.
         :type default_value: bool
         """
         super().__init__(component_name="CheckboxOption", default_value=default_value)
@@ -129,9 +119,7 @@ class InputOptionComponent(OptionComponent):
     """A simple text field. The option name will be displayed as placeholder."""
 
     def __init__(self, default_value: str = ""):
-        """Initialize InputOptionComponent.
-
-        :param default_value: Initial text value.
+        """:param default_value: Initial text value.
         :type default_value: str
         """
         super().__init__(component_name="InputOption", default_value=default_value)
@@ -146,9 +134,7 @@ class IntegerOptionComponent(OptionComponent):
         max: Optional[int] = None,
         default_value: Optional[int] = 0,
     ):
-        """Initialize IntegerOptionComponent.
-
-        :param min: Minimum value.
+        """:param min: Minimum value.
         :type min: int, optional
         :param max: Maximum value.
         :type max: int, optional
@@ -176,9 +162,7 @@ class NumberOptionComponent(OptionComponent):
         max: Optional[float] = None,
         default_value: Optional[float] = 0,
     ):
-        """Initialize NumberOptionComponent.
-
-        :param min: Minimum value.
+        """:param min: Minimum value.
         :type min: float, optional
         :param max: Maximum value.
         :type max: float, optional
@@ -204,9 +188,7 @@ class SelectOptionComponent(OptionComponent):
         """Select option item (value + display label)."""
 
         def __init__(self, value: str, label: Optional[str] = None):
-            """Initialize Item.
-
-            :param value: Option value.
+            """:param value: Option value.
             :type value: str
             :param label: Display label. Defaults to value.
             :type label: str, optional
@@ -218,9 +200,7 @@ class SelectOptionComponent(OptionComponent):
             return {"text": self.label, "value": self.value}
 
     def __init__(self, items: List[Item], default_value: Optional[str] = None):
-        """Initialize SelectOptionComponent.
-
-        :param items: List of Item (value, label).
+        """:param items: List of Item (value, label).
         :type items: List[Item]
         :param default_value: Initially selected value.
         :type default_value: str, optional
@@ -242,9 +222,7 @@ class SliderOptionComponent(OptionComponent):
         max: float,
         default_value: Optional[float] = None,
     ):
-        """Initialize SliderOptionComponent.
-
-        :param min: Minimum value.
+        """:param min: Minimum value.
         :type min: float
         :param max: Maximum value.
         :type max: float
@@ -267,9 +245,7 @@ class TextOptionComponent(OptionComponent):
     """Displays arbitrary strings"""
 
     def __init__(self, text: str):
-        """Initialize TextOptionComponent.
-
-        :param text: Static text to display.
+        """:param text: Static text to display.
         :type text: str
         """
         super().__init__(component_name="TextOption", default_value=text)
@@ -279,9 +255,7 @@ class SidebarNodeInfoOptionComponent(OptionComponent):
     """Special option component used to render node info in the sidebar."""
 
     def __init__(self, sidebar_template: str, sidebar_width: Optional[int] = None):
-        """Initialize SidebarNodeInfoOptionComponent.
-
-        :param sidebar_template: HTML template for sidebar content.
+        """:param sidebar_template: HTML template for sidebar content.
         :type sidebar_template: str
         :param sidebar_width: Sidebar width in pixels.
         :type sidebar_width: int, optional

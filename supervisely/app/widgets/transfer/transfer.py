@@ -16,8 +16,7 @@ class Transfer(Widget):
         """Class for representing items in the Transfer widget."""
 
         def __init__(self, key: str, label: Optional[str] = None, disabled: Optional[bool] = False):
-            """Initialize Transfer.Item.
-
+            """
             :param key: Unique key for identifying the item.
             :type key: str
             :param label: Label displayed in the widget. If None, key is used.

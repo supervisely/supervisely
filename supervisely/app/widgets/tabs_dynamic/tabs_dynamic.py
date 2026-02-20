@@ -38,9 +38,7 @@ class TabsDynamic(Widget):
         """One tab pane (label + content widget)."""
 
         def __init__(self, label: str, content: Widget):
-            """Initialize TabPane.
-
-            :param label: Tab label.
+            """:param label: Tab label.
             :type label: str
             :param content: Widget content for this tab.
             :type content: Widget
@@ -56,9 +54,7 @@ class TabsDynamic(Widget):
         disabled: Optional[bool] = False,
         widget_id=None,
     ):
-        """Initialize TabsDynamic.
-
-        :param filepath_or_raw_yaml: Path to YAML file or raw YAML string.
+        """:param filepath_or_raw_yaml: Path to YAML file or raw YAML string.
         :type filepath_or_raw_yaml: str
         :param type: Style: "card" or "border-card".
         :type type: Literal["card", "border-card"], optional

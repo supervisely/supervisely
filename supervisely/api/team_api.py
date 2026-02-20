@@ -151,9 +151,8 @@ class TeamApi(ModuleNoParent, UpdateableModule):
     """API for working with teams."""
 
     def __init__(self, api):
-        """Initialize TeamApi.
-
-        :param api: API connection to the server.
+        """
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
         :type api: :class:`~supervisely.api.api.Api`
 
         :Usage Example:
@@ -170,7 +169,7 @@ class TeamApi(ModuleNoParent, UpdateableModule):
     @staticmethod
     def info_sequence():
         """
-        NamedTuple TeamInfo containing information about Team.
+        Sequence of fields that are returned by the API to represent TeamInfo.
 
         :Usage Example:
 
@@ -199,13 +198,13 @@ class TeamApi(ModuleNoParent, UpdateableModule):
     @staticmethod
     def info_tuple_name():
         """
-        NamedTuple name - **TeamInfo**.
+        Name of the tuple that represents TeamInfo.
         """
         return "TeamInfo"
 
     def get_list(self, filters: List[Dict[str, str]] = None) -> List[TeamInfo]:
         """
-        List of all Teams.
+        List of all Teams on the Supervisely instance.
 
         :param filters: List of params to sort output Teams.
         :type filters: list, optional
@@ -270,7 +269,7 @@ class TeamApi(ModuleNoParent, UpdateableModule):
 
     def get_info_by_id(self, id: int, raise_error: Optional[bool] = False) -> TeamInfo:
         """
-        Get Team information by ID.
+        Get Team information by Team ID.
 
         :param id: Team ID in Supervisely.
         :type id: int
@@ -327,7 +326,7 @@ class TeamApi(ModuleNoParent, UpdateableModule):
         change_name_if_conflict: Optional[bool] = False,
     ) -> TeamInfo:
         """
-        Creates Team with given name.
+        Creates a new Team with the given name.
 
         :param name: Team name.
         :type name: str
@@ -391,7 +390,7 @@ class TeamApi(ModuleNoParent, UpdateableModule):
         review_status: Optional[Literal["done", "accepted", "rejected"]] = None,
     ) -> List[Dict]:
         """
-        Get Team activity by ID.
+        Get Team activity by Team ID.
 
         :param team_id: Team ID in Supervisely.
         :type team_id: int

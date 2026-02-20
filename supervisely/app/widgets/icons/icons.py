@@ -15,8 +15,7 @@ class Icons(Widget):
         image_url: Optional[str] = None,
         widget_id: Optional[str] = None,
     ):
-        """Initialize Icons.
-
+        """
         :param class_name: CSS class for icon (e.g. Material Design: "zmdi zmdi-folder").
         :type class_name: str, optional
         :param color: Icon color (hex or CSS color).

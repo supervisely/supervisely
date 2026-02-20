@@ -29,9 +29,7 @@ class HandleException:
         stack: List[traceback.FrameSummary] = None,
         **kwargs,
     ):
-        """Initialize HandleException.
-
-        :param exception: Original exception.
+        """:param exception: Original exception.
         :param stack: Optional traceback frame list. Inferred from exception if None.
         :param kwargs: code, title, message for user-facing error.
         """

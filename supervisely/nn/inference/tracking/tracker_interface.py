@@ -40,7 +40,24 @@ class TrackerInterface:
         frames_loader: Callable[[Api, int, List[int]], List[np.ndarray]] = None,
         should_notify: bool = True,
     ):
-        """Initialize TrackerInterface. :param context: Dict with frameIndex, frames, trackId, videoId, objectIds, figureIds, direction. :param api: Supervisely API. :param load_all_frames: Preload all frames. :param notify_in_predict: Notify during predict. :param per_point_polygon_tracking: Polygon tracking mode. :param frame_loader: Optional frame loader. :param frames_loader: Optional batch frame loader. :param should_notify: Enable notifications."""
+        """
+        :param context: Dict with frameIndex, frames, trackId, videoId, objectIds, figureIds, direction.
+        :type context: Dict[str, Any]
+        :param api: Supervisely API.
+        :type api: Api
+        :param load_all_frames: Preload all frames.
+        :type load_all_frames: bool
+        :param notify_in_predict: Notify during predict.
+        :type notify_in_predict: bool
+        :param per_point_polygon_tracking: Polygon tracking mode.
+        :type per_point_polygon_tracking: bool
+        :param frame_loader: Optional frame loader.
+        :type frame_loader: Callable[[Api, int, int], np.ndarray]
+        :param frames_loader: Optional batch frame loader.
+        :type frames_loader: Callable[[Api, int, List[int]], List[np.ndarray]]
+        :param should_notify: Enable notifications.
+        :type should_notify: bool
+        """
         self.api: Api = api
         self.logger: Logger = api.logger
         self.frame_index = context["frameIndex"]
@@ -381,7 +398,14 @@ class TrackerInterfaceV2:
         context: Dict,
         cache: InferenceImageCache,
     ):
-        """Initialize TrackerInterfaceV2. :param api: Supervisely API. :param context: Tracking context dict. :param cache: InferenceImageCache for frames."""
+        """
+        :param api: Supervisely API.
+        :type api: Api
+        :param context: Tracking context dict.
+        :type context: Dict[str, Any]
+        :param cache: InferenceImageCache for frames.
+        :type cache: InferenceImageCache
+        """
         self.api = api
         self.context = context
         self.video_id = find_value_by_keys(context, ["videoId", "video_id"])

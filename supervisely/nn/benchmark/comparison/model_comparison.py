@@ -43,9 +43,7 @@ class ModelComparison:
         cv_task: Optional[TaskType] = None,
         team_id: Optional[int] = None,
     ):
-        """Initialize ModelComparison.
-
-        :param api: Supervisely API.
+        """:param api: Supervisely API.
         :param remote_eval_dirs: Remote paths to evaluation result dirs.
         :param progress: Progress callback.
         :param workdir: Local work directory.

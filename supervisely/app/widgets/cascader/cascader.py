@@ -30,9 +30,13 @@ class Cascader(Widget):
         ) -> Cascader.Item:
             """
             :param value: Item value.
-            :param label: Display label (defaults to value).
+            :type value: str
+            :param label: Display label. Defaults to value.
+            :type label: str, optional
             :param children: Nested items.
+            :type children: List[Cascader.Item], optional
             :param disabled: Disable selection.
+            :type disabled: bool, optional
             """
             self.value = value
             self.label = label
@@ -78,15 +82,25 @@ class Cascader(Widget):
     ):
         """
         :param items: List of Cascader.Item (hierarchical).
+        :type items: List[Cascader.Item], optional
         :param selected_items: Initially selected values.
+        :type selected_items: List[str], optional
         :param filterable: Enable search/filter.
+        :type filterable: bool, optional
         :param placeholder: Placeholder text.
-        :param size: large, small, or mini.
-        :param expand_trigger: click or hover.
+        :type placeholder: str, optional
+        :param size: Size: "large", "small", or "mini".
+        :type size: Literal["large", "small", "mini"], optional
+        :param expand_trigger: Trigger type to expand the cascader: "click", "hover".
+        :type expand_trigger: Literal["click", "hover"], optional
         :param clearable: Allow clearing selection.
+        :type clearable: bool, optional
         :param show_all_levels: Show full path in selection.
+        :type show_all_levels: bool, optional
         :param parent_selectable: Allow selecting parent nodes.
-        :param widget_id: Widget identifier.
+        :type parent_selectable: bool, optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
 
         :Usage Example:
 

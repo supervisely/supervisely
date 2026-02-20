@@ -15,9 +15,7 @@ class ContainerWidget(BaseWidget):
         grid_cols: Union[int, Literal["auto"]] = 2,
         grid_rows: Union[int, Literal["auto"]] = "auto",
     ):
-        """Initialize ContainerWidget.
-
-        :param widgets: Child widgets.
+        """:param widgets: Child widgets.
         :param name: Widget name.
         :param title: Optional title.
         :param grid: Use grid layout.

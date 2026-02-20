@@ -77,9 +77,7 @@ class ObjectClassView(Widget):
         show_shape_icon: bool = False,
         widget_id: str = None,
     ):
-        """Initialize ObjectClassView.
-
-        :param obj_class: ObjClass to display.
+        """:param obj_class: ObjClass to display.
         :type obj_class: ObjClass
         :param show_shape_text: If True, show shape type text.
         :type show_shape_text: bool

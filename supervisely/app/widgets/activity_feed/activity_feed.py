@@ -55,8 +55,6 @@ class ActivityFeed(Widget):
         widget_id: Optional[str] = None,
     ):
         """
-        Vertical list of activity items with status indicators.
-
         :param items: List of ActivityFeed.Item to display. Items auto-numbered if number not set.
         :type items: Optional[List[:class:`~supervisely.app.widgets.activity_feed.activity_feed.ActivityFeed.Item`]]
         :param widget_id: Widget identifier.

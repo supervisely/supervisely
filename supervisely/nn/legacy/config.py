@@ -27,7 +27,10 @@ class MultiTypeValidator(object):
     DEFINITIONS = 'definitions'
 
     def __init__(self, schema_fpath):
-        """Initialize MultiTypeValidator. :param schema_fpath: Path to JSON schema file."""
+        """
+        :param schema_fpath: Path to JSON schema file.
+        :type schema_fpath: str
+        """
         vtor_class = _extend_with_default(Draft4Validator)
         schemas = load_json_file(schema_fpath)
         # Detach common definitions from the named schemas and inline them in into every schema.
@@ -53,7 +56,10 @@ class JsonConfigValidator(MultiTypeValidator):
     """Validator for training and inference configs based on bundled JSON schemas."""
 
     def __init__(self, schema_fpath=None):
-        """Initialize JsonConfigValidator. :param schema_fpath: Path to schemas.json or None for default."""
+        """
+        :param schema_fpath: Path to schemas.json or None for default.
+        :type schema_fpath: str
+        """
         super().__init__(schema_fpath or '/workdir/src/schemas.json')
 
     def validate_train_cfg(self, config):

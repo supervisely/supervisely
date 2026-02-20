@@ -27,10 +27,9 @@ class GridChart(Widget):
         gap: int = 10,
         widget_id: str = None,
     ):
-        """Initialize GridChart.
-
+        """
         :param data: List of chart configs (dicts) or titles (str). Each dict is passed to LineChart.
-        :type data: List[Union[dict, str]]
+        :type data: List[Union[:class:`~supervisely.app.widgets.line_chart.line_chart.LineChart`, str]]
         :param columns: Number of columns in the grid.
         :type columns: int
         :param gap: Gap between charts in pixels.

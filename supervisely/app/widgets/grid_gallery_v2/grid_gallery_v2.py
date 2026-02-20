@@ -38,8 +38,7 @@ class GridGalleryV2(Widget):
         default_tag_filters: List[Union[str, dict]] = None,
         widget_id: str = None,
     ):
-        """Initialize GridGalleryV2.
-
+        """
         :param columns_number: Number of columns in the grid.
         :type columns_number: int
         :param fit_on_resize: If True, fit images on resize.
@@ -157,7 +156,6 @@ class GridGalleryV2(Widget):
                 "lineWidth": self._border_width,
             },
         }
-
 
     def get_column_index(self, incoming_value):
         if incoming_value is not None and 0 > incoming_value > self.columns_number:

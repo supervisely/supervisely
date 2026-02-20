@@ -24,9 +24,7 @@ class ProjectSelector(Widget):
                  team_is_selectable: bool = True,
                  datasets_is_selectable: bool = True,
                  widget_id: str = None):
-        """Initialize ProjectSelector.
-
-        :param team_id: Initial team ID.
+        """:param team_id: Initial team ID.
         :type team_id: int, optional
         :param workspace_id: Initial workspace ID.
         :type workspace_id: int, optional

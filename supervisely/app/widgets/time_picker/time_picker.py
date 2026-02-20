@@ -28,26 +28,25 @@ class TimePicker(Widget):
         clearable: bool = True,
         widget_id: str = None,
     ):
-        """Initialize TimePicker.
-
+        """
         :param value: Initial value in "hh:mm" format.
-        :type value: str
+        :type value: str, optional
         :param start: Start time for picker list.
-        :type start: str
+        :type start: str, optional
         :param step: Step between options (e.g. "00:15").
-        :type step: str
+        :type step: str, optional
         :param end: End time for picker list.
-        :type end: str
+        :type end: str, optional
         :param placeholder: Placeholder when empty.
         :type placeholder: str, optional
         :param size: Size: "large", "small", or "mini".
         :type size: Literal["large", "small", "mini"], optional
         :param readonly: If True, read-only.
-        :type readonly: bool
+        :type readonly: bool, optional
         :param editable: If True, editable.
-        :type editable: bool
+        :type editable: bool, optional
         :param clearable: If True, can clear value.
-        :type clearable: bool
+        :type clearable: bool, optional
         :param widget_id: Unique widget identifier.
         :type widget_id: str, optional
         """

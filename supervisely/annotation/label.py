@@ -105,9 +105,6 @@ class LabelBase:
         status: Optional[LabelingStatus] = None,
     ):
         """
-        Labeling object for :class:`~supervisely.annotation.annotation.Annotation`.
-        :class:`~supervisely.annotation.label.Label` object is immutable.
-
         :param geometry: Label geometry.
         :type geometry: :class:`~supervisely.geometry.geometry.Geometry`
         :param obj_class: :class:`~supervisely.annotation.obj_class.ObjClass` object.
@@ -1045,7 +1042,7 @@ class LabelBase:
 
 class Label(LabelBase):
     """
-    Supervisely Label. Contains geometry and tags for the object on the image.
+    Supervisely Label. Contains geometry and tags for the single object on the image.
     """
     def _validate_geometry_type(self):
         """

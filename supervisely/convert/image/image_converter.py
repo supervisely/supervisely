@@ -43,8 +43,7 @@ class ImageConverter(BaseConverter):
             shape: Optional[Union[Tuple, List]] = None,
             custom_data: Optional[dict] = None,
         ):
-            """Initialize Item (image converter).
-
+            """
             :param item_path: Path to image file.
             :type item_path: str
             :param ann_data: Annotation (path or dict).

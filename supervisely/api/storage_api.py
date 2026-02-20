@@ -20,9 +20,8 @@ class StorageApi(FileApi):
     """API for working with files and folders in Team Files and Cloud Storage."""
 
     def __init__(self, api):
-        """Initialize StorageApi.
-
-        :param api: API connection to the server.
+        """
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
         :type api: :class:`~supervisely.api.api.Api`
 
         :Usage Example:

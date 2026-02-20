@@ -18,8 +18,6 @@ class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
 
     def __init__(self, items: Optional[List[TagMeta]] = None):
         """
-        Collection with :class:`~supervisely.annotation.tag_meta.TagMeta` instances. :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection` object is immutable.
-
         :param items: List of TagMetas.
         :type items: List[:class:`~supervisely.annotation.tag_meta.TagMeta`]
 

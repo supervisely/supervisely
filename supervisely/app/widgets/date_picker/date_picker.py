@@ -30,16 +30,27 @@ class DatePicker(Widget):
     ):
         """
         :param value: Initial value (datetime, str, or timestamp).
+        :type value: Optional[Union[int, str, list, tuple]]
         :param placeholder: Placeholder text.
+        :type placeholder: Optional[str]
         :param picker_type: year, month, date, datetime, week, datetimerange, daterange.
+        :type picker_type: Optional[Literal["year", "month", "date", "datetime", "week", "datetimerange", "daterange"]]
         :param size: large, small, or mini.
+        :type size: Optional[Literal["large", "small", "mini"]]
         :param readonly: Read-only mode.
+        :type readonly: Optional[bool]
         :param disabled: Disabled state.
+        :type disabled: Optional[bool]
         :param editable: Allow manual edit.
+        :type editable: Optional[bool]
         :param clearable: Allow clearing.
+        :type clearable: Optional[bool]
         :param format: Date format string.
+        :type format: Optional[Literal["yyyy", "MM", "dd", "HH", "mm", "ss"]]
         :param first_day_of_week: 0–6 (0=Sunday).
-        :param widget_id: Widget identifier.
+        :type first_day_of_week: Optional[int]
+        :param widget_id: Unique widget identifier.
+        :type widget_id: Optional[str]
 
         :Usage Example:
 

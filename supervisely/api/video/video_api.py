@@ -235,9 +235,8 @@ class VideoApi(RemoveableBulkModuleApi):
     """API for working with videos."""
 
     def __init__(self, api):
-        """Initialize VideoApi.
-
-        :param api: API connection to the server.
+        """
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
         :type api: :class:`~supervisely.api.api.Api`
 
         :Usage Example:

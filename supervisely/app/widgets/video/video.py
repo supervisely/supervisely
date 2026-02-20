@@ -20,9 +20,7 @@ class Video(Widget):
         # intervals: List[List[int]] = [],
         widget_id: str = None,
     ):
-        """Initialize Video.
-
-        :param video_id: Video ID from Supervisely to play.
+        """:param video_id: Video ID from Supervisely to play.
         :type video_id: int, optional
         :param widget_id: Unique widget identifier.
         :type widget_id: str, optional

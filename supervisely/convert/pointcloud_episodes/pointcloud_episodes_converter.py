@@ -39,13 +39,17 @@ class PointcloudEpisodeConverter(BaseConverter):
             related_images: Optional[list] = None,
             custom_data: Optional[dict] = None,
         ):
-            """Initialize Item (pointcloud episode).
-
+            """
             :param item_path: Path to frame pointcloud.
+            :type item_path: str
             :param frame_number: Frame index in episode.
+            :type frame_number: int
             :param ann_data: Annotation path.
+            :type ann_data: str, optional
             :param related_images: Related images list.
+            :type related_images: list, optional
             :param custom_data: Extra data.
+            :type custom_data: dict, optional
             """
             self._name: str = None
             self._path = item_path
@@ -79,7 +83,7 @@ class PointcloudEpisodeConverter(BaseConverter):
         upload_as_links: bool = False,
         remote_files_map: Optional[Dict[str, str]] = None,
     ):
-        """Initialize PointcloudEpisodeConverter. See :class:`~supervisely.convert.base_converter.BaseConverter` for params."""
+        """See :class:`~supervisely.convert.base_converter.BaseConverter` for params."""
         super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
         self._annotation = None
         self._frame_pointcloud_map = None

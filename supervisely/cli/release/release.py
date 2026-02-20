@@ -23,10 +23,11 @@ class cd:
     """Context manager that changes current working directory and optionally adds it to sys.path."""
 
     def __init__(self, new_path=None, add_to_path=False):
-        """Initialize cd context manager.
-
+        """
         :param new_path: Directory to chdir into. If None, path is unchanged.
+        :type new_path: str, optional
         :param add_to_path: If True, prepend new_path to sys.path on enter.
+        :type add_to_path: bool
         """
         self.new_path = new_path
         self.add_to_path = add_to_path

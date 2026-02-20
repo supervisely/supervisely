@@ -105,9 +105,8 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         """Application has been stopped"""
 
     def __init__(self, api):
-        """Initialize TaskApi.
-
-        :param api: API connection to the server.
+        """
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
         :type api: :class:`~supervisely.api.api.Api`
 
         :Usage Example:
@@ -125,7 +124,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         self, workspace_id: int, filters: Optional[List[Dict[str, str]]] = None
     ) -> List[NamedTuple]:
         """
-        List of Tasks in the given Workspace.
+        List of Application Tasks in the given Workspace.
 
         :param workspace_id: Workspace ID.
         :type workspace_id: int
@@ -187,7 +186,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
 
     def get_info_by_id(self, id: int) -> NamedTuple:
         """
-        Get Task information by ID.
+        Get Application Task information by ID.
 
         :param id: Task ID in Supervisely.
         :type id: int
@@ -254,7 +253,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
 
     def get_status(self, task_id: int) -> Status:
         """
-        Check status of Task by ID.
+        Check status of Application Task by ID.
 
         :param task_id: Task ID in Supervisely.
         :type task_id: int
@@ -287,7 +286,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
 
     def raise_for_status(self, status: Status) -> None:
         """
-        Raise error if Task status is ERROR.
+        Raise error if Application Task status is ERROR.
 
         :param status: Status object.
         :type status: Status
@@ -305,7 +304,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         wait_attempt_timeout_sec: Optional[int] = None,
     ):
         """
-        Awaiting achievement by given Task of a given status.
+        Awaiting achievement by given Application Task of a given status.
 
         :param id: Task ID in Supervisely.
         :type id: int
@@ -337,7 +336,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
 
     def get_context(self, id: int) -> Dict:
         """
-        Get context information by task ID.
+        Get context information by Application Task ID.
 
         :param id: Task ID in Supervisely.
         :type id: int
@@ -401,7 +400,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         kubernetes_settings: Optional[Union[KubernetesSettings, Dict[str, Any]]] = None,
         multi_user_session: bool = False,
     ) -> Dict[str, Any]:
-        """Starts the application task on the agent.
+        """Starts the Application Task on the agent.
 
         :param agent_id: Agent ID. Can be obtained from TeamCluster page in UI.
         :type agent_id: int

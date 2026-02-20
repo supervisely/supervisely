@@ -225,9 +225,7 @@ class TrainGUI:
         hyperparameters: dict,
         app_options: dict = None,
     ):
-        """Initialize TrainGUI.
-
-        :param framework_name: Name of the ML framework being used.
+        """:param framework_name: Name of the ML framework being used.
         :type framework_name: str
         :param models: List of available models.
         :type models: list

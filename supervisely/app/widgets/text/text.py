@@ -49,9 +49,7 @@ class Text(Widget):
         widget_id: str = None,
         font_size: int = 14,
     ):
-        """Initialize Text.
-
-        :param text: Text content.
+        """:param text: Text content.
         :type text: str, optional
         :param status: Style: "text", "info", "success", "warning", or "error".
         :type status: Literal["text", "info", "success", "warning", "error"]

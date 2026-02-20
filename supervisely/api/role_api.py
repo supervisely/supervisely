@@ -23,9 +23,8 @@ class RoleApi(ModuleApiBase):
     """API for working with roles."""
 
     def __init__(self, api):
-        """Initialize RoleApi.
-
-        :param api: API connection to the server.
+        """
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
         :type api: :class:`~supervisely.api.api.Api`
 
         :Usage Example:
@@ -53,7 +52,7 @@ class RoleApi(ModuleApiBase):
     @staticmethod
     def info_sequence():
         """
-        NamedTuple RoleInfo information about Role.
+        Sequence of fields that are returned by the API to represent RoleInfo.
 
         :Usage Example:
 
@@ -71,13 +70,13 @@ class RoleApi(ModuleApiBase):
     @staticmethod
     def info_tuple_name():
         """
-        NamedTuple name - **RoleInfo**.
+        Name of the tuple that represents RoleInfo.
         """
         return "RoleInfo"
 
     def get_list(self, filters: Optional[List[Dict[str, str]]] = None) -> List[RoleInfo]:
         """
-        List of all roles that are available on private Supervisely instance.
+        List of all roles that are available on the Supervisely instance.
 
         :param filters: List of params to sort output Roles.
         :type filters: List[Dict[str, str]]

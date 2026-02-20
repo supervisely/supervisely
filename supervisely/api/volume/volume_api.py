@@ -177,11 +177,11 @@ class VolumeInfo(NamedTuple):
 
 
 class VolumeApi(RemoveableBulkModuleApi):
-    """API for working with volumes. :class:`~supervisely.api.volume.volume_api.VolumeApi` object is immutable."""
+    """API for working with volumes."""
 
     def __init__(self, api):
         """
-        :param api: API connection to the server.
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
         :type api: :class:`~supervisely.api.api.Api`
 
         :Usage Example:

@@ -14,9 +14,7 @@ class Stepper(Widget):
         active_step: int = 1,
         widget_id: str = None,
     ):
-        """Initialize Stepper.
-
-        :param titles: List of step titles.
+        """:param titles: List of step titles.
         :type titles: List
         :param widgets: List of widgets, one per step.
         :type widgets: List

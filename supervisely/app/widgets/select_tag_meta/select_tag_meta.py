@@ -32,9 +32,7 @@ class SelectTagMeta(Widget):
         size: Literal["large", "small", "mini"] = None,
         widget_id: str = None,
     ):
-        """Initialize SelectTagMeta.
-
-        :param default: Initial tag name.
+        """:param default: Initial tag name.
         :type default: str, optional
         :param project_id: Project ID to load TagMetas from.
         :type project_id: int, optional

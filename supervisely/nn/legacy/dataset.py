@@ -57,7 +57,10 @@ class CorruptedSampleCatcher(object):
     """Context helper that tolerates up to N corrupted samples before raising; tracks failed UIDs."""
 
     def __init__(self, allow_corrupted_cnt):
-        """Initialize CorruptedSampleCatcher. :param allow_corrupted_cnt: Max allowed corrupted samples before raising."""
+        """
+        :param allow_corrupted_cnt: Max allowed corrupted samples before raising.
+        :type allow_corrupted_cnt: int
+        """
         self.fails_allowed = allow_corrupted_cnt
         self._failed_uids = set()
         self._lock = Lock()
@@ -87,7 +90,22 @@ class SlyDataset:
 
     def __init__(self, project_meta, samples, out_size, class_mapping, bkg_color, allow_corrupted_cnt=0,
                  catcher_retries=100):
-        """Initialize SlyDataset. :param project_meta: Project meta. :param samples: List of (img_path, ann_path). :param out_size: Output size (H, W). :param class_mapping: Class name mapping. :param bkg_color: Background color. :param allow_corrupted_cnt: Max corrupted samples. :param catcher_retries: Retries for catcher."""
+        """
+        :param project_meta: Project meta.
+        :type project_meta: ProjectMeta
+        :param samples: List of (img_path, ann_path).
+        :type samples: list
+        :param out_size: Output size (H, W).
+        :type out_size: tuple
+        :param class_mapping: Class name mapping.
+        :type class_mapping: dict
+        :param bkg_color: Background color (-1 for no background).
+        :type bkg_color: int
+        :param allow_corrupted_cnt: Max corrupted samples.
+        :type allow_corrupted_cnt: int
+        :param catcher_retries: Retries for catcher.
+        :type catcher_retries: int
+        """
         self._project_meta = project_meta
         self._samples = samples
         self._out_size = tuple(out_size)

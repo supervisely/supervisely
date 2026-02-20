@@ -20,9 +20,7 @@ class EntityAnnotationAPI(ModuleApi):
 
     def __init__(self, api):
         """
-        EntityAnnotationAPI is a base class for all entity annotation APIs.
-
-        :param api: API connection to the server.
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
         :type api: :class:`~supervisely.api.api.Api`
         """
         super().__init__(api)

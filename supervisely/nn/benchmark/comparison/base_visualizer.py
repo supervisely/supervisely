@@ -23,9 +23,7 @@ class BaseComparisonVisualizer:
     report_name = "Model Comparison Report.lnk"
 
     def __init__(self, comparison):
-        """Initialize BaseComparisonVisualizer.
-
-        :param comparison: ModelComparison instance with eval_results.
+        """:param comparison: ModelComparison instance with eval_results.
         """
         self.comparison = comparison
         self.api = comparison.api

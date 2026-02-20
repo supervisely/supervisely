@@ -23,9 +23,7 @@ class Renderer:
         template: str = None,
         report_name: str = "Model Evaluation Report.lnk",
     ) -> None:
-        """Initialize Renderer.
-
-        :param layout: Root widget layout.
+        """:param layout: Root widget layout.
         :param base_dir: Output directory (must be empty).
         :param template: HTML template string. Uses default if None.
         :param report_name: Report link filename.

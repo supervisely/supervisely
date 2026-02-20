@@ -7,7 +7,9 @@ from supervisely.project.project_type import ProjectType
 
 
 class DestinationProject(Widget):
-    """Selector for destination project and dataset when transferring data.
+    """
+    Widget for selecting destination project and dataset when transferring data.
+
     Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/input/destinationproject>`_.
     """
 
@@ -25,8 +27,7 @@ class DestinationProject(Widget):
         ] = ProjectType.IMAGES,
         widget_id: Optional[str] = None,
     ):
-        """Initialize the DestinationProject widget.
-
+        """
         :param workspace_id: workspace id
         :type workspace_id: int
         :param project_type: project type, one of: images, videos, volumes, point_clouds, point_cloud_episodes, default: images

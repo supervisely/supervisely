@@ -23,8 +23,6 @@ class ObjClassCollection(KeyIndexedCollection, JsonSerializable):
 
     def __init__(self, items: Optional[List[ObjClass]] = None):
         """
-        Collection with :class:`~supervisely.annotation.obj_class.ObjClass` instances. :class:`~supervisely.annotation.obj_class_collection.ObjClassCollection` object is immutable.
-
         :param items: List of :class:`~supervisely.annotation.obj_class.ObjClass` instances.
         :type items: list, optional
         :raises :class:`~supervisely.collection.key_indexed_collection.DuplicateKeyError`: if instance with given name already exist

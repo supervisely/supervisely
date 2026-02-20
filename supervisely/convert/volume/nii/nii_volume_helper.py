@@ -207,9 +207,7 @@ class AnnotationMatcher:
     """Maps NIfTI annotation filenames to volume items for matching masks/labels during NIfTI import."""
 
     def __init__(self, items, dataset_id):
-        """Initialize AnnotationMatcher.
-
-        :param items: List of NIfTI items with ann_data paths.
+        """:param items: List of NIfTI items with ann_data paths.
         :param dataset_id: Target dataset ID for volume matching.
         """
         self._ann_paths = defaultdict(list)

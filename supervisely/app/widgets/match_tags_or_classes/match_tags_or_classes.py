@@ -24,8 +24,7 @@ class MatchTagMetasOrClasses(Widget):
         suffix: Union[str, None] = None,
         widget_id: str = None,
     ):
-        """Initialize MatchTagMetasOrClasses.
-
+        """
         :param left_collection: Left TagMetaCollection or ObjClassCollection.
         :type left_collection: Union[TagMetaCollection, ObjClassCollection, None]
         :param right_collection: Right collection (same type as left).
@@ -314,8 +313,7 @@ class MatchTagMetas(MatchTagMetasOrClasses):
         suffix: Union[str, None] = None,
         widget_id: str = None,
     ):
-        """Initialize MatchTagMetas.
-
+        """
         :param left_collection: Left TagMetaCollection or list of TagMeta.
         :type left_collection: Union[TagMetaCollection, List[TagMeta], None]
         :param right_collection: Right collection (same type as left).
@@ -396,8 +394,7 @@ class MatchObjClasses(MatchTagMetasOrClasses):
         suffix: Union[str, None] = None,
         widget_id: str = None,
     ):
-        """Initialize MatchObjClasses.
-
+        """
         :param left_collection: Left ObjClassCollection or list of ObjClass.
         :type left_collection: Union[ObjClassCollection, List[ObjClass], None]
         :param right_collection: Right collection (same type as left).

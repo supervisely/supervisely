@@ -118,9 +118,7 @@ class CamData:
     def __init__(
         self, nuscenes, sensor_name: str, sensor_token: str, cs_record: dict, ego_record: dict
     ):
-        """Initialize CamData.
-
-        :param nuscenes: The nuScenes dataset instance.
+        """:param nuscenes: The nuScenes dataset instance.
         :type nuscenes: NuScenes
         :param sensor_name: The name of the camera sensor.
         :type sensor_name: str

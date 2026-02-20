@@ -32,8 +32,7 @@ class GridGallery(Widget):
         widget_id: str = None,
         empty_message: str = "Gallery is empty",
     ):
-        """Initialize GridGallery.
-
+        """
         :param columns_number: Number of columns in the grid.
         :type columns_number: int
         :param annotations_opacity: Opacity of annotation overlays (0–1).

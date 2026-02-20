@@ -66,8 +66,7 @@ class ExperimentGenerator(BaseGenerator):
         output_dir: str = "./experiment_report",
         app_options: Optional[dict] = None,
     ):
-        """Initialize experiment generator class.
-
+        """
         :param api: Supervisely API instance
         :type api: :class:`~supervisely.api.api.Api`
         :param experiment_info: Dictionary with experiment information

@@ -46,11 +46,9 @@ class Tag(KeyObject):
         created_at: Optional[str] = None,
     ):
         """
-        Tag attached to image or label.
-
-        :param meta: Tag metadata (name, value type).
+        :param meta: :class:`~supervisely.annotation.tag_meta.TagMeta` object with tag metadata (name, value type).
         :type meta: :class:`~supervisely.annotation.tag_meta.TagMeta`
-        :param value: Tag value; type must match TagMeta.value_type.
+        :param value: Tag value; type must match :class:`~supervisely.annotation.tag_meta.TagMeta`.value_type.
         :type value: str or int or float, optional
         :param sly_id: Server-side tag ID.
         :type sly_id: int, optional
@@ -60,7 +58,7 @@ class Tag(KeyObject):
         :type updated_at: str, optional
         :param created_at: Creation timestamp (ISO format).
         :type created_at: str, optional
-        :raises ValueError: If meta is None or value is incompatible with TagMeta.value_type.
+        :raises ValueError: If meta is None or value is incompatible with :class:`~supervisely.annotation.tag_meta.TagMeta`.value_type.
 
         :Usage Example:
 

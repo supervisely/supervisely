@@ -135,7 +135,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
 
     def __init__(self, api):
         """
-        :param api: API connection to the server.
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
         :type api: :class:`~supervisely.api.api.Api`
 
         :Usage Example:

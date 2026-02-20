@@ -15,8 +15,7 @@ class MembersListPreview(Widget):
         empty_text: str = None,
         widget_id: int = None,
     ):
-        """Initialize MembersListPreview.
-
+        """
         :param users: List of UserInfo to display.
         :type users: List[UserInfo], optional
         :param max_width: Max width in pixels (min 150).

@@ -44,7 +44,10 @@ class MarkdownExtension(Extension):
     tags = set(["markdown"])
 
     def __init__(self, environment):
-        """Initialize MarkdownExtension. :param environment: Jinja2 Environment."""
+        """
+        :param environment: Jinja2 Environment.
+        :type environment: jinja2.Environment
+        """
         super(MarkdownExtension, self).__init__(environment)
         if markdown is None:
             raise ImportError("markdown library is required for MarkdownExtension but is not installed.")

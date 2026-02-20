@@ -12,9 +12,7 @@ class NotificationWidget(BaseWidget):
         title: str,
         desc: str = None,
     ) -> None:
-        """Initialize NotificationWidget.
-
-        :param name: Widget name.
+        """:param name: Widget name.
         :param title: Notification title.
         :param desc: Optional description.
         """

@@ -19,9 +19,7 @@ class ReportThumbnail(Widget):
         bg_color: Optional[str] = "#faebff",
         report_type: Literal["model_benchmark", "experiment"] = "model_benchmark",
     ):
-        """Initialize ReportThumbnail.
-
-        :param info: FileInfo for report file. Can be set later.
+        """:param info: FileInfo for report file. Can be set later.
         :type info: FileInfo, optional
         :param widget_id: Unique widget identifier.
         :type widget_id: str, optional

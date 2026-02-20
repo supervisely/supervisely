@@ -546,7 +546,12 @@ class VideoFrameReader:
     """Read video frames efficiently using Decord when available, with an OpenCV fallback."""
 
     def __init__(self, video_path: str, frame_indexes: List[int] = None):
-        """Initialize VideoFrameReader. :param video_path: Path to video file. :param frame_indexes: Optional frame indices to read."""
+        """
+        :param video_path: Path to video file.
+        :type video_path: str
+        :param frame_indexes: Optional frame indices to read.
+        :type frame_indexes: List[int]
+        """
         self.video_path = video_path
         self.frame_indexes = frame_indexes
         self.vr = None

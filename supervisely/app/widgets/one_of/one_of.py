@@ -10,9 +10,7 @@ class OneOf(Widget):
         conditional_widget: ConditionalWidget,
         widget_id: str = None,
     ):
-        """Initialize OneOf.
-
-        :param conditional_widget: Widget with conditional branches (e.g. radio + content map).
+        """:param conditional_widget: Widget with conditional branches (e.g. radio + content map).
         :type conditional_widget: ConditionalWidget
         :param widget_id: Unique widget identifier.
         :type widget_id: str, optional

@@ -21,9 +21,7 @@ class RadioTable(Widget):
         column_formatters: Dict = {},
         widget_id: str = None,
     ):
-        """Initialize RadioTable.
-
-        :param columns: Column names.
+        """:param columns: Column names.
         :type columns: List[str]
         :param rows: Rows as list of lists (each row is list of cell values).
         :type rows: List[List[str]]

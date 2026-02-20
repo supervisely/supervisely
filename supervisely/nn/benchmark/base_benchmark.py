@@ -42,9 +42,7 @@ class BaseBenchmark:
         classes_whitelist: Optional[List[str]] = None,
         evaluation_params: Optional[dict] = None,
     ):
-        """Initialize BaseBenchmark.
-
-        :param api: Supervisely API.
+        """:param api: Supervisely API.
         :param gt_project_id: Ground-truth project ID.
         :param gt_dataset_ids: Optional dataset IDs to benchmark.
         :param gt_images_ids: Optional image IDs to benchmark.

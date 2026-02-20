@@ -78,7 +78,7 @@ class DeployApi:
 
     def __init__(self, api: "Api"):
         """
-        :param api: API client.
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
         :type api: :class:`~supervisely.api.api.Api`
         """
         self._api = api

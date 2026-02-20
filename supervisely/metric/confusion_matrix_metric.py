@@ -11,9 +11,7 @@ class ConfusionMatrixMetric(MetricsBase):
     """Computes a confusion matrix between ground-truth and prediction classes using IoU matching."""
 
     def __init__(self, class_mapping, iou_threshold):
-        """Initialize ConfusionMatrixMetric.
-
-        :param class_mapping: Dict mapping ground-truth class names to prediction class names.
+        """:param class_mapping: Dict mapping ground-truth class names to prediction class names.
         :param iou_threshold: IoU threshold for matching labels.
         """
         if len(class_mapping) < 1:

@@ -35,9 +35,7 @@ class SelectProject(Widget):
         size: Literal["large", "small", "mini"] = None,
         widget_id: str = None,
     ):
-        """Initialize SelectProject.
-
-        :param default_id: Initial project ID.
+        """:param default_id: Initial project ID.
         :type default_id: int, optional
         :param workspace_id: Workspace to list projects from.
         :type workspace_id: int, optional

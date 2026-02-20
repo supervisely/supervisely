@@ -34,8 +34,7 @@ class SelectDataset(Widget):
         select_all_datasets: bool = False,
         allowed_project_types: List[ProjectType] = [],
     ):
-        """Initialize SelectDataset.
-
+        """
         :param default_id: Initial dataset ID or list (if multiselect).
         :type default_id: Union[int, List], optional
         :param project_id: Project to list datasets from.

@@ -21,13 +21,15 @@ class CompareGallery:
     """v1 widget for side-by-side comparison of two images with overlaid annotations."""
 
     def __init__(self, task_id, api: Api, v_model, project_meta: ProjectMeta):
-        """Initialize CompareGallery (v1).
-
+        """
         :param task_id: Task ID.
+        :type task_id: int
         :param api: Api instance.
+        :type api: :class:`~supervisely.api.api.Api`
         :param v_model: Vue model path.
+        :type v_model: str
         :param project_meta: ProjectMeta for annotations.
-        :type project_meta: ProjectMeta
+        :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
         """
         self._task_id = task_id
         self._api = api

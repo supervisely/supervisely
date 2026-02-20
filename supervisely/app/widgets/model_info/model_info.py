@@ -21,9 +21,7 @@ class ModelInfo(Widget):
         widget_id: str = None,
         replace_none_with: Optional[str] = None,
     ):
-        """Initialize ModelInfo.
-
-        :param session_id: Deployed model session ID to display info for.
+        """:param session_id: Deployed model session ID to display info for.
         :type session_id: int, optional
         :param team_id: Team ID. Defaults to env.team_id().
         :type team_id: int, optional

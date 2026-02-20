@@ -18,8 +18,6 @@ class TagCollection(MultiKeyIndexedCollection):
 
     def __init__(self, items: Optional[List[Tag]] = None):
         """
-        Collection with :class:`~supervisely.annotation.tag.Tag` instances. :class:`~supervisely.annotation.tag_collection.TagCollection` object is immutable.
-
         :param items: List of :class:`~supervisely.annotation.tag.Tag` instances.
         :type items: list, optional
         :raises :class:`~supervisely.collection.key_indexed_collection.DuplicateKeyError`: if instance with given name already exist

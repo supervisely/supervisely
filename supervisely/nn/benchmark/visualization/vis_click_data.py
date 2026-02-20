@@ -9,9 +9,7 @@ class IdMapper:
     """Map COCO dataset IDs (image/annotation) to original Supervisely IDs."""
 
     def __init__(self, coco_dataset: dict):
-        """Initialize IdMapper.
-
-        :param coco_dataset: COCO dataset dict with images and annotations.
+        """:param coco_dataset: COCO dataset dict with images and annotations.
         """
         self.map_img = {x["id"]: x["sly_id"] for x in coco_dataset["images"]}
         self.map_obj = {x["id"]: x["sly_id"] for x in coco_dataset["annotations"]}
@@ -21,9 +19,7 @@ class ClickData:
     """Prepare per-match ID bundles used by interactive benchmark visualizations (click-to-open items)."""
 
     def __init__(self, m: MetricProvider, gt_id_mapper: IdMapper, dt_id_mapper: IdMapper):
-        """Initialize ClickData.
-
-        :param m: MetricProvider (detection evaluator output).
+        """:param m: MetricProvider (detection evaluator output).
         :param gt_id_mapper: IdMapper for ground-truth.
         :param dt_id_mapper: IdMapper for predictions.
         """

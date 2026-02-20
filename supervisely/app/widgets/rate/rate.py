@@ -26,9 +26,7 @@ class Rate(Widget):
         disabled_void_color: str = "#EFF2F7",
         widget_id: str = None,
     ):
-        """Initialize Rate.
-
-        :param value: Initial rating value.
+        """:param value: Initial rating value.
         :type value: Union[int, float], optional
         :param max: Maximum stars (default 5).
         :type max: int

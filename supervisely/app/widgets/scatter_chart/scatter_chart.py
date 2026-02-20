@@ -49,9 +49,7 @@ class ScatterChart(Apexchart):
         height: Union[int, str] = 350,
         decimalsInFloat: int = 2,
     ):
-        """Initialize ScatterChart.
-
-        :param title: Chart title.
+        """:param title: Chart title.
         :type title: str
         :param series: List of series with "name" and "data" (list of {x, y}).
         :type series: list

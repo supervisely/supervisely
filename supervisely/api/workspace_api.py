@@ -23,9 +23,8 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
     """API for working with workspaces."""
 
     def __init__(self, api):
-        """Initialize WorkspaceApi.
-
-        :param api: API connection to the server.
+        """
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
         :type api: :class:`~supervisely.api.api.Api`
 
         :Usage Example:
@@ -42,7 +41,7 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
     @staticmethod
     def info_sequence():
         """
-        NamedTuple WorkspaceInfo containing information about Workspace.
+        Sequence of fields that are returned by the API to represent WorkspaceInfo.
 
         :Usage Example:
 
@@ -69,7 +68,7 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
     @staticmethod
     def info_tuple_name():
         """
-        NamedTuple name - **WorkspaceInfo**.
+        Name of the tuple that represents WorkspaceInfo.
         """
         return "WorkspaceInfo"
 
@@ -77,7 +76,7 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
         self, team_id: int, filters: Optional[List[Dict[str, str]]] = None
     ) -> List[WorkspaceInfo]:
         """
-        List of Workspaces in the given Team.
+        List of Workspaces in the given Team on the Supervisely instance.
 
         :param team_id: Team ID in which the Workspaces are located.
         :type team_id: int
@@ -143,7 +142,7 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
 
     def get_info_by_id(self, id: int, raise_error: Optional[bool] = False) -> WorkspaceInfo:
         """
-        Get Workspace information by ID.
+        Get Workspace information by Workspace ID.
 
         :param id: Workspace ID in Supervisely.
         :type id: int
@@ -188,7 +187,7 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
         change_name_if_conflict: Optional[bool] = False,
     ) -> WorkspaceInfo:
         """
-        Create Workspace with given name in the given Team.
+        Create a new Workspace with the given name in the given Team.
 
         :param team_id: Team ID in Supervisely where Workspace will be created.
         :type team_id: int
@@ -252,7 +251,7 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
 
     def change_visibility(self, id: int, visible: bool):
         """
-        Change Workspace visibility.
+        Change Workspace visibility by Workspace ID.
 
         :param id: Workspace ID.
         :type id: int

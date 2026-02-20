@@ -36,9 +36,7 @@ class Sampling(Widget):
         file_path: str = __file__,
         copy_annotations: bool = True,
     ):
-        """Initialize Sampling.
-
-        :param project_id: Input video project ID.
+        """:param project_id: Input video project ID.
         :type project_id: int, optional
         :param input_selectable: If True, user can select input project.
         :type input_selectable: bool

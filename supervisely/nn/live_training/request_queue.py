@@ -15,15 +15,23 @@ class RequestType(Enum):
 
 class Request:
     """A simple representation of an API request."""
+
     def __init__(self, request_type: RequestType, data: Optional[dict] = None, future: Optional[asyncio.Future] = None):
-        """Initialize Request. :param request_type: RequestType enum. :param data: Optional request data. :param future: Optional Future for response."""
+        """
+        :param request_type: RequestType enum.
+        :type request_type: RequestType
+        :param data: Optional request data.
+        :type data: dict
+        :param future: Optional Future for response.
+        :type future: asyncio.Future
+        """
         self.type = request_type
         self.data = data
         self.future = future
-    
+
     def to_tuple(self):
         return (self.type, self.data, self.future)
-    
+
 
 class RequestQueue:
     """Thread-safe queue for API requests."""

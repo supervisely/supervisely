@@ -18,11 +18,10 @@ class RenamingTagMetaMapper(TagMetaMapper):
     """Map tag metas by renaming their names using a :class:`~supervisely.annotation.renamer.Renamer`."""
 
     def __init__(self, dest_tag_meta_dict: TagMetaCollection, renamer: Renamer):
-        """Initialize RenamingTagMetaMapper.
-
-        :param dest_tag_meta_dict: Destination tag meta collection.
+        """
+        :param dest_tag_meta_dict: :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection` object to map to.
         :type dest_tag_meta_dict: :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection`
-        :param renamer: Renamer instance for mapping source names to destination names.
+        :param renamer: :class:`~supervisely.annotation.renamer.Renamer` object to use for renaming.
         :type renamer: :class:`~supervisely.annotation.renamer.Renamer`
         """
         self._dest_tag_meta_dict = dest_tag_meta_dict

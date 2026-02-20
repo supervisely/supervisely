@@ -13,7 +13,10 @@ class SimpleCache:
     """In-memory cache with a fixed item-count limit; clears all entries when the limit is exceeded."""
 
     def __init__(self, item_cnt_limit):
-        """Initialize SimpleCache. :param item_cnt_limit: Max items before clear."""
+        """
+        :param item_cnt_limit: Max items before clear.
+        :type item_cnt_limit: int
+        """
         self.dct = {}
         self.item_cnt_limit = item_cnt_limit
 

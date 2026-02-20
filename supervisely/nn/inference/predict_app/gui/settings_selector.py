@@ -80,7 +80,18 @@ class Preview:
         get_input_settings_fn: Callable[[], Dict[str, Any]],
         get_settings_fn: Callable[[], Dict[str, Any]],
     ):
-        """Initialize Preview. :param api: Supervisely API. :param preview_dir: Output dir. :param get_model_api_fn: Model API getter. :param get_input_settings_fn: Input settings getter. :param get_settings_fn: Settings getter."""
+        """
+        :param api: Supervisely API.
+        :type api: Api
+        :param preview_dir: Output dir.
+        :type preview_dir: str
+        :param get_model_api_fn: Model API getter.
+        :type get_model_api_fn: Callable[[], ModelAPI]
+        :param get_input_settings_fn: Input settings getter.
+        :type get_input_settings_fn: Callable[[], Dict[str, Any]]
+        :param get_settings_fn: Settings getter. :param get_settings_fn: Settings getter.
+        :type get_settings_fn: Callable[[], Dict[str, Any]]
+        """
         self.api = api
         self.preview_dir = preview_dir
         self.get_model_api_fn = get_model_api_fn
@@ -593,7 +604,16 @@ class SettingsSelector:
         input_selector: InputSelector,
         model_selector: ModelSelector,
     ):
-        """Initialize SettingsSelector. :param api: Supervisely API. :param static_dir: Static dir. :param input_selector: InputSelector. :param model_selector: ModelSelector."""
+        """
+        :param api: Supervisely API.
+        :type api: :class:`~supervisely.api.api.Api`
+        :param static_dir: Static dir.
+        :type static_dir: str
+        :param input_selector: InputSelector.
+        :type input_selector: :class:`~supervisely.nn.inference.predict_app.gui.input_selector.InputSelector`
+        :param model_selector: ModelSelector.
+        :type model_selector: :class:`~supervisely.nn.inference.predict_app.gui.model_selector.ModelSelector`
+        """
         # Init Step
         self.api = api
         self.static_dir = static_dir

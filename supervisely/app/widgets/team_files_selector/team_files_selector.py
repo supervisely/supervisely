@@ -27,9 +27,7 @@ class TeamFilesSelector(Widget):
         widget_id: str = None,
         initial_folder: str = None,
     ):
-        """Initialize TeamFilesSelector.
-
-        :param team_id: Team ID for Team Files.
+        """:param team_id: Team ID for Team Files.
         :type team_id: int
         :param multiple_selection: If True, allow multiple selection.
         :type multiple_selection: bool

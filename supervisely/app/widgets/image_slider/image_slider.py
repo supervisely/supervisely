@@ -21,6 +21,23 @@ class ImageSlider(Widget):
         widget_id: str = None,
     ):
         """
+        :param previews: List of image URLs.
+        :type previews: List[str]
+        :param examples: List of lists of image URLs.
+        :type examples: List[List[str]]
+        :param combined_data: List of dicts with 'moreExamples' and 'preview' keys.
+        :type combined_data: List[dict]
+        :param height: Height in pixels.
+        :type height: int
+        :param selectable: If True, the slider is selectable.
+        :type selectable: bool
+        :param preview_idx: Index of the preview to select.
+        :type preview_idx: int
+        :param preview_url: URL of the preview to select.
+        :type preview_url: str
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+
         Input parameters format examples:
 
             previews = ["https://i.imgur.com/1Ys222.png", "https://i.imgur.com/2Yj2QjQ.png",]

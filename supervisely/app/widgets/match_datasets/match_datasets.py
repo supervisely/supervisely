@@ -15,8 +15,7 @@ class MatchDatasets(Widget):
         right_name=None,
         widget_id=None,
     ):
-        """Initialize MatchDatasets.
-
+        """
         :param left_datasets: Left dataset list.
         :type left_datasets: List[DatasetInfo], optional
         :param right_datasets: Right dataset list.

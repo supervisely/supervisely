@@ -24,9 +24,7 @@ class TagMetasList(Widget):
         columns: int = 1,  # 1 means vertical layout
         widget_id: str = None,
     ):
-        """Initialize TagMetasList.
-
-        :param tag_metas: TagMetaCollection or list of TagMeta.
+        """:param tag_metas: TagMetaCollection or list of TagMeta.
         :type tag_metas: Union[TagMetaCollection, List[TagMeta]]
         :param show_type_text: If True, show value type in TagMetaView.
         :type show_type_text: bool

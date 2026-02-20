@@ -13,7 +13,7 @@ class Button(Widget):
     """Clickable button with configurable text, style, and icon."""
 
     class Routes:
-        """Route name constants for this widget."""
+        """Callback route names used by the widget frontend to notify Python."""
 
         CLICK = "button_clicked_cb"
 
@@ -37,8 +37,6 @@ class Button(Widget):
         icon_color: Optional[str] = None,
     ):
         """
-        Clickable button.
-
         :param text: Button label.
         :type text: str, optional
         :param button_type: primary, info, warning, danger, success, or text.

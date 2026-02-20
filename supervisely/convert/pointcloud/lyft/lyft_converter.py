@@ -45,7 +45,7 @@ class LyftConverter(PointcloudConverter):
             custom_data: dict = None,
             scene_name: str = None,
         ):
-            """Initialize Item. See PointcloudConverter.Item. :param scene_name: Source scene name."""
+            """See PointcloudConverter.Item. :param scene_name: Source scene name."""
             super().__init__(item_path, ann_data, related_images, custom_data)
             self._type = "point_cloud"
             self._scene_name = scene_name
@@ -57,7 +57,7 @@ class LyftConverter(PointcloudConverter):
         upload_as_links: bool,
         remote_files_map: Optional[Dict[str, str]] = None,
     ):
-        """Initialize LyftConverter. See :class:`~supervisely.convert.base_converter.BaseConverter` for params."""
+        """See :class:`~supervisely.convert.base_converter.BaseConverter` for params."""
         super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
         self._is_pcd_episode = False
         self._lyft = None

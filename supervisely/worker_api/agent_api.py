@@ -15,7 +15,16 @@ class AgentAPI:
     """Client for communicating with the Supervisely agent service (image/data downloads, logging, etc.)."""
 
     def __init__(self, token, server_address: str, ext_logger: Logger, cfg_path=None):
-        """Initialize AgentAPI. :param token: Auth token. :param server_address: Agent server URL. :param ext_logger: Logger. :param cfg_path: Optional retrier config path."""
+        """
+        :param token: Auth token.
+        :type token: str
+        :param server_address: Agent server URL.
+        :type server_address: str
+        :param ext_logger: Logger.
+        :type ext_logger: Logger
+        :param cfg_path: Optional retrier config path.
+        :type cfg_path: str
+        """
         self.logger = ext_logger
         self._base_server_adress = server_address
         if ("http://" not in self._base_server_adress) and (

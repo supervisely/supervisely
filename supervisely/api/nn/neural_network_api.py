@@ -24,9 +24,8 @@ class NeuralNetworkApi:
     """
 
     def __init__(self, api: "Api"):
-        """Initialize NeuralNetworkApi.
-
-        :param api: API connection to the server.
+        """
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
         :type api: :class:`~supervisely.api.api.Api`
         """
         from supervisely.api.nn.deploy_api import DeployApi
@@ -48,7 +47,7 @@ class NeuralNetworkApi:
         **kwargs,
     ) -> ModelAPI:
         """
-        Deploy a pretrained model or a custom model checkpoint in Supervisely platform.
+        Deploy a pretrained model or a custom model checkpoint on the Supervisely instance.
         This method will start a new Serving App in Supervisely, deploy a given model, and return a
         :class:`~supervisely.nn.model.model_api.ModelAPI` object for running predictions and managing the model.
         - To deploy a pretrained model, pass the model name in the format ``framework/model_name`` (e.g., "RT-DETRv2/RT-DETRv2-M").
@@ -155,7 +154,7 @@ class NeuralNetworkApi:
         workspace_id: int = None,
     ) -> List[Dict]:
         """
-        Returns a list of deployed models in the Supervisely platform.
+        Returns a list of deployed models on the Supervisely instance.
         The list can be filtered by model name, framework, task type, team ID, and workspace ID.
 
         :param model: Model name or checkpoint path to filter the results. If None, all models will be returned.
@@ -265,7 +264,7 @@ class NeuralNetworkApi:
         """
         Returns the experiment info of a finished training task by its task_id.
 
-        :param task_id: the task_id of a finished training task in the Supervisely platform.
+        :param task_id: the task_id of a finished training task on the Supervisely instance.
         :type task_id: int
         :returns: ExperimentInfo object with information about the training, model, and results.
         :rtype: :class:`~supervisely.nn.experiments.ExperimentInfo`
@@ -290,7 +289,7 @@ class NeuralNetworkApi:
 
         This allows you to make predictions and control the model state via API.
 
-        :param task_id: the task_id of a running Serving App session in the Supervisely platform.
+        :param task_id: the task_id of a running Serving App session on the Supervisely instance.
         :type task_id: int
         :returns: ModelAPI object
         :rtype: :class:`~supervisely.nn.model.model_api.ModelAPI`

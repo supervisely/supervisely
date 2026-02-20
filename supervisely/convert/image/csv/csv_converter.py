@@ -44,8 +44,7 @@ class CSVConverter(ImageConverter):
             custom_data: dict | None = None,
             team_files: bool = False,
         ):
-            """Initialize Item (CSV converter).
-
+            """
             :param item_path: Path or URL to image.
             :type item_path: str
             :param ann_data: Annotation data.
@@ -100,9 +99,7 @@ class CSVConverter(ImageConverter):
         upload_as_links: bool,
         remote_files_map: Optional[Dict[str, str]] = None,
     ):
-        """Initialize CSVConverter.
-
-        :param input_data: Path to CSV/TSV/TXT or directory.
+        """:param input_data: Path to CSV/TSV/TXT or directory.
         :type input_data: str
         :param labeling_interface: Labeling interface.
         :type labeling_interface: LabelingInterface, optional

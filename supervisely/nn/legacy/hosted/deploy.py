@@ -27,7 +27,12 @@ class ModelDeploy:
     }
 
     def __init__(self, model_applier_cls, rpc_servicer_cls=AgentRPCServicer):
-        """Initialize ModelDeploy. :param model_applier_cls: Single-image inference class. :param rpc_servicer_cls: RPC servicer class."""
+        """
+        :param model_applier_cls: Single-image inference class.
+        :type model_applier_cls: type
+        :param rpc_servicer_cls: RPC servicer class (default: :class:`~supervisely.worker_api.rpc_servicer.AgentRPCServicer`).
+        :type rpc_servicer_cls: type
+        """
         self.model_applier_cls = model_applier_cls
         self.rpc_servicer_cls = rpc_servicer_cls
         self.load_config()

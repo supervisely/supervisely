@@ -24,9 +24,7 @@ class Switch(ConditionalWidget):
         off_content: Widget = None,
         widget_id: str = None,
     ):
-        """Initialize Switch.
-
-        :param switched: Initial state (True=on, False=off).
+        """:param switched: Initial state (True=on, False=off).
         :type switched: bool
         :param width: Switch width in pixels.
         :type width: int

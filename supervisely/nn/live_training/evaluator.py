@@ -23,7 +23,18 @@ class LiveEvaluator:
         ignore_index: int = 255,
         score_thr: float = None,
     ):
-        """Initialize LiveEvaluator. :param task_type: SEMANTIC_SEGMENTATION or OBJECT_DETECTION. :param class2idx: Class name to index. :param ema_alpha: EMA smoothing. :param ignore_index: Ignored class index. :param score_thr: Detection score threshold."""
+        """
+        :param task_type: SEMANTIC_SEGMENTATION or OBJECT_DETECTION.
+        :type task_type: TaskType
+        :param class2idx: Class name to index.
+        :type class2idx: Mapping[str, int]
+        :param ema_alpha: EMA smoothing.
+        :type ema_alpha: float
+        :param ignore_index: Ignored class index.
+        :type ignore_index: int
+        :param score_thr: Detection score threshold. :param score_thr: Detection score threshold.
+        :type score_thr: float
+        """
         if not 0 < ema_alpha <= 1:
             raise ValueError(f"ema_alpha must be in (0, 1], got {ema_alpha}")
 
@@ -34,7 +45,7 @@ class LiveEvaluator:
         self.score_thr: float = score_thr
 
         self._predictions: Dict[Any, Tuple[list, Tuple[int, int]]] = {}
-        
+
         self._sample_count = 0
         self.ema_value: Optional[float] = None
 
@@ -58,13 +69,13 @@ class LiveEvaluator:
             metrics = self._evaluate_detection(objects, ground_truth_annotation, image_shape)
         else:
             raise ValueError(f"Unsupported task_type: {self.task_type}")
-        
+
         metric_value = metrics[self.metric_name]
         if metric_value is not None:
             self._update_ema(metric_value)
 
         return {'metric_value': metric_value, 'ema_value': self.ema_value}
-    
+
     def _evaluate_segmentation(self, objects: list, gt_annotation: sly.Annotation, image_shape: Tuple[int,int]) -> float:
         pred_mask = self._pred_objects_to_mask(objects, image_shape)
         gt_mask = self._gt_annotation_to_mask(gt_annotation, image_shape)
@@ -80,7 +91,7 @@ class LiveEvaluator:
         metrics_calc = DetectionMetrics()
         metrics = metrics_calc.all_metrics(pred_boxes, pred_labels, gt_boxes, gt_labels)
         return metrics
-    
+
     def _pred_objects_to_mask(self, objects: list, image_shape: Tuple[int,int]) -> np.ndarray:
         """Convert predicted objects to segmentation mask."""
         height, width = image_shape
@@ -149,7 +160,6 @@ class LiveEvaluator:
 
         return (np.array(bboxes, dtype=np.float32), np.array(labels, dtype=np.int64)) 
 
-
     def _gt_annotation_to_bboxes(self, annotation: sly.Annotation):
         bboxes = []
         labels = []
@@ -167,7 +177,6 @@ class LiveEvaluator:
 
         return (np.array(bboxes, dtype=np.float32), np.array(labels, dtype=np.int64))
 
-    
     def _get_project_meta_stub(self) -> sly.ProjectMeta:
         obj_classes = [sly.ObjClass(class_name, sly.AnyGeometry) for class_name in self.class2idx.keys()]
         return sly.ProjectMeta(obj_classes=sly.ObjClassCollection(obj_classes))

@@ -28,9 +28,7 @@ class SelectWorkspace(Widget):
         size: Literal["large", "small", "mini"] = None,
         widget_id: str = None,
     ):
-        """Initialize SelectWorkspace.
-
-        :param default_id: Initial workspace ID.
+        """:param default_id: Initial workspace ID.
         :type default_id: int, optional
         :param team_id: Team to list workspaces from.
         :type team_id: int, optional

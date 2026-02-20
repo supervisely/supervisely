@@ -11,9 +11,7 @@ class PixelAccuracyMetric(MetricsBase):
     """Computes pixel-level accuracy, precision, and recall from semantic segmentation masks."""
 
     def __init__(self, class_mapping):
-        """Initialize PixelAccuracyMetric.
-
-        :param class_mapping: Dict mapping ground-truth class names to prediction class names.
+        """:param class_mapping: Dict mapping ground-truth class names to prediction class names.
         """
         self._class_mapping = class_mapping.copy()
         if len(self._class_mapping) < 1:

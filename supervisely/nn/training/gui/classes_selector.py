@@ -30,7 +30,16 @@ class ClassesSelector:
         model_selector: ModelSelector = None,
         app_options: dict = {},
     ):
-        """Initialize ClassesSelector. :param project_id: Project ID. :param classes: Pre-selected classes. :param model_selector: Optional ModelSelector. :param app_options: App options dict."""
+        """
+        :param project_id: Project ID.
+        :type project_id: int
+        :param classes: Pre-selected classes.
+        :type classes: list
+        :param model_selector: Optional ModelSelector.
+        :type model_selector: ModelSelector
+        :param app_options: App options dict.
+        :type app_options: dict
+        """
         # Init widgets
         self.model_selector = model_selector
         self.qa_stats_text = None

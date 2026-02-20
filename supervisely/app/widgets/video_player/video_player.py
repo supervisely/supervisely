@@ -8,9 +8,7 @@ class VideoPlayer(Widget):
     """Video player widget with play/pause and seek; displays video from URL with configurable MIME type."""
 
     def __init__(self, url: str = None, mime_type: str = "video/mp4", widget_id: str = None):
-        """Initialize VideoPlayer.
-
-        :param url: Video URL.
+        """:param url: Video URL.
         :type url: str, optional
         :param mime_type: MIME type (e.g. "video/mp4").
         :type mime_type: str

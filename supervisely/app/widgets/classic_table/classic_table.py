@@ -91,9 +91,13 @@ class ClassicTable(Widget):
     ):
         """
         :param data: pd.DataFrame or dict with "columns" and "data" keys.
+        :type data: Union[pd.DataFrame, Dict[str, List[Any]]]
         :param columns: Column names (for dict data).
+        :type columns: List[str], optional
         :param fixed_columns_num: Number of fixed (frozen) columns.
-        :param widget_id: Widget identifier.
+        :type fixed_columns_num: Optional[int]
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
 
         :Usage Example:
 

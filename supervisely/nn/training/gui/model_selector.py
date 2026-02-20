@@ -26,7 +26,16 @@ class ModelSelector:
     lock_message = "Select previous step to unlock"
 
     def __init__(self, api: Api, framework: str, models: list, app_options: dict = {}):
-        """Initialize ModelSelector. :param api: Supervisely API. :param framework: Framework name. :param models: Model list. :param app_options: App options."""
+        """
+        :param api: Supervisely API.
+        :type api: Api
+        :param framework: Framework name.
+        :type framework: str
+        :param models: Model list.
+        :type models: list
+        :param app_options: App options.
+        :type app_options: dict
+        """
         # Init widgets
         self.api = api
         self.pretrained_models_table = None

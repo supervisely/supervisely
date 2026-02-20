@@ -22,7 +22,10 @@ class TrainingLogs:
     lock_message = "Start training to unlock"
 
     def __init__(self, app_options: Dict[str, Any]):
-        """Initialize TrainingLogs. :param app_options: App options."""
+        """
+        :param app_options: App options.
+        :type app_options: Dict[str, Any]
+        """
         # Init widgets
         self.tensorboard_button = None
         self.tensorboard_offline_button = None

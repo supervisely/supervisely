@@ -24,9 +24,7 @@ class RadioTabs(Widget):
             content: Widget,
             subtitle: Optional[str] = "",
         ):
-            """Initialize RadioTabPane.
-
-            :param title: Tab title.
+            """:param title: Tab title.
             :type title: str
             :param content: Widget to display when tab is active.
             :type content: Widget
@@ -45,9 +43,7 @@ class RadioTabs(Widget):
         descriptions: Optional[List[str]] = None,
         widget_id=None,
     ):
-        """Initialize RadioTabs.
-
-        :param titles: List of tab titles (unique, max 10).
+        """:param titles: List of tab titles (unique, max 10).
         :type titles: List[str]
         :param contents: List of widgets, one per tab.
         :type contents: List[Widget]

@@ -418,9 +418,8 @@ class ImageApi(RemoveableBulkModuleApi):
     """API for working with images."""
 
     def __init__(self, api):
-        """Initialize ImageApi.
-
-        :param api: API connection to the server.
+        """
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
         :type api: :class:`~supervisely.api.api.Api`
 
         :Usage Example:
@@ -438,7 +437,7 @@ class ImageApi(RemoveableBulkModuleApi):
     @staticmethod
     def info_sequence():
         """
-        Get list of all :class:`~supervisely.api.image_api.ImageInfo` field names.
+        Sequence of fields that are returned by the API to represent ImageInfo.
 
         :returns: List of ImageInfo field names.
         :rtype: List[str]
@@ -474,7 +473,7 @@ class ImageApi(RemoveableBulkModuleApi):
     @staticmethod
     def info_tuple_name():
         """
-        Get string name of :class:`~supervisely.api.image_api.ImageInfo` NamedTuple.
+        Name of the tuple that represents ImageInfo.
 
         :returns: NamedTuple name.
         :rtype: str

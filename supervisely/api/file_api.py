@@ -68,9 +68,8 @@ class FileApi(ModuleApiBase):
     """API for working with files in Team Files."""
 
     def __init__(self, api):
-        """Initialize FileApi.
-
-        :param api: API connection to the server.
+        """
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
         :type api: :class:`~supervisely.api.api.Api`
 
         :Usage Example:
@@ -86,7 +85,7 @@ class FileApi(ModuleApiBase):
     @staticmethod
     def info_sequence():
         """
-        NamedTuple FileInfo information about File.
+        Sequence of fields that are returned by the API to represent FileInfo.
 
         :Usage Example:
 
@@ -128,7 +127,7 @@ class FileApi(ModuleApiBase):
     @staticmethod
     def info_tuple_name():
         """
-        NamedTuple name - **FileInfo**.
+        Name of the tuple that represents FileInfo.
         """
         return "FileInfo"
 
@@ -139,6 +138,20 @@ class FileApi(ModuleApiBase):
         recursive: bool = True,
         return_type: Literal["dict", "fileinfo"] = "dict",
     ) -> List[Union[Dict, FileInfo]]:
+        """
+        List of files in the Team Files.
+
+        :param team_id: Team ID.
+        :type team_id: int
+        :param path: Path to File or Directory.
+        :type path: str
+        :param recursive: If True return all files recursively.
+        :type recursive: bool
+        :param return_type: The specified value between 'dict' or 'fileinfo'. By default: 'dict'.
+        :type return_type: str
+        :returns: List of all Files with information.
+        :rtype: class List[Union[Dict, :class:`~supervisely.api.file_api.FileInfo`]]
+        """
         if self.is_on_agent(path) is False:
             raise ValueError(f"Data is not on agent: {path}")
 

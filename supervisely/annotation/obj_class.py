@@ -52,8 +52,6 @@ class ObjClass(KeyObject, JsonSerializable):
         description: Optional[str] = None,
     ):
         """
-        Object class definition for annotations.
-
         :param name: Class name (e.g. 'car', 'person').
         :type name: str
         :param geometry_type: Geometry type: Rectangle, Polygon, Bitmap, Point, Polyline, Cuboid, GraphNodes, etc.

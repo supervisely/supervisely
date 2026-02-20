@@ -48,13 +48,17 @@ class Geometry(JsonSerializable):
         updated_at=None,
         created_at=None,
     ):
-        """Initialize Geometry metadata.
-
+        """
         :param sly_id: Geometry ID on Supervisely server.
+        :type sly_id: int, optional
         :param class_id: ObjClass ID.
+        :type class_id: int, optional
         :param labeler_login: Labeler user login.
+        :type labeler_login: str, optional
         :param updated_at: Last update timestamp.
+        :type updated_at: int, optional
         :param created_at: Creation timestamp.
+        :type created_at: int, optional
         """
         self.sly_id = sly_id
         self.labeler_login = labeler_login

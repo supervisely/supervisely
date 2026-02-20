@@ -12,15 +12,13 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 
 class PointcloudEpisodeAnnotationAPI(EntityAnnotationAPI):
     """API for working with point cloud episode annotations."""
+
     _method_download = "point-clouds.episodes.annotations.info"
     _entity_ids_str = ApiField.POINTCLOUD_IDS
 
     def __init__(self, api):
         """
-        API for working with :class:`~supervisely.pointcloud_annotation.pointcloud_episode_annotation.PointcloudEpisodeAnnotation`.
-        :class:`~supervisely.api.pointcloud.pointcloud_episode_annotation_api.PointcloudEpisodeAnnotationAPI` object is immutable.
-
-        :param api: API connection to the server.
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
         :type api: :class:`~supervisely.api.api.Api`
 
         :Usage Example:

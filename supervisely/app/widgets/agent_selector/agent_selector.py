@@ -21,8 +21,7 @@ class AgentSelector(Widget):
         compact: bool = False,
         widget_id=None,
     ):
-        """Initialize AgentSelector.
-
+        """
         :param team_id: Team ID to list agents from.
         :type team_id: int
         :param show_only_gpu: If True, show only agents with GPU.
@@ -66,7 +65,7 @@ class AgentSelector(Widget):
 
     def get_value(self) -> int:
         return StateJson()[self.widget_id]["agentId"]
-    
+
     def set_value(self, agent_id: int) -> None:
         if not isinstance(agent_id, int):
             raise TypeError("Agent ID must be an integer.")

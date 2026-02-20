@@ -12,9 +12,7 @@ class TagMetaView(Widget):
         limit_long_names: bool = False,
         widget_id: str = None,
     ):
-        """Initialize TagMetaView.
-
-        :param tag_meta: TagMeta to display.
+        """:param tag_meta: TagMeta to display.
         :type tag_meta: TagMeta
         :param show_type_text: If True, show value type text.
         :type show_type_text: bool

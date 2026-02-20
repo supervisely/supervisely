@@ -32,7 +32,10 @@ class TrainCheckpoints:
     """Manages checkpoint directories and save calls; reports to Supervisely progress; supports best-checkpoint tracking."""
 
     def __init__(self, base_out_dir):
-        """Initialize TrainCheckpoints. :param base_out_dir: Root directory for checkpoints."""
+        """
+        :param base_out_dir: Root directory for checkpoints.
+        :type base_out_dir: str
+        """
         self._base_out_dir = base_out_dir
         # Checkpoint index does not correspond to epoch. Depending on training config, checkpoints may be saved more
         # frequently than once per epoch (or less frequently than once per epoch).
@@ -64,10 +67,9 @@ class SuperviselyModelTrainer:
     """Base class for training neural networks with Supervisely."""
 
     def __init__(self, default_config):
-        """Initialize SuperviselyModelTrainer.
-
+        """
         :param default_config: Dict containing default training config.
-        :type default_config: Dict
+        :type default_config: dict
         """
         logger.info('Will init all required to train.')
 

@@ -50,40 +50,19 @@ class PredictionSession:
     The session starts inference immediately during construction and becomes an iterator.
     Use it directly when you need streaming results or progress control, or use higher-level helpers
     like :meth:`~supervisely.nn.model.model_api.ModelAPI.predict_detached` method.
-
-    :Usage Example:
-
-        .. code-block:: python
-
-            import os
-            from dotenv import load_dotenv
-
-            import supervisely as sly
-            from supervisely.nn.model.prediction_session import PredictionSession
-
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            if sly.is_development():
-                load_dotenv(os.path.expanduser("~/supervisely.env"))
-
-            api = sly.Api.from_env()
-
-            session = PredictionSession(
-                url='https://app.supervisely.com/net/<sessionToken>',
-                image_id=123,
-                api=api,
-                conf=0.25,
-            )
-
-            for pred in session:
-                _ = pred.boxes
-                _ = pred.scores
     """
 
     class Iterator:
         """Internal iterator that fetches pending results in chunks."""
         def __init__(self, total, session: "PredictionSession", tqdm: tqdm = None):
-            """Initialize Iterator. :param total: Total items. :param session: PredictionSession. :param tqdm: Optional progress bar."""
+            """
+            :param total: Total items.
+            :type total: int
+            :param session: PredictionSession.
+            :type session: :class:`~supervisely.nn.model.prediction_session.PredictionSession`
+            :param tqdm: Optional progress bar.
+            :type tqdm: tqdm
+            """
             self.total = total
             self.session = session
             self.results_queue = []
@@ -118,8 +97,6 @@ class PredictionSession:
         **kwargs: dict,
     ): 
         """
-        Create and start an inference session.
-
         Exactly one of the following inputs must be provided: ``input``, ``image_id``, ``video_id``,
         ``dataset_id``, ``project_id`` (or their plural forms in ``kwargs``: ``image_ids`` etc.).
 
@@ -145,6 +122,34 @@ class PredictionSession:
         :type kwargs: dict
         :raises AssertionError: If more than one input source is provided.
         :raises ValueError: For unsupported inputs or invalid combinations.
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import os
+                from dotenv import load_dotenv
+
+                import supervisely as sly
+                from supervisely.nn.model.prediction_session import PredictionSession
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                session = PredictionSession(
+                    url='https://app.supervisely.com/net/<sessionToken>',
+                    image_id=123,
+                    api=api,
+                    conf=0.25,
+                )
+
+                for pred in session:
+                    _ = pred.boxes
+                    _ = pred.scores
         """
 
         extra_input_args = ["image_ids", "video_ids", "dataset_ids", "project_ids"]

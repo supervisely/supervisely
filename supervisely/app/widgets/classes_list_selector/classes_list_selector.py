@@ -71,8 +71,7 @@ class ClassesListSelector(Widget):
         allow_new_classes: Optional[bool] = False,
         widget_id: Optional[str] = None,
     ):
-        """Initialize ClassesListSelector.
-
+        """
         :param classes: List of ObjClass instances or ObjClassCollection.
         :type classes: Optional[Union[List[ObjClass], ObjClassCollection]]
         :param multiple: If True, allow multiple class selection.

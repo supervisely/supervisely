@@ -15,9 +15,7 @@ class PrecisionRecallMetric(MetricsBase):
     """Computes precision and recall for object detection using IoU-based label matching."""
 
     def __init__(self, class_mapping, iou_threshold):
-        """Initialize PrecisionRecallMetric.
-
-        :param class_mapping: Dict mapping ground-truth class names to prediction class names.
+        """:param class_mapping: Dict mapping ground-truth class names to prediction class names.
         :param iou_threshold: IoU threshold for matching labels.
         """
         if len(class_mapping) < 1:

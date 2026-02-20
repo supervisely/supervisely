@@ -75,14 +75,19 @@ class AppService:
         ignore_errors=False,
         ignore_task_id=False,
     ):
-        """Initialize AppService.
-
+        """
         :param logger: Logger instance.
+        :type logger: :class:`~supervisely.sly_logger.SlyLogger`
         :param task_id: Task ID.
+        :type task_id: int
         :param server_address: Server address.
+        :type server_address: str
         :param agent_token: Agent token.
+        :type agent_token: str
         :param ignore_errors: If True, ignore errors.
+        :type ignore_errors: bool
         :param ignore_task_id: If True, ignore task_id validation.
+        :type ignore_task_id: bool
         """
         self._ignore_task_id = ignore_task_id
         self.logger = take_with_default(logger, default_logger)

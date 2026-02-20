@@ -69,9 +69,8 @@ class AnnotationApi(ModuleApi):
     """API for working with image annotations."""
 
     def __init__(self, api):
-        """Initialize AnnotationApi.
-
-        :param api: API connection to the server.
+        """
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
         :type api: :class:`~supervisely.api.api.Api`
 
         :Usage Example:

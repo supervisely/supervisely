@@ -13,7 +13,9 @@ class CopyToClipboard(Widget):
     ):
         """
         :param content: Editor, Text, TextArea, Input, or str.
-        :param widget_id: Widget identifier.
+        :type content: Optional[Union[Editor, Text, TextArea, Input, str]]
+        :param widget_id: Unique widget identifier.
+        :type widget_id: Optional[str]
         :raises TypeError: If content type not supported.
 
         :Usage Example:
