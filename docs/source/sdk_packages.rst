@@ -75,18 +75,6 @@ Python wrappers to script your interactions with the Supervisely web instance. I
     ~supervisely.api.workspace_api.WorkspaceApi
 
 
-Training
---------
-High-level wrappers and helpers for building training applications (GUI, data prep, artifacts upload, benchmarking).
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    ~supervisely.nn.training.train_app.TrainApp
-
-
 Video API
 ---------
 API for working with videos in Supervisely.
