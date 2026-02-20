@@ -250,9 +250,7 @@ setup(
         ],
         "docs": [
             "sphinx==8.2.3",
-            "sphinx-immaterial==0.13.8",
-            "sphinx-copybutton==0.5.2",
-            "sphinx-autodoc-typehints==3.5.2",
+            "sphinx-immaterial==0.13.9",
             "myst-parser==5.0.0",
             # "docutils>=0.19,<=0.21",
         ],

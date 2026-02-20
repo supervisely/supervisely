@@ -2278,7 +2278,14 @@ class Annotation:
         im.save(mask_path)
 
     def add_bg_object(self, bg_obj_class: ObjClass):
-        """add_bg_object"""
+        """
+        Add background object to the annotation.
+
+        :param bg_obj_class: Background object class.
+        :type bg_obj_class: :class:`~supervisely.annotation.obj_class.ObjClass`
+        :returns: New instance of Annotation object
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
+        """
         if bg_obj_class not in [label.obj_class for label in self.labels]:
             bg_geometry = Rectangle.from_size(self.img_size)
             bg_geometry = bg_geometry.convert(new_geometry=bg_obj_class.geometry_type)[0]
