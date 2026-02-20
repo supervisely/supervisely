@@ -1,4 +1,7 @@
 # coding: utf-8
+
+"""JSON utilities for Supervisely."""
+
 import json
 import os
 from typing import Dict, Optional
@@ -8,9 +11,11 @@ import jsonschema
 
 
 class JsonSerializable:
+    """Abstract base class for objects that can be serialized to and from JSON."""
+
     def to_json(self):
         """Serialize to JSON-compatible dict.
-        :return: dict
+        :returns: dict
         """
         raise NotImplementedError()
 
@@ -19,7 +24,7 @@ class JsonSerializable:
         """
         Deserialize from a JSON-compatible dict
         :param data: JSON-compatible dict
-        :return: Parsed object
+        :returns: Parsed object
         """
         raise NotImplementedError()
 
@@ -34,90 +39,92 @@ def load_json_file(filename: str) -> Dict:
     :raises FileNotFoundError: If file with given filename was not found.
     :raises RuntimeError: If can not decode json file.
     :returns: Json format as a dict
-    :rtype: :class:`dict`
-    :Usage example:
+    :rtype: dict
 
-     .. code-block:: python
+    :Usage Example:
 
-        from supervisely.io.json import load_json_file
-        json_example = load_json_file('/home/admin/work/projects/examples/ann.json')
-        print(json_example)
-        # Output: {
-        #     "description": "",
-        #     "tags": [],
-        #     "size": {
-        #         "height": 800,
-        #         "width": 1067
-        #     },
-        #     "objects": [
-        #         {
-        #             "id": 619053179,
-        #             "classId": 2791451,
-        #             "description": "",
-        #             "geometryType": "bitmap",
-        #             "labelerLogin": "alexxx",
-        #             "createdAt": "2021-02-10T08:36:33.898Z",
-        #             "updatedAt": "2021-02-10T08:39:24.828Z",
-        #             "tags": [],
-        #             "classTitle": "lemon",
-        #             "bitmap": {
-        #                 "data": "eJwBZgOZ/IlQTkcNChoKAAAADUlIR...AiRp9+EwAAAABJRU5ErkJgggn2cM0=",
-        #                 "origin": [
-        #                     531,
-        #                     120
-        #                 ]
-        #             }
-        #         },
-        #         {
-        #             "id": 619053347,
-        #             "classId": 2791453,
-        #             "description": "",
-        #             "geometryType": "rectangle",
-        #             "labelerLogin": "alexxx",
-        #             "createdAt": "2021-02-10T08:39:08.369Z",
-        #             "updatedAt": "2021-02-10T08:39:24.828Z",
-        #             "tags": [],
-        #             "classTitle": "kiwi",
-        #             "points": {
-        #                 "exterior": [
-        #                     [
-        #                         764,
-        #                         387
-        #                     ],
-        #                     [
-        #                         967,
-        #                         608
-        #                     ]
-        #                 ],
-        #                 "interior": []
-        #             }
-        #         },
-        #         {
-        #             "id": 619053355,
-        #             "classId": 2791453,
-        #             "description": "",
-        #             "geometryType": "rectangle",
-        #             "labelerLogin": "alexxx",
-        #             "createdAt": "2021-02-10T08:39:16.938Z",
-        #             "updatedAt": "2021-02-10T08:39:24.828Z",
-        #             "tags": [],
-        #             "classTitle": "kiwi",
-        #             "points": {
-        #                 "exterior": [
-        #                     [
-        #                         477,
-        #                         543
-        #                     ],
-        #                     [
-        #                         647,
-        #                         713
-        #                     ]
-        #                 ],
-        #                 "interior": []
-        #             }
-        #         }
-        #     ]
-        # }
+        .. code-block:: python
+
+            from supervisely.io.json import load_json_file
+
+            json_example = load_json_file('/home/admin/work/projects/examples/ann.json')
+            print(json_example)
+            # Output: {
+            #     "description": "",
+            #     "tags": [],
+            #     "size": {
+            #         "height": 800,
+            #         "width": 1067
+            #     },
+            #     "objects": [
+            #         {
+            #             "id": 619053179,
+            #             "classId": 2791451,
+            #             "description": "",
+            #             "geometryType": "bitmap",
+            #             "labelerLogin": "alexxx",
+            #             "createdAt": "2021-02-10T08:36:33.898Z",
+            #             "updatedAt": "2021-02-10T08:39:24.828Z",
+            #             "tags": [],
+            #             "classTitle": "lemon",
+            #             "bitmap": {
+            #                 "data": "eJwBZgOZ/IlQTkcNChoKAAAADUlIR...AiRp9+EwAAAABJRU5ErkJgggn2cM0=",
+            #                 "origin": [
+            #                     531,
+            #                     120
+            #                 ]
+            #             }
+            #         },
+            #         {
+            #             "id": 619053347,
+            #             "classId": 2791453,
+            #             "description": "",
+            #             "geometryType": "rectangle",
+            #             "labelerLogin": "alexxx",
+            #             "createdAt": "2021-02-10T08:39:08.369Z",
+            #             "updatedAt": "2021-02-10T08:39:24.828Z",
+            #             "tags": [],
+            #             "classTitle": "kiwi",
+            #             "points": {
+            #                 "exterior": [
+            #                     [
+            #                         764,
+            #                         387
+            #                     ],
+            #                     [
+            #                         967,
+            #                         608
+            #                     ]
+            #                 ],
+            #                 "interior": []
+            #             }
+            #         },
+            #         {
+            #             "id": 619053355,
+            #             "classId": 2791453,
+            #             "description": "",
+            #             "geometryType": "rectangle",
+            #             "labelerLogin": "alexxx",
+            #             "createdAt": "2021-02-10T08:39:16.938Z",
+            #             "updatedAt": "2021-02-10T08:39:24.828Z",
+            #             "tags": [],
+            #             "classTitle": "kiwi",
+            #             "points": {
+            #                 "exterior": [
+            #                     [
+            #                         477,
+            #                         543
+            #                     ],
+            #                     [
+            #                         647,
+            #                         713
+            #                     ]
+            #                 ],
+            #                 "interior": []
+            #             }
+            #         }
+            #     ]
+            # }
     """
     if os.path.isdir(filename):
         raise IsADirectoryError(f"The path {filename} is a directory, not a file.")
@@ -145,14 +152,15 @@ def dump_json_file(data: Dict, filename: str, indent: Optional[int] = 4) -> None
     :param indent: Json array elements and object members will be pretty-printed with that indent level.
     :type indent: int, optional
     :returns: None
-    :rtype: :class:`NoneType`
-    :Usage example:
+    :rtype: None
 
-     .. code-block:: python
+    :Usage Example:
 
-        from supervisely.io.json import dump_json_file
-        data = {1: 'example'}
-        dump_json_file(data, '/home/admin/work/projects/examples/1.json')
+        .. code-block:: python
+
+            from supervisely.io.json import dump_json_file
+            data = {1: 'example'}
+            dump_json_file(data, '/home/admin/work/projects/examples/1.json')
     """
     with open(filename, "w") as fout:
         json.dump(data, fout, indent=indent)
@@ -167,7 +175,7 @@ def flatten_json(data: Dict, sep: Optional[str] = ".") -> Dict:
     :param sep: Nested records will generate names separated by sep.
     :type sep: str, optional
     :returns: Dict
-    :rtype: :class:`dict`
+    :rtype: dict
     """
     import pandas as pd
 
@@ -188,16 +196,17 @@ def modify_keys(
     :param suffix: Suffix which will be added to dict.
     :type suffix: str, optional
     :returns: New dict with prefix and suffix in keys
-    :rtype: :class:`dict`
-    :Usage example:
+    :rtype: dict
 
-     .. code-block:: python
+    :Usage Example:
 
-        from supervisely.io.json import modify_keys
-        data = {'1': 'example', '3': 4}
-        new_data = modify_keys(data, prefix='pr_', suffix='_su')
-        print(new_data)
-        # Output: {'pr_1_su': 'example', 'pr_3_su': 4}
+        .. code-block:: python
+
+            from supervisely.io.json import modify_keys
+            data = {'1': 'example', '3': 4}
+            new_data = modify_keys(data, prefix='pr_', suffix='_su')
+            print(new_data)
+            # Output: {'pr_1_su': 'example', 'pr_3_su': 4}
     """
 
     def _modify(k):
@@ -222,7 +231,7 @@ def validate_json(data: Dict, schema: Dict, raise_error: bool = False) -> bool:
     :param raise_error: If True, raise an error if data is invalid.
     :type raise_error: bool, optional
     :returns: True if data is valid, False otherwise.
-    :rtype: :class:`bool`
+    :rtype: bool
     """
     try:
         jsonschema.validate(instance=data, schema=schema)
@@ -244,18 +253,19 @@ async def dump_json_file_async(data: Dict, filename: str, indent: Optional[int] 
     :param indent: Json array elements and object members will be pretty-printed with that indent level.
     :type indent: int, optional
     :returns: None
-    :rtype: :class:`NoneType`
-    :Usage example:
+    :rtype: None
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
-        from supervisely._utils import run_coroutine
+        .. code-block:: python
 
-        data = {1: 'example'}
+            import supervisely as sly
+            from supervisely._utils import run_coroutine
 
-        coroutine = sly.json.dump_json_file_async(data, '/home/admin/work/projects/examples/1.json')
-        run_coroutine(coroutine)
+            data = {1: 'example'}
+
+            coroutine = sly.json.dump_json_file_async(data, '/home/admin/work/projects/examples/1.json')
+            run_coroutine(coroutine)
     """
     async with aiofiles.open(filename, "w") as fout:
         await fout.write(json.dumps(data, indent=indent))

@@ -7,47 +7,24 @@ from supervisely.app.widgets import Widget
 
 
 class Collapse(Widget):
-    """A Collapse widget allows users to efficiently manage and navigate content by toggling between
-    hidden and visible states, promoting a more compact and organized user interface.
-
-    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/layouts-and-containers/collapse>`_
-        (including screenshots and examples).
-
-    :param items: list of items to be displayed in the widget
-    :type items: List[Collapse.Item]
-    :param accordion: if True, only one panel could be active at a time
-    :type accordion: bool
-    :param widget_id: An identifier of the widget.
-    :type widget_id: str, optional
-
-    :Usage example:
-        .. code-block:: python
-
-        from supervisely.app.widgets import Collapse
-
-        items = [
-            Collapse.Item("item1", "Item 1", "Content of item 1"),
-            Collapse.Item("item2", "Item 2", "Content of item 2"),
-        ]
-        collapse = Collapse(items)
-
-    """
+    """Collapsible panels for compact UI; toggle content visibility."""
 
     class Routes:
+        """Callback route names used by the widget frontend to notify Python."""
         VALUE_CHANGED = "value_changed"
 
     class Item(object):
-        """Represents an item of Collapse widget.
-
-        :param name: unique identification of the panel
-        :type name: str
-        :param title: title of the panel
-        :type title: str
-        :param content: content of the panel
-        :type content: Optional[Union[Widget, str]]
-        """
+        """Single collapsible panel (name, title, content)."""
 
         def __init__(self, name: str, title: str, content: Optional[Union[Widget, str]]):
+            """
+            :param name: Unique panel ID.
+            :type name: str
+            :param title: Panel header text.
+            :type title: str
+            :param content: Widget or text string.
+            :type content: Optional[Union[Widget, str]]
+            """
             self.name = name
             self.title = title
             self.content = content
@@ -59,7 +36,7 @@ class Collapse(Widget):
                 - label: title of the panel
                 - content_type: type of the content (str or Widget)
 
-            :return: JSON representation of the item
+            :returns: JSON representation of the item
             :rtype: Dict[str, Any]
             """
             if isinstance(self.content, str):
@@ -78,6 +55,25 @@ class Collapse(Widget):
         accordion: Optional[bool] = False,
         widget_id: Optional[str] = None,
     ):
+        """
+        :param items: List of Collapse.Item. Each item needs unique name.
+        :type items: Optional[List[Collapse.Item]]
+        :param accordion: If True, only one panel open at a time.
+        :type accordion: Optional[bool]
+        :param widget_id: Unique widget identifier.
+        :type widget_id: Optional[str]
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import Collapse
+                items = [
+                    Collapse.Item("item1", "Item 1", "Content 1"),
+                    Collapse.Item("item2", "Item 2", "Content 2"),
+                ]
+                collapse = Collapse(items, accordion=True)
+        """
         if items is None:
             items = [Collapse.Item("default", "Empty default item", "")]
 
@@ -103,7 +99,7 @@ class Collapse(Widget):
             - accordion: if True, only one panel could be active at a time
             - items: list of items to be displayed in the widget
 
-        :return: dictionary with widget data
+        :returns: dictionary with widget data
         :rtype: Dict[str, Any]
         """
         return {
@@ -117,7 +113,7 @@ class Collapse(Widget):
         Dictionary contains the following fields:
             - value: list of active panels
 
-        :return: dictionary with widget state
+        :returns: dictionary with widget state
         :rtype: Dict[str, List[str]]
         """
         return {"value": self._active_panels}
@@ -157,7 +153,7 @@ class Collapse(Widget):
     def get_active_panel(self) -> Union[str, List[str]]:
         """Returns active panel or panels.
 
-        :return: active panel or panels
+        :returns: active panel or panels
         :rtype: Union[str, List[str]]
         """
         return StateJson()[self.widget_id]["value"]
@@ -165,18 +161,18 @@ class Collapse(Widget):
     def get_items(self) -> List[Collapse.Item]:
         """Returns list of items.
 
-        :return: list of items
-        :rtype: List[Collapse.Item]
+        :returns: list of items
+        :rtype: List[:class:`~supervisely.app.widgets.collapse.collapse.Collapse.Item`]
         """
         return DataJson()[self.widget_id]["items"]
 
     def set_items(self, value: List[Collapse.Item]) -> None:
         """Set items for the widget.
         This method replaces all existing items with new ones.
-        To add new items, use :meth:`add_items` method.
+        To add new items, use :meth:`~supervisely.app.widgets.collapse.collapse.Collapse.add_items` method.
 
         :param value: list of items to be displayed in the widget
-        :type value: List[Collapse.Item]
+        :type value: List[:class:`~supervisely.app.widgets.collapse.collapse.Collapse.Item`]
         """
         names = [val.name for val in value]
 
@@ -193,7 +189,7 @@ class Collapse(Widget):
         To replace all existing items with new ones, use :meth:`set_items` method.
 
         :param value: list of items to be displayed in the widget
-        :type value: List[Collapse.Item]
+        :type value: List[:class:`~supervisely.app.widgets.collapse.collapse.Collapse.Item`]
         :raises ValueError: item with such name already exists.
         """
         names = [val.name for val in value]
@@ -213,7 +209,7 @@ class Collapse(Widget):
 
         :param func: function to be called when active panel or panels are changed
         :type func: Callable[[List[str]], Any]
-        :return: decorated function
+        :returns: decorated function
         :rtype: Callable[[], None]
         """
         route_path = self.get_route_path(Collapse.Routes.VALUE_CHANGED)
@@ -232,7 +228,7 @@ class Collapse(Widget):
     def items_names(self) -> Set[str]:
         """Returns set of names of items.
 
-        :return: set of names of items
+        :returns: set of names of items
         :rtype: Set[str]
         """
 

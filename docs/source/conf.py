@@ -6,6 +6,7 @@
 
 import os
 import sys
+import inspect
 
 # -- Path setup --------------------------------------------------------------
 PATH_HERE = os.path.abspath(os.path.dirname(__file__))
@@ -17,66 +18,52 @@ sys.path.insert(0, os.path.abspath("../../../"))
 
 # -- Project information -----------------------------------------------------
 project = "Supervisely"
-copyright = "2024, Supervisely Team"
+copyright = "2026, Supervisely Team"
 author = "Supervisely Team"
 
 # -- General configuration ---------------------------------------------------
+# Mock heavy/optional deps so autosummary can import nn/training modules on RTD
+autodoc_mock_imports = ["torch", "torchvision", "decord"]
+
 extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
     "sphinx.ext.intersphinx",
     "sphinx.ext.viewcode",
-    "sphinx_copybutton",
-    "sphinx_autodoc_typehints",
     "myst_parser",
+    "sphinx_immaterial",
 ]
-
-# myst_enable_extensions = [
-#     "amsmath",
-#     "colon_fence",
-#     "deflist",
-#     "dollarmath",
-#     "fieldlist",
-#     "html_admonition",
-#     "html_image",
-#     "linkify",
-#     "replacements",
-#     "smartquotes",
-#     "strikethrough",
-#     "substitution",
-#     "tasklist",
-# ]
 
 myst_all_links_external = True
 
 source_encoding = "utf-8"
 master_doc = "index"
 language = "en"
-default_role = "any"
+default_role = "literal"
+
+suppress_warnings = ["myst.header"]
 
 html_use_index = False
 html_copy_source = False
 html_show_sphinx = False
 html_show_copyright = True
+html_show_sourcelink = False
 
 templates_path = ["_templates"]
 html_static_path = ["_static"]
 
 intersphinx_mapping = {
-    "python": ("https://docs.python.org/3.8/", None),
+    "python": ("https://docs.python.org/3.12/", None),
     "sphinx_docs": ("https://www.sphinx-doc.org/en/master", None),
-    "numpy": ("https://numpy.org/doc/stable/", ("intersphinx_inv/numpy.inv", None)),
+    "numpy": ("https://numpy.org/doc/stable/", None),
 }
 
 autosummary_generate = True
-autoclass_content = "class"
-html_show_sourcelink = True
+autoclass_content = "both"
 autodoc_inherit_docstrings = False
-set_type_checking_flag = True
-nbsphinx_allow_errors = True
 add_module_names = False
 autodoc_member_order = "groupwise"
-autodoc_class_signature = "separated"
+autodoc_class_signature = "mixed"
 
 html_domain_indices = True
 autodoc_typehints = "none"
@@ -85,31 +72,54 @@ source_suffix = {".rst": "restructuredtext", ".txt": "restructuredtext", ".md": 
 autodoc_default_options = {
     "members": True,
     "methods": True,
-    "exclude-members": "__init__",
     "show-inheritance": True,
+    "exclude-members": "from_bytes,to_bytes",
 }
+
+
+def _strip_defaults_from_signature(sig: inspect.Signature) -> inspect.Signature:
+    """Return signature with defaults removed to stabilize param-name matching.
+
+    Sphinx can emit warnings like:
+    "Parameter name 'foo' does not match any of the parameters defined in the signature:
+    ['foo=<built-in function ...>']"
+    when defaults are rendered into the signature string.
+    """
+    params = []
+    for p in sig.parameters.values():
+        if p.default is inspect._empty:
+            params.append(p)
+        else:
+            params.append(p.replace(default=inspect._empty))
+    return sig.replace(parameters=params)
+
+
+def process_signature(app, what, name, obj, options, signature, return_annotation):
+    """Normalize signatures to avoid docstring/param mismatch noise."""
+    try:
+        sig = inspect.signature(obj)
+    except Exception:
+        return (signature, return_annotation)
+
+    try:
+        sig = _strip_defaults_from_signature(sig)
+    except Exception:
+        return (signature, return_annotation)
+
+    return (str(sig), return_annotation)
+
+
+def setup(app):
+    app.connect("autodoc-process-signature", process_signature)
+
 
 html_css_files = [
     "css/custom.css",
 ]
 
-html_sidebars = {
-    "**": [
-        "fulltoc.html",
-        "sourcelink.html",
-        "relations.html",
-        "searchbox.html",
-        "logo-text.html",
-        "globaltoc.html",
-        "localtoc.html",
-        "navigation.html",
-    ]
-}
-
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "**.ipynb_checkpoints"]
 
 # -- Options for HTML output -------------------------------------------------
-extensions.append("sphinx_immaterial")
 html_title = "Supervisely SDK for Python"
 html_theme = "sphinx_immaterial"
 html_favicon = "_static/images/favicon.ico"
@@ -118,19 +128,39 @@ html_logo = "_static/images/sly-top-logo-white.png"
 html_theme_options = {
     "icon": {
         "repo": "fontawesome/brands/github",
+        "view": "material/file-eye-outline",
     },
+    # NOTE: Set to the actual published docs root if you want sitemap.xml.
     "site_url": "https://supervisely.com/",
     "repo_url": "https://github.com/supervisely/supervisely",
     "repo_name": "Supervisely",
-    "repo_type": "github",
-    "google_analytics": ["UA-XXXXX", "auto"],
     "globaltoc_collapse": True,
     "features": [
+        # Content UX
+        "content.code.copy",
+        "content.tooltips",
+        "content.action.view",
+        # Navigation UX
         "navigation.sections",
         "navigation.top",
+        "navigation.footer",
+        "navigation.tracking",
+        # Search UX
         "search.share",
+        "search.highlight",
+        "search.suggest",
+        # TOC UX
+        "toc.follow",
+        "toc.sticky",
     ],
     "palette": [
+        {
+            "media": "(prefers-color-scheme)",
+            "toggle": {
+                "icon": "material/brightness-auto",
+                "name": "Switch to light mode",
+            },
+        },
         {
             "media": "(prefers-color-scheme: light)",
             "scheme": "default",
@@ -148,10 +178,14 @@ html_theme_options = {
             "accent": "light-blue",
             "toggle": {
                 "icon": "material/lightbulb",
-                "name": "Switch to light mode",
+                "name": "Switch to system preference",
             },
         },
     ],
     "version_dropdown": False,
     "toc_title_is_page_title": True,
 }
+
+object_description_options = [
+    ("py:.*", dict(generate_synopses="first_sentence")),
+]

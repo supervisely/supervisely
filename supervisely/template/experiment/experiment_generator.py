@@ -53,6 +53,7 @@ except Exception as _:
 
 # @TODO: Partly supports unreleased apps
 class ExperimentGenerator(BaseGenerator):
+    """Generates experiment scaffolds: model config, config.json, train/val datasets, hyperparams, and entrypoint."""
 
     def __init__(
         self,
@@ -65,18 +66,17 @@ class ExperimentGenerator(BaseGenerator):
         output_dir: str = "./experiment_report",
         app_options: Optional[dict] = None,
     ):
-        """Initialize experiment generator class.
-
+        """
         :param api: Supervisely API instance
-        :type api: Api
+        :type api: :class:`~supervisely.api.api.Api`
         :param experiment_info: Dictionary with experiment information
         :type experiment_info: Dict[str, Any]
         :param hyperparameters: Hyperparameters as YAML string or dictionary
         :type hyperparameters: Optional[Union[str, Dict]]
         :param model_meta: Model metadata as dictionary
         :type model_meta: Optional[Union[str, Dict]]
-        :param serving_class: Serving class for model inference
-        :type serving_class: Optional[Inference]
+        :param serving_class: Serving class for model inference. Must be a subclass of Inference.
+        :type serving_class: Optional[:class:`~supervisely.nn.inference.inference.Inference`]
         """
         super().__init__(api, output_dir=output_dir)
         self.team_id = team_id or sly_env.team_id()

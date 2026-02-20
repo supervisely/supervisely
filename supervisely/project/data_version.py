@@ -42,11 +42,11 @@ class VersionInfo(NamedTuple):
 
 
 class DataVersion(ModuleApiBase):
-
     """
     Class for managing project versions.
     This class provides methods for creating, restoring, and managing project versions.
     """
+
     PROJECT_NAME_TEMPLATE = "{project_name}, from ver. {version_num}"
     PROJECT_DESC_TEMPLATE = (
         "Restored from version {version_num}. "
@@ -130,8 +130,8 @@ class DataVersion(ModuleApiBase):
         """
         Initialize project versions.
 
-        :param project_info: ProjectInfo object or project ID
-        :type project_info: Union[ProjectInfo, int]
+        :param project_info: Project info object or project ID
+        :type project_info: Union[:class:`~supervisely.api.project_api.ProjectInfo`, int]
         """
         if isinstance(project_info, int):
             project_info = self._api.project.get_info_by_id(project_info)
@@ -150,8 +150,8 @@ class DataVersion(ModuleApiBase):
         :type project_id: int
         :param filters: Filters
         :type filters: Optional[List]
-        :return: List of project versions
-        :rtype: List[VersionInfo]
+        :returns: List of project versions
+        :rtype: List[:class:`~supervisely.project.data_version.VersionInfo`]
         """
         data = {ApiField.PROJECT_ID: project_id}
         if filters:
@@ -167,7 +167,7 @@ class DataVersion(ModuleApiBase):
         :type project_id: int
         :param version_num: Version number
         :type version_num: int
-        :return: Version ID
+        :returns: Version ID
         :rtype: int or None
         """
         filter = [
@@ -186,11 +186,11 @@ class DataVersion(ModuleApiBase):
         """
         Get project versions map from storage.
 
-        :param project_info: ProjectInfo object or project ID
-        :type project_info: Union[ProjectInfo, int]
+        :param project_info: Project info object or project ID
+        :type project_info: Union[:class:`~supervisely.api.project_api.ProjectInfo`, int]
         :param do_initialization: Initialize project versions. Set to False for internal use.
         :type do_initialization: bool
-        :return: Project versions
+        :returns: Project versions
         :rtype: dict
         """
         if do_initialization:
@@ -209,11 +209,11 @@ class DataVersion(ModuleApiBase):
         """
         Save project versions map to storage.
 
-        :param project_info: ProjectInfo object or project ID
-        :type project_info: Union[ProjectInfo, int]
+        :param project_info: Project info object or project ID
+        :type project_info: Union[:class:`~supervisely.api.project_api.ProjectInfo`, int]
         :param initialize: Initialize project versions. Set to False for internal use.
         :type initialize: bool
-        :return: None
+        :returns: None
         """
 
         if initialize:
@@ -243,13 +243,13 @@ class DataVersion(ModuleApiBase):
         If the project is already on the latest version, returns the latest version ID.
         If the project version cannot be created, returns None.
 
-        :param project_info: ProjectInfo object or project ID
-        :type project_info: Union[ProjectInfo, int]
+        :param project_info: Project info object or project ID
+        :type project_info: Union[:class:`~supervisely.api.project_api.ProjectInfo`, int]
         :param version_title: Version title
         :type version_title: Optional[str]
         :param version_description: Version description
         :type version_description: Optional[str]
-        :return: Version ID
+        :returns: Version ID
         :rtype: int
         """
         if isinstance(project_info, int):
@@ -330,7 +330,7 @@ class DataVersion(ModuleApiBase):
         :type title: Optional[str]
         :param description: Version description
         :type description: Optional[str]
-        :return: None
+        :returns: None
         """
         body = {
             ApiField.ID: version_id,
@@ -358,7 +358,7 @@ class DataVersion(ModuleApiBase):
         :type project_id: int
         :param retries: Number of attempts to reserve version
         :type retries: int
-        :return: Version ID and commit token
+        :returns: Version ID and commit token
         :rtype: Tuple[int, str]
         """
         retry_delay = 2  # seconds
@@ -408,7 +408,7 @@ class DataVersion(ModuleApiBase):
         :type version_id: int
         :param commit_token: Commit token
         :type commit_token: str
-        :return: True if reservation was cancelled, False otherwise
+        :returns: True if reservation was cancelled, False otherwise
         """
         response = self._api.post(
             "projects.versions.cancel-reservation",
@@ -428,16 +428,16 @@ class DataVersion(ModuleApiBase):
         Restore project to a specific version.
         Version can be specified by ID or number.
 
-        :param project_info: ProjectInfo object or project ID
-        :type project_info: Union[ProjectInfo, int]
+        :param project_info: Project info object or project ID
+        :type project_info: Union[:class:`~supervisely.api.project_api.ProjectInfo`, int]
         :param version_id: Version ID
         :type version_id: Optional[int]
         :param version_num: Version number
         :type version_num: Optional[int]
         :param skip_missed_entities: Skip missed Images
         :type skip_missed_entities: bool, default False
-        :return: ProjectInfo object of the restored project
-        :rtype: ProjectInfo or None
+        :returns: Project info object of the restored project
+        :rtype: :class:`~supervisely.api.project_api.ProjectInfo` or None
         """
         if version_id is None and version_num is None:
             raise ValueError("Either version_id or version_num must be provided")
@@ -513,7 +513,7 @@ class DataVersion(ModuleApiBase):
 
         :param path: Path to the version file
         :type path: str
-        :return: Binary IO object with extracted file
+        :returns: Binary IO object with extracted file
         :rtype: io.BytesIO
         """
         temp_dir = tempfile.mkdtemp()
@@ -552,7 +552,7 @@ class DataVersion(ModuleApiBase):
         Generate a path for the new version archive where it will be saved in the Team Files.
         Archive format: {timestamp}.tar.zst
 
-        :return: Path for the new version archive
+        :returns: Path for the new version archive
         :rtype: str
         """
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
@@ -575,7 +575,7 @@ class DataVersion(ModuleApiBase):
 
         :param changes: Changes between current and previous version
         :type changes: bool
-        :return: File info
+        :returns: File info
         :rtype: dict
         """
         temp_dir = tempfile.mkdtemp()

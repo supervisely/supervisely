@@ -222,43 +222,31 @@ def _instances_to_nonoverlapping_mask(instance_masks):
     """Convert instance segmentation masks to nonoverlapping objects on
     semantic-like segmentation mask.
 
-    Parameters
-    ----------
-    instance_masks : (H,W,C) ndarray, UINT
-        Instance segmentation masks.
 
-    Returns
-    -------
-    (H,W) ndarray
-        Segmentation map with all instances.
-
+    :param instance_masks: Instance segmentation masks.
+    :type instance_masks: (H,W,C) ndarray, UINT
+    :returns: Segmentation map with all instances.
+    :rtype: (H,W) ndarray
     """
     common_img = np.zeros(instance_masks.shape[:2], np.int32)
     n_instances = instance_masks.shape[2]
 
     for idx in range(n_instances):
         common_img[instance_masks[:,:,idx].astype(np.bool)] = idx + 1
-    
+
     return common_img
 
 def _nonoverlapping_mask_to_instances(common_mask, n_instances):
-    """Convert nonoverlapping objects on semantic-like segmentation mask to 
+    """Convert nonoverlapping objects on semantic-like segmentation mask to
     instance segmentation masks.
 
-    Parameters
-    ----------
-    common_mask : (H,W) ndarray, UINT
-        Segmentation map with all instances.
-
-    n_instances : int
-        Number of objects on segmentation map. After applying augmentations some of instances 
+    :param common_mask: Segmentation map with all instances.
+    :type common_mask: (H,W) ndarray, UINT
+    :param n_instances: Number of objects on segmentation map. After applying augmentations some of instances
         may disappear from image. In this case result array may contain empty channels.
-
-    Returns
-    -------
-    (H,W,C) ndarray
-        Instance segmentation masks.
-
+    :type n_instances: int
+    :returns: Instance segmentation masks.
+    :rtype: (H,W,C) ndarray
     """
     bitmap_masks = []
     for idx in range(n_instances):
@@ -268,27 +256,18 @@ def _nonoverlapping_mask_to_instances(common_mask, n_instances):
 
 
 def apply_to_image_and_bbox(augs, img, bboxes):
-    """Apply augmentations to image and bounding boxes. 
+    """Apply augmentations to image and bounding boxes.
 
-    Parameters
-    ----------
-    augs : iaa.Sequential
-        Defined imgaug augmentation sequence.
-    
-    img : (H, W) or (H, W, C) ndarray
-        Input image.
-
-    bboxes : List[bbox], where bbox: list or tuple of bbox coords in XYXY format
-        Bounding boxes.
-
-    Returns
-    -------
-    (H,W,C) ndarray
-        Augmented image.
-
-    List[bbox], where bbox: list of bbox coords in XYXY format
-        Augmented bounding boxes.
-        
+    :param augs: Defined imgaug augmentation sequence.
+    :type augs: iaa.Sequential
+    :param img: Input image.
+    :type img: (H, W) or (H, W, C) ndarray
+    :param bboxes: Bounding boxes.
+    :type bboxes: List[bbox], where bbox: list or tuple of bbox coords in XYXY format
+    :returns: Augmented image.
+    :rtype: (H,W,C) ndarray
+    :returns: Augmented bounding boxes.
+    :rtype: List[bbox], where bbox: list of bbox coords in XYXY format
     """
     assert isinstance(bboxes, list)
 
@@ -298,36 +277,26 @@ def apply_to_image_and_bbox(augs, img, bboxes):
     res_boxes = [[res_box.x1, res_box.y1, res_box.x2, res_box.y2] for res_box in res_boxes]
 
     return res_img, res_boxes
-    
+
 
 def apply_to_image_and_mask(augs, img, mask, segmentation_type="semantic"):
-    """Apply augmentations to image and segmentation mask (instance or semantic). 
+    """Apply augmentations to image and segmentation mask (instance or semantic).
 
-    Parameters
-    ----------
-    augs : iaa.Sequential
-        Defined imgaug augmentation sequence.
-    
-    img : (H, W) or (H, W, C) ndarray
-        Input image.
-
-    mask : (H, W) ndarray if semantic or (H, W, C) ndarray if instance
-        Instance or semantic segmentation mask.
-        If segmentation_type=='semantic', shape must be (H, W).
-        If segmentation_type=='instance', shape must be (H, W, C), where
-        C is num_objects, C > 0.
-
-    segmentation_type : str, one of ('semantic', 'instance')
-        Define how to process segmentation masks.
-
-    Returns
-    -------
-    (H,W,C) ndarray
-        Augmented image.
-
+    :param augs: Defined imgaug augmentation sequence.
+    :type augs: iaa.Sequential
+    :param img: Input image.
+    :type img: (H, W) or (H, W, C) ndarray
+    :param mask: Instance or semantic segmentation mask.
+    :type mask: (H, W) ndarray if semantic or (H, W, C) ndarray if instance
+    :param segmentation_type: Define how to process segmentation masks.
+    :type segmentation_type: str, one of ('semantic', 'instance')
+    :returns: Augmented image.
+    :rtype: (H,W,C) ndarray
+    :returns: Augmented segmentation mask.
+    :rtype: (H,W) ndarray if semantic or (H,W,C) ndarray if instance
     (H,W) ndarray if semantic or (H,W,C) ndarray if instance
         Augmented segmentation mask.
-
+    :rtype: List[bbox], where bbox: list of bbox coords in XYXY format
     """
     assert isinstance(segmentation_type, str) and segmentation_type in ["semantic", "instance"]
     assert isinstance(mask, np.ndarray)
@@ -336,15 +305,15 @@ def apply_to_image_and_mask(augs, img, mask, segmentation_type="semantic"):
     if segmentation_type == "instance":
         N_instances = mask.shape[2]
         mask = _instances_to_nonoverlapping_mask(mask) # [H,W,C] -> [H,W]
-    
+
     segmaps = SegmentationMapsOnImage(mask, shape=img.shape[:2])
-    
+
     res_img, _, res_segmaps = _apply(augs, img, masks=segmaps)
 
     res_mask = res_segmaps.get_arr()
     if segmentation_type == "instance":
         res_mask = _nonoverlapping_mask_to_instances(res_mask, N_instances) # [H,W] -> [H,W,C]
-    
+
     if res_img.shape[:2] != res_mask.shape[:2]:
         raise ValueError(f"Image and mask have different shapes "
                          f"({res_img.shape[:2]} != {res_mask.shape[:2]}) after augmentations. "
@@ -353,40 +322,25 @@ def apply_to_image_and_mask(augs, img, mask, segmentation_type="semantic"):
 
 
 def apply_to_image_bbox_and_mask(augs, img, bboxes, mask, segmentation_type="semantic"):
-    """Apply augmentations to image, bounding boxes and segmentation mask 
-    (instance or semantic). 
+    """Apply augmentations to image, bounding boxes and segmentation mask
+    (instance or semantic).
 
-    Parameters
-    ----------
-    augs : iaa.Sequential
-        Defined imgaug augmentation sequence.
-    
-    img : (H, W) or (H, W, C) ndarray
-        Input image.
-
-    bboxes : List[bbox], where bbox: list or tuple of bbox coords in XYXY format
-        Bounding boxes.
-
-    mask : (H, W) ndarray if semantic or (H, W, C) ndarray if instance
-        Instance or semantic segmentation mask.
-        If segmentation_type=='semantic', shape must be (H, W).
-        If segmentation_type=='instance', shape must be (H, W, C), where
-        C is num_objects, C > 0.
-
-    segmentation_type : str, one of ('semantic', 'instance')
-        Define how to process segmentation masks.
-
-    Returns
-    -------
-    (H,W,C) ndarray
-        Augmented image.
-
-    List[bbox], where bbox: list of bbox coords in XYXY format
-        Augmented bounding boxes.
-
-    (H,W) ndarray if semantic or (H,W,C) ndarray if instance
-        Augmented segmentation mask.
-
+    :param augs: Defined imgaug augmentation sequence.
+    :type augs: iaa.Sequential
+    :param img: Input image.
+    :type img: (H, W) or (H, W, C) ndarray
+    :param bboxes: Bounding boxes.
+    :type bboxes: List[bbox], where bbox: list or tuple of bbox coords in XYXY format
+    :param mask: Instance or semantic segmentation mask.
+    :type mask: (H, W) ndarray if semantic or (H, W, C) ndarray if instance
+    :param segmentation_type: Define how to process segmentation masks.
+    :type segmentation_type: str, one of ('semantic', 'instance')
+    :returns: Augmented image.
+    :rtype: (H,W,C) ndarray
+    :returns: Augmented bounding boxes.
+    :rtype: List[bbox], where bbox: list of bbox coords in XYXY format
+    :returns: Augmented segmentation mask.
+    :rtype: (H,W) ndarray if semantic or (H,W,C) ndarray if instance
     """
     assert isinstance(bboxes, list)
     assert isinstance(segmentation_type, str) and segmentation_type in ["semantic", "instance"]
@@ -400,7 +354,7 @@ def apply_to_image_bbox_and_mask(augs, img, bboxes, mask, segmentation_type="sem
 
     boxes = [BoundingBox(box[0], box[1], box[2], box[3]) for box in bboxes]
     boxes = BoundingBoxesOnImage(boxes, shape=img.shape[:2])
-    
+
     if segmentation_type == "instance":
         N_instances = mask.shape[2]
         mask = _instances_to_nonoverlapping_mask(mask) # [H,W,C] -> [H,W]
@@ -417,41 +371,21 @@ def apply_to_image_bbox_and_mask(augs, img, bboxes, mask, segmentation_type="sem
 
 
 def apply_to_image_bbox_and_both_types_masks(augs, img, bboxes, semantic_mask, instance_masks):
-    """Apply augmentations to image, bounding boxes and both types of segmentation masks 
-    (instance and semantic together). 
+    """
+    Apply augmentations to image, bounding boxes and both types of segmentation masks (instance and semantic) together.
 
-    Parameters
-    ----------
-    augs : iaa.Sequential
-        Defined imgaug augmentation sequence.
-    
-    img : (H,W) or (H,W,C) ndarray
-        Input image.
-
-    bboxes : List[bbox], where bbox: list or tuple of bbox coords in XYXY format
-        Bounding boxes.
-
-    semantic_mask : (H,W) ndarray
-        Semantic segmentation mask.
-
-    instance_masks : (H,W,C) ndarray
-        Instance segmentation masks. 
-        C is num_objects, C > 0.
-
-    Returns
-    -------
-    (H,W) or (H,W,C) ndarray, UINT
-        Augmented image.
-
-    List[bbox], where bbox: list of bbox coords in XYXY format
-        Augmented bounding boxes.
-
-    (H,W) ndarray, UINT
-        Augmented semantic segmentation mask.
-    
-    (H,W,C) ndarray, UINT
-        Augmented instance segmentation masks.
-
+    :param augs: Defined imgaug augmentation sequence.
+    :type augs: iaa.Sequential
+    :param img: Input image.
+    :type img: (H, W) or (H, W, C) ndarray
+    :param bboxes: Bounding boxes.
+    :type bboxes: List[bbox], where bbox: list or tuple of bbox coords in XYXY format
+    :param semantic_mask: Semantic segmentation mask.
+    :type semantic_mask: (H,W) ndarray
+    :param instance_masks: Instance segmentation masks.
+    :type instance_masks: (H,W,C) ndarray
+    :returns: Augmented image, augmented bounding boxes, augmented semantic segmentation mask, augmented instance segmentation masks
+    :rtype: (H,W) or (H,W,C) ndarray, List[bbox], (H,W) ndarray, (H,W,C) ndarray
     """
     assert isinstance(bboxes, list)
     assert isinstance(semantic_mask, np.ndarray) and semantic_mask.ndim == 2

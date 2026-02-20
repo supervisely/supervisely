@@ -19,7 +19,17 @@ def upload_artifacts(
     """
     Upload artifacts to Team Files and generate experiment report.
 
-    Args:
+    :param api: Supervisely API object
+    :type api: :class:`~supervisely.api.api.Api`
+    :param session_info: Training session context
+    :type session_info: dict
+    :param artifacts: Framework-specific artifacts
+    :type artifacts: dict
+    :returns: URL to experiment report
+    :rtype: str
+
+    :Example:
+
         session_info: Training session context
             - team_id: Team ID
             - task_id: Task ID
@@ -30,7 +40,7 @@ def upload_artifacts(
             - start_time: Training start time string
             - train_size: Final dataset size
             - initial_samples: Number of initial samples
-            
+
 
         artifacts: Framework-specific artifacts
             - checkpoint_path: Path to checkpoint file
@@ -40,8 +50,6 @@ def upload_artifacts(
             - model_config: Model configuration dict
             - loss_history: Dict with loss history
 
-    Returns:
-        report_url: URL to experiment report
     """
     logger.info("Starting artifacts upload")
 
@@ -56,7 +64,7 @@ def upload_artifacts(
     start_time = session_info['start_time']
     train_size = session_info['train_size']
     initial_samples = session_info.get('initial_samples', 0)
-    
+
     # Unpack artifacts
     checkpoint_path = artifacts['checkpoint_path']
     checkpoint_info = artifacts['checkpoint_info']

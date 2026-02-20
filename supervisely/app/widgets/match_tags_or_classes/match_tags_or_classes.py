@@ -12,6 +12,8 @@ from typing import Union, List
 
 
 class MatchTagMetasOrClasses(Widget):
+    """Widget to compare and match TagMetas or ObjClasses between two collections (with optional suffix matching)."""
+
     def __init__(
         self,
         left_collection: Union[TagMetaCollection, ObjClassCollection, None] = None,
@@ -22,6 +24,24 @@ class MatchTagMetasOrClasses(Widget):
         suffix: Union[str, None] = None,
         widget_id: str = None,
     ):
+        """
+        :param left_collection: Left TagMetaCollection or ObjClassCollection.
+        :type left_collection: Union[TagMetaCollection, ObjClassCollection, None]
+        :param right_collection: Right collection (same type as left).
+        :type right_collection: Union[TagMetaCollection, ObjClassCollection, None]
+        :param left_name: Label for left column.
+        :type left_name: str, optional
+        :param right_name: Label for right column.
+        :type right_name: str, optional
+        :param selectable: If True, rows are selectable.
+        :type selectable: bool
+        :param suffix: Optional suffix for matching.
+        :type suffix: str, optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+
+        :raises TypeError: If left_collection and right_collection types differ.
+        """
         if not type(left_collection) is type(right_collection):
             raise TypeError("Collections should be of same type")
         self._collections_type = type(left_collection)
@@ -281,6 +301,8 @@ class MatchTagMetasOrClasses(Widget):
 
 
 class MatchTagMetas(MatchTagMetasOrClasses):
+    """Specialization of :class:`MatchTagMetasOrClasses` for matching :class:`~supervisely.annotation.tag_meta.TagMeta`."""
+
     def __init__(
         self,
         left_collection: Union[TagMetaCollection, List[TagMeta], None] = None,
@@ -291,6 +313,22 @@ class MatchTagMetas(MatchTagMetasOrClasses):
         suffix: Union[str, None] = None,
         widget_id: str = None,
     ):
+        """
+        :param left_collection: Left TagMetaCollection or list of TagMeta.
+        :type left_collection: Union[TagMetaCollection, List[TagMeta], None]
+        :param right_collection: Right collection (same type as left).
+        :type right_collection: Union[TagMetaCollection, List[TagMeta], None]
+        :param left_name: Label for left column.
+        :type left_name: str, optional
+        :param right_name: Label for right column.
+        :type right_name: str, optional
+        :param selectable: If True, rows are selectable.
+        :type selectable: bool
+        :param suffix: Optional suffix for matching.
+        :type suffix: str, optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         if type(left_collection) is list:
             left_collection = TagMetaCollection(left_collection)
         if type(right_collection) is list:
@@ -344,6 +382,8 @@ class MatchTagMetas(MatchTagMetasOrClasses):
 
 
 class MatchObjClasses(MatchTagMetasOrClasses):
+    """Specialization of :class:`MatchTagMetasOrClasses` for matching :class:`~supervisely.annotation.obj_class.ObjClass`."""
+
     def __init__(
         self,
         left_collection: Union[ObjClassCollection, List[ObjClass], None] = None,
@@ -354,6 +394,22 @@ class MatchObjClasses(MatchTagMetasOrClasses):
         suffix: Union[str, None] = None,
         widget_id: str = None,
     ):
+        """
+        :param left_collection: Left ObjClassCollection or list of ObjClass.
+        :type left_collection: Union[ObjClassCollection, List[ObjClass], None]
+        :param right_collection: Right collection (same type as left).
+        :type right_collection: Union[ObjClassCollection, List[ObjClass], None]
+        :param left_name: Label for left column.
+        :type left_name: str, optional
+        :param right_name: Label for right column.
+        :type right_name: str, optional
+        :param selectable: If True, rows are selectable.
+        :type selectable: bool
+        :param suffix: Optional suffix for matching.
+        :type suffix: str, optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         if type(left_collection) is list:
             left_collection = ObjClassCollection(left_collection)
         if type(right_collection) is list:

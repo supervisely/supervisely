@@ -49,6 +49,7 @@ def get_release_commit(tag: str):
 
 
 def get_version():
+    return "0.0.0+readthedocs"
     version = os.getenv("RELEASE_VERSION", None)
     if version is not None:
         return version
@@ -249,13 +250,9 @@ setup(
             "pandas>=1.1.3, <=2.3.3",
         ],
         "docs": [
-            "sphinx==4.4.0",
-            "jinja2==3.0.3",
-            "sphinx-immaterial==0.4.0",
-            "sphinx-copybutton==0.4.0",
-            "sphinx-autodoc-typehints==1.15.3",
-            "sphinxcontrib-details-directive==0.1.0",
-            "myst-parser==0.18.0",
+            "sphinx==8.2.3",
+            "sphinx-immaterial==0.13.9",
+            "myst-parser==5.0.0",
         ],
         "sdk-no-usages": [
             "grpcio>=1.53.2, <2.0.0",

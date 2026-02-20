@@ -28,6 +28,8 @@ from supervisely.task.progress import Progress
 
 
 class AvailableImageConverters:
+    """Names of supported image dataset converters."""
+
     SLY = "supervisely"
     COCO = "coco"
     FAST_COCO = "coco (fast)"
@@ -46,6 +48,8 @@ class AvailableImageConverters:
 
 
 class AvailableVideoConverters:
+    """Names of supported video dataset converters."""
+
     SLY = "supervisely"
     MOT = "mot"
     DAVIS = "davis"
@@ -53,6 +57,8 @@ class AvailableVideoConverters:
 
 
 class AvailablePointcloudConverters:
+    """Names of supported point cloud dataset converters."""
+
     SLY = "supervisely"
     LAS = "las/laz"
     PLY = "ply"
@@ -63,6 +69,8 @@ class AvailablePointcloudConverters:
 
 
 class AvailablePointcloudEpisodesConverters:
+    """Names of supported point cloud episode dataset converters."""
+
     SLY = "supervisely"
     BAG = "rosbag"
     LYFT = "lyft"
@@ -70,15 +78,25 @@ class AvailablePointcloudEpisodesConverters:
 
 
 class AvailableVolumeConverters:
+    """Names of supported 3D volume dataset converters."""
+
     SLY = "supervisely"
     DICOM = "dicom"
     NII = "nii"
 
 
 class BaseConverter:
+    """
+    Base class for dataset format converters into Supervisely projects.
+
+    Detects input format, validates annotations, builds :class:`~supervisely.project.project_meta.ProjectMeta`
+    and provides methods to upload converted data.
+    """
     unsupported_exts = [".gif", ".html", ".htm"]
 
     class BaseItem:
+        """Represents a single convertible item (data path + raw annotation data + optional shape/custom_data)."""
+
         def __init__(
             self,
             item_path: str,
@@ -86,6 +104,15 @@ class BaseConverter:
             shape: Union[Tuple, List] = None,
             custom_data: Optional[dict] = None,
         ):
+            """:param item_path: Path to the item file.
+            :type item_path: str
+            :param ann_data: Raw annotation (path, dict, or JSON string).
+            :type ann_data: Union[str, dict], optional
+            :param shape: Image/item shape (height, width).
+            :type shape: Union[Tuple, List], optional
+            :param custom_data: Extra per-item data.
+            :type custom_data: dict, optional
+            """
             self._path: str = item_path
             self._name: str = None
             self._ann_data: Union[str, dict, list] = ann_data
@@ -162,6 +189,17 @@ class BaseConverter:
         upload_as_links: bool = False,
         remote_files_map: Optional[Dict[str, str]] = None,
     ):
+        """:param input_data: Path to input directory or archive.
+        :type input_data: str
+        :param labeling_interface: Labeling interface preset.
+        :type labeling_interface: LabelingInterface, optional
+        :param upload_as_links: If True, upload as Team Files links.
+        :type upload_as_links: bool
+        :param remote_files_map: Map of local paths to remote paths for link upload.
+        :type remote_files_map: Dict[str, str], optional
+
+        :raises ValueError: If labeling_interface is invalid.
+        """
         self._input_data: str = input_data
         self._items: List[BaseConverter.BaseItem] = []
         self._meta: ProjectMeta = None
@@ -231,7 +269,7 @@ class BaseConverter:
             2. creates items, count detected annotations and save them to self._items
             3. validates annotation files (and genereate meta if key file is missing)
 
-        :return: True if format is valid, False otherwise.
+        :returns: True if format is valid, False otherwise.
         """
         raise NotImplementedError()
 

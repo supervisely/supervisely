@@ -168,7 +168,7 @@ can pass them in the terminal before running the script:
     import supervisely as sly
 
     # 1. Authenticate with Supervisely API
-    api = sly.Api() # Make sure you've set your credentials in environment variables.
+    api = sly.Api.from_env() # Make sure you've set your credentials in environment variables.
 
     # 2. Deploy the model
     model = api.nn.deploy(
@@ -195,7 +195,7 @@ use it for predictions.
 ```python
 import supervisely as sly
 
-api = sly.Api()
+api = sly.Api.from_env()
 
 # Deploy PyTorch checkpoint
 model = api.nn.deploy(
@@ -213,7 +213,7 @@ model = api.nn.deploy(
 ```python
 import supervisely as sly
 
-api = sly.Api()
+api = sly.Api.from_env()
 
 # Deploy ONNX checkpoint
 model = api.nn.deploy(
@@ -232,7 +232,7 @@ model = api.nn.deploy(
 ```python
 import supervisely as sly
 
-api = sly.Api()
+api = sly.Api.from_env()
 
 # Deploy TensorRT checkpoint
 model = api.nn.deploy(
@@ -329,7 +329,7 @@ To apply tracking via API, first, deploy your detection model or connect to it, 
 ```python
 import supervisely as sly
 
-api = sly.Api()
+api = sly.Api.from_env()
 
 # Deploy your model
 model = api.nn.deploy(

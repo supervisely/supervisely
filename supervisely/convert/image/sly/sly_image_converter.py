@@ -28,6 +28,7 @@ NESTED_DATASETS = "datasets"
 
 
 class SLYImageConverter(ImageConverter):
+    """Imports Supervisely image project format (datasets/items/ann structure) from local folder or blob storage."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

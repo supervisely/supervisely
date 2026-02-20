@@ -19,6 +19,8 @@ from supervisely.sly_logger import logger
 
 
 class ObjectDetectionEvalResult(BaseEvalResult):
+    """Evaluation result for object detection benchmarks (COCO bbox metrics + click-data helpers)."""
+
     mp_cls = MetricProvider
     PRIMARY_METRIC = "mAP"
 
@@ -112,6 +114,8 @@ class ObjectDetectionEvalResult(BaseEvalResult):
 
 
 class ObjectDetectionEvaluator(BaseEvaluator):
+    """Benchmark evaluator that computes object-detection metrics between GT and prediction projects."""
+
     EVALUATION_PARAMS_YAML_PATH = f"{Path(__file__).parent}/evaluation_params.yaml"
     eval_result_cls = ObjectDetectionEvalResult
     accepted_shapes = ["rectangle"]

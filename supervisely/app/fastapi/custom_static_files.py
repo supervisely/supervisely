@@ -14,6 +14,8 @@ PathLike = typing.Union[str, "os.PathLike[str]"]
 
 
 class CustomStaticFiles(StaticFiles):
+    """StaticFiles subclass that supports Range requests for video files (byte-range streaming)."""
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 

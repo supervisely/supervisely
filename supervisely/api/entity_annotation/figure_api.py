@@ -77,8 +77,8 @@ class FigureInfo(NamedTuple):
         """
         Get Figure's bounding box.
 
-        :return: Rectangle in supervisely format.
-        :rtype: :class: `sly.Rectangle`
+        :returns: Rectangle in supervisely format.
+        :rtype: :class:`~supervisely.geometry.rectangle.Rectangle`
         """
         if self.geometry_meta is not None:
             return Rectangle(*self.geometry_meta["bbox"], sly_id=self.id)
@@ -89,7 +89,7 @@ class FigureInfo(NamedTuple):
 
 class FigureApi(RemoveableBulkModuleApi):
     """
-    Figure object for :class:`VideoAnnotation<supervisely.video_annotation.video_annotation.VideoAnnotation>`.
+    Figure object for :class:`~supervisely.video_annotation.video_annotation.VideoAnnotation`.
     """
 
     def _remove_batch_api_method_name(self):
@@ -145,20 +145,27 @@ class FigureApi(RemoveableBulkModuleApi):
         """
         Get string name of NamedTuple for class.
 
-        :return: NamedTuple name.
-        :rtype: :class:`str`
-        :Usage example:
+        :returns: NamedTuple name.
+        :rtype: str
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            tuple_name = api.video.figure.info_tuple_name()
-            print(tuple_name) # FigureInfo
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                tuple_name = api.video.figure.info_tuple_name()
+                print(tuple_name) # FigureInfo
         """
 
         return "FigureInfo"
@@ -169,42 +176,48 @@ class FigureApi(RemoveableBulkModuleApi):
 
         :param id: Figure ID in Supervisely.
         :type id: int
-        :return: Information about Figure. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`NamedTuple`
-        :Usage example:
+        :returns: Information about Figure.
+        :rtype: :class:`~supervisely.api.entity_annotation.figure_api.FigureInfo`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            figure_id = 588801373
+                import os
+                from dotenv import load_dotenv
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            figure_info = api.video.figure.get_info_by_id(figure_id)
-            print(figure_info)
-            # Output: [
-            #     588801373,
-            #     "2020-12-22T06:37:13.183Z",
-            #     "2020-12-22T06:37:13.183Z",
-            #     186648101,
-            #     112482,
-            #     110366,
-            #     419886,
-            #     0,
-            #     "bitmap",
-            #     {
-            #         "bitmap": {
-            #             "data": "eJw...Cgj4=",
-            #             "origin": [
-            #                 335,
-            #                 205
-            #             ]
-            #         }
-            #     }
-            # ]
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                figure_id = 588801373
+                figure_info = api.video.figure.get_info_by_id(figure_id)
+                print(figure_info)
+                # Output: [
+                #     588801373,
+                #     "2020-12-22T06:37:13.183Z",
+                #     "2020-12-22T06:37:13.183Z",
+                #     186648101,
+                #     112482,
+                #     110366,
+                #     419886,
+                #     0,
+                #     "bitmap",
+                #     {
+                #         "bitmap": {
+                #             "data": "eJw...Cgj4=",
+                #             "origin": [
+                #                 335,
+                #                 205
+                #             ]
+                #         }
+                #     }
+                # ]
         """
         fields = [
             "id",
@@ -272,102 +285,109 @@ class FigureApi(RemoveableBulkModuleApi):
         :type dataset_id: int
         :param ids: List of Figures IDs.
         :type ids: List[int]
-        :return: List of information about Figures. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[NamedTuple]`
-        :Usage example:
+        :returns: List of information about Figures.
+        :rtype: List[:class:`~supervisely.api.entity_annotation.figure_api.FigureInfo`]
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            dataset_id = 466642
-            figures_ids = [642155547, 642155548, 642155549]
-            figures_infos = api.video.figure.get_by_ids(dataset_id, figures_ids)
-            print(figures_infos)
-            # Output: [
-            #     [
-            #         642155547,
-            #         "2021-03-23T13:25:34.705Z",
-            #         "2021-03-23T13:25:34.705Z",
-            #         198703211,
-            #         152118,
-            #         124976,
-            #         466642,
-            #         0,
-            #         "rectangle",
-            #         {
-            #             "points": {
-            #                 "exterior": [
-            #                     [
-            #                         2240,
-            #                         1041
-            #                     ],
-            #                     [
-            #                         2463,
-            #                         1187
-            #                     ]
-            #                 ],
-            #                 "interior": []
-            #             }
-            #         }
-            #     ],
-            #     [
-            #         642155548,
-            #         "2021-03-23T13:25:34.705Z",
-            #         "2021-03-23T13:25:34.705Z",
-            #         198703211,
-            #         152118,
-            #         124976,
-            #         466642,
-            #         1,
-            #         "rectangle",
-            #         {
-            #             "points": {
-            #                 "exterior": [
-            #                     [
-            #                         2248,
-            #                         1048
-            #                     ],
-            #                     [
-            #                         2455,
-            #                         1176
-            #                     ]
-            #                 ],
-            #                 "interior": []
-            #             }
-            #         }
-            #     ],
-            #     [
-            #         642155549,
-            #         "2021-03-23T13:25:34.705Z",
-            #         "2021-03-23T13:25:34.705Z",
-            #         198703211,
-            #         152118,
-            #         124976,
-            #         466642,
-            #         2,
-            #         "rectangle",
-            #         {
-            #             "points": {
-            #                 "exterior": [
-            #                     [
-            #                         2237,
-            #                         1046
-            #                     ],
-            #                     [
-            #                         2464,
-            #                         1179
-            #                     ]
-            #                 ],
-            #                 "interior": []
-            #             }
-            #         }
-            #     ]
-            # ]
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                dataset_id = 466642
+                figures_ids = [642155547, 642155548, 642155549]
+                figures_infos = api.video.figure.get_by_ids(dataset_id, figures_ids)
+                print(figures_infos)
+                # Output: [
+                #     [
+                #         642155547,
+                #         "2021-03-23T13:25:34.705Z",
+                #         "2021-03-23T13:25:34.705Z",
+                #         198703211,
+                #         152118,
+                #         124976,
+                #         466642,
+                #         0,
+                #         "rectangle",
+                #         {
+                #             "points": {
+                #                 "exterior": [
+                #                     [
+                #                         2240,
+                #                         1041
+                #                     ],
+                #                     [
+                #                         2463,
+                #                         1187
+                #                     ]
+                #                 ],
+                #                 "interior": []
+                #             }
+                #         }
+                #     ],
+                #     [
+                #         642155548,
+                #         "2021-03-23T13:25:34.705Z",
+                #         "2021-03-23T13:25:34.705Z",
+                #         198703211,
+                #         152118,
+                #         124976,
+                #         466642,
+                #         1,
+                #         "rectangle",
+                #         {
+                #             "points": {
+                #                 "exterior": [
+                #                     [
+                #                         2248,
+                #                         1048
+                #                     ],
+                #                     [
+                #                         2455,
+                #                         1176
+                #                     ]
+                #                 ],
+                #                 "interior": []
+                #             }
+                #         }
+                #     ],
+                #     [
+                #         642155549,
+                #         "2021-03-23T13:25:34.705Z",
+                #         "2021-03-23T13:25:34.705Z",
+                #         198703211,
+                #         152118,
+                #         124976,
+                #         466642,
+                #         2,
+                #         "rectangle",
+                #         {
+                #             "points": {
+                #                 "exterior": [
+                #                     [
+                #                         2237,
+                #                         1046
+                #                     ],
+                #                     [
+                #                         2464,
+                #                         1179
+                #                     ]
+                #                 ],
+                #                 "interior": []
+                #             }
+                #         }
+                #     ]
+                # ]
         """
         filters = [{"field": "id", "operator": "in", "value": ids}]
         fields = [
@@ -456,7 +476,7 @@ class FigureApi(RemoveableBulkModuleApi):
         :type entity_id: int
         :param dataset_id: Dataset ID.
         :type dataset_id: int
-        :return: List of figure IDs.
+        :returns: List of figure IDs.
         """
         figure_ids = []
         if len(figures_json) == 0:
@@ -489,8 +509,8 @@ class FigureApi(RemoveableBulkModuleApi):
         :param skip_geometry: Skip the download of figure geometry. May be useful for a significant api request speed increase in the large datasets.
         :type skip_geometry: bool
 
-        :return: A dictionary where keys are image IDs and values are lists of figures.
-        :rtype: :class: `Dict[int, List[FigureInfo]]`
+        :returns: A dictionary where keys are image IDs and values are lists of figures.
+        :rtype: Dict[int, List[:class:`~supervisely.api.entity_annotation.figure_api.FigureInfo`]]
         """
         fields = [
             ApiField.ID,
@@ -573,7 +593,7 @@ class FigureApi(RemoveableBulkModuleApi):
 
         :param figure_id: Figure ID in Supervisely.
         :type figure_id: int
-        :return: Figure geometry in Supervisely JSON format.
+        :returns: Figure geometry in Supervisely JSON format.
         :rtype: dict
         """
         return self.download_geometries_batch([figure_id])
@@ -590,7 +610,7 @@ class FigureApi(RemoveableBulkModuleApi):
         :type ids: List[int]
         :param progress_cb: Progress bar to show the download progress. Shows the number of bytes downloaded.
         :type progress_cb: Union[tqdm, Callable], optional
-        :return: List of figure geometries in Supervisely JSON format.
+        :returns: List of figure geometries in Supervisely JSON format.
         :rtype: List[dict]
         """
         geometries = {}
@@ -616,7 +636,7 @@ class FigureApi(RemoveableBulkModuleApi):
         :type figure_id: int
         :param geometry: Figure geometry in Supervisely JSON format.
         :type geometry: dict
-        :return: None
+        :returns: None
         :rtype: None
         """
         self.upload_geometries_batch([figure_id], [geometry])
@@ -629,7 +649,7 @@ class FigureApi(RemoveableBulkModuleApi):
         :type figure_ids: List[int]
         :param geometries: List of figure geometries in Supervisely JSON format.
         :type geometries: List[dict]
-        :return: None
+        :returns: None
         :rtype: None
         """
         geometries = [json.dumps(geometry).encode("utf-8") for geometry in geometries]
@@ -657,7 +677,7 @@ class FigureApi(RemoveableBulkModuleApi):
 
         :param ids: List of figure IDs in Supervisely.
         :type ids: List[int]
-        :return: Async generator with pairs of figure ID and figure geometry.
+        :returns: Async generator with pairs of figure ID and figure geometry.
         :rtype: AsyncGenerator[Tuple[int, bytes], None, None]
         """
         if semaphore is None:
@@ -691,18 +711,24 @@ class FigureApi(RemoveableBulkModuleApi):
         :type progress_cb: Union[tqdm, Callable], optional
         :param semaphore: Semaphore to limit the number of concurrent downloads.
         :type semaphore: Optional[asyncio.Semaphore], optional
-        :return: List of figure geometries in Supervisely JSON format.
+        :returns: List of figure geometries in Supervisely JSON format.
         :rtype: List[dict]
 
-        :Usage example:
+        :Usage Example:
 
             .. code-block:: python
 
+                import os
                 import asyncio
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 figure_ids = [642155547, 642155548, 642155549]
@@ -745,28 +771,34 @@ class FigureApi(RemoveableBulkModuleApi):
         :type semaphore: Optional[asyncio.Semaphore], optional
         :param progress_cb: Progress bar to show the upload progress. Shows the number of geometries uploaded.
         :type progress_cb: Union[tqdm, Callable], optional
-        :return: None
+        :returns: None
         :rtype: None
 
-        :Usage example:
+        :Usage Example:
 
             .. code-block:: python
 
+                import os
                 import asyncio
+                from dotenv import load_dotenv
+
                 import supervisely as sly
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
                 api = sly.Api.from_env()
 
                 figure_ids = [642155547, 642155548, 642155549]
                 geometries = [{...}, {...}, {...}]  # Your geometry data
 
                 upload_coroutine = api.figure.upload_geometries_batch_async(
-                        figure_ids,
-                        geometries,
-                        semaphore=asyncio.Semaphore(10),
-                    )
+                    figure_ids,
+                    geometries,
+                    semaphore=asyncio.Semaphore(10),
+                )
                 sly.run_coroutine(upload_coroutine)
         """
         if semaphore is None:
@@ -838,22 +870,28 @@ class FigureApi(RemoveableBulkModuleApi):
                         Used for batching image_ids when filtering by specific images.
                         Adjust this value for optimal performance, value cannot exceed 500.
         :type batch_size: int, optional
-        :return: A dictionary where keys are image IDs and values are lists of figures.
-        :rtype: Dict[int, List[FigureInfo]]
+        :returns: A dictionary where keys are image IDs and values are lists of figures.
+        :rtype: Dict[int, List[:class:`~supervisely.api.entity_annotation.figure_api.FigureInfo`]]
 
-        :Usage example:
+        :Usage Example:
 
-        .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            dataset_id = 12345
-            download_coroutine = api.image.figure.download_async(dataset_id)
-            figures = sly.run_coroutine(download_coroutine)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                dataset_id = 12345
+                download_coroutine = api.image.figure.download_async(dataset_id)
+                figures = sly.run_coroutine(download_coroutine)
         """
         fields = [
             ApiField.ID,
@@ -1009,21 +1047,27 @@ class FigureApi(RemoveableBulkModuleApi):
                         Adjust this value for optimal performance, value cannot exceed 500.
         :type batch_size: int, optional
 
-        :return: A dictionary where keys are image IDs and values are lists of figures.
-        :rtype: Dict[int, List[FigureInfo]]
+        :returns: A dictionary where keys are image IDs and values are lists of figures.
+        :rtype: Dict[int, List[:class:`~supervisely.api.entity_annotation.figure_api.FigureInfo`]]
 
-        :Usage example:
+        :Usage Example:
 
-        .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            dataset_id = 12345
-            figures = api.image.figure.download_fast(dataset_id)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                dataset_id = 12345
+                figures = api.image.figure.download_fast(dataset_id)
         """
         try:
             return run_coroutine(

@@ -12,67 +12,10 @@ except ImportError:
 
 
 class ActivityFeed(Widget):
-    """ActivityFeed is a widget that displays a vertical list of activity items with status indicators.
-    Similar to a timeline or activity log showing sequential events with their current status.
-
-    Each item can contain a custom widget as content and displays a status indicator (pending, in process, completed, failed).
-    Items are automatically numbered if no number is provided.
-
-    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/layouts-and-containers/activity-feed>`_
-        (including screenshots and examples).
-
-    :param items: List of ActivityFeed.Item objects to display
-    :type items: Optional[List[ActivityFeed.Item]]
-    :param widget_id: An identifier of the widget.
-    :type widget_id: str, optional
-
-    :Usage example:
-    .. code-block:: python
-
-        from supervisely.app.widgets import ActivityFeed, Text
-
-        # Create items with custom content
-        item1 = ActivityFeed.Item(
-            content=Text("Processing dataset"),
-            status="completed"
-        )
-        item2 = ActivityFeed.Item(
-            content=Text("Training model"),
-            status="in_progress",
-            number=2
-        )
-        item3 = ActivityFeed.Item(
-            content=Text("Generating report"),
-            status="pending"
-        )
-
-        # Create activity feed
-        feed = ActivityFeed(items=[item1, item2, item3])
-
-        # Add item during runtime
-        new_item = ActivityFeed.Item(
-            content=Text("Deploy model"),
-            status="pending"
-        )
-        feed.add_item(new_item)
-
-        # Update status by item number
-        feed.set_status(2, "completed")
-
-        # Get item status
-        status = feed.get_status(2)
-    """
+    """Vertical list of activity items with status indicators (pending, in progress, completed, failed)."""
 
     class Item:
-        """Represents a single item in the ActivityFeed.
-
-        :param content: Widget to display as the item content
-        :type content: Widget
-        :param status: Status of the item (pending, in_progress, completed, failed)
-        :type status: Literal["pending", "in_progress", "completed", "failed"]
-        :param number: Position number in the feed (auto-assigned if not provided)
-        :type number: Optional[int]
-        """
+        """Single item in ActivityFeed (content, status, optional number)."""
 
         def __init__(
             self,
@@ -80,6 +23,14 @@ class ActivityFeed(Widget):
             status: Literal["pending", "in_progress", "completed", "failed"] = "pending",
             number: Optional[int] = None,
         ) -> ActivityFeed.Item:
+            """
+            :param content: Widget to display as item content.
+            :type content: :class:`~supervisely.app.widgets.widget.Widget`
+            :param status: pending, in_progress, completed, or failed.
+            :type status: Literal["pending", "in_progress", "completed", "failed"]
+            :param number: Position in feed (auto-assigned if None).
+            :type number: Optional[int]
+            """
             self.content = content
             self.status = status
             self.number = number
@@ -103,6 +54,23 @@ class ActivityFeed(Widget):
         items: Optional[List[ActivityFeed.Item]] = None,
         widget_id: Optional[str] = None,
     ):
+        """
+        :param items: List of ActivityFeed.Item to display. Items auto-numbered if number not set.
+        :type items: Optional[List[:class:`~supervisely.app.widgets.activity_feed.activity_feed.ActivityFeed.Item`]]
+        :param widget_id: Widget identifier.
+        :type widget_id: str, optional
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import ActivityFeed, Text
+
+                item1 = ActivityFeed.Item(content=Text("Processing"), status="completed")
+                item2 = ActivityFeed.Item(content=Text("Training"), status="in_progress", number=2)
+                feed = ActivityFeed(items=[item1, item2])
+                feed.set_status(2, "completed")
+        """
         self._items = items if items is not None else []
         self._auto_assign_numbers()
         super().__init__(widget_id=widget_id, file_path=__file__)
@@ -118,7 +86,7 @@ class ActivityFeed(Widget):
     def get_json_data(self) -> Dict:
         """Returns dictionary with widget data.
 
-        :return: Dictionary with items data
+        :returns: Dictionary with items data
         :rtype: Dict
         """
         return {
@@ -128,7 +96,7 @@ class ActivityFeed(Widget):
     def get_json_state(self) -> Dict:
         """Returns dictionary with widget state (empty for this widget).
 
-        :return: Empty dictionary
+        :returns: Empty dictionary
         :rtype: Dict
         """
         return {}
@@ -142,12 +110,12 @@ class ActivityFeed(Widget):
     ) -> None:
         """Add a new item to the activity feed.
 
-        You can either pass an ActivityFeed.Item object or provide content and status separately.
+        You can either pass an item object or provide content and status separately.
 
-        :param item: ActivityFeed.Item to add
-        :type item: Optional[ActivityFeed.Item]
+        :param item: Item to add
+        :type item: Optional[:class:`~supervisely.app.widgets.activity_feed.activity_feed.ActivityFeed.Item`]
         :param content: Widget content (used if item is not provided)
-        :type content: Optional[Widget]
+        :type content: Optional[:class:`~supervisely.app.widgets.widget.Widget`]
         :param status: Status of the item (used if item is not provided)
         :type status: Literal["pending", "in_progress", "completed", "failed"]
         :param number: Position number (auto-assigned if not provided)
@@ -205,7 +173,7 @@ class ActivityFeed(Widget):
 
         :param number: Number of the item. Starts from 1.
         :type number: int
-        :return: Status of the item
+        :returns: Status of the item
         :rtype: str
         """
         for item in self._items:
@@ -216,8 +184,8 @@ class ActivityFeed(Widget):
     def get_items(self) -> List[ActivityFeed.Item]:
         """Get all items in the activity feed.
 
-        :return: List of all items
-        :rtype: List[ActivityFeed.Item]
+        :returns: List of all items
+        :rtype: List[:class:`~supervisely.app.widgets.activity_feed.activity_feed.ActivityFeed.Item`]
         """
         return self._items
 
@@ -231,7 +199,7 @@ class ActivityFeed(Widget):
         """Replace all items in the activity feed.
 
         :param items: New list of items
-        :type items: List[ActivityFeed.Item]
+        :type items: List[:class:`~supervisely.app.widgets.activity_feed.activity_feed.ActivityFeed.Item`]
         """
         self._items = items
         self._auto_assign_numbers()

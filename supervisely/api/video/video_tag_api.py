@@ -1,4 +1,5 @@
 # coding: utf-8
+"""Work with video tags via the Supervisely API."""
 
 # docs
 from typing import List, Optional, Union
@@ -15,7 +16,8 @@ from supervisely.video_annotation.video_tag_collection import VideoTagCollection
 
 class VideoTagApi(TagApi):
     """
-    :class:`VideoTag<supervisely.video_annotation.video_tag.VideoTag>` for a single video. :class:`VideoTagApi<VideoTagApi>` object is immutable.
+    API for working with :class:`~supervisely.video_annotation.video_tag.VideoTag`.
+    :class:`~supervisely.api.video.video_tag_api.VideoTagApi` object is immutable.
     """
 
     _entity_id_field = ApiField.VIDEO_ID
@@ -27,19 +29,26 @@ class VideoTagApi(TagApi):
 
         :param tag_id: VideoTag ID in Supervisely.
         :type tag_id: int
-        :return: None
-        :rtype: :class:`NoneType`
-        :Usage example:
+        :returns: None
+        :rtype: None
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            api.video.tag.remove_from_video(video_tag_id)
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                api.video.tag.remove_from_video(video_tag_id)
 
         """
 
@@ -53,20 +62,27 @@ class VideoTagApi(TagApi):
         :type tag_id: int
         :param frame_range: New VideoTag frame range.
         :type frame_range: List[int]
-        :return: None
-        :rtype: :class:`NoneType`
-        :Usage example:
+        :returns: None
+        :rtype: None
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            new_frame_range = [5, 10]
-            api.video.tag.update_frame_range(video_tag_id, new_frame_range)
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                new_frame_range = [5, 10]
+                api.video.tag.update_frame_range(video_tag_id, new_frame_range)
         """
 
         self._api.post(
@@ -81,19 +97,26 @@ class VideoTagApi(TagApi):
         :type tag_id: int
         :param tag_value: New VideoTag value.
         :type tag_value: str or int
-        :return: None
-        :rtype: :class:`NoneType`
-        :Usage example:
+        :returns: None
+        :rtype: None
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            api.video.tag.update_value(video_tag_id, 'new_tag_value')
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                api.video.tag.update_value(video_tag_id, 'new_tag_value')
         """
 
         self._api.post("videos.tags.update-value", {ApiField.ID: tag_id, ApiField.VALUE: tag_value})
@@ -106,7 +129,7 @@ class VideoTagApi(TagApi):
         frame_range: Optional[List[int]] = None,
         is_finished: Optional[bool] = True,
         non_final_value: Optional[bool] = False,
-    ) -> int:
+    ) -> dict:
         """
         Add VideoTag to video.
 
@@ -122,20 +145,27 @@ class VideoTagApi(TagApi):
         :type is_finished: bool
         :param non_final_value: Specify if the tag value is non-final.
         :type non_final_value: bool
-        :return: None
+        :returns: API response in JSON format.
         :rtype: dict
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            new_frame_range = [5, 10]
-            api.video.tag.add_tag(project_meta_tag_id, video_id, 'tag_value', frame_range)
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                new_frame_range = [5, 10]
+                response = api.video.tag.add_tag(project_meta_tag_id, video_id, 'tag_value', frame_range)
         """
 
         request_data = {ApiField.TAG_ID: project_meta_tag_id, ApiField.VIDEO_ID: video_id}
@@ -160,28 +190,35 @@ class VideoTagApi(TagApi):
 
         :param video_id: Video ID in Supervidely.
         :type video_id: int
-        :param tag: VideoTag j,ject.
-        :type tag: VideoTag
+        :param tag: VideoTag object.
+        :type tag: :class:`~supervisely.video_annotation.video_tag.VideoTag`
         :param update_id_inplace: Specify if
-        :return: VideoTag ID in Supervisely
+        :returns: VideoTag ID in Supervisely
         :rtype: int
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            video_id = 19402023
+                import supervisely as sly
 
-            tag_meta = sly.TagMeta('Animal', sly.TagValueType.NONE)
-            # Tag has to exists in project.
-            tag = VideoTag(tag_meta)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            api.video.tag.add(video_id=video_id, tag=tag)
+                api = sly.Api.from_env()
+
+                video_id = 19402023
+
+                tag_meta = sly.TagMeta('Animal', sly.TagValueType.NONE)
+                # Tag has to exists in project.
+                tag = VideoTag(tag_meta)
+
+                api.video.tag.add(video_id=video_id, tag=tag)
         """
 
         from supervisely.project.project_meta import ProjectMeta
@@ -230,25 +267,32 @@ class VideoTagApi(TagApi):
         :type id: int
         :param project_meta_tag_id: TagMeta ID in Supervisely.
         :type project_meta_tag_id: int
-        :return: All tags of the video in VideoTagCollection format
-        :rtype: VideoTagCollection
-        :Usage example:
+        :returns: All tags of the video in VideoTagCollection format.
+        :rtype: :class:`~supervisely.video_annotation.video_tag_collection.VideoTagCollection`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            video_id = 19402023
-            project_id = 17209
+                import supervisely as sly
 
-            meta_json = api.project.get_meta(project_id)
-            project_meta = sly.ProjectMeta.from_json(meta_json)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            tags_collection = api.video.tag.download_list(video_id, project_meta)
+                api = sly.Api.from_env()
+
+                video_id = 19402023
+                project_id = 17209
+
+                meta_json = api.project.get_meta(project_id)
+                project_meta = sly.ProjectMeta.from_json(meta_json)
+
+                tags_collection = api.video.tag.download_list(video_id, project_meta)
         """
 
         data = self._api.video.get_json_info_by_id(id, True)
@@ -271,21 +315,27 @@ class VideoTagApi(TagApi):
         Remove tag from video.
 
         :param VideoTag in Supervisely.
-        :type tag: VideoTag
-        :return: None
-        :rtype: :class:`NoneType`
-        :Usage example:
+        :type tag: :class:`~supervisely.video_annotation.video_tag.VideoTag`
+        :returns: None
+        :rtype: None
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            api.video.tag.remove(video_tag)
+                import supervisely as sly
 
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                api.video.tag.remove(video_tag)
         """
 
         if tag.sly_id is None:
@@ -296,6 +346,8 @@ class VideoTagApi(TagApi):
 
 
 class VideoObjectTagApi(TagApi):
+    """API for managing tags on annotation objects within video annotations."""
+
     _entity_id_field = ApiField.ENTITY_ID
     _method_bulk_add = "annotation-objects.tags.bulk.add"
 
@@ -314,11 +366,11 @@ class VideoObjectTagApi(TagApi):
         :type tag_meta_id: int
         :param object_id: Object ID in project annotation objects
         :type object_id: int
-        :param value: possible_values from TagMeta, defaults to None
+        :param value: possible_values from :class:`~supervisely.annotation.tag_meta.TagMeta`, defaults to None
         :type value: Optional[Union[str, int]], optional
         :param frame_range: array of strictly 2 frame numbers, defaults to None
         :type frame_range: Optional[List[int]], optional
-        :return: ID of the tag assigned to the object
+        :returns: ID of the tag assigned to the object
         :rtype: int
         """
         request_body = {
@@ -356,7 +408,7 @@ class VideoObjectTagApi(TagApi):
 
         :param tag_id: tag ID of certain object
         :type tag_id: int
-        :param value: possible_values from TagMeta
+        :param value: possible_values from :class:`~supervisely.annotation.tag_meta.TagMeta`
         :type value: Union[str, int]
         """
         request_body = {
@@ -395,12 +447,12 @@ class VideoObjectTagApi(TagApi):
         :param project_id: Project ID in Supervisely.
         :type project_id: int
         :param tags: Collection of tags
-        :type tags: KeyIndexedCollection
+        :type tags: :class:`~supervisely.collection.key_indexed_collection.KeyIndexedCollection`
         :param object_id: ID of the object in Supervisely to add a tag to
         :type object_id: int, optional
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
-        :return: List of tags IDs
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
+        :returns: List of tags IDs
         :rtype: list
         """
 

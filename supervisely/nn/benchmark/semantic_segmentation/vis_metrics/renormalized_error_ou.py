@@ -5,6 +5,8 @@ from supervisely.nn.benchmark.visualization.widgets import ChartWidget, Markdown
 
 
 class RenormalizedErrorOverUnion(SemanticSegmVisMetric):
+    """Renormalized boundary/extent/segment error-over-union charts for segmentation reports."""
+
 
     @property
     def md(self) -> MarkdownWidget:

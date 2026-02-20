@@ -9,7 +9,11 @@ from supervisely.app.widgets import Widget
 
 
 class SelectAppSession(Widget):
+    """Widget to select an app session by tags within a team (returns selected session ID)."""
+
     class Routes:
+        """Callback route names used by the widget frontend to notify Python."""
+
         VALUE_CHANGED = "value_changed"
 
     def __init__(
@@ -21,6 +25,21 @@ class SelectAppSession(Widget):
         widget_id: str = None,
         operation: str = "or",
     ):
+        """:param team_id: Team ID to list sessions from.
+        :type team_id: int
+        :param tags: List of tag names to filter sessions.
+        :type tags: List[str]
+        :param show_label: If True, show label.
+        :type show_label: bool
+        :param size: Size: "large", "small", or "mini".
+        :type size: Literal["large", "small", "mini"], optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        :param operation: Tag filter: "or" or "and".
+        :type operation: str
+
+        :raises ValueError: If tags is not a non-empty list.
+        """
         self._session_id = None
         self._team_id = team_id
         self._tags = tags

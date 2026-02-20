@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Dict, List, Tuple
 
 import numpy as np
 
-from supervisely import logger
+from supervisely.sly_logger import logger
 from supervisely.geometry.constants import (
     ANY_SHAPE,
     BITMAP,
@@ -33,11 +33,12 @@ if not hasattr(np, "bool"):
 
 if TYPE_CHECKING:
     from supervisely.geometry.rectangle import Rectangle
+    from supervisely.geometry.image_rotator import ImageRotator
 
 
 # @TODO: use properties instead of field if it makes sense
 class Geometry(JsonSerializable):
-    """ """
+    """Base class for all geometry classes."""
 
     def __init__(
         self,
@@ -47,6 +48,18 @@ class Geometry(JsonSerializable):
         updated_at=None,
         created_at=None,
     ):
+        """
+        :param sly_id: Geometry ID on Supervisely server.
+        :type sly_id: int, optional
+        :param class_id: ObjClass ID.
+        :type class_id: int, optional
+        :param labeler_login: Labeler user login.
+        :type labeler_login: str, optional
+        :param updated_at: Last update timestamp.
+        :type updated_at: int, optional
+        :param created_at: Creation timestamp.
+        :type created_at: int, optional
+        """
         self.sly_id = sly_id
         self.labeler_login = labeler_login
         self.updated_at = updated_at
@@ -54,7 +67,7 @@ class Geometry(JsonSerializable):
         self.class_id = class_id
 
     def _add_creation_info(self, d):
-        """ """
+        """Add creation information to the geometry."""
         if self.labeler_login is not None:
             d[LABELER_LOGIN] = self.labeler_login
         if self.updated_at is not None:
@@ -67,7 +80,7 @@ class Geometry(JsonSerializable):
             d[CLASS_ID] = self.class_id
 
     def _copy_creation_info_inplace(self, g):
-        """ """
+        """Copy creation information to the geometry."""
         self.labeler_login = g.labeler_login
         self.updated_at = g.updated_at
         self.created_at = g.created_at
@@ -76,77 +89,106 @@ class Geometry(JsonSerializable):
     @staticmethod
     def geometry_name():
         """
-        :return: string with name of geometry
+        Get the name of the geometry.
+
+        :returns: name of the geometry
+        :rtype: str
+        :returns: string with name of geometry
         """
         raise NotImplementedError()
 
     @classmethod
     def name(cls):
         """
-        Same as geometry_name(), but shorter. In order to make the code more concise.
+        Get the name of the geometry.
 
-        :return: string with name of geometry
+        Same as :meth:`~supervisely.geometry.geometry.Geometry.geometry_name`, but shorter. In order to make the code more concise.
+
+        :returns: string with name of geometry
         """
         return cls.geometry_name()
 
-    def crop(self, rect):
+    def crop(self, rect: Rectangle) -> List[Geometry]:
         """
-        :param rect: Rectangle
-        :return: list of Geometry
+        Crop the geometry with given rectangle.
+
+        :param rect: Rectangle for crop.
+        :type rect: :class:`~supervisely.geometry.rectangle.Rectangle`
+        :returns: List of Geometry after crop.
+        :rtype: List[:class:`~supervisely.geometry.geometry.Geometry`]`
         """
         raise NotImplementedError()
 
     def relative_crop(self, rect):
         """Crops object like "crop" method, but return results with coordinates relative to rect
-        :param rect:
-        :return: list of Geometry
+        :param rect: Rectangle for crop.
+        :type rect: :class:`~supervisely.geometry.rectangle.Rectangle`
+        :returns: List of Geometry after relative crop.
+        :rtype: List[:class:`~supervisely.geometry.geometry.Geometry`]`
+        :raises NotImplementedError: if method is not implemented in subclass
         """
         return [geom.translate(drow=-rect.top, dcol=-rect.left) for geom in self.crop(rect)]
 
-    def rotate(self, rotator):
+    def rotate(self, rotator: ImageRotator) -> Geometry:
         """Rotates around image center -> New Geometry
-        :param rotator: ImageRotator
-        :return: Geometry
+        :param rotator: Class for image rotation.
+        :type rotator: :class:`~supervisely.geometry.image_rotator.ImageRotator`
+        :returns: Geometry after rotation.
+        :rtype: :class:`~supervisely.geometry.geometry.Geometry`
         """
         raise NotImplementedError()
 
-    def resize(self, in_size, out_size):
+    def resize(self, in_size: Tuple[int, int], out_size: Tuple[int, int]) -> Geometry:
         """
-        :param in_size: (rows, cols)
-        :param out_size:
-            (128, 256)
-            (128, KEEP_ASPECT_RATIO)
-            (KEEP_ASPECT_RATIO, 256)
-        :return: Geometry
+        :param in_size: Input image size (height, width).
+        :type in_size: Tuple[int, int]
+        :param out_size: Desired output image size (height, width) of the Annotation to which Label belongs.
+        :type out_size: Tuple[int, int]
+        :returns: Geometry after resize.
+        :rtype: :class:`~supervisely.geometry.geometry.Geometry`
+        :raises NotImplementedError: if method is not implemented in subclass
         """
         raise NotImplementedError()
 
     def scale(self, factor):
         """Scales around origin with a given factor.
-        :param: factor (float):
-        :return: Geometry
+        :param: factor: Scale factor.
+        :type factor: float
+        :returns: :class:`~supervisely.geometry.geometry.Geometry`
+        :rtype: :class:`~supervisely.geometry.geometry.Geometry`
+        :raises NotImplementedError: if method is not implemented in subclass
         """
         raise NotImplementedError()
 
     def translate(self, drow, dcol):
         """
-        :param drow: int rows shift
-        :param dcol: int cols shift
-        :return: Geometry
+        :param drow: Vertical shift.
+        :type drow: int
+        :param dcol: Horizontal shift.
+        :type dcol: int
+        :returns: Geometry after translate.
+        :rtype: :class:`~supervisely.geometry.geometry.Geometry`
+        :raises NotImplementedError: if method is not implemented in subclass
         """
         raise NotImplementedError()
 
     def fliplr(self, img_size):
         """
-        :param img_size: (rows, cols)
-        :return: Geometry
+        :param img_size: Image size (height, width) to which belongs Geometry.
+        :type img_size: Tuple[int, int]
+        :returns: Geometry after flip in horizontal.
+        :rtype: :class:`~supervisely.geometry.geometry.Geometry`
+        :raises NotImplementedError: if method is not implemented in subclass
         """
         raise NotImplementedError()
 
     def flipud(self, img_size):
         """
-        :param img_size: (rows, cols)
-        :return: Geometry
+        :param img_size: Image size (height, width) to which belongs Geometry.
+        :type img_size: Tuple[int, int]
+        :returns: Geometry after flip in vertical.
+        :rtype: :class:`~supervisely.geometry.geometry.Geometry`
+        :raises NotImplementedError: if method is not implemented in subclass
         """
         raise NotImplementedError()
 
@@ -164,9 +206,11 @@ class Geometry(JsonSerializable):
     def draw(self, bitmap, color, thickness=1, config=None):
         """
         :param bitmap: np.ndarray
-        :param color: [R, G, B]
-        :param thickness: used only in Polyline and Point
-        :param config: drawing config specific to a concrete subclass, e.g. per edge colors
+        :param color: Color [R, G, B]
+        :param thickness: used only in Polyline and :class:`~supervisely.geometry.point.Point`
+        :param config: Drawing config specific to a concrete subclass, e.g. per edge colors
+        :type config: dict
+        :raises NotImplementedError: if method is not implemented in subclass
         """
         self._draw_bool_compatible(self._draw_impl, bitmap, color, thickness, config)
 
@@ -179,7 +223,7 @@ class Geometry(JsonSerializable):
 
         :param img_size: size of the image (height, width)
         :type img_size: Tuple[int, int]
-        :return: 2D boolean mask of the geometry
+        :returns: 2D boolean mask of the geometry
         :rtype: np.ndarray
         """
         bitmap = np.zeros(img_size + (3,), dtype=np.uint8)
@@ -190,7 +234,11 @@ class Geometry(JsonSerializable):
         """
         :param bitmap: np.ndarray
         :param color: [R, G, B]
-        :param thickness: used only in Polyline and Point
+        :param thickness: used only in Polyline and :class:`~supervisely.geometry.point.Point`
+        :type thickness: int
+        :param config: Drawing config specific to a concrete subclass, e.g. per edge colors
+        :type config: dict
+        :raises NotImplementedError: if method is not implemented in subclass
         """
         raise NotImplementedError()
 
@@ -214,13 +262,15 @@ class Geometry(JsonSerializable):
     @property
     def area(self):
         """
-        :return: float
+        :returns: float
         """
         raise NotImplementedError()
 
     def to_bbox(self) -> Rectangle:
         """
-        :return: Rectangle
+        :returns: Rectangle from geometry.
+        :rtype: :class:`~supervisely.geometry.rectangle.Rectangle`
+        :raises NotImplementedError: if method is not implemented in subclass
         """
         raise NotImplementedError()
 
@@ -229,29 +279,64 @@ class Geometry(JsonSerializable):
         return deepcopy(self)
 
     def validate(self, obj_class_shape, settings):
-        """ """
+        """
+        Validate geometry.
+
+        :param obj_class_shape: Object class shape.
+        :type obj_class_shape: str
+        :param settings: Settings.
+        :type settings: dict
+        :raises ValueError: if geometry validation error
+        """
         if obj_class_shape != ANY_SHAPE:
             if self.geometry_name() != obj_class_shape:
                 raise ValueError("Geometry validation error: shape names are mismatched!")
 
     @staticmethod
     def config_from_json(config):
-        """ """
+        """
+        Convert geometry config from json format
+
+        :param config: dictionary(geometry config) in json format
+        :type config: dict
+        :returns: dictionary(geometry config) in json format
+        :rtype: dict
+        """
         return config
 
     @staticmethod
     def config_to_json(config):
-        """ """
+        """
+        Convert geometry config to json format
+
+        :param config: dictionary(geometry config)
+        :type config: dict
+        :returns: dictionary(geometry config) in json format
+        :rtype: dict
+        """
         return config
 
     @classmethod
     def allowed_transforms(cls):
-        """ """
+        """
+        Returns the allowed transforms for the Geometry.
+        """
         # raise NotImplementedError("{!r}".format(cls.geometry_name()))
         return []
 
     def convert(self, new_geometry, contour_radius=0, approx_epsilon=None):
-        """ """
+        """
+        Convert geometry to another geometry shape.
+
+        :param new_geometry: New geometry shape.
+        :type new_geometry: :class:`~supervisely.geometry.geometry.Geometry`
+        :param contour_radius: Radius of the contour.
+        :type contour_radius: int
+        :param approx_epsilon: Approximation epsilon.
+        :type approx_epsilon: float
+        :returns: List of geometries.
+        :rtype: List[:class:`~supervisely.geometry.geometry.Geometry`]
+        """
         from supervisely.geometry.any_geometry import AnyGeometry
 
         if type(self) == new_geometry or new_geometry == AnyGeometry:
@@ -309,11 +394,11 @@ class Geometry(JsonSerializable):
         However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
 
         :param data: Json data with geometry config.
-        :type data: :class:`dict`
+        :type data: dict
         :param image_size: Image size in pixels (height, width).
         :type image_size: List[int]
-        :return: Json data with coordinates converted to pixel coordinate system.
-        :rtype: :class:`dict`
+        :returns: Json data with coordinates converted to pixel coordinate system.
+        :rtype: dict
         """
         data = deepcopy(data)  # Avoid modifying the original data
         height, width = image_size[:2]
@@ -370,9 +455,9 @@ class Geometry(JsonSerializable):
         However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
 
         :param data: Json data with geometry config.
-        :type data: :class:`dict`
-        :return: Json data with coordinates converted to subpixel coordinate system.
-        :rtype: :class:`dict`
+        :type data: dict
+        :returns: Json data with coordinates converted to subpixel coordinate system.
+        :rtype: dict
         """
         data = deepcopy(data)  # Avoid modifying the original data
 
@@ -416,8 +501,8 @@ class Geometry(JsonSerializable):
     #     which means that the coordinates of the geometry can have decimal values representing fractions of a pixel.
     #     However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
 
-    #     :return: New instance of Geometry object in pixel coordinates system
-    #     :rtype: :class:`Geometry<Geometry>`
+    #     :returns: New instance of Geometry object in pixel coordinates system
+    #     :rtype: :class:`~supervisely.geometry.geometry.Geometry`
     #     """
     #     return self
 
@@ -431,7 +516,7 @@ class Geometry(JsonSerializable):
     #     which means that the coordinates of the geometry can have decimal values representing fractions of a pixel.
     #     However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
 
-    #     :return: New instance of Geometry object in subpixel coordinates system
-    #     :rtype: :class:`Geometry<Geometry>`
+    #     :returns: New instance of Geometry object in subpixel coordinates system
+    #     :rtype: :class:`~supervisely.geometry.geometry.Geometry`
     #     """
     #     return self

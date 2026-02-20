@@ -23,6 +23,8 @@ WORKSPACE_DESCRIPTION = "Technical workspace for model benchmarking. Contains pr
 
 
 class BaseBenchmark:
+    """Base class for model benchmarking: runs inference, evaluation, and visualization on a ground-truth project."""
+
     visualizer_cls = None
     EVALUATION_DIR_NAME = "evaluation"
     SPEEDTEST_DIR_NAME = "speedtest"
@@ -40,6 +42,16 @@ class BaseBenchmark:
         classes_whitelist: Optional[List[str]] = None,
         evaluation_params: Optional[dict] = None,
     ):
+        """:param api: Supervisely API.
+        :param gt_project_id: Ground-truth project ID.
+        :param gt_dataset_ids: Optional dataset IDs to benchmark.
+        :param gt_images_ids: Optional image IDs to benchmark.
+        :param output_dir: Local output directory.
+        :param progress: Progress callback.
+        :param progress_secondary: Secondary progress callback.
+        :param classes_whitelist: Optional class filter.
+        :param evaluation_params: Optional evaluator params.
+        """
         self.api = api
         self.session: SessionJSON = None
         self.gt_project_info = api.project.get_info_by_id(gt_project_id)

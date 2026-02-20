@@ -21,55 +21,7 @@ from supervisely.video_annotation.video_figure import VideoFigure
 
 
 class PointcloudFigure(VideoFigure):
-    """
-    PointcloudFigure object for
-    :class:`PointcloudAnnotation<supervisely.pointcloud_annotation.pointcloud_annotation.PointcloudAnnotation>` or :class:`PointcloudEpisodeAnnotation<supervisely.pointcloud_annotation.pointcloud_episode_annotation.PointcloudEpisodeAnnotation>`.
-    :class:`PointcloudFigure<PointcloudFigure>` objects is immutable.
-
-    :param parent_object: PointcloudObject or PointcloudObject object.
-    :type parent_object: Union[PointcloudObject, PointcloudEpisodeObject]
-    :param geometry: Label :class:`geometry<supervisely.geometry.geometry.Geometry>`.
-    :type geometry: Geometry
-    :param frame_index: Index of Frame to which PointcloudFigure belongs.
-    :type frame_index: int
-    :param key: KeyIdMap object.
-    :type key: KeyIdMap, optional
-    :param class_id: ID of :class:`PointcloudObject<PointcloudObject>` (or :class:`PointcloudEpisodeObject<PointcloudEpisodeObject>`) to which PointcloudFigure belongs.
-    :type class_id: int, optional
-    :param labeler_login: Login of the user who created PointcloudFigure.
-    :type labeler_login: str, optional
-    :param updated_at: Date and Time when PointcloudFigure was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
-    :type updated_at: str, optional
-    :param created_at: Date and Time when PointcloudFigure was created. Date Format is the same as in "updated_at" parameter.
-    :type created_at: str, optional
-    :Usage example:
-
-     .. code-block:: python
-
-        import supervisely as sly
-
-        from supervisely.geometry.cuboid_3d import Cuboid3d, Vector3d
-
-        obj_class_car = sly.ObjClass('car', Cuboid3d)
-        pointcloud_obj_car = sly.PointcloudObject(obj_class_car)
-
-        position, rotation, dimension = Vector3d(-3.4, 28.9, -0.7), Vector3d(0., 0, -0.03), Vector3d(1.8, 3.9, 1.6)
-        cuboid = Cuboid3d(position, rotation, dimension)
-        frame_index = 10
-        figure = sly.PointcloudFigure(pointcloud_obj_car, cuboid, frame_index=frame_index)
-
-        print(figure.to_json())
-        # Output: {
-        #     "geometry": {
-        #         "dimensions": { "x": 1.8, "y": 3.9, "z": 1.6 },
-        #         "position": { "x": -3.4, "y": 28.9, "z": -0.7 },
-        #         "rotation": { "x": 0.0, "y": 0, "z": -0.03 }
-        #     },
-        #     "geometryType": "cuboid_3d",
-        #     "key": "4beae1be12624b70ad533c8be7477605",
-        #     "objectKey": "c1e1965efc0d4ae9b0b39367b04d637a"
-        # }
-    """
+    """Figure in point cloud annotation: 3D geometry (e.g. Cuboid3d) at a frame. Immutable."""
 
     def __init__(
         self,
@@ -83,6 +35,43 @@ class PointcloudFigure(VideoFigure):
         created_at: Optional[str] = None,
         **kwargs,
     ):
+        """
+        Figure in point cloud annotation.
+
+        :param parent_object: PointcloudObject or PointcloudEpisodeObject.
+        :type parent_object: Union[:class:`~supervisely.pointcloud_annotation.pointcloud_object.PointcloudObject`, :class:`~supervisely.pointcloud_annotation.pointcloud_episode_object.PointcloudEpisodeObject`]
+        :param geometry: 3D geometry (Cuboid3d or Pointcloud).
+        :type geometry: :class:`~supervisely.geometry.geometry.Geometry`
+        :param frame_index: Frame index. Optional for single-frame point clouds.
+        :type frame_index: int, optional
+        :param key: UUID key. Auto-generated if not provided.
+        :type key: uuid.UUID, optional
+        :param class_id: Server-side class ID.
+        :type class_id: int, optional
+        :param labeler_login: Login of user who created the figure.
+        :type labeler_login: str, optional
+        :param updated_at: Last modification timestamp (ISO format).
+        :type updated_at: str, optional
+        :param created_at: Creation timestamp (ISO format).
+        :type created_at: str, optional
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+                from supervisely.geometry.cuboid_3d import Cuboid3d, Vector3d
+
+                obj_class_car = sly.ObjClass('car', Cuboid3d)
+                pointcloud_obj_car = sly.PointcloudObject(obj_class_car)
+                cuboid = Cuboid3d(
+                    Vector3d(-3.4, 28.9, -0.7),
+                    Vector3d(0., 0, -0.03),
+                    Vector3d(1.8, 3.9, 1.6),
+                )
+                figure = sly.PointcloudFigure(pointcloud_obj_car, cuboid, frame_index=10)
+                print(figure.to_json())
+        """
         super().__init__(
             parent_object,
             geometry,
@@ -100,19 +89,21 @@ class PointcloudFigure(VideoFigure):
         """
         PointcloudObject of current PointcloudFigure.
 
-        :return: PointcloudObject ot PointcloudEpisodeObject object
-        :rtype: :class:`PointcloudObject<PointcloudObject>` or :class:`PointcloudEpisodeObject<PointcloudEpisodeObject>`
-        :Usage example:
-         .. code-block:: python
+        :returns: Pointcloud object or pointcloud episode object.
+        :rtype: :class:`~supervisely.pointcloud_annotation.pointcloud_object.PointcloudObject` or :class:`~supervisely.pointcloud_annotation.pointcloud_episode_object.PointcloudEpisodeObject`
 
-            pointcloud_obj_car = pointcloud_figure_car.parent_object
+        :Usage Example:
 
-            print(pointcloud_obj_car.to_json())
-            # Output: {
-            #     "key": "d573c6f081544e3da20022d932b259c1",
-            #     "classTitle": "car",
-            #     "tags": []
-            # }
+            .. code-block:: python
+
+                pointcloud_obj_car = pointcloud_figure_car.parent_object
+
+                print(pointcloud_obj_car.to_json())
+                # Output: {
+                #     "key": "d573c6f081544e3da20022d932b259c1",
+                #     "classTitle": "car",
+                #     "tags": []
+                # }
         """
 
         return super().parent_object
@@ -141,37 +132,37 @@ class PointcloudFigure(VideoFigure):
 
         :param data: Dict in json format.
         :type data: dict
-        :param objects: PointcloudObjectCollection or PointcloudEpisodeObjectCollection object.
-        :type objects: PointcloudObjectCollection or PointcloudEpisodeObjectCollection
+        :param objects: Pointcloud object collection or pointcloud episode object collection.
+        :type objects: :class:`~supervisely.pointcloud_annotation.pointcloud_object_collection.PointcloudObjectCollection` or :class:`~supervisely.pointcloud_annotation.pointcloud_episode_object_collection.PointcloudEpisodeObjectCollection`
         :param frame_index: Index of Frame to which PointcloudFigure belongs.
         :type frame_index: int
-        :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
-        :raises: :class:`RuntimeError`, if point cloudobject ID and pointcloud object key are None, if pointcloud object key and key_id_map are None, if pointcloud object with given id not found in key_id_map
-        :return: PointcloudFigure object
-        :rtype: :class:`PointcloudFigure`
+        :param key_id_map: Key ID map.
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`
+        :raises RuntimeError: if point cloudobject ID and pointcloud object key are None, if pointcloud object key and key_id_map are None, if pointcloud object with given id not found in key_id_map
+        :returns: Pointcloud figure object.
+        :rtype: :class:`~supervisely.pointcloud_annotation.pointcloud_figure.PointcloudFigure`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
-            from supervisely.geometry.cuboid_3d import Cuboid3d, Vector3d
+                import supervisely as sly
+                from supervisely.geometry.cuboid_3d import Cuboid3d, Vector3d
 
-            obj_class_car = sly.ObjClass('car', Cuboid3d)
-            pointcloud_obj_car = sly.PointcloudObject(obj_class_car)
+                obj_class_car = sly.ObjClass('car', Cuboid3d)
+                pointcloud_obj_car = sly.PointcloudObject(obj_class_car)
 
-            position, rotation, dimension = Vector3d(-3.4, 28.9, -0.7), Vector3d(0., 0, -0.03), Vector3d(1.8, 3.9, 1.6)
-            cuboid = Cuboid3d(position, rotation, dimension)
-            frame_index = 10
-            figure = sly.PointcloudFigure(pointcloud_obj_car, cuboid, frame_index=frame_index)
-            pointcloud_figure_json = figure.to_json(save_meta=True)
+                position, rotation, dimension = Vector3d(-3.4, 28.9, -0.7), Vector3d(0., 0, -0.03), Vector3d(1.8, 3.9, 1.6)
+                cuboid = Cuboid3d(position, rotation, dimension)
+                frame_index = 10
+                figure = sly.PointcloudFigure(pointcloud_obj_car, cuboid, frame_index=frame_index)
+                pointcloud_figure_json = figure.to_json(save_meta=True)
 
-            new_pointcloud_figure = sly.PointcloudFigure.from_json(
-                pointcloud_figure_json,
-                sly.PointcloudObjectCollection([pointcloud_obj_car]),
-                frame_index
-            )
+                new_pointcloud_figure = sly.PointcloudFigure.from_json(
+                    pointcloud_figure_json,
+                    sly.PointcloudObjectCollection([pointcloud_obj_car]),
+                    frame_index
+                )
         """
 
         return super().from_json(data, objects, frame_index, key_id_map)
@@ -190,55 +181,55 @@ class PointcloudFigure(VideoFigure):
         """
         Makes a copy of PointcloudFigure with new fields, if fields are given, otherwise it will use fields of the original PointcloudFigure.
 
-        :param parent_object: :class:`PointcloudObject<PointcloudObject>` (or :class:`PointcloudEpisodeObject<PointcloudEpisodeObject>`) object.
-        :type parent_object: PointcloudObject or PointcloudEpisodeObject, optional
-        :param geometry: Label :class:`geometry<supervisely.geometry.geometry.Geometry>`.
-        :type geometry: Geometry, optional
+        :param parent_object: Pointcloud object or pointcloud episode object.
+        :type parent_object: :class:`~supervisely.pointcloud_annotation.pointcloud_object.PointcloudObject` or :class:`~supervisely.pointcloud_annotation.pointcloud_episode_object.PointcloudEpisodeObject`, optional
+        :param geometry: Label :class:`~supervisely.geometry.geometry.Geometry`.
+        :type geometry: :class:`~supervisely.geometry.geometry.Geometry`, optional
         :param frame_index: Index of Frame to which PointcloudFigure belongs.
         :type frame_index: int, optional
-        :param key: KeyIdMap object.
-        :type key: KeyIdMap, optional
-        :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which PointcloudFigure belongs.
+        :param key: UUID key associated with the figure.
+        :type key: uuid.UUID
+        :param class_id: ID of pointcloud object (or pointcloud episode object) to which PointcloudFigure belongs.
         :type class_id: int, optional
-        :param labeler_login: Login of the user who created PointcloudFigure.
+        :param labeler_login: Login of the user who created :class:`~supervisely.pointcloud_annotation.pointcloud_figure.PointcloudFigure`.
         :type labeler_login: str, optional
         :param updated_at: Date and Time when PointcloudFigure was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
         :type updated_at: str, optional
         :param created_at: Date and Time when PointcloudFigure was created. Date Format is the same as in "updated_at" parameter.
         :type created_at: str, optional
-        :return: PointcloudFigure object
-        :rtype: :class:`PointcloudFigure`
+        :returns: Pointcloud figure object.
+        :rtype: :class:`~supervisely.pointcloud_annotation.pointcloud_figure.PointcloudFigure`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            from supervisely.geometry.cuboid_3d import Cuboid3d, Vector3d
+                from supervisely.geometry.cuboid_3d import Cuboid3d, Vector3d
 
-            obj_class_car = sly.ObjClass('car', Cuboid3d)
-            pointcloud_obj_car = sly.PointcloudObject(obj_class_car)
+                obj_class_car = sly.ObjClass('car', Cuboid3d)
+                pointcloud_obj_car = sly.PointcloudObject(obj_class_car)
 
-            position, rotation, dimension = Vector3d(-3.4, 28.9, -0.7), Vector3d(0., 0, -0.03), Vector3d(1.8, 3.9, 1.6)
-            cuboid = Cuboid3d(position, rotation, dimension)
-            frame_index = 10
-            figure = sly.PointcloudFigure(pointcloud_obj_car, cuboid, frame_index=frame_index)
+                position, rotation, dimension = Vector3d(-3.4, 28.9, -0.7), Vector3d(0., 0, -0.03), Vector3d(1.8, 3.9, 1.6)
+                cuboid = Cuboid3d(position, rotation, dimension)
+                frame_index = 10
+                figure = sly.PointcloudFigure(pointcloud_obj_car, cuboid, frame_index=frame_index)
 
-            # Remember that PointcloudFigure object is immutable, and we need to assign new instance of PointcloudFigure to a new variable
-            pointcloud_figure_clone = figure.clone(parent_object=pointcloud_obj_car, frame_index=11)
+                # Remember that PointcloudFigure object is immutable, and we need to assign new instance of PointcloudFigure to a new variable
+                pointcloud_figure_clone = figure.clone(parent_object=pointcloud_obj_car, frame_index=11)
 
-            print(pointcloud_figure_clone.to_json())
-            # Output: {
-            #     "geometry": {
-            #         "dimensions": { "x": 1.8, "y": 3.9, "z": 1.6 },
-            #         "position": { "x": -3.4, "y": 28.9, "z": -0.7 },
-            #         "rotation": { "x": 0.0, "y": 0, "z": -0.03 }
-            #     },
-            #     "geometryType": "cuboid_3d",
-            #     "key": "4beae1be12624b70ad533c8be7477605",
-            #     "objectKey": "c1e1965efc0d4ae9b0b39367b04d637a"
-            # }
+                print(pointcloud_figure_clone.to_json())
+                # Output: {
+                #     "geometry": {
+                #         "dimensions": { "x": 1.8, "y": 3.9, "z": 1.6 },
+                #         "position": { "x": -3.4, "y": 28.9, "z": -0.7 },
+                #         "rotation": { "x": 0.0, "y": 0, "z": -0.03 }
+                #     },
+                #     "geometryType": "cuboid_3d",
+                #     "key": "4beae1be12624b70ad533c8be7477605",
+                #     "objectKey": "c1e1965efc0d4ae9b0b39367b04d637a"
+                # }
         """
 
         return self.__class__(

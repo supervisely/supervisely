@@ -5,6 +5,8 @@ from supervisely.nn.benchmark.visualization.widgets import ChartWidget, Markdown
 
 
 class PerClassAvgPrecision(DetectionVisMetric):
+    """Per-class average precision chart for detection reports."""
+
     MARKDOWN = "per_class_avg_precision"
     CHART = "per_class_avg_precision"
 

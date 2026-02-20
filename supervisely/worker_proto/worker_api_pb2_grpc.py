@@ -5,200 +5,198 @@ import worker_api_pb2 as worker__api__pb2
 
 
 class GeneralAPIStub(object):
-  """package supervisely;
+    """package supervisely;"""
 
-  """
+    def __init__(self, channel):
+        """Initialize the GeneralAPIStub.
 
-  def __init__(self, channel):
-    """Constructor.
-
-    Args:
-      channel: A grpc.Channel.
-    """
-    self.CreateProject = channel.unary_unary(
-        '/GeneralAPI/CreateProject',
-        request_serializer=worker__api__pb2.Project.SerializeToString,
-        response_deserializer=worker__api__pb2.Id.FromString,
+        :param channel: A grpc.Channel.
+        :type channel: grpc.Channel
+        """
+        self.CreateProject = channel.unary_unary(
+            "/GeneralAPI/CreateProject",
+            request_serializer=worker__api__pb2.Project.SerializeToString,
+            response_deserializer=worker__api__pb2.Id.FromString,
         )
-    self.CreateDataset = channel.unary_unary(
-        '/GeneralAPI/CreateDataset',
-        request_serializer=worker__api__pb2.ProjectDataset.SerializeToString,
-        response_deserializer=worker__api__pb2.Id.FromString,
+        self.CreateDataset = channel.unary_unary(
+            "/GeneralAPI/CreateDataset",
+            request_serializer=worker__api__pb2.ProjectDataset.SerializeToString,
+            response_deserializer=worker__api__pb2.Id.FromString,
         )
-    self.GetProjectByName = channel.unary_unary(
-        '/GeneralAPI/GetProjectByName',
-        request_serializer=worker__api__pb2.Project.SerializeToString,
-        response_deserializer=worker__api__pb2.Project.FromString,
+        self.GetProjectByName = channel.unary_unary(
+            "/GeneralAPI/GetProjectByName",
+            request_serializer=worker__api__pb2.Project.SerializeToString,
+            response_deserializer=worker__api__pb2.Project.FromString,
         )
-    self.GetDatasetByName = channel.unary_unary(
-        '/GeneralAPI/GetDatasetByName',
-        request_serializer=worker__api__pb2.ProjectDataset.SerializeToString,
-        response_deserializer=worker__api__pb2.Dataset.FromString,
+        self.GetDatasetByName = channel.unary_unary(
+            "/GeneralAPI/GetDatasetByName",
+            request_serializer=worker__api__pb2.ProjectDataset.SerializeToString,
+            response_deserializer=worker__api__pb2.Dataset.FromString,
         )
-    self.GetModelByName = channel.unary_unary(
-        '/GeneralAPI/GetModelByName',
-        request_serializer=worker__api__pb2.ModelName.SerializeToString,
-        response_deserializer=worker__api__pb2.ModelInfo.FromString,
+        self.GetModelByName = channel.unary_unary(
+            "/GeneralAPI/GetModelByName",
+            request_serializer=worker__api__pb2.ModelName.SerializeToString,
+            response_deserializer=worker__api__pb2.ModelInfo.FromString,
         )
-    self.GetProjectMeta = channel.unary_unary(
-        '/GeneralAPI/GetProjectMeta',
-        request_serializer=worker__api__pb2.Id.SerializeToString,
-        response_deserializer=worker__api__pb2.Project.FromString,
+        self.GetProjectMeta = channel.unary_unary(
+            "/GeneralAPI/GetProjectMeta",
+            request_serializer=worker__api__pb2.Id.SerializeToString,
+            response_deserializer=worker__api__pb2.Project.FromString,
         )
-    self.GetProjectDatasets = channel.unary_unary(
-        '/GeneralAPI/GetProjectDatasets',
-        request_serializer=worker__api__pb2.Id.SerializeToString,
-        response_deserializer=worker__api__pb2.DatasetArray.FromString,
+        self.GetProjectDatasets = channel.unary_unary(
+            "/GeneralAPI/GetProjectDatasets",
+            request_serializer=worker__api__pb2.Id.SerializeToString,
+            response_deserializer=worker__api__pb2.DatasetArray.FromString,
         )
-    self.GetDatasetImages = channel.unary_unary(
-        '/GeneralAPI/GetDatasetImages',
-        request_serializer=worker__api__pb2.Id.SerializeToString,
-        response_deserializer=worker__api__pb2.ImageArray.FromString,
+        self.GetDatasetImages = channel.unary_unary(
+            "/GeneralAPI/GetDatasetImages",
+            request_serializer=worker__api__pb2.Id.SerializeToString,
+            response_deserializer=worker__api__pb2.ImageArray.FromString,
         )
-    self.GetImagesInfo = channel.unary_unary(
-        '/GeneralAPI/GetImagesInfo',
-        request_serializer=worker__api__pb2.ImageArray.SerializeToString,
-        response_deserializer=worker__api__pb2.ImagesInfo.FromString,
+        self.GetImagesInfo = channel.unary_unary(
+            "/GeneralAPI/GetImagesInfo",
+            request_serializer=worker__api__pb2.ImageArray.SerializeToString,
+            response_deserializer=worker__api__pb2.ImagesInfo.FromString,
         )
-    self.DownloadImages = channel.unary_stream(
-        '/GeneralAPI/DownloadImages',
-        request_serializer=worker__api__pb2.ImagesHashes.SerializeToString,
-        response_deserializer=worker__api__pb2.ChunkImage.FromString,
+        self.DownloadImages = channel.unary_stream(
+            "/GeneralAPI/DownloadImages",
+            request_serializer=worker__api__pb2.ImagesHashes.SerializeToString,
+            response_deserializer=worker__api__pb2.ChunkImage.FromString,
         )
-    self.DownloadAnnotations = channel.unary_stream(
-        '/GeneralAPI/DownloadAnnotations',
-        request_serializer=worker__api__pb2.ImageArray.SerializeToString,
-        response_deserializer=worker__api__pb2.ChunkImage.FromString,
+        self.DownloadAnnotations = channel.unary_stream(
+            "/GeneralAPI/DownloadAnnotations",
+            request_serializer=worker__api__pb2.ImageArray.SerializeToString,
+            response_deserializer=worker__api__pb2.ChunkImage.FromString,
         )
-    self.FindImagesExist = channel.unary_unary(
-        '/GeneralAPI/FindImagesExist',
-        request_serializer=worker__api__pb2.ImagesHashes.SerializeToString,
-        response_deserializer=worker__api__pb2.ImagesHashes.FromString,
+        self.FindImagesExist = channel.unary_unary(
+            "/GeneralAPI/FindImagesExist",
+            request_serializer=worker__api__pb2.ImagesHashes.SerializeToString,
+            response_deserializer=worker__api__pb2.ImagesHashes.FromString,
         )
-    self.AddExistingImagesToDataset = channel.unary_unary(
-        '/GeneralAPI/AddExistingImagesToDataset',
-        request_serializer=worker__api__pb2.ImagesToAdd.SerializeToString,
-        response_deserializer=worker__api__pb2.ImageArray.FromString,
+        self.AddExistingImagesToDataset = channel.unary_unary(
+            "/GeneralAPI/AddExistingImagesToDataset",
+            request_serializer=worker__api__pb2.ImagesToAdd.SerializeToString,
+            response_deserializer=worker__api__pb2.ImageArray.FromString,
         )
-    self.UploadAnnotations = channel.stream_unary(
-        '/GeneralAPI/UploadAnnotations',
-        request_serializer=worker__api__pb2.ChunkImage.SerializeToString,
-        response_deserializer=worker__api__pb2.ImageArray.FromString,
+        self.UploadAnnotations = channel.stream_unary(
+            "/GeneralAPI/UploadAnnotations",
+            request_serializer=worker__api__pb2.ChunkImage.SerializeToString,
+            response_deserializer=worker__api__pb2.ImageArray.FromString,
         )
-    self.UploadArchive = channel.stream_unary(
-        '/GeneralAPI/UploadArchive',
-        request_serializer=worker__api__pb2.Chunk.SerializeToString,
-        response_deserializer=worker__api__pb2.Empty.FromString,
+        self.UploadArchive = channel.stream_unary(
+            "/GeneralAPI/UploadArchive",
+            request_serializer=worker__api__pb2.Chunk.SerializeToString,
+            response_deserializer=worker__api__pb2.Empty.FromString,
         )
-    self.GetProjectStats = channel.unary_unary(
-        '/GeneralAPI/GetProjectStats',
-        request_serializer=worker__api__pb2.Id.SerializeToString,
-        response_deserializer=worker__api__pb2.ProjectStats.FromString,
+        self.GetProjectStats = channel.unary_unary(
+            "/GeneralAPI/GetProjectStats",
+            request_serializer=worker__api__pb2.Id.SerializeToString,
+            response_deserializer=worker__api__pb2.ProjectStats.FromString,
         )
-    self.SetProjectFinished = channel.unary_unary(
-        '/GeneralAPI/SetProjectFinished',
-        request_serializer=worker__api__pb2.Id.SerializeToString,
-        response_deserializer=worker__api__pb2.Empty.FromString,
+        self.SetProjectFinished = channel.unary_unary(
+            "/GeneralAPI/SetProjectFinished",
+            request_serializer=worker__api__pb2.Id.SerializeToString,
+            response_deserializer=worker__api__pb2.Empty.FromString,
         )
-    self.Log = channel.unary_unary(
-        '/GeneralAPI/Log',
-        request_serializer=worker__api__pb2.LogLines.SerializeToString,
-        response_deserializer=worker__api__pb2.Empty.FromString,
+        self.Log = channel.unary_unary(
+            "/GeneralAPI/Log",
+            request_serializer=worker__api__pb2.LogLines.SerializeToString,
+            response_deserializer=worker__api__pb2.Empty.FromString,
         )
-    self.GetImportStructure = channel.unary_unary(
-        '/GeneralAPI/GetImportStructure',
-        request_serializer=worker__api__pb2.Id.SerializeToString,
-        response_deserializer=worker__api__pb2.ListFiles.FromString,
+        self.GetImportStructure = channel.unary_unary(
+            "/GeneralAPI/GetImportStructure",
+            request_serializer=worker__api__pb2.Id.SerializeToString,
+            response_deserializer=worker__api__pb2.ListFiles.FromString,
         )
-    self.GetImportFiles = channel.unary_stream(
-        '/GeneralAPI/GetImportFiles',
-        request_serializer=worker__api__pb2.ImportRequest.SerializeToString,
-        response_deserializer=worker__api__pb2.ChunkFile.FromString,
+        self.GetImportFiles = channel.unary_stream(
+            "/GeneralAPI/GetImportFiles",
+            request_serializer=worker__api__pb2.ImportRequest.SerializeToString,
+            response_deserializer=worker__api__pb2.ChunkFile.FromString,
         )
-    self.GetNewTask = channel.unary_stream(
-        '/GeneralAPI/GetNewTask',
-        request_serializer=worker__api__pb2.Empty.SerializeToString,
-        response_deserializer=worker__api__pb2.Task.FromString,
+        self.GetNewTask = channel.unary_stream(
+            "/GeneralAPI/GetNewTask",
+            request_serializer=worker__api__pb2.Empty.SerializeToString,
+            response_deserializer=worker__api__pb2.Task.FromString,
         )
-    self.GetStopTask = channel.unary_stream(
-        '/GeneralAPI/GetStopTask',
-        request_serializer=worker__api__pb2.Empty.SerializeToString,
-        response_deserializer=worker__api__pb2.Id.FromString,
+        self.GetStopTask = channel.unary_stream(
+            "/GeneralAPI/GetStopTask",
+            request_serializer=worker__api__pb2.Empty.SerializeToString,
+            response_deserializer=worker__api__pb2.Id.FromString,
         )
-    self.AgentConnected = channel.unary_unary(
-        '/GeneralAPI/AgentConnected',
-        request_serializer=worker__api__pb2.AgentInfo.SerializeToString,
-        response_deserializer=worker__api__pb2.ServerInfo.FromString,
+        self.AgentConnected = channel.unary_unary(
+            "/GeneralAPI/AgentConnected",
+            request_serializer=worker__api__pb2.AgentInfo.SerializeToString,
+            response_deserializer=worker__api__pb2.ServerInfo.FromString,
         )
-    self.AgentPing = channel.unary_unary(
-        '/GeneralAPI/AgentPing',
-        request_serializer=worker__api__pb2.Empty.SerializeToString,
-        response_deserializer=worker__api__pb2.Empty.FromString,
+        self.AgentPing = channel.unary_unary(
+            "/GeneralAPI/AgentPing",
+            request_serializer=worker__api__pb2.Empty.SerializeToString,
+            response_deserializer=worker__api__pb2.Empty.FromString,
         )
-    self.UploadModel = channel.stream_unary(
-        '/GeneralAPI/UploadModel',
-        request_serializer=worker__api__pb2.ChunkModel.SerializeToString,
-        response_deserializer=worker__api__pb2.Empty.FromString,
+        self.UploadModel = channel.stream_unary(
+            "/GeneralAPI/UploadModel",
+            request_serializer=worker__api__pb2.ChunkModel.SerializeToString,
+            response_deserializer=worker__api__pb2.Empty.FromString,
         )
-    self.DownloadModel = channel.unary_stream(
-        '/GeneralAPI/DownloadModel',
-        request_serializer=worker__api__pb2.ModelDescription.SerializeToString,
-        response_deserializer=worker__api__pb2.Chunk.FromString,
+        self.DownloadModel = channel.unary_stream(
+            "/GeneralAPI/DownloadModel",
+            request_serializer=worker__api__pb2.ModelDescription.SerializeToString,
+            response_deserializer=worker__api__pb2.Chunk.FromString,
         )
-    self.GenerateNewModelId = channel.unary_unary(
-        '/GeneralAPI/GenerateNewModelId',
-        request_serializer=worker__api__pb2.Empty.SerializeToString,
-        response_deserializer=worker__api__pb2.ModelDescription.FromString,
+        self.GenerateNewModelId = channel.unary_unary(
+            "/GeneralAPI/GenerateNewModelId",
+            request_serializer=worker__api__pb2.Empty.SerializeToString,
+            response_deserializer=worker__api__pb2.ModelDescription.FromString,
         )
-    self.GetTelemetryTask = channel.unary_stream(
-        '/GeneralAPI/GetTelemetryTask',
-        request_serializer=worker__api__pb2.Empty.SerializeToString,
-        response_deserializer=worker__api__pb2.Task.FromString,
+        self.GetTelemetryTask = channel.unary_stream(
+            "/GeneralAPI/GetTelemetryTask",
+            request_serializer=worker__api__pb2.Empty.SerializeToString,
+            response_deserializer=worker__api__pb2.Task.FromString,
         )
-    self.UpdateTelemetry = channel.unary_unary(
-        '/GeneralAPI/UpdateTelemetry',
-        request_serializer=worker__api__pb2.AgentInfo.SerializeToString,
-        response_deserializer=worker__api__pb2.Empty.FromString,
+        self.UpdateTelemetry = channel.unary_unary(
+            "/GeneralAPI/UpdateTelemetry",
+            request_serializer=worker__api__pb2.AgentInfo.SerializeToString,
+            response_deserializer=worker__api__pb2.Empty.FromString,
         )
-    self.AddImages = channel.unary_unary(
-        '/GeneralAPI/AddImages',
-        request_serializer=worker__api__pb2.ImagesInfo.SerializeToString,
-        response_deserializer=worker__api__pb2.ImageArray.FromString,
+        self.AddImages = channel.unary_unary(
+            "/GeneralAPI/AddImages",
+            request_serializer=worker__api__pb2.ImagesInfo.SerializeToString,
+            response_deserializer=worker__api__pb2.ImageArray.FromString,
         )
-    self.UploadImages = channel.stream_unary(
-        '/GeneralAPI/UploadImages',
-        request_serializer=worker__api__pb2.ChunkImage.SerializeToString,
-        response_deserializer=worker__api__pb2.Empty.FromString,
+        self.UploadImages = channel.stream_unary(
+            "/GeneralAPI/UploadImages",
+            request_serializer=worker__api__pb2.ChunkImage.SerializeToString,
+            response_deserializer=worker__api__pb2.Empty.FromString,
         )
-    self.GetUsedImageList = channel.unary_stream(
-        '/GeneralAPI/GetUsedImageList',
-        request_serializer=worker__api__pb2.Empty.SerializeToString,
-        response_deserializer=worker__api__pb2.NodeObjectHash.FromString,
+        self.GetUsedImageList = channel.unary_stream(
+            "/GeneralAPI/GetUsedImageList",
+            request_serializer=worker__api__pb2.Empty.SerializeToString,
+            response_deserializer=worker__api__pb2.NodeObjectHash.FromString,
         )
-    self.GetUsedModelList = channel.unary_stream(
-        '/GeneralAPI/GetUsedModelList',
-        request_serializer=worker__api__pb2.Empty.SerializeToString,
-        response_deserializer=worker__api__pb2.NodeObjectHash.FromString,
+        self.GetUsedModelList = channel.unary_stream(
+            "/GeneralAPI/GetUsedModelList",
+            request_serializer=worker__api__pb2.Empty.SerializeToString,
+            response_deserializer=worker__api__pb2.NodeObjectHash.FromString,
         )
-    self.GetGeneralEventsStream = channel.unary_stream(
-        '/GeneralAPI/GetGeneralEventsStream',
-        request_serializer=worker__api__pb2.Empty.SerializeToString,
-        response_deserializer=worker__api__pb2.GeneralEvent.FromString,
+        self.GetGeneralEventsStream = channel.unary_stream(
+            "/GeneralAPI/GetGeneralEventsStream",
+            request_serializer=worker__api__pb2.Empty.SerializeToString,
+            response_deserializer=worker__api__pb2.GeneralEvent.FromString,
         )
-    self.GetGeneralEventData = channel.unary_stream(
-        '/GeneralAPI/GetGeneralEventData',
-        request_serializer=worker__api__pb2.Empty.SerializeToString,
-        response_deserializer=worker__api__pb2.Chunk.FromString,
+        self.GetGeneralEventData = channel.unary_stream(
+            "/GeneralAPI/GetGeneralEventData",
+            request_serializer=worker__api__pb2.Empty.SerializeToString,
+            response_deserializer=worker__api__pb2.Chunk.FromString,
         )
-    self.SendGeneralEventData = channel.stream_unary(
-        '/GeneralAPI/SendGeneralEventData',
-        request_serializer=worker__api__pb2.Chunk.SerializeToString,
-        response_deserializer=worker__api__pb2.Empty.FromString,
+        self.SendGeneralEventData = channel.stream_unary(
+            "/GeneralAPI/SendGeneralEventData",
+            request_serializer=worker__api__pb2.Chunk.SerializeToString,
+            response_deserializer=worker__api__pb2.Empty.FromString,
         )
-    self.AddMetaToProject = channel.unary_unary(
-        '/GeneralAPI/AddMetaToProject',
-        request_serializer=worker__api__pb2.Project.SerializeToString,
-        response_deserializer=worker__api__pb2.Empty.FromString,
+        self.AddMetaToProject = channel.unary_unary(
+            "/GeneralAPI/AddMetaToProject",
+            request_serializer=worker__api__pb2.Project.SerializeToString,
+            response_deserializer=worker__api__pb2.Empty.FromString,
         )
 
 

@@ -10,7 +10,7 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 
 class ObjectApi(RemoveableBulkModuleApi):
     """
-    Object for :class:`VideoAnnotation<supervisely.video_annotation.video_annotation.VideoAnnotation>`.
+    Object for :class:`~supervisely.video_annotation.video_annotation.VideoAnnotation`.
     """
 
     @staticmethod
@@ -50,20 +50,27 @@ class ObjectApi(RemoveableBulkModuleApi):
         """
         Get string name of NamedTuple for class.
 
-        :return: NamedTuple name.
-        :rtype: :class:`str`
-        :Usage example:
+        :returns: NamedTuple name.
+        :rtype: str
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            tuple_name = api.video.object.info_tuple_name()
-            print(tuple_name) # ObjectInfo
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                tuple_name = api.video.object.info_tuple_name()
+                print(tuple_name) # ObjectInfo
         """
 
         return "ObjectInfo"
@@ -74,8 +81,8 @@ class ObjectApi(RemoveableBulkModuleApi):
 
         :param id: Object ID in Supervisely.
         :type id: int
-        :return: Information about Object. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`NamedTuple`
+        :returns: Information about Object.
+        :rtype: NamedTuple
         """
         return self._get_info_by_id(id, "annotation-objects.info")
 
@@ -89,116 +96,122 @@ class ObjectApi(RemoveableBulkModuleApi):
         :type dataset_id: int
         :param filters: List of parameters to sort output Objects.
         :type filters: List[dict], optional
-        :return: Information about Objects. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[NamedTuple]`
+        :returns: Information about Objects.
+        :rtype: List[NamedTuple]
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            dataset_id = 466642
-            object_infos = api.video.object.get_list(dataset_id)
-            print(object_infos)
-            # Output: [
-            #     [
-            #         152118,
-            #         "",
-            #         "2021-03-23T13:25:34.705Z",
-            #         "2021-03-23T13:25:34.705Z",
-            #         466642,
-            #         2856942,
-            #         198703211,
-            #         [
-            #             {
-            #                 "objectId": 152118,
-            #                 "tagId": 29098694,
-            #                 "entityId": null,
-            #                 "id": 40632,
-            #                 "value": "grey"
-            #             }
-            #         ],
-            #         {},
-            #         16154
-            #     ],
-            #     [
-            #         152119,
-            #         "",
-            #         "2021-03-23T13:25:34.705Z",
-            #         "2021-03-23T13:25:34.705Z",
-            #         466642,
-            #         2856942,
-            #         198703211,
-            #         [
-            #             {
-            #                 "objectId": 152119,
-            #                 "tagId": 29098694,
-            #                 "entityId": null,
-            #                 "id": 40633,
-            #                 "value": "wine"
-            #             }
-            #         ],
-            #         {},
-            #         16154
-            #     ],
-            #     [
-            #         152120,
-            #         "",
-            #         "2021-03-23T13:25:34.705Z",
-            #         "2021-03-23T13:25:34.705Z",
-            #         466642,
-            #         2856942,
-            #         198703211,
-            #         [
-            #             {
-            #                 "objectId": 152120,
-            #                 "tagId": 29098694,
-            #                 "entityId": null,
-            #                 "id": 40634,
-            #                 "value": "beige"
-            #             }
-            #         ],
-            #         {},
-            #         16154
-            #     ],
-            #     [
-            #         152121,
-            #         "",
-            #         "2021-03-23T13:25:34.705Z",
-            #         "2021-03-23T13:25:34.705Z",
-            #         466642,
-            #         2856941,
-            #         198703212,
-            #         [
-            #             {
-            #                 "objectId": 152121,
-            #                 "tagId": 29098696,
-            #                 "entityId": null,
-            #                 "id": 40635,
-            #                 "value": "juvenile"
-            #             }
-            #         ],
-            #         {},
-            #         16154
-            #     ],
-            #     [
-            #         152122,
-            #         "",
-            #         "2021-03-23T13:25:34.705Z",
-            #         "2021-03-23T13:25:34.705Z",
-            #         466642,
-            #         2856943,
-            #         198703211,
-            #         [],
-            #         {},
-            #         16154
-            #     ]
-            # ]
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                dataset_id = 466642
+                object_infos = api.video.object.get_list(dataset_id)
+                print(object_infos)
+                # Output: [
+                #     [
+                #         152118,
+                #         "",
+                #         "2021-03-23T13:25:34.705Z",
+                #         "2021-03-23T13:25:34.705Z",
+                #         466642,
+                #         2856942,
+                #         198703211,
+                #         [
+                #             {
+                #                 "objectId": 152118,
+                #                 "tagId": 29098694,
+                #                 "entityId": null,
+                #                 "id": 40632,
+                #                 "value": "grey"
+                #             }
+                #         ],
+                #         {},
+                #         16154
+                #     ],
+                #     [
+                #         152119,
+                #         "",
+                #         "2021-03-23T13:25:34.705Z",
+                #         "2021-03-23T13:25:34.705Z",
+                #         466642,
+                #         2856942,
+                #         198703211,
+                #         [
+                #             {
+                #                 "objectId": 152119,
+                #                 "tagId": 29098694,
+                #                 "entityId": null,
+                #                 "id": 40633,
+                #                 "value": "wine"
+                #             }
+                #         ],
+                #         {},
+                #         16154
+                #     ],
+                #     [
+                #         152120,
+                #         "",
+                #         "2021-03-23T13:25:34.705Z",
+                #         "2021-03-23T13:25:34.705Z",
+                #         466642,
+                #         2856942,
+                #         198703211,
+                #         [
+                #             {
+                #                 "objectId": 152120,
+                #                 "tagId": 29098694,
+                #                 "entityId": null,
+                #                 "id": 40634,
+                #                 "value": "beige"
+                #             }
+                #         ],
+                #         {},
+                #         16154
+                #     ],
+                #     [
+                #         152121,
+                #         "",
+                #         "2021-03-23T13:25:34.705Z",
+                #         "2021-03-23T13:25:34.705Z",
+                #         466642,
+                #         2856941,
+                #         198703212,
+                #         [
+                #             {
+                #                 "objectId": 152121,
+                #                 "tagId": 29098696,
+                #                 "entityId": null,
+                #                 "id": 40635,
+                #                 "value": "juvenile"
+                #             }
+                #         ],
+                #         {},
+                #         16154
+                #     ],
+                #     [
+                #         152122,
+                #         "",
+                #         "2021-03-23T13:25:34.705Z",
+                #         "2021-03-23T13:25:34.705Z",
+                #         466642,
+                #         2856943,
+                #         198703211,
+                #         [],
+                #         {},
+                #         16154
+                #     ]
+                # ]
         """
         return self.get_list_all_pages(
             "annotation-objects.list",
@@ -251,19 +264,25 @@ class ObjectApi(RemoveableBulkModuleApi):
         :type ids: List[int]
         :param progress_cb: Function for control remove progress.
         :type progress_cb: Callable
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
+                import supervisely as sly
 
-            object_ids = [19369645, 19369646, 19369647]
-            api.volume.object.remove_batch(object_ids)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                object_ids = [19369645, 19369646, 19369647]
+                api.volume.object.remove_batch(object_ids)
         """
         for ids_batch in batched(ids, batch_size=batch_size):
             self._api.post(

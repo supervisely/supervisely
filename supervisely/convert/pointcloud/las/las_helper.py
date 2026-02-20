@@ -16,7 +16,7 @@ def las2pcd(input_path: str, output_path: str) -> None:
     :type input_path: str
     :param output_path: Path where the output PCD file will be written.
     :type output_path: str
-    :return: None
+    :returns: None
     """
     import laspy  # pylint: disable=import-error
     from pypcd4 import Encoding  # pylint: disable=import-error
