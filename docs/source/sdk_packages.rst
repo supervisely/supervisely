@@ -85,7 +85,6 @@ APIs for deploying models, running inference, and working with model metadata in
     :template: autosummary/custom-class-template.rst
 
     ~supervisely.api.nn.neural_network_api.NeuralNetworkApi
-    ~supervisely.api.nn.train_api.TrainApi
     ~supervisely.nn.model.model_api.ModelAPI
     ~supervisely.nn.model.prediction.Prediction
     ~supervisely.nn.model.prediction_session.PredictionSession
