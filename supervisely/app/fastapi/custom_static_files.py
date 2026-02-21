@@ -1,13 +1,14 @@
 import os
 import typing
-
 from pathlib import Path
-from fastapi.staticfiles import StaticFiles
+
 from fastapi import HTTPException, status
+from fastapi.staticfiles import StaticFiles
 from starlette.datastructures import Headers
 from starlette.responses import FileResponse, Response, StreamingResponse
 from starlette.staticfiles import NotModifiedResponse
 from starlette.types import Scope
+
 from supervisely.video.video import ALLOWED_VIDEO_EXTENSIONS
 
 PathLike = typing.Union[str, "os.PathLike[str]"]
@@ -42,7 +43,7 @@ class CustomStaticFiles(StaticFiles):
         def _get_range_header(range_header: str, file_size: int) -> typing.Tuple[int, int]:
             def _invalid_range():
                 return HTTPException(
-                    status.HTTP_416_REQUESTED_RANGE_NOT_SATISFIABLE, #TODO: change to status.HTTP_416_RANGE_NOT_SATISFIABLE if update starlette to 0.48.0+
+                    status.HTTP_416_RANGE_NOT_SATISFIABLE,
                     detail=f"Invalid request range (Range:{range_header!r})",
                 )
 
