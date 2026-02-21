@@ -386,9 +386,11 @@ class ExperimentSelector(Widget):
         if team_id is None:
             team_id = env.team_id()
         self.team_id = team_id
+
         if api is None:
             api = Api()
         self.api = api
+        
         self._experiment_infos = experiment_infos
         self._checkpoint_changed_func = None
 
