@@ -22,7 +22,7 @@ TEMPLATE = "template"
 
 from functools import wraps
 
-from pkg_resources import parse_version
+from packaging.version import Version
 
 from supervisely import env, logger
 from supervisely.api.dataset_api import DatasetInfo
@@ -151,7 +151,7 @@ def check_workflow_compatibility(api, min_instance_version: str) -> bool:
             )
             return False
 
-        is_compatible = parse_version(instance_version) >= parse_version(min_instance_version)
+        is_compatible = Version(instance_version) >= Version(min_instance_version)
         _workflow_compatibility_version_cache[min_instance_version] = is_compatible
 
         if not is_compatible:

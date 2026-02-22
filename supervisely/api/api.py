@@ -31,7 +31,7 @@ import httpx
 import jwt
 import requests
 from dotenv import get_key, load_dotenv, set_key
-from pkg_resources import parse_version
+from packaging.version import Version
 from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 
 import supervisely.api.advanced_api as advanced_api
@@ -616,7 +616,7 @@ class Api:
             )
             return
 
-        return parse_version(instance_version) >= parse_version(version)
+        return Version(instance_version) >= Version(version)
 
     def _check_version(self, version: Optional[str] = None) -> None:
         """Check if the given version is compatible with the current Supervisely instance version.

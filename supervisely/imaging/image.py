@@ -13,7 +13,7 @@ import nrrd
 import numpy as np
 from PIL import Image as PILImage
 from PIL import ImageDraw, ImageFile, ImageFont
-from pkg_resources import parse_version
+from packaging.version import Version
 
 from supervisely._utils import abs_url, get_bytes_hash, is_development, rand_str
 from supervisely.geometry.image_rotator import ImageRotator
@@ -832,7 +832,7 @@ def resize_inter_nearest(
 
     target_shape = restore_proportional_size(img.shape[:2], out_size, frow, fcol)
     resize_kv_args = dict(order=0, preserve_range=True, mode="constant")
-    if parse_version(skimage.__version__) >= parse_version("0.14.0"):
+    if Version(skimage.__version__) >= Version("0.14.0"):
         resize_kv_args["anti_aliasing"] = False
     return skimage.transform.resize(img, target_shape, **resize_kv_args).astype(img.dtype)
 

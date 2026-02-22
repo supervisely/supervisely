@@ -313,16 +313,6 @@ Constants defining the directories where a plugin should expect the input and ou
 
     ~supervisely.task.progress.Progress
 
-User
-----
-User-related data structures and constants.
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    ~supervisely.user.user.UserRoleName
 
 Video
 -----
