@@ -7,6 +7,7 @@
 import os
 import sys
 import inspect
+import datetime
 
 # -- Path setup --------------------------------------------------------------
 PATH_HERE = os.path.abspath(os.path.dirname(__file__))
@@ -18,7 +19,7 @@ sys.path.insert(0, os.path.abspath("../../../"))
 
 # -- Project information -----------------------------------------------------
 project = "Supervisely"
-copyright = "2026, Supervisely Team"
+copyright = f"{datetime.date.today().year}, Supervisely Team"
 author = "Supervisely Team"
 
 # -- General configuration ---------------------------------------------------
