@@ -95,40 +95,7 @@ autodoc_default_options = {
 }
 
 
-def _strip_defaults_from_signature(sig: inspect.Signature) -> inspect.Signature:
-    """Return signature with defaults removed to stabilize param-name matching."""
-    params = []
-    for p in sig.parameters.values():
-        if p.default is inspect.Signature.empty:
-            params.append(p)
-        else:
-            params.append(p.replace(default=inspect.Signature.empty))
-    return sig.replace(parameters=params)
-
-
-def process_signature(app, what, name, obj, options, signature, return_annotation):
-    """Normalize signatures to avoid docstring/param mismatch noise."""
-    try:
-        sig = inspect.signature(obj)
-    except Exception:
-        return (signature, return_annotation)
-
-    try:
-        sig = _strip_defaults_from_signature(sig)
-    except Exception:
-        return (signature, return_annotation)
-
-    return (str(sig), return_annotation)
-
-
-def setup(app):
-    app.connect("autodoc-process-signature", process_signature)
-
-
-html_css_files = [
-    "css/custom.css",
-]
-
+html_css_files = ["css/custom.css"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "**.ipynb_checkpoints"]
 
 # -- Options for HTML output -------------------------------------------------
@@ -142,7 +109,6 @@ html_theme_options = {
         "repo": "fontawesome/brands/github",
         "view": "material/file-eye-outline",
     },
-    # NOTE: Set to the actual published docs root if you want sitemap.xml.
     "site_url": "https://supervisely.com/",
     "repo_url": "https://github.com/supervisely/supervisely",
     "repo_name": "Supervisely",
