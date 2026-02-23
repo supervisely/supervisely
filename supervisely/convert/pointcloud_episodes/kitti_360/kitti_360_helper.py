@@ -280,7 +280,7 @@ class StaticTransformations:
 
     def set_cam2world(self, cam2world_path):
         if not os.path.isfile(cam2world_path):
-            logger.warn("Camera to world calibration file was not found")
+            logger.warning("Camera to world calibration file was not found")
             return
 
         cam2world_rows = np.loadtxt(cam2world_path)

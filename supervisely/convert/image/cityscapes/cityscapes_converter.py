@@ -59,12 +59,14 @@ class CityscapesConverter(ImageConverter):
                 if objects is not None:
                     return True
                 else:
-                    logger.warn(f"Couldn't read objects from annoation file: '{ann_file_path}'")
+                    logger.warning(
+                        f"Couldn't read objects from annoation file: '{ann_file_path}'"
+                    )
                     return False
             else:
                 return False
         except:
-            logger.warn(f"Failed to read annotation file: '{ann_file_path}'")
+            logger.warning(f"Failed to read annotation file: '{ann_file_path}'")
             return False
 
     def validate_key_file(self, key_file_path: str) -> bool:
@@ -110,7 +112,7 @@ class CityscapesConverter(ImageConverter):
             else:
                 return False
         except Exception as e:
-            logger.warn(f"Failed to read 'class_to_id.json': {repr(e)}")
+            logger.warning(f"Failed to read 'class_to_id.json': {repr(e)}")
             return False
 
     def validate_format(self) -> bool:
@@ -126,7 +128,7 @@ class CityscapesConverter(ImageConverter):
                 if file.lower() == "class_to_id.json":
                     success = self.validate_key_file(os.path.join(root, file))
                     if not success:
-                        logger.warn(
+                        logger.warning(
                             f"Failed to validate key file: '{file}'. Will use default cityscapes classes."
                         )
                 if file in JUNK_FILES:
@@ -204,5 +206,5 @@ class CityscapesConverter(ImageConverter):
                 ann = helper.create_ann_from_file(ann, ann_path, meta, renamed_classes)
             return ann
         except Exception as e:
-            logger.warn(f"Failed to convert annotation: {repr(e)}")
+            logger.warning(f"Failed to convert annotation: {repr(e)}")
             return ann

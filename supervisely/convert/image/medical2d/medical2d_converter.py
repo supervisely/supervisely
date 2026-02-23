@@ -139,8 +139,10 @@ class Medical2DImageConverter(ImageConverter):
             logger.debug("Group tags detected")
             group_tag_name = next(iter(self._group_tag_names))
             if len(self._group_tag_names) > 1:
-                group_tag_name = max(self._group_tag_names, key=self._group_tag_names.get)
-                logger.warn(
+                group_tag_name = max(
+                    self._group_tag_names, key=self._group_tag_names.get
+                )
+                logger.warning(
                     f"Multiple metadata fields found: {', '.join(self._group_tag_names.keys())}..."
                     "Some images will be hidden in the grouped view if they don't have the corresponding group tag."
                 )

@@ -128,7 +128,7 @@ class COCOConverter(ImageConverter):
 
         if len(warnings) > 0:
             for warning, failed_items in warnings.items():
-                logger.warn(f"{warning}: {failed_items}")
+                logger.warning(f"{warning}: {failed_items}")
         return detected_ann_cnt > 0
 
     def get_meta(self) -> ProjectMeta:

@@ -22,7 +22,7 @@ def get_meta_from_annotation(ann_path: str, meta: ProjectMeta) -> ProjectMeta:
         ann_json = ann_json["annotation"]
 
     if not all(key in ann_json for key in SLY_ANN_KEYS):
-        logger.warn(
+        logger.warning(
             f"Pointcloud Episode Annotation file {ann_path} is not in Supervisely format"
         )
         return meta

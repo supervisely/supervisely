@@ -7,10 +7,10 @@ from typing import Dict, List, Optional
 import cv2
 import numpy as np
 from PIL import Image
-
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.label import Label
 from supervisely.annotation.obj_class import ObjClass
+from supervisely.convert.image.image_helper import validate_image_bounds
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.geometry.point import Point
 from supervisely.geometry.point_location import PointLocation, row_col_list_to_points
@@ -21,13 +21,13 @@ from supervisely.io.fs import file_exists
 from supervisely.io.json import dump_json_file, load_json_file
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
-from supervisely.convert.image.image_helper import validate_image_bounds
 
 labelme_shape_types_to_sly_map = {
     "polygon": Polygon,
     "rectangle": Rectangle,
     "line": Polyline,
     "point": Point,
+    "points": Point,
     "circle": Polygon,
     "mask": Bitmap,
     "linestrip": Polyline,
@@ -85,6 +85,7 @@ labelme_shape_types_to_convert_func = {
     "rectangle": labelme_rectangle_to_sly,
     "line": labelme_line_to_sly,
     "point": labelme_point_to_sly,
+    "points": labelme_point_to_sly,
     "circle": labelme_circle_to_sly,
     "mask": labelme_to_sly_bitmap,
     "linestrip": labelme_line_to_sly,
@@ -109,7 +110,7 @@ def convert_labelme_to_sly(shape: Dict, obj_cls: ObjClass) -> Optional[Label]:
             geometry = convert_func(coords)
         return Label(geometry, obj_cls)
     except Exception as e:
-        logger.warn(f"Failed to convert shape: {shape_type}. Reason: {repr(e)}")
+        logger.warning(f"Failed to convert shape: {shape_type}. Reason: {repr(e)}")
         return None
 
 
@@ -171,8 +172,10 @@ def update_meta_from_labelme_annotation(meta: ProjectMeta, ann_path: str) -> Pro
         shape_type = shape.get("shape_type")
         geometry_type = labelme_shape_types_to_sly_map.get(shape_type)
         if geometry_type is None:
-            logger.warn(f"Unsupported shape type: {shape_type}. Please, contact support.")
-        if not cls_name or not shape_type:
+            logger.warning(
+                f"Unsupported shape type: {shape_type}. Please, contact support."
+            )
+        if not cls_name or not geometry_type:
             continue
         obj_cls = meta.get_obj_class(cls_name)
         if obj_cls is None:
@@ -181,7 +184,7 @@ def update_meta_from_labelme_annotation(meta: ProjectMeta, ann_path: str) -> Pro
         elif obj_cls.geometry_type != geometry_type:
             new_cls_name = generate_new_cls_name(meta, cls_name, geometry_type)
             if new_cls_name != cls_name:
-                logger.warn(
+                logger.warning(
                     f"{ann_path}: shape type mismatch for class '{cls_name}'. Renamed to '{new_cls_name}'"
                 )
                 shape["label"] = new_cls_name
@@ -206,7 +209,9 @@ def create_supervisely_annotation(
         return ann
     raw_json = load_json_file(item.ann_data)
     if raw_json.get("imageHeight") != h or raw_json.get("imageWidth") != w:
-        logger.warn("Image size in annotation does not match the actual image size. Skipping.")
+        logger.warning(
+            "Image size in annotation does not match the actual image size. Skipping."
+        )
         return ann
 
     shapes = raw_json.get("shapes")
@@ -216,7 +221,9 @@ def create_supervisely_annotation(
         cls_name = renamed_classes.get(cls_name, cls_name)
         obj_class = project_meta.get_obj_class(cls_name)
         if obj_class is None:
-            logger.warn(f"Object class '{cls_name}' not found in project meta. Skipping.")
+            logger.warning(
+                f"Object class '{cls_name}' not found in project meta. Skipping."
+            )
             continue
 
         label = convert_labelme_to_sly(shape, obj_class)

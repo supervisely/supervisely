@@ -21,7 +21,9 @@ SLY_VOLUME_ANN_KEYS = ["volumeMeta", "planes", "spatialFigures", "planes"]
 def get_meta_from_annotation(ann_path: str, meta: ProjectMeta) -> ProjectMeta:
     ann_json = load_json_file(ann_path)
     if not all(key in ann_json for key in SLY_VOLUME_ANN_KEYS):
-        logger.warn(f"Volume Annotation file {ann_path} is not in Supervisely format")
+        logger.warning(
+            f"Volume Annotation file {ann_path} is not in Supervisely format"
+        )
         return meta
 
     objects_geom_map = match_objects_to_geometries(ann_json)
@@ -49,7 +51,7 @@ def match_objects_to_geometries(ann_json: dict) -> dict:
         obj_key = obj.get("key")
         obj_id = obj.get("id")
         if obj_id is None and obj_key is None:
-            logger.warn(
+            logger.warning(
                 f"Couldn't generate meta for object class: {obj['classTitle']}. Object has no key or id"
             )
             continue

@@ -57,7 +57,9 @@ class KITTI360Converter(PointcloudEpisodeConverter):
         try:
             import kitti360scripts
         except ImportError:
-            logger.warn("Please run 'pip install kitti360Scripts' to import KITTI-360 data.")
+            logger.warning(
+                "Please run 'pip install kitti360Scripts' to import KITTI-360 data."
+            )
             return False
 
         self._items = []
@@ -92,7 +94,7 @@ class KITTI360Converter(PointcloudEpisodeConverter):
                 if key_name in Path(path).parts:
                     frame_paths.append(path)
             if len(frame_paths) == 0:
-                logger.warn("No frames found for name: %s", key_name)
+                logger.warning("No frames found for name: %s", key_name)
                 continue
 
             # * Get related images
@@ -113,7 +115,7 @@ class KITTI360Converter(PointcloudEpisodeConverter):
                 if poses_filter(path)
             )
             if poses_path is None:
-                logger.warn("No poses found for name: %s", key_name)
+                logger.warning("No poses found for name: %s", key_name)
                 continue
 
             # * Parse annotation

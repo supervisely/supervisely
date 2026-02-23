@@ -123,7 +123,7 @@ class FastSlyImageConverter(SLYImageConverter, ImageConverter):
                 if existing_image is None:
                     continue
                 if item.shape != (existing_image.height, existing_image.width):
-                    logger.warn(
+                    logger.warning(
                         f"Image '{item.name}' has different shapes in JSON file and server."
                     )
                     continue
