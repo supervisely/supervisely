@@ -14,5 +14,6 @@ python:
       path: .
       extra_requirements:
         - docs
+        - aug
     - method: setuptools
       path: .

@@ -126,6 +126,16 @@ API for working with pointclouds in Supervisely.
     ~supervisely.api.pointcloud.pointcloud_object_api.PointcloudObjectApi
     ~supervisely.api.pointcloud.pointcloud_tag_api.PointcloudTagApi
 
+Augmentation
+------------
+Data augmentations to create more data variety for neural networks training.
+
+.. autosummary::
+    :toctree: sdk
+    :template: autosummary/custom-module-template.rst
+
+    ~supervisely.aug.aug
+
 Collection
 ----------
 Key-indexed collections and helpers used across the SDK.
