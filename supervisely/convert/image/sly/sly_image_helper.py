@@ -1,6 +1,6 @@
 from typing import List
 
-from supervisely import ObjClass, ProjectMeta, TagMeta, TagValueType, logger
+from supervisely import ImageInfo, ObjClass, ProjectMeta, TagMeta, TagValueType, logger
 from supervisely.annotation.annotation import AnnotationJsonFields
 from supervisely.annotation.label import LabelJsonFields
 from supervisely.annotation.tag import TagJsonFields
@@ -167,6 +167,10 @@ def annotation_high_level_validator(ann_json: dict) -> bool:
         if not all(key in tag for key in SLY_TAG_KEYS):
             return False
     return True
+
+
+def is_image_info(json_data: dict) -> bool:
+    return all(key in json_data for key in ImageInfo._asdict())
 
 
 def get_image_size_from_annotation(ann_json: dict) -> tuple:

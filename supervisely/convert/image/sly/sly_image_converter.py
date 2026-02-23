@@ -95,7 +95,7 @@ class SLYImageConverter(ImageConverter):
                 return True
             elif os.path.exists(machine_masks_path):
                 return True
-            return True
+            return False
 
         masks_dirs = [d for d in dirs_filter(self._input_data, _masks_format_filter)]
 
@@ -108,7 +108,7 @@ class SLYImageConverter(ImageConverter):
         detected_ann_cnt = 0
         images_list, ann_dict, img_meta_dict = [], {}, {}
         for root, _, files in os.walk(self._input_data):
-            if os.path.abspath(root) in masks_dirs:
+            if any(os.path.abspath(root).startswith(d) for d in masks_dirs):
                 continue
             for file in files:
                 full_path = os.path.join(root, file)
@@ -218,6 +218,9 @@ class SLYImageConverter(ImageConverter):
                     ds_items = []
                     for name in dataset.get_items_names():
                         img_path, ann_path = dataset.get_item_paths(name)
+                        if not os.path.exists(img_path):
+                            logger.debug(f"Image file {img_path} does not exist, skipping")
+                            continue
                         meta_path = dataset.get_item_meta_path(name)
                         item = self.Item(img_path)
                         if file_exists(ann_path):
@@ -260,6 +263,8 @@ class SLYImageConverter(ImageConverter):
             logger.debug("Trying to read Supervisely datasets")
 
             def _check_function(path):
+                if any(path.startswith(d) for d in dirs_to_skip):
+                    return False
                 try:
                     dataset_ds = Dataset(path, OpenMode.READ)
                     return len(dataset_ds.get_items_names()) > 0
@@ -268,8 +273,6 @@ class SLYImageConverter(ImageConverter):
 
             meta = ProjectMeta()
             dataset_dirs = [d for d in dirs_filter(input_data, _check_function)]
-            if dirs_to_skip:
-                dataset_dirs = [d for d in dataset_dirs if d not in dirs_to_skip]
             for dataset_dir in dataset_dirs:
                 dataset_fs = Dataset(dataset_dir, OpenMode.READ)
                 ds_items = []
