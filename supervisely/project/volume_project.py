@@ -329,7 +329,7 @@ class VolumeProject(VideoProject):
         :type dest_dir: str, optional
         :param dataset_ids: Optional list of dataset IDs to include. If provided, only these datasets will be included (recursively, preserving tree structure where applicable).
         :type dataset_ids: List[int], optional
-        :param download_volumes: If False, only project/meta/dataset tree is stored (volume infos and annotations are skipped). This is useful for “structure-only” snapshots.
+        :param download_volumes: If False, only project/meta/dataset tree is stored (volume infos and annotations are skipped). This is useful for structure-only snapshots.
         :type download_volumes: bool, optional
         :param log_progress: If True, show a progress bar (unless a custom ``progress_cb`` is provided).
         :type log_progress: bool
