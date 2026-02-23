@@ -14,5 +14,7 @@ python:
       path: .
       extra_requirements:
         - docs
+        - tracking
+        - training
     - method: setuptools
       path: .
