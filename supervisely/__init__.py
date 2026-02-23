@@ -153,6 +153,8 @@ from supervisely.api.entity_annotation.figure_api import FigureInfo
 from supervisely.api.app_api import WorkflowSettings, WorkflowMeta
 from supervisely.api.entities_collection_api import EntitiesCollectionInfo
 
+from supervisely.nn.training.train_app import TrainApp
+
 from supervisely.cli import _handle_creds_error_to_console
 
 from supervisely._utils import (
