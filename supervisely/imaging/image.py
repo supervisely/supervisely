@@ -416,22 +416,22 @@ def draw_text_sequence(
     try:
         _, max_height = draw.textsize("".join(texts), font=font)
     except AttributeError:  # PILLOW >= 10.0.0
-        bbox = draw.textbbox((0, 0), "".join(texts), font=font)
-        max_height = bbox[3] - bbox[1]
+        _, descent = font.getmetrics()
+        max_height = font.getmask("".join(texts)).getbbox()[3] + descent
 
     try:
         _, text_height = draw.textsize(texts[0], font=font)
     except AttributeError:  # PILLOW >= 10.0.0
-        bbox = draw.textbbox((0, 0), texts[0], font=font)
-        text_height = bbox[3] - bbox[1]
+        _, descent = font.getmetrics()
+        text_height = font.getmask(texts[0]).getbbox()[3] + descent
 
     middle = text_height // 2
     for text in texts:
         try:
             _, h = draw.textsize(text, font=font)
         except AttributeError:  # PILLOW >= 10.0.0
-            bbox = draw.textbbox((0, 0), text, font=font)
-            h = bbox[3] - bbox[1]
+            _, descent = font.getmetrics()
+            h = font.getmask(text).getbbox()[3] + descent
         row_offset = middle - h // 2
 
         y, x = anchor_point[0] - row_offset, anchor_point[1] + col_offset
@@ -508,7 +508,9 @@ def draw_text(
         text_width, text_height = drawer.textsize(text, font=font)
     except AttributeError:  # PILLOW >= 10.0.0
         bbox = drawer.textbbox((0, 0), text, font=font)
-        text_width, text_height = bbox[2] - bbox[0], bbox[3] - bbox[1]
+        text_width = bbox[2] - bbox[0]
+        _, descent = font.getmetrics()
+        text_height = font.getmask(text).getbbox()[3] + descent
     rect_top, rect_left = anchor_point
 
     if corner_snap == CornerAnchorMode.TOP_LEFT:
