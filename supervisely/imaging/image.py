@@ -504,8 +504,11 @@ def draw_text(
 
     canvas = PILImage.new("RGBA", source_img.size, (0, 0, 0, 0))
     drawer = ImageDraw.Draw(canvas, "RGBA")
-    bbox = drawer.textbbox((0, 0), text, font=font)
-    text_width, text_height = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    try:
+        text_width, text_height = drawer.textsize(text, font=font)
+    except AttributeError:  # PILLOW >= 10.0.0
+        bbox = drawer.textbbox((0, 0), text, font=font)
+        text_width, text_height = bbox[2] - bbox[0], bbox[3] - bbox[1]
     rect_top, rect_left = anchor_point
 
     if corner_snap == CornerAnchorMode.TOP_LEFT:
