@@ -22,8 +22,26 @@ copyright = "2026, Supervisely Team"
 author = "Supervisely Team"
 
 # -- General configuration ---------------------------------------------------
-# Mock heavy/optional deps so autosummary can import nn/training modules on RTD
-autodoc_mock_imports = ["torch", "torchvision", "decord"]
+MOCK_IMPORTS = [
+    "torch",
+    "torchvision",
+    "decord",
+    "pycocotools",
+    "sklearn",
+    "plotly",
+    "tensorboard",
+    "tensorboardX",
+    "markdown",
+    "pymdown_extensions",
+    "tbparse",
+    "kaleido",
+    "motmetrics",
+    "imgaug",
+    "imagecorruptions",
+]
+
+autodoc_mock_imports = MOCK_IMPORTS
+autosummary_mock_imports = MOCK_IMPORTS
 
 extensions = [
     "sphinx.ext.autodoc",
