@@ -92,24 +92,17 @@ autodoc_default_options = {
     "members": True,
     "methods": True,
     "show-inheritance": True,
-    "exclude-members": "from_bytes,to_bytes",
 }
 
 
 def _strip_defaults_from_signature(sig: inspect.Signature) -> inspect.Signature:
-    """Return signature with defaults removed to stabilize param-name matching.
-
-    Sphinx can emit warnings like:
-    "Parameter name 'foo' does not match any of the parameters defined in the signature:
-    ['foo=<built-in function ...>']"
-    when defaults are rendered into the signature string.
-    """
+    """Return signature with defaults removed to stabilize param-name matching."""
     params = []
     for p in sig.parameters.values():
-        if p.default is inspect._empty:
+        if p.default is inspect.Signature.empty:
             params.append(p)
         else:
-            params.append(p.replace(default=inspect._empty))
+            params.append(p.replace(default=inspect.Signature.empty))
     return sig.replace(parameters=params)
 
 

@@ -258,7 +258,7 @@ class DeployApi:
         :type agent_id: Optional[int]
         :param app: App name or App module ID in Supervisely.
         :type app: Union[str, int]
-        :param kwargs: Additional parameters to start the task. See :meth:`~supervisely.api.api.Api.task`.start() for more details.
+        :param kwargs: Additional parameters to start the task. See :meth:`~supervisely.api.task_api.TaskApi.start` for more details.
         :type kwargs: Dict[str, Any]
         :returns: Task Info
         :rtype: Dict[str, Any]
@@ -359,7 +359,7 @@ class DeployApi:
         :type workspace_id: Optional[int]
         :param agent_id: Agent ID. If not provided, will be found automatically.
         :type agent_id: Optional[int]
-        :param kwargs: Additional parameters to start the task. See :meth:`~supervisely.api.api.Api.task`.start() for more details.
+        :param kwargs: Additional parameters to start the task. See :meth:`~supervisely.api.task_api.TaskApi.start` for more details.
         :type kwargs: Dict[str, Any]
         :returns: Task Info
         :rtype: Dict[str, Any]
@@ -410,7 +410,7 @@ class DeployApi:
         :type workspace_id: Optional[int]
         :param agent_id: Agent ID. If not provided, will be found automatically.
         :type agent_id: Optional[int]
-        :param kwargs: Additional parameters to start the task. See :meth:`~supervisely.api.api.Api.task`.start() for more details.
+        :param kwargs: Additional parameters to start the task. See :meth:`~supervisely.api.task_api.TaskApi.start` for more details.
         :type kwargs: Dict[str, Any]
         :returns: Task Info
         :rtype: Dict[str, Any]
@@ -478,7 +478,7 @@ class DeployApi:
         :type device: Optional[str]
         :param timeout: Timeout in seconds (default is 100). The maximum time to wait for the serving app to be ready.
         :type timeout: Optional[int]
-        :param kwargs: Additional parameters to start the task. See :meth:`~supervisely.api.api.Api.task`.start() for more details.
+        :param kwargs: Additional parameters to start the task. See :meth:`~supervisely.api.task_api.TaskApi.start` for more details.
         :type kwargs: Dict[str, Any]
         :returns: Task Info
         :rtype: Dict[str, Any]
@@ -533,7 +533,7 @@ class DeployApi:
         :type app_name: Optional[str]
         :param module_id: Module ID in Supervisely.
         :type module_id: Optional[int]
-        :param kwargs: Additional parameters to start the task. See :meth:`~supervisely.api.api.Api.task`.start() for more details.
+        :param kwargs: Additional parameters to start the task. See :meth:`~supervisely.api.task_api.TaskApi.start` for more details.
         :type kwargs: Dict[str, Any]
         :returns: Task Info
         :rtype: Dict[str, Any]

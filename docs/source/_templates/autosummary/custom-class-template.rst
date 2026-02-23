@@ -1,5 +1,9 @@
 {{ name | escape | underline }}
 
+   :members:
+   :show-inheritance:
+   :inherited-members:
+   :special-members: __call__, __add__, __mul__
 .. currentmodule:: {{ module }}
 
 .. autoclass:: {{ objname }}
@@ -23,6 +27,19 @@
    {% endblock %}
 
    {% block attributes %}
+   {% block functions %}
+   {% if functions %}
+   .. rubric:: {{ _('Functions') }}
+
+   .. autosummary::
+      :nosignatures:
+   {% for item in functions %}
+      ~{{ name }}.{{ item }}
+   {%- endfor %}
+   {% endif %}
+   {% endblock %}
+
+
    {% if attributes %}
    .. rubric:: {{ _('Attributes') }}
 

@@ -89,7 +89,7 @@ class StorageApi(FileApi):
         :param limit: Limit the number of files returned.
         :type limit: int
         :returns: List of all Files with information.
-        :rtype: class List[Union[Dict, :class:`~supervisely.api.file_api.FileInfo`]]
+        :rtype: List[Union[Dict, :class:`~supervisely.api.file_api.FileInfo`]]
 
         :Usage Example:
 

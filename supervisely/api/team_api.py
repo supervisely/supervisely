@@ -228,7 +228,8 @@ class TeamApi(ModuleNoParent, UpdateableModule):
                 api = sly.Api.from_env()
 
                 team_id = 8
-                team_list = api.team.get_list(team_id)
+                filters = [{"field": "name", "operator": "=", "value": "Team User123"}]
+                team_list = api.team.get_list(filters=filters)
                 print(team_list)
                 # Output: [TeamInfo(id=1,
                 #                   name='Vehicle',

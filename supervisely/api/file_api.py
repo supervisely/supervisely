@@ -150,7 +150,7 @@ class FileApi(ModuleApiBase):
         :param return_type: The specified value between 'dict' or 'fileinfo'. By default: 'dict'.
         :type return_type: str
         :returns: List of all Files with information.
-        :rtype: class List[Union[Dict, :class:`~supervisely.api.file_api.FileInfo`]]
+        :rtype: List[Union[Dict, :class:`~supervisely.api.file_api.FileInfo`]]
         """
         if self.is_on_agent(path) is False:
             raise ValueError(f"Data is not on agent: {path}")
@@ -202,7 +202,7 @@ class FileApi(ModuleApiBase):
         :param return_type: The specified value between 'dict' or 'fileinfo'. By default: 'dict'.
         :type return_type: str
         :returns: List of all Files with information.
-        :rtype: class List[Union[Dict, :class:`~supervisely.api.file_api.FileInfo`]]
+        :rtype: List[Union[Dict, :class:`~supervisely.api.file_api.FileInfo`]]
 
         :Usage Example:
 
@@ -312,7 +312,7 @@ class FileApi(ModuleApiBase):
         :param recursive: If True return all FileInfos recursively.
         :type recursive: bool
         :returns: List of all Files with information. See class info_sequence
-        :rtype: class List[:class:`~supervisely.api.file_api.FileInfo`]
+        :rtype: List[:class:`~supervisely.api.file_api.FileInfo`]
 
         :Usage Example:
 

@@ -83,7 +83,7 @@ def get_default_params_by_function(f):
         formatted = str(param)
         if 'deprecated' in formatted or 'seed=None' in formatted or 'name=None' in formatted:
             continue
-        if param.default == inspect._empty:
+        if param.default == inspect.Signature.empty:
             continue
         params.append({
             "pname": param.name,
