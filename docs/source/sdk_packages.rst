@@ -384,13 +384,13 @@ A collection of useful utility functions for common tasks in the Supervisely SDK
 
     ~supervisely.project.download.download_fast
 
-Training
---------
-High-level wrappers and helpers for building training applications (GUI, data prep, artifacts upload, benchmarking).
+Neural Networks API
+-------------------
+APIs for deploying models, running inference, and working with model metadata in Supervisely.
 
 .. autosummary::
     :toctree: sdk
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
-    ~supervisely.nn.training.train_app.TrainApp
+    ~supervisely.api.nn.deploy_api.DeployApi
