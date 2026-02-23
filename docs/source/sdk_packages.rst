@@ -383,14 +383,3 @@ A collection of useful utility functions for common tasks in the Supervisely SDK
     :template: autosummary/custom-function-template.rst
 
     ~supervisely.project.download.download_fast
-
-Neural Networks API
--------------------
-APIs for deploying models, running inference, and working with model metadata in Supervisely.
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    ~supervisely.api.nn.deploy_api.DeployApi
