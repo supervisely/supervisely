@@ -292,7 +292,10 @@ from supervisely.geometry.bitmap import SkeletonizeMethod
 import supervisely.team_files as team_files
 import supervisely.output as output
 
-from supervisely.api.nn.deploy_api import DeployApi
+try:
+    from supervisely.api.nn.deploy_api import DeployApi
+except Exception:
+    pass
 
 # start monkey patching
 import importlib
