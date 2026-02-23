@@ -170,7 +170,7 @@ def annotation_high_level_validator(ann_json: dict) -> bool:
 
 
 def is_image_info(json_data: dict) -> bool:
-    return all(key in json_data for key in ImageInfo._asdict())
+    return all(key in json_data for key in ImageInfo._fields)
 
 
 def get_image_size_from_annotation(ann_json: dict) -> tuple:

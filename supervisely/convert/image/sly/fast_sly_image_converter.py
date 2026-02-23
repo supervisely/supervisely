@@ -51,9 +51,7 @@ class FastSlyImageConverter(SLYImageConverter, ImageConverter):
                         item.set_shape((h, w))
                         self._items.append(item)
                         detected_ann_cnt += 1
-                    elif helper.is_image_info(
-                        ann_json
-                    ):  # todo: validate whether annotations come first
+                    elif helper.is_image_info(ann_json):
                         image_name = ann_json.get("name")
                         for item in self._items:
                             if item.name == image_name:
@@ -140,14 +138,36 @@ class FastSlyImageConverter(SLYImageConverter, ImageConverter):
                     continue
             image_infos[item.name] = image_info
 
-        if log_progress:
-            progress, progress_cb = self.get_progress(
-                self.items_count, "Uploading images from image infos..."
-            )
-        else:
-            progress_cb = None
-
         if image_infos:
+            hashes = [image_info.hash for image_info in image_infos.values()]
+            existing_hashes = api.image.check_existing_hashes(hashes=hashes)
+            missing_hashes = set(hashes) - set(existing_hashes)
+            missing_hash_cnt = len(missing_hashes)
+            if not existing_hashes:
+                logger.warning(
+                    "None of the images from image info JSON exist on the server. "
+                    "Cannot upload images from image info JSON."
+                )
+            elif existing_hashes and missing_hash_cnt > 0:
+                logger.warning(
+                    "Some images from image info JSON already exist on the server, but some are missing. "
+                    "Only images with existing hashes will be uploaded.",
+                    extra={
+                        "existing hash count": len(existing_hashes),
+                        "missing hash count": missing_hash_cnt,
+                    },
+                )
+            image_infos = {
+                name: info for name, info in image_infos.items() if info.hash in existing_hashes
+            }
+
+            if log_progress:
+                progress, progress_cb = self.get_progress(
+                    len(image_infos), "Uploading images from image infos..."
+                )
+            else:
+                progress_cb = None
+
             uploaded_infos = api.image.upload_hashes(
                 dataset_id=dataset_id,
                 names=list(image_infos.keys()),
