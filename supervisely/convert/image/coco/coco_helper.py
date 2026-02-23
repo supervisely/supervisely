@@ -57,26 +57,6 @@ from supervisely.imaging.color import generate_rgb
 
 conflict_classes = []
 
-
-def _coerce_number(value):
-    if isinstance(value, bool):
-        return None
-    if isinstance(value, (int, float)):
-        return value
-    if isinstance(value, str):
-        stripped = value.strip()
-        if stripped == "":
-            return None
-        try:
-            parsed = float(stripped)
-        except ValueError:
-            return None
-        if parsed.is_integer():
-            return int(parsed)
-        return parsed
-    return None
-
-
 # COCO Convert funcs
 def create_supervisely_annotation(
     item: ImageConverter.Item,
@@ -177,8 +157,9 @@ def create_supervisely_annotation(
                         f"has type '{geometry_name}', but expected type is 'Rectangle'."
                     )
                 continue
-            x, y, w, h = (_coerce_number(value) for value in bbox)
-            if any(value is None for value in (x, y, w, h)):
+            try:
+                x, y, w, h = map(float, bbox)
+            except (ValueError, TypeError) as e:
                 logger.warning(
                     "Skipping COCO bbox with non-numeric values for class "
                     f"'{obj_class_name}' (category ID: {category_id}): {bbox}"
