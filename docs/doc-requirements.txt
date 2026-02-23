@@ -1,16 +1,4 @@
 # Docs build requirements for Python 3.12+
-sphinx>=8,<9
-sphinx-immaterial>=0.13.9,<0.14
-myst-parser>=2,<6
-
-# Runtime
-setuptools<81
-MarkupSafe<3
-urllib3<=2.2.3
-jsonschema<=4.23.0
-
-# Packages (avoid sdist-only ancient pins)
-scikit-image>=0.23
-matplotlib>=3.8
-imgaug==0.4.0
-scikit-video==1.1.11
+sphinx==8.2.3
+sphinx-immaterial==0.13.9
+myst-parser==5.0.0
