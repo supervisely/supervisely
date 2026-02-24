@@ -69,6 +69,7 @@ class FigureInfo(NamedTuple):
     tags: list
     meta: dict
     area: str
+    track_id: str
     priority: Optional[int] = None
     custom_data: Optional[dict] = None
 
@@ -136,6 +137,7 @@ class FigureApi(RemoveableBulkModuleApi):
             ApiField.TAGS,
             ApiField.META,
             ApiField.AREA,
+            ApiField.TRACK_ID,
             ApiField.PRIORITY,
             ApiField.CUSTOM_DATA,
         ]
@@ -221,6 +223,7 @@ class FigureApi(RemoveableBulkModuleApi):
             "tags",
             "meta",
             "area",
+            "trackId",
             "priority",
             "nnCreated",
             "nnUpdated",
@@ -388,6 +391,7 @@ class FigureApi(RemoveableBulkModuleApi):
             ApiField.PRIORITY,
             ApiField.CUSTOM_DATA,
             ApiField.NN_CREATED,
+            ApiField.TRACK_ID,
             ApiField.NN_UPDATED,
         ]
         figures_infos = self.get_list_all_pages(
@@ -511,6 +515,7 @@ class FigureApi(RemoveableBulkModuleApi):
             ApiField.CUSTOM_DATA,
             ApiField.NN_CREATED,
             ApiField.NN_UPDATED,
+            ApiField.TRACK_ID
         ]
         if skip_geometry is True:
             fields = [x for x in fields if x != ApiField.GEOMETRY]
@@ -549,6 +554,38 @@ class FigureApi(RemoveableBulkModuleApi):
     def _convert_json_info(self, info: dict, skip_missing=False):
         res = super()._convert_json_info(info, skip_missing=True)
         return FigureInfo(**res._asdict())
+
+    def get_list(self, dataset_id: int, filters: List = None):
+        fields = [
+            "id",
+            "createdAt",
+            "updatedAt",
+            "imageId",
+            "objectId",
+            "classId",
+            "projectId",
+            "datasetId",
+            "geometry",
+            "geometryType",
+            "geometryMeta",
+            "tags",
+            "meta",
+            "area",
+            "trackId",
+            "priority",
+        ]
+        if filters is None:
+            filters = []
+        figures_infos = self.get_list_all_pages(
+            "figures.list",
+            {
+                ApiField.DATASET_ID: dataset_id,
+                ApiField.FILTER: filters,
+                ApiField.FIELDS: fields,
+            },
+        )
+
+        return figures_infos
 
     def _download_geometries_generator(
         self, ids: List[int]

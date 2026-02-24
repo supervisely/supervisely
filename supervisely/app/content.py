@@ -237,16 +237,17 @@ class ContentOrigin(metaclass=Singleton):
 
             if patches or last_state is not None:
                 try:
-                    merged_patch = None
-                    data = copy.deepcopy(self._last_sent_data)
-                    for patch in [failed_patch, *patches]:
-                        if patch is None:
-                            continue
-                        patch.apply(data, in_place=True)
-                    merged_patch = jsonpatch.JsonPatch.from_diff(self._last_sent_data, data)
-                    self._send(data_patch=merged_patch, state=last_state)
-                    self._last_sent_data = copy.deepcopy(data)
-                    failed_patch = None
+                    if not sly_env.disable_offline_session():
+                        merged_patch = None
+                        data = copy.deepcopy(self._last_sent_data)
+                        for patch in [failed_patch, *patches]:
+                            if patch is None:
+                                continue
+                            patch.apply(data, in_place=True)
+                        merged_patch = jsonpatch.JsonPatch.from_diff(self._last_sent_data, data)
+                        self._send(data_patch=merged_patch, state=last_state)
+                        self._last_sent_data = copy.deepcopy(data)
+                        failed_patch = None
                 except Exception as exc:
                     failed_patch = merged_patch
                     logger.error(

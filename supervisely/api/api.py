@@ -39,6 +39,7 @@ import supervisely.api.advanced_api as advanced_api
 import supervisely.api.agent_api as agent_api
 import supervisely.api.annotation_api as annotation_api
 import supervisely.api.app_api as app_api
+import supervisely.api.cloud as cloud_api
 import supervisely.api.dataset_api as dataset_api
 import supervisely.api.entities_collection_api as entities_collection_api
 import supervisely.api.file_api as file_api
@@ -380,6 +381,7 @@ class Api:
         self.remote_storage = remote_storage_api.RemoteStorageApi(self)
         self.github = github_api.GithubApi(self)
         self.volume = volume_api.VolumeApi(self)
+        self.cloud = cloud_api.CloudApi(self)
         self.issues = issues_api.IssuesApi(self)
         self.entities_collection = entities_collection_api.EntitiesCollectionApi(self)
         self.webhook = webhook_api.WebhookApi(self)
