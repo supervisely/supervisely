@@ -309,7 +309,7 @@ class LiveTraining:
         model.eval()
         try:
             objects_raw_batch = self.predict_batch(
-                self.model, image_np=image_nps, image_info=image_infos
+                self.model, image_nps=image_nps, image_infos=image_infos
             )
 
             if self.evaluator:
