@@ -232,6 +232,11 @@ class LiveTraining:
                     request.future.set_result(result)
                     self._last_activity_time = time.time()
 
+                elif request.type == RequestType.PREDICT_BATCH:
+                    result = self._handle_predict_batch(request.data)
+                    request.future.set_result(result)
+                    self._last_activity_time = time.time()
+
                 elif request.type == RequestType.ADD_SAMPLE:
                     result = self._handle_add_sample(request.data)
                     request.future.set_result(result)
@@ -265,6 +270,12 @@ class LiveTraining:
         """
         raise NotImplementedError
 
+    def predict_batch(self, model: nn.Module, image_nps, image_infos) -> list:
+        """
+        Run inference on a batch of images and return predictions as a list of lists of sly figures in json format.
+        """
+        raise NotImplementedError
+
     def _handle_predict(self, data: dict):
         image_np = data['image']
         image_id = data['image_id']
@@ -283,6 +294,33 @@ class LiveTraining:
                 'objects': objects_raw,
                 'image_id': image_id,
                 'status': self.status(),
+            }
+        finally:
+            # Restore training mode
+            if was_training:
+                model.train()
+
+    def _handle_predict_batch(self, data: dict):
+        image_nps = data["images"]
+        image_ids = data["image_ids"]
+        image_infos = [{"id": image_id} for image_id in image_ids]
+        model = self.model
+        was_training = model.training
+        model.eval()
+        try:
+            objects_raw_batch = self.predict_batch(
+                self.model, image_np=image_nps, image_info=image_infos
+            )
+
+            if self.evaluator:
+                for image_id, image_np, objects_raw in zip(image_ids, image_nps, objects_raw_batch):
+                    image_shape = image_np.shape[:2]
+                    self.evaluator.store_prediction(image_id, objects_raw, image_shape)
+
+            return {
+                "objects_batch": objects_raw_batch,
+                "image_ids": image_ids,
+                "status": self.status(),
             }
         finally:
             # Restore training mode

@@ -51,6 +51,18 @@ def create_api(app: FastAPI, request_queue: RequestQueue) -> FastAPI:
         result = await _wait_for_result(future, response)
         return result
 
+    @app.post("/predict-batch")
+    async def predict(request: Request, response: Response):
+        """Run inference on a batch of images."""
+        sly_api = _api_from_request(request)
+        state = request.state.state
+        img_nps = sly_api.image.download_nps(state["image_ids"])
+        future = request_queue.put(
+            RequestType.PREDICT_BATCH, {"images": img_nps, "image_ids": state["image_ids"]}
+        )
+        result = await _wait_for_result(future, response)
+        return result
+
     @app.post("/predict-video")
     async def predict_video(request: Request, response: Response):
         """Run inference on a video frame."""
@@ -61,6 +73,21 @@ def create_api(app: FastAPI, request_queue: RequestQueue) -> FastAPI:
         frame_np = sly_api.video.frame.download_np(video_id, frame_idx)
         frame_id = f"{video_id}_{frame_idx}"
         future = request_queue.put(RequestType.PREDICT, {"image": frame_np, "image_id": frame_id})
+        result = await _wait_for_result(future, response)
+        return result
+
+    @app.post("/predict-video-batch")
+    async def predict_video_batch(request: Request, response: Response):
+        """Run inference on a batch of video frames."""
+        sly_api = _api_from_request(request)
+        state = request.state.state
+        video_id = state["video_id"]
+        frame_indices = state["frame_indices"]
+        frame_nps = sly_api.video.frame.download_nps(video_id, frame_indices)
+        frame_ids = [f"{video_id}_{frame_idx}" for frame_idx in frame_indices]
+        future = request_queue.put(
+            RequestType.PREDICT_BATCH, {"images": frame_nps, "image_ids": frame_ids}
+        )
         result = await _wait_for_result(future, response)
         return result
 

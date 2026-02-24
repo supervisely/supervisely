@@ -10,6 +10,7 @@ class RequestType(Enum):
     ADD_SAMPLE = "add-sample"
     STATUS = "status"
     ADD_SAMPLE_VIDEO = "add-sample-video"
+    PREDICT_BATCH = "predict-batch"
 
 
 class Request:
