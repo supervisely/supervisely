@@ -7,7 +7,10 @@ from typing import Dict, Generator, List, Tuple
 import numpy as np
 
 from supervisely import fs, logger
+from supervisely.annotation.obj_class import ObjClass
+from supervisely.annotation.tag_meta import TagMeta, TagValueType
 from supervisely.geometry.cuboid_3d import Cuboid3d, Vector3d
+from supervisely.project.project_meta import ProjectMeta
 
 DIR_NAMES = [
     "CAM_BACK",
@@ -51,6 +54,24 @@ def trim_description(description: str, max_length: int = 255) -> str:
             trimmed_description += sentence + "."
         description = trimmed_description.strip()
     return description
+
+
+def build_project_meta(nuscenes):
+    tag_metas = [TagMeta(attr["name"], TagValueType.NONE) for attr in nuscenes.attribute]
+    obj_classes = []
+    classes_token_map = {}
+    for category in nuscenes.category:
+        cat_name = category["name"]
+        try:
+            color = nuscenes.colormap[cat_name]
+        except KeyError:
+            logger.warning("Category '%s' is missing from nuscenes colormap.", cat_name)
+            color = None
+
+        description = trim_description(category["description"] or "")
+        obj_classes.append(ObjClass(cat_name, Cuboid3d, color, description=description))
+        classes_token_map[category["token"]] = cat_name
+    return ProjectMeta(obj_classes, tag_metas), classes_token_map
 
 
 @dataclass
@@ -276,3 +297,62 @@ class Sample:
         except Exception as e:
             logger.warning(f"Error converting lidar to supervisely format: {e}")
         return save_path
+
+
+def get_anns_from_boxes(nuscenes, boxes: List) -> List[AnnotationObject]:
+    anns = []
+    for box, name, inst_token in Sample.generate_boxes(nuscenes, boxes):
+        current_instance_token = inst_token["token"]
+        parent_token = inst_token["prev"]
+
+        ann = nuscenes.get("sample_annotation", current_instance_token)
+        category = ann["category_name"]
+        attributes = [nuscenes.get("attribute", attr)["name"] for attr in ann["attribute_tokens"]]
+        try:
+            visibility = nuscenes.get("visibility", ann["visibility_token"])["level"]
+        except Exception:
+            # -> ignore any errors as the visibility is not used atm
+            visibility = None
+        ann_token = ann["token"]
+
+        ann = AnnotationObject(
+            name=name,
+            bbox=box,
+            token=ann_token,
+            instance_token=current_instance_token,
+            parent_token=parent_token,
+            category=category,
+            attributes=attributes,
+            visibility=visibility,
+        )
+        anns.append(ann)
+    return anns
+
+
+def build_scene_samples(nuscenes, scene) -> Dict[str, Sample]:
+    sample_token = scene["first_sample_token"]
+
+    # * Extract scene's samples
+    scene_samples: Dict[str, Sample] = {}
+    for _ in range(scene["nbr_samples"]):
+        sample = nuscenes.get("sample", sample_token)
+        lidar_path, boxes, _ = nuscenes.get_sample_data(sample["data"]["LIDAR_TOP"])
+        if not osp.exists(lidar_path):
+            logger.warning(f'Scene "{scene["name"]}" has no LIDAR data.')
+            continue
+
+        timestamp = sample["timestamp"]
+        anns = get_anns_from_boxes(nuscenes, boxes)
+
+        # get camera data
+        sample_data = nuscenes.get("sample_data", sample["data"]["LIDAR_TOP"])
+        cal_sensor = nuscenes.get("calibrated_sensor", sample_data["calibrated_sensor_token"])
+        ego_pose = nuscenes.get("ego_pose", sample_data["ego_pose_token"])
+        camera_data = [
+            CamData(nuscenes, sensor, token, cal_sensor, ego_pose)
+            for sensor, token in sample["data"].items()
+            if sensor.startswith("CAM")
+        ]
+        scene_samples.append(Sample(timestamp, lidar_path, anns, camera_data))
+        sample_token = sample["next"]
+    return scene_samples

@@ -114,23 +114,29 @@ class NuscenesEpisodesConverter(PointcloudEpisodeConverter):
                 class_name = obj.category
                 parent_obj_token = obj.parent_token
                 parent_object = None
-                if parent_obj_token == "":
-                    # * Create a new object
-                    obj_class_name = renamed_classes.get(class_name, class_name)
-                    obj_class = meta.get_obj_class(obj_class_name)
-                    obj_tags = None  # ! TODO: fix tags
-                    pcd_ep_obj = PointcloudEpisodeObject(
-                        obj_class, obj_tags, uuid.UUID(instance_token)
+                try:
+                    if parent_obj_token == "":
+                        # * Create a new object
+                        obj_class_name = renamed_classes.get(class_name, class_name)
+                        obj_class = meta.get_obj_class(obj_class_name)
+                        obj_tags = None  # ! TODO: fix tags
+                        pcd_ep_obj = PointcloudEpisodeObject(
+                            obj_class, obj_tags, uuid.UUID(instance_token)
+                        )
+                        # * Assign the object to the starting token
+                        token_to_obj[instance_token] = pcd_ep_obj
+                        parent_object = pcd_ep_obj
+                    else:
+                        # * -> Figure has a parent object, get it
+                        token_to_obj[instance_token] = token_to_obj[parent_obj_token]
+                        parent_object = token_to_obj[parent_obj_token]
+                    geom = obj.to_supervisely()
+                    pcd_figure = PointcloudFigure(parent_object, geom, sample_i, ann_token)
+                except Exception as e:
+                    logger.error(
+                        f"Error during conversion of object with token {ann_token}: {repr(e)}"
                     )
-                    # * Assign the object to the starting token
-                    token_to_obj[instance_token] = pcd_ep_obj
-                    parent_object = pcd_ep_obj
-                else:
-                    # * -> Figure has a parent object, get it
-                    token_to_obj[instance_token] = token_to_obj[parent_obj_token]
-                    parent_object = token_to_obj[parent_obj_token]
-                geom = obj.to_supervisely()
-                pcd_figure = PointcloudFigure(parent_object, geom, sample_i, ann_token)
+                    continue
                 figures.append(pcd_figure)
                 frame_idx_to_scene_sample_token[sample_i] = token
             frame = PointcloudEpisodeFrame(sample_i, figures)
@@ -152,19 +158,10 @@ class NuscenesEpisodesConverter(PointcloudEpisodeConverter):
         nuscenes: NuScenes = self._nuscenes
         key_id_map = KeyIdMap()
 
-        tag_metas = [TagMeta(attr["name"], TagValueType.NONE) for attr in nuscenes.attribute]
-        obj_classes = {}
-        for category in nuscenes.category:
-            color = nuscenes.colormap[category["name"]]
-            description = helpers.trim_description(category.get("description", ""))
-            token = category["token"]
-            obj_classes[token] = ObjClass(
-                category["name"], Cuboid3d, color, description=description
-            )
+        project_meta, classes_token_map = helpers.build_project_meta(nuscenes)
+        self._custom_data["classes_token_map"] = classes_token_map
 
-        self._custom_data["classes_token_map"] = {k: v.name for k, v in obj_classes.items()}
-
-        self._meta = ProjectMeta(list(obj_classes.values()), tag_metas)
+        self._meta = project_meta
         meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)
 
         dataset_info = api.dataset.get_info_by_id(dataset_id)
@@ -201,60 +198,9 @@ class NuscenesEpisodesConverter(PointcloudEpisodeConverter):
             self._current_ds_id = current_dataset_id
 
             log = nuscenes.get("log", scene["log_token"])
-            sample_token = scene["first_sample_token"]
 
             # * Extract scene's samples
-            scene_samples: Dict[str, helpers.Sample] = {}
-            for i in range(scene["nbr_samples"]):
-                sample = nuscenes.get("sample", sample_token)
-                lidar_path, boxes, _ = nuscenes.get_sample_data(sample["data"]["LIDAR_TOP"])
-                if not osp.exists(lidar_path):
-                    logger.warning(f'Scene "{scene["name"]}" has no LIDAR data.')
-                    continue
-
-                timestamp = sample["timestamp"]
-                anns = []
-                for box, name, inst_token in helpers.Sample.generate_boxes(nuscenes, boxes):
-                    current_instance_token = inst_token["token"]
-                    parent_token = inst_token["prev"]
-
-                    ann = nuscenes.get("sample_annotation", current_instance_token)
-                    category = ann["category_name"]
-                    attributes = [
-                        nuscenes.get("attribute", attr)["name"] for attr in ann["attribute_tokens"]
-                    ]
-                    visibility = nuscenes.get("visibility", ann["visibility_token"])["level"]
-                    ann_token = ann["token"]
-
-                    ann = helpers.AnnotationObject(
-                        name=name,
-                        bbox=box,
-                        token=ann_token,
-                        instance_token=current_instance_token,
-                        parent_token=parent_token,
-                        category=category,
-                        attributes=attributes,
-                        visibility=visibility,
-                    )
-                    anns.append(ann)
-
-                # get camera data
-                sample_data = nuscenes.get("sample_data", sample["data"]["LIDAR_TOP"])
-                cal_sensor = nuscenes.get(
-                    "calibrated_sensor", sample_data["calibrated_sensor_token"]
-                )
-                ego_pose = nuscenes.get("ego_pose", sample_data["ego_pose_token"])
-
-                camera_data = [
-                    helpers.CamData(nuscenes, sensor, token, cal_sensor, ego_pose)
-                    for sensor, token in sample["data"].items()
-                    if sensor.startswith("CAM")
-                ]
-                sample_token = sample["token"]
-                scene_samples[sample_token] = helpers.Sample(
-                    timestamp, lidar_path, anns, camera_data
-                )
-                sample_token = sample["next"]
+            scene_samples: Dict[str, helpers.Sample] = helpers.build_scene_samples(nuscenes, scene)
 
             # * Convert and upload pointclouds
             frame_to_pointcloud_ids = {}
