@@ -1,0 +1,82 @@
+name: Build and Scan Hardened Images
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag_version:
+        description: "Docker image tag (without 'v')"
+        required: true
+        default: ""
+
+jobs:
+  build_scan:
+    runs-on: gha-runner-supervisely
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image_name: py-sdk-hardened
+            image_dir: base_images/py_sdk_hardened
+            dockerfile: base_images/py_sdk_hardened/Dockerfile
+          - image_name: import-export-hardened
+            image_dir: docker_images/import_export_hardened
+            dockerfile: docker_images/import_export_hardened/Dockerfile
+          - image_name: labeling-hardened
+            image_dir: docker_images/labeling_hardened
+            dockerfile: docker_images/labeling_hardened/Dockerfile
+          - image_name: system-hardened
+            image_dir: docker_images/system_hardened
+            dockerfile: docker_images/system_hardened/Dockerfile
+          - image_name: data-operations-hardened
+            image_dir: docker_images/data_operations_hardened
+            dockerfile: docker_images/data_operations_hardened/Dockerfile
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      - name: Build image
+        run: |
+          docker build --platform linux/amd64 \
+            -t "supervisely/${{ matrix.image_name }}:${{ github.event.inputs.tag_version }}" \
+            --build-arg tag_ref_name="${{ github.event.inputs.tag_version }}" \
+            -f "${{ matrix.dockerfile }}" \
+            "${{ matrix.image_dir }}"
+
+      - name: pip-audit scan
+        run: |
+          mkdir -p audit_logs
+          docker run --rm -v "$PWD/audit_logs:/work" \
+            "supervisely/${{ matrix.image_name }}:${{ github.event.inputs.tag_version }}" \
+            sh -lc "/opt/venv/bin/python -m pip_audit --format json > /work/pip_audit.json"
+
+          PIP_AUDIT_COUNT="$(python3 docker_images/pip_audit_summary.py audit_logs/pip_audit.json)"
+          if [[ "$PIP_AUDIT_COUNT" -gt 0 ]]; then
+            echo "pip-audit found vulnerabilities: COUNT=$PIP_AUDIT_COUNT" >&2
+            exit 1
+          fi
+
+      - name: Trivy scan (HIGH/CRITICAL)
+        run: |
+          mkdir -p trivy_logs
+          trivy image --severity HIGH,CRITICAL --exit-code 1 \
+            --format json --output "trivy_logs/${{ matrix.image_name }}.json" \
+            "supervisely/${{ matrix.image_name }}:${{ github.event.inputs.tag_version }}"
+
+      - name: Push image
+        run: |
+          docker push "supervisely/${{ matrix.image_name }}:${{ github.event.inputs.tag_version }}"
+
+      - name: Upload Trivy report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: trivy-${{ matrix.image_name }}
+          path: trivy_logs/${{ matrix.image_name }}.json
+
+      - name: Upload pip-audit report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pip-audit-${{ matrix.image_name }}
+          path: audit_logs/pip_audit.json
