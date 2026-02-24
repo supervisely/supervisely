@@ -62,6 +62,8 @@ class ExperimentInfo:
     """Link to the model benchmark evaluation report"""
     evaluation_metrics: Optional[dict] = None
     """Evaluation metrics"""
+    primary_metric: Optional[str] = None
+    """Name of the primary metric"""
     logs: Optional[dict] = None
     """Dictionary with link and type of logger"""
     train_collection_id: Optional[int] = None
