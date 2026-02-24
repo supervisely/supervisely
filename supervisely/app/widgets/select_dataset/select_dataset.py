@@ -29,6 +29,7 @@ class SelectDataset(Widget):
         widget_id: str = None,
         select_all_datasets: bool = False,
         allowed_project_types: List[ProjectType] = [],
+        include_nested: bool = False,
     ):
         self._api = Api()
         self._default_id = default_id
@@ -44,6 +45,7 @@ class SelectDataset(Widget):
         self._changes_handled = False
         self._cb_called = False
         self._disabled = disabled
+        self._include_nested = include_nested
 
         if self._multiselect is False:
             if isinstance(self._default_id, list):
@@ -130,7 +132,7 @@ class SelectDataset(Widget):
                 project_id = self._project_selector.get_selected_id()
             if project_id is None:
                 return [None]
-            datasets = self._api.dataset.get_list(project_id)
+            datasets = self._api.dataset.get_list(project_id, recursive=self._include_nested)
             ids = [ds.id for ds in datasets]
             return ids
         else:
