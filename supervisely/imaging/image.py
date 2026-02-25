@@ -408,11 +408,11 @@ def draw_text_sequence(
 
     .. list-table::
 
-        * - .. figure:: https://i.imgur.com/BHUALdv.jpg
+        * - .. figure:: https://github.com/user-attachments/assets/3484c6f6-b909-47ed-977a-d66ed51b45b2
 
                 Before
 
-          - .. figure:: https://i.imgur.com/wIzrDuf.jpg
+          - .. figure:: https://github.com/user-attachments/assets/9a0298e9-234a-4c25-a41d-b057e1e24a3c
 
                 After
     """
@@ -496,11 +496,11 @@ def draw_text(
 
     .. list-table::
 
-        * - .. figure:: https://i.imgur.com/BHUALdv.jpg
+        * - .. figure:: https://github.com/user-attachments/assets/3484c6f6-b909-47ed-977a-d66ed51b45b2
 
                 Before
 
-          - .. figure:: https://i.imgur.com/6Ptz8Tf.jpg
+          - .. figure:: https://github.com/user-attachments/assets/caa5e700-8e2e-4063-b8e1-1d07dff8e29e
 
                 After
     """
@@ -652,11 +652,11 @@ def crop(img: np.ndarray, rect: Rectangle) -> np.ndarray:
 
     .. list-table::
 
-        * - .. figure:: https://i.imgur.com/BHUALdv.jpg
+        * - .. figure:: https://github.com/user-attachments/assets/3484c6f6-b909-47ed-977a-d66ed51b45b2
 
                 Before
 
-          - .. figure:: https://i.imgur.com/4tNm2GS.jpg
+          - .. figure:: https://github.com/user-attachments/assets/ca1af441-4a40-4abf-a254-d2e310801ca0
 
                 After
     """
@@ -687,11 +687,11 @@ def crop_with_padding(img: np.ndarray, rect: Rectangle) -> np.ndarray:
 
     .. list-table::
 
-        * - .. figure:: https://i.imgur.com/BHUALdv.jpg
+        * - .. figure:: https://github.com/user-attachments/assets/3484c6f6-b909-47ed-977a-d66ed51b45b2
 
                 Before
 
-          - .. figure:: https://i.imgur.com/Nv1UinH.jpg
+          - .. figure:: https://github.com/user-attachments/assets/74909062-00ff-45ab-85d6-d51d4ff3c63d
 
                 After
     """
@@ -799,11 +799,11 @@ def resize(
 
     .. list-table::
 
-        * - .. figure:: https://i.imgur.com/BHUALdv.jpg
+        * - .. figure:: https://github.com/user-attachments/assets/3484c6f6-b909-47ed-977a-d66ed51b45b2
 
                 Before
 
-          - .. figure:: https://i.imgur.com/Xya4yz0.jpg
+          - .. figure:: https://github.com/user-attachments/assets/90773997-0b61-4030-9391-b4f3402ce9e7
 
                 After
     """
@@ -841,11 +841,11 @@ def resize_inter_nearest(
 
     .. list-table::
 
-        * - .. figure:: https://i.imgur.com/BHUALdv.jpg
+        * - .. figure:: https://github.com/user-attachments/assets/3484c6f6-b909-47ed-977a-d66ed51b45b2
 
                 Before
 
-          - .. figure:: https://i.imgur.com/0O6yMDH.jpg
+          - .. figure:: https://github.com/user-attachments/assets/e1eb93b3-d64c-4cb0-9efb-46f62dd50996
 
                 After
     """
@@ -879,11 +879,11 @@ def scale(img: np.ndarray, factor: float) -> np.ndarray:
 
     .. list-table::
 
-        * - .. figure:: https://i.imgur.com/BHUALdv.jpg
+        * - .. figure:: https://github.com/user-attachments/assets/3484c6f6-b909-47ed-977a-d66ed51b45b2
 
                 Before
 
-          - .. figure:: https://i.imgur.com/NyP8tts.jpg
+          - .. figure:: https://github.com/user-attachments/assets/a6a494ec-7344-44d8-b0c6-7ed6d3f3c727
 
                 After
     """
@@ -909,11 +909,11 @@ def fliplr(img: np.ndarray) -> np.ndarray:
 
     .. list-table::
 
-        * - .. figure:: https://i.imgur.com/BHUALdv.jpg
+        * - .. figure:: https://github.com/user-attachments/assets/3484c6f6-b909-47ed-977a-d66ed51b45b2
 
                 Before
 
-          - .. figure:: https://i.imgur.com/1mqnuZU.jpg
+          - .. figure:: https://github.com/user-attachments/assets/e59f1783-79ca-4c0f-a315-1a0e586d8c70
 
                 After
 
@@ -940,11 +940,11 @@ def flipud(img: np.ndarray) -> np.ndarray:
 
     .. list-table::
 
-        * - .. figure:: https://i.imgur.com/BHUALdv.jpg
+        * - .. figure:: https://github.com/user-attachments/assets/3484c6f6-b909-47ed-977a-d66ed51b45b2
 
                 Before
 
-          - .. figure:: https://i.imgur.com/LDwRDvm.jpg
+          - .. figure:: https://github.com/user-attachments/assets/93687d1b-3cab-4c22-80fd-31d53029c0ab
 
                 After
     """
@@ -983,19 +983,19 @@ def rotate(
 
     .. list-table::
 
-        * - .. figure:: https://i.imgur.com/BHUALdv.jpg
+        * - .. figure:: https://github.com/user-attachments/assets/3484c6f6-b909-47ed-977a-d66ed51b45b2
 
                 Before
 
-          - .. figure:: https://i.imgur.com/VjiwV4O.jpg
+          - .. figure:: https://github.com/user-attachments/assets/09b13487-eafd-4015-98d0-d48fd7a9f652
 
                 After keep_black mode
 
-          - .. figure:: https://i.imgur.com/Rs34eMa.jpg
+          - .. figure:: https://github.com/user-attachments/assets/8c8bdd4d-ec1d-4bec-91fd-57c076439387
 
                 After crop_black mode
 
-          - .. figure:: https://i.imgur.com/ttDWfBE.jpg
+          - .. figure:: https://github.com/user-attachments/assets/ebfe8855-2ff5-4da4-9280-6b17d71f644c
 
                 After origin_size mode
     """
@@ -1048,11 +1048,11 @@ def random_contrast(image: np.ndarray, min_factor: float, max_factor: float) -> 
 
     .. list-table::
 
-        * - .. figure:: https://i.imgur.com/BHUALdv.jpg
+        * - .. figure:: https://github.com/user-attachments/assets/3484c6f6-b909-47ed-977a-d66ed51b45b2
 
                 Before
 
-          - .. figure:: https://i.imgur.com/4zSNuJU.jpg
+          - .. figure:: https://github.com/user-attachments/assets/bb48ac4c-8d5d-473e-b29d-dda9f5c63879
 
                 After
     """
@@ -1088,11 +1088,11 @@ def random_brightness(image: np.ndarray, min_factor: float, max_factor: float) -
 
     .. list-table::
 
-        * - .. figure:: https://i.imgur.com/BHUALdv.jpg
+        * - .. figure:: https://github.com/user-attachments/assets/3484c6f6-b909-47ed-977a-d66ed51b45b2
 
                 Before
 
-          - .. figure:: https://i.imgur.com/bOYwwYH.jpg
+          - .. figure:: https://github.com/user-attachments/assets/786b0adb-1b23-4467-9b15-8e84a7764364
 
                 After
     """
@@ -1126,11 +1126,11 @@ def random_noise(image: np.ndarray, mean: float, std: float) -> np.ndarray:
 
     .. list-table::
 
-        * - .. figure:: https://i.imgur.com/BHUALdv.jpg
+        * - .. figure:: https://github.com/user-attachments/assets/3484c6f6-b909-47ed-977a-d66ed51b45b2
 
                 Before
 
-          - .. figure:: https://i.imgur.com/EzyEHeM.jpg
+          - .. figure:: https://github.com/user-attachments/assets/95b70ca3-ae5c-4269-9621-67d5e726ac40
 
                 After
     """
@@ -1163,11 +1163,11 @@ def random_color_scale(image: np.ndarray, min_factor: float, max_factor: float) 
 
     .. list-table::
 
-        * - .. figure:: https://i.imgur.com/BHUALdv.jpg
+        * - .. figure:: https://github.com/user-attachments/assets/3484c6f6-b909-47ed-977a-d66ed51b45b2
 
                 Before
 
-          - .. figure:: https://i.imgur.com/GGUZqlA.jpg
+          - .. figure:: https://github.com/user-attachments/assets/e0983a79-8b86-4f1c-bd9d-72ba6767df65
 
                 After
     """
@@ -1199,11 +1199,11 @@ def blur(image: np.ndarray, kernel_size: int) -> np.ndarray:
 
     .. list-table::
 
-        * - .. figure:: https://i.imgur.com/BHUALdv.jpg
+        * - .. figure:: https://github.com/user-attachments/assets/3484c6f6-b909-47ed-977a-d66ed51b45b2
 
                 Before
 
-          - .. figure:: https://i.imgur.com/wFnBaC6.jpg
+          - .. figure:: https://github.com/user-attachments/assets/665bf611-b293-48d5-bb96-eae0f13da5e5
 
                 After
     """
@@ -1231,11 +1231,11 @@ def median_blur(image: np.ndarray, kernel_size: int) -> np.ndarray:
 
     .. list-table::
 
-        * - .. figure:: https://i.imgur.com/BHUALdv.jpg
+        * - .. figure:: https://github.com/user-attachments/assets/3484c6f6-b909-47ed-977a-d66ed51b45b2
 
                 Before
 
-          - .. figure:: https://i.imgur.com/FQ977ON.jpg
+          - .. figure:: https://github.com/user-attachments/assets/dc4fa95d-90a8-4479-8f7e-de7ba1fdb9ec
 
                 After
     """
@@ -1265,11 +1265,11 @@ def gaussian_blur(image: np.ndarray, sigma_min: float, sigma_max: float) -> np.n
 
     .. list-table::
 
-        * - .. figure:: https://i.imgur.com/BHUALdv.jpg
+        * - .. figure:: https://github.com/user-attachments/assets/3484c6f6-b909-47ed-977a-d66ed51b45b2
 
                 Before
 
-          - .. figure:: https://i.imgur.com/brs6Au0.jpg
+          - .. figure:: https://github.com/user-attachments/assets/9502408d-5b30-4f91-9082-5634dd9dca15
 
                 After
     """

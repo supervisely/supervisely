@@ -910,11 +910,11 @@ class Annotation:
 
         .. list-table::
 
-            * - .. figure:: https://i.imgur.com/6huO1se.jpg
+            * - .. figure:: https://github.com/user-attachments/assets/0e0be9e6-3b73-424d-a974-6cd1eee2aa4c
 
                     Before
 
-              - .. figure:: https://i.imgur.com/w2wR4h8.jpg
+              - .. figure:: https://github.com/user-attachments/assets/e6374fdd-71e4-40bc-8589-1690794bfc47
 
                     After
         """
@@ -975,11 +975,11 @@ class Annotation:
 
         .. list-table::
 
-            * - .. figure:: https://i.imgur.com/23UuNdJ.png
+            * - .. figure:: https://github.com/user-attachments/assets/2fb8d66f-4c4d-413e-af9c-bbdfbc0a84db
 
                     Before
 
-              - .. figure:: https://i.imgur.com/8Z7xVxB.jpg
+              - .. figure:: https://github.com/user-attachments/assets/6f55f3aa-f71d-4a56-85b5-da49a39e6269
 
                     After
         """
@@ -1042,11 +1042,11 @@ class Annotation:
 
         .. list-table::
 
-            * - .. figure:: https://i.imgur.com/6huO1se.jpg
+            * - .. figure:: https://github.com/user-attachments/assets/0e0be9e6-3b73-424d-a974-6cd1eee2aa4c
 
                     Before
 
-              - .. figure:: https://i.imgur.com/ZQ47cXN.jpg
+              - .. figure:: https://github.com/user-attachments/assets/1f98cabc-1cc2-47b6-9afd-0e57fce78c7c
 
                     After
         """
@@ -1109,11 +1109,11 @@ class Annotation:
 
         .. list-table::
 
-            * - .. figure:: https://i.imgur.com/6huO1se.jpg
+            * - .. figure:: https://github.com/user-attachments/assets/0e0be9e6-3b73-424d-a974-6cd1eee2aa4c
 
                     Before
 
-              - .. figure:: https://i.imgur.com/RrvNMoV.jpg
+              - .. figure:: https://github.com/user-attachments/assets/6027fe7c-5b9f-4373-a9c9-71770b9230fb
 
                     After
         """
@@ -1180,11 +1180,11 @@ class Annotation:
 
         .. list-table::
 
-            * - .. figure:: https://i.imgur.com/6huO1se.jpg
+            * - .. figure:: https://github.com/user-attachments/assets/0e0be9e6-3b73-424d-a974-6cd1eee2aa4c
 
                     Before
 
-              - .. figure:: https://i.imgur.com/Ze6uqZ8.jpg
+              - .. figure:: https://github.com/user-attachments/assets/d2fbb6ca-51ba-4e18-bd21-69879f446d3c
 
                     After
         """
@@ -1247,11 +1247,11 @@ class Annotation:
 
         .. list-table::
 
-            * - .. figure:: https://i.imgur.com/6huO1se.jpg
+            * - .. figure:: https://github.com/user-attachments/assets/0e0be9e6-3b73-424d-a974-6cd1eee2aa4c
 
                     Before
 
-              - .. figure:: https://i.imgur.com/AQSuqIN.jpg
+              - .. figure:: https://github.com/user-attachments/assets/ba2aeb24-1aeb-4dea-8a75-e3d450253a32
 
                     After
         """
@@ -1310,11 +1310,11 @@ class Annotation:
 
         .. list-table::
 
-            * - .. figure:: https://i.imgur.com/6huO1se.jpg
+            * - .. figure:: https://github.com/user-attachments/assets/0e0be9e6-3b73-424d-a974-6cd1eee2aa4c
 
                     Before
 
-              - .. figure:: https://i.imgur.com/NVhvPDb.jpg
+              - .. figure:: https://github.com/user-attachments/assets/8b37efcd-fb79-4321-8f36-07d6fccc7b97
 
                     After
         """
@@ -1410,7 +1410,7 @@ class Annotation:
                 # Draw Annotation on image
                 ann.draw(img)
 
-        .. image:: https://i.imgur.com/1W1Nfl1.jpg
+        .. image:: https://github.com/user-attachments/assets/bbb7131e-d8b4-4101-9ac5-9e5d87d49df5
             :width: 600
             :height: 500
         """
@@ -1493,7 +1493,7 @@ class Annotation:
                 # Draw Annotation contour on image
                 ann.draw_contour(img)
 
-        .. image:: https://i.imgur.com/F8KGZS4.jpg
+        .. image:: https://github.com/user-attachments/assets/6d895689-098b-4dc9-841e-6c2c17f16585
             :width: 600
             :height: 500
         """
@@ -1725,7 +1725,7 @@ class Annotation:
                 name_to_index = {'lemon': 90, 'kiwi': 195}
                 ann.draw_class_idx_rgb(img, name_to_index)
 
-        .. image:: https://i.imgur.com/ACSaBgw.jpg
+        .. image:: https://github.com/user-attachments/assets/5da2ca59-1d90-4b05-8ea0-c9eabf708f8d
             :width: 600
             :height: 500
         """
@@ -1799,11 +1799,11 @@ class Annotation:
 
         .. list-table::
 
-            * - .. figure:: https://i.imgur.com/6huO1se.jpg
+            * - .. figure:: https://github.com/user-attachments/assets/0e0be9e6-3b73-424d-a974-6cd1eee2aa4c
 
                     Before
 
-              - .. figure:: https://i.imgur.com/uunTbPR.jpg
+              - .. figure:: https://github.com/user-attachments/assets/32fb7cd9-eff2-4fba-bf70-74d506c5b186
 
                     After
         """
@@ -1994,7 +1994,7 @@ class Annotation:
                 # Draw pretty Annotation on image
                 ann.draw_pretty(img, thickness=3)
 
-        .. image:: https://i.imgur.com/6huO1se.jpg
+        .. image:: https://github.com/user-attachments/assets/5cd2bbd5-4b69-49b2-bcc6-5f0dc38852fd
             :width: 600
             :height: 500
         """
