@@ -77,6 +77,8 @@ class TrainApp:
     """
     High-level wrapper for building Supervisely training applications.
 
+    Learn more about the `Training API documentation <https://developer.supervisely.com/advanced-user-guide/automate-with-python-sdk-and-api/training-api>`_.
+
     **It connects:**
 
     - **GUI** (model selector, hyperparameters editor, train/val split selector, class/tag selectors)

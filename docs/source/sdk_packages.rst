@@ -126,6 +126,22 @@ API for working with pointclouds in Supervisely.
     ~supervisely.api.pointcloud.pointcloud_object_api.PointcloudObjectApi
     ~supervisely.api.pointcloud.pointcloud_tag_api.PointcloudTagApi
 
+Neural Networks API
+-------------------
+APIs for deploying models, running inference, and working with model metadata in Supervisely.
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    ~supervisely.api.nn.deploy_api.DeployApi
+    ~supervisely.api.nn.neural_network_api.NeuralNetworkApi
+    ~supervisely.api.nn.train_api.TrainApi
+    ~supervisely.nn.model.model_api.ModelAPI
+    ~supervisely.nn.model.prediction.Prediction
+    ~supervisely.nn.model.prediction_session.PredictionSession
+
 Augmentation
 ------------
 Data augmentations to create more data variety for neural networks training.
@@ -313,6 +329,16 @@ Constants defining the directories where a plugin should expect the input and ou
 
     ~supervisely.task.progress.Progress
 
+User
+----
+User-related data structures and constants.
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    ~supervisely.user.user.UserRoleName
 
 Video
 -----
