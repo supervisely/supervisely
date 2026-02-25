@@ -248,6 +248,11 @@ class LiveTraining:
                     request.future.set_result(result)
                     new_samples_added = True
 
+                elif request.type == RequestType.ADD_SAMPLES_VIDEO:
+                    result = self._handle_add_samples_video(request.data)
+                    request.future.set_result(result)
+                    new_samples_added = True
+
                 elif request.type == RequestType.STATUS:
                     result = self.status()
                     request.future.set_result(result)
@@ -424,6 +429,49 @@ class LiveTraining:
 
         return {
             "image_id": frame_id,
+            "status": self.status(),
+        }
+
+    def _handle_add_samples_video(self, data: dict):
+        frame_indices = data["frame_indices"]
+        frame_ids = [f"{data['video_id']}_{frame_idx}" for frame_idx in frame_indices]
+        frame_nps = data["frame_nps"]
+        video_ann_json = data["video_ann_json"]
+
+        for frame_id, frame_idx, frame_np in zip(frame_ids, frame_indices, frame_nps):
+            video_objects_json, frame_ann_json = self._filter_annotation_video(
+                video_ann_json, frame_idx
+            )
+            key_id_map = sly.KeyIdMap()
+            video_obj_col = sly.VideoObjectCollection.from_json(
+                video_objects_json, self.project_meta, key_id_map
+            )
+            frames_count = video_ann_json["framesCount"]
+            frame_ann = sly.Frame.from_json(frame_ann_json, video_obj_col, frames_count, key_id_map)
+            frame_h, frame_w = video_ann_json["size"]["height"], video_ann_json["size"]["width"]
+            img_ann = self.frame_ann_to_img_ann(frame_ann, frame_h, frame_w)
+            self.add_sample_video(
+                frame_id=frame_id,
+                frame_np=frame_np,
+                annotation=img_ann,
+            )
+
+            if self.evaluator and self.phase != Phase.WAITING_FOR_SAMPLES:
+                result = self.evaluator.evaluate(frame_id, img_ann)
+                if result is not None:
+                    metric_name = self.evaluator.metric_name
+                    logger.info(
+                        f"Image {frame_id}: {metric_name}={result['metric_value']:.3f}, "
+                        f"EMA={result['ema_value']:.3f}"
+                    )
+
+            if (
+                len(self.dataset) >= self.initial_samples
+            ) and self.phase == Phase.WAITING_FOR_SAMPLES:
+                self.phase = Phase.INITIAL_TRAINING
+
+        return {
+            "image_ids": frame_ids,
             "status": self.status(),
         }
 

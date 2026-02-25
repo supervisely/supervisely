@@ -113,7 +113,7 @@ def create_api(app: FastAPI, request_queue: RequestQueue) -> FastAPI:
 
     @app.post("/add-sample-video")
     async def add_sample_video(request: Request, response: Response):
-        """Add a new training sample."""
+        """Add a new training sample from video."""
         sly_api = _api_from_request(request)
         state = request.state.state
         video_id = state["video_id"]
@@ -126,6 +126,27 @@ def create_api(app: FastAPI, request_queue: RequestQueue) -> FastAPI:
                 "video_id": video_id,
                 "frame_idx": frame_idx,
                 "frame_np": frame_np,
+                "video_ann_json": video_ann_json,
+            },
+        )
+        result = await _wait_for_result(future, response)
+        return result
+
+    @app.post("/add-samples-video")
+    async def add_samples_video(request: Request, response: Response):
+        """Add several new training samples from video."""
+        sly_api = _api_from_request(request)
+        state = request.state.state
+        video_id = state["video_id"]
+        frame_indices = state["frame_indices"]
+        frame_nps = sly_api.video.frame.download_nps(video_id, frame_indices)
+        video_ann_json = sly_api.video.annotation.download(video_id)
+        future = request_queue.put(
+            RequestType.ADD_SAMPLE_VIDEO,
+            {
+                "video_id": video_id,
+                "frame_indices": frame_indices,
+                "frame_nps": frame_nps,
                 "video_ann_json": video_ann_json,
             },
         )
