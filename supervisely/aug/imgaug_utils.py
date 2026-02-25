@@ -190,6 +190,7 @@ def apply(augs, meta: ProjectMeta, img, ann: Annotation, segmentation_type='sema
     seg_meta, seg_mapping = meta.to_segmentation_task()
     seg_ann = ann.to_nonoverlapping_masks(seg_mapping)
 
+    index_to_class = {}
     if segmentation_type == 'semantic':
         seg_ann = seg_ann.to_segmentation_task()
         class_to_index = {obj_class.name: idx for idx, obj_class in enumerate(seg_meta.obj_classes, start=1)}

@@ -1,8 +1,8 @@
 # coding: utf-8
 import os.path
 
-import torch
-from torch.nn import Parameter
+import torch  # pylint: disable=import-error
+from torch.nn import Parameter  # pylint: disable=import-error
 
 
 class WeightsRW:

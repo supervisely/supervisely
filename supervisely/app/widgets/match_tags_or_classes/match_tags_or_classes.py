@@ -207,6 +207,7 @@ class MatchTagMetasOrClasses(Widget):
 
             if name in mutual:
                 flag = True
+                diff_msg = ""
                 if type(meta1) is ObjClass and meta1.geometry_type != meta2.geometry_type:
                     flag = False
                     diff_msg = "Different shape"
@@ -233,6 +234,7 @@ class MatchTagMetasOrClasses(Widget):
                     compare["infoIcon"] = (["zmdi zmdi-check"],)
                     match.append(compare)
             elif name in mutual_with_suffix_left.keys() | mutual_with_suffix_right.keys():
+                diff_msg = ""
                 if name in mutual_with_suffix_left:
                     meta2 = self._right_collection.get(name + self._suffix)
                     set_info(compare, 2, meta2)

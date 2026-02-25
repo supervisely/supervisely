@@ -719,6 +719,7 @@ class Import(Application):
         return team_id, workspace_id, project_id, dataset_id, project_name
 
     def __get_remote_path(self):
+        path = None
         if self.__input_mode == "file":
             path = env.file()
         elif self.__input_mode == "folder":

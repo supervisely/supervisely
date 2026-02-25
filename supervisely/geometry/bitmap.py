@@ -6,7 +6,7 @@ from __future__ import annotations
 import base64
 import io
 import zlib
-from distutils.version import StrictVersion
+from packaging.version import Version
 from enum import Enum
 from typing import Dict, List, Optional, Tuple
 
@@ -282,7 +282,7 @@ class Bitmap(BitmapBase):
     def _draw_contour_impl(self, bitmap, color, thickness=1, config=None):
         """_draw_contour_impl"""
         # pylint: disable=(no-member, unpacking-non-sequence)
-        if StrictVersion(cv2.__version__) >= StrictVersion("4.0.0"):
+        if Version(cv2.__version__) >= Version("4.0.0"):
             contours, _ = cv2.findContours(
                 self.data.astype(np.uint8),
                 cv2.RETR_LIST,
@@ -470,7 +470,7 @@ class Bitmap(BitmapBase):
         """
         origin, mask = self.origin, self.data
         # pylint: disable=(no-member, unpacking-non-sequence)
-        if StrictVersion(cv2.__version__) >= StrictVersion("4.0.0"):
+        if Version(cv2.__version__) >= Version("4.0.0"):
             contours, hier = cv2.findContours(
                 mask.astype(np.uint8),
                 mode=cv2.RETR_CCOMP,  # two-level hierarchy, to get polygons with hole

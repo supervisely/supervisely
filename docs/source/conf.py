@@ -6,7 +6,6 @@
 
 import os
 import sys
-import inspect
 import datetime
 
 # -- Path setup --------------------------------------------------------------

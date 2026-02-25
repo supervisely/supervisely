@@ -1,5 +1,5 @@
 # coding: utf-8
-import collections
+from collections.abc import Mapping
 
 from supervisely.io.json import load_json_file
 
@@ -86,7 +86,7 @@ class AlwaysPassingConfigValidator:
 def update_recursively(lhs, rhs):
     """Performs updating like lhs.update(rhs), but operates recursively on nested dictionaries."""
     for k, v in rhs.items():
-        if isinstance(v, collections.Mapping):
+        if isinstance(v, Mapping):
             lhs[k] = update_recursively(lhs.get(k, {}), v)
         else:
             lhs[k] = v
