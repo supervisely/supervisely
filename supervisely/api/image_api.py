@@ -400,6 +400,9 @@ class ImageInfo(NamedTuple):
     #: :class:`int`: :class:`Dataset<supervisely.project.project.Project>` ID in Supervisely.
     project_id: int = None
 
+    #: :class:`str`: Image description.
+    description: Optional[str] = None
+
     # DO NOT DELETE THIS COMMENT
     #! New fields must be added with default values to keep backward compatibility.
 
@@ -480,6 +483,7 @@ class ImageApi(RemoveableBulkModuleApi):
             ApiField.AI_SEARCH_META,
             ApiField.EMBEDDINGS_UPDATED_AT,
             ApiField.PROJECT_ID,
+            ApiField.DESCRIPTION,
         ]
 
     @staticmethod
