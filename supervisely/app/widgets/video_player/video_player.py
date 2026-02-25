@@ -5,8 +5,16 @@ from supervisely.app.widgets_context import JinjaWidgets
 
 
 class VideoPlayer(Widget):
-    def __init__(self, url: str = None, mime_type: str = "video/mp4", widget_id: str = None):
+    """Video player widget with play/pause and seek; displays video from URL with configurable MIME type."""
 
+    def __init__(self, url: str = None, mime_type: str = "video/mp4", widget_id: str = None):
+        """:param url: Video URL.
+        :type url: str, optional
+        :param mime_type: MIME type (e.g. "video/mp4").
+        :type mime_type: str
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         self._api = Api()
 
         self._url = url

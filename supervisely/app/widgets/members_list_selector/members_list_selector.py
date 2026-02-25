@@ -6,7 +6,11 @@ from supervisely.app.widgets import Widget
 
 
 class MembersListSelector(Widget):
+    """Widget to select one or multiple team members from a provided list of users."""
+
     class Routes:
+        """Callback route names used by the widget frontend to notify Python."""
+
         CHECKBOX_CHANGED = "checkbox_cb"
 
     def __init__(
@@ -15,6 +19,14 @@ class MembersListSelector(Widget):
         multiple: Optional[bool] = False,
         widget_id: Optional[str] = None,
     ):
+        """
+        :param users: List of UserInfo to select from.
+        :type users: List[UserInfo], optional
+        :param multiple: If True, allow multiple selection.
+        :type multiple: bool, optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         self._users = users
         self._multiple = multiple
         super().__init__(widget_id=widget_id, file_path=__file__)

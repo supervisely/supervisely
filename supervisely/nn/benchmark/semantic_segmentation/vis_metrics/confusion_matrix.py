@@ -7,6 +7,7 @@ from supervisely.nn.benchmark.visualization.widgets import ChartWidget, Markdown
 
 
 class ConfusionMatrix(SemanticSegmVisMetric):
+    """Confusion matrix heatmap for semantic segmentation reports with class-wise drill-down."""
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)

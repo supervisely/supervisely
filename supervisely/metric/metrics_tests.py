@@ -13,6 +13,8 @@ from supervisely.metric.map_metric import MAPMetric, AP
 from supervisely.project.project_meta import ProjectMeta
 
 class PointTest(unittest.TestCase):
+    """Unit tests for MAPMetric with various ground-truth and prediction scenarios."""
+
     def setUp(self):
         self._obj_class_gt = ObjClass(name='a', geometry_type=Rectangle)
         self._obj_class_pred = ObjClass(name='b', geometry_type=Rectangle)

@@ -3,7 +3,7 @@ import re
 import subprocess
 
 import requests
-from pkg_resources import DistributionNotFound, get_distribution
+import importlib.metadata
 from setuptools import find_packages, setup
 
 # @TODO: change manifest location
@@ -128,6 +128,7 @@ INSTALL_REQUIRES = [
     "httpx[http2]==0.27.2",
     "debugpy",
     "setuptools<81.0.0",
+    "packaging",
 ]
 
 ALT_INSTALL_REQUIRES = {
@@ -146,9 +147,9 @@ def check_alternative_installation(install_require, alternative_install_requires
     for alternative_install_require in alternative_install_requires:
         try:
             alternative_pkg_name = re.split(r"[ !<>=]", alternative_install_require)[0]
-            get_distribution(alternative_pkg_name)
+            importlib.metadata.distribution(alternative_pkg_name)
             return str(alternative_install_require)
-        except DistributionNotFound:
+        except importlib.metadata.PackageNotFoundError:
             continue
 
     return str(install_require)
@@ -249,13 +250,9 @@ setup(
             "pandas>=1.1.3, <=2.3.3",
         ],
         "docs": [
-            "sphinx==4.4.0",
-            "jinja2==3.0.3",
-            "sphinx-immaterial==0.4.0",
-            "sphinx-copybutton==0.4.0",
-            "sphinx-autodoc-typehints==1.15.3",
-            "sphinxcontrib-details-directive==0.1.0",
-            "myst-parser==0.18.0",
+            "sphinx==9.1.0",
+            "sphinx-immaterial==0.13.9",
+            "myst-parser==5.0.0",
         ],
         "sdk-no-usages": [
             "grpcio>=1.53.2, <2.0.0",

@@ -14,6 +14,8 @@ COCO_ANN_KEYS = ["images", "annotations"]
 
 
 class COCOConverter(ImageConverter):
+    """Imports COCO detection/segmentation format (images + annotations JSON) into Supervisely image project."""
+
     def __init__(
             self,
             input_data: str,
@@ -21,6 +23,7 @@ class COCOConverter(ImageConverter):
             upload_as_links: bool,
             remote_files_map: Optional[Dict[str, str]] = None,
     ):
+        """See :class:`~supervisely.convert.base_converter.BaseConverter` for params."""
         super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
 
         self._coco_categories = []

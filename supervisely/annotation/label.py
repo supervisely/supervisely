@@ -1,5 +1,5 @@
 # coding: utf-8
-"""Labeling object for :class:`Annotation<supervisely.annotation.annotation.Annotation>`"""
+"""Labeling object for :class:`~supervisely.annotation.annotation.Annotation`."""
 
 # docs
 from __future__ import annotations
@@ -29,7 +29,7 @@ from supervisely.project.project_meta import ProjectMeta
 
 
 class LabelJsonFields:
-    """Json fields for :class:`Annotation<supervisely.annotation.label.Label>`"""
+    """JSON fields for :class:`~supervisely.annotation.label.Label`."""
 
     OBJ_CLASS_NAME = "classTitle"
     """"""
@@ -91,49 +91,7 @@ class LabelingStatus(StrEnum):
 
 
 class LabelBase:
-    """
-    Labeling object for :class:`Annotation<supervisely.annotation.annotation.Annotation>`. :class:`Label<Label>` object is immutable.
-
-    :param geometry: Label :class:`geometry<supervisely.geometry.geometry.Geometry>`.
-    :type geometry: Geometry
-    :param obj_class: Label :class:`class<supervisely.annotation.obj_class.ObjClass>`.
-    :type obj_class: ObjClass
-    :param tags: Label :class:`tags<supervisely.annotation.tag_collection.TagCollection>`.
-    :type tags: TagCollection or List[Tag]
-    :param description: Label description.
-    :type description: str, optional
-    :param binding_key: Label binding key.
-    :type binding_key: str, optional
-    :param smart_tool_input: Smart Tool parameters that were used for labeling.
-    :type smart_tool_input: dict, optional
-    :param sly_id: Label unique identifier.
-    :type sly_id: int, optional
-    :param status: Sets labeling status. Shows how label was created and corrected.
-    :type status: LabelingStatus, optional
-
-    :Usage example:
-
-     .. code-block:: python
-
-        import supervisely as sly
-
-        # Simple Label example
-        class_kiwi = sly.ObjClass('kiwi', sly.Rectangle)
-        figure = sly.Rectangle(0, 0, 300, 300)
-        label_kiwi = sly.Label(figure, class_kiwi)
-
-        # More complex Label example
-        # Tag
-        meta_kiwi = sly.TagMeta('kiwi_tag', sly.TagValueType.ANY_STRING)
-        tag_kiwi = sly.Tag(meta_kiwi, 'Hello')
-        # ObjClass
-        class_kiwi = sly.ObjClass('kiwi', sly.Rectangle)
-
-        # Label
-        geometry_figure = sly.Rectangle(0, 0, 300, 300)
-        label = sly.Label(figure, class_kiwi, sly.TagCollection([tag_kiwi]), 'Label description')
-        # or sly.Label(figure, class_kiwi, [tag_kiwi], 'Label description')
-    """
+    """Base class for :class:`~supervisely.annotation.label.Label`."""
 
     def __init__(
         self,
@@ -146,6 +104,47 @@ class LabelBase:
         sly_id: Optional[int] = None,
         status: Optional[LabelingStatus] = None,
     ):
+        """
+        :param geometry: Label geometry.
+        :type geometry: :class:`~supervisely.geometry.geometry.Geometry`
+        :param obj_class: :class:`~supervisely.annotation.obj_class.ObjClass` object.
+        :type obj_class: :class:`~supervisely.annotation.obj_class.ObjClass`
+        :param tags: TagCollection or List of Tag objects.
+        :type tags: :class:`~supervisely.annotation.tag_collection.TagCollection` or List[:class:`~supervisely.annotation.tag.Tag`]
+        :param description: Label description.
+        :type description: str, optional
+        :param binding_key: Label binding key in labeling tool.
+        :type binding_key: str, optional
+        :param smart_tool_input: Smart Tool parameters that were used for labeling.
+        :type smart_tool_input: dict, optional
+        :param sly_id: Label unique identifier in Supervisely.
+        :type sly_id: int, optional
+        :param status: Sets labeling status. Shows how label was created and corrected.
+        :type status: :class:`~supervisely.annotation.label.LabelingStatus`, optional
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                # Simple Label example
+                class_kiwi = sly.ObjClass('kiwi', sly.Rectangle)
+                figure = sly.Rectangle(0, 0, 300, 300)
+                label_kiwi = sly.Label(figure, class_kiwi)
+
+                # More complex Label example
+                # Tag
+                meta_kiwi = sly.TagMeta('kiwi_tag', sly.TagValueType.ANY_STRING)
+                tag_kiwi = sly.Tag(meta_kiwi, 'Hello')
+                # ObjClass
+                class_kiwi = sly.ObjClass('kiwi', sly.Rectangle)
+
+                # Label
+                geometry_figure = sly.Rectangle(0, 0, 300, 300)
+                label = sly.Label(figure, class_kiwi, sly.TagCollection([tag_kiwi]), 'Label description')
+                # or sly.Label(figure, class_kiwi, [tag_kiwi], 'Label description')
+        """
         self._geometry = geometry
         self._obj_class = obj_class
         self._tags = take_with_default(tags, TagCollection())
@@ -165,11 +164,10 @@ class LabelBase:
         self._status = status
         self._nn_created, self._nn_updated = LabelingStatus.to_flags(self.status)
 
-
     def _validate_geometry(self):
         """
         The function checks the name of the Object for compliance.
-        :return: generate ValueError error if name is mismatch
+        :returns: generate ValueError error if name is mismatch
         """
         self._geometry.validate(
             self._obj_class.geometry_type.geometry_name(),
@@ -184,43 +182,45 @@ class LabelBase:
         """
         ObjClass of the current Label.
 
-        :return: ObjClass object
-        :rtype: :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>`
-        :Usage example:
+        :returns: ObjClass object
+        :rtype: :class:`~supervisely.annotation.obj_class.ObjClass`
 
-         .. code-block:: python
+        :Usage Example:
 
-            class_dog = sly.ObjClass('dog', sly.Rectangle)
-            label_dog = sly.Label(sly.Rectangle(150, 150, 400, 500), class_dog)
+            .. code-block:: python
 
-            label_dog_json = label_dog.obj_class.to_json()
-            print(label_dog_json)
-            # Output: {
-            #    "title": "dog",
-            #    "shape": "rectangle",
-            #    "color": "#0F8A12",
-            #    "geometry_config": {},
-            #    "hotkey": ""
-            # }
+                class_dog = sly.ObjClass('dog', sly.Rectangle)
+                label_dog = sly.Label(sly.Rectangle(150, 150, 400, 500), class_dog)
+
+                label_dog_json = label_dog.obj_class.to_json()
+                print(label_dog_json)
+                # Output: {
+                #    "title": "dog",
+                #    "shape": "rectangle",
+                #    "color": "#0F8A12",
+                #    "geometry_config": {},
+                #    "hotkey": ""
+                # }
         """
         return self._obj_class
 
     @property
     def description(self) -> str:
         """
-        Description of the current Label.
+        Description of the Label.
 
-        :return: Description
-        :rtype: :class:`str`
-        :Usage example:
+        :returns: Description
+        :rtype: str
 
-         .. code-block:: python
+        :Usage Example:
 
-            class_dog = sly.ObjClass('dog', sly.Rectangle)
-            label_dog = sly.Label(sly.Rectangle(150, 150, 400, 500), class_dog, description="Insert Label description here")
+            .. code-block:: python
 
-            print(label_dog.description)
-            # Output: 'Insert Label description here'
+                class_dog = sly.ObjClass('dog', sly.Rectangle)
+                label_dog = sly.Label(sly.Rectangle(150, 150, 400, 500), class_dog, description="Insert Label description here")
+
+                print(label_dog.description)
+                # Output: 'Insert Label description here'
         """
         return self._description
 
@@ -229,100 +229,103 @@ class LabelBase:
         """
         Geometry of the current Label.
 
-        :return: Geometry object
-        :rtype: :class:`Geometry<supervisely.geometry>`
-        :Usage example:
+        :returns: Geometry object
+        :rtype: :class:`~supervisely.geometry.geometry.Geometry`
 
-         .. code-block:: python
+        :Usage Example:
 
-            class_dog = sly.ObjClass('dog', sly.Rectangle)
-            label_dog = sly.Label(sly.Rectangle(150, 150, 400, 500), class_dog)
+            .. code-block:: python
 
-            label_json = label_dog.geometry.to_json()
-            print(label_json)
-            # Output: {
-            #    "points": {
-            #        "exterior": [
-            #            [
-            #                150,
-            #                150
-            #            ],
-            #            [
-            #                500,
-            #                400
-            #            ]
-            #        ],
-            #        "interior": []
-            #    }
-            # }
+                class_dog = sly.ObjClass('dog', sly.Rectangle)
+                label_dog = sly.Label(sly.Rectangle(150, 150, 400, 500), class_dog)
+
+                label_json = label_dog.geometry.to_json()
+                print(label_json)
+                # Output: {
+                #    "points": {
+                #        "exterior": [
+                #            [
+                #                150,
+                #                150
+                #            ],
+                #            [
+                #                500,
+                #                400
+                #            ]
+                #        ],
+                #        "interior": []
+                #    }
+                # }
         """
         return self._geometry
 
     @property
     def tags(self) -> TagCollection:
         """
-        TagCollection of the current Label.
+        TagCollection of the Label.
 
-        :return: TagCollection object
-        :rtype: :class:`TagCollection<supervisely.annotation.tag.TagCollection>`
-        :Usage example:
+        :returns: TagCollection object
+        :rtype: :class:`~supervisely.annotation.tag_collection.TagCollection`
 
-         .. code-block:: python
+        :Usage Example:
 
-            meta_dog = sly.TagMeta('dog', sly.TagValueType.ANY_STRING)
-            tag_dog = sly.Tag(meta_dog, 'Woof')
-            class_dog = sly.ObjClass('dog', sly.Rectangle)
+            .. code-block:: python
 
-            label_dog = sly.Label(sly.Rectangle(100, 100, 700, 900), class_dog, sly.TagCollection([tag_dog]))
+                meta_dog = sly.TagMeta('dog', sly.TagValueType.ANY_STRING)
+                tag_dog = sly.Tag(meta_dog, 'Woof')
+                class_dog = sly.ObjClass('dog', sly.Rectangle)
 
-            label_dog_json = label_dog.tags.to_json()
-            print(label_dog_json)
-            # Output: [
-            #    {
-            #        "name": "dog",
-            #        "value": "Woof"
-            #    }
-            # ]
+                label_dog = sly.Label(sly.Rectangle(100, 100, 700, 900), class_dog, sly.TagCollection([tag_dog]))
+
+                label_dog_json = label_dog.tags.to_json()
+                print(label_dog_json)
+                # Output: [
+                #    {
+                #        "name": "dog",
+                #        "value": "Woof"
+                #    }
+                # ]
         """
         return self._tags.clone()
 
     def to_json(self) -> Dict:
         """
-        Convert the Label to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
+        Convert the Label to a json dictionary. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
-        :return: Json format as a dict
-        :rtype: :class:`dict`
-        :Usage example:
+        :returns: Json format as a dict
+        :rtype: dict
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            meta_dog = sly.TagMeta('dog', sly.TagValueType.ANY_STRING)
-            tag_dog = sly.Tag(meta_dog, 'Woof')
-            class_dog = sly.ObjClass('dog', sly.Rectangle)
-            label_dog = sly.Label(sly.Rectangle(100, 100, 700, 900), class_dog, sly.TagCollection([tag_dog]), description='Insert Label description here')
+                import supervisely as sly
 
-            label_dog_json = label_dog.to_json()
-            print(label_dog_json)
-            # Output: {
-            #    "classTitle": "dog",
-            #    "description": "",
-            #    "tags": [
-            #        {
-            #            "name": "dog",
-            #            "value": "Woof"
-            #        }
-            #    ],
-            #    "points": {
-            #        "exterior": [[100, 100],[900, 700]],
-            #        "interior": []
-            #    },
-            #    "geometryType": "rectangle",
-            #    "shape": "rectangle",
-            #    "nnCreated": false,
-            #    "nnUpdated": false
-            # }
+                meta_dog = sly.TagMeta('dog', sly.TagValueType.ANY_STRING)
+                tag_dog = sly.Tag(meta_dog, 'Woof')
+                class_dog = sly.ObjClass('dog', sly.Rectangle)
+                label_dog = sly.Label(sly.Rectangle(100, 100, 700, 900), class_dog, sly.TagCollection([tag_dog]), description='Insert Label description here')
+
+                label_dog_json = label_dog.to_json()
+                print(label_dog_json)
+                # Output: {
+                #    "classTitle": "dog",
+                #    "description": "",
+                #    "tags": [
+                #        {
+                #            "name": "dog",
+                #            "value": "Woof"
+                #        }
+                #    ],
+                #    "points": {
+                #        "exterior": [[100, 100],[900, 700]],
+                #        "interior": []
+                #    },
+                #    "geometryType": "rectangle",
+                #    "shape": "rectangle",
+                #    "nnCreated": false,
+                #    "nnUpdated": false
+                # }
         """
         res = {
             LabelJsonFields.OBJ_CLASS_NAME: self.obj_class.name,
@@ -356,39 +359,46 @@ class LabelBase:
 
         :param data: Label in json format as a dict.
         :type data: dict
-        :param project_meta: Input ProjectMeta.
-        :type project_meta: ProjectMeta
-        :return: Label object
-        :rtype: :class:`Label<LabelBase>`
-        :Usage example:
+        :param project_meta: ProjectMeta object.
+        :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
+        :returns: Label object
+        :rtype: :class:`~supervisely.annotation.label.LabelBase`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                import os
+                from dotenv import load_dotenv
 
-            meta = api.project.get_meta(PROJECT_ID)
+                import supervisely as sly
 
-            data = {
-                "classTitle": "dog",
-                "tags": [
-                    {
-                        "name": "dog",
-                        "value": "Woof"
-                    }
-                ],
-                "points": {
-                    "exterior": [[100, 100], [900, 700]],
-                    "interior": []
-                },
-                "nnCreated": false,
-                "nnUpdated": false
-            }
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            label_dog = sly.Label.from_json(data, meta)
+                api = sly.Api.from_env()
+
+                meta = api.project.get_meta(PROJECT_ID)
+
+                data = {
+                    "classTitle": "dog",
+                    "tags": [
+                        {
+                            "name": "dog",
+                            "value": "Woof"
+                        }
+                    ],
+                    "points": {
+                        "exterior": [[100, 100], [900, 700]],
+                        "interior": []
+                    },
+                    "nnCreated": false,
+                    "nnUpdated": false
+                }
+
+                label_dog = sly.Label.from_json(data, meta)
         """
         obj_class_name = data[LabelJsonFields.OBJ_CLASS_NAME]
         obj_class = project_meta.get_obj_class(obj_class_name)
@@ -429,8 +439,8 @@ class LabelBase:
         """Returns the unique identifier of the Label on Supervisely platform.
         NOTE: This can be None, when working with local project.
 
-        :return: Label unique identifier.
-        :rtype: :class:`int` or :class:`NoneType`
+        :returns: Label unique identifier.
+        :rtype: int or None
         """
         return self._sly_id
 
@@ -439,26 +449,27 @@ class LabelBase:
         Adds Tag to the current Label.
 
         :param tag: Tag to be added.
-        :type tag: Tag
-        :return: Label object
-        :rtype: :class:`Label<LabelBase>`
-        :Usage example:
+        :type tag: :class:`~supervisely.annotation.tag.Tag`
+        :returns: Label object
+        :rtype: :class:`~supervisely.annotation.label.LabelBase`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            # Create label
-            class_dog = sly.ObjClass('dog', sly.Rectangle)
-            label_dog = sly.Label(sly.Rectangle(0, 0, 500, 600), class_dog)
+                import supervisely as sly
 
-            # Create tag
-            meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE)
-            tag_dog = sly.Tag(meta_dog)
+                # Create label
+                class_dog = sly.ObjClass('dog', sly.Rectangle)
+                label_dog = sly.Label(sly.Rectangle(0, 0, 500, 600), class_dog)
 
-            # Add Tag
-            # Remember that Label object is immutable, and we need to assign new instance of Label to a new variable
-            new_label = label_dog.add_tag(tag_dog)
+                # Create tag
+                meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE)
+                tag_dog = sly.Tag(meta_dog)
+
+                # Add Tag
+                # Remember that Label object is immutable, and we need to assign new instance of Label to a new variable
+                new_label = label_dog.add_tag(tag_dog)
         """
         return self.clone(tags=self._tags.add(tag))
 
@@ -467,31 +478,32 @@ class LabelBase:
         Adds multiple Tags to the current Label.
 
         :param tags: List of Tags to be added.
-        :type tags: List[Tag]
-        :return: Label object
-        :rtype: :class:`Label<LabelBase>`
-        :Usage example:
+        :type tags: List[:class:`~supervisely.annotation.tag.Tag`]
+        :returns: Label object
+        :rtype: :class:`~supervisely.annotation.label.LabelBase`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            # Create label
-            class_dog = sly.ObjClass('dog', sly.Rectangle)
-            label_dog = sly.Label(sly.Rectangle(0, 0, 500, 600), class_dog)
+                import supervisely as sly
 
-            # Create tags
-            meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE)
-            tag_dog = sly.Tag(meta_dog)
+                # Create label
+                class_dog = sly.ObjClass('dog', sly.Rectangle)
+                label_dog = sly.Label(sly.Rectangle(0, 0, 500, 600), class_dog)
 
-            meta_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
-            tag_cat = sly.Tag(meta_cat)
+                # Create tags
+                meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE)
+                tag_dog = sly.Tag(meta_dog)
 
-            tags_arr = [tag_dog, tag_cat]
+                meta_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
+                tag_cat = sly.Tag(meta_cat)
 
-            # Add Tags
-            # Remember that Label object is immutable, and we need to assign new instance of Label to a new variable
-            new_label = label_dog.add_tags(tags_arr)
+                tags_arr = [tag_dog, tag_cat]
+
+                # Add Tags
+                # Remember that Label object is immutable, and we need to assign new instance of Label to a new variable
+                new_label = label_dog.add_tags(tags_arr)
         """
         return self.clone(tags=self._tags.add_items(tags))
 
@@ -508,12 +520,12 @@ class LabelBase:
         """
         Makes a copy of Label with new fields, if fields are given, otherwise it will use fields of the original Label.
 
-        :param geometry: Label :class:`geometry<supervisely.geometry.geometry.Geometry>`.
-        :type geometry: Geometry
-        :param obj_class: Label :class:`class<supervisely.annotation.obj_class.ObjClass>`.
-        :type obj_class: ObjClass
-        :param tags: Label :class:`tags<supervisely.annotation.tag.TagCollection>`.
-        :type tags: TagCollection or List[Tag]
+        :param geometry: Label geometry.
+        :type geometry: :class:`~supervisely.geometry.geometry.Geometry`
+        :param obj_class: :class:`~supervisely.annotation.obj_class.ObjClass` class.
+        :type obj_class: :class:`~supervisely.project.project_meta.ObjClass`
+        :param tags: Label tags.
+        :type tags: :class:`~supervisely.tag.tag_collection.TagCollection` or List[:class:`~supervisely.tag.tag.Tag`]
         :param description: Label description.
         :type description: str, optional
         :param binding_key: Label binding key.
@@ -521,43 +533,44 @@ class LabelBase:
         :param smart_tool_input: Smart Tool parameters that were used for labeling.
         :type smart_tool_input: dict, optional
         :param status: Sets labeling status. Specifies if the label was created by NN model, manually or created by NN and then manually corrected.
-        :type status: LabelingStatus, optional
-        :return: New instance of Label
-        :rtype: :class:`Label<LabelBase>`
-        :Usage example:
+        :type status: :class:`~supervisely.annotation.label.LabelingStatus`, optional
+        :returns: New instance of Label object
+        :rtype: :class:`~supervisely.annotation.label.LabelBase`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            import numpy as np
+            .. code-block:: python
 
-            # Original Label
-            class_dog = sly.ObjClass('dog', sly.Rectangle)
-            label_dog = sly.Label(sly.Rectangle(150, 150, 500, 400), class_dog)
+                import supervisely as sly
+                import numpy as np
 
-            # Let's clone our Label, but with different Geometry coordinates
-            # Remember that Label object is immutable, and we need to assign new instance of Label to a new variable
-            clone_label_dog = label_dog.clone(sly.Rectangle(100, 100, 500, 500), class_dog)
+                # Original Label
+                class_dog = sly.ObjClass('dog', sly.Rectangle)
+                label_dog = sly.Label(sly.Rectangle(150, 150, 500, 400), class_dog)
 
-            # Let's clone our Label with new TagCollection and description
-            meta_breed = sly.TagMeta('breed', sly.TagValueType.ANY_STRING)
-            tag_breed = sly.Tag(meta_breed, 'German Shepherd')
-            tags = sly.TagCollection([tag_breed])
+                # Let's clone our Label, but with different Geometry coordinates
+                # Remember that Label object is immutable, and we need to assign new instance of Label to a new variable
+                clone_label_dog = label_dog.clone(sly.Rectangle(100, 100, 500, 500), class_dog)
 
-            # Remember that Label object is immutable, and we need to assign new instance of Label to a new variable
-            clone_label_dog_2 = label_dog.clone(tags=tags, description='Dog breed german shepherd')
+                # Let's clone our Label with new TagCollection and description
+                meta_breed = sly.TagMeta('breed', sly.TagValueType.ANY_STRING)
+                tag_breed = sly.Tag(meta_breed, 'German Shepherd')
+                tags = sly.TagCollection([tag_breed])
 
-            # Note that you can't clone Label if ObjClass geometry type differ from the new given geometry
-            mask = np.array([[0, 0, 0, 0, 0],
-                             [0, 1, 1, 1, 0],
-                             [0, 1, 0, 1, 0],
-                             [0, 1, 1, 1, 0],
-                             [0, 0, 0, 0, 0]], dtype=np.uint8)
+                # Remember that Label object is immutable, and we need to assign new instance of Label to a new variable
+                clone_label_dog_2 = label_dog.clone(tags=tags, description='Dog breed german shepherd')
 
-            mask_bool = mask==1
+                # Note that you can't clone Label if ObjClass geometry type differ from the new given geometry
+                mask = np.array([[0, 0, 0, 0, 0],
+                                [0, 1, 1, 1, 0],
+                                [0, 1, 0, 1, 0],
+                                [0, 1, 1, 1, 0],
+                                [0, 0, 0, 0, 0]], dtype=np.uint8)
 
-            clone_label_dog = label_dog.clone(sly.Label(sly.Bitmap(mask_bool), class_dog))
-            # In this case RuntimeError will be raised
+                mask_bool = mask==1
+
+                clone_label_dog = label_dog.clone(sly.Label(sly.Bitmap(mask_bool), class_dog))
+                # In this case RuntimeError will be raised
         """
         return self.__class__(
             geometry=take_with_default(geometry, self.geometry),
@@ -571,12 +584,13 @@ class LabelBase:
 
     def crop(self, rect: Rectangle) -> List[LabelBase]:
         """
-        Clones the current Label and crops it. Mostly used for internal implementation. See usage example in :class:`Annotation<supervisely.annotation.annotation.Annotation.crop_labels>`.
+        Clones the current Label and crops it. Mostly used for internal implementation.
+        See usage example in :meth:`~supervisely.annotation.annotation.Annotation.crop_labels`.
 
         :param rect: Rectangle object.
-        :type rect: Rectangle
-        :return: List of Labels with new geometries
-        :rtype: :class:`List[Label]<LabelBase>`
+        :type rect: :class:`~supervisely.geometry.rectangle.Rectangle`
+        :returns: List of Labels with new geometries
+        :rtype: List[:class:`~supervisely.annotation.label.LabelBase>`]
         """
         if rect.contains(self.geometry.to_bbox()):
             return [self]
@@ -592,47 +606,51 @@ class LabelBase:
 
     def relative_crop(self, rect: Rectangle) -> List[LabelBase]:
         """
-        Clones the current Label and crops it, but return results with coordinates relative to the given Rectangle. Mostly used for internal implementation. See usage example in :class:`Annotation<supervisely.annotation.annotation.Annotation.relative_crop>`.
+        Clones the current Label and crops it, but return results with coordinates relative to the given Rectangle.
+        Mostly used for internal implementation. See usage example in :meth:`~supervisely.annotation.annotation.Annotation.relative_crop`.
 
         :param rect: Rectangle object.
-        :type rect: Rectangle
-        :return: List of Labels with new geometries
-        :rtype: :class:`List[Label]<LabelBase>`
+        :type rect: :class:`~supervisely.geometry.rectangle.Rectangle`
+        :returns: List of Labels with new geometries
+        :rtype: List[:class:`~supervisely.annotation.label.LabelBase`]
         """
         return [self.clone(geometry=g) for g in self.geometry.relative_crop(rect)]
 
     def rotate(self, rotator: ImageRotator) -> LabelBase:
         """
-        Clones the current Label and rotates it. Mostly used for internal implementation. See usage example in :class:`Annotation<supervisely.annotation.annotation.Annotation.rotate>`.
+        Clones the current Label and rotates it. Mostly used for internal implementation.
+        See usage example in :meth:`~supervisely.annotation.annotation.Annotation.rotate`.
 
         :param rotator: ImageRotator object.
-        :type rotator: ImageRotator
-        :return: New instance of Label with rotated geometry
-        :rtype: :class:`Label<LabelBase>`
+        :type rotator: :class:`~supervisely.geometry.image_rotator.ImageRotator`
+        :returns: New instance of Label with rotated geometry
+        :rtype: :class:`~supervisely.annotation.label.LabelBase`
         """
         return self.clone(geometry=self.geometry.rotate(rotator))
 
     def resize(self, in_size: Tuple[int, int], out_size: Tuple[int, int]) -> LabelBase:
         """
-        Clones the current Label and resizes it. Mostly used for internal implementation. See usage example in :class:`Annotation<supervisely.annotation.annotation.Annotation.resize>`.
+        Clones the current Label and resizes it. Mostly used for internal implementation.
+        See usage example in :meth:`~supervisely.annotation.annotation.Annotation.resize`.
 
         :param in_size: Input image size (height, width) of the Annotation to which Label belongs.
         :type in_size: Tuple[int, int]
         :param out_size: Desired output image size (height, width) of the Annotation to which Label belongs.
         :type out_size: Tuple[int, int]
-        :return: New instance of Label with resized geometry
-        :rtype: :class:`Label<LabelBase>`
+        :returns: New instance of Label with resized geometry
+        :rtype: :class:`~supervisely.annotation.label.LabelBase`
         """
         return self.clone(geometry=self.geometry.resize(in_size, out_size))
 
     def scale(self, factor: float) -> LabelBase:
         """
-        Clones the current Label and scales it. Mostly used for internal implementation. See usage example in :class:`Annotation<supervisely.annotation.annotation.Annotation.scale>`.
+        Clones the current Label and scales it. Mostly used for internal implementation.
+        See usage example in :meth:`~supervisely.annotation.annotation.Annotation.scale`.
 
         :param factor: Scale factor.
         :type factor: float
-        :return: New instance of Label with scaled geometry
-        :rtype: :class:`Label<LabelBase>`
+        :returns: New instance of Label with scaled geometry
+        :rtype: :class:`~supervisely.annotation.label.LabelBase`
         """
         return self.clone(geometry=self.geometry.scale(factor))
 
@@ -644,68 +662,78 @@ class LabelBase:
         :type drow: int
         :param dcol: Vertical shift.
         :type dcol: int
-        :return: New instance of Label with translated geometry
-        :rtype: :class:`Label<LabelBase>`
-        :Usage example:
+        :returns: New instance of Label with translated geometry
+        :rtype: :class:`~supervisely.annotation.label.LabelBase`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                import os
+                from dotenv import load_dotenv
 
-            # Get image and annotation from API
-            project_id = 117139
-            image_id = 194190568
-            meta_json = api.project.get_meta(project_id)
-            meta = sly.ProjectMeta.from_json(meta_json)
-            ann_info = api.annotation.download(image_id)
-            ann = sly.Annotation.from_json(ann_info.annotation, meta)
-            img = api.image.download_np(image_id)
-            new_img = copy.deepcopy(img)
-            ann.draw_pretty(img, thickness=3) # before
+                import supervisely as sly
 
-            # Translate label with name 'lemon'
-            new_labels = []
-            for label in ann.labels:
-                if label.obj_class.name == 'lemon':
-                    translate_label = label.translate(250, -350)
-                    new_labels.append(translate_label)
-                else:
-                    new_labels.append(label)
-            ann = ann.clone(labels=new_labels)
-            ann.draw_pretty(new_img, thickness=3)  # after
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                # Get image and annotation from API
+                project_id = 117139
+                image_id = 194190568
+                meta_json = api.project.get_meta(project_id)
+                meta = sly.ProjectMeta.from_json(meta_json)
+                ann_info = api.annotation.download(image_id)
+                ann = sly.Annotation.from_json(ann_info.annotation, meta)
+                img = api.image.download_np(image_id)
+                new_img = copy.deepcopy(img)
+                ann.draw_pretty(img, thickness=3) # before
+
+                # Translate label with name 'lemon'
+                new_labels = []
+                for label in ann.labels:
+                    if label.obj_class.name == 'lemon':
+                        translate_label = label.translate(250, -350)
+                        new_labels.append(translate_label)
+                    else:
+                        new_labels.append(label)
+
+                ann = ann.clone(labels=new_labels)
+                ann.draw_pretty(new_img, thickness=3)  # after
         """
         return self.clone(geometry=self.geometry.translate(drow=drow, dcol=dcol))
 
     def fliplr(self, img_size: Tuple[int, int]) -> LabelBase:
         """
-        Clones the current Label and flips it horizontally. Mostly used for internal implementation. See usage example in :class:`Annotation<supervisely.annotation.annotation.Annotation.fliplr>`.
+        Clones the current Label and flips it horizontally. Mostly used for internal implementation.
+        See usage example in :meth:`~supervisely.annotation.annotation.Annotation.fliplr`.
 
         :param img_size: Input image size (height, width) of the Annotation to which Label belongs.
         :type img_size: Tuple[int, int]
-        :return: New instance of Label with flipped geometry
-        :rtype: :class:`Label<LabelBase>`
+        :returns: New instance of Label with flipped geometry
+        :rtype: :class:`~supervisely.annotation.label.LabelBase`
         """
         return self.clone(geometry=self.geometry.fliplr(img_size))
 
     def flipud(self, img_size: Tuple[int, int]) -> LabelBase:
         """
-        Clones the current Label and flips it vertically. Mostly used for internal implementation. See usage example in :class:`Annotation<supervisely.annotation.annotation.Annotation.flipud>`.
+        Clones the current Label and flips it vertically. Mostly used for internal implementation.
+        See usage example in :meth:`~supervisely.annotation.annotation.Annotation.flipud`.
 
         :param img_size: Input image size (height, width) of the Annotation to which Label belongs.
         :type img_size: Tuple[int, int]
-        :return: New instance of Label with flipped geometry
-        :rtype: :class:`Label<LabelBase>`
+        :returns: New instance of Label with flipped geometry
+        :rtype: :class:`~supervisely.annotation.label.LabelBase`
         """
         return self.clone(geometry=self.geometry.flipud(img_size))
 
     def _get_font(self, img_size):
         """
         The function get size of font for image with given size
-        :return: font for drawing
+        :returns: font for drawing
         """
         return sly_font.get_font(font_size=sly_font.get_readable_font_size(img_size))
 
@@ -742,7 +770,8 @@ class LabelBase:
         class_name_font: Optional[FreeTypeFont] = None,
     ) -> None:
         """
-        Draws current Label on image. Modifies Mask. Mostly used for internal implementation. See usage example in :class:`Annotation<supervisely.annotation.annotation.Annotation.draw>`.
+        Draws current Label on image. Modifies Mask. Mostly used for internal implementation.
+        See usage example in :meth:`~supervisely.annotation.annotation.Annotation.draw`.
 
         :param bitmap: image.
         :type bitmap: np.ndarray
@@ -759,8 +788,8 @@ class LabelBase:
         :param class_name_font: Font of class name to be drawn, uses `FreeTypeFont <https://pillow.readthedocs.io/en/stable/reference/ImageFont.html#PIL.ImageFont.FreeTypeFont>`_ from `PIL <https://pillow.readthedocs.io/en/stable/index.html>`_.
         :type class_name_font: FreeTypeFont, optional
 
-        :return: :class:`None<None>`
-        :rtype: :class:`NoneType<NoneType>`
+        :returns: None
+        :rtype: None
         """
         effective_color = take_with_default(color, self.obj_class.color)
         self.geometry.draw(
@@ -784,7 +813,7 @@ class LabelBase:
 
         :param img_size: size of the image (height, width)
         :type img_size: Tuple[int, int]
-        :return: 2D boolean mask of the Label
+        :returns: 2D boolean mask of the :class:`~supervisely.annotation.label.Label`
         :rtype: np.ndarray
         """
         bitmap = np.zeros(img_size + (3,), dtype=np.uint8)
@@ -802,7 +831,8 @@ class LabelBase:
         class_name_font: Optional[FreeTypeFont] = None,
     ) -> None:
         """
-        Draws Label geometry contour on the given image. Modifies mask. Mostly used for internal implementation. See usage example in :class:`Annotation<supervisely.annotation.annotation.Annotation.draw_contour>`.
+        Draws Label geometry contour on the given image. Modifies mask. Mostly used for internal implementation.
+        See usage example in :meth:`~supervisely.annotation.annotation.Annotation.draw_contour`.
 
         :param bitmap: image.
         :type bitmap: np.ndarray
@@ -819,8 +849,8 @@ class LabelBase:
         :param class_name_font: Font of class name to be drawn, uses `FreeTypeFont <https://pillow.readthedocs.io/en/stable/reference/ImageFont.html#PIL.ImageFont.FreeTypeFont>`_ from `PIL <https://pillow.readthedocs.io/en/stable/index.html>`_.
         :type class_name_font: FreeTypeFont, optional
 
-        :return: :class:`None<None>`
-        :rtype: :class:`NoneType<NoneType>`
+        :returns: None
+        :rtype: None
         """
         effective_color = take_with_default(color, self.obj_class.color)
         self.geometry.draw_contour(
@@ -840,21 +870,22 @@ class LabelBase:
         """
         Label area.
 
-        :return: Area of current geometry in Label.
-        :rtype: :class:`float`
-        :Usage example:
+        :returns: Area of current geometry in :class:`~supervisely.annotation.label.LabelBase`.
+        :rtype: float
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            # Create label
-            class_dog = sly.ObjClass('dog', sly.Rectangle)
-            label_dog = sly.Label(sly.Rectangle(0, 0, 500, 600), class_dog)
+                import supervisely as sly
 
-            figure_area = label_dog.area
-            print(figure_area)
-            # Output: 301101.0
+                # Create label
+                class_dog = sly.ObjClass('dog', sly.Rectangle)
+                label_dog = sly.Label(sly.Rectangle(0, 0, 500, 600), class_dog)
+
+                figure_area = label_dog.area
+                print(figure_area)
+                # Output: 301101.0
         """
         return self.geometry.area
 
@@ -863,28 +894,29 @@ class LabelBase:
         Converts Label geometry to another geometry shape.
 
         :param new_obj_class: ObjClass with new geometry shape.
-        :type new_obj_class: ObjClass
-        :return: List of Labels with converted geometries
-        :rtype: :class:`List[Label]<LabelBase>`
-        :Usage example:
+        :type new_obj_class: :class:`~supervisely.annotation.obj_class.ObjClass`
+        :returns: List of Labels with converted geometries
+        :rtype: List[:class:`~supervisely.annotation.label.LabelBase`]
 
-         .. code-block:: python
+        :Usage Example:
 
-           import supervisely as sly
+            .. code-block:: python
 
-           # Create label
-            class_dog = sly.ObjClass('dog', sly.Rectangle)
-            label_dog = sly.Label(sly.Rectangle(0, 0, 500, 600), class_dog)
+                import supervisely as sly
 
-            print(label_dog.geometry.to_json())
-            # {'geometryType': 'rectangle'}
+                # Create label
+                class_dog = sly.ObjClass('dog', sly.Rectangle)
+                label_dog = sly.Label(sly.Rectangle(0, 0, 500, 600), class_dog)
 
-            label_cat = sly.ObjClass('cat', sly.Bitmap)
+                print(label_dog.geometry.to_json())
+                # {'geometryType': 'rectangle'}
 
-            convert_label = label_dog.convert(label_cat)
-            for label_bitmap in convert_label:
-                print(label_bitmap.geometry.to_json())
-                # Output: {'geometryType': 'bitmap'}
+                label_cat = sly.ObjClass('cat', sly.Bitmap)
+
+                convert_label = label_dog.convert(label_cat)
+                for label_bitmap in convert_label:
+                    print(label_bitmap.geometry.to_json())
+                    # Output: {'geometryType': 'bitmap'}
         """
         labels = []
         geometries = self.geometry.convert(new_obj_class.geometry_type)
@@ -894,6 +926,7 @@ class LabelBase:
 
     @property
     def binding_key(self):
+        """Keyboard shortcut key for binding the label to the object."""
         return self._binding_key
 
     @binding_key.setter
@@ -907,14 +940,19 @@ class LabelBase:
         """
         Smart Tool parameters that were used for labeling.
 
-        Example:
+        :Usage Example:
 
-            {
-                'crop': [[85.69912274538524, 323.07711452375236], [1108.5635719011857, 1543.1199742240174]],
-                'visible': True,
-                'negative': [],
-                'positive': [[597, 933], [474.5072466934964, 1381.6437133813354]]
-            }
+            .. code-block:: python
+
+                smtool_input = {
+                    "crop": [
+                        [85.69912274538524, 323.07711452375236],
+                        [1108.5635719011857, 1543.1199742240174],
+                    ],
+                    "visible": True,
+                    "negative": [],
+                    "positive": [[597, 933], [474.5072466934964, 1381.6437133813354]],
+                }
         """
         return self._smart_tool_input
 
@@ -928,6 +966,7 @@ class LabelBase:
 
     @property
     def labeler_login(self):
+        """Labeler login. Specifies the login of the user who labeled the label."""
         return self.geometry.labeler_login
 
     @property
@@ -951,11 +990,11 @@ class LabelBase:
         However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
 
         :param data: Label in json format.
-        :type data: :class:`dict`
+        :type data: dict
         :param image_size: Image size in pixels (height, width).
         :type image_size: List[int]
-        :return: Json data with coordinates converted to pixel coordinate system.
-        :rtype: :class:`dict`
+        :returns: Json data with coordinates converted to pixel coordinate system.
+        :rtype: dict
         """
         data = deepcopy(data)  # Avoid modifying the original data
         if data[LabelJsonFields.GEOMETRY_TYPE] == Rectangle.geometry_name():
@@ -974,9 +1013,9 @@ class LabelBase:
         However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
 
         :param data: Label in json format.
-        :type data: :class:`dict`
-        :return: Json data with coordinates converted to subpixel coordinate system.
-        :rtype: :class:`dict`
+        :type data: dict
+        :returns: Json data with coordinates converted to subpixel coordinate system.
+        :rtype: dict
         """
         data = deepcopy(data)  # Avoid modifying the original data
         if data[LabelJsonFields.GEOMETRY_TYPE] == Rectangle.geometry_name():
@@ -993,8 +1032,8 @@ class LabelBase:
     #     which means that the coordinates of the geometry can have decimal values representing fractions of a pixel.
     #     However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
 
-    #     :return: New instance of Label with subpixel precision geometry
-    #     :rtype: :class:`Label<LabelBase>`
+    #     :returns: New instance of Label with subpixel precision geometry
+    #     :rtype: :class:`~supervisely.annotation.label.LabelBase`
     #     """
     #     new_geometry = self.geometry._to_subpixel_coordinate_system()
     #     label = self.clone(geometry=new_geometry)
@@ -1002,6 +1041,9 @@ class LabelBase:
 
 
 class Label(LabelBase):
+    """
+    Supervisely Label. Contains geometry and tags for the single object on the image.
+    """
     def _validate_geometry_type(self):
         """
         Checks geometry type for correctness
@@ -1016,6 +1058,9 @@ class Label(LabelBase):
 
 
 class PixelwiseScoresLabel(LabelBase):
+    """
+    Label with pixelwise scores.
+    """
     def _validate_geometry_type(self):
         if type(self._geometry) is not MultichannelBitmap:
             raise RuntimeError(

@@ -25,12 +25,17 @@ from supervisely.project.project_settings import LabelingInterface
 
 
 class PascalVOCConverter(ImageConverter):
+    """Converter for Pascal VOC datasets (XML bboxes + optional segmentation/instance masks)."""
+
     class Item(ImageConverter.Item):
+        """Pascal VOC image item extended with segmentation/instance mask paths when present."""
+
         def __init__(
             self,
             *args,
             **kwargs,
         ):
+            """See :class:`~supervisely.convert.image.image_converter.ImageConverter.Item` for params."""
             super().__init__(*args, **kwargs)
             self._segm_path = None
             self._inst_path = None
@@ -58,6 +63,7 @@ class PascalVOCConverter(ImageConverter):
         upload_as_links: bool,
         remote_files_map: Optional[Dict[str, str]] = None,
     ):
+        """See :class:`~supervisely.convert.base_converter.BaseConverter` for params."""
         super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
 
         self.color2class_name: Optional[Dict[str, str]] = None

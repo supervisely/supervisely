@@ -27,6 +27,8 @@ from supervisely.sly_logger import logger
 
 
 class MaskTracking(BaseTracking):
+    """Video tracking for mask/polygon geometries; uses model to propagate segmentation across frames."""
+
     def _deserialize_geometry(self, data: dict):
         geometry_type_str = data["type"]
         geometry_json = data["data"]

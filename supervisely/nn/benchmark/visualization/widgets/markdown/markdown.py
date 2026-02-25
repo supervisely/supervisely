@@ -5,12 +5,18 @@ from supervisely.nn.benchmark.visualization.widgets.widget import BaseWidget
 
 
 class MarkdownWidget(BaseWidget):
+    """Benchmark report widget that renders Markdown text from a data file."""
+
     def __init__(
         self,
         name: str,
         title: str,
         text: str = None,
     ) -> None:
+        """:param name: Widget name.
+        :param title: Display title.
+        :param text: Markdown content.
+        """
         super().__init__(name, title)
         self.text = text
         self.data_source = f"/data/{self.name}_{self.id}.md"

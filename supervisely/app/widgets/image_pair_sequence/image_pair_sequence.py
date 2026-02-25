@@ -11,6 +11,8 @@ from supervisely.app.fastapi.offline import get_offline_session_files_path
 
 
 class ImagePairSequence(Widget):
+    """Gallery of left/right image pairs from Team Files with slider to browse pairs and sync view."""
+
     def __init__(
         self,
         opacity: Optional[float] = 0.4,
@@ -19,8 +21,18 @@ class ImagePairSequence(Widget):
         slider_title: Optional[str] = "pairs",
         widget_id=None,
     ):
-        """NOTE: The `path` argument can be either the path from the local `static_dir` or the URL to the image."""
-
+        """
+        :param opacity: Opacity of annotation overlays (0-1).
+        :type opacity: float, optional
+        :param enable_zoom: If True, enable zoom.
+        :type enable_zoom: bool, optional
+        :param sync_views: If True, sync views.
+        :type sync_views: bool, optional
+        :param slider_title: Title of the slider.
+        :type slider_title: str, optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         self._api = sly.Api.from_env()
         self._team_id = sly.env.team_id()
 
@@ -158,7 +170,7 @@ class ImagePairSequence(Widget):
             parsed_path = parse_url(path)
             if parsed_path.scheme not in (None, "http", "https"):
                 raise ValueError(f"Invalid path or url to image: {path}")
-            
+
     def _prepare_annotations(self, anns):
         new_anns = []
         for ann in anns:

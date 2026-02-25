@@ -1,5 +1,5 @@
 # coding: utf-8
-"""list/create supervisely workspaces"""
+"""List and manage Supervisely workspaces."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from supervisely.api.module_api import ApiField, ModuleApi, UpdateableModule
 
 
 class WorkspaceInfo(NamedTuple):
-    """ """
+    """NamedTuple describing a workspace returned by the API."""
 
     id: int
     name: str
@@ -20,47 +20,41 @@ class WorkspaceInfo(NamedTuple):
 
 
 class WorkspaceApi(ModuleApi, UpdateableModule):
-    """
-    API for working with Workspace. :class:`WorkspaceApi<WorkspaceApi>` object is immutable.
+    """API for working with workspaces."""
 
-    :param api: API connection to the server.
-    :type api: Api
-    :Usage example:
+    def __init__(self, api):
+        """
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
+        :type api: :class:`~supervisely.api.api.Api`
 
-     .. code-block:: python
+        :Usage Example:
 
-        import os
-        from dotenv import load_dotenv
+            .. code-block:: python
 
-        import supervisely as sly
-
-        # Load secrets and create API object from .env file (recommended)
-        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-        if sly.is_development():
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-        api = sly.Api.from_env()
-
-        # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
-
-        workspace_info = api.workspace.get_info_by_id(workspace_id) # api usage example
-    """
+                import supervisely as sly
+                api = sly.Api.from_env()
+                workspace_info = api.workspace.get_info_by_id(workspace_id)
+        """
+        ModuleApi.__init__(self, api)
+        UpdateableModule.__init__(self, api)
 
     @staticmethod
     def info_sequence():
         """
-        NamedTuple WorkspaceInfo containing information about Workspace.
+        Sequence of fields that are returned by the API to represent WorkspaceInfo.
 
-        :Example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            WorkspaceInfo(id=15,
-                          name='Cars',
-                          description='Workspace contains Project with annotated Cars',
-                          team_id=8,
-                          created_at='2020-04-15T10:50:41.926Z',
-                          updated_at='2020-04-15T10:50:41.926Z')
+                WorkspaceInfo(
+                    id=15,
+                    name='Cars',
+                    description='Workspace contains Project with annotated Cars',
+                    team_id=8,
+                    created_at='2020-04-15T10:50:41.926Z',
+                    updated_at='2020-04-15T10:50:41.926Z'
+                )
         """
         return [
             ApiField.ID,
@@ -74,69 +68,72 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
     @staticmethod
     def info_tuple_name():
         """
-        NamedTuple name - **WorkspaceInfo**.
+        Name of the tuple that represents WorkspaceInfo.
         """
         return "WorkspaceInfo"
-
-    def __init__(self, api):
-        ModuleApi.__init__(self, api)
-        UpdateableModule.__init__(self, api)
 
     def get_list(
         self, team_id: int, filters: Optional[List[Dict[str, str]]] = None
     ) -> List[WorkspaceInfo]:
         """
-        List of Workspaces in the given Team.
+        List of Workspaces in the given Team on the Supervisely instance.
 
         :param team_id: Team ID in which the Workspaces are located.
         :type team_id: int
         :param filters: List of params to sort output Workspaces.
-        :type filters: List[dict], optional
-        :return: List of all Workspaces with information for the given Team. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[WorkspaceInfo]`
-        :Usage example:
+        :type filters: List[Dict[str, str]], optional
+        :returns: List of all Workspaces with information for the given Team.
+        :rtype: List[:class:`~supervisely.api.workspace_api.WorkspaceInfo`]
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            workspace_infos = api.workspace.get_list(8)
-            print(workspace_infos)
-            # Output: [
-            # WorkspaceInfo(id=15,
-            #               name='Cars',
-            #               description='',
-            #               team_id=8,
-            #               created_at='2020-04-15T10:50:41.926Z',
-            #               updated_at='2020-04-15T10:50:41.926Z'),
-            # WorkspaceInfo(id=18,
-            #               name='Heart',
-            #               description='',
-            #               team_id=8,
-            #               created_at='2020-05-20T15:01:54.172Z',
-            #               updated_at='2020-05-20T15:01:54.172Z'),
-            # WorkspaceInfo(id=20,
-            #               name='PCD',
-            #               description='',
-            #               team_id=8,
-            #               created_at='2020-06-24T11:51:11.336Z',
-            #               updated_at='2020-06-24T11:51:11.336Z')
-            # ]
+                import supervisely as sly
 
-            # Filtered Workspace list
-            workspace_infos = api.workspace.get_list(8, filters=[{ 'field': 'name', 'operator': '=', 'value': 'Heart'}])
-            print(workspace_infos)
-            # Output: [WorkspaceInfo(id=18,
-            #                       name='Heart',
-            #                       description='',
-            #                       team_id=8,
-            #                       created_at='2020-05-20T15:01:54.172Z',
-            #                       updated_at='2020-05-20T15:01:54.172Z')
-            # ]
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                workspace_infos = api.workspace.get_list(8)
+                print(workspace_infos)
+                # Output: [
+                # WorkspaceInfo(id=15,
+                #               name='Cars',
+                #               description='',
+                #               team_id=8,
+                #               created_at='2020-04-15T10:50:41.926Z',
+                #               updated_at='2020-04-15T10:50:41.926Z'),
+                # WorkspaceInfo(id=18,
+                #               name='Heart',
+                #               description='',
+                #               team_id=8,
+                #               created_at='2020-05-20T15:01:54.172Z',
+                #               updated_at='2020-05-20T15:01:54.172Z'),
+                # WorkspaceInfo(id=20,
+                #               name='PCD',
+                #               description='',
+                #               team_id=8,
+                #               created_at='2020-06-24T11:51:11.336Z',
+                #               updated_at='2020-06-24T11:51:11.336Z')
+                # ]
+
+                # Filtered Workspace list
+                workspace_infos = api.workspace.get_list(8, filters=[{ 'field': 'name', 'operator': '=', 'value': 'Heart'}])
+                print(workspace_infos)
+                # Output: [WorkspaceInfo(id=18,
+                #                       name='Heart',
+                #                       description='',
+                #                       team_id=8,
+                #                       created_at='2020-05-20T15:01:54.172Z',
+                #                       updated_at='2020-05-20T15:01:54.172Z')
+                # ]
         """
         return self.get_list_all_pages(
             "workspaces.list",
@@ -145,30 +142,37 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
 
     def get_info_by_id(self, id: int, raise_error: Optional[bool] = False) -> WorkspaceInfo:
         """
-        Get Workspace information by ID.
+        Get Workspace information by Workspace ID.
 
         :param id: Workspace ID in Supervisely.
         :type id: int
-        :return: Information about Workspace. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`WorkspaceInfo`
-        :Usage example:
+        :returns: Information about Workspace.
+        :rtype: :class:`~supervisely.api.workspace_api.WorkspaceInfo`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            workspace_info = api.workspace.get_info_by_id(58)
-            print(workspace_info)
-            # Output: WorkspaceInfo(id=58,
-            #                       name='Test',
-            #                       description='',
-            #                       team_id=8,
-            #                       created_at='2020-11-09T18:21:08.202Z',
-            #                       updated_at='2020-11-09T18:21:08.202Z')
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                workspace_info = api.workspace.get_info_by_id(58)
+                print(workspace_info)
+                # Output: WorkspaceInfo(id=58,
+                #                       name='Test',
+                #                       description='',
+                #                       team_id=8,
+                #                       created_at='2020-11-09T18:21:08.202Z',
+                #                       updated_at='2020-11-09T18:21:08.202Z')
         """
         info = self._get_info_by_id(id, "workspaces.info")
         if info is None and raise_error is True:
@@ -183,7 +187,7 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
         change_name_if_conflict: Optional[bool] = False,
     ) -> WorkspaceInfo:
         """
-        Create Workspace with given name in the given Team.
+        Create a new Workspace with the given name in the given Team.
 
         :param team_id: Team ID in Supervisely where Workspace will be created.
         :type team_id: int
@@ -193,26 +197,33 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
         :type description: str, optional
         :param change_name_if_conflict: Checks if given name already exists and adds suffix to the end of the name.
         :type change_name_if_conflict: bool, optional
-        :return: Information about Workspace. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`WorkspaceInfo`
-        :Usage example:
+        :returns: Information about Workspace.
+        :rtype: :class:`~supervisely.api.workspace_api.WorkspaceInfo`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            new_workspace = api.workspace.create(8, "Vehicle Detection")
-            print(new_workspace)
-            # Output: WorkspaceInfo(id=274,
-            #                       name='Vehicle Detection"',
-            #                       description='',
-            #                       team_id=8,
-            #                       created_at='2021-03-11T12:24:21.773Z',
-            #                       updated_at='2021-03-11T12:24:21.773Z')
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                new_workspace = api.workspace.create(8, "Vehicle Detection")
+                print(new_workspace)
+                # Output: WorkspaceInfo(id=274,
+                #                       name='Vehicle Detection"',
+                #                       description='',
+                #                       team_id=8,
+                #                       created_at='2021-03-11T12:24:21.773Z',
+                #                       updated_at='2021-03-11T12:24:21.773Z')
         """
         effective_name = self._get_effective_new_name(
             parent_id=team_id,
@@ -240,23 +251,30 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
 
     def change_visibility(self, id: int, visible: bool):
         """
-        Change Workspace visibility.
+        Change Workspace visibility by Workspace ID.
 
         :param id: Workspace ID.
         :type id: int
         :param visible: Visibility status.
         :type visible: bool
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            api.workspace.change_visibility(58, False)
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                api.workspace.change_visibility(58, False)
         """
 
         response = self._api.post(

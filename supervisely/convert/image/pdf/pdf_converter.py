@@ -15,6 +15,7 @@ from supervisely.io.json import load_json_file
 
 
 class PDFConverter(ImageConverter):
+    """Imports PDF files by rendering each page as an image and uploading to Supervisely image project."""
 
     def __str__(self):
         return AvailableImageConverters.PDF

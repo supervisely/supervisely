@@ -7,57 +7,14 @@ from supervisely.app.widgets import Widget
 
 
 class Dropdown(Widget):
-    """Dropdown is a widget in Supervisely that allows for selecting action from dropdown menu on the UI.
-
-    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/selection/dropdown>`_
-        (including screenshots and examples).
-
-    :param items: List of items in the dropdown menu
-    :type items: Optional[List[Dropdown.Item]]
-    :param header: Dropdown header text
-    :type header: Optional[str]
-    :param trigger: Dropdown trigger type, one of: hover, click
-    :type trigger: Optional[Literal["hover", "click"]]
-    :param menu_align: Dropdown menu alignment, one of: start, end
-    :type menu_align: Optional[Literal["start", "end"]]
-    :param hide_on_click: If True, dropdown menu will be hidden after click
-    :type hide_on_click: Optional[bool]
-    :param widget_id: An identifier of the widget.
-    :type widget_id: str, optional
-
-    :Usage example:
-    .. code-block:: python
-
-        from supervisely.app.widgets import Dropdown
-
-        dropdown = Dropdown(
-            items=[
-                Dropdown.Item(text="Item 1", command="item1"),
-                Dropdown.Item(text="Item 2", command="item2"),
-                Dropdown.Item(text="Item 3", command="item3"),
-            ],
-            header="Dropdown List",
-            trigger="click",
-            menu_align="end",
-            hide_on_click=True,
-        )
-    """
+    """Dropdown menu for selecting an action."""
 
     class Routes:
+        """Route name constants for this widget."""
         VALUE_CHANGED = "value_changed"
 
     class Item:
-        """Represents an item in the dropdown menu.
-
-        :param text: Item text
-        :type text: Optional[str]
-        :param disabled: If True, item will be disabled
-        :type disabled: Optional[bool]
-        :param divided: If True, item will be divided from the next one
-        :type divided: Optional[bool]
-        :param command: Item command
-        :type command: Optional[Union[str, int]]
-        """
+        """Single dropdown menu item."""
 
         def __init__(
             self,
@@ -66,6 +23,16 @@ class Dropdown(Widget):
             divided: Optional[bool] = False,
             command: Optional[Union[str, int]] = None,
         ) -> Dropdown.Item:
+            """
+            :param text: Item label.
+            :type text: Optional[str]
+            :param disabled: Disable item.
+            :type disabled: Optional[bool]
+            :param divided: Show divider after item.
+            :type divided: Optional[bool]
+            :param command: Value emitted on click.
+            :type command: Optional[Union[str, int]]
+            """
             self.text = text
             self.disabled = disabled
             self.divided = divided
@@ -80,7 +47,7 @@ class Dropdown(Widget):
                 - divided: If True, item will be divided from the next one
                 - command: Item command
 
-            :return: Dictionary with item data
+            :returns: Dictionary with item data
             :rtype: Dict[str, Union[str, bool, int]]
             """
             return {
@@ -99,6 +66,27 @@ class Dropdown(Widget):
         hide_on_click: Optional[bool] = True,
         widget_id: Optional[str] = None,
     ):
+        """
+        :param items: List of Dropdown.Item.
+        :type items: Optional[List[Dropdown.Item]]
+        :param header: Header text.
+        :type header: Optional[str]
+        :param trigger: Dropdown trigger type, one of: hover, click.
+        :type trigger: Optional[Literal["hover", "click"]]
+        :param menu_align: Dropdown menu alignment, one of: start, end.
+        :type menu_align: Optional[Literal["start", "end"]]
+        :param hide_on_click: If True, dropdown menu will be hidden after click.
+        :type hide_on_click: Optional[bool]
+        :param widget_id: Unique widget identifier.
+        :type widget_id: Optional[str]
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import Dropdown
+                dd = Dropdown(items=[Dropdown.Item("Opt 1", command="a")], header="Options")
+        """
         self._items = items
         self._header = header
         self._trigger = trigger
@@ -122,7 +110,7 @@ class Dropdown(Widget):
             - hideOnClick: If True, dropdown menu will be hidden after click
             - header: Dropdown header text
 
-        :return: Dictionary with widget data
+        :returns: Dictionary with widget data
         :rtype: Dict[str, Union[str, Any]]
         """
         return {
@@ -139,7 +127,7 @@ class Dropdown(Widget):
         Dictionary contains the following fields:
             - clickedValue: current clicked value
 
-        :return: Dictionary with widget state
+        :returns: Dictionary with widget state
         :rtype: Dict[str, str]
         """
         return {"clickedValue": self._clicked_value}
@@ -147,7 +135,7 @@ class Dropdown(Widget):
     def get_value(self) -> str:
         """Returns current clicked value.
 
-        :return: current clicked value
+        :returns: current clicked value
         :rtype: str
         """
         return StateJson()[self.widget_id]["clickedValue"]
@@ -165,8 +153,8 @@ class Dropdown(Widget):
     def get_items(self) -> List[Dropdown.Item]:
         """Returns list of items in the dropdown menu.
 
-        :return: list of items in the dropdown menu
-        :rtype: List[Dropdown.Item]
+        :returns: list of items in the dropdown menu
+        :rtype: List[:class:`~supervisely.app.widgets.dropdown.dropdown.Dropdown.Item`]
         """
         return DataJson()[self.widget_id]["items"]
 
@@ -176,7 +164,7 @@ class Dropdown(Widget):
         To add items to the dropdown menu, use :meth:`add_items` instead.
 
         :param value: list of items in the dropdown menu
-        :type value: List[Dropdown.Item]
+        :type value: List[:class:`~supervisely.app.widgets.dropdown.dropdown.Dropdown.Item`]
         """
         if not all(isinstance(item, Dropdown.Item) for item in value):
             raise TypeError("Items must be a list of Dropdown.Item")
@@ -190,7 +178,7 @@ class Dropdown(Widget):
         To overwrite all existing items, use :meth:`set_items` instead.
 
         :param value: list of items in the dropdown menu
-        :type value: List[Dropdown.Item]
+        :type value: List[:class:`~supervisely.app.widgets.dropdown.dropdown.Dropdown.Item`]
         """
         self._items.extend(value)
         DataJson()[self.widget_id]["items"] = self._set_items()
@@ -199,7 +187,7 @@ class Dropdown(Widget):
     def get_header_text(self) -> str:
         """Returns dropdown header text.
 
-        :return: dropdown header text
+        :returns: dropdown header text
         :rtype: str
         """
         return DataJson()[self.widget_id]["header"]
@@ -221,7 +209,7 @@ class Dropdown(Widget):
 
         :param func: function to be called when the value is changed
         :type func: Callable[[str], Any]
-        :return: decorated function
+        :returns: decorated function
         :rtype: Callable[[], None]
         """
         route_path = self.get_route_path(Dropdown.Routes.VALUE_CHANGED)

@@ -4,6 +4,8 @@ from typing import Optional
 
 
 class Icons(Widget):
+    """Widget that displays an icon (Material Design or custom image) with optional color and background."""
+
     def __init__(
         self,
         class_name: Optional[str] = None,
@@ -13,6 +15,20 @@ class Icons(Widget):
         image_url: Optional[str] = None,
         widget_id: Optional[str] = None,
     ):
+        """
+        :param class_name: CSS class for icon (e.g. Material Design: "zmdi zmdi-folder").
+        :type class_name: str, optional
+        :param color: Icon color (hex or CSS color).
+        :type color: str, optional
+        :param bg_color: Background color for icon.
+        :type bg_color: str, optional
+        :param rounded: If True, use rounded background.
+        :type rounded: bool, optional
+        :param image_url: Custom image URL instead of icon class.
+        :type image_url: str, optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         self._class_name = class_name
         self._color = color
         self._bg_color = bg_color

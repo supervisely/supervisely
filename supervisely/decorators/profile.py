@@ -1,3 +1,5 @@
+"""Profile decorators for Supervisely."""
+
 import functools
 import time
 

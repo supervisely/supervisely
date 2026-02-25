@@ -8,7 +8,11 @@ except ImportError:
 
 
 class TimePicker(Widget):
+    """Time picker widget for selecting a time-of-day string in ``hh:mm`` format."""
+
     class Routes:
+        """Callback route names used by the widget frontend to notify Python."""
+
         VALUE_CHANGED = "value_changed"
 
     def __init__(
@@ -24,6 +28,28 @@ class TimePicker(Widget):
         clearable: bool = True,
         widget_id: str = None,
     ):
+        """
+        :param value: Initial value in "hh:mm" format.
+        :type value: str, optional
+        :param start: Start time for picker list.
+        :type start: str, optional
+        :param step: Step between options (e.g. "00:15").
+        :type step: str, optional
+        :param end: End time for picker list.
+        :type end: str, optional
+        :param placeholder: Placeholder when empty.
+        :type placeholder: str, optional
+        :param size: Size: "large", "small", or "mini".
+        :type size: Literal["large", "small", "mini"], optional
+        :param readonly: If True, read-only.
+        :type readonly: bool, optional
+        :param editable: If True, editable.
+        :type editable: bool, optional
+        :param clearable: If True, can clear value.
+        :type clearable: bool, optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         self._validate_value(value)
         self._value = value
         self._start = start

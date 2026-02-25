@@ -119,9 +119,13 @@ except ImportError:
 
 @dataclass
 class AutoRestartInfo:
+    """Parsed autorestart information returned by the deployment endpoint (used to detect deploy param changes)."""
+
     deploy_params: dict
 
     class Fields:
+        """JSON field names used to store autorestart info in API payloads."""
+
         AUTO_RESTART_INFO = "autoRestartInfo"
         DEPLOY_PARAMS = "deployParams"
 
@@ -145,6 +149,8 @@ class AutoRestartInfo:
 
 
 class Inference:
+    """Base inference app/server implementation used by framework-specific inference integrations."""
+
     FRAMEWORK_NAME: str = None
     """Name of framework to register models in Supervisely"""
     MODELS: str = None
@@ -156,6 +162,7 @@ class Inference:
     INFERENCE_SETTINGS: str = None
     """Path to file with custom inference settings"""
     DEFAULT_IOU_MERGE_THRESHOLD: float = 0.9
+    """Default IOU merge threshold for inference"""
 
     def __init__(
         self,
@@ -171,7 +178,26 @@ class Inference:
         device: Optional[str] = None,
         runtime: Optional[str] = None,
     ):
-
+        """
+        :param model_dir: Path to model directory.
+        :type model_dir: str
+        :param custom_inference_settings: Dict or path to .yml with inference settings.
+        :type custom_inference_settings: Dict[str, Any] or str
+        :param sliding_window_mode: 'basic', 'advanced', or 'none'.
+        :type sliding_window_mode: Literal["basic", "advanced", "none"]
+        :param use_gui: Enable GUI.
+        :type use_gui: bool
+        :param multithread_inference: Allow multi-threaded inference.
+        :type multithread_inference: bool
+        :param use_serving_gui_template: Use serving GUI template.
+        :type use_serving_gui_template: bool
+        :param model: Deploy model name.
+        :type model: str
+        :param device: Deploy device.
+        :type device: str
+        :param runtime: Deploy runtime.
+        :type runtime: str
+        """
         self.pretrained_models = self._load_models_json_file(self.MODELS) if self.MODELS else None
         self._args, self._is_cli_deploy = self._parse_cli_deploy_args()
         if model_dir is None:
@@ -1223,20 +1249,20 @@ class Inference:
         :type: device: str
         :param: kwargs: additional parameters will be passed to load_model method.
         :type: kwargs: dict
-        :return: None
+        :returns: None
         :rtype: None
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            model_files = {
-                "checkpoint": "supervisely_integration/serve/best.pth",
-                "config": "supervisely_integration/serve/model_config.yml",
-            }
-            model_meta = sly.json.load_json_file("model_meta.json")
+                model_files = {
+                    "checkpoint": "supervisely_integration/serve/best.pth",
+                    "config": "supervisely_integration/serve/model_config.yml",
+                }
+                model_meta = sly.json.load_json_file("model_meta.json")
 
-            model.load_custom_checkpoint(model_files, model_meta)
+                model.load_custom_checkpoint(model_files, model_meta)
         """
 
         checkpoint = model_files.get("checkpoint")
@@ -1745,15 +1771,15 @@ class Inference:
         :type: source: Union[str, int, np.ndarray, List[str], List[int], List[np.ndarray]]
         :param: settings: inference settings
         :type: settings: dict
-        :return: annotation or list of annotations
-        :rtype: Union[Annotation, List[Annotation]]
+        :returns: annotation or list of annotations
+        :rtype: Union[:class:`~supervisely.annotation.annotation.Annotation`, List[:class:`~supervisely.annotation.annotation.Annotation`]]
 
         :Usage Example:
 
             .. code-block:: python
 
-            image_path = "/root/projects/demo/img/sample.jpg"
-            ann = model.inference(image_path)
+                image_path = "/root/projects/demo/img/sample.jpg"
+                ann = model.inference(image_path)
         """
         input_is_list = True
         if not isinstance(source, list):
@@ -1931,7 +1957,7 @@ class Inference:
         :param images_np: list of numpy arrays in RGB format
         :param settings: inference settings
 
-        :return: tuple of annotation and benchmark dict with speedtest results in milliseconds.
+        :returns: tuple of annotation and benchmark dict with speedtest results in milliseconds.
             The benchmark dict should contain the following keys (all values in milliseconds):
             - preprocess: time of preprocessing (e.g. image loading, resizing, etc.)
             - inference: time of inference. Consider to include not only the time of the model forward pass, but also
@@ -4761,13 +4787,14 @@ def _filter_duplicated_predictions_from_ann_cpu(
     Filter out predicted labels whose bboxes have IoU > iou_threshold with any GT label.
     Uses Shapely for geometric operations.
 
-    Args:
-        pred_ann: Predicted annotation object
-        gt_ann: Ground truth annotation object
-        iou_threshold: IoU threshold for filtering
-
-    Returns:
-        New annotation with filtered labels
+    :param pred_ann: Predicted annotation object
+    :type pred_ann: :class:`~supervisely.annotation.annotation.Annotation`
+    :param gt_ann: Ground truth annotation object
+    :type gt_ann: :class:`~supervisely.annotation.annotation.Annotation`
+    :param iou_threshold: IoU threshold for filtering
+    :type iou_threshold: float
+    :returns: New annotation with filtered labels
+    :rtype: :class:`~supervisely.annotation.annotation.Annotation`
     """
     if not iou_threshold:
         return pred_ann
@@ -4832,16 +4859,16 @@ def _filter_duplicated_predictions_from_ann(
     to the specified threshold with any ground truth annotation. This is useful for identifying
     new objects that aren't already annotated in the ground truth.
 
-    :param gt_ann: Annotation object containing ground truth labels
-    :type gt_ann: Annotation
-    :param pred_ann: Annotation object containing prediction labels to be filtered
-    :type pred_ann: Annotation
+    :param gt_ann: :class:`~supervisely.annotation.annotation.Annotation` object containing ground truth labels
+    :type gt_ann: :class:`~supervisely.annotation.annotation.Annotation`
+    :param pred_ann: :class:`~supervisely.annotation.annotation.Annotation` object containing prediction labels to be filtered
+    :type pred_ann: :class:`~supervisely.annotation.annotation.Annotation`
     :param iou_threshold:   IoU threshold (0.0-1.0). Predictions with IoU >= threshold with any
                             ground truth box of the same class will be removed
     :type iou_threshold: float
-    :return: A new annotation object containing only predictions that don't significantly
+    :returns: A new annotation object containing only predictions that don't significantly
                 overlap with ground truth annotations
-    :rtype: Annotation
+    :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
 
     Notes:
@@ -4908,9 +4935,9 @@ def _exclude_duplicated_predictions(
     - Filters out predictions that have an IoU greater than or equal to the specified threshold with any GT object
 
     :param api: Supervisely API object
-    :type api: Api
-    :param pred_anns: List of Annotation objects containing predictions
-    :type pred_anns: List[Annotation]
+    :type api: :class:`~supervisely.api.api.Api`
+    :param pred_anns: List of annotation objects containing predictions
+    :type pred_anns: List[:class:`~supervisely.annotation.annotation.Annotation`]
     :param dataset_id: ID of the dataset containing the images
     :type dataset_id: int
     :param gt_image_ids: List of image IDs to filter predictions. All images should belong to the same dataset
@@ -4918,10 +4945,10 @@ def _exclude_duplicated_predictions(
     :param iou: IoU threshold (0.0-1.0). Predictions with IoU >= threshold with any
                     ground truth box of the same class will be removed. None if no filtering is needed
     :type iou: Optional[float]
-    :param meta: ProjectMeta object
-    :type meta: Optional[ProjectMeta]
-    :return: List of Annotation objects containing filtered predictions
-    :rtype: List[Annotation]
+    :param meta: Project meta
+    :type meta: Optional[:class:`~supervisely.project.project_meta.ProjectMeta`]
+    :returns: List of annotation objects containing filtered predictions
+    :rtype: List[:class:`~supervisely.annotation.annotation.Annotation`]
 
     Notes:
     ------
@@ -5003,16 +5030,17 @@ def _create_notify_after_complete_decorator(
         If an argument can be both positional and keyword,
         it is preferable to declare both 'arg_pos' and 'arg_key'
     :type arg_key: Optional[str]
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        @_create_notify_after_complete_decorator("Print arg1: %s", arg_pos=0)
-        def wrapped_function(arg1, kwarg1)
-            return
+        .. code-block:: python
 
-        wrapped_function("pos_arg", kwarg1="key_arg")
-        # Info    2023.07.04 11:37:59     Print arg1: pos_arg
+            @_create_notify_after_complete_decorator("Print arg1: %s", arg_pos=0)
+            def wrapped_function(arg1, kwarg1)
+                return
+
+            wrapped_function("pos_arg", kwarg1="key_arg")
+            # Info    2023.07.04 11:37:59     Print arg1: pos_arg
     """
 
     def decorator(func):
@@ -5426,6 +5454,8 @@ def update_classes(api: Api, ann: Annotation, meta: ProjectMeta, project_id: int
 
 
 class Timer:
+    """Context manager for measuring elapsed time (milliseconds)."""
+
     def __enter__(self):
         self.start = time.time()
         return self
@@ -5439,7 +5469,13 @@ class Timer:
 
 
 class TempImageWriter:
+    """Write temporary images into a per-instance temp directory and clean it up when done."""
+
     def __init__(self, format: str = "png"):
+        """
+        :param format: Image format (e.g. 'png').
+        :type format: str
+        """
         self.format = format
         self.temp_dir = os.path.join(get_data_dir(), rand_str(10))
         sly_fs.mkdir(self.temp_dir)

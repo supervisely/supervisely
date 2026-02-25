@@ -32,12 +32,22 @@ from supervisely.nn.utils import ModelSource, RuntimeType, _get_model_name
 
 
 class ServingGUITemplate(ServingGUI):
+    """Serving GUI with experiment selector, pretrained models, external model support; extends ServingGUI."""
+
     def __init__(
         self,
         framework_name: str,
         models: Optional[list] = None,
         app_options: Optional[str] = None,
     ):
+        """
+        :param framework_name: Framework display name.
+        :type framework_name: str
+        :param models: Optional model list.
+        :type models: List[str]
+        :param app_options: Optional app options JSON.
+        :type app_options: Dict[str, Any]
+        """
         if not isinstance(framework_name, str):
             raise ValueError("'framework_name' must be a string")
         super().__init__()

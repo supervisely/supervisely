@@ -1,4 +1,5 @@
 # coding: utf-8
+"""Work with volume annotations via the Supervisely API."""
 
 import asyncio
 import os
@@ -36,34 +37,22 @@ from supervisely.volume_annotation.volume_object_collection import (
 
 
 class VolumeAnnotationAPI(EntityAnnotationAPI):
-    """
-    :class:`VolumeAnnotation<supervisely.volume_annotation.volume_annotation.VolumeAnnotation>` for a single volume. :class:`VolumeAnnotationAPI<VolumeAnnotationAPI>` object is immutable.
+    """API for working with volume annotations."""
 
-    :param api: API connection to the server.
-    :type api: Api
-    :Usage example:
+    def __init__(self, api):
+        """
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
+        :type api: :class:`~supervisely.api.api.Api`
 
-     .. code-block:: python
+        :Usage Example:
 
-        import supervisely as sly
+            .. code-block:: python
 
-        import os
-        from dotenv import load_dotenv
-
-        import supervisely as sly
-
-        # Load secrets and create API object from .env file (recommended)
-        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-        if sly.is_development():
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-        api = sly.Api.from_env()
-
-        # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
-
-        volume_id = 19581134
-        ann_info = api.volume.annotation.download(volume_id)
-    """
+                import supervisely as sly
+                api = sly.Api.from_env()
+                ann_info = api.volume.annotation.download(volume_id)
+        """
+        super().__init__(api)
 
     _method_download_bulk = "volumes.annotations.bulk.info"
     _entity_ids_str = ApiField.VOLUME_IDS
@@ -73,57 +62,62 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         Download information about VolumeAnnotation by volume ID from API.
         :param volume_id: Volume ID in Supervisely.
         :type volume_id: int
-        :return: Information about VolumeAnnotation in json format
-        :rtype: :class:`dict`
-        :Usage example:
+        :returns: Information about VolumeAnnotation in json format
+        :rtype: dict
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            from pprint import pprint
+                import os
+                from dotenv import load_dotenv
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            volume_id = 19581134
-            ann_info = api.volume.annotation.download(volume_id)
-            print(ann_info)
-            # Output:
-            # {
-            #     'createdAt': '2023-03-29T12:30:37.078Z',
-            #     'datasetId': 61803,
-            #     'description': '',
-            #     'objects': [],
-            #     'planes': [],
-            #     'spatialFigures': [],
-            #     'tags': [{'createdAt': '2023-04-03T13:21:53.368Z',
-            #             'id': 12259702,
-            #             'labelerLogin': 'almaz',
-            #             'name': 'info',
-            #             'tagId': 385328,
-            #             'updatedAt': '2023-04-03T13:21:53.368Z',
-            #             'value': 'age 31'}],
-            #     'updatedAt': '2023-03-29T12:30:37.078Z',
-            #     'volumeId': 19581134,
-            #     'volumeMeta': {
-            #             'ACS': 'RAS',
-            #             'IJK2WorldMatrix': [0.7617, 0, 0,
-            #                                 -194.2384, 0, 0.76171,
-            #                                 0, -217.5384, 0,
-            #                                 0, 2.5, -347.75,
-            #                                 0, 0, 0, 1],
-            #             'channelsCount': 1,
-            #             'dimensionsIJK': {'x': 512, 'y': 512, 'z': 139},
-            #             'intensity': {'max': 3071, 'min': -3024},
-            #             'rescaleIntercept': 0,
-            #             'rescaleSlope': 1,
-            #             'windowCenter': 23.5,
-            #             'windowWidth': 6095
-            # },
-            #     'volumeName': 'CTChest.nrrd'
-            # }
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                volume_id = 19581134
+                ann_info = api.volume.annotation.download(volume_id)
+                print(ann_info)
+                # Output:
+                # {
+                #     'createdAt': '2023-03-29T12:30:37.078Z',
+                #     'datasetId': 61803,
+                #     'description': '',
+                #     'objects': [],
+                #     'planes': [],
+                #     'spatialFigures': [],
+                #     'tags': [{'createdAt': '2023-04-03T13:21:53.368Z',
+                #             'id': 12259702,
+                #             'labelerLogin': 'almaz',
+                #             'name': 'info',
+                #             'tagId': 385328,
+                #             'updatedAt': '2023-04-03T13:21:53.368Z',
+                #             'value': 'age 31'}],
+                #     'updatedAt': '2023-03-29T12:30:37.078Z',
+                #     'volumeId': 19581134,
+                #     'volumeMeta': {
+                #             'ACS': 'RAS',
+                #             'IJK2WorldMatrix': [0.7617, 0, 0,
+                #                                 -194.2384, 0, 0.76171,
+                #                                 0, -217.5384, 0,
+                #                                 0, 2.5, -347.75,
+                #                                 0, 0, 0, 1],
+                #             'channelsCount': 1,
+                #             'dimensionsIJK': {'x': 512, 'y': 512, 'z': 139},
+                #             'intensity': {'max': 3071, 'min': -3024},
+                #             'rescaleIntercept': 0,
+                #             'rescaleSlope': 1,
+                #             'windowCenter': 23.5,
+                #             'windowWidth': 6095
+                # },
+                #     'volumeName': 'CTChest.nrrd'
+                # }
         """
 
         volume_info = self._api.volume.get_info_by_id(volume_id)
@@ -138,24 +132,30 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         :param volume_id: Volume ID in Supervisely.
         :type volume_id: int
         :param ann: VolumeAnnotation object.
-        :type ann: VolumeAnnotation
+        :type ann: :class:`~supervisely.volume_annotation.volume_annotation.VolumeAnnotation`
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
-        :return: None
-        :rtype: :class:`NoneType`
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
+        :returns: None
+        :rtype: None
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            volume_id = 19581134
-            api.volume.annotation.append(volume_id, volume_ann)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                volume_id = 19581134
+                api.volume.annotation.append(volume_id, volume_ann)
         """
         if ann.spatial_figures:
             figures = ann.figures + ann.spatial_figures
@@ -193,30 +193,36 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         :type volume_ids: List[int]
         :param ann_paths: Paths to annotation files
         :type ann_paths: List[str]
-        :param project_meta: Input :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>` for VolumeAnnotations
-        :type project_meta: ProjectMeta
+        :param project_meta: Input ProjectMeta for VolumeAnnotations
+        :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
         :param interpolation_dirs: Paths to dirs with interpolation STL files
         :type interpolation_dirs: List[str], optional
         :param progress_cb: Function for tracking download progress
         :type progress_cb: tqdm or callable, optional
         :param mask_dirs: Paths to dirs with Mask3D geometries
         :type mask_dirs: List[str], optional
-        :return: None
-        :rtype: :class:`NoneType`
+        :returns: None
+        :rtype: None
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            volume_ids = [121236918, 121236919]
-            ann_pathes = ['/home/admin/work/supervisely/example/ann1.json', '/home/admin/work/supervisely/example/ann2.json']
-            api.volume.annotation.upload_paths(volume_ids, ann_pathes, meta)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                volume_ids = [121236918, 121236919]
+                ann_pathes = ['/home/admin/work/supervisely/example/ann1.json', '/home/admin/work/supervisely/example/ann2.json']
+                api.volume.annotation.upload_paths(volume_ids, ann_pathes, meta)
         """
 
         # use in updating project metadata
@@ -298,16 +304,16 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
 
         :param transfer_type: Defines the process during which the update will be performed ("download" or "upload").
         :type transfer_type: Literal["download", "upload"]
-        :param ann: The VolumeAnnotation object to update.
-        :type ann: VolumeAnnotation
-        :param project_meta: The ProjectMeta object.
-        :type project_meta: ProjectMeta
+        :param ann: VolumeAnnotation object to update.
+        :type ann: :class:`~supervisely.volume_annotation.volume_annotation.VolumeAnnotation`
+        :param project_meta: ProjectMeta object.
+        :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
         :param nrrd_paths: Paths to the converted NRRD files from STL.
         :type nrrd_paths: List[str]
         :param project_id: The Project ID to update metadata on upload (optional).
         :type project_id: int, optional
-        :return: A tuple containing the updated ann and project_meta objects.
-        :rtype: Tuple[VolumeAnnotation, ProjectMeta]
+        :returns: A tuple containing the updated ann and project_meta objects.
+        :rtype: Tuple[:class:`~supervisely.volume_annotation.volume_annotation.VolumeAnnotation`, :class:`~supervisely.project.project_meta.ProjectMeta`]
         """
 
         for nrrd_path in nrrd_paths:
@@ -381,34 +387,35 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         :param volume_id: The ID of the volume.
         :type volume_id: int
         :param objects: New volume objects.
-        :type objects: List[VolumeObject] or VolumeObjectCollection
-        :param key_id_map: The KeyIdMap (optional).
-        :type key_id_map: KeyIdMap, optional
-        :return: None
+        :type objects: List[:class:`~supervisely.volume_annotation.volume_object.VolumeObject`] or :class:`~supervisely.volume_annotation.volume_object_collection.VolumeObjectCollection`
+        :param key_id_map: KeyIdMap object (optional).
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
+        :returns: None
         :rtype: NoneType
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import os
-            from dotenv import load_dotenv
+                import os
+                from dotenv import load_dotenv
 
-            import supervisely as sly
+                import supervisely as sly
 
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            if sly.is_development():
-               load_dotenv(os.path.expanduser("~/supervisely.env"))
-            api = sly.Api.from_env()
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            volume_id = 151344
-            volume_info = api.volume.get_info_by_id(volume_id)
-            mask_3d_path = "data/mask/lung.nrrd"
-            lung_obj_class = sly.ObjClass("lung", sly.Mask3D)
-            lung = sly.VolumeObject(lung_obj_class, mask_3d=mask_3d_path)
-            objects = sly.VolumeObjectCollection([lung])
-            api.volume.annotation.append_objects(volume_info.id, objects)
+                api = sly.Api.from_env()
+
+                volume_id = 151344
+                volume_info = api.volume.get_info_by_id(volume_id)
+                mask_3d_path = "data/mask/lung.nrrd"
+                lung_obj_class = sly.ObjClass("lung", sly.Mask3D)
+                lung = sly.VolumeObject(lung_obj_class, mask_3d=mask_3d_path)
+                objects = sly.VolumeObjectCollection([lung])
+                api.volume.annotation.append_objects(volume_info.id, objects)
         """
 
         sf_figures = []
@@ -431,8 +438,8 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         :param interpolation_dir: Path to dir with interpolation STL files
         :type interpolation_dir: str
         :param ann: VolumeAnnotation object
-        :type ann: VolumeAnnotation
-        :return: Paths to STL and NRRD files used in the conversion process
+        :type ann: :class:`~supervisely.volume_annotation.volume_annotation.VolumeAnnotation`
+        :returns: Paths to STL and NRRD files used in the conversion process
         :rtype: Tuple[List, List, List]
         """
         stl_paths_in = list_files(interpolation_dir, valid_extensions=[".stl"])
@@ -478,22 +485,28 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         :type integer_coords: bool, optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
-        :return: Information about VolumeAnnotation in json format
-        :rtype: :class:`dict`
+        :returns: Information about VolumeAnnotation in json format
+        :rtype: dict
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            volume_id = 198702499
-            loop = sly.utils.get_or_create_event_loop()
-            ann_info = loop.run_until_complete(api.volume.annotation.download_async(volume_id))
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                volume_id = 198702499
+                loop = sly.utils.get_or_create_event_loop()
+                ann_info = loop.run_until_complete(api.volume.annotation.download_async(volume_id))
         """
         return await self.download_bulk_async(
             volume_ids=[volume_id],
@@ -520,22 +533,28 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         :type integer_coords: bool, optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
-        :return: Information about VolumeAnnotations in json format
-        :rtype: :class:`list`
+        :returns: Information about VolumeAnnotations in json format
+        :rtype: list
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            volume_ids = [198702499, 198702500, 198702501]
-            loop = sly.utils.get_or_create_event_loop()
-            ann_infos = loop.run_until_complete(api.volume.annotation.download_bulk_async(volume_ids))
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                volume_ids = [198702499, 198702500, 198702501]
+                loop = sly.utils.get_or_create_event_loop()
+                ann_infos = loop.run_until_complete(api.volume.annotation.download_bulk_async(volume_ids))
         """
         if semaphore is None:
             semaphore = self._api.get_default_semaphore()

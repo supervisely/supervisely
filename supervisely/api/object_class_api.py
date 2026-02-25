@@ -1,5 +1,5 @@
 # coding: utf-8
-"""get list of :class:`objects<supervisely.annotation.obj_class.ObjClass>` from supervisely project"""
+"""Get a list of :class:`~supervisely.annotation.obj_class.ObjClass` from a Supervisely project."""
 
 from __future__ import annotations
 
@@ -10,50 +10,42 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
 class ObjectClassApi(ModuleApi):
-    """
-    API for working with :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>`. :class:`ObjectClassApi<ObjectClassApi>` object is immutable.
+    """API for working with ObjClass objects."""
 
-    :param api: API connection to the server.
-    :type api: Api
-    :Usage example:
+    def __init__(self, api):
+        """
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
+        :type api: :class:`~supervisely.api.api.Api`
 
-     .. code-block:: python
+        :Usage Example:
 
-        import os
-        from dotenv import load_dotenv
+            .. code-block:: python
 
-        import supervisely as sly
-
-        # Load secrets and create API object from .env file (recommended)
-        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-        if sly.is_development():
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-        api = sly.Api.from_env()
-
-        # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
-
-        project_id = 1951
-        obj_class_infos = api.object_class.get_list(project_id)
-    """
+                import supervisely as sly
+                api = sly.Api.from_env()
+                obj_class_infos = api.object_class.get_list(project_id)
+        """
+        super().__init__(api)
 
     @staticmethod
     def info_sequence():
         """
-        NamedTuple ObjectClassInfo information about ObjectClass.
+        Sequence of fields that are returned by the API to represent ObjectClassInfo.
 
-        :Example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            ObjectClassInfo(id=22309,
-                            name='lemon',
-                            description='',
-                            shape='bitmap',
-                            color='#51C6AA',
-                            settings={},
-                            created_at='2021-03-02T10:04:33.973Z',
-                            updated_at='2021-03-11T09:37:07.111Z')
+                ObjectClassInfo(
+                    id=22309,
+                    name="lemon",
+                    description="",
+                    shape="bitmap",
+                    color="#51C6AA",
+                    settings={},
+                    created_at="2021-03-02T10:04:33.973Z",
+                    updated_at="2021-03-11T09:37:07.111Z",
+                )
         """
         return [
             ApiField.ID,
@@ -69,7 +61,7 @@ class ObjectClassApi(ModuleApi):
     @staticmethod
     def info_tuple_name():
         """
-        NamedTuple name - **ObjectClassInfo**.
+        Name of the tuple that represents ObjectClassInfo.
         """
         return "ObjectClassInfo"
 
@@ -77,59 +69,66 @@ class ObjectClassApi(ModuleApi):
         self, project_id: int, filters: Optional[List[Dict[str, str]]] = None
     ) -> List[NamedTuple]:
         """
-        List of ObjClasses in the given Project.
+        List of Object Classes in the given Project.
 
         :param project_id: Project ID in which the ObjClasses are located.
         :type project_id: int
         :param filters: List of params to sort output ObjClasses.
         :type filters: List[dict], optional
-        :return: List of ObjClasses with information from the given Project. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[NamedTuple]`
-        :Usage example:
+        :returns: List of ObjClasses with information from the given Project.
+        :rtype: List[NamedTuple]
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            project_id = 1951
-            obj_class_infos = api.object_class.get_list(project_id)
-            print(obj_class_infos)
-            # Output: [ObjectClassInfo(id=22309,
-            #                          name='lemon',
-            #                          description='',
-            #                          shape='bitmap',
-            #                          color='#51C6AA',
-            #                          settings={},
-            #                          created_at='2021-03-02T10:04:33.973Z',
-            #                          updated_at='2021-03-11T09:37:07.111Z'),
-            #  ObjectClassInfo(id=22310,
-            #                  name='kiwi',
-            #                  description='',
-            #                  shape='bitmap',
-            #                  color='#FF0000',
-            #                  settings={},
-            #                  created_at='2021-03-02T10:04:33.973Z',
-            #                  updated_at='2021-03-11T09:37:07.111Z')
-            # ]
+                import supervisely as sly
 
-            obj_class_list = api.object_class.get_list(1951, filters=[{'field': 'name', 'operator': '=', 'value': 'lemon' }])
-            print(obj_class_list)
-            # Output: [
-            #     [
-            #         22309,
-            #         "lemon",
-            #         "",
-            #         "bitmap",
-            #         "#51C6AA",
-            #         {},
-            #         "2021-03-02T10:04:33.973Z",
-            #         "2021-03-11T09:37:07.111Z"
-            #     ]
-            # ]
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                project_id = 1951
+                obj_class_infos = api.object_class.get_list(project_id)
+                print(obj_class_infos)
+                # Output: [ObjectClassInfo(id=22309,
+                #                          name='lemon',
+                #                          description='',
+                #                          shape='bitmap',
+                #                          color='#51C6AA',
+                #                          settings={},
+                #                          created_at='2021-03-02T10:04:33.973Z',
+                #                          updated_at='2021-03-11T09:37:07.111Z'),
+                #  ObjectClassInfo(id=22310,
+                #                  name='kiwi',
+                #                  description='',
+                #                  shape='bitmap',
+                #                  color='#FF0000',
+                #                  settings={},
+                #                  created_at='2021-03-02T10:04:33.973Z',
+                #                  updated_at='2021-03-11T09:37:07.111Z')
+                # ]
+
+                obj_class_list = api.object_class.get_list(1951, filters=[{'field': 'name', 'operator': '=', 'value': 'lemon' }])
+                print(obj_class_list)
+                # Output: [
+                #     [
+                #         22309,
+                #         "lemon",
+                #         "",
+                #         "bitmap",
+                #         "#51C6AA",
+                #         {},
+                #         "2021-03-02T10:04:33.973Z",
+                #         "2021-03-11T09:37:07.111Z"
+                #     ]
+                # ]
         """
         return self.get_list_all_pages(
             "advanced.object_classes.list",
@@ -140,21 +139,28 @@ class ObjectClassApi(ModuleApi):
         """
         :param project_id: Project ID in which the ObjClasses are located.
         :type project_id: int
-        :return: Dictionary Key ID Map {'key': id}
-        :rtype: :class:`KeyIdMap<supervisely.video_annotation.key_id_map.KeyIdMap>`
-        :Usage example:
+        :returns: Dictionary mapping object class name to object class ID.
+        :rtype: Dict[str, int]
 
-        .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            obj_class_map = api.object_class.get_name_to_id_map(1951)
-            print(obj_class_map)
-            # Output: {'lemon': 22309, 'kiwi': 22310, 'cucumber': 22379}
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                obj_class_map = api.object_class.get_name_to_id_map(1951)
+                print(obj_class_map)
+                # Output: {'lemon': 22309, 'kiwi': 22310, 'cucumber': 22379}
         """
         objects_infos = self.get_list(project_id)
         return {object_info.name: object_info.id for object_info in objects_infos}
@@ -233,27 +239,35 @@ class ObjectClassApi(ModuleApi):
                         Do not pass "availableShapes" that does not contain the current shape.
         :type settings: dict, optional
 
-        :return: Updated class information
-        :rtype: :class:`ObjectClassInfo<ObjectClassInfo>`
+        :returns: Updated class information
+        :rtype: :class:`~supervisely.api.object_class_api.ObjectClassInfo`
 
-        :Usage example:
+        :Usage Example:
 
-        .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            obj_class_info = api.object_class.update(
-                id=22309,
-                shape='any',
-                settings={
-                    "availableShapes": [
-                        "bitmap",
-                        "polygon",
-                    ],
-                },
-            )
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                obj_class_info = api.object_class.update(
+                    id=22309,
+                    shape='any',
+                    settings={
+                        "availableShapes": [
+                            "bitmap",
+                            "polygon",
+                        ],
+                    },
+                )
         """
         if all(arg is None for arg in [name, description, hotkey, shape, color, settings]):
             raise ValueError(

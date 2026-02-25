@@ -76,6 +76,8 @@ _USER_API_CACHE = TTLCache(maxsize=500, ttl=60 * 15)  # Cache up to 15 minutes
 
 
 class ReadyzFilter(logging.Filter):
+    """Adjust log level for readiness/liveness probe requests."""
+
     def filter(self, record):
         if "/readyz" in record.getMessage() or "/livez" in record.getMessage():
             record.levelno = logging.DEBUG  # Change log level to DEBUG
@@ -84,6 +86,8 @@ class ReadyzFilter(logging.Filter):
 
 
 class ResponseTimeFilter(logging.Filter):
+    """Attach response time from context to uvicorn access logs (if available)."""
+
     def filter(self, record):
         # Check if this is an HTTP access log line by logger name
         if getattr(record, "name", "") == "uvicorn.access":
@@ -105,6 +109,8 @@ _init_uvicorn_logger()
 
 
 class PrefixRouter(APIRouter):
+    """APIRouter that prefixes routes with instance path prefix (except health endpoints)."""
+
     def add_api_route(self, path, *args, **kwargs):
         allowed_paths = ["/livez", "/is_alive", "/is_running", "/readyz", "/is_ready"]
         if path in allowed_paths:
@@ -115,8 +121,13 @@ class PrefixRouter(APIRouter):
 
 
 class Event:
+    """Typed payload classes for common Supervisely UI/tool events delivered via webhooks."""
+
     class Brush:
+        """Brush tool events (e.g. bitmap brush interactions)."""
+
         class DrawLeftMouseReleased:
+            """Payload for bitmap brush change event (left mouse released)."""
             endpoint = "/tools_bitmap_brush_figure_changed"
 
             def __init__(
@@ -139,6 +150,42 @@ class Event:
                 geometry_type: str,
                 mask: np.ndarray,
             ):
+                """
+                :param team_id: Team ID.
+                :type team_id: int
+                :param workspace_id: Workspace ID.
+                :type workspace_id: int
+                :param project_id: Project ID.
+                :type project_id: int
+                :param dataset_id: Dataset ID.
+                :type dataset_id: int
+                :param image_id: Image ID.
+                :type image_id: int
+                :param label_id: Figure/label ID.
+                :type label_id: int
+                :param object_class_id: Object class ID.
+                :type object_class_id: int
+                :param object_class_title: Object class name.
+                :type object_class_title: str
+                :param tool_class_id: Tool class ID.
+                :type tool_class_id: int
+                :param session_id: Session ID.
+                :type session_id: int
+                :param tool: Tool identifier.
+                :type tool: str
+                :param user_id: User ID.
+                :type user_id: int
+                :param job_id: Job ID.
+                :type job_id: int
+                :param is_fill: If True, fill mode.
+                :type is_fill: bool
+                :param is_erase: If True, erase mode.
+                :type is_erase: bool
+                :param geometry_type: Geometry type string.
+                :type geometry_type: str
+                :param mask: Mask as numpy array.
+                :type mask: np.ndarray
+                """
                 self.dataset_id = dataset_id
                 self.team_id = team_id
                 self.workspace_id = workspace_id
@@ -203,7 +250,10 @@ class Event:
                 )
 
     class ManualSelected:
+        """Events for manual selection changes in labeling tools."""
+
         class VideoChanged:
+            """Payload for manual selection change event for videos."""
             endpoint = "/manual_selected_entity_changed"
 
             def __init__(
@@ -221,6 +271,32 @@ class Event:
                 user_id: int,
                 job_id: int,
             ):
+                """
+                :param dataset_id: Dataset ID.
+                :type dataset_id: int
+                :param team_id: Team ID.
+                :type team_id: int
+                :param workspace_id: Workspace ID.
+                :type workspace_id: int
+                :param project_id: Project ID.
+                :type project_id: int
+                :param figure_id: Figure ID.
+                :type figure_id: int
+                :param video_id: Video ID.
+                :type video_id: int
+                :param frame: Frame number.
+                :type frame: int
+                :param tool_class_id: Tool class ID.
+                :type tool_class_id: int
+                :param session_id: Session ID.
+                :type session_id: str
+                :param tool: Tool identifier.
+                :type tool: str
+                :param user_id: User ID.
+                :type user_id: int
+                :param job_id: Job ID.
+                :type job_id: int
+                """
                 self.dataset_id = dataset_id
                 self.team_id = team_id
                 self.workspace_id = workspace_id
@@ -252,6 +328,7 @@ class Event:
                 )
 
         class FigureChanged:
+            """Payload for manual selection change event for a figure."""
             endpoint = "/manual_selected_figure_changed"
 
             def __init__(
@@ -274,6 +351,42 @@ class Event:
                 job_id: int,
                 previous_figure: dict = None,
             ):
+                """
+                :param dataset_id: Dataset ID.
+                :type dataset_id: int
+                :param team_id: Team ID.
+                :type team_id: int
+                :param workspace_id: Workspace ID.
+                :type workspace_id: int
+                :param project_id: Project ID.
+                :type project_id: int
+                :param figure_id: Figure ID.
+                :type figure_id: int
+                :param figure_class_id: Figure class ID.
+                :type figure_class_id: int
+                :param figure_class_title: Figure class title.
+                :type figure_class_title: str
+                :param image_id: Image ID.
+                :type image_id: int
+                :param video_id: Video ID.
+                :type video_id: int
+                :param frame: Frame number.
+                :type frame: int
+                :param object_id: Object ID.
+                :type object_id: int
+                :param tool_class_id: Tool class ID.
+                :type tool_class_id: int
+                :param session_id: Session ID.
+                :type session_id: str
+                :param tool: Tool identifier.
+                :type tool: str
+                :param user_id: User ID.
+                :type user_id: int
+                :param job_id: Job ID.
+                :type job_id: int
+                :param previous_figure: Previous figure.
+                :type previous_figure: dict
+                """
                 self.dataset_id = dataset_id
                 self.team_id = team_id
                 self.workspace_id = workspace_id
@@ -337,6 +450,34 @@ class Event:
                 user_id: int,
                 job_id: int,
             ):
+                """
+                :param dataset_id: Dataset ID.
+                :type dataset_id: int
+                :param team_id: Team ID.
+                :type team_id: int
+                :param workspace_id: Workspace ID.
+                :type workspace_id: int
+                :param project_id: Project ID.
+                :type project_id: int
+                :param image_id: Image ID.
+                :type image_id: int
+                :param figure_id: Figure ID.
+                :type figure_id: int
+                :param figure_class_id: Figure class ID.
+                :type figure_class_id: int
+                :param figure_class_title: Figure class title.
+                :type figure_class_title: str
+                :param tool_class_id: Tool class ID.
+                :type tool_class_id: int
+                :param session_id: Session ID.
+                :type session_id: str
+                :param tool: Tool identifier.
+                :type tool: str
+                :param user_id: User ID.
+                :type user_id: int
+                :param job_id: Job ID.
+                :type job_id: int
+                """
                 self.dataset_id = dataset_id
                 self.team_id = team_id
                 self.workspace_id = workspace_id
@@ -370,6 +511,7 @@ class Event:
                 )
 
     class FigureCreated:
+        """Payload for a new figure creation event in labeling tools."""
         endpoint = "/figure_created"
 
         def __init__(
@@ -393,6 +535,44 @@ class Event:
             tool_state: dict,
             figure_state: dict,
         ):
+            """
+            :param dataset_id: Dataset ID.
+            :type dataset_id: int
+            :param team_id: Team ID.
+            :type team_id: int
+            :param workspace_id: Workspace ID.
+            :type workspace_id: int
+            :param project_id: Project ID.
+            :type project_id: int
+            :param figure_id: Figure ID.
+            :type figure_id: int
+            :param figure_class_id: Figure class ID.
+            :type figure_class_id: int
+            :param figure_class_title: Figure class title.
+            :type figure_class_title: str
+            :param image_id: Image ID.
+            :type image_id: int
+            :param video_id: Video ID.
+            :type video_id: int
+            :param frame: Frame number.
+            :type frame: int
+            :param object_id: Object ID.
+            :type object_id: int
+            :param tool_class_id: Tool class ID.
+            :type tool_class_id: int
+            :param session_id: Session ID.
+            :type session_id: str
+            :param tool: Tool identifier.
+            :type tool: str
+            :param user_id: User ID.
+            :type user_id: int
+            :param job_id: Job ID.
+            :type job_id: int
+            :param tool_state: Tool state.
+            :type tool_state: dict
+            :param figure_state: Figure state.
+            :type figure_state: dict
+            """
             self.dataset_id = dataset_id
             self.team_id = team_id
             self.workspace_id = workspace_id
@@ -436,8 +616,13 @@ class Event:
             )
 
     class Tools:
+        """Tool-specific events grouped by tool name."""
+
         class Rectangle:
+            """Events produced by the rectangle labeling tool (create/update rectangle figures)."""
+
             class FigureChanged:
+                """Payload for rectangle tool figure changed event."""
                 endpoint = "/tools_rectangle_figure_changed"
 
                 def __init__(
@@ -458,6 +643,38 @@ class Event:
                     tool_state: dict,
                     figure_state: dict,
                 ):
+                    """
+                    :param dataset_id: Dataset ID.
+                    :type dataset_id: int
+                    :param team_id: Team ID.
+                    :type team_id: int
+                    :param workspace_id: Workspace ID.
+                    :type workspace_id: int
+                    :param project_id: Project ID.
+                    :type project_id: int
+                    :param figure_id: Figure ID.
+                    :type figure_id: int
+                    :param figure_class_id: Figure class ID.
+                    :type figure_class_id: int
+                    :param figure_class_title: Figure class title.
+                    :type figure_class_title: str
+                    :param image_id: Image ID.
+                    :type image_id: int
+                    :param tool_class_id: Tool class ID.
+                    :type tool_class_id: int
+                    :param session_id: Session ID.
+                    :type session_id: str
+                    :param tool: Tool identifier.
+                    :type tool: str
+                    :param user_id: User ID.
+                    :type user_id: int
+                    :param job_id: Job ID.
+                    :type job_id: int
+                    :param tool_state: Tool state.
+                    :type tool_state: dict
+                    :param figure_state: Figure state.
+                    :type figure_state: dict
+                    """
                     self.dataset_id = dataset_id
                     self.team_id = team_id
                     self.workspace_id = workspace_id
@@ -495,7 +712,10 @@ class Event:
                     )
 
     class Entity:
+        """Events related to entity navigation (e.g. video frame changes)."""
+
         class FrameChanged:
+            """Payload for entity frame changed event."""
             endpoint = "/entity_frame_changed"
 
             def __init__(
@@ -516,6 +736,38 @@ class Event:
                 user_id: int,
                 job_id: int,
             ):
+                """
+                :param dataset_id: Dataset ID.
+                :type dataset_id: int
+                :param team_id: Team ID.
+                :type team_id: int
+                :param workspace_id: Workspace ID.
+                :type workspace_id: int
+                :param project_id: Project ID.
+                :type project_id: int
+                :param figure_id: Figure ID.
+                :type figure_id: int
+                :param figure_class_id: Figure class ID.
+                :type figure_class_id: int
+                :param figure_class_title: Figure class title.
+                :type figure_class_title: str
+                :param video_id: Video ID.
+                :type video_id: int
+                :param frame: Frame number.
+                :type frame: int
+                :param object_id: Object ID.
+                :type object_id: int
+                :param tool_class_id: Tool class ID.
+                :type tool_class_id: int
+                :param session_id: Session ID.
+                :type session_id: str
+                :param tool: Tool identifier.
+                :type tool: str
+                :param user_id: User ID.
+                :type user_id: int
+                :param job_id: Job ID.
+                :type job_id: int
+                """
                 self.dataset_id = dataset_id
                 self.team_id = team_id
                 self.workspace_id = workspace_id
@@ -553,7 +805,10 @@ class Event:
                 )
 
     class JobEntity:
+        """Events related to labeling job entities (e.g. status changes)."""
+
         class StatusChanged:
+            """Payload for job entity status change event."""
             endpoint = "/job_entity_status_changed"
 
             def __init__(
@@ -574,6 +829,38 @@ class Event:
                 job_id: int,
                 job_entity_status: str,
             ):
+                """
+                :param dataset_id: Dataset ID.
+                :type dataset_id: int
+                :param team_id: Team ID.
+                :type team_id: int
+                :param workspace_id: Workspace ID.
+                :type workspace_id: int
+                :param project_id: Project ID.
+                :type project_id: int
+                :param figure_id: Figure ID.
+                :type figure_id: int
+                :param figure_class_id: Figure class ID.
+                :type figure_class_id: int
+                :param figure_class_title: Figure class title.
+                :type figure_class_title: str
+                :param image_id: Image ID.
+                :type image_id: int
+                :param entity_id: Entity ID.
+                :type entity_id: int
+                :param tool_class_id: Tool class ID.
+                :type tool_class_id: int
+                :param session_id: Session ID.
+                :type session_id: str
+                :param tool: Tool identifier.
+                :type tool: str
+                :param user_id: User ID.
+                :type user_id: int
+                :param job_id: Job ID.
+                :type job_id: int
+                :param job_entity_status: Job entity status.
+                :type job_entity_status: str
+                """
                 self.dataset_id = dataset_id
                 self.team_id = team_id
                 self.workspace_id = workspace_id
@@ -940,6 +1227,8 @@ def _init(
 
 
 class _MainServer(metaclass=Singleton):
+    """Singleton wrapper around a FastAPI server instance used by the app runtime."""
+
     def __init__(self):
         self._server = FastAPI()
         self._server.router = PrefixRouter()
@@ -949,6 +1238,8 @@ class _MainServer(metaclass=Singleton):
 
 
 class Application(metaclass=Singleton):
+    """Supervisely application runtime built on top of FastAPI and widgets."""
+
     class StopException(Exception):
         """Raise to stop the function from running in app.handle_stop"""
 
@@ -967,10 +1258,9 @@ class Application(metaclass=Singleton):
         hide_health_check_logs: bool = True,  # whether to hide health check logs in info level
         health_check_endpoints: Optional[List[str]] = None,  # endpoints to check health of the app
     ):
-        """Initialize the Supervisely Application.
-
+        """
         :param layout: Main layout of the application.
-        :type layout: Widget
+        :type layout: :class:`~supervisely.app.widgets.widget.Widget`
         :param templates_dir: Directory with Jinja2 templates. It is preferred to use `layout` instead of `templates_dir`.
         :type templates_dir: str, optional
         :param static_dir: Directory with static files (e.g. CSS, JS), used for serving static content.
@@ -978,7 +1268,7 @@ class Application(metaclass=Singleton):
         :param hot_reload: Whether to enable hot reload during development (default is False).
         :type hot_reload: bool, optional
         :param session_info_extra_content: Additional content to be displayed in the session info area.
-        :type session_info_extra_content: Widget, optional
+        :type session_info_extra_content: :class:`~supervisely.app.widgets.widget.Widget`, optional
         :param session_info_solid: Whether to use solid background for the session info area.
         :type session_info_solid: bool, optional
         :param ready_check_function: Function to check if the app is ready for requests.
@@ -1161,7 +1451,7 @@ class Application(metaclass=Singleton):
         If set to `False` and shutdown request recieved (i.e. `app.is_stopped()` is `True`),
         the application will be terminated immediately, defaults to `True`
         :type graceful: bool
-        :return: context manager
+        :returns: context manager
         :rtype: _type_
         """
         self._graceful_stop_event = ThreadingEvent()
@@ -1174,25 +1464,25 @@ class Application(metaclass=Singleton):
         Supports both async and sync functions.
 
         :param event: event to register (e.g. `Event.Brush.LeftMouseReleased`)
-        :type event: Event
+        :type event: :class:`~supervisely.app.fastapi.subapp.Event`
         :param use_state: if set to True, data will be extracted from request.state.state,
             otherwise from request.state.context, defaults to False
         :type use_state: bool, optional
-        :return: decorator
+        :returns: decorator
         :rtype: Callable
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            app = sly.Application(layout=layout)
+                app = sly.Application(layout=layout)
 
-            @app.event(sly.Event.Brush.LeftMouseReleased)
-            def some_function(api: sly.Api, event: sly.Event.Brush.LeftMouseReleased):
-                # do something
-                pass
+                @app.event(sly.Event.Brush.LeftMouseReleased)
+                def some_function(api: sly.Api, event: sly.Event.Brush.LeftMouseReleased):
+                    # do something
+                    pass
         """
 
         def inner(func: Callable) -> Callable:
@@ -1226,7 +1516,13 @@ class Application(metaclass=Singleton):
         """Setup filter to hide health check logs for info level."""
 
         class HealthCheckFilter(logging.Filter):
+            """Hide health check requests from access logs in non-debug mode."""
+
             def __init__(self, app_instance):
+                """
+                :param app_instance: Application instance for debug/endpoints check.
+                :type app_instance: :class:`~supervisely.app.fastapi.subapp.Application`
+                """
                 super().__init__()
                 self.app: Application = app_instance
 
@@ -1291,7 +1587,7 @@ def call_on_autostart(
 
     :param default_func: default function to call if autostart is not enabled, defaults to None
     :type default_func: Optional[Callable], optional
-    :return: decorator
+    :returns: decorator
     :rtype: Callable
     """
     set_autostart_flag_from_state()

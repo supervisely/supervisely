@@ -3,6 +3,8 @@ from supervisely.nn.benchmark.visualization.widgets import ChartWidget, Markdown
 
 
 class IntersectionErrorOverUnion(BaseVisMetrics):
+    """IoU and error-over-union charts for segmentation model comparison."""
+
 
     @property
     def md(self) -> MarkdownWidget:

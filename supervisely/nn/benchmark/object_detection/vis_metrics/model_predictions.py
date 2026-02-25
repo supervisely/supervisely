@@ -8,6 +8,8 @@ from supervisely.nn.benchmark.visualization.widgets import MarkdownWidget, Table
 
 
 class ModelPredictions(DetectionVisMetric):
+    """Per-image prediction counts table for detection reports."""
+
     MARKDOWN = "model_predictions"
     TABLE = "model_predictions"
 

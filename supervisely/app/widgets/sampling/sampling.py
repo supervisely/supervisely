@@ -22,6 +22,8 @@ from supervisely.video.sampling import SamplingSettings, sample_video_project
 
 
 class Sampling(Widget):
+    """Widget for configuring and running video sampling: input/output projects, frame interval, copy annotations."""
+
     def __init__(
         self,
         project_id: int = None,
@@ -34,6 +36,26 @@ class Sampling(Widget):
         file_path: str = __file__,
         copy_annotations: bool = True,
     ):
+        """:param project_id: Input video project ID.
+        :type project_id: int, optional
+        :param input_selectable: If True, user can select input project.
+        :type input_selectable: bool
+        :param datasets_ids: Filter datasets to sample from.
+        :type datasets_ids: List[int], optional
+        :param output_project_id: Output project ID.
+        :type output_project_id: int, optional
+        :param output_project_selectable: If True, user can select output project.
+        :type output_project_selectable: bool
+        :param widgth: Width of selector widgets.
+        :type widgth: int
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        :param file_path: Widget file path.
+        :param copy_annotations: If True, copy annotations to output.
+        :type copy_annotations: bool
+
+        :raises ValueError: If input/output not selectable and IDs not provided.
+        """
         super().__init__(widget_id, file_path)
         if not input_selectable and project_id is None:
             raise ValueError(

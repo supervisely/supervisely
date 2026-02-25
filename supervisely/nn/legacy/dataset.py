@@ -15,7 +15,7 @@ def samples_by_tags(required_tags, project):
     Split samples from project by tags
     :param required_tags: list of tags names
     :param project: supervisely `Project` class object
-    :return:
+    :returns:
     """
     img_annotations_groups = defaultdict(list)
     for dataset in project:
@@ -33,12 +33,14 @@ def samples_by_tags(required_tags, project):
 def ensure_samples_nonempty(samples, tag_name, project_meta):
     """
 
-    Args:
-        samples: list of pairs (image path, annotation path).
-        tag_name: tag name for messages.
-        project_meta: input project meta object.
-    Returns: None
-
+    :param samples: list of pairs (image path, annotation path).
+    :type samples: list
+    :param tag_name: tag name for messages.
+    :type tag_name: str
+    :param project_meta: input project meta object.
+    :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
+    :returns: None
+    :rtype: None
     """
     if len(samples) < 1:
         raise RuntimeError('There are no annotations with tag "{}"'.format(tag_name))
@@ -52,7 +54,13 @@ def ensure_samples_nonempty(samples, tag_name, project_meta):
 
 
 class CorruptedSampleCatcher(object):
+    """Context helper that tolerates up to N corrupted samples before raising; tracks failed UIDs."""
+
     def __init__(self, allow_corrupted_cnt):
+        """
+        :param allow_corrupted_cnt: Max allowed corrupted samples before raising.
+        :type allow_corrupted_cnt: int
+        """
         self.fails_allowed = allow_corrupted_cnt
         self._failed_uids = set()
         self._lock = Lock()
@@ -82,6 +90,22 @@ class SlyDataset:
 
     def __init__(self, project_meta, samples, out_size, class_mapping, bkg_color, allow_corrupted_cnt=0,
                  catcher_retries=100):
+        """
+        :param project_meta: Project meta.
+        :type project_meta: ProjectMeta
+        :param samples: List of (img_path, ann_path).
+        :type samples: list
+        :param out_size: Output size (H, W).
+        :type out_size: tuple
+        :param class_mapping: Class name mapping.
+        :type class_mapping: dict
+        :param bkg_color: Background color (-1 for no background).
+        :type bkg_color: int
+        :param allow_corrupted_cnt: Max corrupted samples.
+        :type allow_corrupted_cnt: int
+        :param catcher_retries: Retries for catcher.
+        :type catcher_retries: int
+        """
         self._project_meta = project_meta
         self._samples = samples
         self._out_size = tuple(out_size)

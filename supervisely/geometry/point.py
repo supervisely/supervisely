@@ -23,34 +23,7 @@ from supervisely.geometry.rectangle import Rectangle
 
 
 class Point(Geometry):
-    """
-    Point geometry for a single :class:`Label<supervisely.annotation.label.Label>`. :class:`Point<Point>` object is immutable.
-
-    :param row: Position of Point on height.
-    :type row: int or float
-    :param col: Position of Point on width.
-    :type col: int or float
-    :param sly_id: Point ID in Supervisely server.
-    :type sly_id: int, optional
-    :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which Point belongs.
-    :type class_id: int, optional
-    :param labeler_login: Login of the user who created Point.
-    :type labeler_login: str, optional
-    :param updated_at: Date and Time when Point was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
-    :type updated_at: str, optional
-    :param created_at: Date and Time when Point was created. Date Format is the same as in "updated_at" parameter.
-    :type created_at: str, optional
-
-    :Usage example:
-
-     .. code-block:: python
-
-        import supervisely as sly
-
-        row = 100
-        col = 200
-        figure = sly.Point(row, col)
-    """
+    """2D point at (row, col). Immutable."""
 
     def __init__(
         self,
@@ -62,6 +35,34 @@ class Point(Geometry):
         updated_at: Optional[str] = None,
         created_at: Optional[str] = None,
     ):
+        """
+        Point geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.point.Point` object is immutable.
+
+        :param row: Position of Point on height.
+        :type row: int or float
+        :param col: Position of Point on width.
+        :type col: int or float
+        :param sly_id: Point ID in Supervisely server.
+        :type sly_id: int, optional
+        :param class_id: ID of ObjClass to which Point belongs.
+        :type class_id: int, optional
+        :param labeler_login: Login of the user who created Point.
+        :type labeler_login: str, optional
+        :param updated_at: Date and Time when Point was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
+        :type updated_at: str, optional
+        :param created_at: Date and Time when Point was created. Date Format is the same as in "updated_at" parameter.
+        :type created_at: str, optional
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                row = 100
+                col = 200
+                figure = sly.Point(row, col)
+        """
         super().__init__(
             sly_id=sly_id,
             class_id=class_id,
@@ -77,14 +78,15 @@ class Point(Geometry):
         """
         Position of Point height.
 
-        :return: Height of Point
-        :rtype: :class:`int`
-        :Usage example:
+        :returns: Height of Point.
+        :rtype: int
 
-         .. code-block:: python
+        :Usage Example:
 
-            print(figure.row)
-            # Output: 100
+            .. code-block:: python
+
+                print(figure.row)
+                # Output: 100
         """
         return self._row
 
@@ -93,14 +95,15 @@ class Point(Geometry):
         """
         Position of Point width.
 
-        :return: Width of Point
-        :rtype: :class:`int`
-        :Usage example:
+        :returns: Width of Point.
+        :rtype: int
 
-         .. code-block:: python
+        :Usage Example:
 
-            print(figure.col)
-            # Output: 200
+            .. code-block:: python
+
+                print(figure.col)
+                # Output: 200
         """
         return self._col
 
@@ -115,30 +118,31 @@ class Point(Geometry):
         created_at: Optional[str] = None,
     ) -> Point:
         """
-        Create Point from given :class:`PointLocation<supervisely.geometry.point_location.PointLocation>` object.
+        Create Point from given :class:`~supervisely.geometry.point_location.PointLocation` object.
 
-        :param pt: PointLocation object.
-        :type pt: PointLocation
+        :param pt: PointLocation to create Point from.
+        :type pt: :class:`~supervisely.geometry.point_location.PointLocation`
         :param sly_id: Point ID in Supervisely server.
         :type sly_id: int, optional
-        :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which Point belongs.
+        :param class_id: ID of ObjClass to which Point belongs.
         :type class_id: int, optional
-        :param labeler_login: Login of the user who created Point.
+        :param labeler_login: Login of the user who created :class:`~supervisely.geometry.point.Point`.
         :type labeler_login: str, optional
         :param updated_at: Date and Time when Point was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
         :type updated_at: str, optional
         :param created_at: Date and Time when Point was created. Date Format is the same as in "updated_at" parameter.
         :type created_at: str, optional
-        :return: Point object
-        :rtype: :class:`Point<Point>`
-        :Usage example:
+        :returns: :class:`~supervisely.geometry.point.Point` object
+        :rtype: :class:`~supervisely.geometry.point.Point`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            figure_loc = sly.PointLocation(100, 200)
-            figure = sly.Point.from_point_location(figure_loc)
+                import supervisely as sly
+
+                figure_loc = sly.PointLocation(100, 200)
+                figure = sly.Point.from_point_location(figure_loc)
         """
         return cls(
             row=pt.row,
@@ -153,15 +157,16 @@ class Point(Geometry):
     @property
     def point_location(self) -> PointLocation:
         """
-        Create PointLocation object from Point.
+        Get PointLocation from Point.
 
-        :return: PointLocation object
-        :rtype: :class:`PointLocation<supervisely.geometry.point_location.PointLocation>`
-        :Usage example:
+        :returns: PointLocation from Point.
+        :rtype: :class:`~supervisely.geometry.point_location.PointLocation`
 
-         .. code-block:: python
+        :Usage Example:
 
-            figure_loc = figure.point_location
+            .. code-block:: python
+
+                figure_loc = figure.point_location
         """
         return PointLocation(row=self.row, col=self.col)
 
@@ -174,18 +179,18 @@ class Point(Geometry):
         """
         Crops current Point.
 
-        :param rect: Rectangle object for crop.
-        :type rect: Rectangle
-        :return: List of Point objects
-        :rtype: :class:`List[Point]<Point>`
+        :param rect: Rectangle to crop Point from.
+        :type rect: :class:`~supervisely.geometry.rectangle.Rectangle`
+        :returns: List of Points from Rectangle.
+        :rtype: List[:class:`~supervisely.geometry.point.Point`]
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            crop_figures = figure.crop(sly.Rectangle(1, 1, 300, 350))
+                crop_figures = figure.crop(sly.Rectangle(1, 1, 300, 350))
         """
         return [self.clone()] if rect.contains_point_location(self.point_location) else []
 
@@ -193,22 +198,22 @@ class Point(Geometry):
         """
         Rotates current Point.
 
-        :param rotator: ImageRotator object for rotation.
-        :type rotator: ImageRotator
-        :return: Point object
-        :rtype: :class:`Point<Point>`
+        :param rotator: Class for object rotation.
+        :type rotator: :class:`~supervisely.geometry.image_rotator.ImageRotator`
+        :returns: Rotated Point.
+        :rtype: :class:`~supervisely.geometry.point.Point`
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
-            from supervisely.geometry.image_rotator import ImageRotator
+                import supervisely as sly
+                from supervisely.geometry.image_rotator import ImageRotator
 
-            # Remember that Point class object is immutable, and we need to assign new instance of Point to a new variable
-            height, width = 300, 400
-            rotator = ImageRotator((height, width), 25)
-            rotate_figure = figure.rotate(rotator)
+                # Remember that Point class object is immutable, and we need to assign new instance of Point to a new variable
+                height, width = 300, 400
+                rotator = ImageRotator((height, width), 25)
+                rotate_figure = figure.rotate(rotator)
         """
         return self.from_point_location(self.point_location.rotate(rotator))
 
@@ -216,21 +221,21 @@ class Point(Geometry):
         """
         Resizes current Point.
 
-        :param in_size: Input Input image size (height, width) to which belongs Point.
+        :param in_size: Input image size (height, width) to which belongs Point.
         :type in_size: Tuple[int, int]
         :param out_size: Desired output image size (height, width) to which belongs Point.
         :type out_size: Tuple[int, int]
-        :return: Point object
-        :rtype: :class:`Point<Point>`
+        :returns: Resized Point.
+        :rtype: :class:`~supervisely.geometry.point.Point`
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            # Remember that Point class object is immutable, and we need to assign new instance of Point to a new variable
-            in_height, in_width = 300, 400
-            out_height, out_width = 600, 800
-            resize_figure = figure.resize((in_height, in_width), (out_height, out_width))
+                # Remember that Point class object is immutable, and we need to assign new instance of Point to a new variable
+                in_height, in_width = 300, 400
+                out_height, out_width = 600, 800
+                resize_figure = figure.resize((in_height, in_width), (out_height, out_width))
         """
         return self.from_point_location(self.point_location.resize(in_size, out_size))
 
@@ -238,18 +243,18 @@ class Point(Geometry):
         """
         Flips current Point in horizontal.
 
-        :param img_size: Input image size (height, width) to which belongs Point object.
+        :param img_size: Input image size (height, width) to which belongs Point.
         :type img_size: Tuple[int, int]
-        :return: Point object
-        :rtype: :class:`Point<Point>`
+        :returns: Flipped Point.
+        :rtype: :class:`~supervisely.geometry.point.Point`
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            # Remember that Point class object is immutable, and we need to assign new instance of Point to a new variable
-            height, width = 300, 400
-            fliplr_figure = figure.fliplr((height, width))
+                # Remember that Point class object is immutable, and we need to assign new instance of Point to a new variable
+                height, width = 300, 400
+                fliplr_figure = figure.fliplr((height, width))
         """
         return self.from_point_location(self.point_location.fliplr(img_size))
 
@@ -257,18 +262,18 @@ class Point(Geometry):
         """
         Flips current Point in vertical.
 
-        :param img_size: Input image size (height, width) to which belongs Point object.
+        :param img_size: Input image size (height, width) to which belongs Point.
         :type img_size: Tuple[int, int]
-        :return: Point object
-        :rtype: :class:`Point<Point>`
+        :returns: Flipped Point.
+        :rtype: :class:`~supervisely.geometry.point.Point`
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            # Remember that Point class object is immutable, and we need to assign new instance of Point to a new variable
-            height, width = 300, 400
-            flipud_figure = figure.flipud((height, width))
+                # Remember that Point class object is immutable, and we need to assign new instance of Point to a new variable
+                height, width = 300, 400
+                flipud_figure = figure.flipud((height, width))
         """
         return self.from_point_location(self.point_location.flipud(img_size))
 
@@ -278,15 +283,15 @@ class Point(Geometry):
 
         :param factor: Scale parameter.
         :type factor: float
-        :return: Point object
-        :rtype: :class:`Point<Point>`
+        :returns: Scaled Point.
+        :rtype: :class:`~supervisely.geometry.point.Point`
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            # Remember that Point class object is immutable, and we need to assign new instance of Point to a new variable
-            scale_figure = figure.scale(0.75)
+                # Remember that Point class object is immutable, and we need to assign new instance of Point to a new variable
+                scale_figure = figure.scale(0.75)
         """
         return self.from_point_location(self.point_location.scale(factor))
 
@@ -298,15 +303,15 @@ class Point(Geometry):
         :type drow: int
         :param dcol: Vertical shift.
         :type dcol: int
-        :return: Point object
-        :rtype: :class:`Point<Point>`
+        :returns: Translated Point.
+        :rtype: :class:`~supervisely.geometry.point.Point`
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            # Remember that Point class object is immutable, and we need to assign new instance of Point to a new variable
-            translate_figure = figure.translate(150, 350)
+                # Remember that Point class object is immutable, and we need to assign new instance of Point to a new variable
+                translate_figure = figure.translate(150, 350)
         """
         return self.from_point_location(self.point_location.translate(drow, dcol))
 
@@ -324,15 +329,15 @@ class Point(Geometry):
         """
         Point area.
 
-        :return: Area of current Point object, always 0.0
-        :rtype: :class:`float`
+        :returns: Area of current Point, always 0.0
+        :rtype: float
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            print(figure.area)
-            # Output: 0.0
+                print(figure.area)
+                # Output: 0.0
         """
         return 0.0
 
@@ -340,14 +345,14 @@ class Point(Geometry):
         """
         Create Rectangle object from current Point.
 
-        :return: Rectangle object
-        :rtype: :class:`Rectangle<supervisely.geometry.rectangle.Rectangle>`
+        :returns: Rectangle from Point.
+        :rtype: :class:`~supervisely.geometry.rectangle.Rectangle`
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            rectangle = figure.to_bbox()
+                rectangle = figure.to_bbox()
         """
         return Rectangle(top=self.row, left=self.col, bottom=self.row, right=self.col)
 
@@ -355,22 +360,23 @@ class Point(Geometry):
         """
         Convert the Point to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
-        :return: Json format as a dict
-        :rtype: :class:`dict`
-        :Usage example:
+        :returns: Point in json format as a dict.
+        :rtype: dict
 
-         .. code-block:: python
+        :Usage Example:
 
-            figure_json = figure.to_json()
-            print(figure_json)
-            # Output: {
-            #    "points": {
-            #        "exterior": [
-            #            [200, 100]
-            #        ],
-            #        "interior": []
-            #    }
-            # }
+            .. code-block:: python
+
+                figure_json = figure.to_json()
+                print(figure_json)
+                # Output: {
+                #    "points": {
+                #        "exterior": [
+                #            [200, 100]
+                #        ],
+                #        "interior": []
+                #    }
+                # }
         """
         res = self.point_location.to_json()
         self._add_creation_info(res)
@@ -383,23 +389,22 @@ class Point(Geometry):
 
         :param data: Point in json format as a dict.
         :type data: dict
-        :return: Point object
-        :rtype: :class:`Point<Point>`
-        :Usage example:
+        :returns: Point from json.
+        :rtype: :class:`~supervisely.geometry.point.Point`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            figure_json = {
-                "points": {
-                    "exterior": [
-                        [200, 100]
-                    ],
-                    "interior": []
+                import supervisely as sly
+
+                figure_json = {
+                    "points": {
+                        "exterior": [[200, 100]],
+                        "interior": []
+                    }
                 }
-            }
-            figure = sly.Point.from_json(figure_json)
+                figure = sly.Point.from_json(figure_json)
         """
         labeler_login = data.get(LABELER_LOGIN, None)
         updated_at = data.get(UPDATED_AT, None)
@@ -417,7 +422,9 @@ class Point(Geometry):
 
     @classmethod
     def allowed_transforms(cls):
-        """ """
+        """
+        Returns the allowed transforms for the Point.
+        """
         from supervisely.geometry.any_geometry import AnyGeometry
 
         return [AnyGeometry]

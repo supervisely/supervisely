@@ -113,25 +113,22 @@ class AnnotationObject:
 
 
 class CamData:
-    """
-    This class handles camera sensor data from the nuScenes dataset, including coordinate system
-    transformations from lidar to camera space and extraction of camera calibration parameters.
-
-    :param nuscenes: The nuScenes dataset instance
-    :type nuscenes: NuScenes
-    :param sensor_name: The name of the camera sensor
-    :type sensor_name: str
-    :param sensor_token: The token identifying the specific sensor sample
-    :type sensor_token: str
-    :param cs_record: The calibrated sensor record for the lidar
-    :type cs_record: dict
-    :param ego_record: The ego pose record for the lidar
-    :type ego_record: dict
-    """
+    """Handles camera sensor data from nuScenes, including lidar-to-camera transformations."""
 
     def __init__(
         self, nuscenes, sensor_name: str, sensor_token: str, cs_record: dict, ego_record: dict
     ):
+        """:param nuscenes: The nuScenes dataset instance.
+        :type nuscenes: NuScenes
+        :param sensor_name: The name of the camera sensor.
+        :type sensor_name: str
+        :param sensor_token: The token identifying the specific sensor sample.
+        :type sensor_token: str
+        :param cs_record: The calibrated sensor record for the lidar.
+        :type cs_record: dict
+        :param ego_record: The ego pose record for the lidar.
+        :type ego_record: dict
+        """
         from nuscenes import NuScenes  # pylint: disable=import-error
         from nuscenes.utils.data_classes import (  # pylint: disable=import-error
             transform_matrix,
@@ -185,7 +182,7 @@ class CamData:
 
         :param timestamp: The timestamp associated with the image
         :type timestamp: str
-        :return: A tuple containing the image path and a dictionary with image metadata.
+        :returns: A tuple containing the image path and a dictionary with image metadata.
         :rtype: tuple
         """
         sensors_to_skip = ["_intrinsic", "_extrinsic", "_imsize"]
@@ -229,7 +226,7 @@ class Sample:
         :type nuscenes: NuScenes
         :param boxes: A list of boxes to generate ground truth for
         :type boxes: List
-        :return: A generator that yields tuples containing the ground truth box, name, and instance token.
+        :returns: A generator that yields tuples containing the ground truth box, name, and instance token.
         :rtype: generator
         """
         from nuscenes.utils.data_classes import Box  # pylint: disable=import-error
@@ -250,7 +247,7 @@ class Sample:
         """
         Converts a LiDAR point cloud file to the Supervisely format and saves it as a .pcd file.
 
-        :return: The file path of the saved .pcd file.
+        :returns: The file path of the saved .pcd file.
         :rtype: str
         """
         import open3d as o3d  # pylint: disable=import-error

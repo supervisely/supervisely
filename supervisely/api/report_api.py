@@ -11,7 +11,7 @@ from supervisely.collection.str_enum import StrEnum
 
 
 class NotificationType(StrEnum):
-    """ """
+    """Notification severity/type values used in report widgets."""
 
     INFO = "info"
     """"""
@@ -25,19 +25,19 @@ class NotificationType(StrEnum):
 
 # @TODO: standardise title/description/name and so on for everyone the same way
 class ReportApi(ModuleApiBase):
-    """
-    API for working with Reports. :class:`ReportApi<ReportApi>` object is immutable.
-
-    :param api: API connection to the server
-    :type api: Api
-    :Usage example:
-
-     .. code-block:: python
-
-        report = api.report
-    """
+    """API for working with Reports."""
 
     def __init__(self, api):
+        """
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
+        :type api: :class:`~supervisely.api.api.Api`
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                report = api.report
+        """
         ModuleApiBase.__init__(self, api)
 
     # https://developer.mozilla.org/en-US/docs/Web/CSS/grid-template
@@ -55,11 +55,8 @@ class ReportApi(ModuleApiBase):
         :type widgets:
         :param layout:
         :type layout:
-        :return:
+        :returns:
         :rtype:
-        :Usage example:
-
-         .. code-block: python
         """
         data = {
             ApiField.TEAM_ID: team_id,
@@ -127,7 +124,7 @@ class ReportApi(ModuleApiBase):
         :param id: Report ID.
         :type id: int
         :returns: Report URL
-        :rtype: :class:`str`
+        :rtype: str
         """
         return urllib.parse.urljoin(self._api.server_address, "reports/{}".format(id))
 
@@ -139,8 +136,8 @@ class ReportApi(ModuleApiBase):
         :type report_id: int
         :param widget_id: Widget ID.
         :type widget_id: int
-        :returns: Report Widget
-        :rtype:
+        :returns: Widget by report ID and widget ID.
+        :rtype: :class:`~supervisely.app.widgets.widget.Widget`
         """
         response = self._api.post(
             "reports.widgets.get", {"reportId": report_id, "widgetId": widget_id}
@@ -205,8 +202,8 @@ class ReportApi(ModuleApiBase):
         :param options:
         :type options:
 
-        :returns: Report Widget
-        :rtype:
+        :returns: Response JSON.
+        :rtype: dict
         """
         return self._change_widget(
             "reports.widgets.update",
@@ -250,8 +247,8 @@ class ReportApi(ModuleApiBase):
         :param options:
         :type options:
 
-        :returns: Report Widget
-        :rtype:
+        :returns: Response JSON.
+        :rtype: dict
         """
         return self._change_widget(
             "reports.widgets.rewrite",

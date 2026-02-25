@@ -15,7 +15,7 @@ def run_sync(coroutine):
     which can cause issues when using objects tied to a specific loop (e.g., asyncio.Semaphore).
 
     :param coroutine: coroutine to run
-    :return: result of coroutine
+    :returns: result of coroutine
     """
     try:
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:

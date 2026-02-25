@@ -6,89 +6,10 @@ from supervisely.app.widgets import Widget
 
 
 class ClassBalance(Widget):
-    """ClassBalance is a widget in Supervisely that allows for displaying input data classes balance on the UI.
-
-    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/compare-data/classbalance>`_
-        (including screenshots and examples).
-
-    :param segments: List of segments to be displayed in the widget.
-    :type segments: Optional[List[Dict]]
-    :param rows_data: List of rows to be displayed in the widget.
-    :type rows_data: Optional[List[Dict]]
-    :param slider_data: Dictionary of slider data to be displayed in the widget.
-    :type slider_data: Optional[Dict[str, List]]
-    :param max_value: Maximum value of the widget.
-    :type max_value: Optional[int]
-    :param max_height: Maximum height of the widget in pixels.
-    :type max_height: Optional[int]
-    :param rows_height: Height of the rows in pixels.
-    :type rows_height: Optional[int]
-    :param selectable: If True, the widget will be selectable.
-    :type selectable: Optional[bool]
-    :param collapsable: If True, the widget will be collapsable.
-    :type collapsable: Optional[bool]
-    :param clickable_name: If True, the widget will be clickable by name.
-    :type clickable_name: Optional[bool]
-    :param clickable_segment: If True, the widget will be clickable by segment.
-    :type clickable_segment: Optional[bool]
-    :param widget_id: Unique widget identifier.
-    :type widget_id: str
-
-    :Usage example:
-    .. code-block:: python
-
-        from supervisely.app.widgets import ClassBalance
-
-        max_value = 1000
-        segments = [
-            {"name": "train", "key": "train", "color": "#1892f8"},
-            {"name": "val", "key": "val", "color": "#25e298"},
-            {"name": "test", "key": "test", "color": "#fcaf33"},
-        ]
-
-        rows_data = [
-            {
-                "nameHtml": "<strong>black-pawn</strong>",
-                "name": "black-pawn",
-                "total": 1000,
-                "disabled": False,
-                "segments": {"train": 600, "val": 350, "test": 50},
-            },
-            {
-                "nameHtml": "<strong>white-pawn</strong>",
-                "name": "white-pawn",
-                "total": 700,
-                "disabled": False,
-                "segments": {"train": 400, "val": 250, "test": 50},
-            },
-        ]
-
-        slider_data = {
-            "black-pawn": [
-                {
-                    "moreExamples": ["https://www.w3schools.com/howto/img_nature.jpg"],
-                    "preview": "https://www.w3schools.com/howto/img_nature.jpg",
-                }
-            ],
-            "white-pawn": [
-                {
-                    "moreExamples": ["https://i.imgur.com/35pUPD2.jpg"],
-                    "preview": "https://i.imgur.com/35pUPD2.jpg",
-                }
-            ],
-        }
-
-        class_balance_1 = ClassBalance(
-            max_value=max_value,
-            segments=segments,
-            rows_data=rows_data,
-            slider_data=slider_data,
-            max_height=700,
-            collapsable=True,
-        )
-    """
+    """Visualizes class distribution / balance of input data."""
 
     class Routes:
+        """Callback route names used by the widget frontend to notify Python."""
         CLICK = "class_balance_clicked_cb"
 
     def __init__(
@@ -105,6 +26,39 @@ class ClassBalance(Widget):
         clickable_segment: Optional[bool] = False,
         widget_id: Optional[str] = None,
     ):
+        """
+        :param segments: List of segments (name, key, color).
+        :type segments: List[Dict]
+        :param rows_data: List of row dicts (name, total, segments).
+        :type rows_data: List[Dict]
+        :param slider_data: Per-class slider/preview data.
+        :type slider_data: Dict[str, List]
+        :param max_value: Max value for scale.
+        :type max_value: Optional[int]
+        :param max_height: Max height in pixels.
+        :type max_height: Optional[int]
+        :param rows_height: Row height in pixels.
+        :type rows_height: Optional[int]
+        :param selectable: Enable selection.
+        :type selectable: Optional[bool]
+        :param collapsable: Enable collapse.
+        :type collapsable: Optional[bool]
+        :param clickable_name: Enable name click.
+        :type clickable_name: Optional[bool]
+        :param clickable_segment: Enable segment click.
+        :type clickable_segment: Optional[bool]
+        :param widget_id: Unique widget identifier.
+        :type widget_id: Optional[str]
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import ClassBalance
+                segments = [{"name": "train", "key": "train", "color": "#1892f8"}]
+                rows_data = [{"name": "class1", "total": 100, "segments": {"train": 100}}]
+                cb = ClassBalance(segments=segments, rows_data=rows_data, collapsable=True)
+        """
         self._segments = segments
         self._rows_data = rows_data
         self._slider_data = slider_data
@@ -151,7 +105,7 @@ class ClassBalance(Widget):
                 - selectable: If True, the widget will be selectable.
                 - height: Height of the rows in pixels.
 
-        :return: Dictionary with widget data.
+        :returns: Dictionary with widget data.
         :rtype: Dict[str, Any]
         """
         return {
@@ -178,7 +132,7 @@ class ClassBalance(Widget):
             - selectedRows: List of selected rows.
             - clickedItem: Name of the clicked item.
 
-        :return: Dictionary with widget state.
+        :returns: Dictionary with widget state.
         :rtype: Dict[str, Any]
         """
         return {"selectedRows": [], "clickedItem": None}
@@ -187,7 +141,7 @@ class ClassBalance(Widget):
     def is_selectable(self) -> bool:
         """Returns True if the widget is selectable, False otherwise.
 
-        :return: True if the widget is selectable, False otherwise.
+        :returns: True if the widget is selectable, False otherwise.
         :rtype: bool
         """
         self._selectable = DataJson()[self.widget_id]["options"]["selectable"]
@@ -197,7 +151,7 @@ class ClassBalance(Widget):
     def is_collapsable(self) -> bool:
         """Returns True if the widget is collapsable, False otherwise.
 
-        :return: True if the widget is collapsable, False otherwise.
+        :returns: True if the widget is collapsable, False otherwise.
         :rtype: bool
         """
         self._collapsable = DataJson()[self.widget_id]["options"]["collapsable"]
@@ -207,7 +161,7 @@ class ClassBalance(Widget):
     def is_clickable_name(self) -> bool:
         """Returns True if the widget is clickable by name, False otherwise.
 
-        :return: True if the widget is clickable by name, False otherwise.
+        :returns: True if the widget is clickable by name, False otherwise.
         :rtype: bool
         """
         self._clickable_name = DataJson()[self.widget_id]["options"]["clickableName"]
@@ -217,7 +171,7 @@ class ClassBalance(Widget):
     def is_clickable_segment(self) -> bool:
         """Returns True if the widget is clickable by segment, False otherwise.
 
-        :return: True if the widget is clickable by segment, False otherwise.
+        :returns: True if the widget is clickable by segment, False otherwise.
         :rtype: bool
         """
         self._clickable_segment = DataJson()[self.widget_id]["options"]["clickableSegment"]
@@ -226,7 +180,7 @@ class ClassBalance(Widget):
     def get_max_value(self) -> int:
         """Returns maximum value of the widget.
 
-        :return: Maximum value of the widget.
+        :returns: Maximum value of the widget.
         :rtype: int
         """
         self._max_value = DataJson()[self.widget_id]["content"]["maxValue"]
@@ -258,7 +212,7 @@ class ClassBalance(Widget):
     def get_max_height(self) -> int:
         """Returns maximum height of the widget.
 
-        :return: Maximum height of the widget in pixels.
+        :returns: Maximum height of the widget in pixels.
         :rtype: int
         """
         self._max_height = DataJson()[self.widget_id]["options"]["maxHeight"]
@@ -287,7 +241,7 @@ class ClassBalance(Widget):
     def get_segments(self) -> List[Dict]:
         """Returns list of segments to be displayed in the widget.
 
-        :return: List of segments to be displayed in the widget.
+        :returns: List of segments to be displayed in the widget.
         :rtype: List[Dict]
         """
         self._segments = DataJson()[self.widget_id]["content"]["segments"]
@@ -327,7 +281,7 @@ class ClassBalance(Widget):
     def get_rows_data(self) -> List[Dict]:
         """Returns list of rows to be displayed in the widget.
 
-        :return: List of rows to be displayed in the widget.
+        :returns: List of rows to be displayed in the widget.
         :rtype: List[Dict]
         """
         self._rows_data = DataJson()[self.widget_id]["content"]["rows"]
@@ -367,7 +321,7 @@ class ClassBalance(Widget):
     def get_slider_data(self) -> Dict[str, List]:
         """Returns dictionary of slider data to be displayed in the widget.
 
-        :return: Dictionary of slider data to be displayed in the widget.
+        :returns: Dictionary of slider data to be displayed in the widget.
         :rtype: Dict[str, List]
         """
         self._slider_data = DataJson()[self.widget_id]["imageSliderData"]
@@ -393,7 +347,7 @@ class ClassBalance(Widget):
     def get_selected_rows(self) -> List[str]:
         """Returns list of selected rows.
 
-        :return: List of selected rows.
+        :returns: List of selected rows.
         :rtype: List[str]
         """
         return StateJson()[self.widget_id]["selectedRows"]
@@ -403,7 +357,7 @@ class ClassBalance(Widget):
 
         :param func: Function to be called when the widget is clicked.
         :type func: Callable[[str], None]
-        :return: Decorated function.
+        :returns: Decorated function.
         :rtype: Callable[[], None]
         """
         route_path = self.get_route_path(ClassBalance.Routes.CLICK)

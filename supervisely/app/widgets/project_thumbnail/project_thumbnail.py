@@ -7,6 +7,8 @@ from supervisely._utils import abs_url
 
 
 class ProjectThumbnail(Widget):
+    """Compact card for a project: thumbnail, name, item count, and link to open it."""
+
     def __init__(
         self,
         info: ProjectInfo = None,
@@ -14,6 +16,16 @@ class ProjectThumbnail(Widget):
         remove_margins: bool = False,
         description: str = None,
     ):
+        """
+        :param info: ProjectInfo to display. Can be set later with :meth:`~supervisely.app.widgets.project_thumbnail.project_thumbnail.ProjectThumbnail.set`.
+        :type info: :class:`~supervisely.api.project_api.ProjectInfo`, optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        :param remove_margins: If True, remove card margins.
+        :type remove_margins: bool
+        :param description: Custom description. Overrides default from info.
+        :type description: str, optional
+        """
         self._info: ProjectInfo = None
         self._id: int = None
         self._name: str = None

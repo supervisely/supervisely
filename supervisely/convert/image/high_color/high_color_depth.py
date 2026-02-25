@@ -22,10 +22,13 @@ from supervisely.team_files import RECOMMENDED_IMPORT_BACKUP_PATH
 
 
 class HighColorDepthImageConverter(ImageConverter):
+    """Converter for high color-depth images (e.g. EXR/HDR) with optional backup and NRRD conversion."""
+
     # allowed_exts = [".png", ".tiff", ".tif", ".bmp", ".exr", ".hdr"]
     allowed_exts = [".exr", ".hdr"]
 
     class Item(ImageConverter.Item):
+        """Image item extended with a reference to the backed-up original file path."""
 
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)

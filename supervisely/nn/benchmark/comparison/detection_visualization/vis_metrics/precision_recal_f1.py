@@ -9,6 +9,8 @@ from supervisely.nn.benchmark.visualization.widgets import (
 
 
 class PrecisionRecallF1(BaseVisMetrics):
+    """Precision, recall, and F1 visualizations per model for detection comparison."""
+
     MARKDOWN = "markdown_PRF1"
     MARKDOWN_PRECISION_TITLE = "markdown_precision_per_class_title"
     MARKDOWN_RECALL_TITLE = "markdown_recall_per_class_title"

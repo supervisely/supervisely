@@ -144,7 +144,7 @@ def generate_task_check_function_js(folder: str) -> str:
 
     :param folder: Remote folder to check.
     :type folder: str
-    :return: JavaScript function code for checking existing tasks.
+    :returns: JavaScript function code for checking existing tasks.
     :rtype: str
     """
     escaped_folder = folder.replace("'", "\\'")
