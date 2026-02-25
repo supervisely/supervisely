@@ -25,29 +25,26 @@ copyright = f"{now.year}, Supervisely Team"
 author = "Supervisely Team"
 
 # -- General configuration ---------------------------------------------------
-MOCK_IMPORTS = [
-    # Base
-    "torch",
-    "torchvision",
-    "decord",
-    "pycocotools",
-    "sklearn",
-    "plotly",
-    "tensorboard",
-    "tensorboardX",
-    "markdown",
-    "pymdown_extensions",
-    "tbparse",
-    "kaleido",
-    "motmetrics",
-    "imgaug",
-    "imagecorruptions",
-    # Supervisely
-    # "supervisely.nn.training.train_app.TrainApp"
-]
+# MOCK_IMPORTS = [
+#     "torch",
+#     "torchvision",
+#     "decord",
+#     "pycocotools",
+#     "sklearn",
+#     "plotly",
+#     "tensorboard",
+#     "tensorboardX",
+#     "markdown",
+#     "pymdown_extensions",
+#     "tbparse",
+#     "kaleido",
+#     "motmetrics",
+#     "imgaug",
+#     "imagecorruptions",
+# ]
 
-autodoc_mock_imports = MOCK_IMPORTS
-autosummary_mock_imports = MOCK_IMPORTS
+# autodoc_mock_imports = MOCK_IMPORTS
+# autosummary_mock_imports = MOCK_IMPORTS
 
 extensions = [
     "sphinx.ext.autodoc",

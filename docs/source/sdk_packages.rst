@@ -329,6 +329,17 @@ Constants defining the directories where a plugin should expect the input and ou
 
     ~supervisely.task.progress.Progress
 
+Training
+--------
+High-level wrappers and helpers for building training applications (GUI, data prep, artifacts upload, benchmarking).
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    ~supervisely.nn.training.train_app.TrainApp
+
 User
 ----
 User-related data structures and constants.
@@ -409,14 +420,3 @@ A collection of useful utility functions for common tasks in the Supervisely SDK
     :template: autosummary/custom-function-template.rst
 
     ~supervisely.project.download.download_fast
-
-Training
---------
-High-level wrappers and helpers for building training applications (GUI, data prep, artifacts upload, benchmarking).
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    ~supervisely.nn.training.train_app.TrainApp
