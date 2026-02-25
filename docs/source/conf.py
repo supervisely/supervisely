@@ -43,7 +43,7 @@ MOCK_IMPORTS = [
     "imgaug",
     "imagecorruptions",
     # Supervisely
-    "supervisely.nn.training.train_app.TrainApp"
+    # "supervisely.nn.training.train_app.TrainApp"
 ]
 
 autodoc_mock_imports = MOCK_IMPORTS
