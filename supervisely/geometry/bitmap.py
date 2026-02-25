@@ -132,7 +132,7 @@ class Bitmap(BitmapBase):
                 mask = img[:, :, 0].astype(bool) # Get 2-dimensional bool numpy array
                 figure = sly.Bitmap(mask)
 
-        .. image:: https://i.imgur.com/2L3HRPs.jpg
+        .. image:: https://github.com/user-attachments/assets/fdaf159e-fb54-4ce4-bd4a-abb114c14527
             :width: 600
             :height: 500
         """
