@@ -26,6 +26,7 @@ author = "Supervisely Team"
 
 # -- General configuration ---------------------------------------------------
 MOCK_IMPORTS = [
+    # Base
     "torch",
     "torchvision",
     "decord",
@@ -41,6 +42,8 @@ MOCK_IMPORTS = [
     "motmetrics",
     "imgaug",
     "imagecorruptions",
+    # Supervisely
+    "supervisely.nn.training.train_app.TrainApp"
 ]
 
 autodoc_mock_imports = MOCK_IMPORTS
