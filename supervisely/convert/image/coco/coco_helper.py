@@ -59,7 +59,6 @@ from supervisely.imaging.color import generate_rgb
 
 conflict_classes = []
 
-
 # COCO Convert funcs
 def create_supervisely_annotation(
     item: ImageConverter.Item,
@@ -160,7 +159,14 @@ def create_supervisely_annotation(
                         f"has type '{geometry_name}', but expected type is 'Rectangle'."
                     )
                 continue
-            x, y, w, h = bbox
+            try:
+                x, y, w, h = map(float, bbox)
+            except (ValueError, TypeError) as e:
+                logger.warning(
+                    "Skipping COCO bbox with non-numeric values for class "
+                    f"'{obj_class_name}' (category ID: {category_id}): {bbox}"
+                )
+                continue
             geometry = Rectangle(y, x, y + h, x + w)
             labels.append(Label(geometry, obj_class_rectangle, binding_key=key))
     labels = validate_image_bounds(labels, Rectangle.from_size(item.shape))

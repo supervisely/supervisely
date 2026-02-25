@@ -416,17 +416,32 @@ def draw_text_sequence(
 
                 After
     """
+    if len(texts) == 0:
+        return
     col_offset = 0
 
     canvas = PILImage.new("RGBA", bitmap.shape[:2][::-1], (0, 0, 0, 0))
     draw = ImageDraw.Draw(canvas, "RGBA")
 
-    _, max_height = draw.textsize("".join(texts), font=font)
+    try:
+        _, max_height = draw.textsize("".join(texts), font=font)
+    except AttributeError:  # PILLOW >= 10.0.0
+        _, descent = font.getmetrics()
+        max_height = font.getmask("".join(texts)).getbbox()[3] + descent
 
-    _, text_height = draw.textsize(texts[0], font=font)
+    try:
+        _, text_height = draw.textsize(texts[0], font=font)
+    except AttributeError:  # PILLOW >= 10.0.0
+        _, descent = font.getmetrics()
+        text_height = font.getmask(texts[0]).getbbox()[3] + descent
+
     middle = text_height // 2
     for text in texts:
-        _, h = draw.textsize(text, font=font)
+        try:
+            _, h = draw.textsize(text, font=font)
+        except AttributeError:  # PILLOW >= 10.0.0
+            _, descent = font.getmetrics()
+            h = font.getmask(text).getbbox()[3] + descent
         row_offset = middle - h // 2
 
         y, x = anchor_point[0] - row_offset, anchor_point[1] + col_offset
@@ -500,7 +515,13 @@ def draw_text(
 
     canvas = PILImage.new("RGBA", source_img.size, (0, 0, 0, 0))
     drawer = ImageDraw.Draw(canvas, "RGBA")
-    text_width, text_height = drawer.textsize(text, font=font)
+    try:
+        text_width, text_height = drawer.textsize(text, font=font)
+    except AttributeError:  # PILLOW >= 10.0.0
+        bbox = drawer.textbbox((0, 0), text, font=font)
+        text_width = bbox[2] - bbox[0]
+        _, descent = font.getmetrics()
+        text_height = font.getmask(text).getbbox()[3] + descent
     rect_top, rect_left = anchor_point
 
     if corner_snap == CornerAnchorMode.TOP_LEFT:
