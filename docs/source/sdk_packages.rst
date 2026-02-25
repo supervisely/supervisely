@@ -128,7 +128,7 @@ API for working with pointclouds in Supervisely.
 
 Neural Networks API
 -------------------
-APIs for deploying models, running inference, and working with model metadata in Supervisely.
+APIs for training, deploying models, running inference, and working with model metadata in Supervisely.
 
 .. autosummary::
     :toctree: sdk

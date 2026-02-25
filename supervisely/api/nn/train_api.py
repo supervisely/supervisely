@@ -251,7 +251,7 @@ class TrainApi:
     """
     High-level API to start a training application on the Supervisely instance.
 
-    You can read more about the training API in the `Training API documentation <https://developer.supervisely.com/advanced-user-guide/automate-with-python-sdk-and-api/training-api>`_.
+    You can read more about in the `Training API documentation <https://developer.supervisely.com/advanced-user-guide/automate-with-python-sdk-and-api/training-api>`_.
 
     This wrapper prepares the `params`/`state` payload expected by the training UI application
     and starts an app task on a given agent.
