@@ -250,7 +250,7 @@ setup(
             "pandas>=1.1.3, <=2.3.3",
         ],
         "docs": [
-            "sphinx==8.2.3",
+            "sphinx==9.1.0",
             "sphinx-immaterial==0.13.9",
             "myst-parser==5.0.0",
         ],

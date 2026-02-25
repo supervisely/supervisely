@@ -17,9 +17,11 @@ sys.path.insert(0, os.path.abspath("../../help"))
 sys.path.insert(0, os.path.abspath("../.."))
 sys.path.insert(0, os.path.abspath("../../../"))
 
+now = datetime.date.today()
+
 # -- Project information -----------------------------------------------------
 project = "Supervisely"
-copyright = f"{datetime.date.today().year}, Supervisely Team"
+copyright = f"{now.year}, Supervisely Team"
 author = "Supervisely Team"
 
 # -- General configuration ---------------------------------------------------
@@ -67,6 +69,13 @@ html_copy_source = False
 html_show_sphinx = False
 html_show_copyright = True
 html_show_sourcelink = False
+html_compact_lists = True
+
+object_description_options = [
+    ("py:.*", dict(include_fields_in_toc=False, include_rubrics_in_toc=False)),
+    # ("py:attribute", dict(include_in_toc=False)),
+    ("py:parameter", dict(include_in_toc=False)),
+]
 
 templates_path = ["_templates"]
 html_static_path = ["_static"]
@@ -163,7 +172,3 @@ html_theme_options = {
     "version_dropdown": False,
     "toc_title_is_page_title": True,
 }
-
-object_description_options = [
-    ("py:.*", dict(generate_synopses="first_sentence")),
-]
