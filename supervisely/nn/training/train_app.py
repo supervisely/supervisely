@@ -96,8 +96,6 @@ class TrainApp:
         work_dir: Optional[str] = None,
     ):
         """
-        High-level wrapper for building Supervisely training applications.
-
         :param framework_name: Name of the ML framework used (stored in experiment metadata).
         :type framework_name: str
         :param models: Path to ``.json`` file (or a Python list) with model configurations for the model selector.
