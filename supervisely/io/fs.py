@@ -1,6 +1,7 @@
 # coding: utf-8
 
-# docs
+"""File system utilities for Supervisely."""
+
 import base64
 import errno
 import hashlib
@@ -49,17 +50,18 @@ def get_file_name(path: str) -> str:
     :param path: Path to file.
     :type path: str
     :returns: File name without extension
-    :rtype: :class:`str`
-    :Usage example:
+    :rtype: str
 
-     .. code-block::
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block::
 
-        file_name = sly.fs.get_file_name("/home/admin/work/projects/lemons_annotated/ds1/img/IMG_0748.jpeg")
+            import supervisely as sly
 
-        print(file_name)
-        # Output: IMG_0748
+            file_name = sly.fs.get_file_name("/home/admin/work/projects/lemons_annotated/ds1/img/IMG_0748.jpeg")
+
+            print(file_name)
+            # Output: IMG_0748
     """
     return os.path.splitext(os.path.basename(path))[0]
 
@@ -71,17 +73,17 @@ def get_file_ext(path: str) -> str:
     :param path: Path to file.
     :type path: str
     :returns: File extension without name
-    :rtype: :class:`str`
-    :Usage example:
+    :rtype: str
 
-     .. code-block::
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block::
 
-        file_ext = sly.fs.get_file_ext("/home/admin/work/projects/lemons_annotated/ds1/img/IMG_0748.jpeg")
+            import supervisely as sly
 
-        print(file_ext)
-        # Output: .jpeg
+            file_ext = sly.fs.get_file_ext("/home/admin/work/projects/lemons_annotated/ds1/img/IMG_0748.jpeg")
+            print(file_ext)
+            # Output: .jpeg
     """
     return os.path.splitext(os.path.basename(path))[1]
 
@@ -93,17 +95,17 @@ def get_file_name_with_ext(path: str) -> str:
     :param path: Path to file.
     :type path: str
     :returns: File name with extension
-    :rtype: :class:`str`
-    :Usage example:
+    :rtype: str
 
-     .. code-block::
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block::
 
-        file_name_ext = sly.fs.get_file_name_with_ext("/home/admin/work/projects/lemons_annotated/ds1/img/IMG_0748.jpeg")
+            import supervisely as sly
 
-        print(file_name_ext)
-        # Output: IMG_0748.jpeg
+            file_name_ext = sly.fs.get_file_name_with_ext("/home/admin/work/projects/lemons_annotated/ds1/img/IMG_0748.jpeg")
+            print(file_name_ext)
+            # Output: IMG_0748.jpeg
     """
     return os.path.basename(path)
 
@@ -117,14 +119,14 @@ def remove_junk_from_dir(dir: str) -> List[str]:
     :returns: List of global paths to removed files and dirs.
     :rtype: List[str]
 
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
+            import supervisely as sly
 
-        input_dir = "/home/admin/work/projects/lemons_annotated/"
-        sly.fs.remove_junk_from_dir(input_dir)
+            input_dir = "/home/admin/work/projects/lemons_annotated/"
+            sly.fs.remove_junk_from_dir(input_dir)
     """
     paths = list_dir_recursively(dir, include_subdirs=True, use_global_paths=True)
     removed_paths = []
@@ -152,16 +154,16 @@ def list_dir_recursively(
     :type use_global_paths: bool
     :returns: List containing file paths, and optionally subdirectory paths.
     :rtype: :class:`List[str]`
-    :Usage example:
 
-     .. code-block::
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block::
 
-        list_dir = sly.fs.list_dir_recursively("/home/admin/work/projects/lemons_annotated/")
+            import supervisely as sly
 
-        print(list_dir)
-        # Output: ['meta.json', 'ds1/ann/IMG_0748.jpeg.json', 'ds1/ann/IMG_4451.jpeg.json', 'ds1/img/IMG_0748.jpeg', 'ds1/img/IMG_4451.jpeg']
+            list_dir = sly.fs.list_dir_recursively("/home/admin/work/projects/lemons_annotated/")
+            print(list_dir)
+            # Output: ['meta.json', 'ds1/ann/IMG_0748.jpeg.json', 'ds1/ann/IMG_4451.jpeg.json', 'ds1/img/IMG_0748.jpeg', 'ds1/img/IMG_4451.jpeg']
     """
     all_paths = []
     for root, dirs, files in os.walk(dir):
@@ -205,16 +207,16 @@ def list_files_recursively(
     :type ignore_valid_extensions_case: bool
     :returns: List with file paths
     :rtype: :class:`List[str]`
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-         import supervisely as sly
+        .. code-block:: python
 
-         list_files = sly.fs.list_files_recursively("/home/admin/work/projects/lemons_annotated/ds1/img/")
+            import supervisely as sly
 
-         print(list_files)
-         # Output: ['/home/admin/work/projects/lemons_annotated/ds1/img/IMG_0748.jpeg', '/home/admin/work/projects/lemons_annotated/ds1/img/IMG_4451.jpeg']
+            list_files = sly.fs.list_files_recursively("/home/admin/work/projects/lemons_annotated/ds1/img/")
+            print(list_files)
+            # Output: ['/home/admin/work/projects/lemons_annotated/ds1/img/IMG_0748.jpeg', '/home/admin/work/projects/lemons_annotated/ds1/img/IMG_4451.jpeg']
     """
 
     def file_path_generator():
@@ -260,16 +262,16 @@ def list_files(
     :type ignore_valid_extensions_case: bool
     :returns: List with file paths
     :rtype: :class:`List[str]`
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-         import supervisely as sly
+        .. code-block:: python
 
-         list_files = sly.fs.list_files("/home/admin/work/projects/lemons_annotated/ds1/img/")
+            import supervisely as sly
 
-         print(list_files)
-         # Output: ['/home/admin/work/projects/lemons_annotated/ds1/img/IMG_0748.jpeg', '/home/admin/work/projects/lemons_annotated/ds1/img/IMG_4451.jpeg']
+            list_files = sly.fs.list_files("/home/admin/work/projects/lemons_annotated/ds1/img/")
+            print(list_files)
+            # Output: ['/home/admin/work/projects/lemons_annotated/ds1/img/IMG_0748.jpeg', '/home/admin/work/projects/lemons_annotated/ds1/img/IMG_4451.jpeg']
     """
     res = list(os.path.join(dir, x.name) for x in os.scandir(dir) if x.is_file())
 
@@ -305,13 +307,15 @@ def mkdir(dir: str, remove_content_if_exists: Optional[bool] = False) -> None:
     :remove_content_if_exists: Remove directory content if it exist.
     :remove_content_if_exists: bool
     :returns: None
-    :rtype: :class:`NoneType`
-    :Usage example:
+    :rtype: None
 
-     .. code-block:: python
+    :Usage Example:
 
-        from supervisely.io.fs import mkdir
-        mkdir('/home/admin/work/projects/example')
+        .. code-block:: python
+
+            from supervisely.io.fs import mkdir
+
+            mkdir('/home/admin/work/projects/example')
     """
     if dir_exists(dir) and remove_content_if_exists is True:
         clean_dir(dir, ignore_errors=True)
@@ -327,13 +331,15 @@ def ensure_base_path(path: str) -> None:
     :param path: Target dir path.
     :type path: str
     :returns: None
-    :rtype: :class:`NoneType`
-    :Usage example:
+    :rtype: None
 
-     .. code-block:: python
+    :Usage Example:
 
-        from supervisely.io.fs import ensure_base_path
-        ensure_base_path('/home/admin/work/projects/example')
+        .. code-block:: python
+
+            from supervisely.io.fs import ensure_base_path
+
+            ensure_base_path('/home/admin/work/projects/example')
     """
     dst_dir = os.path.split(path)[0]
     if dst_dir:
@@ -349,13 +355,15 @@ def copy_file(src: str, dst: str) -> None:
     :param dst: Destination file path.
     :type dst: str
     :returns: None
-    :rtype: :class:`NoneType`
-    :Usage example:
+    :rtype: None
 
-     .. code-block:: python
+    :Usage Example:
 
-        from supervisely.io.fs import copy_file
-        copy_file('/home/admin/work/projects/example/1.png', '/home/admin/work/tests/2.png')
+        .. code-block:: python
+
+            from supervisely.io.fs import copy_file
+
+            copy_file('/home/admin/work/projects/example/1.png', '/home/admin/work/tests/2.png')
     """
     ensure_base_path(dst)
     with open(dst, "wb") as out_f:
@@ -372,13 +380,15 @@ def hardlink_or_copy_file(src: str, dst: str) -> None:
     :param dst: Destination file path.
     :type dst: str
     :returns: None
-    :rtype: :class:`NoneType`
-    :Usage example:
+    :rtype: None
 
-     .. code-block:: python
+    :Usage Example:
 
-        from supervisely.io.fs import hardlink_or_copy_file
-        hardlink_or_copy_file('/home/admin/work/projects/example/1.png', '/home/admin/work/tests/link.txt')
+        .. code-block:: python
+
+            from supervisely.io.fs import hardlink_or_copy_file
+
+            hardlink_or_copy_file('/home/admin/work/projects/example/1.png', '/home/admin/work/tests/link.txt')
     """
     try:
         os.link(src, dst)
@@ -395,13 +405,15 @@ def hardlink_or_copy_tree(src: str, dst: str) -> None:
     :param dst: Destination dir path.
     :type dst: str
     :returns: None
-    :rtype: :class:`NoneType`
-    :Usage example:
+    :rtype: None
 
-     .. code-block:: python
+    :Usage Example:
 
-        from supervisely.io.fs import hardlink_or_copy_tree
-        hardlink_or_copy_tree('/home/admin/work/projects/examples', '/home/admin/work/tests/links')
+        .. code-block:: python
+
+            from supervisely.io.fs import hardlink_or_copy_tree
+
+            hardlink_or_copy_tree('/home/admin/work/projects/examples', '/home/admin/work/tests/links')
     """
     mkdir(dst)
     for dir_name, _, file_names in os.walk(src):
@@ -421,14 +433,16 @@ def dir_exists(dir: str) -> bool:
     :param dir: Target directory path.
     :type dir: str
     :returns: True if directory exists, False otherwise.
-    :rtype: :class:`bool`
-    :Usage example:
+    :rtype: bool
 
-     .. code-block:: python
+    :Usage Example:
 
-          from supervisely.io.fs import dir_exists
-          dir_exists('/home/admin/work/projects/examples') # True
-          dir_exists('/home/admin/work/not_exist_dir') # False
+        .. code-block:: python
+
+            from supervisely.io.fs import dir_exists
+
+            dir_exists('/home/admin/work/projects/examples') # True
+            dir_exists('/home/admin/work/not_exist_dir') # False
     """
     return os.path.isdir(dir)
 
@@ -440,13 +454,15 @@ def dir_empty(dir: str) -> bool:
     :param dir: Target directory path.
     :type dir: str
     :returns: True if directory is empty, False otherwise.
-    :rtype: :class:`bool`
-    :Usage example:
+    :rtype: bool
 
-     .. code-block:: python
+    :Usage Example:
 
-          from supervisely.io.fs import dir_empty
-          dir_empty('/home/admin/work/projects/examples') # False
+        .. code-block:: python
+
+            from supervisely.io.fs import dir_empty
+
+            dir_empty('/home/admin/work/projects/examples') # False
     """
     if dir_exists(dir) and len(list_files_recursively(dir)) > 0:
         return False
@@ -460,14 +476,16 @@ def file_exists(path: str) -> bool:
     :param dir: Target file path.
     :type dir: str
     :returns: True if file exists, False otherwise.
-    :rtype: :class:`bool`
-    :Usage example:
+    :rtype: bool
 
-     .. code-block:: python
+    :Usage Example:
 
-          from supervisely.io.fs import file_exists
-          file_exists('/home/admin/work/projects/examples/1.jpeg') # True
-          file_exists('/home/admin/work/projects/examples/not_exist_file.jpeg') # False
+        .. code-block:: python
+
+            from supervisely.io.fs import file_exists
+
+            file_exists('/home/admin/work/projects/examples/1.jpeg') # True
+            file_exists('/home/admin/work/projects/examples/not_exist_file.jpeg') # False
     """
     return os.path.isfile(path)
 
@@ -481,15 +499,17 @@ def get_subdirs(dir_path: str, recursive: Optional[bool] = False) -> list:
     :param recursive: If True, all found subdirectories will be included in the result list.
     :type recursive: bool
     :returns: List containing directories names.
-    :rtype: :class:`list`
-    :Usage example:
+    :rtype: list
 
-     .. code-block:: python
+    :Usage Example:
 
-        from supervisely.io.fs import get_subdirs
-        subdirs = get_subdirs('/home/admin/work/projects/examples')
-        print(subdirs)
-        # Output: ['tests', 'users', 'ds1']
+        .. code-block:: python
+
+            from supervisely.io.fs import get_subdirs
+
+            subdirs = get_subdirs('/home/admin/work/projects/examples')
+            print(subdirs)
+            # Output: ['tests', 'users', 'ds1']
     """
     if recursive:
         return [
@@ -509,14 +529,16 @@ def get_subdirs_tree(dir_path: str) -> Dict[str, Union[str, Dict]]:
     :type dir_path: str
     :returns: Dictionary representing the directory tree.
     :rtype: :class:`Dict[str, Union[str, Dict]]`
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        from supervisely.io.fs import get_subdirs_tree
-        tree = get_subdirs_tree('/home/admin/work/projects/examples')
-        print(tree)
-        # Output: {'examples': {'tests': {}, 'users': {}, 'ds1': {}}}
+        .. code-block:: python
+
+            from supervisely.io.fs import get_subdirs_tree
+
+            tree = get_subdirs_tree('/home/admin/work/projects/examples')
+            print(tree)
+            # Output: {'examples': {'tests': {}, 'users': {}, 'ds1': {}}}
     """
 
     tree = {}
@@ -579,15 +601,17 @@ def global_to_relative(global_path: str, base_dir: str) -> str:
     :param base_dir: Base directory path.
     :type base_dir: str
     :returns: Relative path.
-    :rtype: :class:`str`
-    :Usage example:
+    :rtype: str
 
-     .. code-block:: python
+    :Usage Example:
 
-        from supervisely.io.fs import global_to_relative
-        relative_path = global_to_relative('/home/admin/work/projects/examples/1.jpeg', '/home/admin/work/projects')
-        print(relative_path)
-        # Output: examples/1.jpeg
+        .. code-block:: python
+
+            from supervisely.io.fs import global_to_relative
+
+            relative_path = global_to_relative('/home/admin/work/projects/examples/1.jpeg', '/home/admin/work/projects')
+            print(relative_path)
+            # Output: examples/1.jpeg
     """
     return os.path.relpath(global_path, base_dir)
 
@@ -602,13 +626,15 @@ def clean_dir(dir_: str, ignore_errors: Optional[bool] = True) -> None:
     :ignore_errors: Ignore possible errors while removes directory content.
     :ignore_errors: bool
     :returns: None
-    :rtype: :class:`NoneType`
-    :Usage example:
+    :rtype: None
 
-     .. code-block:: python
+    :Usage Example:
 
-        from supervisely.io.fs import clean_dir
-        clean_dir('/home/admin/work/projects/examples')
+        .. code-block:: python
+
+            from supervisely.io.fs import clean_dir
+
+            clean_dir('/home/admin/work/projects/examples')
     """
     # old implementation
     # shutil.rmtree(dir_, ignore_errors=True)
@@ -634,13 +660,15 @@ def remove_dir(dir_: str) -> None:
     :param dir_: Target directory path.
     :type dir_: str
     :returns: None
-    :rtype: :class:`NoneType`
-    :Usage example:
+    :rtype: None
 
-     .. code-block:: python
+    :Usage Example:
 
-        from supervisely.io.fs import remove_dir
-        remove_dir('/home/admin/work/projects/examples')
+        .. code-block:: python
+
+            from supervisely.io.fs import remove_dir
+
+            remove_dir('/home/admin/work/projects/examples')
     """
     shutil.rmtree(dir_, ignore_errors=True)
 
@@ -652,13 +680,15 @@ def silent_remove(file_path: str) -> None:
     :param file_path: File path.
     :type file_path: str
     :returns: None
-    :rtype: :class:`NoneType`
-    :Usage example:
+    :rtype: None
 
-     .. code-block:: python
+    :Usage Example:
 
-        from supervisely.io.fs import silent_remove
-        silent_remove('/home/admin/work/projects/examples/1.jpeg')
+        .. code-block:: python
+
+            from supervisely.io.fs import silent_remove
+
+            silent_remove('/home/admin/work/projects/examples/1.jpeg')
     """
     try:
         os.remove(file_path)
@@ -674,13 +704,15 @@ def get_file_size(path: str) -> int:
     :param path: File path.
     :type path: str
     :returns: File size in bytes
-    :rtype: :class:`int`
-    :Usage example:
+    :rtype: int
 
-     .. code-block:: python
+    :Usage Example:
 
-        from supervisely.io.fs import get_file_size
-        file_size = get_file_size('/home/admin/work/projects/examples/1.jpeg') # 161665
+        .. code-block:: python
+
+            from supervisely.io.fs import get_file_size
+
+            file_size = get_file_size('/home/admin/work/projects/examples/1.jpeg') # 161665
     """
     return os.path.getsize(path)
 
@@ -692,13 +724,15 @@ def get_directory_size(dir_path: str) -> int:
     :param path: Target directory path.
     :type path: str
     :returns: Directory size in bytes
-    :rtype: :class:`int`
-    :Usage example:
+    :rtype: int
 
-     .. code-block:: python
+    :Usage Example:
 
-        from supervisely.io.fs import get_directory_size
-        dir_size = get_directory_size('/home/admin/work/projects/examples') # 8574563
+        .. code-block:: python
+
+            from supervisely.io.fs import get_directory_size
+
+            dir_size = get_directory_size('/home/admin/work/projects/examples') # 8574563
     """
     total_size = 0
     for dirpath, _, filenames in os.walk(dir_path):
@@ -728,17 +762,19 @@ def archive_directory(
     :type chunk_size_mb: int
     :returns: None or list of archive parts if split is not None
     :rtype: Union[None, List[str]]
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        from supervisely.io.fs import archive_directory
-        # If split is not needed.
-        archive_directory('/home/admin/work/projects/examples', '/home/admin/work/examples.tar')
+        .. code-block:: python
 
-        # If split is specified.
-        archive_parts_paths = archive_directory('/home/admin/work/projects/examples', '/home/admin/work/examples/archive.tar', split=1000000)
-        print(archive_parts_paths) # ['/home/admin/work/examples/archive.tar.001', '/home/admin/work/examples/archive.tar.002']
+            from supervisely.io.fs import archive_directory
+
+            # If split is not needed.
+            archive_directory('/home/admin/work/projects/examples', '/home/admin/work/examples.tar')
+
+            # If split is specified.
+            archive_parts_paths = archive_directory('/home/admin/work/projects/examples', '/home/admin/work/examples/archive.tar', split=1000000)
+            print(archive_parts_paths) # ['/home/admin/work/examples/archive.tar.001', '/home/admin/work/examples/archive.tar.002']
     """
     with tarfile.open(tar_path, "w", encoding="utf-8") as tar:
         tar.add(dir_, arcname=os.path.sep)
@@ -804,17 +840,17 @@ def unpack_archive(
     :param chunk_size_mb: Size of the chunk to read from the file. Default is 50Mb.
     :type chunk_size_mb: int
     :returns: None
-    :rtype: :class:`NoneType`
-    :Usage example:
+    :rtype: None
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        archive_path = '/home/admin/work/examples.tar'
-        target_dir = '/home/admin/work/projects'
+            import supervisely as sly
 
-        sly.fs.unpack_archive(archive_path, target_dir)
+            archive_path = '/home/admin/work/examples.tar'
+            target_dir = '/home/admin/work/projects'
+            sly.fs.unpack_archive(archive_path, target_dir)
     """
 
     if is_split:
@@ -848,23 +884,26 @@ def unpack_archive(
 
 
 def string_to_byte_size(string: Union[str, int]) -> int:
-    """Returns integer representation of byte size from string representation.
-        If input is integer, returns the same integer for convenience.
+    """
+    Returns integer representation of byte size from string representation.
 
-        :param string: string representation of byte size (e.g. 1.5Kb, 2Mb, 3.7Gb, 4.2Tb) or integer
-        :type string: Union[str, int]
-        :return: integer representation of byte size (or the same integer if input is integer)
-        :rtype: int
+    If input is integer, returns the same integer for convenience.
 
-        :raises ValueError: if input string is invalid
+    :param string: String representation of byte size (e.g. ``1.5Kb``, ``2Mb``, ``3.7Gb``, ``4.2Tb``) or integer.
+    :type string: Union[str, int]
+    :returns: Integer representation of byte size (or the same integer if input is integer).
+    :rtype: int
+    :raises ValueError: If input string is invalid.
 
-    :Usage example:
+    :Usage Example:
 
-    .. code-block:: python
-        string_size = "1.5M"
-        size = string_to_byte_size(string_size)
-        print(size)  # 1572864
+        .. code-block:: python
 
+            from supervisely.io.fs import string_to_byte_size
+
+            string_size = "1.5M"
+            size = string_to_byte_size(string_size)
+            print(size)  # 1572864
     """
 
     MULTIPLIER = 1024
@@ -890,13 +929,15 @@ def get_file_hash(path: str) -> str:
     :param path: Target file path.
     :type path: str
     :returns: File hash
-    :rtype: :class:`str`
-    :Usage example:
+    :rtype: str
 
-     .. code-block:: python
+    :Usage Example:
 
-        from supervisely.io.fs import get_file_hash
-        hash = get_file_hash('/home/admin/work/projects/examples/1.jpeg') # rKLYA/p/P64dzidaQ/G7itxIz3ZCVnyUhEE9fSMGxU4=
+        .. code-block:: python
+
+            from supervisely.io.fs import get_file_hash
+
+            hash = get_file_hash('/home/admin/work/projects/examples/1.jpeg') # rKLYA/p/P64dzidaQ/G7itxIz3ZCVnyUhEE9fSMGxU4=
     """
     with open(path, "rb") as file:
         file_bytes = file.read()
@@ -914,12 +955,14 @@ def get_file_hash_chunked(path: str, chunk_size: Optional[int] = 1024 * 1024) ->
     :returns: File hash as a base64 encoded string.
     :rtype: str
 
-    :Usage example:
+    :Usage Example:
 
-    .. code-block:: python
+        .. code-block:: python
 
-       file_hash = sly.fs.get_file_hash_chunked('/home/admin/work/projects/examples/1.jpeg')
-       print(file_hash)  # Example output: rKLYA/p/P64dzidaQ/G7itxIz3ZCVnyUhEE9fSMGxU4=
+            from supervisely.io.fs import get_file_hash_chunked
+
+            file_hash = get_file_hash_chunked('/home/admin/work/projects/examples/1.jpeg')
+            print(file_hash)  # Example output: rKLYA/p/P64dzidaQ/G7itxIz3ZCVnyUhEE9fSMGxU4=
     """
     hash_sha256 = hashlib.sha256()
     with open(path, "rb") as f:
@@ -957,58 +1000,60 @@ def tree(dir_path: str) -> str:
     :param dir_path: Target directory path.
     :type dir_path: str
     :returns: Tree with directory files and subdirectories
-    :rtype: :class:`str`
-    :Usage example:
+    :rtype: str
 
-     .. code-block:: python
+    :Usage Example:
 
-        from supervisely.io.fs import tree
-        dir_tree = tree('/home/admin/work/projects/examples')
-        print(dir_tree)
-        # Output: /home/admin/work/projects/examples
-        # ├── [4.0K]  1
-        # │   ├── [165K]  crop.jpeg
-        # │   ├── [169K]  fliplr.jpeg
-        # │   ├── [169K]  flipud.jpeg
-        # │   ├── [166K]  relative_crop.jpeg
-        # │   ├── [167K]  resize.jpeg
-        # │   ├── [169K]  rotate.jpeg
-        # │   ├── [171K]  scale.jpeg
-        # │   └── [168K]  translate.jpeg
-        # ├── [ 15K]  123.jpeg
-        # ├── [158K]  1.jpeg
-        # ├── [188K]  1.txt
-        # ├── [1.3M]  1.zip
-        # ├── [4.0K]  2
-        # ├── [ 92K]  acura.png
-        # ├── [1.2M]  acura_PNG122.png
-        # ├── [198K]  aston_martin_PNG55.png
-        # ├── [4.0K]  ds1
-        # │   ├── [4.0K]  ann
-        # │   │   ├── [4.3K]  IMG_0748.jpeg.json
-        # │   │   ├── [ 151]  IMG_0777.jpeg.json
-        # │   │   ├── [ 151]  IMG_0888.jpeg.json
-        # │   │   ├── [3.7K]  IMG_1836.jpeg.json
-        # │   │   ├── [8.1K]  IMG_2084.jpeg.json
-        # │   │   ├── [5.5K]  IMG_3861.jpeg.json
-        # │   │   ├── [6.0K]  IMG_4451.jpeg.json
-        # │   │   └── [5.0K]  IMG_8144.jpeg.json
-        # │   └── [4.0K]  img
-        # │       ├── [152K]  IMG_0748.jpeg
-        # │       ├── [210K]  IMG_0777.jpeg
-        # │       ├── [210K]  IMG_0888.jpeg
-        # │       ├── [137K]  IMG_1836.jpeg
-        # │       ├── [139K]  IMG_2084.jpeg
-        # │       ├── [145K]  IMG_3861.jpeg
-        # │       ├── [133K]  IMG_4451.jpeg
-        # │       └── [136K]  IMG_8144.jpeg
-        # ├── [152K]  example.jpeg
-        # ├── [2.4K]  example.json
-        # ├── [153K]  flip.jpeg
-        # ├── [ 65K]  hash1.jpeg
-        # ├── [ 336]  meta.json
-        # └── [5.4K]  q.jpeg
-        # 5 directories, 37 files
+        .. code-block:: python
+
+            from supervisely.io.fs import tree
+
+            dir_tree = tree('/home/admin/work/projects/examples')
+            print(dir_tree)
+            # Output: /home/admin/work/projects/examples
+            # ├── [4.0K]  1
+            # │   ├── [165K]  crop.jpeg
+            # │   ├── [169K]  fliplr.jpeg
+            # │   ├── [169K]  flipud.jpeg
+            # │   ├── [166K]  relative_crop.jpeg
+            # │   ├── [167K]  resize.jpeg
+            # │   ├── [169K]  rotate.jpeg
+            # │   ├── [171K]  scale.jpeg
+            # │   └── [168K]  translate.jpeg
+            # ├── [ 15K]  123.jpeg
+            # ├── [158K]  1.jpeg
+            # ├── [188K]  1.txt
+            # ├── [1.3M]  1.zip
+            # ├── [4.0K]  2
+            # ├── [ 92K]  acura.png
+            # ├── [1.2M]  acura_PNG122.png
+            # ├── [198K]  aston_martin_PNG55.png
+            # ├── [4.0K]  ds1
+            # │   ├── [4.0K]  ann
+            # │   │   ├── [4.3K]  IMG_0748.jpeg.json
+            # │   │   ├── [ 151]  IMG_0777.jpeg.json
+            # │   │   ├── [ 151]  IMG_0888.jpeg.json
+            # │   │   ├── [3.7K]  IMG_1836.jpeg.json
+            # │   │   ├── [8.1K]  IMG_2084.jpeg.json
+            # │   │   ├── [5.5K]  IMG_3861.jpeg.json
+            # │   │   ├── [6.0K]  IMG_4451.jpeg.json
+            # │   │   └── [5.0K]  IMG_8144.jpeg.json
+            # │   └── [4.0K]  img
+            # │       ├── [152K]  IMG_0748.jpeg
+            # │       ├── [210K]  IMG_0777.jpeg
+            # │       ├── [210K]  IMG_0888.jpeg
+            # │       ├── [137K]  IMG_1836.jpeg
+            # │       ├── [139K]  IMG_2084.jpeg
+            # │       ├── [145K]  IMG_3861.jpeg
+            # │       ├── [133K]  IMG_4451.jpeg
+            # │       └── [136K]  IMG_8144.jpeg
+            # ├── [152K]  example.jpeg
+            # ├── [2.4K]  example.json
+            # ├── [153K]  flip.jpeg
+            # ├── [ 65K]  hash1.jpeg
+            # ├── [ 336]  meta.json
+            # └── [5.4K]  q.jpeg
+            # 5 directories, 37 files
     """
     out = subprocess.Popen(
         ["tree", "--filelimit", "500", "-h", "-n", dir_path],
@@ -1034,14 +1079,16 @@ def log_tree(
     :type level: Logger level. Available levels: info, debug, warning, error. Default: info.
     :type level: Literal["info", "debug", "warning", "error"]
     :returns: None
-    :rtype: :class:`NoneType`
-    :Usage example:
+    :rtype: None
 
-     .. code-block:: python
+    :Usage Example:
 
-        from supervisely.io.fs import log_tree
-        logger = sly.logger
-        log_tree('/home/admin/work/projects/examples', logger)
+        .. code-block:: python
+
+            from supervisely.io.fs import log_tree
+
+            logger = sly.logger
+            log_tree('/home/admin/work/projects/examples', logger)
     """
     out = tree(dir_path)
 
@@ -1066,13 +1113,15 @@ def touch(path: str) -> None:
     :param path: Target file path.
     :type path: str
     :returns: None
-    :rtype: :class:`NoneType`
-    :Usage example:
+    :rtype: None
 
-     .. code-block:: python
+    :Usage Example:
 
-        from supervisely.io.fs import touch
-        touch('/home/admin/work/projects/examples/1.jpeg')
+        .. code-block:: python
+
+            from supervisely.io.fs import touch
+
+            touch('/home/admin/work/projects/examples/1.jpeg')
     """
     ensure_base_path(path)
     with open(path, "a"):
@@ -1094,8 +1143,8 @@ def download(
     :type url: str
     :param url: The path where the file is saved.
     :type url: str
-    :param cache: An instance of FileCache class that provides caching functionality for the downloaded content. If None, caching is disabled.
-    :type cache: FileCache, optional
+    :param cache: An instance of :class:`~supervisely.io.fs_cache.FileCache` class that provides caching functionality for the downloaded content. If None, caching is disabled.
+    :type cache: :class:`~supervisely.io.fs_cache.FileCache`, optional
     :param progress: Function for tracking download progress.
     :type progress: Progress, optional
     :param headers: A dictionary of HTTP headers to include in the request.
@@ -1103,26 +1152,26 @@ def download(
     :param timeout: The maximum number of seconds to wait for a response from the server. If the server does not respond within the timeout period, a TimeoutError is raised.
     :type timeout: int, optional.
     :returns: Full path to downloaded image
-    :rtype: :class:`str`
-    :Usage example:
+    :rtype: str
 
-     .. code-block:: python
+    :Usage Example:
 
-        from supervisely.io.fs import download
-        img_link = 'https://m.media-amazon.com/images/M/MV5BMTYwOTEwNjAzMl5BMl5BanBnXkFtZTcwODc5MTUwMw@@._V1_.jpg'
-        im_path = download(img_link, '/home/admin/work/projects/examples/avatar.jpeg')
-        print(im_path)
-        # Output:
-        # /home/admin/work/projects/examples/avatar.jpeg
+        .. code-block:: python
 
-        # if you need to specify some headers
-        headers = {
-            'User-Agent': 'Mozilla/5.0',
-        }
-        im_path = download(img_link, '/home/admin/work/projects/examples/avatar.jpeg', headers=headers)
-        print(im_path)
-        # Output:
-        # /home/admin/work/projects/examples/avatar.jpeg
+            from supervisely.io.fs import download
+
+            img_link = 'https://m.media-amazon.com/images/M/MV5BMTYwOTEwNjAzMl5BMl5BanBnXkFtZTcwODc5MTUwMw@@._V1_.jpg'
+            im_path = download(img_link, '/home/admin/work/projects/examples/avatar.jpeg')
+            print(im_path)
+            # Output:
+            # /home/admin/work/projects/examples/avatar.jpeg
+
+            # if you need to specify some headers
+            headers = {'User-Agent': 'Mozilla/5.0'}
+            im_path = download(img_link, '/home/admin/work/projects/examples/avatar.jpeg', headers=headers)
+            print(im_path)
+            # Output:
+            # /home/admin/work/projects/examples/avatar.jpeg
 
     """
 
@@ -1196,7 +1245,7 @@ def is_on_agent(remote_path: str) -> bool:
 
     :param remote_path: path to check
     :type remote_path: str
-    :return: True if remote_path starts with 'agent://<agent-id>/' and False otherwise
+    :returns: True if remote_path starts with 'agent://<agent-id>/' and False otherwise
     :rtype: bool
     """
     if remote_path.startswith("agent://"):
@@ -1210,32 +1259,35 @@ def parse_agent_id_and_path(remote_path: str) -> Tuple[int, str]:
 
     :param remote_path: path to parse
     :type remote_path: str
-    :return: agent id and path in agent folder
+    :returns: agent id and path in agent folder
     :rtype: Tuple[int, str]
     :raises ValueError: if remote_path doesn't start with 'agent://<agent-id>/'
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import os
-        from dotenv import load_dotenv
+        .. code-block:: python
 
-        import supervisely as sly
+            import os
+            from dotenv import load_dotenv
 
-        # Load secrets and create API object from .env file (recommended)
-        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-        load_dotenv(os.path.expanduser("~/supervisely.env"))
-        api = sly.Api.from_env()
+            import supervisely as sly
 
-        # Parse agent id and path in agent folder from remote_path
-        remote_path = "agent://1/agent_folder/subfolder/file.txt"
-        agent_id, path_in_agent_folder = sly.fs.parse_agent_id_and_path(remote_path)
-        print(agent_id)  # 1
-        print(path_in_agent_folder)  # /agent_folder/subfolder/file.txt
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+            api = sly.Api.from_env()
+
+            # Parse agent id and path in agent folder from remote_path
+            remote_path = "agent://1/agent_folder/subfolder/file.txt"
+            agent_id, path_in_agent_folder = sly.fs.parse_agent_id_and_path(remote_path)
+            print(agent_id)  # 1
+            print(path_in_agent_folder)  # /agent_folder/subfolder/file.txt
     """
     if is_on_agent(remote_path) is False:
         raise ValueError("agent path have to starts with 'agent://<agent-id>/'")
-    search = re.search("agent://(\d+)(.*)", remote_path)
+    search = re.search(r"agent://(\d+)(.*)", remote_path)
     agent_id = int(search.group(1))
     path_in_agent_folder = search.group(2)
     if not path_in_agent_folder.startswith("/"):
@@ -1265,33 +1317,34 @@ def dirs_with_marker(
     :type check_function: Callable
     :param ignore_case: ignore case when searching for markers
     :type ignore_case: bool
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        input_path = '/home/admin/work/projects/examples'
+            import supervisely as sly
 
-        # You can pass a string if you have only one marker.
-        # markers = 'config.json'
+            input_path = '/home/admin/work/projects/examples'
 
-        # Or a list of strings if you have several markers.
-        # There's no need to pass one marker in different cases, you can use ignore_case=True for this.
-        markers = ['config.json', 'config.yaml']
+            # You can pass a string if you have only one marker.
+            # markers = 'config.json'
+
+            # Or a list of strings if you have several markers.
+            # There's no need to pass one marker in different cases, you can use ignore_case=True for this.
+            markers = ['config.json', 'config.yaml']
 
 
-        # Check function is optional, if you don't need the directories to meet any requirements,
-        # you can omit it.
+            # Check function is optional, if you don't need the directories to meet any requirements,
+            # you can omit it.
 
-        def check_function(dir_path):
-            test_file_path = os.path.join(dir_path, 'test.txt')
-            return os.path.exists(test_file_path)
+            def check_function(dir_path):
+                test_file_path = os.path.join(dir_path, 'test.txt')
+                return os.path.exists(test_file_path)
 
-        for directory in sly.fs.dirs_with_marker(input_path, markers, check_function, ignore_case=True):
-            # Now you can be sure that the directory contains the markers and meets the requirements.
-            # Do something with it.
-            print(directory)
+            for directory in sly.fs.dirs_with_marker(input_path, markers, check_function, ignore_case=True):
+                # Now you can be sure that the directory contains the markers and meets the requirements.
+                # Do something with it.
+                print(directory)
     """
 
     if isinstance(markers, str):
@@ -1321,26 +1374,25 @@ def dirs_filter(input_path: str, check_function: Callable) -> Generator[str, Non
     :type input_path: str
     :param check_function: function to check that directory meets the requirements and returns bool
     :type check_function: Callable
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        input_path = '/home/admin/work/projects/examples'
+            import supervisely as sly
 
-        # Prepare the check function.
+            input_path = '/home/admin/work/projects/examples'
 
-        def check_function(directory) -> bool:
-            images_dir = os.path.join(directory, "images")
-            annotations_dir = os.path.join(directory, "annotations")
+            # Prepare the check function.
+            def check_function(directory) -> bool:
+                images_dir = os.path.join(directory, "images")
+                annotations_dir = os.path.join(directory, "annotations")
+                return os.path.isdir(images_dir) and os.path.isdir(annotations_dir)
 
-            return os.path.isdir(images_dir) and os.path.isdir(annotations_dir)
-
-        for directory in sly.fs.dirs(input_path, check_function):
-            # Now you can be sure that the directory meets the requirements.
-            # Do something with it.
-            print(directory)
+            for directory in sly.fs.dirs(input_path, check_function):
+                # Now you can be sure that the directory meets the requirements.
+                # Do something with it.
+                print(directory)
     """
     paths = [os.path.abspath(input_path)]
     paths.extend(list_dir_recursively(input_path, include_subdirs=True, use_global_paths=True))
@@ -1361,19 +1413,19 @@ def change_directory_at_index(path: str, dir_name: str, dir_index: int) -> str:
     :type dir_name: str
     :param dir_index: Index of the directory we want to change, negative values count from the end
     :type dir_index: int
-    :return: New path
+    :returns: New path
     :rtype: str
     :raises IndexError: If the catalog index is out of bounds for a given path
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        input_path = 'head/dir_1/file.txt'
-        new_path = sly.io.fs.change_directory_at_index(input_path, 'dir_2', -2)
+            import supervisely as sly
 
-        print(new_path)
+            input_path = 'head/dir_1/file.txt'
+            new_path = sly.io.fs.change_directory_at_index(input_path, 'dir_2', -2)
+            print(new_path)
 
     """
     path_components = path.split(os.path.sep)
@@ -1392,7 +1444,7 @@ def is_archive(file_path: str) -> bool:
 
     :param local_path: path to the local file
     :type local_path: str
-    :return: True if the file is an archive, False otherwise
+    :returns: True if the file is an archive, False otherwise
     :rtype: bool
     """
     archive_mimetypes = [
@@ -1418,16 +1470,21 @@ def is_archive(file_path: str) -> bool:
 def str_is_url(string: str) -> bool:
     """
     Check if string is a valid URL.
+
     :param string: string to check
     :type string: str
-    :return: True if string is a valid URL, False otherwise
+    :returns: True if string is a valid URL, False otherwise
     :rtype: bool
-    :Usage example:
-     .. code-block:: python
-        import supervisely as sly
-        url = 'https://example.com/image.jpg'
-        is_url = sly.fs.str_is_url(url)
-        print(is_url)  # True
+
+    :Usage Example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            url = "https://example.com/image.jpg"
+            is_url = sly.fs.str_is_url(url)
+            print(is_url)  # True
     """
     from urllib.parse import urlparse
 
@@ -1456,16 +1513,17 @@ async def copy_file_async(
     :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "size".
     :type progress_cb_type: Literal["number", "size"], optional
     :returns: None
-    :rtype: :class:`NoneType`
-    :Usage example:
+    :rtype: None
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
-        from supervisely._utils import run_coroutine
+        .. code-block:: python
 
-        coroutine = sly.fs.copy_file_async('/home/admin/work/projects/example/1.png', '/home/admin/work/tests/2.png')
-        run_coroutine(coroutine)
+            import supervisely as sly
+            from supervisely._utils import run_coroutine
+
+            coroutine = sly.fs.copy_file_async('/home/admin/work/projects/example/1.png', '/home/admin/work/tests/2.png')
+            run_coroutine(coroutine)
     """
     ensure_base_path(dst)
     async with aiofiles.open(dst, "wb") as out_f:
@@ -1488,16 +1546,17 @@ async def get_file_hash_async(path: str) -> str:
     :param path: Target file path.
     :type path: str
     :returns: File hash
-    :rtype: :class:`str`
-    :Usage example:
+    :rtype: str
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
-        from supervisely._utils import run_coroutine
+        .. code-block:: python
 
-        coroutine = sly.fs.get_file_hash_async('/home/admin/work/projects/examples/1.jpeg')
-        hash = run_coroutine(coroutine)
+            import supervisely as sly
+            from supervisely._utils import run_coroutine
+
+            coroutine = sly.fs.get_file_hash_async('/home/admin/work/projects/examples/1.jpeg')
+            hash = run_coroutine(coroutine)
     """
     async with aiofiles.open(path, "rb") as file:
         file_bytes = await file.read()
@@ -1524,19 +1583,20 @@ async def unpack_archive_async(
     :param chunk_size_mb: Size of the chunk to read from the file. Default is 50Mb.
     :type chunk_size_mb: int
     :returns: None
-    :rtype: :class:`NoneType`
-    :Usage example:
+    :rtype: None
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
-        from supervisely._utils import run_coroutine
+        .. code-block:: python
 
-        archive_path = '/home/admin/work/examples.tar'
-        target_dir = '/home/admin/work/projects'
+            import supervisely as sly
+            from supervisely._utils import run_coroutine
 
-        coroutine = sly.fs.unpack_archive_async(archive_path, target_dir)
-        run_coroutine(coroutine)
+            archive_path = '/home/admin/work/examples.tar'
+            target_dir = '/home/admin/work/projects'
+
+            coroutine = sly.fs.unpack_archive_async(archive_path, target_dir)
+            run_coroutine(coroutine)
     """
     if is_split:
         chunk = chunk_size_mb * 1024 * 1024
@@ -1576,16 +1636,17 @@ async def touch_async(path: str) -> None:
     :param path: Target file path.
     :type path: str
     :returns: None
-    :rtype: :class:`NoneType`
-    :Usage example:
+    :rtype: None
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
-        from supervisely._utils import run_coroutine
+        .. code-block:: python
 
-        coroutine = sly.fs.touch_async('/home/admin/work/projects/examples/1.jpeg')
-        run_coroutine(coroutine)
+            import supervisely as sly
+            from supervisely._utils import run_coroutine
+
+            coroutine = sly.fs.touch_async('/home/admin/work/projects/examples/1.jpeg')
+            run_coroutine(coroutine)
     """
     ensure_base_path(path)
     async with aiofiles.open(path, "a"):
@@ -1615,9 +1676,9 @@ async def list_files_recursively_async(
     :returns: List of file paths
     :rtype: List[str]
 
-    :Usage example:
+    :Usage Example:
 
-         .. code-block:: python
+        .. code-block:: python
 
             import supervisely as sly
             from supervisely._utils import run_coroutine
@@ -1689,39 +1750,40 @@ def get_file_offsets_batch_generator(
                    `dicts` - returns a list of dictionaries.
     :type output_format: Literal["dicts", "objects"]
     :returns: Generator yielding batches of file information in the specified format.
-    :rtype: Generator[Union[List[Dict], List[BlobImageInfo]]], None, None]
+    :rtype: Generator[Union[List[Dict], List[:class:`~supervisely.api.image_api.BlobImageInfo`]]], None, None]
 
     :raises ValueError: If the archive type is not supported or contains compressed files
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        archive_path = '/home/admin/work/projects/examples.tar'
-        file_infos = sly.fs.get_file_offsets_batch_generator(archive_path)
-        for batch in file_infos:
-            print(batch)
+            import supervisely as sly
 
-        # Output:
-        # [
-        #     {
-        #         "title": "image1.jpg",
-        #         "teamFileId": None,
-        #         "sourceBlob": {
-        #             "offsetStart": 0,
-        #             "offsetEnd": 123456
-        #         }
-        #     },
-        #     {
-        #         "title": "image2.jpg",
-        #         "teamFileId": None,
-        #         "sourceBlob": {
-        #             "offsetStart": 123456,
-        #             "offsetEnd": 234567
-        #         }
-        #     }
-        # ]
+            archive_path = '/home/admin/work/projects/examples.tar'
+            file_infos = sly.fs.get_file_offsets_batch_generator(archive_path)
+            for batch in file_infos:
+                print(batch)
+
+            # Output:
+            # [
+            #     {
+            #         "title": "image1.jpg",
+            #         "teamFileId": None,
+            #         "sourceBlob": {
+            #             "offsetStart": 0,
+            #             "offsetEnd": 123456
+            #         }
+            #     },
+            #     {
+            #         "title": "image2.jpg",
+            #         "teamFileId": None,
+            #         "sourceBlob": {
+            #             "offsetStart": 123456,
+            #             "offsetEnd": 234567
+            #         }
+            #     }
+            # ]
     """
     from supervisely.api.image_api import BlobImageInfo
 
@@ -1844,7 +1906,7 @@ def save_blob_offsets_pkl(
     :returns: Path to the output pickle file
     :rtype: str
 
-    :Usage example:
+    :Usage Example:
 
         .. code-block:: python
 

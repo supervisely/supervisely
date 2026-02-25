@@ -26,6 +26,8 @@ except ImportError:
 
 
 class PoseEstimation(Inference):
+    """Base class for pose estimation inference with keypoints and optional KeypointsTemplate."""
+
     def __init__(
         self,
         model_dir: Optional[str] = None,
@@ -35,6 +37,16 @@ class PoseEstimation(Inference):
         keypoints_template: Optional[KeypointsTemplate] = None,
         use_gui: Optional[bool] = False,
     ):
+        """
+        :param model_dir: Path to model directory.
+        :type model_dir: str
+        :param custom_inference_settings: Dict or path to .yml with inference settings.
+        :type custom_inference_settings: Dict[str, Any] or str
+        :param keypoints_template: Optional KeypointsTemplate for keypoint layout.
+        :type keypoints_template: KeypointsTemplate
+        :param use_gui: Enable GUI.
+        :type use_gui: bool
+        """
         super().__init__(
             model_dir=model_dir,
             custom_inference_settings=custom_inference_settings,
@@ -99,14 +111,14 @@ class PoseEstimation(Inference):
         Decorator for processing annotation labels before and after inference.
         Crops input image before inference if kwargs['state']['rectangle_crop'] provided
         and then scales annotation back to original image size.
-        Keyword arguments:
+
         :param image_np: Image in numpy.ndarray format (use image_path or image_np, not both)
         :type image_np: numpy.ndarray
         :param image_path: Path to image (use image_path or image_np, not both)
         :type image_path: str
-        :raises: :class:`ValueError`, if image_np or image_path invalid or not provided
-        :return: Annotation in json format
-        :rtype: :class:`dict`
+        :raises ValueError: if image_np or image_path invalid or not provided
+        :returns: Annotation in json format
+        :rtype: dict
         """
 
         @functools.wraps(func)

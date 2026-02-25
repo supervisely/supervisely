@@ -5,6 +5,8 @@ from supervisely.nn.benchmark.visualization.widgets import ChartWidget, Markdown
 
 
 class RecallVsPrecision(DetectionVisMetric):
+    """Recall vs precision scatter chart for detection reports."""
+
     MARKDOWN = "recall_vs_precision"
     CHART = "recall_vs_precision"
 

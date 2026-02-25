@@ -7,17 +7,27 @@ from supervisely.geometry.polyline_3d import Polyline3D
 
 
 class Prediction:
+    """Base class for predictions."""
+
     def __init__(self, class_name):
+        """
+        :param class_name: Name of the class.
+        :type class_name: str
+        """
         self.class_name = class_name
 
 
 class PredictionMask(Prediction):
+    """Prediction for a mask."""
+
     def __init__(self, class_name: str, mask: np.ndarray, score: Optional[float] = None):
         """
-        class_name: Name of the class.
-        mask:       Numpy array with bool or binary ([0, 1] or [0, 255]) values.
-                    Will be converted to sly.Bitmap geometry.
-        score:      Confidence score.
+        :param class_name: Name of the class.
+        :type class_name: str
+        :param mask: Numpy array with bool or binary ([0, 1] or [0, 255]) values.
+        :type mask: np.ndarray
+        :param score: Confidence score.
+        :type score: float, optional
         """
         super(PredictionMask, self).__init__(class_name=class_name)
         self.mask = mask
@@ -25,6 +35,8 @@ class PredictionMask(Prediction):
 
 
 class PredictionBBox(Prediction):
+    """Prediction for a bounding box."""
+
     def __init__(self, class_name: str, bbox_tlbr: List[int], score: Optional[float], angle: Optional[float] = None):
         """
         :param class_name: Predicted class name.
@@ -43,52 +55,89 @@ class PredictionBBox(Prediction):
 
 
 class PredictionSegmentation(Prediction):
+    """Prediction for a segmentation."""
+
     def __init__(self, mask: np.ndarray):
+        """
+        :param mask: Numpy array with bool or binary ([0, 1] or [0, 255]) values.
+        :type mask: np.ndarray
+        """
         self.mask = mask
 
 
 class PredictionAlphaMask(Prediction):
+    """Prediction for an alpha mask."""
+
     def __init__(self, class_name: str, mask: np.ndarray):
         """
-        class_name: Name of the class.
-        mask:       Numpy array with values in range [0, 255].
-                    Will be converted to sly.AlphaMask geometry.
+        :param class_name: Name of the class.
+        :type class_name: str
+        :param mask: Numpy array with values in range [0, 255].
+        :type mask: np.ndarray
         """
         super(PredictionAlphaMask, self).__init__(class_name=class_name)
         self.mask = mask
 
 
 class ProbabilityMask(Prediction):
+    """Prediction for a probability mask."""
+
     def __init__(self, class_name: str, mask: np.ndarray):
         """
-        class_name: Name of the class.
-        mask:       Numpy array with values in range [0, 255].
-                    Will be converted to sly.AlphaMask geometry.
+        :param class_name: Name of the class.
+        :type class_name: str
+        :param mask: Numpy array with values in range [0, 255].
+        :type mask: np.ndarray
         """
         super(ProbabilityMask, self).__init__(class_name=class_name)
         self.mask = mask
 
 
 class PredictionKeypoints(Prediction):
+    """Prediction for keypoints."""
+
     def __init__(self, class_name: str, labels: List[str], coordinates: List[float]):
+        """
+        :param class_name: Name of the class.
+        :type class_name: str
+        :param labels: List of labels.
+        :type labels: List[str]
+        :param coordinates: List of coordinates.
+        :type coordinates: List[float]
+        """
         super(PredictionKeypoints, self).__init__(class_name=class_name)
         self.labels = labels
         self.coordinates = coordinates
 
 
 class PredictionPoint(Prediction):
+    """Prediction for a point."""
+
     def __init__(self, class_name: str, col: int, row: int):
+        """
+        :param class_name: Name of the class.
+        :type class_name: str
+        :param col: Column index.
+        :type col: int
+        :param row: Row index.
+        :type row: int
+        """
         super().__init__(class_name=class_name)
         self.col = col
         self.row = row
 
 
 class PredictionCuboid3d(Prediction):
+    """Prediction for a 3D cuboid."""
+
     def __init__(self, class_name: str, cuboid_3d: Cuboid3d, score: Optional[float]):
         """
-        :param class_name: Predicted class name.
-        :param cuboid_3d: Cuboid3d object.
+        :param class_name: Name of the class.
+        :type class_name: str
+        :param cuboid_3d: :class:`~supervisely.geometry.cuboid_3d.Cuboid3d` object.
+        :type cuboid_3d: :class:`~supervisely.geometry.cuboid_3d.Cuboid3d`
         :param score: Confidence score.
+        :type score: float, optional
         """
         super(PredictionCuboid3d, self).__init__(class_name=class_name)
         self.cuboid_3d = cuboid_3d
@@ -96,6 +145,14 @@ class PredictionCuboid3d(Prediction):
 
 
 class PredictionPolyline3D(Prediction):
+    """Prediction for a 3D polyline."""
+
     def __init__(self, class_name: str, polyline_3d: Polyline3D):
+        """
+        :param class_name: Name of the class.
+        :type class_name: str
+        :param polyline_3d: :class:`~supervisely.geometry.polyline_3d.Polyline3D` object.
+        :type polyline_3d: :class:`~supervisely.geometry.polyline_3d.Polyline3D`
+        """
         super(PredictionPolyline3D, self).__init__(class_name=class_name)
         self.polyline_3d = polyline_3d

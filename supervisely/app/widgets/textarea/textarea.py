@@ -3,6 +3,8 @@ from supervisely.app.widgets import Widget
 
 
 class TextArea(Widget):
+    """Multi-line text input with optional autosize, placeholder, and readonly mode."""
+
     def __init__(
         self,
         value: str = None,
@@ -12,6 +14,18 @@ class TextArea(Widget):
         readonly: bool = False,
         widget_id=None,
     ):
+        """:param value: Initial text value.
+        :type value: str, optional
+        :param placeholder: Placeholder when empty.
+        :type placeholder: str
+        :param rows: Number of visible rows.
+        :type rows: int
+        :param autosize: If True, auto-resize to content.
+        :type autosize: bool
+        :param readonly: If True, read-only mode.
+        :type readonly: bool
+        :param widget_id: Unique widget identifier.
+        """
         self._value = value
         self._placeholder = placeholder
         self._rows = rows

@@ -1,5 +1,7 @@
 # coding: utf-8
-"""deploy and connect to running serving apps"""
+"""
+High-level Neural Networks API.
+"""
 
 from __future__ import annotations
 
@@ -22,6 +24,10 @@ class NeuralNetworkApi:
     """
 
     def __init__(self, api: "Api"):
+        """
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
+        :type api: :class:`~supervisely.api.api.Api`
+        """
         from supervisely.api.nn.deploy_api import DeployApi
         from supervisely.api.nn.ecosystem_models_api import EcosystemModelsApi
         from supervisely.api.nn.train_api import TrainApi
@@ -41,12 +47,14 @@ class NeuralNetworkApi:
         **kwargs,
     ) -> ModelAPI:
         """
-        Deploy a pretrained model or a custom model checkpoint in Supervisely platform.
-        This method will start a new Serving App in Supervisely, deploy a given model, and return a `ModelAPI` object for running predictions and managing the model.
-        - To deploy a pretrained model, pass the model name in the format `framework/model_name` (e.g., "RT-DETRv2/RT-DETRv2-M").
+        Deploy a pretrained model or a custom model checkpoint on the Supervisely instance.
+        This method will start a new Serving App in Supervisely, deploy a given model, and return a
+        :class:`~supervisely.nn.model.model_api.ModelAPI` object for running predictions and managing the model.
+        - To deploy a pretrained model, pass the model name in the format ``framework/model_name`` (e.g., "RT-DETRv2/RT-DETRv2-M").
         - To deploy a custom model, pass the path to the model checkpoint in team files (e.g., "/experiments/1089_RT-DETRv2/checkpoints/best.pt").
 
-        :param model: Either a path to a model checkpoint in team files or model name in format `framework/model_name` (e.g., "RT-DETRv2/RT-DETRv2-M").
+        :param model: Either a path to a model checkpoint in team files or model name in format
+            ``framework/model_name`` (e.g., "RT-DETRv2/RT-DETRv2-M").
         :type model: str
         :param device: Device to run the model on (e.g., "cuda:0" or "cpu"). If not specified, will automatically use GPU device if available, otherwise CPU will be used.
         :type device: Optional[str]
@@ -57,14 +65,26 @@ class NeuralNetworkApi:
         :param agent_id: Agent ID, if not present will be defined automatically.
         :type agent_id: Optional[int]
         :param kwargs: Additional parameters for deployment.
-        :return: A :class:`ModelAPI` object for the deployed model.
-        :rtype: ModelAPI
-        :Usage example:
+        :returns: ModelAPI object for the deployed model.
+        :rtype: :class:`~supervisely.nn.model.model_api.ModelAPI`
+
+        :Usage Example:
+
             .. code-block:: python
 
                 import supervisely as sly
 
-                api = sly.Api()
+                import os
+                from dotenv import load_dotenv
+
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
                 model = api.nn.deploy(model="RT-DETRv2/RT-DETRv2-M")
         """
 
@@ -134,7 +154,7 @@ class NeuralNetworkApi:
         workspace_id: int = None,
     ) -> List[Dict]:
         """
-        Returns a list of deployed models in the Supervisely platform.
+        Returns a list of deployed models on the Supervisely instance.
         The list can be filtered by model name, framework, task type, team ID, and workspace ID.
 
         :param model: Model name or checkpoint path to filter the results. If None, all models will be returned.
@@ -147,14 +167,24 @@ class NeuralNetworkApi:
         :type team_id: Optional[int]
         :param workspace_id: Workspace ID to filter the results. If None, the workspace ID from the environment will be used.
         :type workspace_id: Optional[int]
-        :return: A list of dictionaries containing information about the deployed models.
+        :returns: A list of dictionaries containing information about the deployed models.
         :rtype: List[Dict]
-        :Usage example:
+
+        :Usage Example:
+
             .. code-block:: python
+
+                import os
+                from dotenv import load_dotenv
 
                 import supervisely as sly
 
-                api = sly.Api()
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
                 deployed_models = api.nn.list_deployed_models(framework="RT-DETRv2")
         """
         # 1. Define apps
@@ -234,10 +264,10 @@ class NeuralNetworkApi:
         """
         Returns the experiment info of a finished training task by its task_id.
 
-        :param task_id: the task_id of a finished training task in the Supervisely platform.
+        :param task_id: the task_id of a finished training task on the Supervisely instance.
         :type task_id: int
-        :return: an :class:`ExperimentInfo` object with information about the training, model, and results.
-        :rtype: ExperimentInfo
+        :returns: ExperimentInfo object with information about the training, model, and results.
+        :rtype: :class:`~supervisely.nn.experiments.ExperimentInfo`
         """
         from supervisely.nn.experiments import ExperimentInfo
 
@@ -255,12 +285,14 @@ class NeuralNetworkApi:
         task_id: int,
     ) -> ModelAPI:
         """
-        Connect to a running Serving App by its `task_id`. This allows you to make predictions and control the model state via API.
+        Connect to a running Serving App by its ``task_id``.
 
-        :param task_id: the task_id of a running Serving App session in the Supervisely platform.
+        This allows you to make predictions and control the model state via API.
+
+        :param task_id: the task_id of a running Serving App session on the Supervisely instance.
         :type task_id: int
-        :return: a :class:`ModelAPI` object
-        :rtype: ModelAPI
+        :returns: ModelAPI object
+        :rtype: :class:`~supervisely.nn.model.model_api.ModelAPI`
         """
         from supervisely.nn.model.model_api import ModelAPI
 

@@ -9,6 +9,8 @@ from supervisely.nn.benchmark.visualization.widgets import (
 
 
 class CalibrationScore(BaseVisMetrics):
+    """Calibration and reliability visualization for compared detection models."""
+
     @property
     def header_md(self) -> MarkdownWidget:
         text_template = self.vis_texts.markdown_calibration_score_1

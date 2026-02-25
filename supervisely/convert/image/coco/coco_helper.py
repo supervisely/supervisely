@@ -25,6 +25,8 @@ COCO_CAPTIONS_FILE = "coco_captions.json"
 
 
 class HiddenCocoPrints:
+    """Context manager that suppresses pycocotools stdout during COCO operations."""
+
     def __enter__(self):
         self._original_stdout = sys.stdout
         sys.stdout = open(os.devnull, "w")
@@ -408,7 +410,7 @@ def sly_ann_to_coco(
     last_caption_id: Optional[int] = None,
 ) -> Tuple[List, List]:
     """
-    Convert Supervisely annotation to COCO format annotation ("annotations" field).
+    Converts Supervisely annotation to COCO format annotation ("annotations" field).
 
     :param coco_image_id: Image id in COCO format.
     :type coco_image_id: int
@@ -420,45 +422,45 @@ def sly_ann_to_coco(
     :type last_label_id: int, optional
     :param coco_captions: COCO captions in dictionary or list format to append new captions.
     :type coco_captions: Union[Dict, List], optional
-    :return: Tuple with list of COCO objects and list of COCO captions.
-    :rtype: :class:`tuple`
+    :returns: Tuple with list of COCO objects and list of COCO captions.
+    :rtype: tuple
 
 
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
-        from supervisely.convert.image.coco.coco_helper import sly_ann_to_coco
+            import supervisely as sly
+            from supervisely.convert.image.coco.coco_helper import sly_ann_to_coco
 
 
-        coco_instances = dict(
-            info=dict(
-                description="COCO dataset converted from Supervisely",
-                url="None",
-                version=str(1.0),
-                year=2025,
-                contributor="Supervisely",
-                date_created="2025-01-01 00:00:00",
-            ),
-            licenses=[dict(url="None", id=0, name="None")],
-            images=[],
-            annotations=[],
-            categories=get_categories_from_meta(meta),  # [{"supercategory": "lemon", "id": 1, "name": "lemon"}, ...]
-        )
+            coco_instances = dict(
+                info=dict(
+                    description="COCO dataset converted from Supervisely",
+                    url="None",
+                    version=str(1.0),
+                    year=2025,
+                    contributor="Supervisely",
+                    date_created="2025-01-01 00:00:00",
+                ),
+                licenses=[dict(url="None", id=0, name="None")],
+                images=[],
+                annotations=[],
+                categories=get_categories_from_meta(meta),  # [{"supercategory": "lemon", "id": 1, "name": "lemon"}, ...]
+            )
 
-        ann = sly.Annotation.from_json(ann_json, meta)
-        image_id = 11
-        label_id = 222
-        class_mapping = {obj_cls.name: idx for idx, obj_cls in enumerate(meta.obj_classes)}
+            ann = sly.Annotation.from_json(ann_json, meta)
+            image_id = 11
+            label_id = 222
+            class_mapping = {obj_cls.name: idx for idx, obj_cls in enumerate(meta.obj_classes)}
 
-        curr_coco_ann, _ = sly_ann_to_coco(ann, image_id, class_mapping, coco_instances, label_id)
-        # or
-        # curr_coco_ann, _ = sly_ann_to_coco(ann, image_id, class_mapping, label_id=label_id)
-        # coco_instances["annotations"].extend(curr_coco_ann)
+            curr_coco_ann, _ = sly_ann_to_coco(ann, image_id, class_mapping, coco_instances, label_id)
+            # or
+            # curr_coco_ann, _ = sly_ann_to_coco(ann, image_id, class_mapping, label_id=label_id)
+            # coco_instances["annotations"].extend(curr_coco_ann)
 
-        label_id += len(curr_coco_ann)
-        image_id += 1
+            label_id += len(curr_coco_ann)
+            image_id += 1
     """
 
     coco_obj_template = lambda x, y, z: {
@@ -682,45 +684,45 @@ def sly_ds_to_coco(
     progress_cb: Optional[Callable] = None,
 ) -> Union[str, Tuple[str, str], Dict, Tuple[Dict, Dict]]:
     """
-    Convert Supervisely dataset to COCO format.
+    Converts Supervisely dataset to COCO format.
 
     Note: Depending on the `return_type` and `with_captions` parameters, the function returns different values.
 
     :param dataset: Supervisely dataset.
-    :type dataset: :class:`Dataset<supervisely.project.dataset.Dataset>`
+    :type dataset: :class:`~supervisely.project.project.Dataset`
     :param meta: Project meta information.
-    :type meta: :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`
+    :type meta: :class:`~supervisely.project.project_meta.ProjectMeta`
     :param return_type: Type of return value.
                         If 'path', returns paths to COCO dataset files.
                         If 'dict', returns COCO dataset dictionaries.
     :param dest_dir: Destination path to save COCO dataset.
-    :type dest_dir: :class:`str`, optional
+    :type dest_dir: str, optional
     :param copy_images: If True, copies images to the destination directory.
-    :type copy_images: :class:`bool`, optional
+    :type copy_images: bool, optional
     :param with_captions: If True, returns COCO captions.
-    :type with_captions: :class:`bool`, optional
+    :type with_captions: bool, optional
     :param log_progress: If True, logs the progress of the conversion.
-    :type log_progress: :class:`bool`, optional
+    :type log_progress: bool, optional
     :param progress_cb: Callback function to track the progress of the conversion.
-    :type progress_cb: :class:`Callable`, optional
-    :return:
+    :type progress_cb: tqdm or callable, optional
+    :returns:
             If return_type is 'path', returns paths to COCO dataset file or file (instances or instances and captions).
             If return_type is 'dict', returns COCO dataset dictionary or dictionaries (instances or instances and captions).
-    :rtype: :class:`tuple`
+    :rtype: str, Tuple[str, str], Dict, Tuple[Dict, Dict]
 
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
-        from supervisely.convert.image.coco.coco_helper import sly_ds_to_coco
+            import supervisely as sly
+            from supervisely.convert.image.coco.coco_helper import sly_ds_to_coco
 
-        project_path = "/home/admin/work/supervisely/projects/lemons_annotated"
-        project = sly.Project(project_path, sly.OpenMode.READ)
+            project_path = "/home/admin/work/supervisely/projects/lemons_annotated"
+            project = sly.Project(project_path, sly.OpenMode.READ)
 
-        for ds in project.datasets:
-            dest_dir = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
-            coco_json, coco_captions, coco_json_path, coco_captions_path = sly_ds_to_coco(ds, project.meta, save=True, dest_dir=dest_dir)
+            for ds in project.datasets:
+                dest_dir = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
+                coco_json_path = sly_ds_to_coco(ds, project.meta, dest_dir=dest_dir)
     """
     dest_dir = Path(dataset.path).parent / "coco" if dest_dir is None else Path(dest_dir)
     save_json = return_type == "path"
@@ -832,31 +834,31 @@ def sly_project_to_coco(
     Convert Supervisely project to COCO format.
 
     :param project: Supervisely project.
-    :type project: :class:`Project<supervisely.project.project.Project>` or :class:`str`
+    :type project: :class:`~supervisely.project.project.Project` or str
     :param dest_dir: Destination directory.
-    :type dest_dir: :class:`str`, optional
+    :type dest_dir: str, optional
     :param copy_images: Copy images to destination directory.
-    :type copy_images: :class:`bool`, optional
+    :type copy_images: bool, optional
     :param with_captions: Return COCO captions.
-    :type with_captions: :class:`bool`, optional
+    :type with_captions: bool, optional
     :param log_progress: Show uploading progress bar.
-    :type log_progress: :class:`bool`
+    :type log_progress: bool
     :param progress_cb: Function for tracking conversion progress (for all items in the project).
     :type progress_cb: callable, optional
-    :return: None
+    :returns: None
     :rtype: NoneType
 
-    :Usage example:
+    :Usage Example:
 
-    .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
+            import supervisely as sly
 
-        # Local folder with Project
-        project_directory = "/home/admin/work/supervisely/source/project"
+            # Local folder with Project
+            project_directory = "/home/admin/work/supervisely/source/project"
 
-        # Convert Project to COCO format
-        sly.Project(project_directory).to_coco(log_progress=True)
+            # Convert Project to COCO format
+            sly.Project(project_directory).to_coco(log_progress=True)
     """
     if isinstance(project, str):
         project = Project(project, mode=OpenMode.READ)
@@ -911,43 +913,41 @@ def to_coco(
         - If the input_data is a Dataset, the meta and dest_dir parameters are required.
 
     :param input_data: Supervisely project, dataset, or path to the project or dataset.
-    :type input_data: :class:`Project<supervisely.project.project.Project>`, :class:`Dataset<supervisely.project.dataset.Dataset>` or :class:`str`
-
-    # Project or Dataset conversion arguments:
+    :type input_data: :class:`~supervisely.project.project.Project`, :class:`~supervisely.project.project.Dataset` or str
     :param dest_dir: Destination directory to save project or dataset in COCO format.
-    :type dest_dir: :class:`str`, optional
+    :type dest_dir: str, optional
     :param meta: Project meta information (required for dataset conversion).
-    :type meta: :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`, optional
+    :type meta: :class:`~supervisely.project.project_meta.ProjectMeta`, optional
     :param copy_images: Copy images to destination directory
-    :type copy_images: :class:`bool`, optional
+    :type copy_images: bool, optional
     :param with_captions: If True, returns COCO captions
-    :type with_captions: :class:`bool`, optional
+    :type with_captions: bool, optional
     :param log_progress: Show uploading progress bar
-    :type log_progress: :class:`bool`
+    :type log_progress: bool
     :param progress_cb: Function for tracking conversion progress (for all items in the project or dataset).
-    :type progress_cb: callable, optional
+    :type progress_cb: tqdm or callable, optional
 
-    :return: None
+    :returns: None
     :rtype: NoneType
 
-    :Usage example:
+    :Usage Example:
 
-    .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
+            import supervisely as sly
 
-        # Local folder with Project in Supervisely format
-        project_directory = "./source/project"
-        project_fs = sly.Project(project_directory, sly.OpenMode.READ)
+            # Local folder with Project in Supervisely format
+            project_directory = "./source/project"
+            project_fs = sly.Project(project_directory, sly.OpenMode.READ)
 
-        # Convert Project to COCO format
-        sly.convert.to_coco(project_directory, dest_dir="./coco")
-        # or
-        sly.convert.to_coco(project_fs, dest_dir="./coco")
+            # Convert Project to COCO format
+            sly.convert.to_coco(project_directory, dest_dir="./coco")
+            # or
+            sly.convert.to_coco(project_fs, dest_dir="./coco")
 
-        # Convert Dataset to COCO format
-        # dataset: sly.Dataset
-        sly.convert.to_coco(dataset, dest_dir="./coco", meta=project_fs.meta)
+            # Convert Dataset to COCO format
+            # dataset: sly.Dataset
+            sly.convert.to_coco(dataset, dest_dir="./coco", meta=project_fs.meta)
     """
     if isinstance(input_data, str):
         try:

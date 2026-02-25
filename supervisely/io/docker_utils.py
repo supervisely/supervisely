@@ -10,6 +10,8 @@ from supervisely.task.progress import Progress
 
 
 class PullPolicy(Enum):
+    """Docker pull policy values used when ensuring images are available."""
+
     def __str__(self):
         return str(self.value)
 
@@ -20,6 +22,8 @@ class PullPolicy(Enum):
 
 
 class PullStatus(Enum):
+    """Normalized status values parsed from Docker pull stream events."""
+
     START = "Pulling fs layer"
     DOWNLOAD = "Downloading"
     EXTRACT = "Extracting"

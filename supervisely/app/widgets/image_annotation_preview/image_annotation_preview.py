@@ -6,6 +6,8 @@ from supervisely.app.widgets import Widget
 
 
 class ImageAnnotationPreview(Widget):
+    """Displays an image with overlaid annotation (labels, masks) and optional zoom; driven by set()."""
+
     def __init__(
         self,
         annotations_opacity: float = 0.5,
@@ -13,6 +15,16 @@ class ImageAnnotationPreview(Widget):
         line_width: int = 1,
         widget_id: str = None,
     ):
+        """
+        :param annotations_opacity: Opacity of annotation overlays (0-1).
+        :type annotations_opacity: float
+        :param enable_zoom: If True, enable zoom.
+        :type enable_zoom: bool
+        :param line_width: Line width for shapes.
+        :type line_width: int
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         self._image_url = None
         self._annotation = None
         self._project_meta = None

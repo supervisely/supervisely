@@ -6,7 +6,10 @@ from supervisely.nn.artifacts.artifacts import BaseTrainArtifacts
 
 
 class YOLOv8(BaseTrainArtifacts):
+    """Train/serve artifacts handler for YOLOv8 (object detection, instance segmentation, pose estimation)."""
+
     def __init__(self, team_id: int):
+        """See :class:`~supervisely.nn.artifacts.artifacts.BaseTrainArtifacts` for params."""
         super().__init__(team_id)
 
         self._app_name = "Train YOLOv8 | v9 | v10 | v11"

@@ -8,6 +8,7 @@ from supervisely.imaging.color import _validate_hex_color
 
 
 class ReportThumbnail(Widget):
+    """Compact card for an evaluation report (benchmark or experiment) with link and custom icon colors."""
 
     def __init__(
         self,
@@ -18,6 +19,19 @@ class ReportThumbnail(Widget):
         bg_color: Optional[str] = "#faebff",
         report_type: Literal["model_benchmark", "experiment"] = "model_benchmark",
     ):
+        """:param info: FileInfo for report file. Can be set later.
+        :type info: FileInfo, optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        :param title: Custom title. Defaults to "Evaluation Report".
+        :type title: str, optional
+        :param color: Icon color (hex).
+        :type color: str, optional
+        :param bg_color: Icon background color (hex).
+        :type bg_color: str, optional
+        :param report_type: "model_benchmark" or "experiment".
+        :type report_type: Literal["model_benchmark", "experiment"]
+        """
         self._id: int = None
         self._info: FileInfo = None
         self._description: str = None

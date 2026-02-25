@@ -25,6 +25,8 @@ from supervisely.nn.benchmark.visualization.widgets import (
 
 
 class DetectionComparisonVisualizer(BaseComparisonVisualizer):
+    """Visualizer for object/instance detection model comparison reports."""
+
     vis_texts = texts
     ann_opacity = 0.5
 

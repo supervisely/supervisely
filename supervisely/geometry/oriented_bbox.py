@@ -26,50 +26,16 @@ from supervisely.geometry.rectangle import Rectangle
 
 
 class OrientedBBox(Rectangle):
-    """
-    OrientedBBox geometry for a single :class:`Label<supervisely.annotation.label.Label>`. :class:`OrientedBBox<OrientedBBox>` class object is immutable.
-
-    :param top: Minimal vertical value of OrientedBBox object.
-    :type top: int or float
-    :param left: Minimal horizontal value of OrientedBBox object.
-    :type left: int or float
-    :param bottom: Maximal vertical value of OrientedBBox object.
-    :type bottom: int or float
-    :param right: Maximal vertical value of OrientedBBox object.
-    :type right: int or float
-    :param angle: Angle of rotation in radians. Positive values mean clockwise rotation.
-    :type angle: int or float, optional
-    :param sly_id: OrientedBBox ID in Supervisely server.
-    :type sly_id: int, optional
-    :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which OrientedBBox belongs.
-    :type class_id: int, optional
-    :param labeler_login: Login of the user who created OrientedBBox.
-    :type labeler_login: str, optional
-    :param updated_at: Date and Time when OrientedBBox was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
-    :type updated_at: str, optional
-    :param created_at: Date and Time when OrientedBBox was created. Date Format is the same as in "updated_at" parameter.
-    :type created_at: str, optional
-    :raises: :class:`ValueError`. OrientedBBox top argument must have less or equal value then bottom, left argument must have less or equal value then right
-
-    :Usage example:
-
-     .. code-block:: python
-
-        import supervisely as sly
-
-        import math
-
-        top = 100
-        left = 100
-        bottom = 700
-        right = 900
-        angle = math.pi / 12  # 15 degrees in radians
-        figure = sly.OrientedBBox(top, left, bottom, right, angle=angle)
-    """
+    """2D bounding box with rotation angle; axis-aligned coordinates plus angle. Immutable."""
 
     @staticmethod
     def geometry_name():
-        """ """
+        """
+        Returns the name of the geometry.
+
+        :returns: name of the geometry
+        :rtype: str
+        """
         return "oriented_bbox"
 
     def __init__(
@@ -85,6 +51,46 @@ class OrientedBBox(Rectangle):
         updated_at: Optional[str] = None,
         created_at: Optional[str] = None,
     ):
+        """
+        OrientedBBox geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.oriented_bbox.OrientedBBox` class object is immutable.
+
+        :param top: Minimal vertical value of the oriented bounding box.
+        :type top: int or float
+        :param left: Minimal horizontal value of the oriented bounding box.
+        :type left: int or float
+        :param bottom: Maximal vertical value of the oriented bounding box.
+        :type bottom: int or float
+        :param right: Maximal vertical value of the oriented bounding box.
+        :type right: int or float
+        :param angle: Angle of rotation in radians. Positive values mean clockwise rotation.
+        :type angle: int or float, optional
+        :param sly_id: OrientedBBox ID in Supervisely server.
+        :type sly_id: int, optional
+        :param class_id: ID of ObjClass to which OrientedBBox belongs.
+        :type class_id: int, optional
+        :param labeler_login: Login of the user who created the oriented bounding box.
+        :type labeler_login: str, optional
+        :param updated_at: Date and Time when OrientedBBox was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
+        :type updated_at: str, optional
+        :param created_at: Date and Time when OrientedBBox was created. Date Format is the same as in "updated_at" parameter.
+        :type created_at: str, optional
+        :raises ValueError: if top argument has greater value than bottom, or left argument has greater value than right
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                import math
+
+                top = 100
+                left = 100
+                bottom = 700
+                right = 900
+                angle = math.pi / 12  # 15 degrees in radians
+                figure = sly.OrientedBBox(top, left, bottom, right, angle=angle)
+        """
 
         super().__init__(
             top=top,
@@ -106,13 +112,14 @@ class OrientedBBox(Rectangle):
         """
         Angle of rotation in radians. Positive values mean clockwise rotation.
 
-        :return: Angle of rotation in radians
+        :returns: Angle of rotation in radians
         :rtype: int or float
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            angle = oriented_bbox.angle
+            .. code-block:: python
+
+                angle = oriented_bbox.angle
         """
         return self._angle
 
@@ -120,21 +127,22 @@ class OrientedBBox(Rectangle):
         """
         Convert the OrientedBBox to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
-        :return: Json format as a dict
-        :rtype: :class:`dict`
-        :Usage example:
+        :returns: Json format as a dict
+        :rtype: dict
 
-         .. code-block:: python
+        :Usage Example:
 
-            figure_json = figure.to_json()
-            print(figure_json)
-            # Output: {
-            #    "points": [
-            #        [100, 100],
-            #        [900, 700]
-            #    ],
-            #    "angle": 0.2618  # radians (15 degrees)
-            # }
+            .. code-block:: python
+
+                figure_json = figure.to_json()
+                print(figure_json)
+                # Output: {
+                #    "points": [
+                #        [100, 100],
+                #        [900, 700]
+                #    ],
+                #    "angle": 0.2618  # radians (15 degrees)
+                # }
         """
         packed_obj = {
             POINTS: points_to_row_col_list(self._points, flip_row_col_order=True),
@@ -149,25 +157,26 @@ class OrientedBBox(Rectangle):
         Convert a json dict to OrientedBBox. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: OrientedBBox in json format as a dict.
-        :type data: dict
-        :return: OrientedBBox object
-        :rtype: :class:`OrientedBBox<OrientedBBox>`
-        :Usage example:
+        :type data: Dict
+        :returns: OrientedBBox from json.
+        :rtype: :class:`~supervisely.geometry.oriented_bbox.OrientedBBox`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            import math
+                import supervisely as sly
 
-            figure_json = {
-                "points": [
-                    [100, 100],
-                    [900, 700]
-                ],
-                "angle": math.pi / 12  # 15 degrees in radians
-            }
-            figure = sly.OrientedBBox.from_json(figure_json)
+                import math
+
+                figure_json = {
+                    "points": [
+                        [100, 100],
+                        [900, 700]
+                    ],
+                    "angle": math.pi / 12  # 15 degrees in radians
+                }
+                figure = sly.OrientedBBox.from_json(figure_json)
         """
         if POINTS not in data:
             raise ValueError("Input data must contain {} field.".format(POINTS))
@@ -203,15 +212,17 @@ class OrientedBBox(Rectangle):
 
     def to_bbox(self) -> Rectangle:
         """
-        Convert the OrientedBBox to the axis-aligned :class:`Rectangle<supervisely.geometry.rectangle.Rectangle>` that fully contains the OrientedBBox.
+        Convert the OrientedBBox to the axis-aligned :class:`~supervisely.geometry.rectangle.Rectangle` that fully contains the OrientedBBox.
 
-        :return: Axis-aligned Rectangle object
-        :rtype: :class:`Rectangle<supervisely.geometry.rectangle.Rectangle>`
-        :Usage example:
+        :returns: Axis-aligned Rectangle that fully contains the OrientedBBox.
+        :rtype: :class:`~supervisely.geometry.rectangle.Rectangle`
+
+        :Usage Example:
+
             .. code-block:: python
-    
+
                 axis_aligned_bbox = oriented_bbox.to_bbox()
-            """
+        """
         two_pi = 2 * np.pi
         if self._angle % two_pi == 0:
             return Rectangle(
@@ -265,16 +276,17 @@ class OrientedBBox(Rectangle):
         """
         Check if the OrientedBBox contains the given point.
 
-        :param point: PointLocation object
-        :type point: :class:`PointLocation<supervisely.geometry.point_location.PointLocation>`
-        :return: True if the point is inside the OrientedBBox, False otherwise
+        :param point: PointLocation to check.
+        :type point: :class:`~supervisely.geometry.point_location.PointLocation`
+        :returns: True if the point is inside the :class:`~supervisely.geometry.oriented_bbox.OrientedBBox`, False otherwise
         :rtype: bool
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            point = sly.PointLocation(150, 200)
-            is_inside = oriented_bbox.contains_point_location(point)
+            .. code-block:: python
+
+                point = sly.PointLocation(150, 200)
+                is_inside = oriented_bbox.contains_point_location(point)
         """
         # Rotate point in the opposite direction around the center of the oriented bbox
         cos_angle = np.cos(-self._angle)
@@ -299,16 +311,17 @@ class OrientedBBox(Rectangle):
         """
         Check if the OrientedBBox contains the given point.
 
-        :param geometry: PointLocation object
-        :type geometry: :class:`Geometry<supervisely.geometry.geometry.Geometry>`
-        :return: True if the point is inside the OrientedBBox, False otherwise
+        :param geometry: Geometry to check.
+        :type geometry: :class:`~supervisely.geometry.geometry.Geometry`
+        :returns: True if the point is inside the :class:`~supervisely.geometry.oriented_bbox.OrientedBBox`, False otherwise
         :rtype: bool
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            point = sly.PointLocation(150, 200)
-            is_inside = oriented_bbox.contains_point(point)
+            .. code-block:: python
+
+                point = sly.PointLocation(150, 200)
+                is_inside = oriented_bbox.contains_point(point)
         """
         if isinstance(geometry, PointLocation):
             return self.contains_point_location(geometry)
@@ -326,16 +339,17 @@ class OrientedBBox(Rectangle):
         """
         Check if the OrientedBBox contains the given OrientedBBox.
 
-        :param obb: OrientedBBox object
-        :type obb: :class:`OrientedBBox<supervisely.geometry.oriented_bbox.OrientedBBox>`
-        :return: True if the OrientedBBox is inside the OrientedBBox, False otherwise
+        :param obb: OrientedBBox to check.
+        :type obb: :class:`~supervisely.geometry.oriented_bbox.OrientedBBox`
+        :returns: True if the OrientedBBox is inside the :class:`~supervisely.geometry.oriented_bbox.OrientedBBox`, False otherwise
         :rtype: bool
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            obb2 = sly.OrientedBBox(150, 200, 400, 500, angle=10)
-            is_inside = obb1.contains_obb(obb2)
+            .. code-block:: python
+
+                obb2 = sly.OrientedBBox(150, 200, 400, 500, angle=10)
+                is_inside = obb1.contains_obb(obb2)
         """
         # Get the corners of the obb
         corners = obb.calculate_rotated_corners()
@@ -351,13 +365,14 @@ class OrientedBBox(Rectangle):
         """
         Get the corners of the OrientedBBox.
 
-        :return: List of corners as (x, y) tuples
+        :returns: List of corners as PointLocation objects.
         :rtype: List[Tuple[float, float]]
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            corners = oriented_bbox.calculate_rotated_corners()
+            .. code-block:: python
+
+                corners = oriented_bbox.calculate_rotated_corners()
         """
         cos_angle = np.cos(obb._angle)
         sin_angle = np.sin(obb._angle)
@@ -384,13 +399,14 @@ class OrientedBBox(Rectangle):
         """
         Get the corners of the OrientedBBox.
 
-        :return: List of corners as PointLocation objects
-        :rtype: List[:class:`PointLocation<supervisely.geometry.point_location.PointLocation>`]
-        :Usage example:
+        :returns: List of corners as PointLocation objects.
+        :rtype: List[:class:`~supervisely.geometry.point_location.PointLocation`]
 
-         .. code-block:: python
+        :Usage Example:
 
-            corners = oriented_bbox.calculate_rotated_corners()
+            .. code-block:: python
+
+                corners = oriented_bbox.calculate_rotated_corners()
         """
         return self._calculate_rotated_corners(self)
 
@@ -398,16 +414,17 @@ class OrientedBBox(Rectangle):
         """
         Check if the OrientedBBox contains the given Rectangle.
 
-        :param rectangle: Rectangle object
-        :type rectangle: :class:`Rectangle<supervisely.geometry.rectangle.Rectangle>`
-        :return: True if the Rectangle is inside the OrientedBBox, False otherwise
+        :param rectangle: Rectangle to check.
+        :type rectangle: :class:`~supervisely.geometry.rectangle.Rectangle`
+        :returns: True if the Rectangle is inside the :class:`~supervisely.geometry.oriented_bbox.OrientedBBox`, False otherwise
         :rtype: bool
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            rectangle = sly.Rectangle(150, 200, 400, 500)
-            is_inside = obb.contains_rectangle(rectangle)
+            .. code-block:: python
+
+                rectangle = sly.Rectangle(150, 200, 400, 500)
+                is_inside = obb.contains_rectangle(rectangle)
         """
         # Get the corners of the rectangle
         corners = rectangle.corners  # [Top-left, Top-right, Bottom-right, Bottom-left]
@@ -423,19 +440,19 @@ class OrientedBBox(Rectangle):
         """
         Create OrientedBBox from given Rectangle.
 
-        :param bbox: Rectangle object.
-        :type bbox: :class:`Rectangle<supervisely.geometry.rectangle.Rectangle>`
-        :return: OrientedBBox object
-        :rtype: :class:`OrientedBBox<OrientedBBox>`
+        :param bbox: Rectangle to create OrientedBBox from.
+        :type bbox: :class:`~supervisely.geometry.rectangle.Rectangle`
+        :returns: OrientedBBox from Rectangle.
+        :rtype: :class:`~supervisely.geometry.oriented_bbox.OrientedBBox`
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            axis_aligned_bbox = sly.Rectangle(100, 100, 700, 900)
-            figure_from_bbox = sly.OrientedBBox.from_bbox(axis_aligned_bbox)
+                axis_aligned_bbox = sly.Rectangle(100, 100, 700, 900)
+                figure_from_bbox = sly.OrientedBBox.from_bbox(axis_aligned_bbox)
         """
         return cls(
             top=bbox.top,
@@ -450,19 +467,19 @@ class OrientedBBox(Rectangle):
         """
         Create OrientedBBox with given array shape.
 
-        :param arr: Numpy array.
+        :param arr: Numpy array to create OrientedBBox from.
         :type arr: np.ndarray
-        :return: OrientedBBox object
-        :rtype: :class:`OrientedBBox<OrientedBBox>`
+        :returns: OrientedBBox from Numpy array.
+        :rtype: :class:`~supervisely.geometry.oriented_bbox.OrientedBBox`
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            np_array = np.zeros((300, 400))
-            figure_from_np = sly.OrientedBBox.from_array(np_array, angle=15)
+                np_array = np.zeros((300, 400))
+                figure_from_np = sly.OrientedBBox.from_array(np_array, angle=15)
         """
         return cls(top=0, left=0, bottom=arr.shape[0] - 1, right=arr.shape[1] - 1, angle=angle)
 
@@ -470,18 +487,18 @@ class OrientedBBox(Rectangle):
         """
         Slice of given numpy array with OrientedBBox align bbox.
 
-        :param data: Numpy array.
+        :param data: Numpy array to slice.
         :type data: np.ndarray
-        :return: Sliced numpy array
-        :rtype: :class:`np.ndarray<np.ndarray>`
+        :returns: Sliced numpy array
+        :rtype: np.ndarray
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            np_slice = np.zeros((200, 500))
-            mask_slice = figure.get_cropped_numpy_slice(np_slice)
-            print(mask_slice.shape)
+                np_slice = np.zeros((200, 500))
+                mask_slice = figure.get_cropped_numpy_slice(np_slice)
+                print(mask_slice.shape)
         """
         axis_aligned_bbox = self.to_bbox()
         top = max(0, floor(axis_aligned_bbox.top))
@@ -492,7 +509,9 @@ class OrientedBBox(Rectangle):
 
     @classmethod
     def allowed_transforms(cls):
-        """ """
+        """
+        Returns the allowed transforms for the OrientedBBox.
+        """
         from supervisely.geometry.alpha_mask import AlphaMask
         from supervisely.geometry.any_geometry import AnyGeometry
         from supervisely.geometry.bitmap import Bitmap
@@ -630,11 +649,11 @@ class OrientedBBox(Rectangle):
         5   +---+---+---+---+---+
 
         :param data: Json data with geometry config.
-        :type data: :class:`dict`
+        :type data: dict
         :param image_size: Image size in pixels (height, width).
         :type image_size: List[int]
-        :return: Json data with coordinates converted to pixel coordinate system.
-        :rtype: :class:`dict`
+        :returns: Json data with coordinates converted to pixel coordinate system.
+        :rtype: dict
         """
         data = deepcopy(data)  # Avoid modifying the original data
 
@@ -660,9 +679,9 @@ class OrientedBBox(Rectangle):
         However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
 
         :param data: Json data with geometry config.
-        :type data: :class:`dict`
-        :return: Json data with coordinates converted to subpixel coordinate system.
-        :rtype: :class:`dict`
+        :type data: Dict
+        :returns: Json data with coordinates converted to subpixel coordinate system.
+        :rtype: dict
         """
         data = deepcopy(data)  # Avoid modifying the original data
 

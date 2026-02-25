@@ -1,5 +1,5 @@
 # coding: utf-8
-"""create or manipulate already existing labeling queues"""
+"""Create and manage labeling queues in Supervisely."""
 
 # docs
 from __future__ import annotations
@@ -19,6 +19,8 @@ from supervisely.project.project_type import ProjectType
 
 
 class LabelingQueueInfo(NamedTuple):
+    """NamedTuple describing a labeling queue returned by the API."""
+
     id: int
     name: str
     team_id: int
@@ -42,29 +44,25 @@ class LabelingQueueInfo(NamedTuple):
 
 class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
     """
-    API for working with Labeling Queues. :class:`LabelingQueueApi<LabelingQueueApi>` object is immutable.
+    API for working with labeling queues. :class:`~supervisely.api.labeling_queue_api.LabelingQueueApi` object is immutable.
 
-    :param api: API connection to the server.
-    :type api: Api
-    :Usage example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import os
-        from dotenv import load_dotenv
+            import os
+            from dotenv import load_dotenv
 
-        import supervisely as sly
+            import supervisely as sly
 
-        # Load secrets and create API object from .env file (recommended)
-        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-        if sly.is_development():
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-        api = sly.Api.from_env()
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-        # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
+            api = sly.Api.from_env()
 
-        queue = api.labeling_queues.get_info_by_id(2) # api usage example
+            queue = api.labeling_queues.get_info_by_id(2) # api usage example
     """
 
     @staticmethod
@@ -72,31 +70,31 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
         """
         NamedTuple LabelingQueueInfo information about Labeling Queue.
 
-        :Example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            LabelingQueueInfo(
-                id=2,
-                name='Annotation Queue (#1)',
-                team_id=4,
-                project_id=58,
-                dataset_id=54,
-                created_by_id=4,
-                labelers=[4],
-                reviewers=[4],
-                created_at='2020-04-08T15:10:12.618Z',
-                finished_at='2020-04-08T15:13:39.788Z',
-                status='completed',
-                jobs=[283, 282, 281],
-                entities_count=3,
-                accepted_count=2,
-                annotated_count=3,
-                in_progress_count=2,
-                pending_count=1,
-                meta={},
-                collection_id=None,
-            )
+                LabelingQueueInfo(
+                    id=2,
+                    name='Annotation Queue (#1)',
+                    team_id=4,
+                    project_id=58,
+                    dataset_id=54,
+                    created_by_id=4,
+                    labelers=[4],
+                    reviewers=[4],
+                    created_at='2020-04-08T15:10:12.618Z',
+                    finished_at='2020-04-08T15:13:39.788Z',
+                    status='completed',
+                    jobs=[283, 282, 281],
+                    entities_count=3,
+                    accepted_count=2,
+                    annotated_count=3,
+                    in_progress_count=2,
+                    pending_count=1,
+                    meta={},
+                    collection_id=None,
+                )
         """
         return [
             ApiField.ID,
@@ -221,11 +219,11 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type collection_id: int, optional
         :param readme: Additional information about Labeling Queue.
         :type readme: str, optional
-        :param classes_to_label: List of classes to label in Dataset.
+        :param classes_to_label: List of classes to label in :class:`~supervisely.project.project.Dataset`.
         :type classes_to_label: List[str], optional
         :param objects_limit_per_image: Limit the number of objects that the labeler can create on each image.
         :type objects_limit_per_image: int, optional
-        :param tags_to_label: List of tags to label in Dataset.
+        :param tags_to_label: List of tags to label in :class:`~supervisely.project.project.Dataset`.
         :type tags_to_label: List[str], optional
         :param tags_limit_per_image: Limit the number of tags that the labeler can create on each image.
         :type tags_limit_per_image: int, optional
@@ -263,54 +261,61 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type guide_id: int, optional
         :param description: Description of Labeling Queue.
         :type description: str, optional
-        :return: Labeling Queue ID in Supervisely.
+        :returns: Labeling Queue ID in Supervisely.
         :rtype: int
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            user_name = 'alex'
-            dataset_id = 602
-            new_labeling_queue_id = api.labeling_queue.create(
-                user_name,
-                dataset_id,
-                user_ids=[111, 222],
-                readme='Readmy text',
-                description='Work for labelers',
-                objects_limit_per_image=5,
-                tags_limit_per_image=3
-            )
-            print(new_labeling_queue_id)
+                import supervisely as sly
 
-            # >>> 2
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            # Create video labeling job with toolbox settings
+                api = sly.Api.from_env()
 
-            user_id = 4
-            dataset_id = 277
-            video_id = 24897
-            toolbox_settings = {"playbackRate": 32, "skipFramesSize": 15, "showVideoTime": True}
+                user_name = 'alex'
+                dataset_id = 602
+                new_labeling_queue_id = api.labeling_queue.create(
+                    user_name,
+                    dataset_id,
+                    user_ids=[111, 222],
+                    readme='Readmy text',
+                    description='Work for labelers',
+                    objects_limit_per_image=5,
+                    tags_limit_per_image=3
+                )
+                print(new_labeling_queue_id)
 
-            new_labeling_queue_id = api.labeling_queue.create(
-                name="Labeling Queue name",
-                dataset_id=dataset_id,
-                user_ids=[user_id],
-                readme="Labeling Queue readme",
-                description="Some description",
-                classes_to_label=["car", "animal"],
-                tags_to_label=["animal_age_group"],
-                images_ids=[video_id],
-                toolbox_settings=toolbox_settings,
-            )
-            print(new_labeling_queue_id)
+                # >>> 2
 
-            # >>> 3
+                # Create video labeling job with toolbox settings
+
+                user_id = 4
+                dataset_id = 277
+                video_id = 24897
+                toolbox_settings = {"playbackRate": 32, "skipFramesSize": 15, "showVideoTime": True}
+
+                new_labeling_queue_id = api.labeling_queue.create(
+                    name="Labeling Queue name",
+                    dataset_id=dataset_id,
+                    user_ids=[user_id],
+                    readme="Labeling Queue readme",
+                    description="Some description",
+                    classes_to_label=["car", "animal"],
+                    tags_to_label=["animal_age_group"],
+                    images_ids=[video_id],
+                    toolbox_settings=toolbox_settings,
+                )
+                print(new_labeling_queue_id)
+
+                # >>> 3
         """
         if dataset_id is None and collection_id is None:
             raise RuntimeError("Either dataset_id or collection_id must be provided")
@@ -457,19 +462,26 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type show_disabled: bool, optional
         :param collection_id: Entities Collection ID in Supervisely.
         :type collection_id: int, optional
-        :return: List of information about Labeling Queues. See :class:`info_sequence<info_sequence>`
+        :returns: List of information about Labeling Queues.
         :rtype: :class:`List[LabelingQueueInfo]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            label_jobs = api.labeling_queue.get_list(4)
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                label_jobs = api.labeling_queue.get_list(4)
         """
 
         filters = []
@@ -496,77 +508,84 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
 
         :param id: Labeling Queue ID in Supervisely.
         :type id: int
-        :return: Information about Labeling Queue. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`LabelingJobInfo`
-        :Usage example:
+        :returns: Information about Labeling Queue.
+        :rtype: :class:`~supervisely.api.labeling_queue_api.LabelingQueueInfo`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            label_job_info = api.labeling_queue.get_info_by_id(2)
-            print(label_job_info)
-            # Output: [
-            #     2,
-            #     "Annotation Queue (#1) (#1) (dataset_01)",
-            #     "",
-            #     "",
-            #     4,
-            #     8,
-            #     "First Workspace",
-            #     58,
-            #     "tutorial_project",
-            #     54,
-            #     "dataset_01",
-            #     4,
-            #     "anna",
-            #     4,
-            #     "anna",
-            #     4,
-            #     "anna",
-            #     "2020-04-08T15:10:12.618Z",
-            #     "2020-04-08T15:10:19.833Z",
-            #     "2020-04-08T15:13:39.788Z",
-            #     "completed",
-            #     false,
-            #     3,
-            #     0,
-            #     1,
-            #     2,
-            #     2,
-            #     [],
-            #     [],
-            #     [
-            #         1,
-            #         5
-            #     ],
-            #     null,
-            #     null,
-            #     [],
-            #     [],
-            #     [],
-            #     [
-            #         {
-            #             "reviewStatus": "rejected",
-            #             "id": 283,
-            #             "name": "image_03"
-            #         },
-            #         {
-            #             "reviewStatus": "accepted",
-            #             "id": 282,
-            #             "name": "image_02"
-            #         },
-            #         {
-            #             "reviewStatus": "accepted",
-            #             "id": 281,
-            #             "name": "image_01"
-            #         }
-            #     ]
-            # ]
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                label_job_info = api.labeling_queue.get_info_by_id(2)
+                print(label_job_info)
+                # Output: [
+                #     2,
+                #     "Annotation Queue (#1) (#1) (dataset_01)",
+                #     "",
+                #     "",
+                #     4,
+                #     8,
+                #     "First Workspace",
+                #     58,
+                #     "tutorial_project",
+                #     54,
+                #     "dataset_01",
+                #     4,
+                #     "anna",
+                #     4,
+                #     "anna",
+                #     4,
+                #     "anna",
+                #     "2020-04-08T15:10:12.618Z",
+                #     "2020-04-08T15:10:19.833Z",
+                #     "2020-04-08T15:13:39.788Z",
+                #     "completed",
+                #     false,
+                #     3,
+                #     0,
+                #     1,
+                #     2,
+                #     2,
+                #     [],
+                #     [],
+                #     [
+                #         1,
+                #         5
+                #     ],
+                #     null,
+                #     null,
+                #     [],
+                #     [],
+                #     [],
+                #     [
+                #         {
+                #             "reviewStatus": "rejected",
+                #             "id": 283,
+                #             "name": "image_03"
+                #         },
+                #         {
+                #             "reviewStatus": "accepted",
+                #             "id": 282,
+                #             "name": "image_02"
+                #         },
+                #         {
+                #             "reviewStatus": "accepted",
+                #             "id": 281,
+                #             "name": "image_01"
+                #         }
+                #     ]
+                # ]
         """
         return self._get_info_by_id(id, "labeling-queues.info")
 
@@ -576,20 +595,27 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
 
         :param id: Labeling job ID in Supervisely.
         :type id: int
-        :return: Labeling Job Status
-        :rtype: :class:`Status<supervisely.api.labeling_job_api.LabelingJobApi.Status>`
-        :Usage example:
+        :returns: Labeling Job Status
+        :rtype: :class:`~supervisely.api.labeling_job_api.LabelingJobApi.Status`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            job_status = api.labeling_queue.get_status(4)
-            print(job_status) # pending
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                job_status = api.labeling_queue.get_status(4)
+                print(job_status) # pending
         """
         status_str = self.get_info_by_id(id).status
         return LabelingJobApi.Status(status_str)
@@ -602,20 +628,25 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type id: int
         :param status: New Labeling Queue status
         :type status: str
-        :return: None
-        :rtype: :class:`NoneType`
-        :Usage example:
+        :returns: None
+        :rtype: None
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            from supervisely.api.labeling_job_api.LabelingJobApi.Status import COMPLETED
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            api.labeling_queue.set_status(id=9, status="completed")
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+                api.labeling_queue.set_status(id=9, status="completed")
         """
         self._api.post("labeling-queues.set-status", {ApiField.ID: id, ApiField.STATUS: status})
 
@@ -625,8 +656,8 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
 
         :param id: Labeling Queue ID in Supervisely.
         :type id: int
-        :return: Project meta of the labeling queue with given id.
-        :rtype: :class:`ProjectMeta`
+        :returns: Project meta of the labeling queue with given id.
+        :rtype: :class:`~supervisely.project.project_meta.ProjectMeta`
         """
         queue_info = self.get_info_by_id(id)
         project_meta_json = self._api.project.get_meta(queue_info.project_id, with_settings=True)
@@ -672,22 +703,18 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type sort: str, optional
         :param sort_order: Sorting order.
         :type sort_order: str, optional
-        :param status: Status of entities to filter.
-                        "null" - pending (in queue).
-                        "none" - annotating (not in queue),
-                        "done" - on review,
-                        "accepted" - accepted,
+        :param status: Status of entities to filter. Possible values:
+
+            - ``"null"`` - pending (in queue)
+            - ``"none"`` - annotating (not in queue)
+            - ``"done"`` - on review
+            - ``"accepted"`` - accepted
         :type status: str or List[str], optional
         :param limit: Limit the number of entities to return. If limit is None, all entities will be returned.
         :type limit: int, optional
-        :param filter_by: Filter for entities.
-                       e.g. [{"field": "name", "operator": "in", "value": ["image_01", "image_02"]}]
-                        - field - field name to filter by ("id", "name", "reviewedAt")
-                        - operator - operator to use for filtering ("=", ">", "<", ">=", "<=")
-                        - value - value to filter by
+        :param filter_by: Filter for entities. Each element is a dict with keys ``field``, ``operator``, ``value``.
+            Example: ``[{"field": "name", "operator": "in", "value": ["image_01", "image_02"]}]``.
         :type filter_by: List[Dict], optional
-        :param return_first_response: Specify if return first response
-        :type return_first_response: bool, optional
         """
 
         method = "labeling-queues.stats.entities"
@@ -752,35 +779,41 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
     ) -> int:
         """
         Get count of entities in the given Labeling Queue with given status.
+
         :param id: Labeling Queue ID in Supervisely.
         :type id: int
-        :param status: Status of entities to filter.
-                        "null" - pending (in queue).
-                        "none" - annotating (not in queue),
-                        "done" - on review,
-                        "accepted" - accepted,
+        :param status: Status of entities to filter. Possible values:
+
+            - ``"null"`` - pending (in queue)
+            - ``"none"`` - annotating (not in queue)
+            - ``"done"`` - on review
+            - ``"accepted"`` - accepted
         :type status: str or List[str], optional
-        :param filter_by: Filter for entities.
-                       e.g. [{"field": "name", "operator": "in", "value": ["image_01", "image_02"]}]
-                        - field - field name to filter by ("id", "name", "reviewedAt")
-                        - operator - operator to use for filtering ("=", ">", "<", ">=", "<=")
-                        - value - value to filter by
+        :param filter_by: Filter for entities. Each element is a dict with keys ``field``, ``operator``, ``value``.
+            Example: ``[{"field": "name", "operator": "in", "value": ["image_01", "image_02"]}]``.
         :type filter_by: List[Dict], optional
-        :return: Count of entities in the Labeling Queue with given status.
+        :returns: Count of entities in the Labeling Queue with given status.
         :rtype: int
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            entities_count = api.labeling_queue.get_entities_count_by_status(4, status="none")
-            print(entities_count)
-            # Output: 3
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                entities_count = api.labeling_queue.get_entities_count_by_status(4, status="none")
+                print(entities_count)
+                # Output: 3
         """
         return self.get_entities_all_pages(id, status=status, limit=1, filter_by=filter_by).get(
             "total", 0

@@ -10,7 +10,11 @@ from supervisely.app.content import StateJson
 
 
 class GridGallery(Widget):
+    """Gallery widget that displays images in a grid with optional annotations, zoom, and synchronized views."""
+
     class Routes:
+        """Callback route names used by the widget frontend to notify Python."""
+
         IMAGE_CLICKED = "image_clicked_cb"
 
     def __init__(
@@ -28,6 +32,32 @@ class GridGallery(Widget):
         widget_id: str = None,
         empty_message: str = "Gallery is empty",
     ):
+        """
+        :param columns_number: Number of columns in the grid.
+        :type columns_number: int
+        :param annotations_opacity: Opacity of annotation overlays (0–1).
+        :type annotations_opacity: float
+        :param show_opacity_slider: If True, show opacity slider in header.
+        :type show_opacity_slider: bool
+        :param enable_zoom: If True, enable zoom controls.
+        :type enable_zoom: bool
+        :param resize_on_zoom: If True, resize view on zoom.
+        :type resize_on_zoom: bool
+        :param sync_views: If True, sync zoom/pan across images.
+        :type sync_views: bool
+        :param fill_rectangle: If True, fill rectangles with color.
+        :type fill_rectangle: bool
+        :param border_width: Border width for shapes.
+        :type border_width: int
+        :param show_preview: If True, show preview panel.
+        :type show_preview: bool
+        :param view_height: Fixed height for image views. None for auto.
+        :type view_height: int, optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        :param empty_message: Message when gallery is empty.
+        :type empty_message: str
+        """
         self._data = []
         self._layout = []
         self._annotations = {}

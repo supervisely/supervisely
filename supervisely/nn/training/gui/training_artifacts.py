@@ -28,11 +28,18 @@ TRT_FILE_NAME = "demo_tensorrt.py"
 
 
 class TrainingArtifacts:
+    """TrainApp GUI component for training artifacts step."""
     title = "Training Artifacts"
     description = "All outputs of the training process will appear here"
     lock_message = "Artifacts will be available after training is completed"
 
     def __init__(self, api: Api, app_options: Dict[str, Any]):
+        """
+        :param api: Supervisely API.
+        :type api: Api
+        :param app_options: App options.
+        :type app_options: Dict[str, Any]
+        """
         # Init widgets
         self.artifacts_thumbnail = None
         self.artifacts_field = None

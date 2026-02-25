@@ -6,7 +6,10 @@ from supervisely.nn.artifacts.artifacts import BaseTrainArtifacts
 
 
 class YOLOv5(BaseTrainArtifacts):
+    """Training artifacts descriptor for YOLOv5 object detection sessions."""
+
     def __init__(self, team_id: int):
+        """See :class:`~supervisely.nn.artifacts.artifacts.BaseTrainArtifacts` for params."""
         super().__init__(team_id)
 
         self._app_name = "Train YOLOv5"
@@ -41,7 +44,10 @@ class YOLOv5(BaseTrainArtifacts):
 
 
 class YOLOv5v2(YOLOv5):
+    """Training artifacts descriptor for YOLOv5 2.0 object detection sessions."""
+
     def __init__(self, team_id: int):
+        """See :class:`~supervisely.nn.artifacts.artifacts.BaseTrainArtifacts` for params."""
         super().__init__(team_id)
 
         self._app_name = "Train YOLOv5 2.0"

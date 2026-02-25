@@ -10,6 +10,8 @@ from supervisely.sly_logger import logger as sly_logger
 
 
 class Uploader:
+    """Background batching helper that uploads queued items in a worker thread (optional notify hook)."""
+
     def __init__(
         self,
         upload_f: Callable,
@@ -17,6 +19,16 @@ class Uploader:
         exception_handler: Callable = None,
         logger: Logger = None,
     ):
+        """
+        :param upload_f: Upload callable.
+        :type upload_f: Callable
+        :param notify_f: Optional notify callback.
+        :type notify_f: Callable
+        :param exception_handler: Optional exception handler.
+        :type exception_handler: Callable
+        :param logger: Optional logger.
+        :type logger: Logger
+        """
         self._upload_f = upload_f
         self._notify_f = notify_f
         self._exception_handler = exception_handler
@@ -169,6 +181,7 @@ class Uploader:
 
 
 class Downloader:
+    """Background download worker pool with input/buffer/output queues."""
 
     def __init__(
         self,
@@ -178,6 +191,17 @@ class Downloader:
         exception_handler: Callable = None,
         logger: Logger = None,
     ):
+        """
+        :param download_f: Download callable.
+        :type download_f: Callable
+        :param max_workers: Worker threads.
+        :type max_workers: int
+        :param buffer_size: Queue size.
+        :type buffer_size: int
+        :param exception_handler: Optional handler.
+        :param logger: Optional logger.
+        :type logger: Logger
+        """
         self._download_f = download_f
         self._max_workers = max_workers
         self._logger = logger

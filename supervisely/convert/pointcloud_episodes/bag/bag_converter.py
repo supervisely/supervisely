@@ -11,6 +11,8 @@ class BagEpisodesConverter(BagConverter, PointcloudEpisodeConverter):
     """Converter for ROS bag files containing point cloud data to use for point cloud episodes."""
 
     class Item(BagConverter.Item):
+        """Episode item: point cloud frame from bag with frame number for episode ordering."""
+
         def __init__(
             self,
             item_path,
@@ -19,6 +21,7 @@ class BagEpisodesConverter(BagConverter, PointcloudEpisodeConverter):
             related_images: list = None,
             custom_data: dict = None,
         ):
+            """:param frame_number: Frame index in episode."""
             super().__init__(item_path, ann_data, related_images, custom_data)
             self._frame_number = frame_number
 
@@ -32,6 +35,7 @@ class BagEpisodesConverter(BagConverter, PointcloudEpisodeConverter):
             upload_as_links: bool,
             remote_files_map: Optional[Dict[str, str]] = None,
     ):
+        """See :class:`~supervisely.convert.base_converter.BaseConverter` for params."""
         super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
 
         self._type = "point_cloud_episode"

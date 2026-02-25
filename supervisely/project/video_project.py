@@ -40,6 +40,9 @@ from supervisely.video_annotation.video_annotation import VideoAnnotation
 
 
 class VideoItemPaths(NamedTuple):
+    """
+    Paths to a video's data file and its annotation file within a local Supervisely dataset.
+    """
     video_path: str
     # Full video file path of item
     ann_path: str
@@ -48,34 +51,23 @@ class VideoItemPaths(NamedTuple):
 
 class VideoDataset(Dataset):
     """
-    VideoDataset is where your labeled and unlabeled videos and other data files live. :class:`VideoDataset<VideoDataset>` object is immutable.
+    A dataset directory for video items inside a local Supervisely video project.
 
-    :param directory: Path to dataset directory.
-    :type directory: str
-    :param mode: Determines working mode for the given dataset.
-    :type mode: :class:`OpenMode<supervisely.project.project.OpenMode>`
-    :Usage example:
-
-     .. code-block:: python
-
-        import supervisely as sly
-        dataset_path = "/home/admin/work/supervisely/projects/videos_example/ds0"
-        ds = sly.VideoDataset(dataset_path, sly.OpenMode.READ)
+    Stores videos, per-video annotations and related metadata on disk.
     """
-
-    #: :class:`str`: Items data directory name
+    #: str: Items data directory name
     item_dir_name = "video"
 
-    #: :class:`str`: Annotations directory name
+    #: str: Annotations directory name
     ann_dir_name = "ann"
 
-    #: :class:`str`: Items info directory name
+    #: str: Items info directory name
     item_info_dir_name = "video_info"
 
-    #: :class:`str`: Metadata directory name
+    #: str: Metadata directory name
     metadata_dir_name = "metadata"
 
-    #: :class:`str`: Segmentation masks directory name
+    #: str: Segmentation masks directory name
     seg_dir_name = None
 
     annotation_class = VideoAnnotation
@@ -83,22 +75,60 @@ class VideoDataset(Dataset):
 
     datasets_dir_name = "datasets"
 
+    def __init__(
+        self,
+        directory: str,
+        mode: Optional[OpenMode] = None,
+        parents: Optional[List[str]] = None,
+        dataset_id: Optional[int] = None,
+        api: Optional[Api] = None,
+    ):
+        """
+        VideoDataset is a dataset for video data. VideoDataset object is immutable.
+
+        :param directory: Path to dataset directory.
+        :type directory: str
+        :param mode: Determines working mode for the given dataset.
+        :type mode: :class:`~supervisely.project.project.OpenMode`, optional. If not provided, dataset_id must be provided.
+        :param parents: List of parent directories, e.g. ["ds1", "ds2", "ds3"].
+        :type parents: List[str]
+        :param dataset_id: Dataset ID if the Dataset is opened in API mode.
+            If dataset_id is specified then api must be specified as well.
+        :type dataset_id: Optional[int]
+        :param api: API object if the Dataset is opened in API mode.
+        :type api: :class:`~supervisely.api.api.Api`, optional.
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                dataset_path = "/home/admin/work/supervisely/projects/videos_example/ds0"
+                ds = sly.VideoDataset(dataset_path, sly.OpenMode.READ)
+                print(ds.project_dir)
+                # Output: "/home/admin/work/supervisely/projects/videos_example"
+        """
+        super().__init__(directory, mode, parents, dataset_id, api)
+
     @property
     def project_dir(self) -> str:
         """
         Path to the video project containing the video dataset.
 
-        :return: Path to the video project.
-        :rtype: :class:`str`
-        :Usage example:
+        :returns: Path to the video project.
+        :rtype: str
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            dataset_path = "/home/admin/work/supervisely/projects/videos_example/ds0"
-            ds = sly.VideoDataset(dataset_path, sly.OpenMode.READ)
-            print(ds.project_dir)
-            # Output: "/home/admin/work/supervisely/projects/videos_example"
+            .. code-block:: python
+
+                import supervisely as sly
+
+                dataset_path = "/home/admin/work/supervisely/projects/videos_example/ds0"
+                ds = sly.VideoDataset(dataset_path, sly.OpenMode.READ)
+                print(ds.project_dir)
+                # Output: "/home/admin/work/supervisely/projects/videos_example"
         """
         return super().project_dir
 
@@ -107,17 +137,19 @@ class VideoDataset(Dataset):
         """
         Video Dataset name.
 
-        :return: Video Dataset Name.
-        :rtype: :class:`str`
-        :Usage example:
+        :returns: Video Dataset Name.
+        :rtype: str
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            dataset_path = "/home/admin/work/supervisely/projects/videos_example/ds0"
-            ds = sly.VideoDataset(dataset_path, sly.OpenMode.READ)
-            print(ds.name)
-            # Output: "ds0"
+            .. code-block:: python
+
+                import supervisely as sly
+
+                dataset_path = "/home/admin/work/supervisely/projects/videos_example/ds0"
+                ds = sly.VideoDataset(dataset_path, sly.OpenMode.READ)
+                print(ds.name)
+                # Output: "ds0"
         """
         return super().name
 
@@ -126,19 +158,20 @@ class VideoDataset(Dataset):
         """
         Path to the video dataset directory.
 
-        :return: Path to the video dataset directory.
-        :rtype: :class:`str`
+        :returns: Path to the video dataset directory.
+        :rtype: str
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
-            dataset_path = "/home/admin/work/supervisely/projects/videos_example/ds0"
-            ds = sly.VideoDataset(dataset_path, sly.OpenMode.READ)
+                import supervisely as sly
 
-            print(ds.directory)
-            # Output: '/home/admin/work/supervisely/projects/videos_example/ds0'
+                dataset_path = "/home/admin/work/supervisely/projects/videos_example/ds0"
+                ds = sly.VideoDataset(dataset_path, sly.OpenMode.READ)
+
+                print(ds.directory)
+                # Output: '/home/admin/work/supervisely/projects/videos_example/ds0'
         """
         return super().directory
 
@@ -148,7 +181,7 @@ class VideoDataset(Dataset):
         Path to the video dataset metadata directory.
 
         :return: Path to the video dataset metadata directory.
-        :rtype: :class:`str`
+        :rtype: str
         :Usage example:
          .. code-block:: python
 
@@ -166,18 +199,20 @@ class VideoDataset(Dataset):
         """
         Path to the video dataset items directory.
 
-        :return: Path to the video dataset items directory.
-        :rtype: :class:`str`
-        :Usage example:
+        :returns: Path to the video dataset items directory.
+        :rtype: str
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            dataset_path = "/home/admin/work/supervisely/projects/videos_example/ds0"
-            ds = sly.VideoDataset(dataset_path, sly.OpenMode.READ)
+            .. code-block:: python
 
-            print(ds.item_dir)
-            # Output: '/home/admin/work/supervisely/projects/videos_example/ds0/video'
+                import supervisely as sly
+
+                dataset_path = "/home/admin/work/supervisely/projects/videos_example/ds0"
+                ds = sly.VideoDataset(dataset_path, sly.OpenMode.READ)
+
+                print(ds.item_dir)
+                # Output: '/home/admin/work/supervisely/projects/videos_example/ds0/video'
         """
         return super().item_dir
 
@@ -185,7 +220,7 @@ class VideoDataset(Dataset):
     def img_dir(self) -> str:
         """
         Not available for VideoDataset class object.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Property 'img_dir' is not supported for {type(self).__name__} object."
@@ -196,18 +231,20 @@ class VideoDataset(Dataset):
         """
         Path to the video dataset annotations directory.
 
-        :return: Path to the video dataset directory with annotations.
-        :rtype: :class:`str`
-        :Usage example:
+        :returns: Path to the video dataset directory with annotations.
+        :rtype: str
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            dataset_path = "/home/admin/work/supervisely/projects/videos_example/ds0"
-            ds = sly.VideoDataset(dataset_path, sly.OpenMode.READ)
+            .. code-block:: python
 
-            print(ds.ann_dir)
-            # Output: '/home/admin/work/supervisely/projects/videos_example/ds0/ann'
+                import supervisely as sly
+
+                dataset_path = "/home/admin/work/supervisely/projects/videos_example/ds0"
+                ds = sly.VideoDataset(dataset_path, sly.OpenMode.READ)
+
+                print(ds.ann_dir)
+                # Output: '/home/admin/work/supervisely/projects/videos_example/ds0/ann'
         """
         return super().ann_dir
 
@@ -215,7 +252,7 @@ class VideoDataset(Dataset):
     def img_info_dir(self):
         """
         Not available for VideoDataset class object.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Property 'img_info_dir' is not supported for {type(self).__name__} object."
@@ -226,18 +263,20 @@ class VideoDataset(Dataset):
         """
         Path to the video dataset item with items info.
 
-        :return: Path to the video dataset directory with items info.
-        :rtype: :class:`str`
-        :Usage example:
+        :returns: Path to the video dataset directory with items info.
+        :rtype: str
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            dataset_path = "/home/admin/work/supervisely/projects/videos_example/ds0"
-            ds = sly.VideoDataset(dataset_path, sly.OpenMode.READ)
+            .. code-block:: python
 
-            print(ds.item_info_dir)
-            # Output: '/home/admin/work/supervisely/projects/videos_example/ds0/video_info'
+                import supervisely as sly
+
+                dataset_path = "/home/admin/work/supervisely/projects/videos_example/ds0"
+                ds = sly.VideoDataset(dataset_path, sly.OpenMode.READ)
+
+                print(ds.item_info_dir)
+                # Output: '/home/admin/work/supervisely/projects/videos_example/ds0/video_info'
         """
         return super().item_info_dir
 
@@ -245,7 +284,7 @@ class VideoDataset(Dataset):
     def seg_dir(self):
         """
         Not available for VideoDataset class object.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Property 'seg_dir' is not supported for {type(self).__name__} object."
@@ -256,7 +295,7 @@ class VideoDataset(Dataset):
         """
         Checks if file from given path is supported
         :param path: str
-        :return: bool
+        :returns: bool
         """
         return sly_video.has_valid_ext(path)
 
@@ -264,18 +303,20 @@ class VideoDataset(Dataset):
         """
         List of video dataset item names.
 
-        :return: List of item names.
-        :rtype: :class:`list` [ :class:`str` ]
-        :Usage example:
+        :returns: List of item names.
+        :rtype: List[str]
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            dataset_path = "/home/admin/work/supervisely/projects/videos_example/ds0"
-            ds = sly.VideoDataset(dataset_path, sly.OpenMode.READ)
+            .. code-block:: python
 
-            print(ds.get_item_names())
-            # Output: ['video_0002.mp4', 'video_0005.mp4', 'video_0008.mp4', ...]
+                import supervisely as sly
+
+                dataset_path = "/home/admin/work/supervisely/projects/videos_example/ds0"
+                ds = sly.VideoDataset(dataset_path, sly.OpenMode.READ)
+
+                print(ds.get_item_names())
+                # Output: ['video_0002.mp4', 'video_0005.mp4', 'video_0008.mp4', ...]
         """
         return super().get_items_names()
 
@@ -284,19 +325,21 @@ class VideoDataset(Dataset):
         Checks if given item name belongs to the video dataset.
 
         :param item_name: Item name.
-        :type item_name: :class:`str`
-        :return: True if item exist, otherwise False.
-        :rtype: :class:`bool`
-        :Usage example:
+        :type item_name: str
+        :returns: True if item exist, otherwise False.
+        :rtype: bool
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            dataset_path = "/home/admin/work/supervisely/projects/videos_example/ds0"
-            ds = sly.VideoDataset(dataset_path, sly.OpenMode.READ)
+            .. code-block:: python
 
-            ds.item_exists("video_0748")     # False
-            ds.item_exists("video_0748.mp4") # True
+                import supervisely as sly
+
+                dataset_path = "/home/admin/work/supervisely/projects/videos_example/ds0"
+                ds = sly.VideoDataset(dataset_path, sly.OpenMode.READ)
+
+                ds.item_exists("video_0748")     # False
+                ds.item_exists("video_0748.mp4") # True
         """
         return super().item_exists(item_name)
 
@@ -305,30 +348,32 @@ class VideoDataset(Dataset):
         Path to the given item.
 
         :param item_name: Item name.
-        :type item_name: :class:`str`
-        :return: Path to the given item.
-        :rtype: :class:`str`
-        :raises: :class:`RuntimeError` if item not found in the project
-        :Usage example:
+        :type item_name: str
+        :returns: Path to the given item.
+        :rtype: str
+        :raises RuntimeError: if item not found in the project
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            dataset_path = "/home/admin/work/supervisely/projects/videos_example/ds0"
-            ds = sly.VideoDataset(dataset_path, sly.OpenMode.READ)
+            .. code-block:: python
 
-            print(ds.get_item_path("video_0748"))
-            # Output: RuntimeError: Item video_0748 not found in the project.
+                import supervisely as sly
 
-            print(ds.get_item_path("video_0748.mp4"))
-            # Output: '/home/admin/work/supervisely/projects/videos_example/ds0/video/video_0748.mp4'
+                dataset_path = "/home/admin/work/supervisely/projects/videos_example/ds0"
+                ds = sly.VideoDataset(dataset_path, sly.OpenMode.READ)
+
+                print(ds.get_item_path("video_0748"))
+                # Output: RuntimeError: Item video_0748 not found in the project.
+
+                print(ds.get_item_path("video_0748.mp4"))
+                # Output: '/home/admin/work/supervisely/projects/videos_example/ds0/video/video_0748.mp4'
         """
         return super().get_item_path(item_name)
 
     def get_img_path(self, item_name: str) -> str:
         """
         Not available for VideoDataset class object.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Method 'get_img_path(item_name)' is not supported for {type(self).__name__} object."
@@ -341,44 +386,46 @@ class VideoDataset(Dataset):
         Read annotation of item from json.
 
         :param item_name: Item name.
-        :type item_name: :class:`str`
-        :param project_meta: ProjectMeta object.
-        :type project_meta: :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`
+        :type item_name: str
+        :param project_meta: Project meta.
+        :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: :class:`KeyIdMap<supervisely.video_annotation.key_id_map.KeyIdMap>`, optional
-        :return: VideoAnnotation object.
-        :rtype: :class:`VideoAnnotation<supervisely.video_annotation.video_annotation.VideoAnnotation>`
-        :raises: :class:`RuntimeError` if item not found in the project
-        :Usage example:
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
+        :returns: VideoAnnotation object.
+        :rtype: :class:`~supervisely.video_annotation.video_annotation.VideoAnnotation`
+        :raises RuntimeError: if item not found in the project
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            project_path = "/home/admin/work/supervisely/projects/videos_example"
-            project = sly.VideoProject(project_path, sly.OpenMode.READ)
+            .. code-block:: python
 
-            ds = project.datasets.get('ds0')
+                import supervisely as sly
 
-            annotation = ds.get_ann("video_0748", project.meta)
-            # Output: RuntimeError: Item video_0748 not found in the project.
+                project_path = "/home/admin/work/supervisely/projects/videos_example"
+                project = sly.VideoProject(project_path, sly.OpenMode.READ)
 
-            annotation = ds.get_ann("video_0748.mp4", project.meta)
-            print(annotation.to_json())
-            # Output: {
-            #     "description": "",
-            #     "size": {
-            #         "height": 500,
-            #         "width": 700
-            #     },
-            #     "key": "e9ef52dbbbbb490aa10f00a50e1fade6",
-            #     "tags": [],
-            #     "objects": [],
-            #     "frames": [{
-            #         "index": 0,
-            #         "figures": []
-            #     }]
-            #     "framesCount": 1
-            # }
+                ds = project.datasets.get('ds0')
+
+                annotation = ds.get_ann("video_0748", project.meta)
+                # Output: RuntimeError: Item video_0748 not found in the project.
+
+                annotation = ds.get_ann("video_0748.mp4", project.meta)
+                print(annotation.to_json())
+                # Output: {
+                #     "description": "",
+                #     "size": {
+                #         "height": 500,
+                #         "width": 700
+                #     },
+                #     "key": "e9ef52dbbbbb490aa10f00a50e1fade6",
+                #     "tags": [],
+                #     "objects": [],
+                #     "frames": [{
+                #         "index": 0,
+                #         "figures": []
+                #     }]
+                #     "framesCount": 1
+                # }
         """
         ann_path = self.get_ann_path(item_name)
         return self.annotation_class.load_json_file(ann_path, project_meta, key_id_map)
@@ -388,30 +435,32 @@ class VideoDataset(Dataset):
         Path to the given annotation json file.
 
         :param item_name: Item name.
-        :type item_name: :class:`str`
-        :return: Path to the given annotation json file.
-        :rtype: :class:`str`
-        :raises: :class:`RuntimeError` if item not found in the project
-        :Usage example:
+        :type item_name: str
+        :returns: Path to the given annotation json file.
+        :rtype: str
+        :raises RuntimeError: if item not found in the project
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            dataset_path = "/home/admin/work/supervisely/projects/videos_example/ds0"
-            ds = sly.VideoDataset(dataset_path, sly.OpenMode.READ)
+            .. code-block:: python
 
-            print(ds.get_ann_path("video_0748"))
-            # Output: RuntimeError: Item video_0748 not found in the project.
+                import supervisely as sly
 
-            print(ds.get_ann_path("video_0748.mp4"))
-            # Output: '/home/admin/work/supervisely/projects/videos_example/ds0/ann/video_0748.mp4.json'
+                dataset_path = "/home/admin/work/supervisely/projects/videos_example/ds0"
+                ds = sly.VideoDataset(dataset_path, sly.OpenMode.READ)
+
+                print(ds.get_ann_path("video_0748"))
+                # Output: RuntimeError: Item video_0748 not found in the project.
+
+                print(ds.get_ann_path("video_0748.mp4"))
+                # Output: '/home/admin/work/supervisely/projects/videos_example/ds0/ann/video_0748.mp4.json'
         """
         return super().get_ann_path(item_name)
 
     def get_img_info_path(self, img_name: str) -> str:
         """
         Not available for VideoDataset class object.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Method 'get_img_info_path(item_name)' is not supported for {type(self).__name__} object."
@@ -422,30 +471,32 @@ class VideoDataset(Dataset):
         Get path to the item info json file without checking if the file exists.
 
         :param item_name: Item name.
-        :type item_name: :class:`str`
-        :return: Path to the given item info json file.
-        :rtype: :class:`str`
-        :raises: :class:`RuntimeError` if item not found in the project.
-        :Usage example:
+        :type item_name: str
+        :returns: Path to the given item info json file.
+        :rtype: str
+        :raises RuntimeError: if item not found in the project.
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            dataset_path = "/home/admin/work/supervisely/projects/videos_example/ds0"
-            ds = sly.VideoDataset(dataset_path, sly.OpenMode.READ)
+            .. code-block:: python
 
-            print(ds.get_item_info_path("video_0748"))
-            # Output: RuntimeError: Item video_0748 not found in the project.
+                import supervisely as sly
 
-            print(ds.get_item_info_path("video_0748.mp4"))
-            # Output: '/home/admin/work/supervisely/projects/videos_example/ds0/video_info/video_0748.mp4.json'
+                dataset_path = "/home/admin/work/supervisely/projects/videos_example/ds0"
+                ds = sly.VideoDataset(dataset_path, sly.OpenMode.READ)
+
+                print(ds.get_item_info_path("video_0748"))
+                # Output: RuntimeError: Item video_0748 not found in the project.
+
+                print(ds.get_item_info_path("video_0748.mp4"))
+                # Output: '/home/admin/work/supervisely/projects/videos_example/ds0/video_info/video_0748.mp4.json'
         """
         return super().get_item_info_path(item_name)
 
     def get_image_info(self, item_name: str) -> None:
         """
         Not available for VideoDataset class object.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Method 'get_image_info(item_name)' is not supported for {type(self).__name__} object."
@@ -456,35 +507,37 @@ class VideoDataset(Dataset):
         Information for Item with given name.
 
         :param item_name: Item name.
-        :type item_name: :class:`str`
-        :return: VideoInfo object.
-        :rtype: :class:`VideoInfo<supervisely.api.video.video_api.VideoInfo>`
-        :Usage example:
+        :type item_name: str
+        :returns: VideoInfo object.
+        :rtype: :class:`~supervisely.api.video.video_api.VideoInfo`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            dataset_path = "/home/admin/work/supervisely/projects/videos_example/ds0"
-            ds = sly.VideoDataset(dataset_path, sly.OpenMode.READ)
+            .. code-block:: python
 
-            print(ds.get_item_info("video_0748.mp4"))
-            # Output:
-            # VideoInfo(
-            #     id=198702499,
-            #     name='video_0748.mp4',
-            #     hash='ehYHLNFWmMNuF2fPUgnC/g/tkIIEjNIOhdbNLQXkE8Y=',
-            #     team_id=16087,
-            #     workspace_id=23821,
-            #     project_id=124974,
-            #     dataset_id=466639,
-            #     path_original='/h5un6l2bnaz1vj8a9qgms4-public/videos/w/7/i4/GZYoCs...9F3kyVJ7.mp4',
-            #     frames_to_timecodes=[0, 0.033367, 0.066733, 0.1001,...,10.777433, 10.8108, 10.844167],
-            #     frames_count=326,
-            #     frame_width=3840,
-            #     frame_height=2160,
-            #     created_at='2021-03-23T13:14:25.536Z',
-            #     updated_at='2021-03-23T13:16:43.300Z'
-            # )
+                import supervisely as sly
+
+                dataset_path = "/home/admin/work/supervisely/projects/videos_example/ds0"
+                ds = sly.VideoDataset(dataset_path, sly.OpenMode.READ)
+
+                print(ds.get_item_info("video_0748.mp4"))
+                # Output:
+                # VideoInfo(
+                #     id=198702499,
+                #     name='video_0748.mp4',
+                #     hash='ehYHLNFWmMNuF2fPUgnC/g/tkIIEjNIOhdbNLQXkE8Y=',
+                #     team_id=16087,
+                #     workspace_id=23821,
+                #     project_id=124974,
+                #     dataset_id=466639,
+                #     path_original='/h5un6l2bnaz1vj8a9qgms4-public/videos/w/7/i4/GZYoCs...9F3kyVJ7.mp4',
+                #     frames_to_timecodes=[0, 0.033367, 0.066733, 0.1001,...,10.777433, 10.8108, 10.844167],
+                #     frames_count=326,
+                #     frame_width=3840,
+                #     frame_height=2160,
+                #     created_at='2021-03-23T13:14:25.536Z',
+                #     updated_at='2021-03-23T13:16:43.300Z'
+                # )
         """
         item_info_path = self.get_item_info_path(item_name)
         item_info_dict = load_json_file(item_info_path)
@@ -494,7 +547,7 @@ class VideoDataset(Dataset):
     def get_seg_path(self, item_name: str) -> str:
         """
         Not available for VideoDataset class object.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Method 'get_seg_path(item_name)' is not supported for {type(self).__name__} object."
@@ -514,32 +567,34 @@ class VideoDataset(Dataset):
         annotations directory. if ann is None, creates empty annotation file.
 
         :param item_name: Item name.
-        :type item_name: :class:`str`
+        :type item_name: str
         :param item_path: Path to the item.
-        :type item_path: :class:`str`
+        :type item_path: str
         :param ann: VideoAnnotation object or path to annotation json file.
-        :type ann: :class:`VideoAnnotation<supervisely.video_annotation.video_annotation.VideoAnnotation>` or :class:`str`, optional
+        :type ann: :class:`~supervisely.video_annotation.video_annotation.VideoAnnotation` or str, optional
         :param _validate_item: Checks input files format.
-        :type _validate_item: :class:`bool`, optional
+        :type _validate_item: bool, optional
         :param _use_hardlink: If True creates a hardlink pointing to src named dst, otherwise don't.
-        :type _use_hardlink: :class:`bool`, optional
+        :type _use_hardlink: bool, optional
         :param item_info: VideoInfo object or VideoInfo object converted to dict or path to item info json file for copying to dataset item info directory.
-        :type item_info: :class:`VideoInfo<supervisely.api.video.video_api.VideoInfo>` or :class:`dict` or :class:`str`, optional
-        :return: None
+        :type item_info: :class:`~supervisely.api.video.video_api.VideoInfo` or dict or str, optional
+        :returns: None
         :rtype: NoneType
-        :raises: :class:`RuntimeError` if item_name already exists in dataset or item name has unsupported extension.
-        :Usage example:
+        :raises RuntimeError: if item_name already exists in dataset or item name has unsupported extension.
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            dataset_path = "/home/admin/work/supervisely/projects/videos_example/ds0"
-            ds = sly.VideoDataset(dataset_path, sly.OpenMode.READ)
+            .. code-block:: python
 
-            ann = "/home/admin/work/supervisely/projects/videos_example/ds0/ann/video_8888.mp4.json"
-            ds.add_item_file("video_8888.mp4", "/home/admin/work/supervisely/projects/videos_example/ds0/video/video_8888.mp4", ann=ann)
-            print(ds.item_exists("video_8888.mp4"))
-            # Output: True
+                import supervisely as sly
+
+                dataset_path = "/home/admin/work/supervisely/projects/videos_example/ds0"
+                ds = sly.VideoDataset(dataset_path, sly.OpenMode.READ)
+
+                ann = "/home/admin/work/supervisely/projects/videos_example/ds0/ann/video_8888.mp4.json"
+                ds.add_item_file("video_8888.mp4", "/home/admin/work/supervisely/projects/videos_example/ds0/video/video_8888.mp4", ann=ann)
+                print(ds.item_exists("video_8888.mp4"))
+                # Output: True
         """
         return super().add_item_file(
             item_name=item_name,
@@ -553,7 +608,7 @@ class VideoDataset(Dataset):
     def add_item_np(self, item_name, img, ann=None, img_info=None):
         """
         Not available for VideoDataset class object.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Method 'add_item_np()' is not supported for {type(self).__name__} object."
@@ -562,7 +617,7 @@ class VideoDataset(Dataset):
     def add_item_raw_bytes(self, item_name, item_raw_bytes, ann=None, img_info=None):
         """
         Not available for VideoDataset class object.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Method 'add_item_raw_bytes()' is not supported for {type(self).__name__} object."
@@ -610,7 +665,7 @@ class VideoDataset(Dataset):
         """
         Create empty VideoAnnotation for given video
         :param item_name: str
-        :return: VideoAnnotation class object
+        :returns: VideoAnnotation object
         """
         img_size, frames_count = sly_video.get_image_size_and_frames_count(item_name)
         return self.annotation_class(img_size, frames_count)
@@ -618,7 +673,7 @@ class VideoDataset(Dataset):
     def _add_item_raw_bytes(self, item_name, item_raw_bytes):
         """
         Not available for VideoDataset class object.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Method '_add_item_raw_bytes()' is not supported for {type(self).__name__} object."
@@ -627,7 +682,7 @@ class VideoDataset(Dataset):
     def _add_img_np(self, item_name, img):
         """
         Not available for VideoDataset class object.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Method '_add_img_np()' is not supported for {type(self).__name__} object."
@@ -652,24 +707,26 @@ class VideoDataset(Dataset):
         Replaces given annotation for given item name to dataset annotations directory in json format.
 
         :param item_name: Item name.
-        :type item_name: :class:`str`
+        :type item_name: str
         :param ann: VideoAnnotation object.
-        :type ann: :class:`VideoAnnotation<supervisely.video_annotation.video_annotation.VideoAnnotation>`
+        :type ann: :class:`~supervisely.video_annotation.video_annotation.VideoAnnotation`
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: :class:`KeyIdMap<supervisely.video_annotation.key_id_map.KeyIdMap>`, optional
-        :return: None
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
+        :returns: None
         :rtype: NoneType
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            dataset_path = "/home/admin/work/supervisely/projects/videos_example/ds0"
-            ds = sly.VideoDataset(dataset_path, sly.OpenMode.READ)
+            .. code-block:: python
 
-            height, width = 500, 700
-            new_ann = sly.VideoAnnotation((height, width), frames_count=0)
-            ds.set_ann("video_0748.mp4", new_ann)
+                import supervisely as sly
+
+                dataset_path = "/home/admin/work/supervisely/projects/videos_example/ds0"
+                ds = sly.VideoDataset(dataset_path, sly.OpenMode.READ)
+
+                height, width = 500, 700
+                new_ann = sly.VideoAnnotation((height, width), frames_count=0)
+                ds.set_ann("video_0748.mp4", new_ann)
         """
         if type(ann) is not self.annotation_class:
             raise TypeError(
@@ -680,26 +737,28 @@ class VideoDataset(Dataset):
 
     def get_item_paths(self, item_name) -> VideoItemPaths:
         """
-        Generates :class:`VideoItemPaths<VideoItemPaths>` object with paths to item and annotation directories for item with given name.
+        Generates VideoItemPaths object with paths to item and annotation directories for item with given name.
 
         :param item_name: Item name.
-        :type item_name: :class:`str`
-        :return: VideoItemPaths object
-        :rtype: :class:`VideoItemPaths<VideoItemPaths>`
-        :Usage example:
+        :type item_name: str
+        :returns: VideoItemPaths object
+        :rtype: :class:`~supervisely.project.video_project.VideoItemPaths`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            dataset_path = "/home/admin/work/supervisely/projects/videos_example/ds0"
-            ds = sly.VideoDataset(dataset_path, sly.OpenMode.READ)
+            .. code-block:: python
 
-            video_path, ann_path = dataset.get_item_paths("video_0748.mp4")
-            print("video_path:", video_path)
-            print("ann_path:", ann_path)
-            # Output:
-            # video_path: /home/admin/work/supervisely/projects/videos_example/ds0/video/video_0748.mp4
-            # ann_path: /home/admin/work/supervisely/projects/videos_example/ds0/ann/video_0748.mp4.json
+                import supervisely as sly
+
+                dataset_path = "/home/admin/work/supervisely/projects/videos_example/ds0"
+                ds = sly.VideoDataset(dataset_path, sly.OpenMode.READ)
+
+                video_path, ann_path = dataset.get_item_paths("video_0748.mp4")
+                print("video_path:", video_path)
+                print("ann_path:", ann_path)
+                # Output:
+                # video_path: /home/admin/work/supervisely/projects/videos_example/ds0/video/video_0748.mp4
+                # ann_path: /home/admin/work/supervisely/projects/videos_example/ds0/ann/video_0748.mp4.json
         """
         return VideoItemPaths(
             video_path=self.get_item_path(item_name), ann_path=self.get_ann_path(item_name)
@@ -710,54 +769,60 @@ class VideoDataset(Dataset):
         """
         Get URL to dataset items list in Supervisely.
 
-        :param project_id: :class:`VideoProject<VideoProject>` ID in Supervisely.
-        :type project_id: :class:`int`
-        :param dataset_id: :class:`VideoDataset<VideoDataset>` ID in Supervisely.
-        :type dataset_id: :class:`int`
-        :return: URL to dataset items list.
-        :rtype: :class:`str`
-        :Usage example:
+        :param project_id: VideoProject ID in Supervisely.
+        :type project_id: int
+        :param dataset_id: VideoDataset ID in Supervisely.
+        :type dataset_id: int
+        :returns: URL to dataset items list.
+        :rtype: str
 
-         .. code-block:: python
+        :Usage Example:
 
-            from supervisely import VideoDataset
+            .. code-block:: python
 
-            project_id = 10093
-            dataset_id = 45330
-            ds_items_link = VideoDataset.get_url(project_id, dataset_id)
+                from supervisely import VideoDataset
 
-            print(ds_items_link)
-            # Output: "/projects/10093/datasets/45330"
+                project_id = 10093
+                dataset_id = 45330
+                ds_items_link = VideoDataset.get_url(project_id, dataset_id)
+
+                print(ds_items_link)
+                # Output: "/projects/10093/datasets/45330"
         """
         return super().get_url(project_id, dataset_id)
 
 
 class VideoProject(Project):
     """
-    VideoProject is a parent directory for video dataset. VideoProject object is immutable.
+    A local Supervisely project for video data.
 
-    :param directory: Path to video project directory.
-    :type directory: :class:`str`
-    :param mode: Determines working mode for the given project.
-    :type mode: :class:`OpenMode<supervisely.project.project.OpenMode>`
-    :Usage example:
-
-     .. code-block:: python
-
-        import supervisely as sly
-        project_path = "/home/admin/work/supervisely/projects/videos_example"
-        project = sly.Project(project_path, sly.OpenMode.READ)
+    Contains one or more :class:`~supervisely.project.video_project.VideoDataset` datasets with videos
+    and their annotations.
     """
-
     dataset_class = VideoDataset
 
     class DatasetDict(KeyIndexedCollection):
+        """Key-indexed collection of :class:`~supervisely.project.video_project.VideoDataset` datasets."""
+
         item_type = VideoDataset
 
     def __init__(self, directory, mode: OpenMode):
         """
-        :param directory: path to the directory where the project will be saved or where it will be loaded from
-        :param mode: OpenMode class object which determines in what mode to work with the project (generate exception error if not so)
+        VideoProject is a parent directory for video dataset. VideoProject object is immutable.
+
+        :param directory: Path to video project directory.
+        :type directory: str
+        :param mode: Determines working mode for the given project.
+        :type mode: :class:`~supervisely.project.project.OpenMode`
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                project_path = "/home/admin/work/supervisely/projects/videos_example"
+                project = sly.Project(project_path, sly.OpenMode.READ)
         """
         self._key_id_map: KeyIdMap = None
         super().__init__(directory, mode)
@@ -767,21 +832,22 @@ class VideoProject(Project):
         """
         Get URL to video datasets list in Supervisely.
 
-        :param id: :class:`VideoProject<VideoProject>` ID in Supervisely.
-        :type id: :class:`int`
-        :return: URL to datasets list.
-        :rtype: :class:`str`
-        :Usage example:
+        :param id: VideoProject ID in Supervisely.
+        :type id: int
+        :returns: URL to datasets list.
+        :rtype: str
 
-         .. code-block:: python
+        :Usage Example:
 
-            from supervisely import VideoProject
+            .. code-block:: python
 
-            project_id = 10093
-            datasets_link = VideoProject.get_url(project_id)
+                from supervisely import VideoProject
 
-            print(datasets_link)
-            # Output: "/projects/10093/datasets"
+                project_id = 10093
+                datasets_link = VideoProject.get_url(project_id)
+
+                print(datasets_link)
+                # Output: "/projects/10093/datasets"
         """
         return super().get_url(id)
 
@@ -823,30 +889,33 @@ class VideoProject(Project):
         """
         Project type.
 
-        :return: Project type.
-        :rtype: :class:`str`
-        :Usage example:
+        :returns: Project type.
+        :rtype: str
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            project = sly.VideoProject("/home/admin/work/supervisely/projects/video", sly.OpenMode.READ)
-            print(project.type)
-            # Output: 'videos'
+            .. code-block:: python
+
+                import supervisely as sly
+
+                project = sly.VideoProject("/home/admin/work/supervisely/projects/video", sly.OpenMode.READ)
+                print(project.type)
+                # Output: 'videos'
         """
         return ProjectType.VIDEOS.value
 
     def set_key_id_map(self, new_map: KeyIdMap):
         """
         Save given KeyIdMap object to project dir in json format.
-        :param new_map: KeyIdMap class object
+        :param new_map: KeyIdMap object.
+        :type new_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`
         """
         self._key_id_map = new_map
         self._key_id_map.dump_json(self._get_key_id_map_path())
 
     def _get_key_id_map_path(self):
         """
-        :return: str (full path to key_id_map.json)
+        :returns: str (full path to key_id_map.json)
         """
         return os.path.join(self.directory, "key_id_map.json")
 
@@ -858,30 +927,32 @@ class VideoProject(Project):
         _use_hardlink: Optional[bool] = False,
     ) -> VideoProject:
         """
-        Makes a copy of the :class:`VideoProject<VideoProject>`.
+        Makes a copy of the VideoProject.
 
         :param dst_directory: Path to video project parent directory.
-        :type dst_directory: :class:`str`
+        :type dst_directory: str
         :param dst_name: Video Project name.
-        :type dst_name: :class:`str`, optional
+        :type dst_name: str, optional
         :param _validate_item: Checks input files format.
-        :type _validate_item: :class:`bool`, optional
+        :type _validate_item: bool, optional
         :param _use_hardlink: If True creates a hardlink pointing to src named dst, otherwise don't.
-        :type _use_hardlink: :class:`bool`, optional
-        :return: VideoProject object.
-        :rtype: :class:`VideoProject<VideoProject>`
-        :Usage example:
+        :type _use_hardlink: bool, optional
+        :returns: New instance of VideoProject object.
+        :rtype: :class:`~supervisely.project.video_project.VideoProject`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            project = sly.VideoProject("/home/admin/work/supervisely/projects/videos_example", sly.OpenMode.READ)
-            print(project.total_items)
-            # Output: 6
+            .. code-block:: python
 
-            new_project = project.copy_data("/home/admin/work/supervisely/projects/", "videos_example_copy")
-            print(new_project.total_items)
-            # Output: 6
+                import supervisely as sly
+
+                project = sly.VideoProject("/home/admin/work/supervisely/projects/videos_example", sly.OpenMode.READ)
+                print(project.total_items)
+                # Output: 6
+
+                new_project = project.copy_data("/home/admin/work/supervisely/projects/", "videos_example_copy")
+                print(new_project.total_items)
+                # Output: 6
         """
         dst_name = dst_name if dst_name is not None else self.name
         new_project = VideoProject(os.path.join(dst_directory, dst_name), OpenMode.CREATE)
@@ -934,7 +1005,7 @@ class VideoProject(Project):
     ) -> None:
         """
         Not available for VideoProject class.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Static method 'to_segmentation_task()' is not supported for VideoProject class now."
@@ -949,7 +1020,7 @@ class VideoProject(Project):
     ) -> None:
         """
         Not available for VideoProject class.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Static method 'to_detection_task()' is not supported for VideoProject class now."
@@ -963,7 +1034,7 @@ class VideoProject(Project):
     ) -> None:
         """
         Not available for VideoProject class.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Static method 'remove_classes_except()' is not supported for VideoProject class now."
@@ -977,7 +1048,7 @@ class VideoProject(Project):
     ) -> None:
         """
         Not available for VideoProject class.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Static method 'remove_classes()' is not supported for VideoProject class now."
@@ -993,7 +1064,7 @@ class VideoProject(Project):
     ):
         """
         Not available for VideoProject class.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Static method '_remove_items()' is not supported for VideoProject class now."
@@ -1003,7 +1074,7 @@ class VideoProject(Project):
     def remove_items_without_objects(project_dir: str, inplace: Optional[bool] = False) -> None:
         """
         Not available for VideoProject class.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Static method 'remove_items_without_objects()' is not supported for VideoProject class now."
@@ -1013,7 +1084,7 @@ class VideoProject(Project):
     def remove_items_without_tags(project_dir: str, inplace: Optional[bool] = False) -> None:
         """
         Not available for VideoProject class.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Static method 'remove_items_without_tags()' is not supported for VideoProject class now."
@@ -1025,7 +1096,7 @@ class VideoProject(Project):
     ) -> None:
         """
         Not available for VideoProject class.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Static method 'remove_items_without_both_objects_and_tags()' is not supported for VideoProject class now."
@@ -1035,7 +1106,7 @@ class VideoProject(Project):
     def get_train_val_splits_by_count(project_dir: str, train_count: int, val_count: int) -> None:
         """
         Not available for VideoProject class.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Static method 'get_train_val_splits_by_count()' is not supported for VideoProject class now."
@@ -1050,7 +1121,7 @@ class VideoProject(Project):
     ) -> None:
         """
         Not available for VideoProject class.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Static method 'get_train_val_splits_by_tag()' is not supported for VideoProject class now."
@@ -1062,7 +1133,7 @@ class VideoProject(Project):
     ) -> None:
         """
         Not available for VideoProject class.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Static method 'get_train_val_splits_by_tag()' is not supported for VideoProject class now."
@@ -1078,7 +1149,7 @@ class VideoProject(Project):
     ) -> None:
         """
         Not available for VideoProject class.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Static method 'get_train_val_splits_by_collections()' is not supported for VideoProject class now."
@@ -1089,7 +1160,8 @@ class VideoProject(Project):
         """
         Read project from given ditectory. Generate exception error if given dir contains more than one subdirectory
         :param dir: str
-        :return: VideoProject class object
+        :returns: New instance of VideoProject object.
+        :rtype: :class:`~supervisely.project.video_project.VideoProject`
         """
         return read_project_wrapper(dir, cls)
 
@@ -1108,45 +1180,46 @@ class VideoProject(Project):
         """
         Download video project from Supervisely to the given directory.
 
-        :param api: Supervisely Api class object.
-        :type api: :class:`Api<supervisely.api.api.Api>`
+        :param api: Supervisely API object.
+        :type api: :class:`~supervisely.api.api.Api`
         :param project_id: Project ID in Supervisely.
-        :type project_id: :class:`int`
+        :type project_id: int
         :param dest_dir: Directory to download video project.
-        :type dest_dir: :class:`str`
+        :type dest_dir: str
         :param dataset_ids: Datasets IDs in Supervisely to download.
-        :type dataset_ids: :class:`list` [ :class:`int` ], optional
+        :type dataset_ids: List[int], optional
         :param download_videos: Download videos from Supervisely video project in dest_dir or not.
-        :type download_videos: :class:`bool`, optional
+        :type download_videos: bool, optional
         :param save_video_info: Save video infos or not.
-        :type save_video_info: :class:`bool`, optional
+        :type save_video_info: bool, optional
         :param log_progress: Log download progress or not.
-        :type log_progress: :class:`bool`
+        :type log_progress: bool
         :param progress_cb: Function for tracking download progress.
-        :type progress_cb: :class:`tqdm`, optional
-        :return: None
+        :type progress_cb: tqdm or callable, optional
+        :returns: None
         :rtype: NoneType
-        :Usage example:
 
-        .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            # Local destination Project folder
-            save_directory = "/home/admin/work/supervisely/source/video_project"
+                import os
+                from dotenv import load_dotenv
 
-            # Obtain server address and your api_token from environment variables
-            # Edit those values if you run this notebook on your own PC
-            address = os.environ['SERVER_ADDRESS']
-            token = os.environ['API_TOKEN']
+                import supervisely as sly
 
-            # Initialize API object
-            api = sly.Api(address, token)
-            project_id = 8888
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            # Download Video Project
-            sly.VideoProject.download(api, project_id, save_directory)
-            project_fs = sly.VideoProject(save_directory, sly.OpenMode.READ)
+                api = sly.Api.from_env()
+
+                # Download Video Project
+                project_id = 8888
+                save_directory = "/home/admin/work/supervisely/source/video_project"
+                sly.VideoProject.download(api, project_id, save_directory)
+                project_fs = sly.VideoProject(save_directory, sly.OpenMode.READ)
         """
         download_video_project(
             api=api,
@@ -1174,8 +1247,8 @@ class VideoProject(Project):
 
         :param dir: Directory with video project.
         :type dir: str
-        :param api: Api class object.
-        :type api: Api
+        :param api: Supervisely API object.
+        :type api: :class:`~supervisely.api.api.Api`
         :param workspace_id: Workspace ID in Supervisely to upload video project.
         :type workspace_id: int
         :param project_name: Name of video project.
@@ -1183,26 +1256,27 @@ class VideoProject(Project):
         :type project_name: str
         :param log_progress: Logging progress of download video project or not.
         :type log_progress: bool
-        :return: New video project ID in Supervisely and project name
-        :rtype: :class:`int`, :class:`str`
-        :Usage example:
+        :returns: New video project ID in Supervisely and project name
+        :rtype: int, str
 
-        .. code-block:: python
+        :Usage Example:
+
+            .. code-block:: python
+
+                import os
+                from dotenv import load_dotenv
 
                 import supervisely as sly
 
-                # Local folder with Video Project
-                project_directory = "/home/admin/work/supervisely/source/video_project"
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-                # Obtain server address and your api_token from environment variables
-                # Edit those values if you run this notebook on your own PC
-                address = os.environ['SERVER_ADDRESS']
-                token = os.environ['API_TOKEN']
-
-                # Initialize API object
-                api = sly.Api(address, token)
+                api = sly.Api.from_env()
 
                 # Upload Video Project
+                project_directory = "/home/admin/work/supervisely/source/video_project"
                 project_id, project_name = sly.VideoProject.upload(
                     project_directory,
                     api,
@@ -1237,44 +1311,51 @@ class VideoProject(Project):
         """
         Download video project from Supervisely to the given directory asynchronously.
 
-        :param api: Supervisely Api class object.
-        :type api: :class:`Api<supervisely.api.api.Api>`
+        :param api: Supervisely :class:`~supervisely.api.api.Api` class object.
+        :type api: :class:`~supervisely.api.api.Api`
         :param project_id: Project ID in Supervisely.
-        :type project_id: :class:`int`
+        :type project_id: int
         :param dest_dir: Directory to download video project.
-        :type dest_dir: :class:`str`
+        :type dest_dir: str
         :param semaphore: Semaphore to limit the number of concurrent downloads of items.
-        :type semaphore: :class:`asyncio.Semaphore` or :class:`int`, optional
+        :type semaphore: :class:`asyncio.Semaphore` or int, optional
         :param dataset_ids: Datasets IDs in Supervisely to download.
-        :type dataset_ids: :class:`list` [ :class:`int` ], optional
+        :type dataset_ids: List[int], optional
         :param download_videos: Download videos from Supervisely video project in dest_dir or not.
-        :type download_videos: :class:`bool`, optional
+        :type download_videos: bool, optional
         :param save_video_info: Save video infos or not.
-        :type save_video_info: :class:`bool`, optional
+        :type save_video_info: bool, optional
         :param log_progress: Log download progress or not.
-        :type log_progress: :class:`bool`
+        :type log_progress: bool
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: :class:`tqdm`, optional
         :param include_custom_data: Include custom data in the download.
-        :type include_custom_data: :class:`bool`, optional
-        :return: None
+        :type include_custom_data: bool, optional
+        :returns: None
         :rtype: NoneType
-        :Usage example:
 
-        .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            from supervisely._utils import run_coroutine
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            save_directory = "/home/admin/work/supervisely/source/video_project"
-            project_id = 8888
+                import supervisely as sly
+                from supervisely._utils import run_coroutine
 
-            coroutine = sly.VideoProject.download_async(api, project_id, save_directory)
-            run_coroutine(coroutine)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                save_directory = "/home/admin/work/supervisely/source/video_project"
+                project_id = 8888
+
+                coroutine = sly.VideoProject.download_async(api, project_id, save_directory)
+                run_coroutine(coroutine)
 
         """
         await download_video_project_async(
@@ -1320,7 +1401,7 @@ class VideoProject(Project):
             - figures.parquet
 
         :param api: Supervisely API client.
-        :type api: Api
+        :type api: :class:`~supervisely.api.api.Api`
         :param project_id: Source project ID.
         :type project_id: int
         :param dest_dir: Directory to save the resulting ``.tar.zst`` file. Required if ``return_bytesio`` is False.
@@ -1331,11 +1412,11 @@ class VideoProject(Project):
         :type batch_size: int
         :param log_progress: If True, shows progress (uses internal tqdm progress bars) when ``progress_cb`` is not provided.
         :type log_progress: bool
-        :param progress_cb: Optional progress callback. Can be a ``tqdm``-like callable or a function accepting an integer increment.
+        :param progress_cb: Optional progress callback. Can be a tqdm or callable, accepting an integer increment.
         :type progress_cb: Optional[Union[tqdm, Callable]]
-        :param return_bytesio: If True, return the snapshot as :class:`io.BytesIO`. If False, write the snapshot to ``dest_dir`` and return the output file path.
+        :param return_bytesio: If True, return the snapshot as io.BytesIO. If False, write the snapshot to dest_dir and return the output file path.
         :type return_bytesio: bool
-        :return: Either output file path (``.tar.zst``) when ``return_bytesio`` is False, or an in-memory snapshot stream when ``return_bytesio`` is True.
+        :returns: Either output file path (.tar.zst) when return_bytesio is False, or an in-memory snapshot stream when return_bytesio is True.
         :rtype: Union[str, io.BytesIO]
         """
         if dest_dir is None and not return_bytesio:
@@ -1382,8 +1463,8 @@ class VideoProject(Project):
         Restore a video project from an Arrow/Parquet-based binary snapshot.
 
         :param api: Supervisely API client.
-        :type api: Api
-        :param file: Snapshot file path (``.tar.zst``) or in-memory snapshot stream.
+        :type api: :class:`~supervisely.api.api.Api`
+        :param file: Snapshot file path (.tar.zst) or in-memory snapshot stream (io.BytesIO).
         :type file: Union[str, io.BytesIO]
         :param workspace_id: Target workspace ID where the project will be created.
         :type workspace_id: int
@@ -1393,14 +1474,14 @@ class VideoProject(Project):
         :type with_custom_data: bool
         :param log_progress: If True, shows progress (uses internal tqdm progress bars) when ``progress_cb`` is not provided.
         :type log_progress: bool
-        :param progress_cb: Optional progress callback. Can be a ``tqdm``-like callable or a function accepting an integer increment.
+        :param progress_cb: Optional progress callback. Can be a tqdm or callable, accepting an integer increment.
         :type progress_cb: Optional[Union[tqdm, Callable]]
         :param skip_missed: If True, skip videos that are missing on server when restoring by hash.
         :type skip_missed: bool
         :param project_description: Description of the destination project in Supervisely.
-        :type project_description: :class:`str`, optional
-        :return: Info of the newly created project.
-        :rtype: ProjectInfo
+        :type project_description: str, optional
+        :returns: ProjectInfo object.
+        :rtype: :class:`~supervisely.api.project_api.ProjectInfo`
         """
         if isinstance(file, io.BytesIO):
             snapshot_bytes = file.getvalue()
@@ -1432,6 +1513,23 @@ class VideoProject(Project):
     ) -> io.BytesIO:
         """
         Create a video project snapshot in Arrow/Parquet+tar.zst format and return it as BytesIO.
+
+        :param api: Supervisely API client.
+        :type api: :class:`~supervisely.api.api.Api`
+        :param project_id: Source project ID.
+        :type project_id: int
+        :param dataset_ids: Optional list of dataset IDs to include. If provided, only those datasets (and their videos/annotations) will be included in the snapshot.
+        :type dataset_ids: Optional[List[int]]
+        :param batch_size: Batch size for downloading video annotations.
+        :type batch_size: int
+        :param log_progress: If True, shows progress (uses internal tqdm progress bars) when progress_cb is not provided.
+        :type log_progress: bool
+        :param progress_cb: Optional progress callback. Can be a tqdm or callable, accepting an integer increment.
+        :type progress_cb: Optional[Union[tqdm, Callable]]
+        :param schema_version: Snapshot schema version. Controls the internal Parquet layout/fields. Supported values are the keys from get_video_snapshot_schema (currently: "v2.0.0").
+        :type schema_version: str
+        :returns: In-memory snapshot stream (io.BytesIO).
+        :rtype: io.BytesIO
         """
         try:
             import pyarrow  # pylint: disable=import-error
@@ -2020,7 +2118,7 @@ def download_video_project(
     Download video project to the local directory.
 
     :param api: Supervisely API address and token.
-    :type api: Api
+    :type api: :class:`~supervisely.api.api.Api`
     :param project_id: Project ID to download
     :type project_id: int
     :param dest_dir: Destination path to local directory.
@@ -2036,41 +2134,40 @@ def download_video_project(
     :param progress_cb: Function for tracking the download progress.
     :type progress_cb: tqdm or callable, optional
 
-    :return: None.
+    :returns: None.
     :rtype: NoneType
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import os
-        from dotenv import load_dotenv
+        .. code-block:: python
 
-        from tqdm import tqdm
-        import supervisely as sly
+            import os
+            from tqdm import tqdm
+            from dotenv import load_dotenv
 
-        # Load secrets and create API object from .env file (recommended)
-        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-        if sly.is_development():
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-        api = sly.Api.from_env()
+            import supervisely as sly
 
-        # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-        dest_dir = 'your/local/dest/dir'
+            api = sly.Api.from_env()
 
-        # Download video project
-        project_id = 17758
-        project_info = api.project.get_info_by_id(project_id)
-        num_videos = project_info.items_count
+            dest_dir = 'your/local/dest/dir'
 
-        p = tqdm(desc="Downloading video project", total=num_videos)
-        sly.download(
-            api,
-            project_id,
-            dest_dir,
-            progress_cb=p,
-        )
+            # Download video project
+            project_id = 17758
+            project_info = api.project.get_info_by_id(project_id)
+            num_videos = project_info.items_count
+
+            p = tqdm(desc="Downloading video project", total=num_videos)
+            sly.download(
+                api,
+                project_id,
+                dest_dir,
+                progress_cb=p,
+            )
     """
     LOG_BATCH_SIZE = 1
 
@@ -2366,7 +2463,7 @@ async def download_video_project_async(
     Download video project to the local directory.
 
     :param api: Supervisely API address and token.
-    :type api: Api
+    :type api: :class:`~supervisely.api.api.Api`
     :param project_id: Project ID to download
     :type project_id: int
     :param dest_dir: Destination path to local directory.
@@ -2385,29 +2482,32 @@ async def download_video_project_async(
     :type progress_cb: tqdm or callable, optional
     :param include_custom_data: Include custom data in the download.
     :type include_custom_data: bool, optional
-    :return: None.
+    :returns: None.
     :rtype: NoneType
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import os
-        from dotenv import load_dotenv
+        .. code-block:: python
 
-        from tqdm import tqdm
-        import supervisely as sly
+            import os
+            from dotenv import load_dotenv
 
-        os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-        os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-        api = sly.Api.from_env()
+            import supervisely as sly
 
-        dest_dir = 'your/local/dest/dir'
-        project_id = 17758
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-        loop = sly.utils.get_or_create_event_loop()
-        loop.run_until_complete(
-                        sly.download_async(api, project_id, dest_dir)
-                    )
+            api = sly.Api.from_env()
+
+            dest_dir = 'your/local/dest/dir'
+            project_id = 17758
+
+            loop = sly.utils.get_or_create_event_loop()
+            loop.run_until_complete(
+                sly.download_async(api, project_id, dest_dir)
+            )
     """
     if semaphore is None:
         semaphore = api.get_default_semaphore()

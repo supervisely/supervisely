@@ -13,6 +13,7 @@ from supervisely.volume.volume import is_valid_ext as validate_volume_ext
 
 
 class SLYVolumeConverter(VolumeConverter):
+    """Imports Supervisely volume project format (NRRD/NIfTI + JSON annotations) from local folder."""
 
     def __str__(self) -> str:
         return AvailableVolumeConverters.SLY

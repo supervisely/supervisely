@@ -23,7 +23,7 @@ from supervisely.nn.experiments import ExperimentInfo
 
 class TrainInfo(NamedTuple):
     """
-    TrainInfo
+    Metadata about a training run and its exported artifacts (checkpoints, config, links).
     """
 
     app_name: str
@@ -37,6 +37,8 @@ class TrainInfo(NamedTuple):
 
 
 class BaseTrainArtifacts:
+    """Abstract base for framework-specific train artifacts (checkpoints, config paths, task metadata)."""
+
     def __init__(self, team_id: int):
         """
         This is a base class and is not intended to be instantiated directly.
@@ -75,7 +77,7 @@ class BaseTrainArtifacts:
         """
         Get the team ID.
 
-        :return: The team ID.
+        :returns: The team ID.
         :rtype: int
         """
         return self._team_id
@@ -85,7 +87,7 @@ class BaseTrainArtifacts:
         """
         Metadata file name.
 
-        :return: The metadata file name.
+        :returns: The metadata file name.
         :rtype: str
         """
         return self._metadata_file_name
@@ -95,7 +97,7 @@ class BaseTrainArtifacts:
         """
         Train application name.
 
-        :return: The train application name.
+        :returns: The train application name.
         :rtype: str
         """
         return self._app_name
@@ -105,7 +107,7 @@ class BaseTrainArtifacts:
         """
         Train app slug.
 
-        :return: Train app slug.
+        :returns: Train app slug.
         :rtype: str
         """
         return self._slug
@@ -115,7 +117,7 @@ class BaseTrainArtifacts:
         """
         Serve application name.
 
-        :return: The serve application name.
+        :returns: The serve application name.
         :rtype: str
         """
         return self._serve_app_name
@@ -125,7 +127,7 @@ class BaseTrainArtifacts:
         """
         Serve app slug.
 
-        :return: Serve app slug.
+        :returns: Serve app slug.
         :rtype: str
         """
         return self._serve_slug
@@ -135,7 +137,7 @@ class BaseTrainArtifacts:
         """
         Framework name.
 
-        :return: The framework name.
+        :returns: The framework name.
         :rtype: str
         """
         return self._framework_name
@@ -145,7 +147,7 @@ class BaseTrainArtifacts:
         """
         Path to framework folder in Supervisely Team Files.
 
-        :return: The framework folder path.
+        :returns: The framework folder path.
         :rtype: str
         """
         return self._framework_folder
@@ -155,7 +157,7 @@ class BaseTrainArtifacts:
         """
         Weights folder path relative to artifacts folder.
 
-        :return: The weights folder path.
+        :returns: The weights folder path.
         :rtype: str
         """
         return self._weights_folder
@@ -165,7 +167,7 @@ class BaseTrainArtifacts:
         """
         Framework computer vision task. None if can be multiple tasks.
 
-        :return: The cv task.
+        :returns: The cv task.
         :rtype: Union[str, None]
         """
         return self._task_type
@@ -175,7 +177,7 @@ class BaseTrainArtifacts:
         """
         Checkpoint weights extension.
 
-        :return: The weights extension.
+        :returns: The weights extension.
         :rtype: str
         """
         return self._weights_ext
@@ -185,7 +187,7 @@ class BaseTrainArtifacts:
         """
         Name of the config file with extension.
 
-        :return: The config file name.
+        :returns: The config file name.
         :rtype: str
         """
         return self._config_file
@@ -195,7 +197,7 @@ class BaseTrainArtifacts:
         """
         Framework artifacts folder path pattern.
 
-        :return: The artifacts folder path pattern.
+        :returns: The artifacts folder path pattern.
         :rtype: re.Pattern
         """
         return self._pattern
@@ -205,7 +207,7 @@ class BaseTrainArtifacts:
         """
         Whether providing runtime is required for the framework.
 
-        :return: True if runtime is required, False otherwise.
+        :returns: True if runtime is required, False otherwise.
         :rtype: bool
         """
         return self._require_runtime
@@ -223,7 +225,7 @@ class BaseTrainArtifacts:
 
         :param path: Path to artifacts folder.
         :type path: str
-        :return: True if the path to artifacts folder is valid, False otherwise.
+        :returns: True if the path to artifacts folder is valid, False otherwise.
         :rtype: bool
         """
         return self._pattern.match(path) is not None
@@ -235,7 +237,7 @@ class BaseTrainArtifacts:
 
         :param artifacts_folder: Path to artifacts folder.
         :type artifacts_folder: str
-        :return: The task ID.
+        :returns: The task ID.
         :rtype: str
         """
         pass
@@ -247,7 +249,7 @@ class BaseTrainArtifacts:
 
         :param artifacts_folder: Path to artifacts folder.
         :type artifacts_folder: str
-        :return: The training project name.
+        :returns: The training project name.
         :rtype: str
         """
         pass
@@ -259,7 +261,7 @@ class BaseTrainArtifacts:
 
         :param artifacts_folder: Path to artifacts folder.
         :type artifacts_folder: str
-        :return: The cv task.
+        :returns: The cv task.
         :rtype: str
         """
         pass
@@ -271,7 +273,7 @@ class BaseTrainArtifacts:
 
         :param artifacts_folder: Path to artifacts folder.
         :type artifacts_folder: str
-        :return: The weights folder path.
+        :returns: The weights folder path.
         :rtype: str
         """
         pass
@@ -283,7 +285,7 @@ class BaseTrainArtifacts:
 
         :param artifacts_folder: Path to artifacts folder.
         :type artifacts_folder: str
-        :return: The config file path.
+        :returns: The config file path.
         :rtype: str
         """
         pass
@@ -295,11 +297,11 @@ class BaseTrainArtifacts:
         Sort artifacts folder by task id.
 
         :param train_infos: The list of training infos.
-        :type train_infos: List[TrainInfo]
+        :type train_infos: List[:class:`~supervisely.nn.artifacts.artifacts.TrainInfo`]
         :param sort: The sort order, either "desc" or "asc". Default is "desc", which means newer checkpoints will be first.
         :type sort: Literal["desc", "asc"]
-        :return: The sorted list of checkpoints.
-        :rtype: List[TrainInfo]
+        :returns: The sorted list of checkpoints.
+        :rtype: List[:class:`~supervisely.nn.artifacts.artifacts.TrainInfo`]
         """
         if sort == "desc":
             return sorted(train_infos, key=lambda x: int(x.task_id), reverse=True)
@@ -363,7 +365,7 @@ class BaseTrainArtifacts:
         :type task_type: str, optional
         :param config_path: Path to config file. Default is None.
         :type config_path: str, optional
-        :return: The generated metadata.
+        :returns: The generated metadata.
         :rtype: dict
         """
 
@@ -567,8 +569,8 @@ class BaseTrainArtifacts:
 
         :param sort: The sort order, either "desc" or "asc". Default is "desc".
         :type sort: Literal["desc", "asc"]
-        :return: The list of custom training artifact infos.
-        :rtype: List[TrainInfo]
+        :returns: The list of custom training artifact infos.
+        :rtype: List[:class:`~supervisely.nn.artifacts.artifacts.TrainInfo`]
         """
         self._validate_sort(sort)
         start_time = time()
@@ -670,7 +672,7 @@ class BaseTrainArtifacts:
         """
         Get available task types.
 
-        :return: The list of available task types.
+        :returns: The list of available task types.
         :rtype: List[str]
         """
         return self._available_task_types
@@ -687,8 +689,8 @@ class BaseTrainArtifacts:
         :type artifacts_dir: str
         :param return_type: The return type, either "train_info" or "experiment_info". Default is "experiment_info".
         :type return_type: Literal["train_info", "experiment_info"]
-        :return: The training info.
-        :rtype: TrainInfo
+        :returns: The training info.
+        :rtype: :class:`~supervisely.nn.artifacts.artifacts.TrainInfo`
         """
         for train_info in self.get_list():
             if train_info.artifacts_folder == artifacts_dir:

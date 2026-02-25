@@ -16,6 +16,8 @@ from supervisely.volume_annotation.volume_annotation import VolumeAnnotation
 
 @dataclass(frozen=True)
 class VolumeSnapshotSchema:
+    """Defines PyArrow schemas for volume project snapshot tables (datasets, volumes, annotations)."""
+
     schema_version: str
 
     def datasets_table_schema(self, pa_module):

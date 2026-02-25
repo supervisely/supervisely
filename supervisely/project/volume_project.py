@@ -1,4 +1,6 @@
 # coding: utf-8
+from __future__ import annotations
+
 import io
 import json
 import os
@@ -42,6 +44,11 @@ VolumeItemPaths = namedtuple("VolumeItemPaths", ["volume_path", "ann_path"])
 
 
 class VolumeDataset(VideoDataset):
+    """
+    A dataset directory for 3D volume items inside a local Supervisely volume project.
+
+    Stores volumes, their annotations and auxiliary data such as masks/interpolations on disk.
+    """
     item_dir_name = "volume"
     interpolation_dir = "interpolation"
     interpolation_dir_name = interpolation_dir
@@ -51,12 +58,48 @@ class VolumeDataset(VideoDataset):
     item_module = sly_volume
     paths_tuple = VolumeItemPaths
 
+    def __init__(
+        self,
+        directory: str,
+        mode: Optional[OpenMode] = None,
+        parents: Optional[List[str]] = None,
+        dataset_id: Optional[int] = None,
+        api: Optional[sly.Api] = None,
+    ):
+        """
+        VolumeDataset is a dataset for volume data. VolumeDataset object is immutable.
+
+        :param directory: Path to dataset directory.
+        :type directory: str
+        :param mode: Determines working mode for the given dataset.
+        :type mode: :class:`~supervisely.project.project.OpenMode`, optional. If not provided, dataset_id must be provided.
+        :param parents: List of parent directories, e.g. ["ds1", "ds2", "ds3"].
+        :type parents: List[str]
+        :param dataset_id: Dataset ID if the Dataset is opened in API mode.
+            If dataset_id is specified then api must be specified as well.
+        :type dataset_id: Optional[int]
+        :param api: API object if the Dataset is opened in API mode.
+        :type api: :class:`~supervisely.api.api.Api`, optional.
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                dataset_path = "/home/admin/work/supervisely/projects/volumes_project/ds0"
+                ds = sly.VolumeDataset(dataset_path, sly.OpenMode.READ)
+                print(ds.project_dir)
+                # Output: "/home/admin/work/supervisely/projects/volumes_project"
+        """
+        super().__init__(directory, mode, parents, dataset_id, api)
+
     @classmethod
     def _has_valid_ext(cls, path: str) -> bool:
         """
         Checks if file from given path is supported
         :param path: str
-        :return: bool
+        :returns: bool
         """
         return sly_volume.has_valid_ext(path)
 
@@ -117,9 +160,17 @@ class VolumeDataset(VideoDataset):
 
 
 class VolumeProject(VideoProject):
+    """
+    A local Supervisely project for 3D volume data.
+
+    Contains one or more :class:`~supervisely.project.volume_project.VolumeDataset` datasets with volumes
+    and their annotations. Also provides binary snapshot export/import via :meth:`download_bin` / :meth:`upload_bin`.
+    """
     dataset_class = VolumeDataset
 
     class DatasetDict(KeyIndexedCollection):
+        """Key-indexed collection of :class:`~supervisely.project.volume_project.VolumeDataset` datasets."""
+
         item_type = VolumeDataset
 
     _SERIALIZATION_MAGIC = b"SLYVOLPAR"
@@ -129,6 +180,25 @@ class VolumeProject(VideoProject):
     _SECTION_DATASETS = 3
     _SECTION_VOLUMES = 4
     _SECTION_ANNOTATIONS = 5
+
+    def __init__(self, directory: str, mode: OpenMode):
+        """
+        VolumeProject is a parent directory for volume datasets. VolumeProject object is immutable.
+        :param directory: Path to volume project directory.
+        :type directory: str
+        :param mode: Determines working mode for the given project.
+        :type mode: :class:`~supervisely.project.project.OpenMode`
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                project_path = "/home/admin/work/supervisely/projects/volumes_project"
+                project = sly.VolumeProject(project_path, sly.OpenMode.READ)
+        """
+        super().__init__(directory, mode)
 
     def get_classes_stats(
         self,
@@ -146,16 +216,18 @@ class VolumeProject(VideoProject):
         """
         Project type.
 
-        :return: Project type.
-        :rtype: :class:`str`
-        :Usage example:
+        :returns: Project type.
+        :rtype: str
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            project = sly.VolumeProject("/home/admin/work/supervisely/projects/volumes", sly.OpenMode.READ)
-            print(project.type)
-            # Output: 'volumes'
+            .. code-block:: python
+
+                import supervisely as sly
+
+                project = sly.VolumeProject("/home/admin/work/supervisely/projects/volumes", sly.OpenMode.READ)
+                print(project.type)
+                # Output: 'volumes'
         """
         return ProjectType.VOLUMES.value
 
@@ -174,40 +246,41 @@ class VolumeProject(VideoProject):
         Download volume project from Supervisely to the given directory.
 
         :param api: Supervisely API address and token.
-        :type api: :class:`Api<supervisely.api.api.Api>`
+        :type api: :class:`~supervisely.api.api.Api`
         :param project_id: Supervisely downloadable project ID.
-        :type project_id: :class:`int`
+        :type project_id: int
         :param dest_dir: Destination directory.
-        :type dest_dir: :class:`str`
+        :type dest_dir: str
         :param dataset_ids: Dataset IDs.
-        :type dataset_ids: :class:`list` [ :class:`int` ], optional
+        :type dataset_ids: List[int], optional
         :param download_volumes: Download volume data files or not.
-        :type download_volumes: :class:`bool`, optional
+        :type download_volumes: bool, optional
         :param log_progress: Show uploading progress bar.
         :type log_progress: bool
         :param progress_cb: Function for tracking the download progress.
         :type progress_cb: tqdm or callable, optional
-
-        :return: None
+        :returns: None
         :rtype: NoneType
-        :Usage example:
-        .. code-block:: python
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import os
+                from dotenv import load_dotenv
 
                 import supervisely as sly
 
-                # Local destination Volume Project folder
-                save_directory = "/home/admin/work/supervisely/source/vlm_project"
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-                # Obtain server address and your api_token from environment variables
-                # Edit those values if you run this notebook on your own PC
-                address = os.environ['SERVER_ADDRESS']
-                token = os.environ['API_TOKEN']
-
-                # Initialize API object
-                api = sly.Api(address, token)
-                project_id = 8888
+                api = sly.Api.from_env()
 
                 # Download Project
+                project_id = 8888
+                save_directory = "/home/admin/work/supervisely/source/vlm_project"
                 sly.VolumeProject.download(api, project_id, save_directory)
                 project_fs = sly.VolumeProject(save_directory, sly.OpenMode.READ)
         """
@@ -256,49 +329,56 @@ class VolumeProject(VideoProject):
         :type dest_dir: str, optional
         :param dataset_ids: Optional list of dataset IDs to include. If provided, only these datasets will be included (recursively, preserving tree structure where applicable).
         :type dataset_ids: List[int], optional
-        :param download_volumes: If False, only project/meta/dataset tree is stored (volume infos and annotations are skipped). This is useful for “structure-only” snapshots.
+        :param download_volumes: If False, only project/meta/dataset tree is stored (volume infos and annotations are skipped). This is useful for structure-only snapshots.
         :type download_volumes: bool, optional
         :param log_progress: If True, show a progress bar (unless a custom ``progress_cb`` is provided).
         :type log_progress: bool
         :param progress_cb: Optional callback (or tqdm-like object) called with incremental progress.
         :type progress_cb: tqdm or callable, optional
-        :param return_bytesio: If True, return an in-memory :class:`io.BytesIO` with snapshot bytes. If False, write snapshot to ``dest_dir`` and return the file path.
+        :param return_bytesio: If True, return an in-memory BytesIO with snapshot bytes. If False, write snapshot to ``dest_dir`` and return the file path.
         :type return_bytesio: bool, optional
         :param schema_version: Snapshot schema version. Controls the internal Parquet layout/fields. Supported values are the keys from :func:`~supervisely.project.volume_schema.get_volume_snapshot_schema` (currently: ``"v2.0.0"``).
         :type schema_version: str, optional
         :param batch_size: Batch size for API calls determining how many items to download in one request. Default is 50.
         :type batch_size: int, optional
-        :return: Snapshot file path (when ``return_bytesio=False``) or a BytesIO (when ``return_bytesio=True``).
+        :returns: Snapshot file path (when ``return_bytesio=False``) or a BytesIO (when ``return_bytesio=True``).
         :rtype: str or io.BytesIO
         :raises ValueError: If ``dest_dir`` is not provided and ``return_bytesio`` is False.
         :raises RuntimeError: If required optional dependencies (e.g. pyarrow) are missing.
 
-        :Usage example:
+        :Usage Example:
 
-        .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
-            import os
+                import os
+                from dotenv import load_dotenv
 
-            api = sly.Api(os.environ["SERVER_ADDRESS"], os.environ["API_TOKEN"])
+                import supervisely as sly
 
-            # 1) Save snapshot to disk
-            out_path = sly.VolumeProject.download_bin(
-                api,
-                project_id=123,
-                dest_dir="/tmp/vol_project_snapshot",
-                download_volumes=True,
-                log_progress=True,
-            )
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            # 2) Create an in-memory snapshot (BytesIO) and restore it
-            blob = sly.VolumeProject.download_bin(
-                api,
-                project_id=123,
-                return_bytesio=True,
-                download_volumes=False,  # structure-only
-            )
-            restored = sly.VolumeProject.upload_bin(api, blob, workspace_id=45, project_name="Restored")
+                api = sly.Api.from_env()
+
+                # 1) Save snapshot to disk
+                out_path = sly.VolumeProject.download_bin(
+                    api,
+                    project_id=123,
+                    dest_dir="/tmp/vol_project_snapshot",
+                    download_volumes=True,
+                    log_progress=True,
+                )
+
+                # 2) Create an in-memory snapshot (BytesIO) and restore it
+                blob = sly.VolumeProject.download_bin(
+                    api,
+                    project_id=123,
+                    return_bytesio=True,
+                    download_volumes=False,  # structure-only
+                )
+                restored = sly.VolumeProject.upload_bin(api, blob, workspace_id=45, project_name="Restored")
         """
 
         pa = VolumeProject._require_pyarrow()
@@ -426,44 +506,45 @@ class VolumeProject(VideoProject):
         Uploads volume project to Supervisely from the given directory.
 
         :param directory: Path to project directory.
-        :type directory: :class:`str`
+        :type directory: str
         :param api: Supervisely API address and token.
-        :type api: :class:`Api<supervisely.api.api.Api>`
+        :type api: :class:`~supervisely.api.api.Api`
         :param workspace_id: Workspace ID, where project will be uploaded.
-        :type workspace_id: :class:`int`
+        :type workspace_id: int
         :param project_name: Name of the project in Supervisely. Can be changed if project with the same name is already exists.
-        :type project_name: :class:`str`, optional
+        :type project_name: str, optional
         :param log_progress: Show uploading progress bar.
-        :type log_progress: :class:`bool`
+        :type log_progress: bool
         :param progress_cb: Function for tracking the download progress.
         :type progress_cb: tqdm or callable, optional
 
-        :return: Project ID and name. It is recommended to check that returned project name coincides with provided project name.
-        :rtype: :class:`int`, :class:`str`
-        :Usage example:
+        :returns: Project ID and name. It is recommended to check that returned project name coincides with provided project name.
+        :rtype: int, str
 
-        .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            # Local folder with Volume Project
-            project_directory = "/home/admin/work/supervisely/source/vlm_project"
+                import os
+                from dotenv import load_dotenv
 
-            # Obtain server address and your api_token from environment variables
-            # Edit those values if you run this notebook on your own PC
-            address = os.environ['SERVER_ADDRESS']
-            token = os.environ['API_TOKEN']
+                import supervisely as sly
 
-            # Initialize API object
-            api = sly.Api(address, token)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            # Upload Volume Project
-            project_id, project_name = sly.VolumeProject.upload(
-                project_directory,
-                api,
-                workspace_id=45,
-                project_name="My Volume Project"
-            )
+                api = sly.Api.from_env()
+
+                # Upload Volume Project
+                project_directory = "/home/admin/work/supervisely/source/vlm_project"
+                project_id, project_name = sly.VolumeProject.upload(
+                    project_directory,
+                    api,
+                    workspace_id=45,
+                    project_name="My Volume Project"
+                )
         """
         return upload_volume_project(
             dir=directory,
@@ -493,7 +574,7 @@ class VolumeProject(VideoProject):
 
         :param api: Supervisely API client.
         :type api: :class:`~supervisely.api.api.Api`
-        :param file: Snapshot file path (``.tar.zst``) or an in-memory :class:`io.BytesIO` stream.
+        :param file: Snapshot file path (`.tar.zst`) or an in-memory BytesIO stream.
         :type file: Union[str, io.BytesIO]
         :param workspace_id: Target workspace ID where the project will be created.
         :type workspace_id: int
@@ -503,13 +584,13 @@ class VolumeProject(VideoProject):
         :type log_progress: bool
         :param progress_cb: Optional callback (or tqdm-like object) called with incremental progress.
         :type progress_cb: tqdm or callable, optional
-        :param skip_missed: If True, skip volumes that cannot be restored because their source hash is missing in the snapshot payload. If False, such cases raise an error.
-        :type skip_missed: bool
+        :param skip_missed_entities: If True, skip volumes that cannot be restored because their source hash is missing in the snapshot payload. If False, such cases raise an error.
+        :type skip_missed_entities: bool
         :param project_description: Description of the destination project in Supervisely.
-        :type project_description: :class:`str`, optional
+        :type project_description: str, optional
         :param with_custom_data: Whether to include custom_data from the snapshot in the restored project. Default is True.
         :type with_custom_data: bool, optional
-        :return: Info of the newly created project.
+        :returns: ProjectInfo object.
         :rtype: :class:`~supervisely.api.project_api.ProjectInfo`
         :raises RuntimeError: If the snapshot contains volumes without hashes and ``skip_missed`` is False.
         """
@@ -896,7 +977,7 @@ class VolumeProject(VideoProject):
     def get_train_val_splits_by_count(project_dir: str, train_count: int, val_count: int) -> None:
         """
         Not available for VolumeProject class.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             "Static method 'get_train_val_splits_by_count()' is not supported for VolumeProject class now."
@@ -911,7 +992,7 @@ class VolumeProject(VideoProject):
     ) -> None:
         """
         Not available for VolumeProject class.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             "Static method 'get_train_val_splits_by_tag()' is not supported for VolumeProject class now."
@@ -923,7 +1004,7 @@ class VolumeProject(VideoProject):
     ) -> None:
         """
         Not available for VolumeProject class.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Static method 'get_train_val_splits_by_tag()' is not supported for VolumeProject class now."
@@ -939,7 +1020,7 @@ class VolumeProject(VideoProject):
     ) -> None:
         """
         Not available for VolumeProject class.
-        :raises: :class:`NotImplementedError` in all cases.
+        :raises NotImplementedError: in all cases.
         """
         raise NotImplementedError(
             f"Static method 'get_train_val_splits_by_collections()' is not supported for VolumeProject class now."
@@ -965,7 +1046,7 @@ def download_volume_project(
     Download volume project to the local directory.
 
     :param api: Supervisely API address and token.
-    :type api: Api
+    :type api: :class:`~supervisely.api.api.Api`
     :param project_id: Project ID to download.
     :type project_id: int
     :param dest_dir: Destination path to local directory.
@@ -979,41 +1060,40 @@ def download_volume_project(
     :param progress_cb: Function for tracking download progress.
     :type progress_cb: tqdm or callable, optional
 
-    :return: None.
+    :returns: None.
     :rtype: NoneType
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import os
-        from dotenv import load_dotenv
+        .. code-block:: python
 
-        from tqdm import tqdm
-        import supervisely as sly
+            import os
+            from tqdm import tqdm
+            from dotenv import load_dotenv
 
-        # Load secrets and create API object from .env file (recommended)
-        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-        if sly.is_development():
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-        api = sly.Api.from_env()
+            import supervisely as sly
 
-        # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-        dest_dir = 'your/local/dest/dir'
+            api = sly.Api.from_env()
 
-        # Download volume project
-        project_id = 18532
-        project_info = api.project.get_info_by_id(project_id)
-        num_volumes = project_info.items_count
+            dest_dir = 'your/local/dest/dir'
 
-        p = tqdm(desc="Downloading volume project", total=num_volumes)
-        sly.download_volume_project(
-            api,
-            project_id,
-            dest_dir,
-            progress_cb=p,
-        )
+            # Download volume project
+            project_id = 18532
+            project_info = api.project.get_info_by_id(project_id)
+            num_volumes = project_info.items_count
+
+            p = tqdm(desc="Downloading volume project", total=num_volumes)
+            sly.download_volume_project(
+                api,
+                project_id,
+                dest_dir,
+                progress_cb=p,
+            )
     """
 
     LOG_BATCH_SIZE = 1
@@ -1106,7 +1186,7 @@ def download_volume_project(
                         mesh_ids.append(figure_id)
                         figure_path = dataset_fs.get_interpolation_path(volume_name, sf)
                         mesh_paths.append(figure_path)
-                
+
                 figs = api.volume.figure.download(dataset.id, [volume_id], skip_geometry=True)
                 figs = figs.get(volume_id, {})
                 figs_ids_map = {fig.id: fig for fig in figs}
@@ -1155,13 +1235,13 @@ def load_figure_data(
     Load data into figure geometry.
 
     :param api: Supervisely API address and token.
-    :type api: Api
+    :type api: :class:`~supervisely.api.api.Api`
     :param volume_file_path: Path to Volume file location
     :type volume_file_path: str
     :param spatial_figure: Spatial figure
-    :type spatial_figure: VolumeFigure object
+    :type spatial_figure: :class:`~supervisely.volume_annotation.volume_figure.VolumeFigure`
     :param key_id_map: Mapped keys and IDs
-    :type key_id_map: KeyIdMap object
+    :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`
     """
     figure_id = key_id_map.get_figure_id(spatial_figure.key())
     figure_path = "{}_mask3d/".format(volume_file_path[:-5]) + f"{figure_id}.nrrd"
@@ -1244,9 +1324,9 @@ def _create_volume_header(ann: VolumeAnnotation) -> Dict:
     """
     Create volume header to use in STL converter when downloading project without volumes.
 
-    :param ann: VolumeAnnotation object
-    :type ann: VolumeAnnotation
-    :return: header with Volume meta parameters
+    :param ann: :class:`~supervisely.volume_annotation.volume_annotation.VolumeAnnotation` object
+    :type ann: :class:`~supervisely.volume_annotation.volume_annotation.VolumeAnnotation`
+    :returns: header with Volume meta parameters
     :rtype: Dict
     """
     header = {}

@@ -28,73 +28,13 @@ from supervisely.video_annotation.video_object_collection import VideoObjectColl
 
 
 class OutOfImageBoundsException(Exception):
+    """Raised when a figure or geometry lies outside the image/video bounds."""
+
     pass
 
 
 class VideoFigure:
-    """
-    VideoFigure object for :class:`VideoAnnotation<supervisely.video_annotation.video_annotation.VideoAnnotation>`. :class:`VideoFigure<VideoFigure>` object is immutable.
-
-    :param video_object: VideoObject object.
-    :type video_object: VideoObject
-    :param geometry: Label :class:`geometry<supervisely.geometry.geometry.Geometry>`.
-    :type geometry: Geometry
-    :param frame_index: Index of Frame to which VideoFigure belongs.
-    :type frame_index: int
-    :param key_id_map: KeyIdMap object.
-    :type key_id_map: KeyIdMap, optional
-    :param class_id: ID of :class:`VideoObject<VideoObject>` to which VideoFigure belongs.
-    :type class_id: int, optional
-    :param labeler_login: Login of the user who created VideoFigure.
-    :type labeler_login: str, optional
-    :param updated_at: Date and Time when VideoFigure was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
-    :type updated_at: str, optional
-    :param created_at: Date and Time when VideoFigure was created. Date Format is the same as in "updated_at" parameter.
-    :type created_at: str, optional
-    :param track_id: ID of the track to which VideoFigure belongs.
-    :type track_id: str, optional
-    :param smart_tool_input: Smart Tool parameters that were used for labeling.
-    :type smart_tool_input: dict, optional
-    :param priority: Priority of the figure (position of the figure relative to other overlapping or underlying figures).
-    :type priority: int, optional
-    :param status: Sets labeling status. Shows how label was created and corrected.
-    :type status: LabelingStatus, optional
-    :Usage example:
-
-     .. code-block:: python
-
-        import supervisely as sly
-
-        obj_class_car = sly.ObjClass('car', sly.Rectangle)
-        video_obj_car = sly.VideoObject(obj_class_car)
-        fr_index = 7
-        geometry = sly.Rectangle(0, 0, 100, 100)
-        video_figure_car = sly.VideoFigure(video_obj_car, geometry, fr_index)
-        video_figure_car_json = video_figure_car.to_json()
-        print(video_figure_car_json)
-        # Output: {
-        #     "key": "5e8afd2e26a54ab18154b355fa9665f8",
-        #     "objectKey": "5860b7a5519b4de7b3d9c1720a40b38a",
-        #     "geometryType": "rectangle",
-        #     "geometry": {
-        #         "points": {
-        #             "exterior": [
-        #                 [
-        #                     0,
-        #                     0
-        #                 ],
-        #                 [
-        #                     100,
-        #                     100
-        #                 ]
-        #             ],
-        #             "interior": []
-        #         }
-        #     },
-        #    "nnCreated": false,
-        #    "nnUpdated": false
-        # }
-    """
+    """Figure in video annotation: geometry tied to a VideoObject at a frame index. Immutable."""
 
     def __init__(
         self,
@@ -111,6 +51,46 @@ class VideoFigure:
         priority: Optional[int] = None,
         status: Optional[LabelingStatus] = None,
     ):
+        """
+        :param video_object: VideoObject for this figure.
+        :type video_object: :class:`~supervisely.video_annotation.video_object.VideoObject`
+        :param geometry: Geometry (Rectangle, Polygon, etc.).
+        :type geometry: :class:`~supervisely.geometry.geometry.Geometry`
+        :param frame_index: Index of frame to which figure belongs.
+        :type frame_index: int
+        :param key: UUID key. Auto-generated if not provided.
+        :type key: uuid.UUID, optional
+        :param class_id: ID of VideoObject class.
+        :type class_id: int, optional
+        :param labeler_login: Login of user who created the figure.
+        :type labeler_login: str, optional
+        :param updated_at: Last modification timestamp.
+        :type updated_at: str, optional
+        :param created_at: Creation timestamp.
+        :type created_at: str, optional
+        :param track_id: Track ID for tracking.
+        :type track_id: str, optional
+        :param smart_tool_input: Smart Tool parameters from labeling.
+        :type smart_tool_input: dict, optional
+        :param priority: Figure draw order (higher = on top).
+        :type priority: int, optional
+        :param status: Labeling status (manual, corrected, etc.).
+        :type status: :class:`~supervisely.annotation.label.LabelingStatus`, optional
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                obj_class_car = sly.ObjClass('car', sly.Rectangle)
+                video_obj_car = sly.VideoObject(obj_class_car)
+                fr_index = 7
+                geometry = sly.Rectangle(0, 0, 100, 100)
+                video_figure_car = sly.VideoFigure(video_obj_car, geometry, fr_index)
+                video_figure_car_json = video_figure_car.to_json()
+                print(video_figure_car_json)
+        """
         self._video_object = video_object
         self._set_geometry_inplace(geometry)
         self._frame_index = frame_index
@@ -139,7 +119,7 @@ class VideoFigure:
     def _set_geometry_inplace(self, geometry: Geometry) -> None:
         """
         Checks the given geometry for correctness. Raise error if given geometry type != geometry type of VideoObject class
-        :param geometry: Geometry class object (Point, Rectangle etc)
+        :param geometry: Geometry class object (:class:`~supervisely.geometry.point.Point`, Rectangle etc)
         """
         self._geometry = geometry
         self._validate_geometry_type()
@@ -150,19 +130,20 @@ class VideoFigure:
         """
         VideoObject of current VideoFigure.
 
-        :return: VideoObject object
-        :rtype: :class:`VideoObject<VideoObject>`
-        :Usage example:
+        :returns: VideoObject object
+        :rtype: :class:`~supervisely.video_annotation.video_object.VideoObject`
 
-         .. code-block:: python
+        :Usage Example:
 
-            video_obj_car = video_figure_car.video_object
-            print(video_obj_car.to_json())
-            # Output: {
-            #     "key": "d573c6f081544e3da20022d932b259c1",
-            #     "classTitle": "car",
-            #     "tags": []
-            # }
+            .. code-block:: python
+
+                video_obj_car = video_figure_car.video_object
+                print(video_obj_car.to_json())
+                # Output: {
+                #     "key": "d573c6f081544e3da20022d932b259c1",
+                #     "classTitle": "car",
+                #     "tags": []
+                # }
         """
         return self._video_object
 
@@ -171,19 +152,20 @@ class VideoFigure:
         """
         VideoObject of current VideoFigure.
 
-        :return: VideoObject object
-        :rtype: :class:`VideoObject<VideoObject>`
-        :Usage example:
+        :returns: VideoObject object
+        :rtype: :class:`~supervisely.video_annotation.video_object.VideoObject`
 
-         .. code-block:: python
+        :Usage Example:
 
-            video_obj_car = video_figure_car.parent_object
-            print(video_obj_car.to_json())
-            # Output: {
-            #     "key": "d573c6f081544e3da20022d932b259c1",
-            #     "classTitle": "car",
-            #     "tags": []
-            # }
+            .. code-block:: python
+
+                video_obj_car = video_figure_car.parent_object
+                print(video_obj_car.to_json())
+                # Output: {
+                #     "key": "d573c6f081544e3da20022d932b259c1",
+                #     "classTitle": "car",
+                #     "tags": []
+                # }
         """
         return self._video_object
 
@@ -192,29 +174,30 @@ class VideoFigure:
         """
         Geometry of the current VideoFigure.
 
-        :return: Geometry object
-        :rtype: :class:`Geometry<supervisely.geometry>`
-        :Usage example:
+        :returns: Geometry object
+        :rtype: :class:`~supervisely.geometry.geometry.Geometry`
 
-         .. code-block:: python
+        :Usage Example:
 
-            geometry = video_figure_car.geometry
-            print(geometry.to_json())
-            # Output: {
-            #     "points": {
-            #         "exterior": [
-            #             [
-            #                 0,
-            #                 0
-            #             ],
-            #             [
-            #                 100,
-            #                 100
-            #             ]
-            #         ],
-            #         "interior": []
-            #     }
-            # }
+            .. code-block:: python
+
+                geometry = video_figure_car.geometry
+                print(geometry.to_json())
+                # Output: {
+                #     "points": {
+                #         "exterior": [
+                #             [
+                #                 0,
+                #                 0
+                #             ],
+                #             [
+                #                 100,
+                #                 100
+                #             ]
+                #         ],
+                #         "interior": []
+                #     }
+                # }
         """
         return self._geometry
 
@@ -223,14 +206,15 @@ class VideoFigure:
         """
         Frame index of the current VideoFigure.
 
-        :return: Index of Frame to which VideoFigure belongs
-        :rtype: :class:`int`
-        :Usage example:
+        :returns: Index of Frame to which VideoFigure belongs
+        :rtype: int
 
-         .. code-block:: python
+        :Usage Example:
 
-            fr_index = video_figure_car.frame_index
-            print(fr_index) # 7
+            .. code-block:: python
+
+                fr_index = video_figure_car.frame_index
+                print(fr_index) # 7
         """
         return self._frame_index
 
@@ -273,14 +257,15 @@ class VideoFigure:
         """
         Figure key.
 
-        :return: Figure key.
+        :returns: Figure key.
         :rtype: UUID
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            key = video_figure_car.key
-            print(key) # 158e6cf4f4ac4c639fc6994aad127c16
+            .. code-block:: python
+
+                key = video_figure_car.key
+                print(key) # 158e6cf4f4ac4c639fc6994aad127c16
         """
 
         return self._key
@@ -313,48 +298,48 @@ class VideoFigure:
         Convert the VideoFigure to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
         :param save_meta: Save frame index or not.
         :type save_meta: bool, optional
-        :return: Json format as a dict
-        :rtype: :class:`dict`
+        :returns: Json format as a dict
+        :rtype: Dict
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            obj_class_car = sly.ObjClass('car', sly.Rectangle)
-            video_obj_car = sly.VideoObject(obj_class_car)
-            fr_index = 7
-            geometry = sly.Rectangle(0, 0, 100, 100)
-            video_figure_car = sly.VideoFigure(video_obj_car, geometry, fr_index)
-            video_figure_json = video_figure_car.to_json(save_meta=True)
-            print(video_figure_json)
-            # Output: {
-            #     "key": "591d0511ba28462c8cd657691743359c",
-            #     "objectKey": "e061bc50bd464c23a008b712d195570a",
-            #     "geometryType": "rectangle",
-            #     "geometry": {
-            #         "points": {
-            #             "exterior": [
-            #                 [
-            #                     0,
-            #                     0
-            #                 ],
-            #                 [
-            #                     100,
-            #                     100
-            #                 ]
-            #             ],
-            #             "interior": []
-            #         }
-            #     },
-            #     "meta": {"frame": 7},
-            #     "nnCreated": false,
-            #     "nnUpdated": false
-            # }
+                obj_class_car = sly.ObjClass('car', sly.Rectangle)
+                video_obj_car = sly.VideoObject(obj_class_car)
+                fr_index = 7
+                geometry = sly.Rectangle(0, 0, 100, 100)
+                video_figure_car = sly.VideoFigure(video_obj_car, geometry, fr_index)
+                video_figure_json = video_figure_car.to_json(save_meta=True)
+                print(video_figure_json)
+                # Output: {
+                #     "key": "591d0511ba28462c8cd657691743359c",
+                #     "objectKey": "e061bc50bd464c23a008b712d195570a",
+                #     "geometryType": "rectangle",
+                #     "geometry": {
+                #         "points": {
+                #             "exterior": [
+                #                 [
+                #                     0,
+                #                     0
+                #                 ],
+                #                 [
+                #                     100,
+                #                     100
+                #                 ]
+                #             ],
+                #             "interior": []
+                #         }
+                #     },
+                #     "meta": {"frame": 7},
+                #     "nnCreated": false,
+                #     "nnUpdated": false
+                # }
         """
         data_json = {
             KEY: self.key().hex,
@@ -392,21 +377,22 @@ class VideoFigure:
         """
         Get metadata for the video figure.
 
-        :return: Dictionary with metadata for the video figure.
-        :rtype: :py:class:`Dict[str, int]`
-        :Usage example:
+        :returns: Dictionary with metadata for the video figure.
+        :rtype: Dict[str, int]
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            obj_class_car = sly.ObjClass('car', sly.Rectangle)
-            video_obj_car = sly.VideoObject(obj_class_car)
-            fr_index = 7
-            geometry = sly.Rectangle(0, 0, 100, 100)
-            video_figure_car = sly.VideoFigure(video_obj_car, geometry, fr_index)
+                import supervisely as sly
 
-            print(video_figure_car.get_meta()) # {'frame': 7}
+                obj_class_car = sly.ObjClass('car', sly.Rectangle)
+                video_obj_car = sly.VideoObject(obj_class_car)
+                fr_index = 7
+                geometry = sly.Rectangle(0, 0, 100, 100)
+                video_figure_car = sly.VideoFigure(video_obj_car, geometry, fr_index)
+
+                print(video_figure_car.get_meta()) # {'frame': 7}
         """
 
         return {ApiField.FRAME: self.frame_index}
@@ -423,25 +409,25 @@ class VideoFigure:
         Convert a json dict to VideoFigure. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: Dict in json format.
-        :type data: :class:`dict`
+        :type data: dict
         :param objects: VideoObjectCollection object.
-        :type objects: VideoObjectCollection
+        :type objects: :class:`~supervisely.video_annotation.video_object_collection.VideoObjectCollection`
         :param frame_index: Index of Frame to which VideoFigure belongs.
         :type frame_index: int
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
-        :raises: :class:`RuntimeError`, if video object ID and video object key are None, if video object key and key_id_map are None, if video object with given id not found in key_id_map
-        :return: VideoFigure object
-        :rtype: :class:`VideoFigure`
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
+        :raises RuntimeError: if video object ID and video object key are None, if video object key and key_id_map are None, if video object with given id not found in key_id_map
+        :returns: VideoFigure object
+        :rtype: :class:`~supervisely.video_annotation.video_figure.VideoFigure`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            # Create VideoFigure from json we use data from example to_json(see above)
-            new_video_figure = sly.VideoFigure.from_json(video_figure_json, sly.VideoObjectCollection([video_obj_car]), fr_index)
+                # Create VideoFigure from json we use data from example to_json(see above)
+                new_video_figure = sly.VideoFigure.from_json(video_figure_json, sly.VideoObjectCollection([video_obj_car]), fr_index)
         """
         object_id = data.get(OBJECT_ID, None)
         object_key = None
@@ -525,14 +511,14 @@ class VideoFigure:
         Makes a copy of VideoFigure with new fields, if fields are given, otherwise it will use fields of the original VideoFigure.
 
         :param video_object: VideoObject object.
-        :type video_object: VideoObject, optional
-        :param geometry: Label :class:`geometry<supervisely.geometry.geometry.Geometry>`.
-        :type geometry: Geometry, optional
+        :type video_object: :class:`~supervisely.video_annotation.video_object.VideoObject`, optional
+        :param geometry: Label Geometry object.
+        :type geometry: :class:`~supervisely.geometry.geometry.Geometry`, optional
         :param frame_index: Index of Frame to which VideoFigure belongs.
         :type frame_index: int, optional
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
-        :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which VideoFigure belongs.
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
+        :param class_id: ID of ObjClass to which VideoFigure belongs.
         :type class_id: int, optional
         :param labeler_login: Login of the user who created VideoFigure.
         :type labeler_login: str, optional
@@ -547,50 +533,50 @@ class VideoFigure:
         :param priority: Priority of the figure (position of the figure relative to other overlapping or underlying figures).
         :type priority: int, optional
         :param status: Sets labeling status. Specifies if the VideoFigure was created by NN model, manually or created by NN and then manually corrected.
-        :type status: LabelingStatus, optional
-        :return: VideoFigure object
-        :rtype: :class:`VideoFigure`
+        :type status: :class:`~supervisely.annotation.label.LabelingStatus`, optional
+        :returns: VideoFigure object
+        :rtype: :class:`~supervisely.video_annotation.video_figure.VideoFigure`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            obj_class_car = sly.ObjClass('car', sly.Rectangle)
-            video_obj_car = sly.VideoObject(obj_class_car)
-            fr_index = 7
-            geometry = sly.Rectangle(0, 0, 100, 100)
-            video_figure_car = sly.VideoFigure(video_obj_car, geometry, fr_index)
+                obj_class_car = sly.ObjClass('car', sly.Rectangle)
+                video_obj_car = sly.VideoObject(obj_class_car)
+                fr_index = 7
+                geometry = sly.Rectangle(0, 0, 100, 100)
+                video_figure_car = sly.VideoFigure(video_obj_car, geometry, fr_index)
 
-            obj_class_bus = sly.ObjClass('bus', sly.Rectangle)
-            video_obj_bus = sly.VideoObject(obj_class_bus)
-            fr_index_bus = 15
-            geometry_bus = sly.Rectangle(0, 0, 500, 600)
+                obj_class_bus = sly.ObjClass('bus', sly.Rectangle)
+                video_obj_bus = sly.VideoObject(obj_class_bus)
+                fr_index_bus = 15
+                geometry_bus = sly.Rectangle(0, 0, 500, 600)
 
-            # Remember that VideoFigure object is immutable, and we need to assign new instance of VideoFigure to a new variable
-            video_figure_bus = video_figure_car.clone(video_object=video_obj_bus, geometry=geometry_bus, frame_index=fr_index_bus)
-            print(video_figure_bus.to_json())
-            # Output: {
-            #     "key": "c2f501e94f42483ebd202697608e8d26",
-            #     "objectKey": "942c79137b4547c59193276317f73897",
-            #     "geometryType": "rectangle",
-            #     "geometry": {
-            #         "points": {
-            #             "exterior": [
-            #                 [
-            #                     0,
-            #                     0
-            #                 ],
-            #                 [
-            #                     600,
-            #                     500
-            #                 ]
-            #             ],
-            #             "interior": []
-            #         }
-            #     }
-            # }
+                # Remember that VideoFigure object is immutable, and we need to assign new instance of VideoFigure to a new variable
+                video_figure_bus = video_figure_car.clone(video_object=video_obj_bus, geometry=geometry_bus, frame_index=fr_index_bus)
+                print(video_figure_bus.to_json())
+                # Output: {
+                #     "key": "c2f501e94f42483ebd202697608e8d26",
+                #     "objectKey": "942c79137b4547c59193276317f73897",
+                #     "geometryType": "rectangle",
+                #     "geometry": {
+                #         "points": {
+                #             "exterior": [
+                #                 [
+                #                     0,
+                #                     0
+                #                 ],
+                #                 [
+                #                     600,
+                #                     500
+                #                 ]
+                #             ],
+                #             "interior": []
+                #         }
+                #     }
+                # }
         """
         return self.__class__(
             video_object=take_with_default(video_object, self.parent_object),
@@ -628,25 +614,25 @@ class VideoFigure:
         :type img_size: Tuple[int, int]
         :param _auto_correct: Correct the geometry of a shape if it is out of bounds or not.
         :type _auto_correct: bool, optional
-        :raises: :class:`OutOfImageBoundsException<supervisely.video_annotation.video_figure.OutOfImageBoundsException>`, if figure is out of image bounds
-        :return: None
-        :rtype: :class:`NoneType`
+        :raises :class:`~supervisely.video_annotation.video_figure.OutOfImageBoundsException`: if figure is out of image bounds
+        :returns: None
+        :rtype: None
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            obj_class_car = sly.ObjClass('car', sly.Rectangle)
-            video_obj_car = sly.VideoObject(obj_class_car)
-            fr_index = 7
-            geometry = sly.Rectangle(0, 0, 100, 100)
-            video_figure_car = sly.VideoFigure(video_obj_car, geometry, fr_index)
+                obj_class_car = sly.ObjClass('car', sly.Rectangle)
+                video_obj_car = sly.VideoObject(obj_class_car)
+                fr_index = 7
+                geometry = sly.Rectangle(0, 0, 100, 100)
+                video_figure_car = sly.VideoFigure(video_obj_car, geometry, fr_index)
 
-            im_size = (50, 200)
-            video_figure_car.validate_bounds(im_size)
-            # raise OutOfImageBoundsException("Figure is out of image bounds")
+                im_size = (50, 200)
+                video_figure_car.validate_bounds(im_size)
+                # raise OutOfImageBoundsException("Figure is out of image bounds")
         """
         canvas_rect = Rectangle.from_size(img_size)
 

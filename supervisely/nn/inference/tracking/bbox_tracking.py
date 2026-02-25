@@ -29,6 +29,8 @@ from supervisely.sly_logger import logger
 
 
 class BBoxTracking(BaseTracking):
+    """Video tracking for bounding-box geometries; uses model or IoU-based propagation per frame."""
+
     def _deserialize_geometry(self, data: dict):
         geometry_type_str = data["type"]
         geometry_json = data["data"]
@@ -546,7 +548,7 @@ class BBoxTracking(BaseTracking):
         :param init_rgb_image: frame with object
         :type init_rgb_image: np.ndarray
         :param target_bbox: initial bbox
-        :type target_bbox: PredictionBBox
+        :type target_bbox: :class:`~supervisely.nn.prediction_dto.PredictionBBox`
         """
         raise NotImplementedError
 
@@ -567,12 +569,11 @@ class BBoxTracking(BaseTracking):
         :param init_rgb_image: previous frame with object
         :type init_rgb_image: np.ndarray
         :param target_bbox: bbox added on previous step
-        :type target_bbox: PredictionBBox
-        :return: predicted annotation
-        :rtype: PredictionBBox
+        :type target_bbox: :class:`~supervisely.nn.prediction_dto.PredictionBBox`
+        :returns: predicted annotation
+        :rtype: :class:`~supervisely.nn.prediction_dto.PredictionBBox`
         """
         raise NotImplementedError
-    
 
     def _get_circumscribed_box(self, tlbr, angle):
         top, left, bottom, right = tlbr
@@ -584,9 +585,9 @@ class BBoxTracking(BaseTracking):
         sin_a = np.sin(angle)
         dx = abs(half_w * cos_a) + abs(half_h * sin_a)
         dy = abs(half_w * sin_a) + abs(half_h * cos_a)
-        
+
         return [cy - dy, cx - dx, cy + dy, cx + dx]
-    
+
     def _inscribe_oriented_box(self, tracked_box, angle):
         top, left, bottom, right = tracked_box
         cx = (left + right) / 2
@@ -601,9 +602,9 @@ class BBoxTracking(BaseTracking):
         else:
             half_w = abs(dx * cos_a - dy * sin_a) / abs(det)
             half_h = abs(dy * cos_a - dx * sin_a) / abs(det)
-        
+
         return [cy - half_h, cx - half_w, cy + half_h, cx + half_w]
-    
+
     def predict_oriented(self, rgb_image: np.ndarray, settings: Dict[str, Any], prev_rgb_image: np.ndarray, target_bbox: PredictionBBox) -> PredictionBBox:
         if not target_bbox.angle:
             predicted = self.predict(rgb_image, settings, prev_rgb_image, target_bbox)

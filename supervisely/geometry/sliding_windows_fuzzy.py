@@ -7,22 +7,32 @@ from supervisely.collection.str_enum import StrEnum
 
 
 class SlidingWindowBorderStrategy(StrEnum):
-    """ """
+    """Strategy for handling border of the sliding window."""
 
     ADD_PADDING = "add_padding"
-    """"""
+    """Strategy for adding padding to the sliding window."""
     SHIFT_WINDOW = "shift_window"
-    """"""
+    """Strategy for shifting the sliding window."""
     CHANGE_SIZE = "change_size"
-    """"""
+    """Strategy for changing the size of the sliding window."""
 
 
 class SlidingWindowsFuzzy(SlidingWindows):
-    """ """
+    """Sliding windows with fuzzy border strategy."""
 
     def __init__(
         self, window_shape, min_overlap, strategy=str(SlidingWindowBorderStrategy.SHIFT_WINDOW)
     ):
+        """
+        Sliding windows with fuzzy border strategy.
+
+        :param window_shape: Shape of the window.
+        :type window_shape: tuple
+        :param min_overlap: Minimum overlap of the window.
+        :type min_overlap: tuple
+        :param strategy: Strategy for handling border of the sliding window.
+        :type strategy: :class:`~supervisely.geometry.sliding_windows_fuzzy.SlidingWindowBorderStrategy`
+        """
         super().__init__(window_shape, min_overlap)
         if not SlidingWindowBorderStrategy.has_value(strategy):
             raise ValueError(
@@ -33,7 +43,7 @@ class SlidingWindowsFuzzy(SlidingWindows):
         self.strategy = strategy
 
     def get(self, source_shape):
-        """ """
+        """Get the sliding windows."""
         if self.strategy == str(SlidingWindowBorderStrategy.SHIFT_WINDOW):
             yield from self.get_shift_window(source_shape)
         elif self.strategy == str(SlidingWindowBorderStrategy.ADD_PADDING):
@@ -44,11 +54,11 @@ class SlidingWindowsFuzzy(SlidingWindows):
             raise NotImplementedError("Not implemented SW Strategy: {!r}".format(self.strategy))
 
     def get_shift_window(self, source_shape):
-        """ """
+        """Get the sliding windows with shift window strategy."""
         yield from super().get(source_shape)
 
     def get_add_padding(self, source_shape):
-        """ """
+        """Get the sliding windows with add padding strategy."""
         h = source_shape[0]
         w = source_shape[1]
         source_rect = Rectangle.from_size(source_shape)
@@ -58,14 +68,14 @@ class SlidingWindowsFuzzy(SlidingWindows):
 
         # hw_limit = tuple(source_shape[i] - self.window_shape[i] for i in (0, 1))
         # for wind_top in range(0, hw_limit[0] + self.stride[0], self.stride[0]):
-            # for wind_left in range(0, hw_limit[1] + self.stride[1], self.stride[1]):
+        # for wind_left in range(0, hw_limit[1] + self.stride[1], self.stride[1]):
         for wind_top in range(0, h, self.stride[0]):
             for wind_left in range(0, w, self.stride[1]):
                 roi = window_rect.translate(drow=wind_top, dcol=wind_left)
                 yield roi
 
     def get_change_size(self, source_shape):
-        """ """
+        """Get the sliding windows with change size strategy."""
         h = source_shape[0]
         w = source_shape[1]
         source_rect = Rectangle.from_size(source_shape)

@@ -4,7 +4,11 @@ from supervisely.api.api import Api
 
 
 class Video(Widget):
+    """Video player widget that can be controlled from Python and emits playback/frame events."""
+
     class Routes:
+        """Callback route names used by the widget frontend to notify Python."""
+
         PLAY_CLICKED = "play_clicked_cb"
         PAUSE_CLICKED = "pause_clicked_cb"
         FRAME_CHANGE_START = "frame_change_started_cb"
@@ -16,6 +20,11 @@ class Video(Widget):
         # intervals: List[List[int]] = [],
         widget_id: str = None,
     ):
+        """:param video_id: Video ID from Supervisely to play.
+        :type video_id: int, optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         self._api = Api()
         self._video_id = video_id
         self._video_info = None

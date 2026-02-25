@@ -51,6 +51,7 @@ class LyftEpisodesConverter(LyftConverter, PointcloudEpisodeConverter):
         upload_as_links: bool,
         remote_files_map: Optional[Dict[str, str]] = None,
     ):
+        """See :class:`~supervisely.convert.base_converter.BaseConverter` for params."""
         super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
 
         self._type = "point_cloud_episode"
