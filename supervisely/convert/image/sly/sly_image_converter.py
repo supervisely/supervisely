@@ -218,8 +218,10 @@ class SLYImageConverter(ImageConverter):
                     ds_items = []
                     for name in dataset.get_items_names():
                         img_path, ann_path = dataset.get_item_paths(name)
-                        if not os.path.exists(img_path):
-                            logger.debug(f"Image file {img_path} does not exist, skipping")
+                        if not os.path.exists(img_path) or not self.is_image(img_path):
+                            logger.debug(
+                                f"Image file {img_path} does not exist or is not a valid image, skipping"
+                            )
                             continue
                         meta_path = dataset.get_item_meta_path(name)
                         item = self.Item(img_path)
@@ -278,8 +280,10 @@ class SLYImageConverter(ImageConverter):
                 ds_items = []
                 for name in dataset_fs.get_items_names():
                     img_path, ann_path = dataset_fs.get_item_paths(name)
-                    if not os.path.exists(img_path):
-                        logger.debug(f"Image file {img_path} does not exist, skipping")
+                    if not os.path.exists(img_path) or not self.is_image(img_path):
+                        logger.debug(
+                            f"Image file {img_path} does not exist or is not a valid image, skipping"
+                        )
                         continue
                     meta_path = dataset_fs.get_item_meta_path(name)
                     item = self.Item(img_path)

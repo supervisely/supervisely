@@ -24,6 +24,15 @@ SLY_TAG_KEYS = [
     # TagJsonFields.VALUE
 ]
 
+nondefault_image_exts = [
+    ".dcm",
+    ".nrrd",
+    ".nii",
+    ".nii.gz",
+    ".exr",
+    ".hdr",
+]
+
 
 # Check the annotation format documentation at
 def get_meta_from_annotation(ann_json: dict, meta: ProjectMeta) -> ProjectMeta:

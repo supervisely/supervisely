@@ -64,7 +64,7 @@ class FastSlyImageConverter(SLYImageConverter, ImageConverter):
                             continue
                         item.custom_data["image_info"] = ann_json
 
-                elif self.is_image(full_path):
+                elif self.is_image(full_path) or ext in helper.nondefault_image_exts:
                     self._items = []
                     return False
 
