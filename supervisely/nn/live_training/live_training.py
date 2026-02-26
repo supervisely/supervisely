@@ -516,7 +516,13 @@ class LiveTraining:
 
         frame_ann_json = [
             frame for frame in video_ann_json["frames"] if frame["index"] == frame_index
-        ][0]
+        ]
+
+        if not frame_ann_json:
+            raise ValueError(
+                f"Input frame must be annotated, but frame with index {frame_index} does not contain labels"
+            )
+        frame_ann_json = frame_ann_json[0]
 
         filtered_objects, filtered_figures = [], []
         for figure in frame_ann_json["figures"]:
