@@ -47,7 +47,7 @@ class KeyIndexedCollection:
 
         :param items: List of :class:`~supervisely.annotation.obj_class_collection.ObjClassCollection`, TagMetaCollection  and :class:`~supervisely.annotation.tag_collection.TagCollection` objects.
         :type items: list, optional
-        :raises :class:`~supervisely.collection.key_indexed_collection.DuplicateKeyError`, when trying to add object with already existing key
+        :raises :exc:`~supervisely.collection.key_indexed_collection.DuplicateKeyError`: if trying to add object with already existing key
 
         :Usage Example:
 
@@ -120,9 +120,13 @@ class KeyIndexedCollection:
     def _add_impl(self, dst_collection, item):
         """
         Add given item to given collection. Raise error if type of item not KeyObject or item with an item with that name is already in given collection
+
         :param dst_collection: dictionary
+        :type dst_collection: dict
         :param item: :class:`~supervisely.annotation.obj_class.ObjClass`, TagMeta or :class:`~supervisely.annotation.tag.Tag` class object
-        :returns: dictionary
+        :type item: :class:`~supervisely.collection.key_indexed_collection.KeyObject`
+        :returns: Dictionary with added item
+        :rtype: dict
         """
         if not isinstance(item, KeyIndexedCollection.item_type):
             raise TypeError(
@@ -137,8 +141,11 @@ class KeyIndexedCollection:
     def _add_items_impl(self, dst_collection, items):
         """
         Add items from input list to given collection. Raise error if type of item not KeyObject or item with an item with that name is already in given collection
+        
         :param dst_collection: dictionary
+        :type dst_collection: dict
         :param items: list of :class:`~supervisely.annotation.obj_class.ObjClass`, TagMeta or :class:`~supervisely.annotation.tag.Tag` class objects
+        :type items: List[:class:`~supervisely.collection.key_indexed_collection.KeyObject`]
         """
         for item in items:
             self._add_impl(dst_collection, item)
