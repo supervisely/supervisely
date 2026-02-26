@@ -63,6 +63,8 @@ def get_font(
         font_file_name: Optional[str] = None, font_size: Optional[int] = 12
 ) -> ImageFont.FreeTypeFont:
     """
+    Get font object by name and size.
+
     :param font_file_name: name of font file (example: 'DejaVuSansMono.ttf')
     :type font_file_name: str
     :param font_size: selected font size
