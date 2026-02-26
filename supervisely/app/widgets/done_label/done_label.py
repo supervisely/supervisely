@@ -9,29 +9,26 @@ ERROR = "error"
 
 
 class DoneLabel(Widget):
-    """DoneLabel is a widget in Supervisely that is used to display messages about completed tasks or operations.
-
-    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/status-elements/donelabel>`_
-        (including screenshots and examples).
-
-    :param text: DoneLabel text
-    :type text: str
-    :param widget_id: An identifier of the widget.
-    :type widget_id: str, optional
-
-    :Usage example:
-    .. code-block:: python
-
-        from supervisely.app.widgets import DoneLabel
-
-        done_label = DoneLabel(text="Done!")
-    """
+    """Displays completion messages (success, done)."""
 
     def __init__(
         self,
         text: Optional[str] = None,
         widget_id: Optional[str] = None,
     ):
+        """
+        :param text: Message text.
+        :type text: Optional[str]
+        :param widget_id: Unique widget identifier.
+        :type widget_id: Optional[str]
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import DoneLabel
+                label = DoneLabel(text="Done!")
+        """
         self._text = text
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -41,7 +38,7 @@ class DoneLabel(Widget):
         Dictionary contains the following fields:
             - text: DoneLabel text
 
-        :return: Dictionary with widget data
+        :returns: Dictionary with widget data
         :rtype: Dict[str, str]
         """
         return {"text": self._text}
@@ -55,7 +52,7 @@ class DoneLabel(Widget):
     def text(self) -> str:
         """Returns DoneLabel text.
 
-        :return: DoneLabel text
+        :returns: DoneLabel text
         :rtype: str
         """
         return self._text

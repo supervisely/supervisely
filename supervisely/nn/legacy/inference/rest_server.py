@@ -24,9 +24,18 @@ from flask import Flask
 from flask_restful import Resource, Api, reqparse
 
 
-
 class RestInferenceServer:
+    """Simple Flask REST server that exposes legacy inference endpoints for a single-image model."""
+
     def __init__(self, model: SingleImageInferenceInterface, name, port=None):
+        """
+        :param model: Single image inference interface.
+        :type model: :class:`~supervisely.worker_api.interfaces.SingleImageInferenceInterface`
+        :param name: Flask app name.
+        :type name: str
+        :param port: Optional port.
+        :type port: int
+        """
         self._app = Flask(name)
         if port == '':
             port = None
@@ -44,7 +53,10 @@ class RestInferenceServer:
         self._app.run(debug=False, port=self._port, host='0.0.0.0')
 
     class GetOutputMeta(Resource):
+        """Endpoint handler that returns model output metadata (`out_meta`) for a given input meta/mode."""
+
         def __init__(self, model):
+            """See RestInferenceServer for model param."""
             self._model = model
             self._parser = reqparse.RequestParser()
             self._parser.add_argument(META)
@@ -69,9 +81,11 @@ class RestInferenceServer:
                 return response_json['output_meta']
             return response_json
 
-
     class Inference(Resource):
+        """Endpoint handler that runs inference on an uploaded image and returns prediction JSON."""
+
         def __init__(self, model):
+            """See RestInferenceServer for model param."""
             from werkzeug.datastructures import FileStorage
             self._model = model
             self._parser = reqparse.RequestParser()
@@ -100,6 +114,8 @@ class RestInferenceServer:
 
 
 class ModelRest(ModelDeploy):
+    """Legacy deployment wrapper that configures a model for REST inference (not runnable as a standalone app)."""
+
     def load_config(self):
         gpu_device = os.getenv(GPU_DEVICE, 0)
         self.config = deepcopy(ModelDeploy.config)

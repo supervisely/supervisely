@@ -7,6 +7,8 @@ from supervisely.collection.str_enum import StrEnum
 
 
 class VideoAnnotationToolAction(StrEnum):
+    """Action names supported by the Video Annotation Tool for remote UI control."""
+
     JOBS_DISABLE_CONTROLS = "jobs/disableControls"
     """"""
     JOBS_ENABLE_CONTROLS = "jobs/enableControls"
@@ -25,12 +27,14 @@ class VideoAnnotationToolAction(StrEnum):
 
 
 class VideoAnnotationToolApi(ModuleApiBase):
+    """API wrapper for sending actions/commands to a running Video Annotation Tool session."""
+
     def disable_job_controls(self, session_id: str) -> Dict[str, Any]:
         """Disables controls of the labeling jobs. Buttons: Sumbit job, Confirm video.
 
         :param session_id: ID of the session in the Video Labeling Tool which controls should be disabled.
         :type session_id: str
-        :return: Response from API server in JSON format.
+        :returns: Response from API server in JSON format.
         :rtype: Dict[str, Any]
         """
         return self._act(
@@ -44,7 +48,7 @@ class VideoAnnotationToolApi(ModuleApiBase):
 
         :param session_id: ID of the session in the Video Labeling Tool which controls should be enabled.
         :type session_id: str
-        :return: Response from API server in JSON format.
+        :returns: Response from API server in JSON format.
         :rtype: Dict[str, Any]
         """
         return self._act(
@@ -58,7 +62,7 @@ class VideoAnnotationToolApi(ModuleApiBase):
 
         :param session_id: ID of the session in the Video Labeling Tool which submit button should be disabled.
         :type session_id: str
-        :return: Response from API server in JSON format.
+        :returns: Response from API server in JSON format.
         :rtype: Dict[str, Any]
         """
         return self._act(
@@ -72,7 +76,7 @@ class VideoAnnotationToolApi(ModuleApiBase):
 
         :param session_id: ID of the session in the Video Labeling Tool which submit button should be enabled.
         :type session_id: str
-        :return: Response from API server in JSON format.
+        :returns: Response from API server in JSON format.
         :rtype: Dict[str, Any]
         """
         return self._act(
@@ -86,7 +90,7 @@ class VideoAnnotationToolApi(ModuleApiBase):
 
         :param session_id: ID of the session in the Video Labeling Tool which confirm button should be disabled.
         :type session_id: str
-        :return: Response from API server in JSON format.
+        :returns: Response from API server in JSON format.
         :rtype: Dict[str, Any]
         """
         return self._act(
@@ -100,7 +104,7 @@ class VideoAnnotationToolApi(ModuleApiBase):
 
         :param session_id: ID of the session in the Video Labeling Tool which confirm button should be enabled.
         :type session_id: str
-        :return: Response from API server in JSON format.
+        :returns: Response from API server in JSON format.
         :rtype: Dict[str, Any]
         """
         return self._act(
@@ -120,7 +124,7 @@ class VideoAnnotationToolApi(ModuleApiBase):
         :type video_id: int
         :param frame: Frame number which should be set, defaults to 0.
         :type frame: Optional[int]
-        :return: Response from API server in JSON format.
+        :returns: Response from API server in JSON format.
         :rtype: Dict[str, Any]
         """
 

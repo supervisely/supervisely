@@ -1,4 +1,5 @@
 # coding: utf-8
+"""Work with volume objects via the Supervisely API."""
 
 from supervisely.api.entity_annotation.object_api import ObjectApi
 from supervisely.video_annotation.key_id_map import KeyIdMap
@@ -9,48 +10,56 @@ from supervisely.volume_annotation.volume_object_collection import (
 
 class VolumeObjectApi(ObjectApi):
     """
-    :class:`VolumeObject<supervisely.volume_annotation.volume_object.VolumeObject>` for :class:`VolumeAnnotation<supervisely.volume_annotation.volume_annotation.VolumeAnnotation>`.
+    API for working with :class:`~supervisely.volume_annotation.volume_object.VolumeObject` in
+    :class:`~supervisely.volume_annotation.volume_annotation.VolumeAnnotation`.
+    :class:`~supervisely.api.volume.volume_object_api.VolumeObjectApi` object is immutable.
     """
 
     def append_bulk(
         self, volume_id: int, objects: VolumeObjectCollection, key_id_map: KeyIdMap = None
     ):
         """
-        Add Tags to Annotation Objects
+        Add objects to VolumeAnnotation.
 
         :param volume_id: Volume ID in Supervidely.
         :type volume_id: int
         :param objects: VolumeAnnotation objects.
-        :type objects: VolumeObjectCollection
+        :type objects: :class:`~supervisely.volume_annotation.volume_object_collection.VolumeObjectCollection`
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
-        :return: List of objects IDs
-        :rtype: :class:`List[int]`
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
+        :returns: List of objects IDs
+        :rtype: List[int]
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            from supervisely.volume_annotation.volume_tag import VolumeTag
-            from supervisely.video_annotation.key_id_map import KeyIdMap
+                import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                from supervisely.volume_annotation.volume_tag import VolumeTag
+                from supervisely.video_annotation.key_id_map import KeyIdMap
 
-            project_id = 17209
-            volume_id = 19402023
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            meta_json = api.project.get_meta(project_id)
-            project_meta = sly.ProjectMeta.from_json(meta_json)
+                api = sly.Api.from_env()
 
-            key_id_map = KeyIdMap()
-            ann_info = api.volume.annotation.download(volume_id)
-            ann = sly.VolumeAnnotation.from_json(ann_info, project_meta, key_id_map)
+                project_id = 17209
+                volume_id = 19402023
 
-            api.volume.object.append_bulk(volume_id, ann.objects, key_id_map)
+                meta_json = api.project.get_meta(project_id)
+                project_meta = sly.ProjectMeta.from_json(meta_json)
+
+                key_id_map = KeyIdMap()
+                ann_info = api.volume.annotation.download(volume_id)
+                ann = sly.VolumeAnnotation.from_json(ann_info, project_meta, key_id_map)
+
+                api.volume.object.append_bulk(volume_id, ann.objects, key_id_map)
         """
 
         info = self._api.volume.get_info_by_id(volume_id)

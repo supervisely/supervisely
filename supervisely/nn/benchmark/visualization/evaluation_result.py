@@ -40,6 +40,7 @@ from supervisely.task.progress import tqdm_sly
 
 
 class EvalResult:
+    """Holds benchmark evaluation data: project/dataset info, metrics, visualizations, and export paths."""
 
     def __init__(
         self,
@@ -48,6 +49,11 @@ class EvalResult:
         api: Api,
         progress: Optional[SlyTqdm] = None,
     ):
+        """:param eval_dir: Path to evaluation directory.
+        :param workdir: Working directory for output.
+        :param api: Supervisely API.
+        :param progress: Progress callback.
+        """
         from pycocotools.coco import COCO  # pylint: disable=import-error
 
         self.eval_dir = eval_dir

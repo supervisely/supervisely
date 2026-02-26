@@ -14,11 +14,15 @@ from supervisely.task.progress import Progress
 
 
 class InferenceRequest:
+    """State container for a single inference run (progress, results queue, lifecycle stage and cancellation)."""
+
     PAUSE_SLEEP_INTERVAL = 1.0
     PAUSE_SLEEP_MAX_WAIT = 60 * 60  # 1 hour
     PENDING_RESULTS_MAX_SIZE = 500
 
     class Stage:
+        """Human-readable stage labels used for progress reporting."""
+
         PREPARING = "Preparing model for inference..."
         INFERENCE = "Running inference..."
         FINISHED = "Finished"
@@ -31,6 +35,14 @@ class InferenceRequest:
         ttl: Union[int, None] = 60 * 60,
         manager: InferenceRequestsManager = None,
     ):
+        """
+        :param uuid_: Request ID.
+        :type uuid_: str
+        :param ttl: Time-to-live in seconds.
+        :type ttl: Union[int, None]
+        :param manager: Optional InferenceRequestsManager.
+        :type manager: InferenceRequestsManager
+        """
         if uuid_ is None:
             uuid_ = uuid.uuid5(namespace=uuid.NAMESPACE_URL, name=f"{time.time()}").hex
         self._uuid = uuid_
@@ -281,6 +293,8 @@ class InferenceRequest:
 
 
 class GlobalProgress:
+    """Aggregated progress indicator for all inference requests managed by a server instance."""
+
     def __init__(self):
         self.progress = Progress(message="Ready", total_cnt=1)
         self._lock = threading.Lock()
@@ -332,8 +346,13 @@ class GlobalProgress:
 
 
 class InferenceRequestsManager:
+    """Thread-safe registry and monitor for active :class:`InferenceRequest` instances."""
 
     def __init__(self, executor: ThreadPoolExecutor = None):
+        """
+        :param executor: Thread pool for request execution.
+        :type executor: ThreadPoolExecutor
+        """
         if executor is None:
             executor = ThreadPoolExecutor(max_workers=1)
         self._executor = executor

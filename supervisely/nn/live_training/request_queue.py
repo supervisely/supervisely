@@ -5,6 +5,8 @@ from enum import Enum
 
 
 class RequestType(Enum):
+    """Types of requests handled by the live training request queue."""
+
     START = "start"
     PREDICT = "predict"
     ADD_SAMPLE = "add-sample"
@@ -13,14 +15,23 @@ class RequestType(Enum):
 
 class Request:
     """A simple representation of an API request."""
+
     def __init__(self, request_type: RequestType, data: Optional[dict] = None, future: Optional[asyncio.Future] = None):
+        """
+        :param request_type: RequestType enum.
+        :type request_type: RequestType
+        :param data: Optional request data.
+        :type data: dict
+        :param future: Optional Future for response.
+        :type future: asyncio.Future
+        """
         self.type = request_type
         self.data = data
         self.future = future
-    
+
     def to_tuple(self):
         return (self.type, self.data, self.future)
-    
+
 
 class RequestQueue:
     """Thread-safe queue for API requests."""

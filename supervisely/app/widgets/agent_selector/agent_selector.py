@@ -6,7 +6,11 @@ from supervisely.app.widgets import Widget
 
 
 class AgentSelector(Widget):
+    """Widget for selecting an Agent in a team with optional filtering (GPU/running/compact)."""
+
     class Routes:
+        """Callback route names used by the widget frontend to notify Python."""
+
         VALUE_CHANGED = "value_changed"
 
     def __init__(
@@ -17,6 +21,18 @@ class AgentSelector(Widget):
         compact: bool = False,
         widget_id=None,
     ):
+        """
+        :param team_id: Team ID to list agents from.
+        :type team_id: int
+        :param show_only_gpu: If True, show only agents with GPU.
+        :type show_only_gpu: bool
+        :param show_only_running: If True, show only running agents.
+        :type show_only_running: bool
+        :param compact: If True, use compact display mode.
+        :type compact: bool
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         self._team_id = team_id
         self._show_any_status = not show_only_running
         self._show_public = True
@@ -49,7 +65,7 @@ class AgentSelector(Widget):
 
     def get_value(self) -> int:
         return StateJson()[self.widget_id]["agentId"]
-    
+
     def set_value(self, agent_id: int) -> None:
         if not isinstance(agent_id, int):
             raise TypeError("Agent ID must be an integer.")

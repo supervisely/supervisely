@@ -12,6 +12,7 @@ from supervisely.project.project_settings import LabelingInterface
 
 
 class MultiViewImageConverter(ImageConverter):
+    """Imports multi-view image groups (multiple images per sample) for multiview labeling interface."""
 
     def __init__(
             self,
@@ -20,6 +21,7 @@ class MultiViewImageConverter(ImageConverter):
             upload_as_links: bool,
             remote_files_map: Optional[Dict[str, str]] = None,
     ):
+        """See :class:`~supervisely.convert.base_converter.BaseConverter` for params."""
         super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
 
         self._supports_links = True

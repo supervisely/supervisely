@@ -25,12 +25,15 @@ from supervisely.project.project_settings import LabelingInterface
 
 
 class ImageConverter(BaseConverter):
+    """Base converter for image projects (collects images and uploads images + annotations to Supervisely)."""
+
     allowed_exts = [
         ext for ext in SUPPORTED_IMG_EXTS + image_helper.EXT_TO_CONVERT if ext != ".nrrd"
     ]
     modality = "images"
 
     class Item(BaseConverter.BaseItem):
+        """Base image item used by image converters (path + optional annotation/meta and image shape)."""
 
         def __init__(
             self,
@@ -40,6 +43,18 @@ class ImageConverter(BaseConverter):
             shape: Optional[Union[Tuple, List]] = None,
             custom_data: Optional[dict] = None,
         ):
+            """
+            :param item_path: Path to image file.
+            :type item_path: str
+            :param ann_data: Annotation (path or dict).
+            :type ann_data: Union[str, dict], optional
+            :param meta_data: Meta data (path or dict).
+            :type meta_data: Union[str, dict], optional
+            :param shape: Image shape (height, width).
+            :type shape: Union[Tuple, List], optional
+            :param custom_data: Extra per-item data.
+            :type custom_data: dict, optional
+            """
             self._path: str = item_path
             self._name: str = None
             self._ann_data: Union[str,] = ann_data

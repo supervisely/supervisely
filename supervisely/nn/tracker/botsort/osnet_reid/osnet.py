@@ -1,4 +1,3 @@
-
 from __future__ import absolute_import, division
 
 import warnings
@@ -10,7 +9,7 @@ try:
     from torch.nn import functional as F
 except ImportError:
     logger.warning("torch is not installed, OSNet re-ID cannot be used.")
-    
+
 
 __all__ = ["osnet_x1_0", "osnet_x0_75", "osnet_x0_5", "osnet_x0_25", "osnet_ibn_x1_0"]
 
@@ -39,6 +38,22 @@ class ConvLayer(nn.Module):
         groups=1,
         IN=False,
     ):
+        """
+        :param in_channels: Input channels.
+        :type in_channels: int
+        :param out_channels: Output channels.
+        :type out_channels: int
+        :param kernel_size: Kernel size.
+        :type kernel_size: int
+        :param stride: Stride.
+        :type stride: int
+        :param padding: Padding.
+        :type padding: int
+        :param groups: Groups.
+        :type groups: int
+        :param IN: Use InstanceNorm.
+        :type IN: bool
+        """
         super(ConvLayer, self).__init__()
         self.conv = nn.Conv2d(
             in_channels,
@@ -66,6 +81,16 @@ class Conv1x1(nn.Module):
     """1x1 convolution + bn + relu."""
 
     def __init__(self, in_channels, out_channels, stride=1, groups=1):
+        """
+        :param in_channels: Input channels.
+        :type in_channels: int
+        :param out_channels: Output channels.
+        :type out_channels: int
+        :param stride: Stride.
+        :type stride: int
+        :param groups: Groups.
+        :type groups: int
+        """
         super(Conv1x1, self).__init__()
         self.conv = nn.Conv2d(
             in_channels,
@@ -90,6 +115,14 @@ class Conv1x1Linear(nn.Module):
     """1x1 convolution + bn (w/o non-linearity)."""
 
     def __init__(self, in_channels, out_channels, stride=1):
+        """
+        :param in_channels: Input channels.
+        :type in_channels: int
+        :param out_channels: Output channels.
+        :type out_channels: int
+        :param stride: Stride.
+        :type stride: int
+        """
         super(Conv1x1Linear, self).__init__()
         self.conv = nn.Conv2d(
             in_channels, out_channels, 1, stride=stride, padding=0, bias=False
@@ -106,6 +139,16 @@ class Conv3x3(nn.Module):
     """3x3 convolution + bn + relu."""
 
     def __init__(self, in_channels, out_channels, stride=1, groups=1):
+        """
+        :param in_channels: Input channels.
+        :type in_channels: int
+        :param out_channels: Output channels.
+        :type out_channels: int
+        :param stride: Stride.
+        :type stride: int
+        :param groups: Groups.
+        :type groups: int
+        """
         super(Conv3x3, self).__init__()
         self.conv = nn.Conv2d(
             in_channels,
@@ -133,6 +176,12 @@ class LightConv3x3(nn.Module):
     """
 
     def __init__(self, in_channels, out_channels):
+        """
+        :param in_channels: Input channels.
+        :type in_channels: int
+        :param out_channels: Output channels.
+        :type out_channels: int
+        """
         super(LightConv3x3, self).__init__()
         self.conv1 = nn.Conv2d(
             in_channels, out_channels, 1, stride=1, padding=0, bias=False
@@ -172,6 +221,20 @@ class ChannelGate(nn.Module):
         reduction=16,
         layer_norm=False,
     ):
+        """
+        :param in_channels: Input channels.
+        :type in_channels: int
+        :param num_gates: Output gates.
+        :type num_gates: int
+        :param return_gates: Return gates only.
+        :type return_gates: bool
+        :param gate_activation: 'sigmoid'/'relu'/'linear'.
+        :type gate_activation: str
+        :param reduction: FC reduction.
+        :type reduction: int
+        :param layer_norm: Use LayerNorm.
+        :type layer_norm: bool
+        """
         super(ChannelGate, self).__init__()
         if num_gates is None:
             num_gates = in_channels
@@ -217,6 +280,16 @@ class OSBlock(nn.Module):
     def __init__(
         self, in_channels, out_channels, IN=False, bottleneck_reduction=4, **kwargs
     ):
+        """
+        :param in_channels: Input channels.
+        :type in_channels: int
+        :param out_channels: Output channels.
+        :type out_channels: int
+        :param IN: InstanceNorm.
+        :type IN: bool
+        :param bottleneck_reduction: Bottleneck ratio.
+        :type bottleneck_reduction: int
+        """
         super(OSBlock, self).__init__()
         mid_channels = out_channels // bottleneck_reduction
         self.conv1 = Conv1x1(in_channels, mid_channels)
@@ -285,6 +358,24 @@ class OSNet(nn.Module):
         IN=False,
         **kwargs,
     ):
+        """
+        :param num_classes: Classification head classes.
+        :type num_classes: int
+        :param blocks: Block types.
+        :type blocks: list
+        :param layers: Layers per stage.
+        :type layers: list
+        :param channels: Channels per stage.
+        :type channels: list
+        :param feature_dim: Embedding dim.
+        :type feature_dim: int
+        :param loss: Loss type.
+        :type loss: str
+        :param IN: InstanceNorm.
+        :type IN: bool
+        :param kwargs: Additional arguments.
+        :type kwargs: dict
+        """
         super(OSNet, self).__init__()
         num_blocks = len(blocks)
         assert num_blocks == len(layers)
@@ -500,8 +591,6 @@ def osnet_x1_0(num_classes=1000, pretrained=True, loss="softmax", **kwargs):
     if pretrained:
         init_pretrained_weights(model, key="osnet_x1_0")
     return model
-
-
 
 
 def osnet_x0_75(num_classes=1000, pretrained=True, loss="softmax", **kwargs):

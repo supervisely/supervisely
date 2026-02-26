@@ -1,5 +1,5 @@
 # coding: utf-8
-"""create/download/update :class:`Dataset<supervisely.project.project.Dataset>`"""
+"""Create, download, and update :class:`~supervisely.project.project.Dataset` objects."""
 
 # docs
 from __future__ import annotations
@@ -57,9 +57,9 @@ class DatasetInfo(NamedTuple):
     :type size: int
     :param project_id: Project ID in which the Dataset is located.
     :type project_id: int
-    :param images_count: Number of images in the Dataset.
+    :param images_count: Number of images in the :class:`~supervisely.project.project.Dataset`.
     :type images_count: int
-    :param items_count: Number of items in the Dataset.
+    :param items_count: Number of items in the :class:`~supervisely.project.project.Dataset`.
     :type items_count: int
     :param created_at: Date and time when the Dataset was created.
     :type created_at: str
@@ -101,54 +101,31 @@ class DatasetInfo(NamedTuple):
 
 
 class DatasetApi(UpdateableModule, RemoveableModuleApi):
-    """
-    API for working with :class:`Dataset<supervisely.project.project.Dataset>`. :class:`DatasetApi<DatasetApi>` object is immutable.
-
-    :param api: API connection to the server.
-    :type api: Api
-    :Usage example:
-
-     .. code-block:: python
-
-        import os
-        from dotenv import load_dotenv
-
-        import supervisely as sly
-
-        # Load secrets and create API object from .env file (recommended)
-        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-        if sly.is_development():
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-        api = sly.Api.from_env()
-
-        # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
-
-        project_id = 1951
-        ds = api.dataset.get_list(project_id)
-    """
+    """API for working with datasets."""
 
     @staticmethod
     def info_sequence():
         """
         NamedTuple DatasetInfo information about Dataset.
 
-        :Example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            DatasetInfo(id=452984,
-                        name='ds0',
-                        description='',
-                        size='3997776',
-                        project_id=118909,
-                        images_count=11,
-                        items_count=11,
-                        created_at='2021-03-03T15:54:08.802Z',
-                        updated_at='2021-03-16T09:31:37.063Z',
-                        reference_image_url='https://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/K/q/jf/...png'),
-                        team_id=1,
-                        workspace_id=2
+                DatasetInfo(
+                    id=452984,
+                    name="ds0",
+                    description="",
+                    size="3997776",
+                    project_id=118909,
+                    images_count=11,
+                    items_count=11,
+                    created_at="2021-03-03T15:54:08.802Z",
+                    updated_at="2021-03-16T09:31:37.063Z",
+                    reference_image_url="https://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/K/q/jf/...png",
+                    team_id=1,
+                    workspace_id=2,
+                )
         """
         return [
             ApiField.ID,
@@ -176,6 +153,18 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         return "DatasetInfo"
 
     def __init__(self, api):
+        """
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
+        :type api: :class:`~supervisely.api.api.Api`
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+                api = sly.Api.from_env()
+                ds = api.dataset.get_list(project_id=1951)
+        """
         ModuleApi.__init__(self, api)
         UpdateableModule.__init__(self, api)
 
@@ -199,49 +188,56 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :type filters: List[dict], optional
         :param recursive: If True, returns all Datasets from the given Project including nested Datasets.
         :type recursive: bool, optional
-        :param parent_id: Parent Dataset ID. If set to None, the search will be performed at the top level of the Project,
+        :param parent_id: Parent Dataset ID. If set to None, the search will be performed at the top level of the :class:`~supervisely.project.project.Project`,
             otherwise the search will be performed in the specified Dataset.
         :type parent_id: Union[int, None], optional
-        :param include_custom_data: If True, the response will include the `custom_data` field for each Dataset.
+        :param include_custom_data: If True, the response will include the `custom_data` field for each :class:`~supervisely.project.project.Dataset`.
         :type include_custom_data: bool, optional
-        :return: List of all Datasets with information for the given Project. See :class:`info_sequence<info_sequence>`
+        :returns: List of all Datasets with information for the given Project.
         :rtype: :class:`List[DatasetInfo]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            project_id = 1951
+                import os
+                from dotenv import load_dotenv
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
-            ds = api.dataset.get_list(project_id)
+                import supervisely as sly
 
-            print(ds)
-            # Output: [
-            #     DatasetInfo(id=2532,
-            #                 name="lemons",
-            #                 description="",
-            #                 size="861069",
-            #                 project_id=1951,
-            #                 images_count=6,
-            #                 items_count=6,
-            #                 created_at="2021-03-02T10:04:33.973Z",
-            #                 updated_at="2021-03-10T09:31:50.341Z",
-            #                 reference_image_url="http://app.supervisely.com/z6ut6j8bnaz1vj8aebbgs4-public/images/original/...jpg"),
-            #                 DatasetInfo(id=2557,
-            #                 name="kiwi",
-            #                 description="",
-            #                 size="861069",
-            #                 project_id=1951,
-            #                 images_count=6,
-            #                 items_count=6,
-            #                 created_at="2021-03-10T09:31:33.701Z",
-            #                 updated_at="2021-03-10T09:31:44.196Z",
-            #                 reference_image_url="http://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg")
-            # ]
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                project_id = 1951
+                ds = api.dataset.get_list(project_id)
+
+                print(ds)
+                # Output: [
+                #     DatasetInfo(id=2532,
+                #                 name="lemons",
+                #                 description="",
+                #                 size="861069",
+                #                 project_id=1951,
+                #                 images_count=6,
+                #                 items_count=6,
+                #                 created_at="2021-03-02T10:04:33.973Z",
+                #                 updated_at="2021-03-10T09:31:50.341Z",
+                #                 reference_image_url="http://app.supervisely.com/z6ut6j8bnaz1vj8aebbgs4-public/images/original/...jpg"),
+                #                 DatasetInfo(id=2557,
+                #                 name="kiwi",
+                #                 description="",
+                #                 size="861069",
+                #                 project_id=1951,
+                #                 images_count=6,
+                #                 items_count=6,
+                #                 created_at="2021-03-10T09:31:33.701Z",
+                #                 updated_at="2021-03-10T09:31:44.196Z",
+                #                 reference_image_url="http://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg")
+                # ]
         """
         if filters is None:
             filters = []
@@ -267,21 +263,27 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
 
         :param id: Dataset ID in Supervisely.
         :type id: int
-        :return: Information about Dataset. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`DatasetInfo`
-        :Usage example:
+        :returns: DatasetInfo object with information about the Dataset.
+        :rtype: :class:`~supervisely.api.dataset_api.DatasetInfo`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            dataset_id = 384126
+                import os
+                from dotenv import load_dotenv
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            ds_info = api.dataset.get_info_by_id(dataset_id)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                dataset_id = 384126
+                ds_info = api.dataset.get_info_by_id(dataset_id)
         """
         info = self._get_info_by_id(id, "datasets.info")
         if info is None and raise_error is True:
@@ -326,28 +328,34 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :param parent_id: Parent Dataset ID. If set to None, then the Dataset will be created at
             the top level of the Project, otherwise the Dataset will be created in a specified Dataset.
         :type parent_id: Union[int, None]
-        :param custom_data: Custom data to store in the Dataset.
+        :param custom_data: Custom data to store in the :class:`~supervisely.project.project.Dataset`.
         :type custom_data: Dict[Any, Any], optional
-        :return: Information about Dataset. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`DatasetInfo`
-        :Usage example:
+        :returns: DatasetInfo object with information about the Dataset.
+        :rtype: :class:`~supervisely.api.dataset_api.DatasetInfo`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            project_id = 116482
+                import os
+                from dotenv import load_dotenv
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            ds_info = api.dataset.get_list(project_id)
-            print(len(ds_info)) # 1
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            new_ds = api.dataset.create(project_id, 'new_ds')
-            new_ds_info = api.dataset.get_list(project_id)
-            print(len(new_ds_info)) # 2
+                api = sly.Api.from_env()
+
+                project_id = 116482
+                ds_infos = api.dataset.get_list(project_id)
+                print(len(ds_infos)) # 1
+
+                new_ds = api.dataset.create(project_id, 'new_ds')
+                new_ds_infos = api.dataset.get_list(project_id)
+                print(len(new_ds_info)) # 2
         """
         effective_name = self._get_effective_new_name(
             project_id=project_id,
@@ -388,30 +396,36 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :param parent_id: Parent Dataset ID. If set to None, then the Dataset will be created at
             the top level of the Project, otherwise the Dataset will be created in a specified Dataset.
         :type parent_id: Union[int, None]
-        :return: Information about Dataset. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`DatasetInfo`
-        :Usage example:
+        :returns: DatasetInfo object with information about the Dataset.
+        :rtype: :class:`~supervisely.api.dataset_api.DatasetInfo`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            project_id = 116482
+                import os
+                from dotenv import load_dotenv
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            ds_info = api.dataset.get_list(project_id)
-            print(len(ds_info)) # 1
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            api.dataset.get_or_create(project_id, 'ds1')
-            ds_info = api.dataset.get_list(project_id)
-            print(len(ds_info)) # 1
+                api = sly.Api.from_env()
 
-            api.dataset.get_or_create(project_id, 'new_ds')
-            ds_info = api.dataset.get_list(project_id)
-            print(len(ds_info)) # 2
+                project_id = 116482
+                ds_infos = api.dataset.get_list(project_id)
+                print(len(ds_infos)) # 1
+
+                api.dataset.get_or_create(project_id, 'ds1')
+                ds_infos = api.dataset.get_list(project_id)
+                print(len(ds_infos)) # 1
+
+                api.dataset.get_or_create(project_id, 'new_ds')
+                ds_infos = api.dataset.get_list(project_id)
+                print(len(ds_infos)) # 2
         """
         dataset_info = self.get_info_by_name(project_id, name, parent_id=parent_id)
         if dataset_info is None:
@@ -437,21 +451,26 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :type description: str, optional
         :param custom_data: New custom data.
         :type custom_data: Dict[Any, Any], optional
-        :return: Information about Dataset. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`DatasetInfo`
+        :returns: DatasetInfo object with information about the Dataset.
+        :rtype: :class:`~supervisely.api.dataset_api.DatasetInfo`
 
-        :Usage example:
+        :Usage Example:
 
-             .. code-block:: python
+            .. code-block:: python
+
+                import os
+                from dotenv import load_dotenv
 
                 import supervisely as sly
 
-                dataset_id = 384126
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
                 api = sly.Api.from_env()
 
+                dataset_id = 384126
                 new_ds = api.dataset.update(dataset_id, name='new_ds', description='new description')
         """
         fields = [name, description, custom_data]  # Extend later if needed.
@@ -478,22 +497,27 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :type id: int
         :param custom_data: New custom data.
         :type custom_data: Dict[Any, Any]
-        :return: Information about Dataset. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`DatasetInfo`
+        :returns: DatasetInfo object with information about the Dataset.
+        :rtype: :class:`~supervisely.api.dataset_api.DatasetInfo`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            dataset_id = 384126
+                import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            new_ds = api.dataset.update_custom_data(dataset_id, custom_data={'key': 'value'})
+                api = sly.Api.from_env()
+
+                dataset_id = 384126
+                new_ds = api.dataset.update_custom_data(dataset_id, custom_data={'key': 'value'})
         """
         return self.update(id, custom_data=custom_data)
 
@@ -526,29 +550,36 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :type change_name_if_conflict: bool, optional
         :param with_annotations: If True copies Datasets with annotations, otherwise copies just items from Datasets without annotations.
         :type with_annotations: bool, optional
-        :raises: :class:`RuntimeError` if can not match "ids" and "new_names" lists, len(ids) != len(new_names)
-        :return: Information about Datasets. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[DatasetInfo]`
-        :Usage example:
+        :raises RuntimeError: if can not match "ids" and "new_names" lists, len(ids) != len(new_names)
+        :returns: List of DatasetInfo objects.
+        :rtype: List[:class:`~supervisely.api.dataset_api.DatasetInfo`]
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            dst_proj_id = 1980
-            ds = api.dataset.get_list(dst_proj_id)
-            print(len(ds)) # 0
+                import supervisely as sly
 
-            ds_ids = [2532, 2557]
-            ds_names = ["lemon_test", "kiwi_test"]
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            copied_datasets = api.dataset.copy_batch(dst_proj_id, ids=ds_ids, new_names=ds_names, with_annotations=True)
-            ds = api.dataset.get_list(dst_proj_id)
-            print(len(ds)) # 2
+                api = sly.Api.from_env()
+
+                dst_proj_id = 1980
+                ds = api.dataset.get_list(dst_proj_id)
+                print(len(ds)) # 0
+
+                ds_ids = [2532, 2557]
+                ds_names = ["lemon_test", "kiwi_test"]
+
+                copied_datasets = api.dataset.copy_batch(dst_proj_id, ids=ds_ids, new_names=ds_names, with_annotations=True)
+                ds = api.dataset.get_list(dst_proj_id)
+                print(len(ds)) # 2
         """
         if new_names is not None and len(ids) != len(new_names):
             raise RuntimeError(
@@ -596,7 +627,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
 
         :param dst_project_id: Destination Project ID in Supervisely.
         :type dst_project_id: int
-        :param id: ID of copied Dataset.
+        :param id: ID of copied :class:`~supervisely.project.project.Dataset`.
         :type id: int
         :param new_name: New Dataset name.
         :type new_name: str, optional
@@ -604,25 +635,32 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :type change_name_if_conflict: bool, optional
         :param with_annotations: If True copies Dataset with annotations, otherwise copies just items from Dataset without annotation.
         :type with_annotations: bool, optional
-        :return: Information about Dataset. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`DatasetInfo`
-        :Usage example:
+        :returns: DatasetInfo object with information about the Dataset.
+        :rtype: :class:`~supervisely.api.dataset_api.DatasetInfo`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            dst_proj_id = 1982
-            ds = api.dataset.get_list(dst_proj_id)
-            print(len(ds)) # 0
+                import supervisely as sly
 
-            new_ds = api.dataset.copy(dst_proj_id, id=2540, new_name="banana", with_annotations=True)
-            ds = api.dataset.get_list(dst_proj_id)
-            print(len(ds)) # 1
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                dst_proj_id = 1982
+                ds_infos = api.dataset.get_list(dst_proj_id)
+                print(len(ds_infos)) # 0
+
+                new_ds = api.dataset.copy(dst_proj_id, id=2540, new_name="banana", with_annotations=True)
+                ds_infos = api.dataset.get_list(dst_proj_id)
+                print(len(ds_infos)) # 1
         """
         new_datasets = self.copy_batch(
             dst_project_id, [id], [new_name], change_name_if_conflict, with_annotations
@@ -652,29 +690,36 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :type change_name_if_conflict: bool, optional
         :param with_annotations: If True moves Datasets with annotations, otherwise moves just items from Datasets without annotations.
         :type with_annotations: bool, optional
-        :raises: :class:`RuntimeError` if can not match "ids" and "new_names" lists, len(ids) != len(new_names)
-        :return: Information about Datasets. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[DatasetInfo]`
-        :Usage example:
+        :raises RuntimeError: if can not match "ids" and "new_names" lists, len(ids) != len(new_names)
+        :returns: List of DatasetInfo objects.
+        :rtype: List[:class:`~supervisely.api.dataset_api.DatasetInfo`]
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            dst_proj_id = 1978
-            ds = api.dataset.get_list(dst_proj_id)
-            print(len(ds)) # 0
+                import supervisely as sly
 
-            ds_ids = [2545, 2560]
-            ds_names = ["banana_test", "mango_test"]
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            movied_datasets = api.dataset.move_batch(dst_proj_id, ids=ds_ids, new_names=ds_names, with_annotations=True)
-            ds = api.dataset.get_list(dst_proj_id)
-            print(len(ds)) # 2
+                api = sly.Api.from_env()
+
+                dst_proj_id = 1978
+                ds_infos = api.dataset.get_list(dst_proj_id)
+                print(len(ds_infos)) # 0
+
+                ds_ids = [2545, 2560]
+                ds_names = ["banana_test", "mango_test"]
+
+                movied_datasets = api.dataset.move_batch(dst_proj_id, ids=ds_ids, new_names=ds_names, with_annotations=True)
+                ds_infos = api.dataset.get_list(dst_proj_id)
+                print(len(ds_infos)) # 2
         """
         new_datasets = self.copy_batch(
             dst_project_id, ids, new_names, change_name_if_conflict, with_annotations
@@ -695,7 +740,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
 
         :param dst_project_id: Destination Project ID in Supervisely.
         :type dst_project_id: int
-        :param id: ID of moved Dataset.
+        :param id: ID of moved :class:`~supervisely.project.project.Dataset`.
         :type id: int
         :param new_name: New Dataset name.
         :type new_name: str, optional
@@ -703,25 +748,32 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :type change_name_if_conflict: bool, optional
         :param with_annotations: If True moves Dataset with annotations, otherwise moves just items from Dataset without annotation.
         :type with_annotations: bool, optional
-        :return: Information about Dataset. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`DatasetInfo`
-        :Usage example:
+        :returns: DatasetInfo object with information about the Dataset.
+        :rtype: :class:`~supervisely.api.dataset_api.DatasetInfo`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            dst_proj_id = 1985
-            ds = api.dataset.get_list(dst_proj_id)
-            print(len(ds)) # 0
+                import supervisely as sly
 
-            new_ds = api.dataset.move(dst_proj_id, id=2550, new_name="cucumber", with_annotations=True)
-            ds = api.dataset.get_list(dst_proj_id)
-            print(len(ds)) # 1
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                dst_proj_id = 1985
+                ds = api.dataset.get_list(dst_proj_id)
+                print(len(ds)) # 0
+
+                new_ds = api.dataset.move(dst_proj_id, id=2550, new_name="cucumber", with_annotations=True)
+                ds = api.dataset.get_list(dst_proj_id)
+                print(len(ds)) # 1
         """
         new_dataset = self.copy(
             dst_project_id, id, new_name, change_name_if_conflict, with_annotations
@@ -736,18 +788,26 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :type dataset_id: int
         :param destination_dataset_id: ID of the destination dataset.
         :type destination_dataset_id: int
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            dataset_id = 123
-            destination_dataset_id = 456
+                import supervisely as sly
 
-            api.dataset.move_to_dataset(dataset_id, destination_dataset_id)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                dataset_id = 123
+                destination_dataset_id = 456
+                api.dataset.move_to_dataset(dataset_id, destination_dataset_id)
         """
         self._api.post(
             "datasets.move", {ApiField.SRC_ID: dataset_id, ApiField.DEST_ID: destination_dataset_id}
@@ -780,7 +840,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :type batch_size: int, optional
         :param progress_cb: Function for control delete progress.
         :type progress_cb: Callable, optional
-        :return: A list of response content in JSON format for each API call.
+        :returns: A list of response content in JSON format for each API call.
         :rtype: List[dict]
         """
         if batch_size > 50:
@@ -832,68 +892,73 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
                      The default value is 'all', which retrieves all available datasets.
                      'None' will return the first page with datasets, the amount of which is set in param 'per_page'.
         :type page: Union[int, Literal["all"]], optional
-        :param include_custom_data: If True, the response will include the `custom_data` field for each Dataset.
+        :param include_custom_data: If True, the response will include the `custom_data` field for each :class:`~supervisely.project.project.Dataset`.
         :type include_custom_data: bool, optional
 
-        :return: Search response information and 'DatasetInfo' of all datasets that are searched by a given criterion.
+        :returns: Search response information and ':class:`~supervisely.api.dataset_api.DatasetInfo`' of all datasets that are searched by a given criterion.
         :rtype: dict
 
-        :Usage example:
+        :Usage Example:
 
-        .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
-            import os
+                import os
+                from dotenv import load_dotenv
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            filter_1 = {
-                "field": "updatedAt",
-                "operator": "<",
-                "value": "2023-12-03T14:53:00.952Z"
-            }
-            filter_2 = {
-                "field": "updatedAt",
-                "operator": ">",
-                "value": "2023-04-03T14:53:00.952Z"
-            }
-            filters = [filter_1, filter_2]
-            datasets = api.dataset.get_list_all(filters)
-            print(datasets)
-            # Output:
-            # {
-            #     "total": 2,
-            #     "perPage": 20000,
-            #     "pagesCount": 1,
-            #     "entities": [ DatasetInfo(id = 16,
-            #                       name = 'ds1',
-            #                       description = None,
-            #                       size = '861069',
-            #                       project_id = 22,
-            #                       images_count = None,
-            #                       items_count = None,
-            #                       created_at = '2020-04-03T13:43:24.000Z',
-            #                       updated_at = '2020-04-03T14:53:00.952Z',
-            #                       reference_image_url = None,
-            #                       team_id = 2,
-            #                       workspace_id = 2),
-            #                   DatasetInfo(id = 17,
-            #                       name = 'ds1',
-            #                       description = None,
-            #                       size = '1177212',
-            #                       project_id = 23,
-            #                       images_count = None,
-            #                       items_count = None,
-            #                       created_at = '2020-04-03T13:43:24.000Z',
-            #                       updated_at = '2020-04-03T14:53:00.952Z',
-            #                       reference_image_url = None,
-            #                       team_id = 2,
-            #                       workspace_id = 2
-            #                       )
-            #                 ]
-            # }
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                filter_1 = {
+                    "field": "updatedAt",
+                    "operator": "<",
+                    "value": "2023-12-03T14:53:00.952Z"
+                }
+                filter_2 = {
+                    "field": "updatedAt",
+                    "operator": ">",
+                    "value": "2023-04-03T14:53:00.952Z"
+                }
+                filters = [filter_1, filter_2]
+                datasets = api.dataset.get_list_all(filters)
+                print(datasets)
+                # Output:
+                # {
+                #     "total": 2,
+                #     "perPage": 20000,
+                #     "pagesCount": 1,
+                #     "entities": [ DatasetInfo(id = 16,
+                #                       name = 'ds1',
+                #                       description = None,
+                #                       size = '861069',
+                #                       project_id = 22,
+                #                       images_count = None,
+                #                       items_count = None,
+                #                       created_at = '2020-04-03T13:43:24.000Z',
+                #                       updated_at = '2020-04-03T14:53:00.952Z',
+                #                       reference_image_url = None,
+                #                       team_id = 2,
+                #                       workspace_id = 2),
+                #                   DatasetInfo(id = 17,
+                #                       name = 'ds1',
+                #                       description = None,
+                #                       size = '1177212',
+                #                       project_id = 23,
+                #                       images_count = None,
+                #                       items_count = None,
+                #                       created_at = '2020-04-03T13:43:24.000Z',
+                #                       updated_at = '2020-04-03T14:53:00.952Z',
+                #                       reference_image_url = None,
+                #                       team_id = 2,
+                #                       workspace_id = 2
+                #                       )
+                #                 ]
+                # }
 
         """
 
@@ -968,8 +1033,8 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :type fields: List[str], optional
         :param parent_id: Parent Dataset ID. If the Dataset is not nested, then the value is None.
         :type parent_id: Union[int, None]
-        :return: Information about Dataset. See :class:`info_sequence<info_sequence>`
-        :rtype: Union[DatasetInfo, None]
+        :returns: DatasetInfo object with information about the Dataset.
+        :rtype: Union[:class:`~supervisely.api.dataset_api.DatasetInfo`, None]
         """
         filters = [{"field": ApiField.NAME, "operator": "=", "value": name}]
         items = self.get_list(project_id, filters, parent_id=parent_id)
@@ -983,26 +1048,34 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
 
         :param project_id: Project ID for which the tree is built.
         :type project_id: int
-        :return: Dictionary of datasets and their children.
-        :rtype: Dict[DatasetInfo, Dict]
-        :Usage example:
+        :returns: Dictionary of datasets and their children.
+        :rtype: Dict[:class:`~supervisely.api.dataset_api.DatasetInfo`, Dict]
 
-        .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            project_id = 123
+                import supervisely as sly
 
-            dataset_tree = api.dataset.get_tree(project_id)
-            print(dataset_tree)
-            # Output:
-            # {
-            #     DatasetInfo(id=2532, name="lemons", description="", ...: {
-            #         DatasetInfo(id=2557, name="kiwi", description="", ...: {}
-            #     }
-            # }
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                project_id = 123
+                dataset_tree = api.dataset.get_tree(project_id)
+                print(dataset_tree)
+                # Output:
+                # {
+                #     DatasetInfo(id=2532, name="lemons", description="", ...: {
+                #         DatasetInfo(id=2557, name="kiwi", description="", ...: {}
+                #     }
+                # }
         """
 
         datasets = self.get_list(project_id, recursive=True)
@@ -1028,13 +1101,13 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         Helper method for recursive tree traversal.
         Yields tuples of (path, dataset) for all datasets in the tree. For each node (dataset) at the current level,
         yields its (path, dataset) before recursively traversing and yielding from its children.
-        
+
         :param tree: Tree structure to yield from.
-        :type tree: Dict[DatasetInfo, Dict]
+        :type tree: Dict[:class:`~supervisely.api.dataset_api.DatasetInfo`, Dict]
         :param path: Current path (used for recursion).
         :type path: List[str]
-        :return: Generator of tuples of (path, dataset).
-        :rtype: Generator[Tuple[List[str], DatasetInfo], None, None]
+        :returns: Generator of tuples of (path, dataset).
+        :rtype: Generator[Tuple[List[str], :class:`~supervisely.api.dataset_api.DatasetInfo`], None, None]
         """
         for dataset, children in tree.items():
             yield path, dataset
@@ -1046,19 +1119,19 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         self, tree: Dict[DatasetInfo, Dict], target_id: int, path: List[str] = None
     ) -> Tuple[Optional[DatasetInfo], Optional[Dict], List[str]]:
         """Find a specific dataset in the tree and return its subtree and path.
-        
+
         :param tree: Tree structure to search in.
-        :type tree: Dict[DatasetInfo, Dict]
+        :type tree: Dict[:class:`~supervisely.api.dataset_api.DatasetInfo`, Dict]
         :param target_id: ID of the dataset to find.
         :type target_id: int
         :param path: Current path (used for recursion).
         :type path: List[str], optional
-        :return: Tuple of (found_dataset, its_subtree, path_to_dataset).
-        :rtype: Tuple[Optional[DatasetInfo], Optional[Dict], List[str]]
+        :returns: Tuple of (found_dataset, its_subtree, path_to_dataset).
+        :rtype: Tuple[Optional[:class:`~supervisely.api.dataset_api.DatasetInfo`], Optional[Dict], List[str]]
         """
         if path is None:
             path = []
-            
+
         for dataset, children in tree.items():
             if dataset.id == target_id:
                 return dataset, children, path
@@ -1081,38 +1154,46 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :param dataset_id: Optional Dataset ID to start the tree from. If provided, only yields
             the subtree starting from this dataset (including the dataset itself and all its children).
         :type dataset_id: Optional[int]
-        :return: Generator of tuples of (path, dataset).
-        :rtype: Generator[Tuple[List[str], DatasetInfo], None, None]
-        :Usage example:
+        :returns: Generator of tuples of (path, dataset).
+        :rtype: Generator[Tuple[List[str], :class:`~supervisely.api.dataset_api.DatasetInfo`], None, None]
 
-        .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            project_id = 123
+                import supervisely as sly
 
-            # Get all datasets in the project
-            for parents, dataset in api.dataset.tree(project_id):
-                parents: List[str]
-                dataset: sly.DatasetInfo
-                print(parents, dataset.name)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            # Get only a specific branch starting from dataset_id = 456
-            for parents, dataset in api.dataset.tree(project_id, dataset_id=456):
-                parents: List[str]
-                dataset: sly.DatasetInfo
-                print(parents, dataset.name)
+                api = sly.Api.from_env()
 
-            # Output:
-            # [] ds1
-            # ["ds1"] ds2
-            # ["ds1", "ds2"] ds3
+                project_id = 123
+                # Get all datasets in the project
+                for parents, dataset in api.dataset.tree(project_id):
+                    parents: List[str]
+                    dataset: sly.DatasetInfo
+                    print(parents, dataset.name)
+
+                # Get only a specific branch starting from dataset_id = 456
+                for parents, dataset in api.dataset.tree(project_id, dataset_id=456):
+                    parents: List[str]
+                    dataset: sly.DatasetInfo
+                    print(parents, dataset.name)
+
+                # Output:
+                # [] ds1
+                # ["ds1"] ds2
+                # ["ds1", "ds2"] ds3
         """
 
         full_tree = self.get_tree(project_id)
-        
+
         if dataset_id is None:
             # Return the full tree
             yield from self._yield_tree(full_tree, [])
@@ -1134,23 +1215,30 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :param dataset_id: Dataset ID for which the nested datasets are returned.
         :type dataset_id: int
 
-        :return: List of nested datasets.
-        :rtype: List[DatasetInfo]
+        :returns: List of nested datasets.
+        :rtype: List[:class:`~supervisely.api.dataset_api.DatasetInfo`]
 
-        :Usage example:
+        :Usage Example:
 
-        .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            project_id = 123
-            dataset_id = 456
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            datasets = api.dataset.get_nested(project_id, dataset_id)
-            for dataset in datasets:
-                print(dataset.name, dataset.id) # Output: ds1 123
+                api = sly.Api.from_env()
+
+                project_id = 123
+                dataset_id = 456
+                datasets = api.dataset.get_nested(project_id, dataset_id)
+                for dataset in datasets:
+                    print(dataset.name, dataset.id) # Output: ds1 123
 
         """
         tree = self.get_tree(project_id)
@@ -1178,7 +1266,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :type name: str
         :param parent_id: Parent Dataset ID. If the Dataset is not nested, then the value is None.
         :type parent_id: Union[int, None]
-        :return: True if the dataset exists, False otherwise.
+        :returns: True if the dataset exists, False otherwise.
         :rtype: bool
         """
         return self.get_info_by_name(project_id, name, parent_id=parent_id) is not None
@@ -1201,8 +1289,8 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         IMPORTANT: Number of annotations must be equal to the number of images in offset file.
                    Image names in the offset file and annotation files must match.
 
-        :param dataset: Dataset ID or DatasetInfo object.
-        :type dataset: Union[int, DatasetInfo]
+        :param dataset: Dataset ID or :class:`~supervisely.api.dataset_api.DatasetInfo` object.
+        :type dataset: Union[int, :class:`~supervisely.api.dataset_api.DatasetInfo`]
         :param blob_path: Local path to the blob file.
         :type blob_path: str
         :param offsets_path: Local path to the offsets file.
@@ -1210,50 +1298,57 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :param anns: List of annotation paths.
         :type anns: List[str]
         :param project_meta: ProjectMeta object.
-        :type project_meta: Optional[ProjectMeta], optional
+        :type project_meta: Optional[:class:`~supervisely.project.project_meta.ProjectMeta`], optional
         :param project_type: Project type.
-        :type project_type: Optional[ProjectType], optional
+        :type project_type: Optional[:class:`~supervisely.project.project_type.ProjectType`], optional
         :param log_progress: If True, show progress bar.
         :type log_progress: bool, optional
 
 
-        :Usage example:
+        :Usage Example:
 
-        .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
-            from supervisely.project.project_meta import ProjectMeta
-            from supervisely.project.project_type import ProjectType
+                import os
+                from dotenv import load_dotenv
 
-            api = sly.Api.from_env()
+                import supervisely as sly
+                from supervisely.project.project_meta import ProjectMeta, ProjectType
 
-            dataset_id = 123
-            workspace_id = 456
-            blob_path = "/path/to/blob"
-            offsets_path = "/path/to/offsets"
-            project_meta_path = "/path/to/project_meta.json"
-            anns = ["/path/to/ann1.json", "/path/to/ann2.json", ...]
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            # Create a new project, dataset and update its meta
-            project = api.project.create(
-                workspace_id,
-                "Quick Import",
-                type=sly.ProjectType.IMAGES,
-                change_name_if_conflict=True,
-            )
-            dataset = api.dataset.create(project.id, "ds1")
-            project_meta_json = sly.json.load_json_file(project_meta_path)
-            meta = api.project.update_meta(project.id, meta=project_meta_json)
+                api = sly.Api.from_env()
 
-            dataset_info = api.dataset.quick_import(
-                dataset=dataset.id,
-                blob_path=blob_path,
-                offsets_path=offsets_path,
-                anns=anns,
-                project_meta=ProjectMeta(),
-                project_type=ProjectType.IMAGES,
-                log_progress=True
-            )
+                dataset_id = 123
+                workspace_id = 456
+                blob_path = "/path/to/blob"
+                offsets_path = "/path/to/offsets"
+                project_meta_path = "/path/to/project_meta.json"
+                anns = ["/path/to/ann1.json", "/path/to/ann2.json", ...]
+
+                # Create a new project, dataset and update its meta
+                project = api.project.create(
+                    workspace_id,
+                    "Quick Import",
+                    type=sly.ProjectType.IMAGES,
+                    change_name_if_conflict=True,
+                )
+                dataset = api.dataset.create(project.id, "ds1")
+                project_meta_json = sly.json.load_json_file(project_meta_path)
+                meta = api.project.update_meta(project.id, meta=project_meta_json)
+
+                dataset_info = api.dataset.quick_import(
+                    dataset=dataset.id,
+                    blob_path=blob_path,
+                    offsets_path=offsets_path,
+                    anns=anns,
+                    project_meta=ProjectMeta(),
+                    project_type=ProjectType.IMAGES,
+                    log_progress=True
+                )
 
         """
         from supervisely.api.api import Api, ApiContext

@@ -15,6 +15,8 @@ from supervisely.app.widgets import Container, Widget, RadioTabs, Editor, GridGa
 
 
 class Augmentations(Widget):
+    """Widget to load an imgaug augmentation pipeline and preview its effect on a random image."""
+
     def __init__(
         self,
         globals,
@@ -22,7 +24,19 @@ class Augmentations(Widget):
         task_type: Optional[Literal['detection', 'segmentation']] = None,
         remote_preview_path: str = '/temp/preview_augs.jpg',
         widget_id=None
-    ):  
+    ):
+        """
+        :param globals: Globals object with api, project_meta, data_dir, team.
+        :type globals: object
+        :param image_info: Optional image for preview. If None, random image is used.
+        :type image_info: sly.ImageInfo, optional
+        :param task_type: Task type for annotation conversion: "detection" or "segmentation".
+        :type task_type: Literal["detection", "segmentation"], optional
+        :param remote_preview_path: Path in Team Files for uploaded preview.
+        :type remote_preview_path: str
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         self._globals = globals
         self._image_info = image_info
         self._task_type = task_type
@@ -52,12 +66,12 @@ class Augmentations(Widget):
         self._grid_gallery.hide()
         self._button_preview = Button('Preview on random image')
         self._content = Container([self._editor, self._grid_gallery, self._button_preview])
-        
+
         @self._button_preview.click
         def update_preview():
             self.preview_augs()
         super().__init__(widget_id=widget_id, file_path=__file__)
-    
+
     def preview_augs(self, image_info: sly.ImageInfo = None):
         if not image_info:
             # ds_name, item_name = self.get_random_item()
@@ -78,7 +92,7 @@ class Augmentations(Widget):
         if self._globals.api.file.exists(self._globals.team.id, self._remote_preview_path):
             self._globals.api.file.remove(self._globals.team.id, self._remote_preview_path)
         file_info = self._globals.api.file.upload(self._globals.team.id, local_image_path, self._remote_preview_path)
-        
+
         self._grid_gallery.clean_up()
         self._grid_gallery.append(
             title=f"Original", image_url=self._image_info.full_storage_url, annotation=image_ann
@@ -87,7 +101,7 @@ class Augmentations(Widget):
             title=f"Augmented", image_url=file_info.full_storage_url, annotation=res_ann
         )
         self._grid_gallery.show()
-    
+
     def get_random_image_info(self):
         api: sly.Api = self._globals.api
         project_id = sly.env.project_id(False) or self._globals.PROJECT_ID
@@ -103,7 +117,7 @@ class Augmentations(Widget):
     #     items = list(ds)
     #     item_name = random.choice(items)
     #     return ds_name, item_name
-    
+
     # def get_image_info_from_cache(self, dataset_name, item_name):
     #     dataset_fs = self._globals.project_fs.datasets.get(dataset_name)
     #     img_info_path = dataset_fs.get_img_info_path(item_name)
@@ -125,12 +139,12 @@ class Augmentations(Widget):
                 config = json.loads(path_or_data)
                 self._pipeline, self._py_code = self.load_augs_template(config)
             elif string_format == 'python':
-                # TODO create func to conversion augs  
+                # TODO create func to conversion augs
                 raise NotImplementedError('Raw python augmentations not supported yet.')
             else:
                 raise ValueError('Supported values for "string_format" is "python" or "json"')
         self._editor.set_text(text=self._py_code)
-    
+
     def get_augmentations(self):
         return self._pipeline, self._py_code
 
@@ -139,7 +153,7 @@ class Augmentations(Widget):
 
     def get_json_state(self) -> Dict:
         return {}
-    
+
     @staticmethod
     def convert_ann_to_bboxes(image_ann, project_meta):
         meta = project_meta.clone()
@@ -191,6 +205,8 @@ class Augmentations(Widget):
 
 
 class AugmentationsWithTabs(Widget):
+    """Augmentations widget with tabs for choosing a template or loading a custom pipeline from Team Files."""
+
     def __init__(
         self,
         globals,
@@ -199,13 +215,27 @@ class AugmentationsWithTabs(Widget):
         task_type: Optional[Literal['detection', 'segmentation']] = None,
         remote_preview_path: str = '/temp/preview_augs.jpg',
         widget_id=None
-    ):  
+    ):
+        """
+        :param globals: Globals object with api, project_meta, data_dir, team.
+        :type globals: object
+        :param templates: List of dicts with 'value' and 'label' for template selector.
+        :type templates: List[Dict[str, str]]
+        :param image_info: Optional image for preview.
+        :type image_info: sly.ImageInfo, optional
+        :param task_type: Task type: "detection" or "segmentation".
+        :type task_type: Literal["detection", "segmentation"], optional
+        :param remote_preview_path: Path in Team Files for preview upload.
+        :type remote_preview_path: str
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         self._globals = globals
         self._image_info = image_info
         self._templates = templates
         self._task_type = task_type
         self._remote_preview_path = remote_preview_path
-        
+
         self._augs1 = Augmentations(globals, image_info=self._image_info, task_type=self._task_type)
         self._augs2 = Augmentations(globals, image_info=self._image_info, task_type=self._task_type)
         self._augs2._editor.hide()
@@ -235,7 +265,7 @@ class AugmentationsWithTabs(Widget):
                 "Use ImgAug Studio appto configure and save custom augmentations",
             ],
         )
-        
+
         self._current_augs = self._augs1
         self._current_augs.update_augmentations(templates[0]['value'])
 
@@ -268,10 +298,10 @@ class AugmentationsWithTabs(Widget):
 
     def get_json_state(self) -> Dict:
         return {}
-  
+
     def get_augmentations(self):
         return self._current_augs.get_augmentations()
-    
+
     def load_existing_pipeline(self, remote_path):
         custom_pipeline_path = os.path.join(self._globals.data_dir, sly.fs.get_file_name_with_ext(remote_path))
         self._globals.api.file.download(self._globals.team.id, remote_path, custom_pipeline_path)

@@ -10,13 +10,13 @@
 :type {{var}}: {{typePlaceholder}}
 {{/kwargs}}
 {{#returns}}
-:return: {{descriptionPlaceholder}}
+:returns: {{descriptionPlaceholder}}
 :rtype: {{typePlaceholder}}
 {{/returns}}
 {{#exceptions}}
 :raises {{type}}: {{descriptionPlaceholder}}
 {{/exceptions}}
-:Usage example:
+:Usage Example:
 
  .. code-block:: python
 
@@ -29,6 +29,7 @@
     # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
     if sly.is_development():
        load_dotenv(os.path.expanduser("~/supervisely.env"))
+
     api = sly.Api.from_env()
 
     # Pass values into the API constructor (optional, not recommended)

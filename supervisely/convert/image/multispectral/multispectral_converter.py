@@ -25,6 +25,7 @@ ImageGroup = namedtuple("ImageGroup", ["split", "upload"])
 
 
 class MultiSpectralImageConverter(ImageConverter):
+    """Imports multispectral images (split channels or composite) for multispectral labeling interface."""
 
     def __str__(self):
         return AvailableImageConverters.MULTISPECTRAL

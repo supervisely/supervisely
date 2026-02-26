@@ -5,50 +5,10 @@ from supervisely.app.widgets import Widget
 
 
 class Modal(Widget):
-    """Modal is a widget that displays content in a modal overlay window with a close button.
-    It can contain any other widgets, similar to Container, and provides programmatic control
-    to show/hide the modal.
-
-    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/layouts-and-containers/modal>`_
-        (including screenshots and examples).
-
-    :param title: Modal window title
-    :type title: str
-    :param widgets: List of widgets to be displayed inside the modal
-    :type widgets: Optional[List[Widget]]
-    :param size: Modal size, one of: tiny, small, large, full
-    :type size: Literal["tiny", "small", "large", "full"]
-    :param widget_id: An identifier of the widget.
-    :type widget_id: str, optional
-
-    :Usage example:
-    .. code-block:: python
-
-        from supervisely.app.widgets import Modal, Text, Button, Input, Container
-
-        # Create widgets to show in modal
-        input_widget = Input("Enter value")
-        text_widget = Text("This is modal content")
-
-        # Create modal with multiple widgets
-        modal = Modal(
-            title="My Modal Window",
-            widgets=[text_widget, input_widget],
-            size="small"
-        )
-
-        # Show modal programmatically
-        modal.show()
-
-        # Hide modal programmatically
-        modal.hide()
-
-        # Alternative methods
-        modal.show_modal()
-        modal.close_modal()
-    """
+    """Modal overlay with close button; contains widgets, show/hide programmatically."""
 
     class Routes:
+        """Route name constants for this widget."""
         ON_CLOSE = "close_cb"
         VALUE_CHANGED = "value_changed"
 
@@ -59,6 +19,20 @@ class Modal(Widget):
         size: Optional[Literal["tiny", "small", "large", "full"]] = "small",
         widget_id: Optional[str] = None,
     ):
+        """
+        :param title: Modal title.
+        :param widgets: List of content widgets.
+        :param size: tiny, small, large, or full.
+        :param widget_id: Widget identifier.
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import Modal, Text, Input
+                modal = Modal(title="Title", widgets=[Text("Content"), Input("")], size="small")
+                modal.show()
+        """
         self._title = title
         self._widgets = widgets if widgets is not None else []
         self._size = size
@@ -83,7 +57,7 @@ class Modal(Widget):
             - title: Modal title
             - size: Modal size, one of: tiny, small, large, full
 
-        :return: Dictionary with widget data
+        :returns: Dictionary with widget data
         :rtype: Dict[str, str]
         """
         return {
@@ -97,7 +71,7 @@ class Modal(Widget):
         Dictionary contains the following fields:
             - visible: Modal visibility
 
-        :return: Dictionary with widget state
+        :returns: Dictionary with widget state
         :rtype: Dict[str, bool]
         """
         return {
@@ -125,7 +99,7 @@ class Modal(Widget):
     def is_opened(self) -> bool:
         """Returns whether the modal is currently open.
 
-        :return: True if modal is visible, False otherwise
+        :returns: True if modal is visible, False otherwise
         :rtype: bool
         """
         return StateJson()[self.widget_id]["visible"]
@@ -137,15 +111,16 @@ class Modal(Widget):
         :param func: Callback function that takes a boolean parameter
         :type func: Callable[[bool], None]
 
-        :Usage example:
-        .. code-block:: python
+        :Usage Example:
 
-            @modal.value_changed
-            def on_modal_state_changed(is_opened):
-                if is_opened:
-                    print("Modal opened")
-                else:
-                    print("Modal closed")
+            .. code-block:: python
+
+                @modal.value_changed
+                def on_modal_state_changed(is_opened):
+                    if is_opened:
+                        print("Modal opened")
+                    else:
+                        print("Modal closed")
         """
         route_path = self.get_route_path(Modal.Routes.VALUE_CHANGED)
         server = self._sly_app.get_server()
@@ -162,7 +137,7 @@ class Modal(Widget):
     def title(self) -> str:
         """Returns modal title.
 
-        :return: Modal title
+        :returns: Modal title
         :rtype: str
         """
         return self._title
@@ -182,8 +157,8 @@ class Modal(Widget):
     def widgets(self) -> List[Widget]:
         """Returns list of widgets inside the modal.
 
-        :return: List of widgets
-        :rtype: List[Widget]
+        :returns: List of widgets
+        :rtype: List[:class:`~supervisely.app.widgets.widget.Widget`]
         """
         return self._widgets
 
@@ -193,6 +168,6 @@ class Modal(Widget):
         Note: Changing widgets dynamically may require re-rendering.
 
         :param widgets: List of widgets
-        :type widgets: List[Widget]
+        :type widgets: List[:class:`~supervisely.app.widgets.widget.Widget`]
         """
         self._widgets = widgets

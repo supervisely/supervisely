@@ -6,118 +6,32 @@ from supervisely.app.content import DataJson, StateJson
 from typing import List, Dict, Union, Optional, Callable
 
 class Transfer(Widget):
-    """Widget for transfering items between source and target lists.
-    Important info: the widget operates with a single list of items (not with two lists of items).
-    So, when initializing widget, you should pass a single list of items, which will be displayed in both lists.
-    If you want to initialize widget with some items in the right (target) list, you can pass them in the
-    `transferred_items` argument, which should containt keys of the items in the 'items' list, NOT NEW items.
-    Otherwise, they won't be displayed. Likewise, if you want to change the current list of transferred items
-    (which shown in the right list), you can use the 'set_transferred_items' method, which works exactly
-    the same as the argument 'transferred_items' in the constructor:
-    you should pass keys of the items in the 'items' list.
+    """Widget for transferring items between source and target lists. Operates with a single list; use transferred_items for keys to show in target."""
 
-    :param items: A list of Transfer.Item objects or a list of strings (keys), which will be automatically
-                transformed into Transfer.Item objects. Defaults to None.
-    :type items: Union[List[Transfer.Item], List[str]], optional
-    :param transferred_items: A list of keys of the items to be displayed in the right (target) list. This list
-                            contains keys of the items in the 'items' list, not new items. Defaults to None.
-    :type transferred_items: List[str], optional
-    :param widget_id: The id of the widget. Defaults to None.
-    :type widget_id: str, optional
-    :param filterable: If True, the widget will have a filter input. Defaults to False.
-    :type filterable: bool, optional
-    :param filter_placeholder: The placeholder for the filter input. This placeholder will be displayed only if
-                            the filterable argument is True. Defaults to None.
-    :type filter_placeholder: str, optional
-    :param titles: A list of titles for the source and target lists. If not specified, the default titles will be
-                used ('Source' and 'Target'). Defaults to None.
-    :type titles: List[str], optional
-    :param button_texts: A list of texts for the buttons, which transfer items between the lists. If not
-                        specified, the buttons will have only icons (> and <). Defaults to None.
-    :type button_texts: List[str], optional
-    :param left_checked: A list of keys of the items in the left (source) list, which should be checked at widget
-                        initialization. Defaults to None.
-    :type left_checked: List[str], optional
-    :param right_checked: A list of keys of the items in the right (target) list, which should be checked at widget
-                        initialization. Defaults to None.
-    :type right_checked: List[str], optional
-    :param width: The width of the widget in pixels. The default and minimum width is 150 pixels.
-    :type width: int, optional
-
-    :Methods:
-    get_transferred_items(): returns the list of keys of the items, which are currently displayed in the
-        right (target) list.
-    get_untransferred_items(): returns the list of keys of the items, which are currently displayed in the
-        left (source) list.
-    @value_changed(func): decorator function, which can be used to handle the events, when the list of
-        transferred items is changed (transferred items are moved from the left to the right list or vice versa).
-        Function under this decorator should recieve one argument - the list of transferred items (keys of the
-        items which are currently displayed in the right list).
-    set_items(): sets the list of items to be displayed in the widget. Likewise in the class constructor,
-        the list of items can either be a list of Transfer.Item objects or a list of strings.
-    set_transferred_items(): sets the list of transferred items (keys of the items which should be displayed
-        in the right list).
-    add(): adds new items to the widget. Likewise in the class constructor, the list of items can either be
-        a list of Transfer.Item objects or a list of strings. Must not contain items with the same keys as
-        in the current list of items.
-    remove(): removes items from the widget by their keys.
-    get_items_keys(): returns the list of keys of the items, which are currently displayed in the widget.
-
-    :Usage example:
-
-     .. code-block:: python
-        from supervisely.app.widgets import Transfer
-
-        # Creating widget items with Transfer.Item objects.
-        item1 = Transfer.Item(key="cat", label="Cat", disabled=True)
-        item2 = Transfer.Item(key="dog", label="Dog")
-
-        # Creating Transfer widget with the list of Transfer.Item objects. The item "dog" will be displayed
-        # in the right (target) list at widget initialization.
-        transfer = Transfer(items=[item1, item2], transferred_items=["dog"])
-
-        # Setting new transferred items. The item "cat" will be displayed in the right (target) list.
-        # Note: items that was in transferred_items list before, but not in the new list, will be moved
-        # to untransferred items list (left).
-        transfer.set_transferred_items(["cat"])
-        print(transfer.get_transferred_items()) # ["cat"]
-        print(transfer.get_untransferred_items()) # ["dog"]
-
-        # Creating empty Transfer widget.
-        transfer = Transfer()
-        # Adding items (as strings) to the widget. The item "dog" will be displayed in the right (target) list.
-        transfer.set(["cat", "dog", "mouse"], transferred_items=["dog"])
-    """
     class Routes:
+        """Route name constants for this widget."""
         VALUE_CHANGED = "value_changed"
 
     class Item:
-        """
-        Class for representing items in the Transfer widget.
-
-        Each item has a key, label and disabled flag. Key is required and should be unique. Label is optional and will be
-        displayed in the widget. If not specified, label will be equal to the key. Disabled flag is optional and if True,
-        the item will be disabled and won't be transferable. Disabled flag is False by default.
-
-        :param key: The key of the item which is mostly used for identifying the item (like value).
-            It's important to note, that the keys of the items should be unique.
-        :type key: str
-        :param label: The label of the item, which will be displayed in the widget. If not specified, the key will be used
-            as label. Defaults to None.
-        :type label: Optional[str]
-        :param disabled: If True, the item will be disabled and won't be transferable. Defaults to False.
-        :type disabled: Optional[bool]
-
-        :Usage example:
-
-         .. code-block:: python
-
-            disabled_item = Transfer.Item(key="dog", label="Dog", disabled=True)
-            item_with_label = Transfer.Item(key="cat", label="Cat")
-            simple_item = Transfer.Item(key="mouse")
-        """
+        """Class for representing items in the Transfer widget."""
 
         def __init__(self, key: str, label: Optional[str] = None, disabled: Optional[bool] = False):
+            """
+            :param key: Unique key for identifying the item.
+            :type key: str
+            :param label: Label displayed in the widget. If None, key is used.
+            :type label: Optional[str]
+            :param disabled: If True, the item won't be transferable.
+            :type disabled: Optional[bool]
+
+            :Usage Example:
+
+                .. code-block:: python
+
+                    Transfer.Item(key="dog", label="Dog", disabled=True)
+                    Transfer.Item(key="cat", label="Cat")
+                    Transfer.Item(key="mouse")
+            """
             self.key = key
             if not label:
                 # If label is not specified, the key will be used as label.
@@ -142,7 +56,40 @@ class Transfer(Widget):
         right_checked: Optional[List[str]] = None,
         width: int = 150,
     ):
+        """Initialize the Transfer widget.
 
+        :param items: List of items or list of strings (keys, auto-transformed into items).
+        :type items: Union[List[:class:`~supervisely.app.widgets.transfer.transfer.Transfer.Item`], List[str]], optional
+        :param transferred_items: Keys of items to display in the right (target) list.
+        :type transferred_items: List[str], optional
+        :param widget_id: The id of the widget.
+        :type widget_id: str, optional
+        :param filterable: If True, the widget will have a filter input.
+        :type filterable: bool, optional
+        :param filter_placeholder: Placeholder for the filter input (only if filterable=True).
+        :type filter_placeholder: str, optional
+        :param titles: Titles for source and target lists. Default: ('Source', 'Target').
+        :type titles: List[str], optional
+        :param button_texts: Texts for transfer buttons. Default: icons only.
+        :type button_texts: List[str], optional
+        :param left_checked: Keys of items to check in left list at init.
+        :type left_checked: List[str], optional
+        :param right_checked: Keys of items to check in right list at init.
+        :type right_checked: List[str], optional
+        :param width: Width of the widget in pixels. Minimum 150.
+        :type width: int, optional
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import Transfer
+
+                item1 = Transfer.Item(key="cat", label="Cat", disabled=True)
+                item2 = Transfer.Item(key="dog", label="Dog")
+                transfer = Transfer(items=[item1, item2], transferred_items=["dog"])
+                transfer.set_transferred_items(["cat"])
+        """
         self._changes_handled = False
         self._items = []
         self._transferred_items = []
@@ -170,18 +117,18 @@ class Transfer(Widget):
 
     def __checked_items(self, items: Optional[Union[List[Item], List[str]]]) -> List[Transfer.Item]:
         """
-        If the list of items is specified as a list of strings, they will be converted to Transfer.Item objects. List of
+        If the list of items is specified as a list of strings, they will be converted to items. List of
         Transfer items will be checked for uniqueness of the keys. If the keys of the items are not unique, an error will be
         raised.
 
-        :param items: The list of items can either be a list of Transfer.Item objects or a list of strings, containing the
-            keys for Transfer.Item objects to be created.
+        :param items: The list of items can either be a list of items or a list of strings, containing the
+            keys for items to be created.
         :type items: Optional[Union[List[Item], List[str]]]
 
         :raises ValueError: If the keys of the items are not unique.
 
-        :return: The list of Transfer.Item objects with unique keys.
-        :rtype: List[Transfer.Item]
+        :returns: The list of items with unique keys.
+        :rtype: List[:class:`~supervisely.app.widgets.transfer.transfer.Transfer.Item`]
         """
 
         if isinstance(items[0], str):
@@ -212,7 +159,7 @@ class Transfer(Widget):
         :raises ValueError: If transferred items are specified, but the list of items is not specified.
         :raises ValueError: If any of transferred items keys is not in the list of items.
 
-        :return: List of transferred items (keys of the items which should be displayed in the right list).
+        :returns: List of transferred items (keys of the items which should be displayed in the right list).
         :rtype: List[str]
         """
 
@@ -236,8 +183,8 @@ class Transfer(Widget):
 
         Data will contain the list of items and the list of transferred items.
 
-        :return: The data of the widget in JSON format: {"items": List[Dict[str, Any]], "transferred_items": List[str]}.
-            "items" - the list of items in the widget in JSON format. Each item is represented as Transfer.Item object.
+        :returns: The data of the widget in JSON format: {"items": List[Dict[str, Any]], "transferred_items": List[str]}.
+            "items" - the list of items in the widget in JSON format. Each item is represented as item.
             "transferred_items" - the list of transferred items (keys of the items which should be displayed in the right list).
         :rtype: Dict[str, List[Dict[str, Union[str, bool]]]]
         """
@@ -256,7 +203,7 @@ class Transfer(Widget):
 
         State will contain the list of transferred items.
 
-        :return: The state of the widget in JSON format: {"transferred_items": List[str]}. "transferred_items" - the list of
+        :returns: The state of the widget in JSON format: {"transferred_items": List[str]}. "transferred_items" - the list of
             transferred items (keys of the items which should be displayed in the right list).
         :rtype: Dict[str, List[str]]
         """
@@ -269,7 +216,7 @@ class Transfer(Widget):
         """
         Returns the list of transferred items.
 
-        :return: List of transferred items (keys of the items which should be displayed in the right list).
+        :returns: List of transferred items (keys of the items which should be displayed in the right list).
         :rtype: List[str]
         """
 
@@ -279,7 +226,7 @@ class Transfer(Widget):
         """
         Returns the list of untransferred items.
 
-        :return: List of untransferred items (keys of the items which should be displayed in the left list).
+        :returns: List of untransferred items (keys of the items which should be displayed in the left list).
         :rtype: List[str]
         """
 
@@ -293,20 +240,20 @@ class Transfer(Widget):
             namedtuple with the following fields: transferred_items, untransferred_items.
         :type func: Callable
 
-        :return: Wrapped function.
+        :returns: Wrapped function.
         :rtype: Callable
-        
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            tr = Transfer(items=["item1", "item2", "item3"], transferred_items=["item1"])
+            .. code-block:: python
 
-            # Move "item2" from the left list to the right list. 
-            @tr.value_changed
-            def func(items):        
-                print(items.transferred_items) # ["item1", "item2"]
-                print(items.untransferred_items) # ["item3"]
+                tr = Transfer(items=["item1", "item2", "item3"], transferred_items=["item1"])
+
+                # Move "item2" from the left list to the right list.
+                @tr.value_changed
+                def func(items):
+                    print(items.transferred_items) # ["item1", "item2"]
+                    print(items.untransferred_items) # ["item3"]
         """
 
         route_path = self.get_route_path(Transfer.Routes.VALUE_CHANGED)
@@ -328,25 +275,25 @@ class Transfer(Widget):
         """
         Sets the list of items for the widget.
 
-        If the list of items is specified as strings, they will be converted to Transfer.Item objects.
+        If the list of items is specified as strings, they will be converted to items.
         Note: this method will REPLACE the current list of items with the new one. If you want to add new items to the current
         list, use .add() method.
 
-        :param items: List of items to be set as the new list of items for the widget. Can be specified as Transfer.Item
+        :param items: List of items to be set as the new list of items for the widget. Can be specified as items
             objects or as strings of the item keys.
-        :type items: Union[List[Transfer.Item], List[str]]
+        :type items: Union[List[:class:`~supervisely.app.widgets.transfer.transfer.Transfer.Item`], List[str]]
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            tr = Transfer(items=["cat", "dog"])
-            print(tr.get_untransferred_items()) # ["cat", "dog"]
-                
-            tr.set(items=["bird", "mouse"])
-            print(tr.get_untransferred_items()) # ["bird", "mouse"]
+                tr = Transfer(items=["cat", "dog"])
+                print(tr.get_untransferred_items()) # ["cat", "dog"]
 
-            # As you can see, the list of items was replaced with the new one.
+                tr.set(items=["bird", "mouse"])
+                print(tr.get_untransferred_items()) # ["bird", "mouse"]
+
+                # As you can see, the list of items was replaced with the new one.
         """
 
         if items:
@@ -373,24 +320,24 @@ class Transfer(Widget):
         """
         Adds new items to the current list of items.
 
-        If the list of items is specified as strings, Transfer.Item objects will be created from them. If the list of adding 
+        If the list of items is specified as strings, items will be created from them. If the list of adding
         items contains any items with the same key as the items in the current list, an error will be raised.
 
-        :param items: List of items to be added to the current list of items. Can be specified as Transfer.Item objects or
+        :param items: List of items to be added to the current list of items. Can be specified as items or
             as strings of the item keys.
-        :type items: Union[List[Item], List[str]]
+        :type items: Union[List[:class:`~supervisely.app.widgets.transfer.transfer.Transfer.Item`], List[str]]
 
         :raises ValueError: If the list of adding items contains any items with the same key as the items in the current list.
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            tr = Transfer(items=["cat", "dog"])
-            print(tr.get_untransferred_items()) # ["cat", "dog"]
-                
-            tr.add(items=["bird", "mouse"])
-            print(tr.get_untransferred_items()) # ["cat", "dog", "bird", "mouse"]
+                tr = Transfer(items=["cat", "dog"])
+                print(tr.get_untransferred_items()) # ["cat", "dog"]
+
+                tr.add(items=["bird", "mouse"])
+                print(tr.get_untransferred_items()) # ["cat", "dog", "bird", "mouse"]
         """
 
         items = self.__checked_items(items)
@@ -424,7 +371,7 @@ class Transfer(Widget):
         """
         Returns the list of keys of the items.
 
-        :return: List of keys of the items.
+        :returns: List of keys of the items.
         :rtype: List[str]
         """
 

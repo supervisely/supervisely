@@ -15,56 +15,58 @@ from supervisely.video_annotation.video_object_collection import VideoObjectColl
 
 class Frame(KeyObject):
     """
-    Frame object for :class:`VideoAnnotation<supervisely.video_annotation.video_annotation.VideoAnnotation>`. :class:`Frame<Frame>` object is immutable.
-
-    :param index: Index of the Frame.
-    :type index: int
-    :param figures: List of :class:`VideoFigures<supervisely.video_annotation.video_figure.VideoFigure>`.
-    :type figures: list, optional
-    :Usage example:
-
-     .. code-block:: python
-
-        import supervisely as sly
-
-        frame_index = 7
-        geometry = sly.Rectangle(0, 0, 100, 100)
-        class_car = sly.ObjClass('car', sly.Rectangle)
-        object_car = sly.VideoObject(class_car)
-        figure_car = sly.VideoFigure(object_car, geometry, frame_index)
-
-        frame = sly.Frame(frame_index, figures=[figure_car])
-        print(frame.to_json())
-        # Output: {
-        #     "index": 7,
-        #     "figures": [
-        #         {
-        #             "key": "39f3eb15791f4c72b7cdb98c17b3f0f1",
-        #             "objectKey": "319814af474941a98ca208c3fad5ed81",
-        #             "geometryType": "rectangle",
-        #             "geometry": {
-        #                 "points": {
-        #                     "exterior": [
-        #                         [
-        #                             0,
-        #                             0
-        #                         ],
-        #                         [
-        #                             100,
-        #                             100
-        #                         ]
-        #                     ],
-        #                     "interior": []
-        #                 }
-        #             }
-        #         }
-        #     ]
-        # }
+    Single frame in a video annotation; holds figures at a given index. Immutable.
     """
 
     figure_type = VideoFigure
 
     def __init__(self, index: int, figures: Optional[List[VideoFigure]] = None):
+        """
+        :param index: Index of the Frame.
+        :type index: int
+        :param figures: List of VideoFigures.
+        :type figures: list, optional
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                frame_index = 7
+                geometry = sly.Rectangle(0, 0, 100, 100)
+                class_car = sly.ObjClass('car', sly.Rectangle)
+                object_car = sly.VideoObject(class_car)
+                figure_car = sly.VideoFigure(object_car, geometry, frame_index)
+
+                frame = sly.Frame(frame_index, figures=[figure_car])
+                print(frame.to_json())
+                # Output: {
+                #     "index": 7,
+                #     "figures": [
+                #         {
+                #             "key": "39f3eb15791f4c72b7cdb98c17b3f0f1",
+                #             "objectKey": "319814af474941a98ca208c3fad5ed81",
+                #             "geometryType": "rectangle",
+                #             "geometry": {
+                #                 "points": {
+                #                     "exterior": [
+                #                         [
+                #                             0,
+                #                             0
+                #                         ],
+                #                         [
+                #                             100,
+                #                             100
+                #                         ]
+                #                     ],
+                #                     "interior": []
+                #                 }
+                #             }
+                #         }
+                #     ]
+                # }
+        """
         self._index = index
         self._figures = take_with_default(figures, [])
 
@@ -73,13 +75,14 @@ class Frame(KeyObject):
         """
         Frame index.
 
-        :return: Frame index.
+        :returns: Frame index.
         :rtype: int
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            frame_index = frame.index # 7
+            .. code-block:: python
+
+                frame_index = frame.index # 7
         """
         return self._index
 
@@ -87,23 +90,24 @@ class Frame(KeyObject):
         """
         Get Frame key (index) value.
 
-        :return: Frame key (index) value
+        :returns: Frame key (index) value
         :rtype: int
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            frame_index = 7
-            geometry = sly.Rectangle(0, 0, 100, 100)
-            class_car = sly.ObjClass('car', sly.Rectangle)
-            object_car = sly.VideoObject(class_car)
-            figure_car = sly.VideoFigure(object_car, geometry, frame_index)
+                import supervisely as sly
 
-            frame = sly.Frame(frame_index, figures=[figure_car])
-            print(frame.key())
-            # Output: 7
+                frame_index = 7
+                geometry = sly.Rectangle(0, 0, 100, 100)
+                class_car = sly.ObjClass('car', sly.Rectangle)
+                object_car = sly.VideoObject(class_car)
+                figure_car = sly.VideoFigure(object_car, geometry, frame_index)
+
+                frame = sly.Frame(frame_index, figures=[figure_car])
+                print(frame.key())
+                # Output: 7
         """
 
         return self._index
@@ -113,13 +117,14 @@ class Frame(KeyObject):
         """
         Frame figures.
 
-        :return: List of figures on Frame.
-        :rtype: :class:`List[VideoFigure]<supervisely.video_annotation.video_figure.VideoFigure>`
-        :Usage example:
+        :returns: List of figures on Frame.
+        :rtype: List[:class:`~supervisely.video_annotation.video_figure.VideoFigure`]
 
-         .. code-block:: python
+        :Usage Example:
 
-            frame_figures = frame.figures
+            .. code-block:: python
+
+                frame_figures = frame.figures
         """
         return self._figures.copy()
 
@@ -129,26 +134,26 @@ class Frame(KeyObject):
 
         :param img_size: Size of the image (height, width).
         :type img_size: Tuple[int, int], optional
-        :raises: :class:`OutOfImageBoundsException<supervisely.video_annotation.video_figure.OutOfImageBoundsException>`, if figure is out of image bounds
-        :return: None
-        :rtype: :class:`NoneType`
+        :raises :class:`~supervisely.video_annotation.video_figure.OutOfImageBoundsException`: if figure is out of image bounds
+        :returns: None
+        :rtype: None
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            frame_index = 7
-            geometry = sly.Rectangle(0, 0, 100, 100)
-            class_car = sly.ObjClass('car', sly.Rectangle)
-            object_car = sly.VideoObject(class_car)
-            figure_car = sly.VideoFigure(object_car, geometry, frame_index)
-            frame = sly.Frame(frame_index, figures=[figure_car])
+                frame_index = 7
+                geometry = sly.Rectangle(0, 0, 100, 100)
+                class_car = sly.ObjClass('car', sly.Rectangle)
+                object_car = sly.VideoObject(class_car)
+                figure_car = sly.VideoFigure(object_car, geometry, frame_index)
+                frame = sly.Frame(frame_index, figures=[figure_car])
 
-            image_size = (20, 200)
-            frame.validate_figures_bounds(image_size)
-            # raise OutOfImageBoundsException("Figure is out of image bounds")
+                image_size = (20, 200)
+                frame.validate_figures_bounds(image_size)
+                # raise OutOfImageBoundsException("Figure is out of image bounds")
         """
         if img_size is None:
             return
@@ -160,50 +165,50 @@ class Frame(KeyObject):
         Convert the Frame to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
-        :return: Json format as a dict
-        :rtype: :class:`dict`
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
+        :returns: Json format as a dict
+        :rtype: Dict
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            frame_index = 7
-            geometry = sly.Rectangle(0, 0, 100, 100)
-            class_car = sly.ObjClass('car', sly.Rectangle)
-            object_car = sly.VideoObject(class_car)
-            figure_car = sly.VideoFigure(object_car, geometry, frame_index)
+                frame_index = 7
+                geometry = sly.Rectangle(0, 0, 100, 100)
+                class_car = sly.ObjClass('car', sly.Rectangle)
+                object_car = sly.VideoObject(class_car)
+                figure_car = sly.VideoFigure(object_car, geometry, frame_index)
 
-            frame = sly.Frame(frame_index, figures=[figure_car])
-            frame_json = frame.to_json()
-            print(frame_json)
-            # Output: {
-            #     "index": 7,
-            #     "figures": [
-            #         {
-            #             "key": "39f3eb15791f4c72b7cdb98c17b3f0f1",
-            #             "objectKey": "319814af474941a98ca208c3fad5ed81",
-            #             "geometryType": "rectangle",
-            #             "geometry": {
-            #                 "points": {
-            #                     "exterior": [
-            #                         [
-            #                             0,
-            #                             0
-            #                         ],
-            #                         [
-            #                             100,
-            #                             100
-            #                         ]
-            #                     ],
-            #                     "interior": []
-            #                 }
-            #             }
-            #         }
-            #     ]
-            # }
+                frame = sly.Frame(frame_index, figures=[figure_car])
+                frame_json = frame.to_json()
+                print(frame_json)
+                # Output: {
+                #     "index": 7,
+                #     "figures": [
+                #         {
+                #             "key": "39f3eb15791f4c72b7cdb98c17b3f0f1",
+                #             "objectKey": "319814af474941a98ca208c3fad5ed81",
+                #             "geometryType": "rectangle",
+                #             "geometry": {
+                #                 "points": {
+                #                     "exterior": [
+                #                         [
+                #                             0,
+                #                             0
+                #                         ],
+                #                         [
+                #                             100,
+                #                             100
+                #                         ]
+                #                     ],
+                #                     "interior": []
+                #                 }
+                #             }
+                #         }
+                #     ]
+                # }
 
         """
         data_json = {
@@ -225,33 +230,33 @@ class Frame(KeyObject):
 
         :param data: Dict in json format.
         :type data: dict
-        :param objects: VideoObjectCollection object.
-        :type objects: VideoObjectCollection
+        :param objects: :class:`~supervisely.video_annotation.video_object_collection.VideoObjectCollection` object.
+        :type objects: :class:`~supervisely.video_annotation.video_object_collection.VideoObjectCollection`
         :param frames_count: Number of frames in video.
         :type frames_count: int, optional
-        :param key_id_map: KeyIdMap object.
-        :type key_id_map: KeyIdMap, optional
-        :raises: :class:`ValueError` if frame index < 0 and if frame index > number of frames in video
-        :return: Frame object
-        :rtype: :class:`Frame`
+        :param key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap` object.
+        :type key_id_map: :class:`~supervisely.video_annotation.key_id_map.KeyIdMap`, optional
+        :raises ValueError: if frame index < 0 and if frame index > number of frames in video
+        :returns: :class:`~supervisely.video_annotation.frame.Frame` object
+        :rtype: :class:`~supervisely.video_annotation.frame.Frame`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            frame_index = 7
-            geometry = sly.Rectangle(0, 0, 100, 100)
-            class_car = sly.ObjClass('car', sly.Rectangle)
-            object_car = sly.VideoObject(class_car)
-            figure_car = sly.VideoFigure(object_car, geometry, frame_index)
+                frame_index = 7
+                geometry = sly.Rectangle(0, 0, 100, 100)
+                class_car = sly.ObjClass('car', sly.Rectangle)
+                object_car = sly.VideoObject(class_car)
+                figure_car = sly.VideoFigure(object_car, geometry, frame_index)
 
-            frame = sly.Frame(frame_index, figures=[figure_car])
-            frame_json = frame.to_json()
+                frame = sly.Frame(frame_index, figures=[figure_car])
+                frame_json = frame.to_json()
 
-            video_obj_coll = sly.VideoObjectCollection([object_car])
-            frame_car = sly.Frame.from_json(frame_json, video_obj_coll)
+                video_obj_coll = sly.VideoObjectCollection([object_car])
+                frame_car = sly.Frame.from_json(frame_json, video_obj_coll)
         """
         index = data[INDEX]
         if index < 0:
@@ -277,31 +282,31 @@ class Frame(KeyObject):
 
         :param index: Index of the Frame.
         :type index: int, optional
-        :param figures: List of :class:`VideoFigures<supervisely.video_annotation.video_figure.VideoFigure>`.
-        :type figures: list, optional
-        :return: Frame object
-        :rtype: :class:`Frame`
+        :param figures: List of VideoFigures.
+        :type figures: List[:class:`~supervisely.video_annotation.video_figure.VideoFigure`], optional
+        :returns: Frame object.
+        :rtype: :class:`~supervisely.video_annotation.frame.Frame`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            frame_index = 7
-            geometry = sly.Rectangle(0, 0, 100, 100)
-            class_car = sly.ObjClass('car', sly.Rectangle)
-            object_car = sly.VideoObject(class_car)
-            figure_car = sly.VideoFigure(object_car, geometry, frame_index)
-            frame = sly.Frame(frame_index, figures=[figure_car])
+                frame_index = 7
+                geometry = sly.Rectangle(0, 0, 100, 100)
+                class_car = sly.ObjClass('car', sly.Rectangle)
+                object_car = sly.VideoObject(class_car)
+                figure_car = sly.VideoFigure(object_car, geometry, frame_index)
+                frame = sly.Frame(frame_index, figures=[figure_car])
 
-            # Remember that Frame object is immutable, and we need to assign new instance of Frame to a new variable
-            new_frame = frame.clone(index=100, figures=[])
-            print(new_frame.to_json())
-            # Output: {
-            #     "index": 100,
-            #     "figures": []
-            # }
+                # Remember that Frame object is immutable, and we need to assign new instance of Frame to a new variable
+                new_frame = frame.clone(index=100, figures=[])
+                print(new_frame.to_json())
+                # Output: {
+                #     "index": 100,
+                #     "figures": []
+                # }
         """
         return self.__class__(
             index=take_with_default(index, self.index),

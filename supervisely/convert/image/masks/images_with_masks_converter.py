@@ -19,6 +19,8 @@ from supervisely.project.project_settings import LabelingInterface
 from supervisely.convert.image.image_helper import validate_image_bounds
 
 class ImagesWithMasksConverter(ImageConverter):
+    """Imports images with per-class mask folders (PNG) and classes JSON mapping into Supervisely image project."""
+
     def __init__(
             self,
             input_data: str,
@@ -26,6 +28,7 @@ class ImagesWithMasksConverter(ImageConverter):
             upload_as_links: bool,
             remote_files_map: Optional[Dict[str, str]] = None,
     ):
+        """See :class:`~supervisely.convert.base_converter.BaseConverter` for params."""
         super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
 
         self._classes_mapping = {}

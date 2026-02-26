@@ -43,11 +43,16 @@ columns = [
 
 
 class CustomModelsSelector(Widget):
+    """Widget for selecting a custom trained model checkpoint from Team Files / training sessions."""
+
     class Routes:
+        """Callback route names used by the widget frontend to notify Python."""
+
         TASK_TYPE_CHANGED = "task_type_changed"
         VALUE_CHANGED = "value_changed"
 
     class ModelRow:
+        """One table row representing a single training run and its available checkpoints."""
 
         def __init__(
             self,
@@ -56,6 +61,16 @@ class CustomModelsSelector(Widget):
             train_info: TrainInfo,
             task_type: str,
         ):
+            """
+            :param api: Supervisely API instance.
+            :type api: :class:`~supervisely.api.api.Api`
+            :param team_id: Team ID.
+            :type team_id: int
+            :param train_info: Training run info.
+            :type train_info: :class:`~supervisely.nn.artifacts.artifacts.TrainInfo`
+            :param task_type: Task type (e.g., "object detection").
+            :type task_type: str
+            """
             self._api = api
             self._team_id = team_id
             self._task_type = task_type
@@ -257,6 +272,18 @@ class CustomModelsSelector(Widget):
         custom_checkpoint_task_types: List[str] = [],
         widget_id: str = None,
     ):
+        """
+        :param team_id: Team ID to load training sessions from.
+        :type team_id: int
+        :param train_infos: List of training run infos.
+        :type train_infos: List[:class:`~supervisely.nn.artifacts.artifacts.TrainInfo`]
+        :param show_custom_checkpoint_path: If True, show custom checkpoint path input.
+        :type show_custom_checkpoint_path: bool
+        :param custom_checkpoint_task_types: Task types that allow custom checkpoint path.
+        :type custom_checkpoint_task_types: List[str]
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         self._api = Api.from_env()
 
         self._team_id = team_id

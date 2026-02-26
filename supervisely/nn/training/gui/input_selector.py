@@ -11,11 +11,18 @@ from supervisely.project.download import is_cached
 
 
 class InputSelector:
+    """TrainApp GUI component for selecting an input data options."""
     title = "Input project"
     description = "Selected project from which items and annotations will be downloaded"
     lock_message = None
 
     def __init__(self, project_info: ProjectInfo, app_options: dict = {}):
+        """
+        :param project_info: Project info.
+        :type project_info: ProjectInfo
+        :param app_options: App options.
+        :type app_options: dict
+        """
         # Init widgets
         self.project_thumbnail = None
         self.use_cache_text = None

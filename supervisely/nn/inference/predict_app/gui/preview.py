@@ -6,11 +6,19 @@ from supervisely.app.widgets import Button, Container, Card, Text, GridGallery
 
 
 class Preview:
+    """Predict app widget: run inference on a sample item and show preview before full run."""
+
     title = "Preview"
     description = "Preview the model output"
     lock_message = None
 
     def __init__(self, api: Api, static_dir: str):
+        """
+        :param api: Supervisely API.
+        :type api: :class:`~supervisely.api.api.Api`
+        :param static_dir: Static assets directory.
+        :type static_dir: str
+        """
         # Init Step
         self.api = api
         self.display_widgets: List[Any] = []

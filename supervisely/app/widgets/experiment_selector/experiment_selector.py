@@ -32,6 +32,8 @@ class ExperimentSelector(Widget):
     """
 
     class COLUMN:
+        """Column names used in the experiments table."""
+
         NAME = "TASK ID"
         MODEL = "MODEL"
         TRAINING_DATA = "TRAINING DATA"
@@ -49,6 +51,8 @@ class ExperimentSelector(Widget):
     ]
 
     class ModelRow:
+        """One table row representing a single experiment and its artifacts (checkpoints, session link, report)."""
+
         def __init__(
             self,
             api: Api,
@@ -57,6 +61,18 @@ class ExperimentSelector(Widget):
             experiment_info: ExperimentInfo,
             project_info: Optional[ProjectInfo] = None,
         ):
+            """
+            :param api: Supervisely API instance.
+            :type api: :class:`~supervisely.api.api.Api`
+            :param team_id: Team ID.
+            :type team_id: int
+            :param task_type: Task type.
+            :type task_type: str
+            :param experiment_info: Experiment info from training run.
+            :type experiment_info: :class:`~supervisely.nn.experiments.ExperimentInfo`
+            :param project_info: Optional project info.
+            :type project_info: ProjectInfo, optional
+            """
             self._api = api
             self._team_id = team_id
             self._task_type = task_type
@@ -383,6 +399,16 @@ class ExperimentSelector(Widget):
         experiment_infos: List[ExperimentInfo] = [],
         widget_id: str = None,
     ):
+        """
+        :param api: Supervisely API. Defaults to Api().
+        :type api: Api, optional
+        :param team_id: Team ID. Defaults to env.team_id().
+        :type team_id: int, optional
+        :param experiment_infos: List of experiment infos to display.
+        :type experiment_infos: List[ExperimentInfo]
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         if team_id is None:
             team_id = env.team_id()
         self.team_id = team_id
@@ -390,7 +416,7 @@ class ExperimentSelector(Widget):
         if api is None:
             api = Api()
         self.api = api
-        
+
         self._experiment_infos = experiment_infos
         self._checkpoint_changed_func = None
 

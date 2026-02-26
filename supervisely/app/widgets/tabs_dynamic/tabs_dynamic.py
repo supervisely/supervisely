@@ -19,6 +19,8 @@ def initialize():
         raise ModuleNotFoundError('This dependency not provided by Supervisely SDK.\nPlease, install it manually if nedeed.\npip install ruamel.yaml')
     
     class MyYAML(YAML):
+        """Small wrapper around ruamel YAML that can return a dumped string when no stream is provided."""
+
         def dump(self, data, stream=None, **kw):
             inefficient = False
             if stream is None:
@@ -30,8 +32,17 @@ def initialize():
     return MyYAML(), CommentedMap
 
 class TabsDynamic(Widget):
+    """Widget that renders YAML fragments in editable tabs and can merge them back into a single YAML document."""
+
     class TabPane:
+        """One tab pane (label + content widget)."""
+
         def __init__(self, label: str, content: Widget):
+            """:param label: Tab label.
+            :type label: str
+            :param content: Widget content for this tab.
+            :type content: Widget
+            """
             self.label = label
             self.name = label  # identifier corresponding to the active tab
             self.content = content
@@ -42,7 +53,17 @@ class TabsDynamic(Widget):
         type: Optional[Literal["card", "border-card"]] = "border-card",
         disabled: Optional[bool] = False,
         widget_id=None,
-    ):  
+    ):
+        """:param filepath_or_raw_yaml: Path to YAML file or raw YAML string.
+        :type filepath_or_raw_yaml: str
+        :param type: Style: "card" or "border-card".
+        :type type: Literal["card", "border-card"], optional
+        :param disabled: If True, editors are read-only.
+        :type disabled: bool, optional
+        :param widget_id: Unique widget identifier.
+
+        :raises ValueError: If YAML is invalid or not dict-like.
+        """
         self._disabled = disabled
         try:
             with open(filepath_or_raw_yaml, "r") as file:

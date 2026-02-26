@@ -37,10 +37,14 @@ from supervisely.io.fs_cache import FileCache
 
 
 class ConnectionClosedByServerException(Exception):
+    """Raised when the server closes the app RPC request stream unexpectedly."""
+
     pass
 
 
 class AppCommandNotFound(Exception):
+    """Raised when an incoming app command has no registered callback handler."""
+
     pass
 
 
@@ -56,6 +60,8 @@ def _default_stop(api: Api, task_id, context, state, app_logger):
 
 
 class AppService:
+    """Legacy app service runtime that receives commands/events and sends UI/state updates to Supervisely."""
+
     NETW_CHUNK_SIZE = 1048576
     QUEUE_MAX_SIZE = 2000  # Maximum number of in-flight requests to avoid exhausting server memory.
     DEFAULT_EVENTS = [STOP_COMMAND, *IMAGE_ANNOTATION_EVENTS]
@@ -69,6 +75,20 @@ class AppService:
         ignore_errors=False,
         ignore_task_id=False,
     ):
+        """
+        :param logger: Logger instance.
+        :type logger: :class:`~supervisely.sly_logger.SlyLogger`
+        :param task_id: Task ID.
+        :type task_id: int
+        :param server_address: Server address.
+        :type server_address: str
+        :param agent_token: Agent token.
+        :type agent_token: str
+        :param ignore_errors: If True, ignore errors.
+        :type ignore_errors: bool
+        :param ignore_task_id: If True, ignore task_id validation.
+        :type ignore_task_id: bool
+        """
         self._ignore_task_id = ignore_task_id
         self.logger = take_with_default(logger, default_logger)
         self._ignore_errors = ignore_errors

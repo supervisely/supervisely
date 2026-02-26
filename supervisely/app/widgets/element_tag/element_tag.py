@@ -7,36 +7,10 @@ SUPPORTED_TAG_WIDGET_TYPES = ["primary", "gray", "success", "warning", "danger"]
 
 
 class ElementTag(Widget):
-    """ElementTag widget in Supervisely is a widget that allows users to display elements tag in the UI.
-
-    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/text-elements/elementtag>`_
-        (including screenshots and examples).
-
-    :param text: Tag text
-    :type text: Optional[str]
-    :param type: Tag type, one of: primary, gray, success, warning, danger
-    :type type: Optional[Literal["primary", "gray", "success", "warning", "danger"]]
-    :param hit: If True, tag will be highlighted
-    :type hit: Optional[bool]
-    :param color: Tag color
-    :type color: Optional[str]
-    :param widget_id: An identifier of the widget.
-    :type widget_id: str, optional
-
-    :Usage example:
-    .. code-block:: python
-
-            from supervisely.app.widgets import ElementTag
-
-            element_tag = ElementTag(
-                text="Tag",
-                type="primary",
-                hit=True,
-                color="#20a0ff",
-            )
-    """
+    """Displays a single element tag."""
 
     class Routes:
+        """Route name constants for this widget."""
         CLOSE = "tag_close_cb"
 
     def __init__(
@@ -47,6 +21,20 @@ class ElementTag(Widget):
         color: Optional[str] = "",
         widget_id: Optional[str] = None,
     ):
+        """
+        :param text: Tag text.
+        :param type: primary, gray, success, warning, danger.
+        :param hit: Highlight tag.
+        :param color: Custom color (e.g. "#20a0ff").
+        :param widget_id: Widget identifier.
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import ElementTag
+                tag = ElementTag(text="Tag", type="primary")
+        """
         self._text = text
         self._validate_type(type)
         self._type = type
@@ -80,7 +68,7 @@ class ElementTag(Widget):
             - hit: If True, tag will be highlighted
             - color: Tag color
 
-        :return: dictionary with widget state
+        :returns: dictionary with widget state
         :rtype: Dict[str, Union[str, bool]]
         """
         return {
@@ -94,7 +82,7 @@ class ElementTag(Widget):
     def text(self) -> str:
         """Returns current tag text
 
-        :return: current tag text
+        :returns: current tag text
         :rtype: str
         """
         return self._text
@@ -103,7 +91,7 @@ class ElementTag(Widget):
     def type(self) -> Literal["primary", "gray", "success", "warning", "danger"]:
         """Returns current tag type
 
-        :return: current tag type
+        :returns: current tag type
         :rtype: Literal["primary", "gray", "success", "warning", "danger"]
         """
         return self._type
@@ -112,7 +100,7 @@ class ElementTag(Widget):
     def hit(self) -> bool:
         """Returns True if tag is highlighted, False otherwise
 
-        :return: True if tag is highlighted, False otherwise
+        :returns: True if tag is highlighted, False otherwise
         :rtype: bool
         """
         return self._hit
@@ -121,7 +109,7 @@ class ElementTag(Widget):
     def color(self) -> str:
         """Returns current tag color.
 
-        :return: current tag color
+        :returns: current tag color
         :rtype: str
         """
         return self._color
@@ -138,7 +126,7 @@ class ElementTag(Widget):
     def get_text(self) -> str:
         """Returns current tag text.
 
-        :return: current tag text
+        :returns: current tag text
         :rtype: str
         """
         return StateJson()[self.widget_id]["text"]
@@ -156,7 +144,7 @@ class ElementTag(Widget):
     def get_type(self) -> Literal["primary", "gray", "success", "warning", "danger"]:
         """Returns current tag type.
 
-        :return: current tag type
+        :returns: current tag type
         :rtype: Literal["primary", "gray", "success", "warning", "danger"]
         """
         return StateJson()[self.widget_id]["type"]
@@ -173,7 +161,7 @@ class ElementTag(Widget):
     def get_hit(self) -> bool:
         """Returns True if tag is highlighted, False otherwise.
 
-        :return: True if tag is highlighted, False otherwise
+        :returns: True if tag is highlighted, False otherwise
         :rtype: bool
         """
         return StateJson()[self.widget_id]["hit"]
@@ -190,7 +178,7 @@ class ElementTag(Widget):
     def get_color(self) -> str:
         """Returns current tag color.
 
-        :return: current tag color
+        :returns: current tag color
         :rtype: str
         """
         return StateJson()[self.widget_id]["color"]

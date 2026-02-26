@@ -30,17 +30,7 @@ VALUE_TYPES = [
 
 
 class InputTag(Widget):
-    """Widget for inputting a single tag value based on its TagMeta information. Accepts various input types depending on the tag's value type. Returns the tag value when requested.
-
-    :param tag_meta: Tag metadata
-    :type tag_meta: TagMeta
-    :param max_width: Maximum width of the widget in pixels, defaults to 300
-    :type max_width: int
-    :param hide_switch: Whether to hide the activation switch, defaults to False
-    :type hide_switch: bool
-    :param widget_id: Unique identifier for the widget, defaults to None
-    :type widget_id: int
-    """
+    """Widget for inputting a single tag value based on TagMeta. Accepts various input types depending on the tag's value type."""
 
     def __init__(
         self,
@@ -49,6 +39,16 @@ class InputTag(Widget):
         hide_switch: bool = False,
         widget_id: int = None,
     ):
+        """
+        :param tag_meta: Tag metadata
+        :type tag_meta: :class:`~supervisely.annotation.tag_meta.TagMeta`
+        :param max_width: Maximum width of the widget in pixels, defaults to 300
+        :type max_width: int
+        :param hide_switch: Whether to hide the activation switch, defaults to False
+        :type hide_switch: bool
+        :param widget_id: Unique identifier for the widget, defaults to None
+        :type widget_id: int
+        """
         self._input_widgets = {}
         self._init_input_components()
 
@@ -92,7 +92,7 @@ class InputTag(Widget):
 
         :param value: Desired maximum width in pixels.
         :type value: int
-        :return: Maximum width for the widget
+        :returns: Maximum width for the widget
         :rtype: str
         """
         if value < 150:
@@ -102,8 +102,8 @@ class InputTag(Widget):
     def get_tag_meta(self) -> TagMeta:
         """Get the tag metadata.
 
-        :return: Tag metadata
-        :rtype: TagMeta
+        :returns: Tag metadata
+        :rtype: :class:`~supervisely.annotation.tag_meta.TagMeta`
         """
         return self._tag_meta
 
@@ -118,7 +118,7 @@ class InputTag(Widget):
     def is_active(self) -> bool:
         """Check if the widget is active.
 
-        :return: True if the widget is active, False otherwise
+        :returns: True if the widget is active, False otherwise
         :rtype: bool
         """
         return self._activation_widget.is_switched()
@@ -127,7 +127,7 @@ class InputTag(Widget):
     def value(self) -> Union[str, int, None]:
         """Get the current value of the tag.
 
-        :return: Current value of the tag
+        :returns: Current value of the tag
         :rtype: Union[str, int, None]
         """
         return self._get_value()
@@ -138,7 +138,7 @@ class InputTag(Widget):
 
         :param value: Current value of the tag
         :type value: Union[str, int, None]
-        :return: None
+        :returns: None
         """
         self._set_value(value)
 
@@ -147,7 +147,7 @@ class InputTag(Widget):
 
         :param value: Value to check
         :type value: Union[str, int, None]
-        :return: True if the value is valid, False otherwise
+        :returns: True if the value is valid, False otherwise
         :rtype: bool
         """
         return self._tag_meta.is_valid_value(value)
@@ -156,8 +156,8 @@ class InputTag(Widget):
         """Set the tag value.
 
         :param tag: Tag to set
-        :type tag: Union[Tag, None]
-        :return: None
+        :type tag: Union[:class:`~supervisely.annotation.tag.Tag`, None]
+        :returns: None
         """
         if tag is None:
             self._set_default_value()
@@ -169,8 +169,8 @@ class InputTag(Widget):
     def get_tag(self) -> Union[Tag, None]:
         """Get the current tag.
 
-        :return: Current tag
-        :rtype: Union[Tag, None]
+        :returns: Current tag
+        :rtype: Union[:class:`~supervisely.annotation.tag.Tag`, None]
         """
         if not self._hide_switch and not self.is_active():
             return None
@@ -180,7 +180,7 @@ class InputTag(Widget):
     def _get_value(self) -> Union[str, int, None]:
         """Get the current value of the tag.
 
-        :return: Current value of the tag
+        :returns: Current value of the tag
         :rtype: Union[str, int, None]
         """
         input_widget = self._input_widgets[self._tag_meta.value_type]
@@ -212,7 +212,7 @@ class InputTag(Widget):
     def get_json_data(self) -> Dict:
         """Get the JSON representation of the tag.
 
-        :return: JSON representation of the tag
+        :returns: JSON representation of the tag
         :rtype: Dict
         """
         return {
@@ -224,7 +224,7 @@ class InputTag(Widget):
     def get_json_state(self) -> Dict:
         """Get the JSON representation of the tag state.
 
-        :return: JSON representation of the tag state
+        :returns: JSON representation of the tag state
         :rtype: Dict
         """
         return None
@@ -253,8 +253,8 @@ class InputTag(Widget):
         """Set the tag metadata.
 
         :param tag_meta: Tag metadata to set
-        :type tag_meta: TagMeta
-        :return: None
+        :type tag_meta: :class:`~supervisely.annotation.tag_meta.TagMeta`
+        :returns: None
         """
         self._tag_meta = tag_meta
         self._value_type_name = VALUE_TYPE_NAME[self._tag_meta.value_type]

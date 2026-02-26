@@ -36,7 +36,7 @@ nondefault_image_exts = [
 
 # Check the annotation format documentation at
 def get_meta_from_annotation(ann_json: dict, meta: ProjectMeta) -> ProjectMeta:
-    """Generate sly.ProjectMeta from JSON annotation file."""
+    """Generate :class:`~supervisely.project.project_meta.ProjectMeta` from JSON annotation file."""
 
     if "annotation" in ann_json:
         ann_json = ann_json.get("annotation", {})

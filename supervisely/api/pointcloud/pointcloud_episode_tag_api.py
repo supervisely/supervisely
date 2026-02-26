@@ -6,6 +6,8 @@ from typing import List
 
 
 class PointcloudEpisodeObjectTagApi(PointcloudObjectTagApi):
+    """API module for tags on pointcloud-episode annotation objects (supports frame range updates)."""
+
     _entity_id_field = ApiField.OBJECT_ID
     _method_bulk_add = "annotation-objects.tags.bulk.add"
 

@@ -22,6 +22,7 @@ from supervisely.io.json import load_json_file
 
 
 class FastSlyImageConverter(SLYImageConverter, ImageConverter):
+    """Optimized Sly format importer for annotation-only folders (reads ann JSON, infers size); no image files required."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

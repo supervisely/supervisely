@@ -14,94 +14,50 @@ from supervisely.sly_logger import logger
 
 
 class EventLinstenerError(Exception):
+    """Raised when multiple conflicting FastTable event listeners are registered."""
+
     def __init__(self, message="An exception occurred due to conflicting event listeners."):
+        """
+        :param message: Error message.
+        :type message: str
+        """
         self.message = message
         super().__init__(self.message)
 
 
 class FastTable(Widget):
-    """FastTable widget in Supervisely allows for displaying and manipulating data of various
-    dataset statistics and processing it on the server side.
-
-    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/tables/fasttable>`_
-        (including screenshots and examples).
-
-    :param data: dataset or project data in different formats:
-    :type data: Union[pd.DataFrame, List]
-    :param columns: List of column names
-    :type columns: List, optional
-    :param columns_options: List of dicts with options for each column
-    :type columns_options: List[dict], optional
-    :param project_meta: Project meta information
-    :type project_meta: Union[ProjectMeta, dict], optional
-    :param fixed_columns: Number of fixed columns
-    :type fixed_columns: Literal[1], optional
-    :param page_size: Number of rows per page
-    :type page_size: int, optional
-    :param sort_column_idx: Index of the column to sort by
-    :type sort_column_idx: int, optional
-    :param sort_order: Sorting order
-    :type sort_order: Literal["asc", "desc"], optional
-    :param width: Width of the widget, e.g. "200px", or "100%"
-    :type width: str, optional
-    :param widget_id: Unique widget identifier.
-    :type widget_id: str, optional
-    :param show_header: Whether to show table header
-    :type show_header: bool, optional
-    :param is_radio: Enable radio button selection mode (single row selection)
-    :type is_radio: bool, optional
-    :param is_selectable: Enable multiple row selection
-    :type is_selectable: bool, optional
-    :param header_left_content: Widget to display in the left side of the header
-    :type header_left_content: Widget, optional
-    :param header_right_content: Widget to display in the right side of the header
-    :type header_right_content: Widget, optional
-    :param max_selected_rows: Maximum number of rows that can be selected
-    :type max_selected_rows: int, optional
-    :param search_position: Position of the search input ("left" or "right")
-    :type search_position: Literal["left", "right"], optional
-
-
-    :Usage example:
-    .. code-block:: python
-
-        from supervisely.app.widgets import FastTable
-
-        data = [["apple", "21"], ["banana", "15"]]
-        columns = ["Class", "Items"]
-        dataframe = pd.DataFrame(data=data, columns=columns)
-        columns_options = [
-            { "type": "class"},
-            { "maxValue": 21, "postfix": "pcs", "tooltip": "description text", "subtitle": "boxes" }
-        ]
-
-        meta_path = "meta.json"  # define file path
-        with open(meta_path, "r") as json_file:
-            meta = json.load(json_file)
-
-        fast_table = FastTable(
-            data=dataframe,
-            project_meta=meta,
-            columns_options=columns_options,
-        )
+    """Table for displaying and editing dataset data with server-side processing.
+    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/tables/fasttable>`_.
     """
 
     class Routes:
+        """Callback route names used by the widget frontend to notify Python."""
+
         SELECTION_CHANGED = "selection_changed_cb"
         ROW_CLICKED = "row_clicked_cb"
         CELL_CLICKED = "cell_clicked_cb"
         UPDATE_DATA = "update_data_cb"
 
     class ClickedRow:
+        """Payload describing a clicked table row."""
+
         def __init__(
             self,
             row: List,
             row_index: int = None,
         ):
+            """
+            :param row: Row data (list of cell values).
+            :type row: List
+            :param row_index: 0-based row index.
+            :type row_index: int, optional
+            """
             self.row = row
             self.row_index = row_index
 
     class ClickedCell:
+        """Payload describing a clicked table cell."""
+
         def __init__(
             self,
             row: List,
@@ -110,6 +66,16 @@ class FastTable(Widget):
             column_name: int = None,
             column_value: int = None,
         ):
+            """
+            :param row: Full row data.
+            :type row: List
+            :param column_index: 0-based column index.
+            :type column_index: int
+            :param row_index: 0-based row index.
+            :type row_index: int, optional
+            :param column_name: Column name.
+            :param column_value: Cell value.
+            """
             self.row = row
             self.column_index = column_index
             self.row_index = row_index
@@ -117,7 +83,16 @@ class FastTable(Widget):
             self.column_value = column_value
 
     class ColumnData:
+        """Column descriptor (plain column or widget-backed column) used for rendering."""
+
         def __init__(self, name, is_widget=False, widget: Widget = None):
+            """
+            :param name: Column name.
+            :param is_widget: If True, column cells use widget rendering.
+            :type is_widget: bool
+            :param widget: Widget for cell rendering (when is_widget=True).
+            :type widget: Widget, optional
+            """
             self.name = name
             self.is_widget = is_widget
             self.widget = widget
@@ -159,6 +134,60 @@ class FastTable(Widget):
         max_selected_rows: Optional[int] = None,
         search_position: Optional[Literal["left", "right"]] = None,
     ):
+        """
+        :param data: dataset or project data in different formats
+        :type data: Union[pd.DataFrame, List]
+        :param columns: List of column names
+        :type columns: List, optional
+        :param columns_options: List of dicts with options for each column
+        :type columns_options: List[dict], optional
+        :param project_meta: Project meta information
+        :type project_meta: Union[:class:`~supervisely.project.project_meta.ProjectMeta`, dict], optional
+        :param fixed_columns: Number of fixed columns
+        :type fixed_columns: Literal[1], optional
+        :param page_size: Number of rows per page
+        :type page_size: int, optional
+        :param sort_column_idx: Index of the column to sort by
+        :type sort_column_idx: int, optional
+        :param sort_order: Sorting order
+        :type sort_order: Literal["asc", "desc"], optional
+        :param width: Width of the widget, e.g. "200px", or "100%"
+        :type width: str, optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        :param show_header: Whether to show table header
+        :type show_header: bool, optional
+        :param is_radio: Enable radio button selection mode (single row selection)
+        :type is_radio: bool, optional
+        :param is_selectable: Enable multiple row selection
+        :type is_selectable: bool, optional
+        :param header_left_content: Widget to display in the left side of the header
+        :type header_left_content: :class:`~supervisely.app.widgets.widget.Widget`, optional
+        :param header_right_content: Widget to display in the right side of the header
+        :type header_right_content: :class:`~supervisely.app.widgets.widget.Widget`, optional
+        :param max_selected_rows: Maximum number of rows that can be selected
+        :type max_selected_rows: int, optional
+        :param search_position: Position of the search input ("left" or "right")
+        :type search_position: Literal["left", "right"], optional
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import FastTable
+                import json
+
+                data = [["apple", "21"], ["banana", "15"]]
+                columns = ["Class", "Items"]
+                dataframe = pd.DataFrame(data=data, columns=columns)
+                columns_options = [
+                    {"type": "class"},
+                    {"maxValue": 21, "postfix": "pcs", "tooltip": "description text", "subtitle": "boxes"},
+                ]
+                with open("meta.json", "r") as f:
+                    meta = json.load(f)
+                fast_table = FastTable(data=dataframe, project_meta=meta, columns_options=columns_options)
+        """
         self._supported_types = tuple([pd.DataFrame, list, type(None)])
         self._row_click_handled = False
         self._cell_click_handled = False
@@ -296,7 +325,7 @@ class FastTable(Widget):
             - showHeader: whether to show table header
             - selectionChangedHandled: whether selection changed event listener is set
 
-        :return: Dictionary with widget data
+        :returns: Dictionary with widget data
         :rtype: Dict[str, Any]
         """
         return {
@@ -331,7 +360,7 @@ class FastTable(Widget):
                 - column: index of the column to sort by
                 - order: sorting order
 
-        :return: Dictionary with widget state
+        :returns: Dictionary with widget state
         :rtype: Dict[str, Any]
         """
         return {
@@ -350,7 +379,7 @@ class FastTable(Widget):
     def fixed_columns_num(self) -> int:
         """Returns number of fixed columns.
 
-        :return: Number of fixed columns
+        :returns: Number of fixed columns
         :rtype: int
         """
         return self._fix_columns
@@ -369,7 +398,7 @@ class FastTable(Widget):
     def project_meta(self) -> Dict[str, Any]:
         """Returns project meta information.
 
-        :return: Project meta information
+        :returns: Project meta information
         :rtype: Dict[str, Any]
         """
         return self._project_meta
@@ -379,7 +408,7 @@ class FastTable(Widget):
         """Sets project meta information.
 
         :param meta: Project meta information
-        :type meta: Union[ProjectMeta, Dict]
+        :type meta: Union[:class:`~supervisely.project.project_meta.ProjectMeta`, Dict]
         """
         self._project_meta = self._unpack_project_meta(meta)
         DataJson()[self.widget_id]["projectMeta"] = self._project_meta
@@ -560,7 +589,7 @@ class FastTable(Widget):
 
         :param active_page: Specifies the size of the data to be exported. If True - returns only the active page of the table
         :type active_page: Optional[bool]
-        :return: Table data with current options
+        :returns: Table data with current options
         :rtype: dict
         """
         if active_page is True:
@@ -583,7 +612,7 @@ class FastTable(Widget):
 
         :param active_page: Specifies the size of the data to be exported. If True - returns only the active page of the table
         :type active_page: bool
-        :return: Table data
+        :returns: Table data
         :rtype: pd.DataFrame
         """
         if active_page is True:
@@ -610,7 +639,7 @@ class FastTable(Widget):
     def get_selected_row(self) -> ClickedRow:
         """Returns the selected row.
 
-        :return: Selected row
+        :returns: Selected row
         :rtype: ClickedRow
         """
         if self._is_radio or self._is_selectable:
@@ -665,7 +694,7 @@ class FastTable(Widget):
     def get_clicked_cell(self) -> ClickedCell:
         """Returns the selected cell.
 
-        :return: Selected cell
+        :returns: Selected cell
         :rtype: ClickedCell
         """
         cell_data = StateJson()[self.widget_id]["selectedCell"]
@@ -771,7 +800,7 @@ class FastTable(Widget):
 
         :param index: Index of the row to remove
         :type index: Optional[int]
-        :return: Removed row
+        :returns: Removed row
         :rtype: List
         """
         index = (
@@ -811,7 +840,7 @@ class FastTable(Widget):
 
         :param func: Function that handles row click event
         :type func: Callable[[ClickedRow], Any]
-        :return: Decorated function
+        :returns: Decorated function
         :rtype: Callable[[], None]
         """
         row_clicked_route_path = self.get_route_path(FastTable.Routes.ROW_CLICKED)
@@ -844,7 +873,7 @@ class FastTable(Widget):
 
         :param func: Function that handles cell click event
         :type func: Callable[[ClickedCell], Any]
-        :return: Decorated function
+        :returns: Decorated function
         :rtype: Callable[[], None]
         """
         cell_clicked_route_path = self.get_route_path(FastTable.Routes.CELL_CLICKED)
@@ -879,7 +908,7 @@ class FastTable(Widget):
         """Filter source data using a self._filter_function as filter function.
         To apply a custom filter function, use the set_filter method.
 
-        :return: Filtered data
+        :returns: Filtered data
         :rtype: pd.DataFrame
         """
         filtered_data = self._filter_function(data, self._filter_value)
@@ -914,7 +943,7 @@ class FastTable(Widget):
 
         :param search_value: Search value
         :type search_value: str
-        :return: Filtered data
+        :returns: Filtered data
         :rtype: pd.DataFrame
         """
         # Use filtered_data if available, otherwise use source_data directly
@@ -990,14 +1019,15 @@ class FastTable(Widget):
         :param reset: If True, clears sorting completely. Default is False.
         :type reset: bool
 
-        :Usage example:
+        :Usage Example:
 
-        .. code-block:: python
-            # Sorting examples
-            sort(column_idx=0, order="asc") # sort by column 0 ascending
-            sort(column_idx=1) # sort by column 1, keep current order
-            sort(order="desc") # keep current column, change order to descending
-            sort(reset=True) # clear sorting completely
+            .. code-block:: python
+
+                # Sorting examples
+                sort(column_idx=0, order="asc") # sort by column 0 ascending
+                sort(column_idx=1) # sort by column 1, keep current order
+                sort(order="desc") # keep current column, change order to descending
+                sort(reset=True) # clear sorting completely
         """
         # If reset=True, clear sorting completely
         if reset:
@@ -1328,7 +1358,7 @@ class FastTable(Widget):
 
         :param func: Function that handles selection change event
         :type func: Callable[[], Any]
-        :return: Decorated function
+        :returns: Decorated function
         :rtype: Callable[[], None]
         """
         selection_changed_route_path = self.get_route_path(FastTable.Routes.SELECTION_CHANGED)

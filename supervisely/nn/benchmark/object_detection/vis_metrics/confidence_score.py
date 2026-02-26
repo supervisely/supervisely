@@ -10,6 +10,8 @@ from supervisely.nn.benchmark.visualization.widgets import (
 
 
 class ConfidenceScore(DetectionVisMetric):
+    """F1 vs confidence threshold and optimal confidence for detection reports."""
+
     MARKDOWN_CONFIDENCE_SCORE = "confidence_score"
     NOTIFICATION = "confidence_score"
     MARKDOWN_CONFIDENCE_SCORE_2 = "confidence_score_2"

@@ -1,3 +1,5 @@
+"""Download, upload, and manage volumes in Supervisely."""
+
 import asyncio
 import os
 from typing import AsyncGenerator, Callable, List, NamedTuple, Optional, Union
@@ -37,159 +39,169 @@ except ImportError:
 
 class VolumeInfo(NamedTuple):
     """
-    Object with :class:`Volume<supervisely.volume.volume>` parameters from Supervisely.
+    NamedTuple with Volume information from Supervisely.
 
-    :Example:
+    :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        VolumeInfo(
-            id=19581134,
-            name='CTChest.nrrd',
-            link=None,
-            hash='+0K2oFHpqA5dwRKQlhCiiE2qwLNP76Xk0kvhXEh52cs=',
-            mime=None,
-            ext=None,
-            sizeb=46073411,
-            created_at='2023-03-29T12:30:37.078Z',
-            updated_at='2023-03-29T12:30:37.078Z',
-            meta={
-                'ACS': 'RAS',
-                'intensity': {'max': 3071, 'min': -3024},
-                'windowWidth': 6095,
-                'rescaleSlope': 1,
-                'windowCenter': 23.5,
-                'channelsCount': 1,
-                'dimensionsIJK': {'x': 512, 'y': 512, 'z': 139}
-                'IJK2WorldMatrix': [0.7617189884185793, 0, 0, -194.238403081894, 0, 0.7617189884185793, 0, -217.5384061336518, 0, 0, 2.5, -347.7500000000001, 0, 0, 0, 1],
-                'rescaleIntercept': 0
-            },
-            path_original='/h5af-public/images/original/M/e/7R/vsytec8zX0p.nrrd',
-            full_storage_url='https://app.supervisely.com/h5un-public/images/original/M/e/7R/zX0p.nrrd',
-            tags=[],
-            team_id=435,
-            workspace_id=685,
-            project_id=18949,
-            dataset_id=61803,
-            file_meta={
-                    'mime': 'image/nrrd',
-                    'size': 46073411,
-                    'type': 'int32',
-                    'extra': {'stride': [1, 512, 262144],
-                    'comments': []
-                }
-                'sizes': [512, 512, 139]
-                'space': 'right-anterior-superior'
-                'endian': 'little'
-                'encoding': 'gzip'
-                'dimension': 3
-                'space origin': [-194.238403081894, -217.5384061336518, -347.7500000000001]
-                'space dimension': 3
-                'space directions': [[0.7617189884185793, 0, 0], [0, 0.7617189884185793, 0], [0, 0, 2.5]]
-            }
-            figures_count=None,
-            objects_count=None,
-            processing_path='1/1560071'
-        )
+            VolumeInfo(
+                id=19581134,
+                name="CTChest.nrrd",
+                link=None,
+                hash="+0K2oFHpqA5dwRKQlhCiiE2qwLNP76Xk0kvhXEh52cs=",
+                mime=None,
+                ext=None,
+                sizeb=46073411,
+                created_at="2023-03-29T12:30:37.078Z",
+                updated_at="2023-03-29T12:30:37.078Z",
+                meta={
+                    "ACS": "RAS",
+                    "intensity": {"max": 3071, "min": -3024},
+                    "windowWidth": 6095,
+                    "rescaleSlope": 1,
+                    "windowCenter": 23.5,
+                    "channelsCount": 1,
+                    "dimensionsIJK": {"x": 512, "y": 512, "z": 139},
+                    "IJK2WorldMatrix": [
+                        0.7617189884185793,
+                        0,
+                        0,
+                        -194.238403081894,
+                        0,
+                        0.7617189884185793,
+                        0,
+                        -217.5384061336518,
+                        0,
+                        0,
+                        2.5,
+                        -347.7500000000001,
+                        0,
+                        0,
+                        0,
+                        1,
+                    ],
+                    "rescaleIntercept": 0,
+                },
+                path_original="/h5af-public/images/original/M/e/7R/vsytec8zX0p.nrrd",
+                full_storage_url="https://app.supervisely.com/h5un-public/images/original/M/e/7R/zX0p.nrrd",
+                tags=[],
+                team_id=435,
+                workspace_id=685,
+                project_id=18949,
+                dataset_id=61803,
+                file_meta={
+                    "mime": "image/nrrd",
+                    "size": 46073411,
+                    "type": "int32",
+                    "extra": {"stride": [1, 512, 262144], "comments": []},
+                    "sizes": [512, 512, 139],
+                    "space": "right-anterior-superior",
+                    "endian": "little",
+                    "encoding": "gzip",
+                    "dimension": 3,
+                    "space origin": [-194.238403081894, -217.5384061336518, -347.7500000000001],
+                    "space dimension": 3,
+                    "space directions": [[0.7617189884185793, 0, 0], [0, 0.7617189884185793, 0], [0, 0, 2.5]],
+                },
+                figures_count=None,
+                objects_count=None,
+                processing_path='1/1560071'
+            )
     """
 
-    #: :class:`int`: Volume ID in Supervisely.
+    #: int: Volume ID in Supervisely.
     id: int
 
-    #: :class:`str`: Volume filename.
+    #: str: Volume filename.
     name: str
 
-    #: :class:`str`: Link to volume.
+    #: str: Link to volume.
     link: str
 
-    #: :class:`str`: Volume hash obtained by base64(sha256(file_content)).
+    #: str: Volume hash obtained by base64(sha256(file_content)).
     #: Use hash for files that are expected to be stored at Supervisely or your deployed agent.
     hash: str
 
-    #: :class:`str`: MIME type of the volume.
+    #: str: MIME type of the volume.
     mime: str
 
-    #: :class:`str`: File extension of the volume.
+    #: str: File extension of the volume.
     ext: str
 
-    #: :class:`int`: Size of the volume in bytes.
+    #: int: Size of the volume in bytes.
     sizeb: int
 
-    #: :class:`str`: Volume creation time. e.g. "2019-02-22T14:59:53.381Z".
+    #: str: Volume creation time. e.g. "2019-02-22T14:59:53.381Z".
     created_at: str
 
-    #: :class:`str`: Time of last volume update. e.g. "2019-02-22T14:59:53.381Z".
+    #: str: Time of last volume update. e.g. "2019-02-22T14:59:53.381Z".
     updated_at: str
 
-    #: :class:`dict`: A dictionary containing metadata associated with the volume.
+    #: dict: A dictionary containing metadata associated with the volume.
     meta: dict
 
-    #: :class:`str`: Original path of the volume.
+    #: str: Original path of the volume.
     path_original: str
 
-    #: :class:`str`: Full storage URL of the volume.
+    #: str: Full storage URL of the volume.
     full_storage_url: str
 
-    #: :class:`list`: Volume :class:`VolumeTag<supervisely.volume_annotation.volume_tag.VolumeTag>` list.
+    #: list: Volume :class:`~supervisely.volume_annotation.volume_tag.VolumeTag` list.
     #: e.g. "[{'entityId': 19581134, 'tagId': 385328, 'id': 12259702, 'value': 'some info}]"
     tags: list
 
-    #: :class:`int`: :class:`TeamApi<supervisely.api.team_api.TeamApi>` ID in Supervisely.
+    #: int: :class:`~supervisely.api.team_api.TeamApi` ID in Supervisely.
     team_id: int
 
-    #: :class:`int`: :class:`WorkspaceApi<supervisely.api.workspace_api.WorkspaceApi>` ID in Supervisely.
+    #: int: :class:`~supervisely.api.workspace_api.WorkspaceApi` ID in Supervisely.
     workspace_id: int
 
-    #: :class:`int`: :class:`Project<supervisely.project.project.Project>` ID in Supervisely.
+    #: int: :class:`~supervisely.project.project.Project` ID in Supervisely.
     project_id: int
 
-    #: :class:`int`: :class:`Dataset<supervisely.project.project.Dataset>` ID in Supervisely.
+    #: int: :class:`~supervisely.project.project.Dataset` ID in Supervisely.
     dataset_id: int
 
-    #: :class:`dict`: A dictionary containing metadata about the volume file.
+    #: dict: A dictionary containing metadata about the volume file.
     file_meta: dict
 
-    #: :class:`int`: Number of figures in the volume.
+    #: int: Number of figures in the volume.
     figures_count: int
 
-    #: :class:`int`: Number of objects in the volume.
+    #: int: Number of objects in the volume.
     objects_count: int
 
-    #: :class:`str`: Path to the volume file on the server.
+    #: str: Path to the volume file on the server.
     processing_path: str
 
 
 class VolumeApi(RemoveableBulkModuleApi):
-    """
-    API for working with :class:`Volume<supervisely.volume.volume>`. :class:`VolumeApi<VolumeApi>` object is immutable.
-
-    :param api: API connection to the server.
-    :type api: Api
-    :Usage example:
-
-     .. code-block:: python
-
-        import os
-        from dotenv import load_dotenv
-
-        import supervisely as sly
-
-        # Load secrets and create API object from .env file (recommended)
-        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-        if sly.is_development():
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-        api = sly.Api.from_env()
-
-        # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
-
-        volume_id = 19581134
-        volume_info = api.volume.get_info_by_id(volume_id) # api usage example
-    """
+    """API for working with volumes."""
 
     def __init__(self, api):
         """
-        :param api: Api class object
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
+        :type api: :class:`~supervisely.api.api.Api`
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import os
+                from dotenv import load_dotenv
+
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                volume_id = 19581134
+                volume_info = api.volume.get_info_by_id(volume_id) # api usage example
         """
         super().__init__(api)
         self.annotation = VolumeAnnotationAPI(api)
@@ -201,10 +213,10 @@ class VolumeApi(RemoveableBulkModuleApi):
     @staticmethod
     def info_sequence():
         """
-        Get list of all :class:`VolumeInfo<VolumeInfo>` field names.
+        Get list of all :class:`~supervisely.api.volume.volume_api.VolumeInfo` field names.
 
-        :return: List of :class:`VolumeInfo<VolumeInfo>` field names.`
-        :rtype: :class:`list`
+        :returns: List of VolumeInfo field names.
+        :rtype: List[str]
         """
 
         return [
@@ -234,16 +246,16 @@ class VolumeApi(RemoveableBulkModuleApi):
     @staticmethod
     def info_tuple_name():
         """
-        Get string name of :class:`VolumeInfo<VolumeInfo>` NamedTuple.
+        Get string name of :class:`~supervisely.api.volume.volume_api.VolumeInfo` NamedTuple.
 
-        :return: NamedTuple name.
-        :rtype: :class:`str`
+        :returns: NamedTuple name.
+        :rtype: str
         """
 
         return "VolumeInfo"
 
     def _convert_json_info(self, info: dict, skip_missing=True):
-        """Private method. Convert volume information from json to VolumeInfo<VolumeInfo>"""
+        """Private method. Convert volume information from json to VolumeInfo."""
 
         res = super()._convert_json_info(info, skip_missing=skip_missing)
         return VolumeInfo(**res._asdict())
@@ -258,39 +270,45 @@ class VolumeApi(RemoveableBulkModuleApi):
         """
         Get list of information about all volumes for a given dataset ID.
 
-        :param dataset_id: :class:`Dataset<supervisely.project.project.Dataset>` ID in Supervisely.
+        :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
         :param filters: List of parameters to sort output Volumes. See: https://api.docs.supervisely.com/#tag/Volumes/paths/~1volumes.list/get
         :type filters: List[Dict[str, str]], optional
         :param sort: Attribute to sort the list by. The default is "id". Valid values are "id", "name", "description", "createdAt", "updatedAt".
-        :type sort: :class:`str`
+        :type sort: str
         :param sort_order: Order in which to sort the list. The default is "asc". Valid values are "asc" (ascending) and "desc" (descending).
-        :type sort_order: :class:`str`
-        :return: List of information about volumes in given dataset.
-        :rtype: :class:`List[VolumeInfo]`
+        :type sort_order: str
+        :returns: List of information about volumes in given dataset.
+        :rtype: List[:class:`~supervisely.api.volume.volume_api.VolumeInfo`]
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            dataset_id = 61803
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            volume_infos = api.volume.get_list(dataset_id)
-            print(volume_infos)
-            # Output: [VolumeInfo(id=19581134, ...), VolumeInfo(id=19581135, ...), VolumeInfo(id=19581136, ...)]
+                api = sly.Api.from_env()
 
-            sorted_volume_infos = api.volume.get_list(dataset_id, sort="id", sort_order="desc")
-            # Output: [VolumeInfo(id=19581136, ...), VolumeInfo(id=19581135, ...), VolumeInfo(id=19581134, ...)]
+                dataset_id = 61803
 
-            filtered_volume_infos = api.volume.get_list(dataset_id, filters=[{'field': 'id', 'operator': '=', 'value': '19581135'}])
-            print(filtered_volume_infos)
-            # Output: [VolumeInfo(id=19581135, ...)]
+                volume_infos = api.volume.get_list(dataset_id)
+                print(volume_infos)
+                # Output: [VolumeInfo(id=19581134, ...), VolumeInfo(id=19581135, ...), VolumeInfo(id=19581136, ...)]
+
+                sorted_volume_infos = api.volume.get_list(dataset_id, sort="id", sort_order="desc")
+                # Output: [VolumeInfo(id=19581136, ...), VolumeInfo(id=19581135, ...), VolumeInfo(id=19581134, ...)]
+
+                filtered_volume_infos = api.volume.get_list(dataset_id, filters=[{'field': 'id', 'operator': '=', 'value': '19581135'}])
+                print(filtered_volume_infos)
+                # Output: [VolumeInfo(id=19581135, ...)]
         """
 
         return self.get_list_all_pages(
@@ -305,76 +323,81 @@ class VolumeApi(RemoveableBulkModuleApi):
 
     def get_info_by_id(self, id: int):
         """
-        Get Volume information by ID in VolumeInfo<VolumeInfo> format.
+        Get Volume information by ID in :class:`~supervisely.api.volume.volume_api.VolumeInfo` format.
 
         :param id: Volume ID in Supervisely.
         :type id: int
-        :return: Information about Volume. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`VolumeInfo`
+        :returns: Information about Volume.
+        :rtype: :class:`~supervisely.api.volume.volume_api.VolumeInfo`
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
+                import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            volume_id = 19581134
-            volume_info = api.volume.get_info_by_id(volume_id)
-            print(volume_info)
-            # Output:
-            # VolumeInfo(
-            #     id=19581134,
-            #     name='CTChest.nrrd',
-            #     link=None,
-            #     hash='+0K2oFHpqA5dwRKQlhkvhXEh52cs=',
-            #     mime=None,
-            #     ext=None,
-            #     sizeb=46073411,
-            #     created_at='2023-03-29T12:30:37.078Z',
-            #     updated_at='2023-03-29T12:30:37.078Z',
-            #     meta={
-            #         'ACS': 'RAS',
-            #         'intensity': {'max': 3071, 'min': -3024},
-            #         'windowWidth': 6095,
-            #         'rescaleSlope': 1,
-            #         'windowCenter': 23.5,
-            #         'channelsCount': 1,
-            #         'dimensionsIJK': {'x': 512, 'y': 512, 'z': 139},
-            #         'IJK2WorldMatrix': [0.7617189884185793, 0, 0, -194.238403081894, 0, 0.7617189884185793, 0, -217.5384061336518, 0, 0, 2.5, -347.7500000000001, 0, 0, 0, 1],
-            #         'rescaleIntercept': 0
-            #     },
-            #     path_original='/h5af-public/images/original/M/e/7R/vs0p.nrrd',
-            #     full_storage_url='https://app.supervisely.com/.../original/M/e/7R/zX0p.nrrd',
-            #     tags=[],
-            #     team_id=435,
-            #     workspace_id=685,
-            #     project_id=18949,
-            #     dataset_id=61803,
-            #     file_meta={
-            #             'mime': 'image/nrrd',
-            #             'size': 46073411,
-            #             'type': 'int32',
-            #             'extra': {'stride': [1, 512, 262144],
-            #             'comments': []
-            #         }
-            #         'sizes': [512, 512, 139]
-            #         'space': 'right-anterior-superior'
-            #         'endian': 'little'
-            #         'encoding': 'gzip'
-            #         'dimension': 3
-            #         'space origin': [-194.238403081894, -217.5384061336518, -347.7500000000001]
-            #         'space dimension': 3
-            #         'space directions': [[0.7617189884185793, 0, 0], [0, 0.7617189884185793, 0], [0, 0, 2.5]]
-            #     }
-            #     figures_count=None,
-            #     objects_count=None,
-            #     processing_path='1/1560071'
-            # )
+                api = sly.Api.from_env()
+
+                volume_id = 19581134
+                volume_info = api.volume.get_info_by_id(volume_id)
+                print(volume_info)
+                # Output:
+                # VolumeInfo(
+                #     id=19581134,
+                #     name='CTChest.nrrd',
+                #     link=None,
+                #     hash='+0K2oFHpqA5dwRKQlhkvhXEh52cs=',
+                #     mime=None,
+                #     ext=None,
+                #     sizeb=46073411,
+                #     created_at='2023-03-29T12:30:37.078Z',
+                #     updated_at='2023-03-29T12:30:37.078Z',
+                #     meta={
+                #         'ACS': 'RAS',
+                #         'intensity': {'max': 3071, 'min': -3024},
+                #         'windowWidth': 6095,
+                #         'rescaleSlope': 1,
+                #         'windowCenter': 23.5,
+                #         'channelsCount': 1,
+                #         'dimensionsIJK': {'x': 512, 'y': 512, 'z': 139},
+                #         'IJK2WorldMatrix': [0.7617189884185793, 0, 0, -194.238403081894, 0, 0.7617189884185793, 0, -217.5384061336518, 0, 0, 2.5, -347.7500000000001, 0, 0, 0, 1],
+                #         'rescaleIntercept': 0
+                #     },
+                #     path_original='/h5af-public/images/original/M/e/7R/vs0p.nrrd',
+                #     full_storage_url='https://app.supervisely.com/.../original/M/e/7R/zX0p.nrrd',
+                #     tags=[],
+                #     team_id=435,
+                #     workspace_id=685,
+                #     project_id=18949,
+                #     dataset_id=61803,
+                #     file_meta={
+                #             'mime': 'image/nrrd',
+                #             'size': 46073411,
+                #             'type': 'int32',
+                #             'extra': {'stride': [1, 512, 262144],
+                #             'comments': []
+                #         }
+                #         'sizes': [512, 512, 139]
+                #         'space': 'right-anterior-superior'
+                #         'endian': 'little'
+                #         'encoding': 'gzip'
+                #         'dimension': 3
+                #         'space origin': [-194.238403081894, -217.5384061336518, -347.7500000000001]
+                #         'space dimension': 3
+                #         'space directions': [[0.7617189884185793, 0, 0], [0, 0.7617189884185793, 0], [0, 0, 2.5]]
+                #     }
+                #     figures_count=None,
+                #     objects_count=None,
+                #     processing_path='1/1560071'
+                # )
         """
 
         return self._get_info_by_id(id, "volumes.info")
@@ -391,76 +414,83 @@ class VolumeApi(RemoveableBulkModuleApi):
         :type hash: str
         :param meta: A dictionary containing data associated with the volume.
         :type meta: dict
-        :return: Information about Volume. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`VolumeInfo`
-        :Usage example:
+        :returns: Information about Volume.
+        :rtype: :class:`~supervisely.api.volume.volume_api.VolumeInfo`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            dst_dataset_id = 61958
-            src_volume_id = 19581134
-            volume_info = api.volume.get_info_by_id(src_volume_id)
-            hash = volume_info.hash
-            # It is necessary to upload volume with the same extention as in src dataset
-            name = volume_info.name
-            meta = volume_info.meta
-            new_volume_info = api.volume.upload_hash(dst_dataset_id, name, hash, meta)
-            print(new_volume_info)
-            # Output:
-            # VolumeInfo(
-            #     id=19613940,
-            #     name='CTACardio.nrrd',
-            #     link=None,
-            #     hash='+0K2oFHpqA5dwRKQlh5bDUA0jkPsEE52cs=',
-            #     mime=None,
-            #     ext=None,
-            #     sizeb=67614735,
-            #     created_at='2023-03-29T12:30:37.078Z',
-            #     updated_at='2023-03-29T12:30:37.078Z',
-            #     meta={
-            #         'ACS': 'RAS',
-            #         'intensity': {'max': 3532, 'min': -1024},
-            #         'windowWidth': 4556,
-            #         'rescaleSlope': 1,
-            #         'windowCenter': 1254,
-            #         'channelsCount': 1,
-            #         'dimensionsIJK': {'x': 512, 'y': 512, 'z': 321}
-            #         'IJK2WorldMatrix': [0.9335939999999999, 0, 0, -238.53326699999997, 0, 0.9335939999999999, 0, -238.53326699999994, 0, 0, 1.25, -200.0000000000001, 0, 0, 0, 1],
-            #         'rescaleIntercept': 0
-            #     },
-            #     path_original='/h5af-public/images/original/M/e/7R/zfsfX0p.nrrd',
-            #     full_storage_url='https://app.supervisely.com/h5un-public/images/original/M/e/7R/zXdd0p.nrrd',
-            #     tags=[],
-            #     team_id=435,
-            #     workspace_id=685,
-            #     project_id=18949,
-            #     dataset_id=61958,
-            #     file_meta={
-            #             'mime': 'image/nrrd',
-            #             'size': 46073411,
-            #             'type': 'int32',
-            #             'extra': {'stride': [1, 512, 262144],
-            #             'comments': []
-            #         }
-            #         'sizes': [512, 512, 139]
-            #         'space': 'right-anterior-superior'
-            #         'endian': 'little'
-            #         'encoding': 'gzip'
-            #         'dimension': 3
-            #         'space origin': [-194.238403081894, -217.5384061336518, -347.7500000000001]
-            #         'space dimension': 3
-            #         'space directions': [[0.7617189884185793, 0, 0], [0, 0.7617189884185793, 0], [0, 0, 2.5]]
-            #     }
-            #     figures_count=None,
-            #     objects_count=None,
-            #     processing_path='1/1560071'
-            # )
+                import supervisely as sly
+
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                dst_dataset_id = 61958
+                src_volume_id = 19581134
+                volume_info = api.volume.get_info_by_id(src_volume_id)
+                hash = volume_info.hash
+                # It is necessary to upload volume with the same extention as in src dataset
+                name = volume_info.name
+                meta = volume_info.meta
+                new_volume_info = api.volume.upload_hash(dst_dataset_id, name, hash, meta)
+                print(new_volume_info)
+                # Output:
+                # VolumeInfo(
+                #     id=19613940,
+                #     name='CTACardio.nrrd',
+                #     link=None,
+                #     hash='+0K2oFHpqA5dwRKQlh5bDUA0jkPsEE52cs=',
+                #     mime=None,
+                #     ext=None,
+                #     sizeb=67614735,
+                #     created_at='2023-03-29T12:30:37.078Z',
+                #     updated_at='2023-03-29T12:30:37.078Z',
+                #     meta={
+                #         'ACS': 'RAS',
+                #         'intensity': {'max': 3532, 'min': -1024},
+                #         'windowWidth': 4556,
+                #         'rescaleSlope': 1,
+                #         'windowCenter': 1254,
+                #         'channelsCount': 1,
+                #         'dimensionsIJK': {'x': 512, 'y': 512, 'z': 321}
+                #         'IJK2WorldMatrix': [0.9335939999999999, 0, 0, -238.53326699999997, 0, 0.9335939999999999, 0, -238.53326699999994, 0, 0, 1.25, -200.0000000000001, 0, 0, 0, 1],
+                #         'rescaleIntercept': 0
+                #     },
+                #     path_original='/h5af-public/images/original/M/e/7R/zfsfX0p.nrrd',
+                #     full_storage_url='https://app.supervisely.com/h5un-public/images/original/M/e/7R/zXdd0p.nrrd',
+                #     tags=[],
+                #     team_id=435,
+                #     workspace_id=685,
+                #     project_id=18949,
+                #     dataset_id=61958,
+                #     file_meta={
+                #             'mime': 'image/nrrd',
+                #             'size': 46073411,
+                #             'type': 'int32',
+                #             'extra': {'stride': [1, 512, 262144],
+                #             'comments': []
+                #         }
+                #         'sizes': [512, 512, 139]
+                #         'space': 'right-anterior-superior'
+                #         'endian': 'little'
+                #         'encoding': 'gzip'
+                #         'dimension': 3
+                #         'space origin': [-194.238403081894, -217.5384061336518, -347.7500000000001]
+                #         'space dimension': 3
+                #         'space directions': [[0.7617189884185793, 0, 0], [0, 0.7617189884185793, 0], [0, 0, 2.5]]
+                #     }
+                #     figures_count=None,
+                #     objects_count=None,
+                #     processing_path='1/1560071'
+                # )
         """
 
         metas = None if meta is None else [meta]
@@ -487,46 +517,55 @@ class VolumeApi(RemoveableBulkModuleApi):
         :type progress_cb: tqdm or callable, optional
         :param metas: Volumes metadata.
         :type metas: List[dict], optional
-        :return: List with information about Volumes. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[VolumeInfo]`
-        :Usage example:
+        :returns: List with information about Volumes.
+        :rtype: List[:class:`~supervisely.api.volume.volume_api.VolumeInfo`]
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            from tqdm import tqdm
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from tqdm import tqdm
 
-            src_dataset_id = 61958
-            dst_dataset_id = 55853
+                import os
+                from dotenv import load_dotenv
 
-            hashes = []
-            names = []
-            metas = []
-            volume_infos = api.volume.get_list(src_dataset_id)
+                import supervisely as sly
 
-            # Create lists of hashes, volumes names and meta information for each volume
-            for volume_info in volume_infos:
-                hashes.append(volume_info.hash)
-                # It is necessary to upload volumes with the same names(extentions) as in src dataset
-                names.append(volume_info.name)
-                metas.append(volume_info.meta)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            p = tqdm(desc="api.volume.upload_hashes", total=len(hashes))
-            new_volumes_info = api.volume.upload_hashes(
-                dataset_id=dst_dataset_id,
-                names=names,
-                hashes=hashes,
-                progress_cb=p,
-                metas=metas,
-            )
+                api = sly.Api.from_env()
 
-            # Output:
-            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Volumes upload: ", "current": 0, "total": 2, "timestamp": "2023-04-04T07:47:11.506Z", "level": "info"}
-            # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Volumes upload: ", "current": 2, "total": 2, "timestamp": "2023-04-04T07:47:11.563Z", "level": "info"}
+                src_dataset_id = 61958
+                dst_dataset_id = 55853
+
+                hashes = []
+                names = []
+                metas = []
+                volume_infos = api.volume.get_list(src_dataset_id)
+
+                # Create lists of hashes, volumes names and meta information for each volume
+                for volume_info in volume_infos:
+                    hashes.append(volume_info.hash)
+                    # It is necessary to upload volumes with the same names(extentions) as in src dataset
+                    names.append(volume_info.name)
+                    metas.append(volume_info.meta)
+
+                p = tqdm(desc="api.volume.upload_hashes", total=len(hashes))
+                new_volumes_info = api.volume.upload_hashes(
+                    dataset_id=dst_dataset_id,
+                    names=names,
+                    hashes=hashes,
+                    progress_cb=p,
+                    metas=metas,
+                )
+
+                # Output:
+                # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Volumes upload: ", "current": 0, "total": 2, "timestamp": "2023-04-04T07:47:11.506Z", "level": "info"}
+                # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Volumes upload: ", "current": 2, "total": 2, "timestamp": "2023-04-04T07:47:11.563Z", "level": "info"}
         """
 
         return self._upload_bulk_add(
@@ -600,29 +639,36 @@ class VolumeApi(RemoveableBulkModuleApi):
         :type meta: dict, optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
-        :return: Information about Volume. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`VolumeInfo`
-        :Usage example:
+        :returns: Information about Volume.
+        :rtype: :class:`~supervisely.api.volume.volume_api.VolumeInfo`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
-            np_volume, meta = sly.volume.read_nrrd_serie_volume_np(local_path)
-            nrrd_info_np = api.volume.upload_np(
-                dataset.id,
-                "MRHead_np.nrrd",
-                np_volume,
-                meta,
-            )
-            print(f"Volume uploaded as NumPy array to Supervisely with ID:{nrrd_info_np.id}")
+                import supervisely as sly
 
-            # Output:
-            # Volume uploaded as NumPy array to Supervisely with ID:18562982
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                np_volume, meta = sly.volume.read_nrrd_serie_volume_np(local_path)
+                nrrd_info_np = api.volume.upload_np(
+                    dataset.id,
+                    "MRHead_np.nrrd",
+                    np_volume,
+                    meta,
+                )
+                print(f"Volume uploaded as NumPy array to Supervisely with ID:{nrrd_info_np.id}")
+
+                # Output:
+                # Volume uploaded as NumPy array to Supervisely with ID:18562982
         """
 
         ext = get_file_ext(name)
@@ -732,35 +778,41 @@ class VolumeApi(RemoveableBulkModuleApi):
         :type log_progress: bool, optional
         :param anonymize: Determine whether to hide PatientID and PatientName fields.
         :type anonymize: bool, optional
-        :return: Information about Volume. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`VolumeInfo`
-        :Usage example:
+        :returns: Information about Volume.
+        :rtype: :class:`~supervisely.api.volume.volume_api.VolumeInfo`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
+                import supervisely as sly
 
-            dicom_dir_name = "src/upload/MRHead_dicom/"
-            series_infos = sly.volume.inspect_dicom_series(root_dir=dicom_dir_name)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            for serie_id, files in series_infos.items():
-                item_path = files[0]
-                name = f"{sly.fs.get_file_name(path=item_path)}.nrrd"
-                dicom_info = api.volume.upload_dicom_serie_paths(
-                    dataset_id=dataset.id,
-                    name=name,
-                    paths=files,
-                    anonymize=True,
-                )
-                print(f"DICOM volume has been uploaded to Supervisely with ID: {dicom_info.id}")
+                api = sly.Api.from_env()
 
-            # Output:
-            # DICOM volume has been uploaded to Supervisely with ID: 18630608
+                dicom_dir_name = "src/upload/MRHead_dicom/"
+                series_infos = sly.volume.inspect_dicom_series(root_dir=dicom_dir_name)
+
+                for serie_id, files in series_infos.items():
+                    item_path = files[0]
+                    name = f"{sly.fs.get_file_name(path=item_path)}.nrrd"
+                    dicom_info = api.volume.upload_dicom_serie_paths(
+                        dataset_id=dataset.id,
+                        name=name,
+                        paths=files,
+                        anonymize=True,
+                    )
+                    print(f"DICOM volume has been uploaded to Supervisely with ID: {dicom_info.id}")
+
+                # Output:
+                # DICOM volume has been uploaded to Supervisely with ID: 18630608
         """
 
         volume_np, volume_meta = volume.read_dicom_serie_volume_np(paths, anonymize=anonymize)
@@ -782,7 +834,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :type items: list
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
-        :return: List of responses
+        :returns: List of responses
         :rtype: list
         """
 
@@ -814,30 +866,36 @@ class VolumeApi(RemoveableBulkModuleApi):
         :type path: str
         :param log_progress: Determine if additional technical logs are displaying.
         :type log_progress: bool, optional
-        :return: Information about Volume. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`VolumeInfo`
-        :Usage example:
+        :returns: Information about Volume.
+        :rtype: :class:`~supervisely.api.volume.volume_api.VolumeInfo`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
+                import supervisely as sly
 
-            local_path = "src/upload/nrrd/MRHead.nrrd"
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            nrrd_info = api.volume.upload_nrrd_serie_path(
-                dataset.id,
-                "MRHead.nrrd",
-                local_path,
-            )
-            print(f'"{nrrd_info.name}" volume uploaded to Supervisely with ID:{nrrd_info.id}')
+                api = sly.Api.from_env()
 
-            # Output:
-            # "NRRD_1.nrrd" volume uploaded to Supervisely with ID:18562981
+                local_path = "src/upload/nrrd/MRHead.nrrd"
+
+                nrrd_info = api.volume.upload_nrrd_serie_path(
+                    dataset.id,
+                    "MRHead.nrrd",
+                    local_path,
+                )
+                print(f'"{nrrd_info.name}" volume uploaded to Supervisely with ID:{nrrd_info.id}')
+
+                # Output:
+                # "NRRD_1.nrrd" volume uploaded to Supervisely with ID:18562981
         """
 
         volume_np, volume_meta = volume.read_nrrd_serie_volume_np(path)
@@ -861,7 +919,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :type id: int
         :param stream: Define, if you'd like to get the raw socket response from the server.
         :type stream: bool, optional
-        :return: Response object
+        :returns: Response object
         :rtype: :class:`Response`
         """
 
@@ -880,37 +938,44 @@ class VolumeApi(RemoveableBulkModuleApi):
         :type path: str
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
-        :return: Information about Volume. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`VolumeInfo`
-        :Usage example:
+        :returns: Information about Volume.
+        :rtype: :class:`~supervisely.api.volume.volume_api.VolumeInfo`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            from tqdm import tqdm
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from tqdm import tqdm
+                from dotenv import load_dotenv
 
-            src_dataset_id = 61229
-            volume_infos = api.volume.get_list(src_dataset_id)
-            volume_id = volume_infos[0].id
-            volume_info = api.volume.get_info_by_id(id=volume_id)
+                import supervisely as sly
 
-            download_dir_name = "src/download/"
-            path = os.path.join(download_dir_name, volume_info.name)
-            if os.path.exists(path):
-                os.remove(path)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            p = tqdm(desc="Volumes upload: ", total=volume_info.sizeb, is_size=True)
-            api.volume.download_path(volume_info.id, path, progress_cb=p)
+                api = sly.Api.from_env()
 
-            if os.path.exists(path):
-                print(f"Volume (ID {volume_info.id}) successfully downloaded.")
+                src_dataset_id = 61229
+                volume_infos = api.volume.get_list(src_dataset_id)
+                volume_id = volume_infos[0].id
+                volume_info = api.volume.get_info_by_id(id=volume_id)
 
-            # Output:
-            # Volume (ID 18630603) successfully downloaded.
+                download_dir_name = "src/download/"
+                path = os.path.join(download_dir_name, volume_info.name)
+                if os.path.exists(path):
+                    os.remove(path)
+
+                p = tqdm_sly(desc="Volumes upload: ", total=volume_info.sizeb, is_size=True)
+                api.volume.download_path(volume_info.id, path, progress_cb=p)
+
+                if os.path.exists(path):
+                    print(f"Volume (ID {volume_info.id}) successfully downloaded.")
+
+                # Output:
+                # Volume (ID 18630603) successfully downloaded.
         """
 
         response = self._download(id, is_stream=True)
@@ -945,29 +1010,35 @@ class VolumeApi(RemoveableBulkModuleApi):
         :type log_progress: bool
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
-        :return: Information about Volume. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`VolumeInfo`
-        :Usage example:
+        :returns: Information about Volume.
+        :rtype: :class:`~supervisely.api.volume.volume_api.VolumeInfo`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
+                import supervisely as sly
 
-            local_dir_name = "src/upload/nrrd/"
-            all_nrrd_names = os.listdir(local_dir_name)
-            names = [f"1_{name}" for name in all_nrrd_names]
-            paths = [os.path.join(local_dir_name, name) for name in all_nrrd_names]
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            volume_infos = api.volume.upload_nrrd_series_paths(dataset.id, names, paths)
-            print(f"All volumes has been uploaded with IDs: {[x.id for x in volume_infos]}")
+                api = sly.Api.from_env()
 
-            # Output:
-            # All volumes has been uploaded with IDs: [18630605, 18630606, 18630607]
+                local_dir_name = "src/upload/nrrd/"
+                all_nrrd_names = os.listdir(local_dir_name)
+                names = [f"1_{name}" for name in all_nrrd_names]
+                paths = [os.path.join(local_dir_name, name) for name in all_nrrd_names]
+
+                volume_infos = api.volume.upload_nrrd_series_paths(dataset.id, names, paths)
+                print(f"All volumes has been uploaded with IDs: {[x.id for x in volume_infos]}")
+
+                # Output:
+                # All volumes has been uploaded with IDs: [18630605, 18630606, 18630607]
         """
 
         volume_infos = []
@@ -991,39 +1062,46 @@ class VolumeApi(RemoveableBulkModuleApi):
 
         :param volume_id: Volume ID in Supervisely.
         :type volume_id: int
-        :param slice_index: :py:class:`Slice<supervisely.volume_annotation.slice.Slice>` index.
+        :param slice_index: Slice index.
         :type slice_index: int
-        :param plane: :py:class:`Plane<supervisely.volume_annotation.plane.Plane>` of the slice in volume.
+        :param plane: Plane of the slice in volume.
         :type plane: str
         :param window_center: Window center.
         :type window_center: float
         :param window_width: Window width.
         :type window_width: int
-        :return: Information about Volume. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`VolumeInfo`
-        :Usage example:
+        :returns: Information about Volume.
+        :rtype: :class:`~supervisely.api.volume.volume_api.VolumeInfo`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                from dotenv import load_dotenv
 
+                import supervisely as sly
 
-            slice_index = 60
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            image_np = api.volume.download_slice_np(
-                volume_id=volume_id,
-                slice_index=slice_index,
-                plane=sly.Plane.SAGITTAL,
-            )
+                api = sly.Api.from_env()
 
-            print(f"Image downloaded as NumPy array. Image shape: {image_np.shape}")
+                volume_id = 19402023
+                slice_index = 60
 
-            # Output:
-            # Image downloaded as NumPy array. Image shape: (256, 256, 3)
+                image_np = api.volume.download_slice_np(
+                    volume_id=volume_id,
+                    slice_index=slice_index,
+                    plane=sly.Plane.SAGITTAL,
+                )
+
+                print(f"Image downloaded as NumPy array. Image shape: {image_np.shape}")
+
+                # Output:
+                # Image downloaded as NumPy array. Image shape: (256, 256, 3)
         """
 
         normal = Plane.get_normal(plane)
@@ -1062,7 +1140,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :type dataset_id: int
         :param names: List of names to check.
         :type names: List[str]
-        :return: List of free names.
+        :returns: List of free names.
         :rtype: List[str]
         """
 
@@ -1088,7 +1166,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :type names: List[str]
         :param message: Error message.
         :type message: str, optional
-        :return: None
+        :returns: None
         :rtype: None
         """
         volumes_in_dataset = self.get_list(dataset_id)
@@ -1120,17 +1198,23 @@ class VolumeApi(RemoveableBulkModuleApi):
         :type log_progress: bool
         :param change_name_if_conflict: Determine if names are changing if conflict.
         :type change_name_if_conflict: bool, optional
-        :return: List with information about Volumes. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[VolumeInfo]`
-        :Usage example:
+        :returns: List with information about Volumes.
+        :rtype: List[:class:`~supervisely.api.volume.volume_api.VolumeInfo`]
 
-             .. code-block:: python
+        :Usage Example:
+
+            .. code-block:: python
+
+                import os
+                from tqdm import tqdm
+                from dotenv import load_dotenv
 
                 import supervisely as sly
-                from tqdm import tqdm
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
                 api = sly.Api.from_env()
 
@@ -1206,17 +1290,23 @@ class VolumeApi(RemoveableBulkModuleApi):
         :type log_progress: bool
         :param change_name_if_conflict: Determine if names are changing if conflict.
         :type change_name_if_conflict: bool, optional
-        :return: List with information about Volumes. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[VolumeInfo]`
-        :Usage example:
+        :returns: List with information about Volumes.
+        :rtype: List[:class:`~supervisely.api.volume.volume_api.VolumeInfo`]
 
-             .. code-block:: python
+        :Usage Example:
+
+            .. code-block:: python
+
+                import os
+                from tqdm import tqdm
+                from dotenv import load_dotenv
 
                 import supervisely as sly
-                from tqdm import tqdm
 
-                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
                 api = sly.Api.from_env()
 
@@ -1266,7 +1356,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         :type headers: dict, optional
         :param chunk_size: Size of chunk for downloading. Default is 1MB.
         :type chunk_size: int, optional
-        :return: Stream of bytes or response object.
+        :returns: Stream of bytes or response object.
         :rtype: AsyncGenerator
         """
         api_method_name = "volumes.download"
@@ -1326,26 +1416,33 @@ class VolumeApi(RemoveableBulkModuleApi):
         :type progress_cb: tqdm or callable, optional
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
         :type progress_cb_type: str, optional
-        :return: None
-        :rtype: :class:`NoneType`
-        :Usage example:
+        :returns: None
+        :rtype: None
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
-            import asyncio
+            .. code-block:: python
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import os
+                import asyncio
+                from dotenv import load_dotenv
 
-            volume_info = api.volume.get_info_by_id(770918)
-            save_path = os.path.join("/path/to/save/", volume_info.name)
+                import supervisely as sly
 
-            semaphore = asyncio.Semaphore(100)
-            loop = sly.utils.get_or_create_event_loop()
-            loop.run_until_complete(
-                        api.volume.download_path_async(volume_info.id, save_path, semaphore)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                volume_info = api.volume.get_info_by_id(770918)
+                save_path = os.path.join("/path/to/save/", volume_info.name)
+
+                semaphore = asyncio.Semaphore(100)
+                loop = sly.utils.get_or_create_event_loop()
+                loop.run_until_complete(
+                    api.volume.download_path_async(volume_info.id, save_path, semaphore)
                 )
         """
 
@@ -1415,25 +1512,31 @@ class VolumeApi(RemoveableBulkModuleApi):
         :type progress_cb: tqdm or callable, optional
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
         :type progress_cb_type: str, optional
-        :raises: :class:`ValueError` if len(ids) != len(paths)
-        :return: None
-        :rtype: :class:`NoneType`
+        :raises ValueError: if len(ids) != len(paths)
+        :returns: None
+        :rtype: None
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
-            import asyncio
+                import os
+                import asyncio
+                from dotenv import load_dotenv
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            ids = [770914, 770915]
-            paths = ["/path/to/save/volume1.nrrd", "/path/to/save/volume2.nrrd"]
-            loop = sly.utils.get_or_create_event_loop()
-            loop.run_until_complete(api.volume.download_paths_async(ids, paths))
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                ids = [770914, 770915]
+                paths = ["/path/to/save/volume1.nrrd", "/path/to/save/volume2.nrrd"]
+                loop = sly.utils.get_or_create_event_loop()
+                loop.run_until_complete(api.volume.download_paths_async(ids, paths))
         """
         if len(ids) == 0:
             return
@@ -1456,34 +1559,36 @@ class VolumeApi(RemoveableBulkModuleApi):
             tasks.append(task)
         await asyncio.gather(*tasks)
 
-    def rename(
-        self,
-        id: int,
-        name: str,
-    ) -> VolumeInfo:
+    def rename(self, id: int, name: str) -> VolumeInfo:
         """Renames Volume with given ID to a new name.
 
         :param id: Volume ID in Supervisely.
         :type id: int
         :param name: New Volume name.
         :type name: str
-        :return: Information about updated Volume.
-        :rtype: :class:`VolumeInfo`
+        :returns: Information about updated Volume.
+        :rtype: :class:`~supervisely.api.volume.volume_api.VolumeInfo`
 
-        :Usage example:
+        :Usage Example:
 
-        .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            api = sly.Api.from_env()
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                import supervisely as sly
 
-            volume_id = 123456
-            new_volume_name = "3333_new.nrrd"
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            api.volume.rename(id=volume_id, name=new_volume_name)
+                api = sly.Api.from_env()
+
+                volume_id = 123456
+                new_volume_name = "3333_new.nrrd"
+
+                api.volume.rename(id=volume_id, name=new_volume_name)
         """
 
         data = {

@@ -1,7 +1,4 @@
 # coding: utf-8
-"""annotation for a single image"""
-
-# docs
 from __future__ import annotations
 
 import itertools
@@ -9,7 +6,7 @@ import json
 import operator
 from collections import defaultdict
 from copy import deepcopy
-from typing import TYPE_CHECKING, Callable, Dict, List, Literal, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 
 import numpy as np
 from PIL import Image
@@ -46,86 +43,33 @@ ANN_EXT = ".json"
 
 class AnnotationJsonFields:
     """
-    Json fields for :class:`Annotation<supervisely.annotation.annotation.Annotation>`
+    JSON fields for :class:`~supervisely.annotation.annotation.Annotation`.
     """
 
     IMG_DESCRIPTION = "description"
-    """"""
+    """Image description."""
     IMG_SIZE = "size"
-    """"""
+    """Image size."""
     IMG_SIZE_WIDTH = "width"
-    """"""
+    """Image width."""
     IMG_SIZE_HEIGHT = "height"
-    """"""
+    """Image height."""
     IMG_TAGS = "tags"
-    """"""
+    """Tags that are associated with the image."""
     LABELS = "objects"
-    """"""
+    """Labels that are associated with the image."""
     CUSTOM_DATA = "customBigData"
-    """"""
+    """Annotation custom data."""
     PROBABILITY_CLASSES = "probabilityClasses"
-    """"""
+    """Probability classes."""
     PROBABILITY_LABELS = "probabilityLabels"
-    """"""
+    """Probability labels."""
     IMAGE_ID = "imageId"
-    """"""
+    """Image ID on Supervisely instance"""
 
 
 class Annotation:
-    """
-    Annotation for a single image. :class:`Annotation<Annotation>` object is immutable.
-
-    :param img_size: Size of the image (height, width).
-    :type img_size: Tuple[int, int] or List[int, int]
-    :param labels: List of Label objects.
-    :type labels: List[Label]
-    :param img_tags: TagCollection object or list of Tag objects.
-    :type img_tags: TagCollection or List[Tag]
-    :param img_description: Image description.
-    :type img_description: str, optional
-    :param pixelwise_scores_labels: List of Label objects.
-    :type pixelwise_scores_labels: List[Label]
-    :param custom_data: Custom data.
-    :type custom_data: dict, optional
-    :param image_id: Id of the image.
-    :type image_id: int, optional
-
-    :raises: :class:`TypeError`, if image size is not tuple or list
-    :Usage example:
-
-     .. code-block:: python
-
-        # Simple Annotation example
-        import supervisely as sly
-
-        height, width = 500, 700
-        ann = sly.Annotation((height, width))
-
-        # More complex Annotation example
-        # TagCollection
-        meta_lemon = sly.TagMeta('lemon_tag', sly.TagValueType.ANY_STRING)
-        tag_lemon = sly.Tag(meta_lemon, 'Hello')
-        tags = sly.TagCollection([tag_lemon])
-        # or tags = [tag_lemon]
-
-        # ObjClass
-        class_lemon = sly.ObjClass('lemon', sly.Rectangle)
-
-        # Label
-        label_lemon = sly.Label(sly.Rectangle(100, 100, 200, 200), class_lemon)
-
-        # Annotation
-        height, width = 300, 400
-        ann = sly.Annotation((height, width), [label_lemon], tags, 'example annotaion')
-        # 'points': {'exterior': [[100, 100], [200, 200]], 'interior': []}
-
-        # If Label geometry is out of image size bounds, it will be cropped
-        label_lemon = sly.Label(sly.Rectangle(100, 100, 700, 900), class_lemon)
-        height, width = 300, 400
-
-        ann = sly.Annotation((height, width), [label_lemon], tags, 'example annotaion')
-        # 'points': {'exterior': [[100, 100], [399, 299]], 'interior': []}
-    """
+    """Annotation for a single image."""
 
     def __init__(
         self,
@@ -137,6 +81,59 @@ class Annotation:
         custom_data: Optional[Dict] = None,
         image_id: Optional[int] = None,
     ):
+        """
+        :param img_size: Size of the image (height, width).
+        :type img_size: Tuple[int, int] or List[int, int]
+        :param labels: List of :class:`~supervisely.annotation.label.Label` objects.
+        :type labels: List[:class:`~supervisely.annotation.label.Label`]
+        :param img_tags: :class:`~supervisely.annotation.tag_collection.TagCollection` object or list of
+            :class:`~supervisely.annotation.tag.Tag` objects.
+        :type img_tags: :class:`~supervisely.annotation.tag_collection.TagCollection` or List[:class:`~supervisely.annotation.tag.Tag`]
+        :param img_description: Image description.
+        :type img_description: str, optional
+        :param pixelwise_scores_labels: List of :class:`~supervisely.annotation.label.Label` objects with pixel-wise scores.
+        :type pixelwise_scores_labels: List[:class:`~supervisely.annotation.label.Label`]
+        :param custom_data: Custom data.
+        :type custom_data: dict, optional
+        :param image_id: Id of the image.
+        :type image_id: int, optional
+        :raises TypeError: if image size is not tuple or list
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                # Simple Annotation example
+                import supervisely as sly
+
+                height, width = 500, 700
+                ann = sly.Annotation((height, width))
+
+                # More complex Annotation example
+                # TagCollection
+                meta_lemon = sly.TagMeta('lemon_tag', sly.TagValueType.ANY_STRING)
+                tag_lemon = sly.Tag(meta_lemon, 'Hello')
+                tags = sly.TagCollection([tag_lemon])
+                # or tags = [tag_lemon]
+
+                # ObjClass
+                class_lemon = sly.ObjClass('lemon', sly.Rectangle)
+
+                # Label
+                label_lemon = sly.Label(sly.Rectangle(100, 100, 200, 200), class_lemon)
+
+                # Annotation
+                height, width = 300, 400
+                ann = sly.Annotation((height, width), [label_lemon], tags, 'example annotaion')
+                # 'points': {'exterior': [[100, 100], [200, 200]], 'interior': []}
+
+                # If Label geometry is out of image size bounds, it will be cropped
+                label_lemon = sly.Label(sly.Rectangle(100, 100, 700, 900), class_lemon)
+                height, width = 300, 400
+
+                ann = sly.Annotation((height, width), [label_lemon], tags, 'example annotaion')
+                # 'points': {'exterior': [[100, 100], [399, 299]], 'interior': []}
+        """
         if not isinstance(img_size, (tuple, list)):
             raise TypeError(
                 '{!r} has to be a tuple or a list. Given type "{}".'.format(
@@ -173,35 +170,18 @@ class Annotation:
         """
         Size of the image (height, width).
 
-        :return: Image size
-        :rtype: :class:`Tuple[int, int]`
-        :Usage example:
-
-         .. code-block:: python
-
-            height, width = 300, 400
-            ann = sly.Annotation((height, width))
-            print(ann.img_size)
-            # Output: (300, 400)
+        :returns: Image size (height, width).
+        :rtype: Tuple[int, int]
         """
         return deepcopy(self._img_size)
 
     @property
-    def image_id(self) -> int:
+    def image_id(self) -> Optional[int]:
         """
         Id of the image.
 
-        :return: Image id
-        :rtype: :class:`int`
-        :Usage example:
-
-         .. code-block:: python
-
-            height, width = 300, 400
-            image_id = 12345
-            ann = sly.Annotation((height, width), image_id=image_id)
-            print(ann.image_id)
-            # Output: 12345
+        :returns: Image ID (as stored on Supervisely instance), or None if annotation was created locally and not yet uploaded to Supervisely instance.
+        :rtype: Optional[int]
         """
         return self._image_id
 
@@ -210,42 +190,20 @@ class Annotation:
         """
         Labels on annotation.
 
-        :return: Copy of list with image labels
-        :rtype: :class:`List[Label]<supervisely.annotation.label.Label>`
-        :Usage example:
-
-         .. code-block:: python
-
-            # Create Labels and add them to Annotation
-            class_kiwi = sly.ObjClass('kiwi', sly.Rectangle)
-            label_kiwi = sly.Label(sly.Rectangle(0, 0, 300, 300), class_kiwi)
-
-            class_lemon = sly.ObjClass('lemon', sly.Rectangle)
-            label_lemon = sly.Label(sly.Rectangle(0, 0, 500, 600), class_lemon)
-
-            labels_arr = [label_kiwi, label_lemon]
-
-            height, width = 300, 400
-            ann = sly.Annotation((height, width), labels_arr)
-
-            # Note that ann.labels return a COPY of list with image labels
-            class_potato = sly.ObjClass('potato', sly.Rectangle)
-            label_potato = sly.Label(sly.Rectangle(0, 0, 200, 400), class_potato)
-
-            ann.labels.append(label_potato)
-            print(len(ann.labels))
-            # Output: 2
-
-            ann_arr = ann.labels
-            ann_arr.append(label_potato)
-            print(len(ann_arr))
-            # Output: 3
+        :returns: Copy of the list with image labels. Modifying the returned list does not affect this
+            annotation instance.
+        :rtype: List[:class:`~supervisely.annotation.label.Label`]
         """
         return self._labels.copy()
 
     @property
     def pixelwise_scores_labels(self):
-        """pixelwise_scores_labels"""
+        """
+        Labels with pixel-wise scores stored alongside the annotation.
+
+        :returns: Copy of the list with pixel-wise score labels.
+        :rtype: List[:class:`~supervisely.annotation.label.Label`]
+        """
         return self._pixelwise_scores_labels.copy()
 
     @property
@@ -253,15 +211,8 @@ class Annotation:
         """
         Image description.
 
-        :return: Image description
-        :rtype: :class:`str`
-        :Usage example:
-
-         .. code-block:: python
-
-            ann = sly.Annotation((500, 700), img_description='Annotation for this image is empty')
-            print(ann.img_description)
-            # Output: Annotation for this image is empty
+        :returns: Image description.
+        :rtype: str
         """
         return self._img_description
 
@@ -270,26 +221,8 @@ class Annotation:
         """
         Image tags.
 
-        :return: TagCollection object
-        :rtype: :class:`TagCollection<supervisely.annotation.tag_collection.TagCollection>`
-        :Usage example:
-
-         .. code-block:: python
-
-            # Create TagCollection
-            meta_weather = sly.TagMeta('weather', sly.TagValueType.ANY_STRING)
-            tag_weather = sly.Tag(meta_weather, 'cloudy')
-            tags = sly.TagCollection([tag_weather])
-
-            ann = sly.Annotation((300, 400), img_tags=tags)
-            print(ann.img_tags)
-            # Output:
-            #   Tags:
-            #   +----------------+------------+--------+
-            #   |      Name      | Value type | Value  |
-            #   +----------------+------------+--------+
-            #   |     weather    | any_string | cloudy |
-            #   +----------------+------------+--------+
+        :returns: Image tags.
+        :rtype: :class:`~supervisely.annotation.tag_collection.TagCollection`
         """
         return self._img_tags
 
@@ -297,28 +230,29 @@ class Annotation:
         """
         Convert the Annotation to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
-        :return: Json format as a dict
-        :rtype: :class:`dict`
-        :Usage example:
+        :returns: Json format as a dict
+        :rtype: dict
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            ann = sly.Annotation((500, 700))
-            ann_json = ann.to_json()
+                import supervisely as sly
 
-            print(ann_json)
-            # Output: {
-            #     "description": "",
-            #     "size": {
-            #         "height": 500,
-            #         "width": 700
-            #     },
-            #     "tags": [],
-            #     "objects": [],
-            #     "customBigData": {}
-            # }
+                ann = sly.Annotation((500, 700))
+                ann_json = ann.to_json()
+
+                print(ann_json)
+                # Output: {
+                #     "description": "",
+                #     "size": {
+                #         "height": 500,
+                #         "width": 700
+                #     },
+                #     "tags": [],
+                #     "objects": [],
+                #     "customBigData": {}
+                # }
         """
         height = self.img_size[0]
         if height is not None:
@@ -367,29 +301,27 @@ class Annotation:
 
         :param data: Annotation in json format as a dict.
         :type data: dict
-        :param project_meta: Input :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`.
-        :type project_meta: ProjectMeta
-        :return: Annotation object
-        :rtype: :class:`Annotation<Annotation>`
-        :raises: :class:`Exception`
-        :Usage example:
+        :param project_meta: Input :class:`~supervisely.project.project_meta.ProjectMeta`.
+        :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
+        :returns: Annotation object
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
+        :raises Exception: if failed to deserialize one of the label from JSON format annotation
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            meta = sly.ProjectMeta()
+                import supervisely as sly
 
-            ann_json = {
-                 "size": {
-                     "height": 500,
-                     "width": 700
-                 },
-                 "tags": [],
-                 "objects": []
-            }
+                meta = sly.ProjectMeta()
 
-            ann = sly.Annotation.from_json(ann_json, meta)
+                ann_json = {
+                    "size": {"height": 500, "width": 700},
+                    "tags": [],
+                    "objects": []
+                }
+
+                ann = sly.Annotation.from_json(ann_json, meta)
         """
         img_size_dict = data[AnnotationJsonFields.IMG_SIZE]
         img_height = img_size_dict[AnnotationJsonFields.IMG_SIZE_HEIGHT]
@@ -446,33 +378,40 @@ class Annotation:
 
         :param path: Path to the json file.
         :type path: str
-        :param project_meta: Input ProjectMeta object.
-        :type project_meta: ProjectMeta
-        :return: Annotation object
-        :rtype: :class:`Annotation<Annotation>`
-        :Usage example:
+        :param project_meta: Input :class:`~supervisely.project.project_meta.ProjectMeta`.
+        :type project_meta: :class:`~supervisely.project.project_meta.ProjectMeta`
+        :returns: Annotation object
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                import os
+                from dotenv import load_dotenv
 
-            team_name = 'Vehicle Detection'
-            workspace_name = 'Cities'
-            project_name =  'London'
+                import supervisely as sly
 
-            team = api.team.get_info_by_name(team_name)
-            workspace = api.workspace.get_info_by_name(team.id, workspace_name)
-            project = api.project.get_info_by_name(workspace.id, project_name)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            meta = api.project.get_meta(project.id)
+                api = sly.Api.from_env()
 
-            # Load json file
-            path = "/home/admin/work/docs/my_dataset/ann/annotation.json"
-            ann = sly.Annotation.load_json_file(path, meta)
+                team_name = 'Vehicle Detection'
+                workspace_name = 'Cities'
+                project_name =  'London'
+
+                team = api.team.get_info_by_name(team_name)
+                workspace = api.workspace.get_info_by_name(team.id, workspace_name)
+                project = api.project.get_info_by_name(workspace.id, project_name)
+
+                meta = api.project.get_meta(project.id)
+
+                # Load json file
+                path = "/home/admin/work/docs/my_dataset/ann/annotation.json"
+                ann = sly.Annotation.load_json_file(path, meta)
         """
         with open(path) as fin:
             data = json.load(fin)
@@ -493,43 +432,43 @@ class Annotation:
 
         :param img_size: Size of the image (height, width).
         :type img_size: Tuple[int, int] or List[int, int]
-        :param labels: List of Label objects.
-        :type labels: List[Label]
+        :param labels: List of labels.
+        :type labels: List[:class:`~supervisely.annotation.label.Label`]
         :param img_tags: TagCollection object or list of Tag objects.
-        :type img_tags: TagCollection or List[Tag]
+        :type img_tags: :class:`~supervisely.annotation.tag_collection.TagCollection` or List[:class:`~supervisely.annotation.tag.Tag`]
         :param img_description: Image description.
         :type img_description: str, optional
-        :param pixelwise_scores_labels: List of Label objects.
-        :type pixelwise_scores_labels: List[Label]
+        :param pixelwise_scores_labels: List of labels with pixel-wise scores.
+        :type pixelwise_scores_labels: List[:class:`~supervisely.annotation.label.Label`]
         :param custom_data: Custom data.
         :type custom_data: dict, optional
         :param image_id: Id of the image.
         :type image_id: int, optional
+        :returns: New instance of Annotation object
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
-        :return: New instance of Annotation
-        :rtype: :class:`Annotation<Annotation>`
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            ann = sly.Annotation((300, 400))
+                ann = sly.Annotation((300, 400))
 
-            # Let's clone our Annotation with Label
-            class_kiwi = sly.ObjClass('kiwi', sly.Rectangle)
-            label_kiwi = sly.Label(sly.Rectangle(0, 0, 300, 300), class_kiwi)
+                # Let's clone our Annotation with Label
+                class_kiwi = sly.ObjClass('kiwi', sly.Rectangle)
+                label_kiwi = sly.Label(sly.Rectangle(0, 0, 300, 300), class_kiwi)
 
-            # Assign cloned annotation to a new variable
-            ann_clone_1 = ann.clone(labels=[label_kiwi])
+                # Assign cloned annotation to a new variable
+                ann_clone_1 = ann.clone(labels=[label_kiwi])
 
-            # Let's clone our Annotation with Label, TagCollection and description
-            meta_lemon = sly.TagMeta('lemon', sly.TagValueType.ANY_STRING)
-            tag_lemon = sly.Tag(meta_lemon, 'juicy')
-            tags = sly.TagCollection([tag_lemon])
+                # Let's clone our Annotation with Label, TagCollection and description
+                meta_lemon = sly.TagMeta('lemon', sly.TagValueType.ANY_STRING)
+                tag_lemon = sly.Tag(meta_lemon, 'juicy')
+                tags = sly.TagCollection([tag_lemon])
 
-            # Assign cloned annotation to a new variable
-            ann_clone_2 = ann.clone(labels=[label_kiwi], img_tags=tags, img_description='Juicy')
+                # Assign cloned annotation to a new variable
+                ann_clone_2 = ann.clone(labels=[label_kiwi], img_tags=tags, img_description='Juicy')
 
         """
         return Annotation(
@@ -544,12 +483,15 @@ class Annotation:
             image_id=take_with_default(image_id, self.image_id),
         )
 
-    def _add_labels_impl(self, dest: List, labels: List[Label]):
+    def _add_labels_impl(self, dest: List[Label], labels: List[Label]):
         """
         The function _add_labels_impl extend list of the labels of the current Annotation object
-        :param dest: destination list of the Label class objects
-        :param labels: list of the Label class objects to be added to the destination list
-        :return: list of the Label class objects
+        :param dest: Destination list of labels
+        :type dest: List[:class:`~supervisely.annotation.label.Label`]
+        :param labels: List of labels to be added to the destination list
+        :type labels: List[:class:`~supervisely.annotation.label.Label`]
+        :returns: None
+        :rtype: None
         """
         for label in labels:
             if self.img_size.count(None) == 0 and not isinstance(label.geometry, OrientedBBox):
@@ -575,53 +517,55 @@ class Annotation:
         Clones Annotation and adds a new Label.
 
         :param label: Label to be added.
-        :type label: Label
-        :return: New instance of Annotation
-        :rtype: :class:`Annotation<Annotation>`
+        :type label: :class:`~supervisely.annotation.label.Label`
+        :returns: New instance of :class:`~supervisely.annotation.annotation.Annotation`
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
+
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            ann = sly.Annotation((300, 600))
+                ann = sly.Annotation((300, 600))
 
-            # Create Label
-            class_kiwi = sly.ObjClass('kiwi', sly.Rectangle)
-            label_kiwi = sly.Label(sly.Rectangle(0, 0, 300, 300), class_kiwi)
+                # Create Label
+                class_kiwi = sly.ObjClass('kiwi', sly.Rectangle)
+                label_kiwi = sly.Label(sly.Rectangle(0, 0, 300, 300), class_kiwi)
 
-            # Add label to Annotation
-            # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
-            new_ann = ann.add_label(label_kiwi)
+                # Add label to Annotation
+                # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
+                new_ann = ann.add_label(label_kiwi)
         """
         return self.add_labels([label])
 
     def add_labels(self, labels: List[Label]) -> Annotation:
         """
-        Clones Annotation and adds a new Labels.
+        Clones Annotation and adds multiple new Labels.
 
-        :param labels: List of Label objects to be added.
-        :type labels: List[Label]
-        :return: New instance of Annotation
-        :rtype: :class:`Annotation<Annotation>`
+        :param labels: List of labels to be added.
+        :type labels: List[:class:`~supervisely.annotation.label.Label`]
+        :returns: New instance of Annotation object
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
+
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            ann = sly.Annotation((300, 600))
+                ann = sly.Annotation((300, 600))
 
-            # Create Labels
-            class_kiwi = sly.ObjClass('kiwi', sly.Rectangle)
-            label_kiwi = sly.Label(sly.Rectangle(0, 0, 300, 300), class_kiwi)
+                # Create Labels
+                class_kiwi = sly.ObjClass('kiwi', sly.Rectangle)
+                label_kiwi = sly.Label(sly.Rectangle(0, 0, 300, 300), class_kiwi)
 
-            class_lemon = sly.ObjClass('lemon', sly.Rectangle)
-            label_lemon = sly.Label(sly.Rectangle(0, 0, 500, 600), class_lemon)
+                class_lemon = sly.ObjClass('lemon', sly.Rectangle)
+                label_lemon = sly.Label(sly.Rectangle(0, 0, 500, 600), class_lemon)
 
-            # Add labels to Annotation
-            # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
-            new_ann = ann.add_labels([label_kiwi, label_lemon])
+                # Add labels to Annotation
+                # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
+                new_ann = ann.add_labels([label_kiwi, label_lemon])
         """
         new_labels = []
         self._add_labels_impl(new_labels, labels)
@@ -632,38 +576,39 @@ class Annotation:
         Clones Annotation with removed Label.
 
         :param label: Label to be deleted.
-        :type label: Label
-        :raises: :class:`KeyError`, if there is no deleted Label in current Annotation object
-        :return: New instance of Annotation
-        :rtype: :class:`Annotation<Annotation>`
+        :type label: :class:`~supervisely.annotation.label.Label`
+        :raises KeyError: if there is no deleted label in current Annotation object
+        :returns: New instance of Annotation object
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
+
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            ann = sly.Annotation((300, 600))
+                ann = sly.Annotation((300, 600))
 
-            # Create Labels
-            class_kiwi = sly.ObjClass('kiwi', sly.Rectangle)
-            label_kiwi = sly.Label(sly.Rectangle(0, 0, 300, 300), class_kiwi)
+                # Create Labels
+                class_kiwi = sly.ObjClass('kiwi', sly.Rectangle)
+                label_kiwi = sly.Label(sly.Rectangle(0, 0, 300, 300), class_kiwi)
 
-            class_lemon = sly.ObjClass('lemon', sly.Rectangle)
-            label_lemon = sly.Label(sly.Rectangle(0, 0, 500, 600), class_lemon)
+                class_lemon = sly.ObjClass('lemon', sly.Rectangle)
+                label_lemon = sly.Label(sly.Rectangle(0, 0, 500, 600), class_lemon)
 
-            # Add labels to Annotation
-            ann = ann.add_labels([label_kiwi, label_lemon])
-            print(len(ann.labels))
-            # Output: 2
+                # Add labels to Annotation
+                ann = ann.add_labels([label_kiwi, label_lemon])
+                print(len(ann.labels))
+                # Output: 2
 
-            # Run through all labels in Annotation objects
-            for label in ann.labels:
-                if label.obj_class.name == 'lemon': # label obj_class name we want to delete
-                    # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
-                    new_ann = ann.delete_label(label)
+                # Run through all labels in Annotation objects
+                for label in ann.labels:
+                    if label.obj_class.name == 'lemon': # label obj_class name we want to delete
+                        # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
+                        new_ann = ann.delete_label(label)
 
-            print(len(new_ann.labels))
-            # Output: 1
+                print(len(new_ann.labels))
+                # Output: 1
         """
         retained_labels = [_label for _label in self._labels if _label != label]
         if len(retained_labels) == len(self._labels):
@@ -675,8 +620,11 @@ class Annotation:
     def add_pixelwise_score_label(self, label: Label) -> Annotation:
         """
         Add label to the pixelwise_scores_labels and return the copy of the current  Annotation object.
-        :param label: Label class object to be added
-        :return: Annotation class object with the new list of the pixelwise_scores_labels
+
+        :param label: Label to be added
+        :type label: :class:`~supervisely.annotation.label.Label`
+        :returns: Annotation object with the new list of the pixelwise_scores_labels
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
         """
         return self.add_pixelwise_score_labels([label])
 
@@ -684,8 +632,11 @@ class Annotation:
         """
         Add_pixelwise_score_labels extend list of the labels of the pixelwise_scores_labels and return
         the copy of the current  Annotation object.
-        :param labels: list of the Label class objects to be added
-        :return: Annotation class object with the new list of the pixelwise_scores_labels
+
+        :param labels: List of labels to be added
+        :type labels: List[:class:`~supervisely.annotation.label.Label`]
+        :returns: Annotation object with the new list of the pixelwise_scores_labels
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
         """
         new_labels = []
         self._add_labels_impl(new_labels, labels)
@@ -695,26 +646,26 @@ class Annotation:
         """
         Clones Annotation and adds a new Tag.
 
-        :param tag: Tag object to be added.
-        :type tag: Tag
-        :return: New instance of Annotation
-        :rtype: :class:`Annotation<Annotation>`
+        :param tag: Tag to be added.
+        :type tag: :class:`~supervisely.annotation.tag.Tag`
+        :returns: New instance of Annotation object
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            ann = sly.Annotation((300, 600))
+                ann = sly.Annotation((300, 600))
 
-            # Create Tag
-            meta_message = sly.TagMeta('Message', sly.TagValueType.ANY_STRING)
-            tag_message = sly.Tag(meta_message, 'Hello')
+                # Create Tag
+                meta_message = sly.TagMeta('Message', sly.TagValueType.ANY_STRING)
+                tag_message = sly.Tag(meta_message, 'Hello')
 
-            # Add Tag to Annotation
-            # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
-            new_ann = ann.add_tag(tag_message)
+                # Add Tag to Annotation
+                # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
+                new_ann = ann.add_tag(tag_message)
         """
         return self.clone(img_tags=self._img_tags.add(tag))
 
@@ -723,28 +674,28 @@ class Annotation:
         Clones Annotation and adds a new list of Tags.
 
         :param tags: List of Tags to be added.
-        :type tags: List[Tag]
-        :return: New instance of Annotation
-        :rtype: :class:`Annotation<Annotation>`
+        :type tags: List[:class:`~supervisely.annotation.tag.Tag`]
+        :returns: New instance of Annotation object
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            ann = sly.Annotation((300, 600))
+                ann = sly.Annotation((300, 600))
 
-            # Create Tags
-            meta_message = sly.TagMeta('Message', sly.TagValueType.ANY_STRING)
-            meta_alert = sly.TagMeta('Alert', sly.TagValueType.NONE)
+                # Create Tags
+                meta_message = sly.TagMeta('Message', sly.TagValueType.ANY_STRING)
+                meta_alert = sly.TagMeta('Alert', sly.TagValueType.NONE)
 
-            tag_message = sly.Tag(meta_message, 'Hello')
-            tag_alert = sly.Tag(meta_alert)
+                tag_message = sly.Tag(meta_message, 'Hello')
+                tag_alert = sly.Tag(meta_alert)
 
-            # Add Tags to Annotation
-            # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
-            new_ann = ann.add_tags([tag_message, tag_alert])
+                # Add Tags to Annotation
+                # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
+                new_ann = ann.add_tags([tag_message, tag_alert])
         """
         return self.clone(img_tags=self._img_tags.add_items(tags))
 
@@ -754,30 +705,30 @@ class Annotation:
 
         :param tag_names: List of Tags names to be deleted.
         :type tag_names: List[str]
-        :return: New instance of Annotation
-        :rtype: :class:`Annotation<Annotation>`
+        :returns: New instance of Annotation object
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            ann = sly.Annotation((300, 600))
+                ann = sly.Annotation((300, 600))
 
-            # Create Tags
-            meta_message = sly.TagMeta('Message', sly.TagValueType.ANY_STRING)
-            meta_alert = sly.TagMeta('Alert', sly.TagValueType.NONE)
+                # Create Tags
+                meta_message = sly.TagMeta('Message', sly.TagValueType.ANY_STRING)
+                meta_alert = sly.TagMeta('Alert', sly.TagValueType.NONE)
 
-            tag_message = sly.Tag(meta_message, 'Hello')
-            tag_alert = sly.Tag(meta_alert)
+                tag_message = sly.Tag(meta_message, 'Hello')
+                tag_alert = sly.Tag(meta_alert)
 
-            # Add Tags to Annotation
-            tags_ann = ann.add_tags([tag_message, tag_alert])
+                # Add Tags to Annotation
+                tags_ann = ann.add_tags([tag_message, tag_alert])
 
-            # Delete Tags from Annotation
-            # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
-            new_ann = tags_ann.delete_tags_by_name(['Message', 'Alert'])
+                # Delete Tags from Annotation
+                # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
+                new_ann = tags_ann.delete_tags_by_name(['Message', 'Alert'])
         """
         retained_tags = [tag for tag in self._img_tags.items() if tag.meta.name not in tag_names]
         return self.clone(img_tags=TagCollection(items=retained_tags))
@@ -788,26 +739,26 @@ class Annotation:
 
         :param tag_name: Tag name to be delete.
         :type tag_name: str
-        :return: New instance of Annotation
-        :rtype: :class:`Annotation<Annotation>`
+        :returns: New instance of Annotation object
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            ann = sly.Annotation((300, 600))
+                ann = sly.Annotation((300, 600))
 
-            # Create Tag
-            meta_alert = sly.TagMeta('Alert', sly.TagValueType.ANY_STRING)
-            tag_alert = sly.Tag(meta_alert, 'Hello')
+                # Create Tag
+                meta_alert = sly.TagMeta('Alert', sly.TagValueType.ANY_STRING)
+                tag_alert = sly.Tag(meta_alert, 'Hello')
 
-            tag_ann = ann.add_tag(tag_alert)
+                tag_ann = ann.add_tag(tag_alert)
 
-            # Delete Tag from Annotation
-            # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
-            new_ann = tag_ann.delete_tag_by_name('Alert')
+                # Delete Tag from Annotation
+                # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
+                new_ann = tag_ann.delete_tag_by_name('Alert')
         """
         return self.delete_tags_by_name([tag_name])
 
@@ -816,31 +767,31 @@ class Annotation:
         Clones Annotation with removed Tags.
 
         :param tags: List of Tags to be deleted.
-        :type tags: List[Tag]
-        :return: New instance of Annotation
-        :rtype: :class:`Annotation<Annotation>`
+        :type tags: List[:class:`~supervisely.annotation.tag.Tag`]
+        :returns: New instance of Annotation object
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            ann = sly.Annotation((300, 600))
+                ann = sly.Annotation((300, 600))
 
-            meta_message = sly.TagMeta('Message', sly.TagValueType.ANY_STRING)
-            meta_alert = sly.TagMeta('Alert', sly.TagValueType.NONE)
+                meta_message = sly.TagMeta('Message', sly.TagValueType.ANY_STRING)
+                meta_alert = sly.TagMeta('Alert', sly.TagValueType.NONE)
 
-            tag_message = sly.Tag(meta_message, 'Hello')
-            tag_alert = sly.Tag(meta_alert)
+                tag_message = sly.Tag(meta_message, 'Hello')
+                tag_alert = sly.Tag(meta_alert)
 
-            ann = ann.add_tags([tag_message, tag_alert])
-            print(len(ann.img_tags))
-            # Output: 2
+                ann = ann.add_tags([tag_message, tag_alert])
+                print(len(ann.img_tags))
+                # Output: 2
 
-            new_ann = ann.delete_tags([tag_message, tag_alert])
-            print(len(new_ann.img_tags))
-            # Output: 0
+                new_ann = ann.delete_tags([tag_message, tag_alert])
+                print(len(new_ann.img_tags))
+                # Output: 0
         """
         return self.delete_tags_by_name([tag.meta.name for tag in tags])
 
@@ -849,31 +800,31 @@ class Annotation:
         Clones Annotation with removed Tag.
 
         :param tag: Tag to be deleted.
-        :type tag: Tag
-        :return: New instance of Annotation
-        :rtype: :class:`Annotation<Annotation>`
+        :type tag: :class:`~supervisely.annotation.tag.Tag`
+        :returns: New instance of Annotation object
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            ann = sly.Annotation((300, 600))
+                ann = sly.Annotation((300, 600))
 
-            meta_dog = sly.TagMeta('dog', sly.TagValueType.ANY_STRING)
-            meta_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
+                meta_dog = sly.TagMeta('dog', sly.TagValueType.ANY_STRING)
+                meta_cat = sly.TagMeta('cat', sly.TagValueType.NONE)
 
-            tag_dog = sly.Tag(meta_dog, 'Woof!')
-            tag_cat = sly.Tag(meta_cat)
+                tag_dog = sly.Tag(meta_dog, 'Woof!')
+                tag_cat = sly.Tag(meta_cat)
 
-            ann = ann.add_tags([tag_dog, tag_cat])
-            print(len(ann.img_tags))
-            # Output: 2
+                ann = ann.add_tags([tag_dog, tag_cat])
+                print(len(ann.img_tags))
+                # Output: 2
 
-            new_ann = ann.delete_tag(tag_dog)
-            print(len(new_ann.img_tags))
-            # Output: 1
+                new_ann = ann.delete_tag(tag_dog)
+                print(len(new_ann.img_tags))
+                # Output: 1
         """
         return self.delete_tags_by_name([tag.meta.name])
 
@@ -885,7 +836,8 @@ class Annotation:
         Annotation object.
         :param label_transform_fn: function for transform labels
         :param new_size: new image size
-        :return: Annotation class object with new labels and image size
+        :returns: Annotation object with new labels and image size
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
         """
 
         def _do_transform_labels(src_labels, label_transform_fn):
@@ -912,53 +864,59 @@ class Annotation:
         """
         Crops Labels of the current Annotation.
 
-        :param rect: Rectangle object for crop.
-        :type rect: Rectangle
-        :return: New instance of Annotation
-        :rtype: :class:`Annotation<Annotation>`
+        :param rect: :class:`~supervisely.geometry.rectangle.Rectangle` object for crop.
+        :type rect: :class:`~supervisely.geometry.rectangle.Rectangle`
+        :returns: New instance of Annotation object
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                import supervisely as sly
 
-            # Get image and annotation from API
-            project_id = 888
-            image_id = 555555
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            meta_json = api.project.get_meta(project_id)
-            meta = sly.ProjectMeta.from_json(meta_json)
+                api = sly.Api.from_env()
 
-            ann_info = api.annotation.download(image_id)
-            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+                # Get image and annotation from API
+                project_id = 888
+                image_id = 555555
 
-            img = api.image.download_np(image_id)
-            new_img = copy.deepcopy(img)
+                meta_json = api.project.get_meta(project_id)
+                meta = sly.ProjectMeta.from_json(meta_json)
 
-            # Draw Annotation on image before crop
-            ann.draw_pretty(img, thickness=3)
+                ann_info = api.annotation.download(image_id)
+                ann = sly.Annotation.from_json(ann_info.annotation, meta)
 
-            # Crop Labels for current Annotation
-            # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
-            cropped_ann = ann.crop_labels(sly.Rectangle(0, 0, 600, 700))
+                img = api.image.download_np(image_id)
+                new_img = copy.deepcopy(img)
 
-            # Draw Annotation on image after crop
-            cropped_ann.draw_pretty(new_img, thickness=3)
+                # Draw Annotation on image before crop
+                ann.draw_pretty(img, thickness=3)
+
+                # Crop Labels for current Annotation
+                # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
+                cropped_ann = ann.crop_labels(sly.Rectangle(0, 0, 600, 700))
+
+                # Draw Annotation on image after crop
+                cropped_ann.draw_pretty(new_img, thickness=3)
 
         .. list-table::
 
-            * - .. figure:: https://i.imgur.com/6huO1se.jpg
+            * - .. figure:: https://github.com/user-attachments/assets/0e0be9e6-3b73-424d-a974-6cd1eee2aa4c
 
-                   Before
+                    Before
 
-              - .. figure:: https://i.imgur.com/w2wR4h8.jpg
+              - .. figure:: https://github.com/user-attachments/assets/e6374fdd-71e4-40bc-8589-1690794bfc47
 
-                   After
+                    After
         """
 
         def _crop_label(label):
@@ -970,54 +928,60 @@ class Annotation:
         """
         Crops current Annotation and with image size (height, width) changes.
 
-        :param rect: Rectangle object for crop.
-        :type rect: Rectangle
-        :return: New instance of Annotation
-        :rtype: :class:`Annotation<Annotation>`
+        :param rect: :class:`~supervisely.geometry.rectangle.Rectangle` object for crop.
+        :type rect: :class:`~supervisely.geometry.rectangle.Rectangle`
+        :returns: New instance of Annotation object
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                import supervisely as sly
 
-            # Get image and annotation from API
-            project_id = 888
-            image_id = 555555
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            meta_json = api.project.get_meta(project_id)
-            meta = sly.ProjectMeta.from_json(meta_json)
+                api = sly.Api.from_env()
 
-            ann_info = api.annotation.download(image_id)
-            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+                # Get image and annotation from API
+                project_id = 888
+                image_id = 555555
 
-            img = api.image.download_np(image_id)
-            new_img = copy.deepcopy(img)
-            new_img = sly.imaging.image.crop(new_img, sly.Rectangle(200, 300, 600, 700))
+                meta_json = api.project.get_meta(project_id)
+                meta = sly.ProjectMeta.from_json(meta_json)
 
-            # Draw Annotation on image before relative crop
-            ann.draw_pretty(img, thickness=3)
+                ann_info = api.annotation.download(image_id)
+                ann = sly.Annotation.from_json(ann_info.annotation, meta)
 
-            # Relative Crop Labels for current Annotation
-            # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
-            r_cropped_ann = ann.relative_crop(sly.Rectangle(200, 300, 600, 700))
+                img = api.image.download_np(image_id)
+                new_img = copy.deepcopy(img)
+                new_img = sly.imaging.image.crop(new_img, sly.Rectangle(200, 300, 600, 700))
 
-            # Draw Annotation on image after relative crop
-            r_cropped_ann.draw_pretty(new_img, thickness=3)
+                # Draw Annotation on image before relative crop
+                ann.draw_pretty(img, thickness=3)
+
+                # Relative Crop Labels for current Annotation
+                # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
+                r_cropped_ann = ann.relative_crop(sly.Rectangle(200, 300, 600, 700))
+
+                # Draw Annotation on image after relative crop
+                r_cropped_ann.draw_pretty(new_img, thickness=3)
 
         .. list-table::
 
-            * - .. figure:: https://i.imgur.com/23UuNdJ.png
+            * - .. figure:: https://github.com/user-attachments/assets/2fb8d66f-4c4d-413e-af9c-bbdfbc0a84db
 
-                   Before
+                    Before
 
-              - .. figure:: https://i.imgur.com/8Z7xVxB.jpg
+              - .. figure:: https://github.com/user-attachments/assets/6f55f3aa-f71d-4a56-85b5-da49a39e6269
 
-                   After
+                    After
         """
 
         def _crop_label(label):
@@ -1029,56 +993,62 @@ class Annotation:
         """
         Rotates current Annotation.
 
-        :param rotator: ImageRotator object.
-        :type rotator: ImageRotator
-        :return: New instance of Annotation
-        :rtype: :class:`Annotation<Annotation>`
+        :param rotator: :class:`~supervisely.geometry.image_rotator.ImageRotator` object.
+        :type rotator: :class:`~supervisely.geometry.image_rotator.ImageRotator`
+        :returns: New instance of :class:`~supervisely.annotation.annotation.Annotation`
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
-            from supervisely.geometry.image_rotator import ImageRotator
+                import os
+                from dotenv import load_dotenv
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                import supervisely as sly
+                from supervisely.geometry.image_rotator import ImageRotator
 
-            # Get image and annotation from API
-            project_id = 888
-            image_id = 555555
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            meta_json = api.project.get_meta(project_id)
-            meta = sly.ProjectMeta.from_json(meta_json)
+                api = sly.Api.from_env()
 
-            ann_info = api.annotation.download(image_id)
-            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+                # Get image and annotation from API
+                project_id = 888
+                image_id = 555555
 
-            img = api.image.download_np(image_id)
-            new_img = copy.deepcopy(img)
-            new_img = sly.imaging.image.rotate(new_img, 10)
+                meta_json = api.project.get_meta(project_id)
+                meta = sly.ProjectMeta.from_json(meta_json)
 
-            # Draw Annotation on image before rotation
-            ann.draw_pretty(img, thickness=3)
+                ann_info = api.annotation.download(image_id)
+                ann = sly.Annotation.from_json(ann_info.annotation, meta)
 
-            # Rotate Labels for current Annotation
-            # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
-            rotator = ImageRotator(annotation.img_size, 10)
-            rotated_ann = ann.rotate(rotator)
+                img = api.image.download_np(image_id)
+                new_img = copy.deepcopy(img)
+                new_img = sly.imaging.image.rotate(new_img, 10)
 
-            # Draw Annotation on image after rotation
-            rotated_ann.draw_pretty(new_img, thickness=3)
+                # Draw Annotation on image before rotation
+                ann.draw_pretty(img, thickness=3)
+
+                # Rotate Labels for current Annotation
+                # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
+                rotator = ImageRotator(annotation.img_size, 10)
+                rotated_ann = ann.rotate(rotator)
+
+                # Draw Annotation on image after rotation
+                rotated_ann.draw_pretty(new_img, thickness=3)
 
         .. list-table::
 
-            * - .. figure:: https://i.imgur.com/6huO1se.jpg
+            * - .. figure:: https://github.com/user-attachments/assets/0e0be9e6-3b73-424d-a974-6cd1eee2aa4c
 
-                   Before
+                    Before
 
-              - .. figure:: https://i.imgur.com/ZQ47cXN.jpg
+              - .. figure:: https://github.com/user-attachments/assets/1f98cabc-1cc2-47b6-9afd-0e57fce78c7c
 
-                   After
+                    After
         """
 
         def _rotate_label(label):
@@ -1094,53 +1064,58 @@ class Annotation:
         :type out_size: Tuple[int, int]
         :param skip_empty_masks: Skip the raising of the error when you have got an empty label mask after a resizing procedure.
         :type skip_empty_masks: bool
-
-        :return: New instance of Annotation
-        :rtype: :class: Annotation
+        :returns: New instance of Annotation object
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                import supervisely as sly
 
-            # Get image and annotation from API
-            project_id = 888
-            image_id = 555555
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            meta_json = api.project.get_meta(project_id)
-            meta = sly.ProjectMeta.from_json(meta_json)
+                api = sly.Api.from_env()
 
-            ann_info = api.annotation.download(image_id)
-            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+                # Get image and annotation from API
+                project_id = 888
+                image_id = 555555
 
-            img = api.image.download_np(image_id)
-            new_img = copy.deepcopy(img)
-            new_img = sly.imaging.image.resize(new_img, (100, 200))
+                meta_json = api.project.get_meta(project_id)
+                meta = sly.ProjectMeta.from_json(meta_json)
 
-            # Draw Annotation on image before resize
-            ann.draw_pretty(img, thickness=3)
+                ann_info = api.annotation.download(image_id)
+                ann = sly.Annotation.from_json(ann_info.annotation, meta)
 
-            # Resize
-            # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
-            resized_ann = ann.resize((100, 200))
+                img = api.image.download_np(image_id)
+                new_img = copy.deepcopy(img)
+                new_img = sly.imaging.image.resize(new_img, (100, 200))
 
-            # Draw Annotation on image after resize
-            resized_ann.draw_pretty(new_img, thickness=3)
+                # Draw Annotation on image before resize
+                ann.draw_pretty(img, thickness=3)
+
+                # Resize
+                # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
+                resized_ann = ann.resize((100, 200))
+
+                # Draw Annotation on image after resize
+                resized_ann.draw_pretty(new_img, thickness=3)
 
         .. list-table::
 
-            * - .. figure:: https://i.imgur.com/6huO1se.jpg
+            * - .. figure:: https://github.com/user-attachments/assets/0e0be9e6-3b73-424d-a974-6cd1eee2aa4c
 
-                   Before
+                    Before
 
-              - .. figure:: https://i.imgur.com/RrvNMoV.jpg
+              - .. figure:: https://github.com/user-attachments/assets/6027fe7c-5b9f-4373-a9c9-71770b9230fb
 
-                   After
+                    After
         """
 
         def _resize_label(label):
@@ -1160,52 +1135,58 @@ class Annotation:
 
         :param factor: Scale size.
         :type factor: float
-        :return: New instance of Annotation
-        :rtype: :class:`Annotation<Annotation>`
+        :returns: New instance of Annotation object
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                import supervisely as sly
 
-            # Get image and annotation from API
-            project_id = 888
-            image_id = 555555
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            meta_json = api.project.get_meta(project_id)
-            meta = sly.ProjectMeta.from_json(meta_json)
+                api = sly.Api.from_env()
 
-            ann_info = api.annotation.download(image_id)
-            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+                # Get image and annotation from API
+                project_id = 888
+                image_id = 555555
 
-            img = api.image.download_np(image_id)
-            new_img = copy.deepcopy(img)
-            new_img = sly.imaging.image.scale(new_img, 0.55)
+                meta_json = api.project.get_meta(project_id)
+                meta = sly.ProjectMeta.from_json(meta_json)
 
-            # Draw Annotation on image before rescale
-            ann.draw_pretty(img, thickness=3)
+                ann_info = api.annotation.download(image_id)
+                ann = sly.Annotation.from_json(ann_info.annotation, meta)
 
-            # Scale
-            # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
-            rescaled_ann = ann.scale(0.55)
+                img = api.image.download_np(image_id)
+                new_img = copy.deepcopy(img)
+                new_img = sly.imaging.image.scale(new_img, 0.55)
 
-            # Draw Annotation on image after rescale
-            rescaled_ann.draw_pretty(new_img, thickness=3)
+                # Draw Annotation on image before rescale
+                ann.draw_pretty(img, thickness=3)
+
+                # Scale
+                # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
+                rescaled_ann = ann.scale(0.55)
+
+                # Draw Annotation on image after rescale
+                rescaled_ann.draw_pretty(new_img, thickness=3)
 
         .. list-table::
 
-            * - .. figure:: https://i.imgur.com/6huO1se.jpg
+            * - .. figure:: https://github.com/user-attachments/assets/0e0be9e6-3b73-424d-a974-6cd1eee2aa4c
 
-                   Before
+                    Before
 
-              - .. figure:: https://i.imgur.com/Ze6uqZ8.jpg
+              - .. figure:: https://github.com/user-attachments/assets/d2fbb6ca-51ba-4e18-bd21-69879f446d3c
 
-                   After
+                    After
         """
 
         def _scale_label(label):
@@ -1221,52 +1202,58 @@ class Annotation:
         """
         Flips the current Annotation horizontally.
 
-        :return: New instance of Annotation
-        :rtype: :class:`Annotation<Annotation>`
+        :returns: New instance of Annotation object
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                import supervisely as sly
 
-            # Get image and annotation from API
-            project_id = 888
-            image_id = 555555
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            meta_json = api.project.get_meta(project_id)
-            meta = sly.ProjectMeta.from_json(meta_json)
+                api = sly.Api.from_env()
 
-            ann_info = api.annotation.download(image_id)
-            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+                # Get image and annotation from API
+                project_id = 888
+                image_id = 555555
 
-            img = api.image.download_np(image_id)
-            new_img = copy.deepcopy(img)
-            new_img = sly.imaging.image.fliplr(new_img)
+                meta_json = api.project.get_meta(project_id)
+                meta = sly.ProjectMeta.from_json(meta_json)
 
-            # Draw Annotation on image before horizontal flip
-            ann.draw_pretty(img, thickness=3)
+                ann_info = api.annotation.download(image_id)
+                ann = sly.Annotation.from_json(ann_info.annotation, meta)
 
-            # Flip
-            # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
-            fliplr_ann = ann.fliplr()
+                img = api.image.download_np(image_id)
+                new_img = copy.deepcopy(img)
+                new_img = sly.imaging.image.fliplr(new_img)
 
-            # Draw Annotation on image after horizontal flip
-            fliplr_ann.draw_pretty(new_img, thickness=3)
+                # Draw Annotation on image before horizontal flip
+                ann.draw_pretty(img, thickness=3)
+
+                # Flip
+                # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
+                fliplr_ann = ann.fliplr()
+
+                # Draw Annotation on image after horizontal flip
+                fliplr_ann.draw_pretty(new_img, thickness=3)
 
         .. list-table::
 
-            * - .. figure:: https://i.imgur.com/6huO1se.jpg
+            * - .. figure:: https://github.com/user-attachments/assets/0e0be9e6-3b73-424d-a974-6cd1eee2aa4c
 
-                   Before
+                    Before
 
-              - .. figure:: https://i.imgur.com/AQSuqIN.jpg
+              - .. figure:: https://github.com/user-attachments/assets/ba2aeb24-1aeb-4dea-8a75-e3d450253a32
 
-                   After
+                    After
         """
 
         def _fliplr_label(label):
@@ -1278,52 +1265,58 @@ class Annotation:
         """
         Flips the current Annotation vertically.
 
-        :return: New instance of Annotation
-        :rtype: :class:`Annotation<Annotation>`
+        :returns: New instance of Annotation object
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                import supervisely as sly
 
-            # Get image and annotation from API
-            project_id = 888
-            image_id = 555555
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            meta_json = api.project.get_meta(project_id)
-            meta = sly.ProjectMeta.from_json(meta_json)
+                api = sly.Api.from_env()
 
-            ann_info = api.annotation.download(image_id)
-            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+                # Get image and annotation from API
+                project_id = 888
+                image_id = 555555
 
-            img = api.image.download_np(image_id)
-            new_img = copy.deepcopy(img)
-            new_img = sly.imaging.image.flipud(new_img)
+                meta_json = api.project.get_meta(project_id)
+                meta = sly.ProjectMeta.from_json(meta_json)
 
-            # Draw Annotation on image before vertical flip
-            ann.draw_pretty(img, thickness=3)
+                ann_info = api.annotation.download(image_id)
+                ann = sly.Annotation.from_json(ann_info.annotation, meta)
 
-            # Flip
-            # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
-            flipud_ann = ann.flipud()
+                img = api.image.download_np(image_id)
+                new_img = copy.deepcopy(img)
+                new_img = sly.imaging.image.flipud(new_img)
 
-            # Draw Annotation on image after vertical flip
-            flipud_ann.draw_pretty(new_img, thickness=3)
+                # Draw Annotation on image before vertical flip
+                ann.draw_pretty(img, thickness=3)
+
+                # Flip
+                # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
+                flipud_ann = ann.flipud()
+
+                # Draw Annotation on image after vertical flip
+                flipud_ann.draw_pretty(new_img, thickness=3)
 
         .. list-table::
 
-            * - .. figure:: https://i.imgur.com/6huO1se.jpg
+            * - .. figure:: https://github.com/user-attachments/assets/0e0be9e6-3b73-424d-a974-6cd1eee2aa4c
 
-                   Before
+                    Before
 
-              - .. figure:: https://i.imgur.com/NVhvPDb.jpg
+              - .. figure:: https://github.com/user-attachments/assets/8b37efcd-fb79-4321-8f36-07d6fccc7b97
 
-                   After
+                    After
         """
 
         def _flipud_label(label):
@@ -1340,7 +1333,7 @@ class Annotation:
     def _get_font(self):
         """
         The function get size of font for image with given size
-        :return: font for drawing
+        :returns: font for drawing
         """
         return sly_font.get_font(font_size=sly_font.get_readable_font_size(self.img_size))
 
@@ -1370,48 +1363,54 @@ class Annotation:
         """
         Draws current Annotation on image. Modifies mask.
 
-        :param bitmap: Image.
+        :param bitmap: RGB Image.
         :type bitmap: np.ndarray
-        :param color: Drawing color in :class:`[R, G, B]`.
+        :param color: Drawing color in ``[R, G, B]``.
         :type color: List[int, int, int], optional
         :param thickness: Thickness of the drawing figure.
         :type thickness: int, optional
         :param draw_tags: Determines whether to draw tags on bitmap or not.
         :type draw_tags: bool, optional
         :param fill_rectangles: Choose False if you want to draw only contours of bboxes. By default, True.
-        :type fill_rectangles: int, optional
+        :type fill_rectangles: bool, optional
         :param draw_class_names: Determines whether to draw class names on bitmap or not.
-        :type draw_class_names: int, optional
+        :type draw_class_names: bool, optional
 
-        :return: :class:`None<None>`
-        :rtype: :class:`NoneType<NoneType>`
+        :returns: None
+        :rtype: None
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                import supervisely as sly
 
-            # Get image and annotation from API
-            project_id = 888
-            image_id = 555555
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            meta_json = api.project.get_meta(project_id)
-            meta = sly.ProjectMeta.from_json(meta_json)
+                api = sly.Api.from_env()
 
-            ann_info = api.annotation.download(image_id)
-            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+                # Get image and annotation from API
+                project_id = 888
+                image_id = 555555
 
-            img = api.image.download_np(image_id)
+                meta_json = api.project.get_meta(project_id)
+                meta = sly.ProjectMeta.from_json(meta_json)
 
-            # Draw Annotation on image
-            ann.draw(img)
+                ann_info = api.annotation.download(image_id)
+                ann = sly.Annotation.from_json(ann_info.annotation, meta)
 
-        .. image:: https://i.imgur.com/1W1Nfl1.jpg
+                img = api.image.download_np(image_id)
+
+                # Draw Annotation on image
+                ann.draw(img)
+
+        .. image:: https://github.com/user-attachments/assets/bbb7131e-d8b4-4101-9ac5-9e5d87d49df5
             :width: 600
             :height: 500
         """
@@ -1452,43 +1451,49 @@ class Annotation:
         """
         Draws geometry contour of Annotation on image. Modifies mask.
 
-        :param bitmap: Image.
+        :param bitmap: RGB Image.
         :type bitmap: np.ndarray
-        :param color: Drawing color in :class:`[R, G, B]`.
+        :param color: Drawing color in ``[R, G, B]``.
         :type color: List[int, int, int], optional
         :param thickness: Thickness of the drawing figure.
         :type thickness: int, optional
         :param draw_tags: Determines whether to draw tags on bitmap or not.
         :type draw_tags: bool, optional
-        :return: :class:`None<None>`
-        :rtype: :class:`NoneType<NoneType>`
+        :returns: None
+        :rtype: None
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                import supervisely as sly
 
-            # Get image and annotation from API
-            project_id = 888
-            image_id = 555555
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            meta_json = api.project.get_meta(project_id)
-            meta = sly.ProjectMeta.from_json(meta_json)
+                api = sly.Api.from_env()
 
-            ann_info = api.annotation.download(image_id)
-            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+                # Get image and annotation from API
+                project_id = 888
+                image_id = 555555
 
-            img = api.image.download_np(image_id)
+                meta_json = api.project.get_meta(project_id)
+                meta = sly.ProjectMeta.from_json(meta_json)
 
-            # Draw Annotation contour on image
-            ann.draw_contour(img)
+                ann_info = api.annotation.download(image_id)
+                ann = sly.Annotation.from_json(ann_info.annotation, meta)
 
-        .. image:: https://i.imgur.com/F8KGZS4.jpg
+                img = api.image.download_np(image_id)
+
+                # Draw Annotation contour on image
+                ann.draw_contour(img)
+
+        .. image:: https://github.com/user-attachments/assets/6d895689-098b-4dc9-841e-6c2c17f16585
             :width: 600
             :height: 500
         """
@@ -1513,17 +1518,17 @@ class Annotation:
 
         :param img_path: Path to the input image.
         :type img_path: str
-        :return: Annotation
-        :rtype: :class:`Annotation<Annotation>`
+        :returns: Annotation object
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            img_path = "/home/admin/work/docs/my_dataset/img/example.jpeg"
-            ann = sly.Annotation.from_img_path(img_path)
+                img_path = "/home/admin/work/docs/my_dataset/img/example.jpeg"
+                ann = sly.Annotation.from_img_path(img_path)
         """
         img = sly_image.read(img_path)
         img_size = img.shape[:2]
@@ -1540,54 +1545,60 @@ class Annotation:
         :type render: np.ndarray
         :param names: List of color names.
         :type names: List[str]
-        :param colors: List of :class:`[R, G, B]` colors.
+        :param colors: List of ``[R, G, B]`` colors.
         :type colors: List[List[int, int, int]]
-        :return: Colors area representation on the given render
-        :rtype: :class:`dict`
-        :raises: :class:`RuntimeError` if len(names) != len(colors)
+        :returns: Colors area representation on the given render
+        :rtype: dict
+        :raises RuntimeError: if len(names) != len(colors)
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                import supervisely as sly
 
-            # Get image and annotation from API
-            project_id = 888
-            image_id = 555555
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            meta_json = api.project.get_meta(project_id)
-            meta = sly.ProjectMeta.from_json(meta_json)
+                api = sly.Api.from_env()
 
-            ann_info = api.annotation.download(image_id)
-            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+                # Get image and annotation from API
+                project_id = 888
+                image_id = 555555
 
-            img = api.image.download_np(image_id)
+                meta_json = api.project.get_meta(project_id)
+                meta = sly.ProjectMeta.from_json(meta_json)
 
-            class_names = []
-            class_colors = []
-            for label in ann.labels:
-                class_names.append(label.obj_class.name)
-                class_colors.append(label.obj_class.color)
+                ann_info = api.annotation.download(image_id)
+                ann = sly.Annotation.from_json(ann_info.annotation, meta)
 
-            ann.draw_pretty(img, thickness=3)
+                img = api.image.download_np(image_id)
 
-            ann_stats = ann.stat_area(img, class_names, class_colors)
-            print(ann_stats)
-            # Output: {
-            #     "lemon":0.45548266166822865,
-            #     "kiwi":0.5697047797563262,
-            #     "unlabeled":98.97481255857544,
-            #     "height":800,
-            #     "width":1067,
-            #     "channels":3
-            # }
+                class_names = []
+                class_colors = []
+                for label in ann.labels:
+                    class_names.append(label.obj_class.name)
+                    class_colors.append(label.obj_class.color)
 
-            print(stat_area)
+                ann.draw_pretty(img, thickness=3)
+
+                ann_stats = ann.stat_area(img, class_names, class_colors)
+                print(ann_stats)
+                # Output: {
+                #     "lemon":0.45548266166822865,
+                #     "kiwi":0.5697047797563262,
+                #     "unlabeled":98.97481255857544,
+                #     "height":800,
+                #     "width":1067,
+                #     "channels":3
+                # }
+
+                print(stat_area)
         """
         if len(names) != len(colors):
             raise RuntimeError(
@@ -1634,31 +1645,31 @@ class Annotation:
 
         :param class_names: List of classes names.
         :type class_names: List[str], optional
-        :return: Number of each class in Annotation and total number of classes
-        :rtype: :class:`defaultdict`
+        :returns: Number of each class in Annotation and total number of classes
+        :rtype: :class:`~collections.defaultdict`
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            # Create object classes
-            class_kiwi = sly.ObjClass('kiwi', sly.Rectangle)
-            class_lemon = sly.ObjClass('lemon', sly.Rectangle)
+                # Create object classes
+                class_kiwi = sly.ObjClass('kiwi', sly.Rectangle)
+                class_lemon = sly.ObjClass('lemon', sly.Rectangle)
 
-            # Create labels
-            label_kiwi = sly.Label(sly.Rectangle(100, 100, 700, 900), class_kiwi)
-            label_lemon = sly.Label(sly.Rectangle(200, 200, 500, 600), class_lemon)
-            labels_arr = [label_kiwi, label_lemon]
+                # Create labels
+                label_kiwi = sly.Label(sly.Rectangle(100, 100, 700, 900), class_kiwi)
+                label_lemon = sly.Label(sly.Rectangle(200, 200, 500, 600), class_lemon)
+                labels_arr = [label_kiwi, label_lemon]
 
-            # Create annotation
-            height, width = 300, 400
-            ann = sly.Annotation((height, width), labels_arr)
+                # Create annotation
+                height, width = 300, 400
+                ann = sly.Annotation((height, width), labels_arr)
 
-            stat_class = ann.stat_class_count(['lemon', 'kiwi'])
+                stat_class = ann.stat_class_count(['lemon', 'kiwi'])
 
-            # Output: defaultdict(<class 'int'>, {'lemon': 1, 'kiwi': 1, 'total': 2})
+                # Output: defaultdict(<class 'int'>, {'lemon': 1, 'kiwi': 1, 'total': 2})
         """
         total = 0
         stat = {name: 0 for name in class_names}
@@ -1678,35 +1689,43 @@ class Annotation:
         :param render: Target render to draw classes.
         :type render: np.ndarray
         :param name_to_index: Dict where keys are class names and values are class indices to draw on render.
-        :type name_to_index: dict
+        :type name_to_index: Dict[str, int]
+        :returns: None
+        :rtype: None
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                import supervisely as sly
 
-            # Get image and annotation from API
-            project_id = 888
-            image_id = 555555
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            meta_json = api.project.get_meta(project_id)
-            meta = sly.ProjectMeta.from_json(meta_json)
+                api = sly.Api.from_env()
 
-            ann_info = api.annotation.download(image_id)
-            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+                # Get image and annotation from API
+                project_id = 888
+                image_id = 555555
 
-            img = api.image.download_np(image_id)
+                meta_json = api.project.get_meta(project_id)
+                meta = sly.ProjectMeta.from_json(meta_json)
 
-            # Draw Annotation on image
-            name_to_index = {'lemon': 90, 'kiwi': 195}
-            ann.draw_class_idx_rgb(img, name_to_index)
+                ann_info = api.annotation.download(image_id)
+                ann = sly.Annotation.from_json(ann_info.annotation, meta)
 
-        .. image:: https://i.imgur.com/ACSaBgw.jpg
+                img = api.image.download_np(image_id)
+
+                # Draw Annotation on image
+                name_to_index = {'lemon': 90, 'kiwi': 195}
+                ann.draw_class_idx_rgb(img, name_to_index)
+
+        .. image:: https://github.com/user-attachments/assets/5da2ca59-1d90-4b05-8ea0-c9eabf708f8d
             :width: 600
             :height: 500
         """
@@ -1716,8 +1735,13 @@ class Annotation:
             label.draw(render, color=color, thickness=1)
 
     @property
-    def custom_data(self):
-        """custom_data"""
+    def custom_data(self) -> Dict[str, Any]:
+        """
+        Custom annotation data (stored in ``customBigData`` in Supervisely JSON format).
+
+        :returns: Copy of custom data dictionary.
+        :rtype: Dict[str, Any]
+        """
         return self._custom_data.copy()
 
     def filter_labels_by_min_side(
@@ -1732,50 +1756,56 @@ class Annotation:
         :param thresh: Side threshold to filter.
         :type thresh: int
         :param filter_operator: Type of filter operation.
-        :type filter_operator: operator
+        :type filter_operator: Callable
         :param classes: List of Labels names to apply filter.
         :type classes: List[str]
-        :return: New instance of Annotation
-        :rtype: :class:`Annotation<Annotation>`
+        :returns: New instance of :class:`~supervisely.annotation.annotation.Annotation`
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                import supervisely as sly
 
-            # Get image and annotation from API
-            project_id = 888
-            image_id = 555555
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            meta_json = api.project.get_meta(project_id)
-            meta = sly.ProjectMeta.from_json(meta_json)
+                api = sly.Api.from_env()
 
-            ann_info = api.annotation.download(image_id)
-            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+                # Get image and annotation from API
+                project_id = 888
+                image_id = 555555
 
-            img = api.image.download_np(image_id)
+                meta_json = api.project.get_meta(project_id)
+                meta = sly.ProjectMeta.from_json(meta_json)
 
-            # Filter Labels
-            # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
-            filtered_ann = ann.filter_labels_by_min_side(200)
+                ann_info = api.annotation.download(image_id)
+                ann = sly.Annotation.from_json(ann_info.annotation, meta)
 
-            # Draw filtered Annotation on image
-            filtered_ann.draw(img)
+                img = api.image.download_np(image_id)
+
+                # Filter Labels
+                # Remember that Annotation object is immutable, and we need to assign new instance of Annotation to a new variable
+                filtered_ann = ann.filter_labels_by_min_side(200)
+
+                # Draw filtered Annotation on image
+                filtered_ann.draw(img)
 
         .. list-table::
 
-            * - .. figure:: https://i.imgur.com/6huO1se.jpg
+            * - .. figure:: https://github.com/user-attachments/assets/0e0be9e6-3b73-424d-a974-6cd1eee2aa4c
 
-                   Before
+                    Before
 
-              - .. figure:: https://i.imgur.com/uunTbPR.jpg
+              - .. figure:: https://github.com/user-attachments/assets/32fb7cd9-eff2-4fba-bf70-74d506c5b186
 
-                   After
+                    After
         """
 
         def filter(label):
@@ -1795,57 +1825,63 @@ class Annotation:
 
         :param sly_id: Label ID from Supervisely server.
         :type sly_id: int
-        :return: Label or None
-        :rtype: :class:`Label<supervisely.annotation.label.Label>` or :class:`NoneType`
+        :returns: Label or None
+        :rtype: :class:`~supervisely.annotation.label.Label` or None
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                import supervisely as sly
 
-            # To get Label ID you must first access ProjectMeta
-            PROJECT_ID = 999
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            meta_json = api.project.get_meta(PROJECT_ID)
-            meta = sly.ProjectMeta.from_json(meta_json)
+                api = sly.Api.from_env()
 
-            # Get desired image id to which label belongs to download annotation
-            image_id = 376728
-            ann_info = api.annotation.download(image_id)
-            ann_json = ann_info.annotation
-            ann = sly.Annotation.from_json(ann_json, meta)
+                # To get Label ID you must first access ProjectMeta
+                PROJECT_ID = 999
 
-            # Get Label by it's ID
-            label_by_id = ann.get_label_by_id(sly_id=2263842)
-            print(label_by_id.to_json())
-            # Output: {
-            #     "classTitle":"kiwi",
-            #     "description":"",
-            #     "tags":[],
-            #     "points":{
-            #         "exterior":[
-            #             [481, 549],
-            #             [641, 703]
-            #         ],
-            #         "interior":[]
-            #     },
-            #     "labelerLogin":"cxnt",
-            #     "updatedAt":"2020-12-11T08:11:43.249Z",
-            #     "createdAt":"2020-12-10T09:38:57.969Z",
-            #     "id":2263842,
-            #     "classId":7370,
-            #     "geometryType":"rectangle",
-            #     "shape":"rectangle"
-            # }
+                meta_json = api.project.get_meta(PROJECT_ID)
+                meta = sly.ProjectMeta.from_json(meta_json)
 
-            # Returns None if Label ID doesn't exist on the given image ID
-            label_by_id = ann.get_label_by_id(sly_id=9999999)
-            # Output: None
+                # Get desired image id to which label belongs to download annotation
+                image_id = 376728
+                ann_info = api.annotation.download(image_id)
+                ann_json = ann_info.annotation
+                ann = sly.Annotation.from_json(ann_json, meta)
+
+                # Get Label by it's ID
+                label_by_id = ann.get_label_by_id(sly_id=2263842)
+                print(label_by_id.to_json())
+                # Output: {
+                #     "classTitle":"kiwi",
+                #     "description":"",
+                #     "tags":[],
+                #     "points":{
+                #         "exterior":[
+                #             [481, 549],
+                #             [641, 703]
+                #         ],
+                #         "interior":[]
+                #     },
+                #     "labelerLogin":"cxnt",
+                #     "updatedAt":"2020-12-11T08:11:43.249Z",
+                #     "createdAt":"2020-12-10T09:38:57.969Z",
+                #     "id":2263842,
+                #     "classId":7370,
+                #     "geometryType":"rectangle",
+                #     "shape":"rectangle"
+                # }
+
+                # Returns None if Label ID doesn't exist on the given image ID
+                label_by_id = ann.get_label_by_id(sly_id=9999999)
+                # Output: None
         """
         for label in self._labels:
             if label.geometry.sly_id == sly_id:
@@ -1857,40 +1893,42 @@ class Annotation:
         Merge current Annotation with another Annotation.
 
         :param other: Annotation to merge.
-        :type other: Annotation
-        :return: New instance of Annotation
-        :rtype: :class:`Annotation<Annotation>`
+        :type other: :class:`~supervisely.annotation.annotation.Annotation`
+        :returns: New instance of Annotation object
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            # Create annotation
-            meta_lemon = sly.TagMeta('lemon_tag', sly.TagValueType.ANY_STRING)
-            tag_lemon = sly.Tag(meta_lemon, 'lemon')
-            tags_lemon = sly.TagCollection([tag_lemon])
-            class_lemon = sly.ObjClass('lemon', sly.Rectangle)
-            label_lemon = sly.Label(sly.Rectangle(100, 100, 200, 200), class_lemon)
-            height, width = 300, 400
-            ann_lemon = sly.Annotation((height, width), [label_lemon], tags_lemon)
+                import supervisely as sly
 
-            # Create annotation to merge
-            meta_kiwi= sly.TagMeta('kiwi_tag', sly.TagValueType.ANY_STRING)
-            tag_kiwi = sly.Tag(meta_kiwi, 'kiwi')
-            tags_kiwi = sly.TagCollection([tag_kiwi])
-            class_kiwi = sly.ObjClass('kiwi', sly.Rectangle)
-            label_kiwi = sly.Label(sly.Rectangle(200, 100, 700, 200), class_kiwi)
-            height, width = 700, 500
-            ann_kiwi = sly.Annotation((height, width), [label_kiwi], tags_kiwi)
+                # Create annotation
+                meta_lemon = sly.TagMeta('lemon_tag', sly.TagValueType.ANY_STRING)
+                tag_lemon = sly.Tag(meta_lemon, 'lemon')
+                tags_lemon = sly.TagCollection([tag_lemon])
+                class_lemon = sly.ObjClass('lemon', sly.Rectangle)
+                label_lemon = sly.Label(sly.Rectangle(100, 100, 200, 200), class_lemon)
+                height, width = 300, 400
+                ann_lemon = sly.Annotation((height, width), [label_lemon], tags_lemon)
 
-            # Merge annotations
-            ann_merge = ann_lemon.merge(ann_kiwi)
+                # Create annotation to merge
+                meta_kiwi= sly.TagMeta('kiwi_tag', sly.TagValueType.ANY_STRING)
+                tag_kiwi = sly.Tag(meta_kiwi, 'kiwi')
+                tags_kiwi = sly.TagCollection([tag_kiwi])
+                class_kiwi = sly.ObjClass('kiwi', sly.Rectangle)
+                label_kiwi = sly.Label(sly.Rectangle(200, 100, 700, 200), class_kiwi)
+                height, width = 700, 500
+                ann_kiwi = sly.Annotation((height, width), [label_kiwi], tags_kiwi)
 
-            for label in ann_merge.labels:
-                print(label.obj_class.name)
+                # Merge annotations
+                ann_merge = ann_lemon.merge(ann_kiwi)
 
-            # Output: lemon
-            # Output: kiwi
+                for label in ann_merge.labels:
+                    print(label.obj_class.name)
+
+                # Output: lemon
+                # Output: kiwi
         """
         res = self.clone()
         res = res.add_labels(other.labels)
@@ -1910,9 +1948,9 @@ class Annotation:
         """
         Draws current Annotation on image with contour. Modifies mask.
 
-        :param bitmap: Image.
+        :param bitmap: RGB Image in numpy format. You can read image using :meth:`~supervisely.imaging.image.read` method.
         :type bitmap: np.ndarray
-        :param color: Drawing color in :class:`[R, G, B]`.
+        :param color: Drawing color in ``[R, G, B]``.
         :type color: List[int, int, int], optional
         :param thickness: Thickness of the drawing figure.
         :type thickness: int, optional
@@ -1922,33 +1960,41 @@ class Annotation:
         :type draw_tags: bool, optional
         :param output_path: Saves modified image to the given path.
         :type output_path: str, optional
-        :return: :class:`None<None>`
-        :rtype: :class:`NoneType<NoneType>`
+        :returns: None
+        :rtype: None
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                import os
+                from dotenv import load_dotenv
 
-            # Get image and annotation from API
-            project_id = 888
-            image_id = 555555
+                import supervisely as sly
 
-            meta_json = api.project.get_meta(project_id)
-            meta = sly.ProjectMeta.from_json(meta_json)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            ann_info = api.annotation.download(image_id)
-            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+                api = sly.Api.from_env()
 
-            img = api.image.download_np(image_id)
+                # Get image and annotation from API
+                project_id = 888
+                image_id = 555555
 
-            # Draw pretty Annotation on image
-            ann.draw_pretty(img, thickness=3)
+                meta_json = api.project.get_meta(project_id)
+                meta = sly.ProjectMeta.from_json(meta_json)
 
-        .. image:: https://i.imgur.com/6huO1se.jpg
+                ann_info = api.annotation.download(image_id)
+                ann = sly.Annotation.from_json(ann_info.annotation, meta)
+
+                img = api.image.download_np(image_id)
+
+                # Draw pretty Annotation on image
+                ann.draw_pretty(img, thickness=3)
+
+        .. image:: https://github.com/user-attachments/assets/5cd2bbd5-4b69-49b2-bcc6-5f0dc38852fd
             :width: 600
             :height: 500
         """
@@ -1978,197 +2024,205 @@ class Annotation:
         Create new annotation with non-overlapping labels masks. Convert classes to Bitmap or skip them.
 
         :param mapping: Dict with ObjClasses for mapping.
-        :type mapping: Dict[ObjClass, ObjClass]
-        :return: New instance of Annotation
-        :rtype: :class:`Annotation<Annotation>`
+        :type mapping: Dict[:class:`~supervisely.annotation.obj_class.ObjClass`, :class:`~supervisely.annotation.obj_class.ObjClass`]
+        :returns: New instance of Annotation object
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
-        .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                import os
+                from dotenv import load_dotenv
 
-            # Get image annotation from API
-            project_id = 7548
-            image_id = 2254937
-            meta_json = api.project.get_meta(project_id)
-            meta = sly.ProjectMeta.from_json(meta_json)
-            ann_info = api.annotation.download(image_id)
-            print(json.dumps(ann_info.annotation, indent=4))
+                import supervisely as sly
 
-            # Output: {
-            #     "description": "",
-            #     "tags": [],
-            #     "size": {
-            #         "height": 800,
-            #         "width": 1067
-            #     },
-            #     "objects": [
-            #         {
-            #             "id": 56656282,
-            #             "classId": 122357,
-            #             "description": "",
-            #             "geometryType": "bitmap",
-            #             "labelerLogin": "alex",
-            #             "createdAt": "2021-10-15T11:01:40.805Z",
-            #             "updatedAt": "2021-10-15T11:01:40.805Z",
-            #             "tags": [],
-            #             "classTitle": "lemon",
-            #             "bitmap": {
-            #                 "data": "eJwBuwJE/YlQTkcNChoKAAAADUlIRFIAAAE3AAAApgEDAAAAhaFaIwAAAAZQTFRFAAAA...,
-            #                 "origin": [
-            #                     589,
-            #                     372
-            #                 ]
-            #             }
-            #         },
-            #         {
-            #             "id": 56656281,
-            #             "classId": 122356,
-            #             "description": "",
-            #             "geometryType": "polygon",
-            #             "labelerLogin": "alex",
-            #             "createdAt": "2021-10-15T13:22:58.178Z",
-            #             "updatedAt": "2021-10-15T13:22:58.178Z",
-            #             "tags": [],
-            #             "classTitle": "kiwi",
-            #             "points": {
-            #                 "exterior": [
-            #                     [
-            #                         719,
-            #                         115
-            #                     ],
-            #                   ...
-            #                     [
-            #                         732,
-            #                         123
-            #                     ]
-            #                 ],
-            #                 "interior": []
-            #             }
-            #         },
-            #         {
-            #             "id": 56656280,
-            #             "classId": 122356,
-            #             "description": "",
-            #             "geometryType": "polygon",
-            #             "labelerLogin": "alex",
-            #             "createdAt": "2021-10-15T13:22:58.178Z",
-            #             "updatedAt": "2021-10-15T13:22:58.178Z",
-            #             "tags": [],
-            #             "classTitle": "kiwi",
-            #             "points": {
-            #                 "exterior": [
-            #                     [
-            #                         250,
-            #                         216
-            #                     ],
-            #                   ...
-            #                     [
-            #                         278,
-            #                         212
-            #                     ]
-            #                 ],
-            #                 "interior": []
-            #             }
-            #         },
-            #         {
-            #             "id": 56656279,
-            #             "classId": 122356,
-            #             "description": "",
-            #             "geometryType": "polygon",
-            #             "labelerLogin": "alex",
-            #             "createdAt": "2021-10-15T13:22:58.177Z",
-            #             "updatedAt": "2021-10-15T13:22:58.177Z",
-            #             "tags": [],
-            #             "classTitle": "kiwi",
-            #             "points": {
-            #                 "exterior": [
-            #                     [
-            #                         554,
-            #                         581
-            #                     ],
-            #                   ...
-            #                     [
-            #                         560,
-            #                         587
-            #                     ]
-            #                 ],
-            #                 "interior": []
-            #             }
-            #         }
-            #     ]
-            # }
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+                api = sly.Api.from_env()
 
-            # Create mapping. Let's check 'kiwi' classes and skip 'lemon' classes.
-            mapping = {}
-            for label in ann.labels:
-                if label.obj_class.name not in mapping:
-                    if label.obj_class.name == 'lemon':
-                        mapping[label.obj_class] = None
-                    else:
-                        new_obj_class = sly.ObjClass(label.obj_class.name, Bitmap)
-                        mapping[label.obj_class] = new_obj_class
-            nonoverlap_ann = ann.to_nonoverlapping_masks(mapping)
-            print(json.dumps(nonoverlap_ann.to_json(), indent=4))
+                # Get image annotation from API
+                project_id = 7548
+                image_id = 2254937
+                meta_json = api.project.get_meta(project_id)
+                meta = sly.ProjectMeta.from_json(meta_json)
+                ann_info = api.annotation.download(image_id)
+                print(json.dumps(ann_info.annotation, indent=4))
 
-            # Output: {
-            #     "description": "",
-            #     "size": {
-            #         "height": 800,
-            #         "width": 1067
-            #     },
-            #     "tags": [],
-            #     "objects": [
-            #         {
-            #             "classTitle": "kiwi",
-            #             "description": "",
-            #             "tags": [],
-            #             "bitmap": {
-            #                 "origin": [
-            #                     187,
-            #                     396
-            #                 ],
-            #                 "data": "eJwBLALT/YlQTkcNChoKAAAADUlIRFIAAACuAAAAzgEDAAAAnTar9wAAAAZQTFRFAAAA...
-            #             },
-            #             "shape": "bitmap",
-            #             "geometryType": "bitmap"
-            #         },
-            #         {
-            #             "classTitle": "kiwi",
-            #             "description": "",
-            #             "tags": [],
-            #             "bitmap": {
-            #                 "origin": [
-            #                     365,
-            #                     385
-            #                 ],
-            #                 "data": "eJwB4gEd/olQTkcNChoKAAAADUlIRFIAAACbAAAAwgEDAAAAZC4i8AAAAAZQTFRFAAAA...
-            #             },
-            #             "shape": "bitmap",
-            #             "geometryType": "bitmap"
-            #         },
-            #         {
-            #             "classTitle": "kiwi",
-            #             "description": "",
-            #             "tags": [],
-            #             "bitmap": {
-            #                 "origin": [
-            #                     469,
-            #                     506
-            #                 ],
-            #                 "data": "eJwBHgLh/YlQTkcNChoKAAAADUlIRFIAAAC1AAAArQEDAAAAzBisHAAAAAZQTFRFAAAA...
-            #             },
-            #             "shape": "bitmap",
-            #             "geometryType": "bitmap"
-            #         }
-            #     ],
-            #     "customBigData": {}
-            # }
+                # Output: {
+                #     "description": "",
+                #     "tags": [],
+                #     "size": {
+                #         "height": 800,
+                #         "width": 1067
+                #     },
+                #     "objects": [
+                #         {
+                #             "id": 56656282,
+                #             "classId": 122357,
+                #             "description": "",
+                #             "geometryType": "bitmap",
+                #             "labelerLogin": "alex",
+                #             "createdAt": "2021-10-15T11:01:40.805Z",
+                #             "updatedAt": "2021-10-15T11:01:40.805Z",
+                #             "tags": [],
+                #             "classTitle": "lemon",
+                #             "bitmap": {
+                #                 "data": "eJwBuwJE/YlQTkcNChoKAAAADUlIRFIAAAE3AAAApgEDAAAAhaFaIwAAAAZQTFRFAAAA...,
+                #                 "origin": [
+                #                     589,
+                #                     372
+                #                 ]
+                #             }
+                #         },
+                #         {
+                #             "id": 56656281,
+                #             "classId": 122356,
+                #             "description": "",
+                #             "geometryType": "polygon",
+                #             "labelerLogin": "alex",
+                #             "createdAt": "2021-10-15T13:22:58.178Z",
+                #             "updatedAt": "2021-10-15T13:22:58.178Z",
+                #             "tags": [],
+                #             "classTitle": "kiwi",
+                #             "points": {
+                #                 "exterior": [
+                #                     [
+                #                         719,
+                #                         115
+                #                     ],
+                #                   ...
+                #                     [
+                #                         732,
+                #                         123
+                #                     ]
+                #                 ],
+                #                 "interior": []
+                #             }
+                #         },
+                #         {
+                #             "id": 56656280,
+                #             "classId": 122356,
+                #             "description": "",
+                #             "geometryType": "polygon",
+                #             "labelerLogin": "alex",
+                #             "createdAt": "2021-10-15T13:22:58.178Z",
+                #             "updatedAt": "2021-10-15T13:22:58.178Z",
+                #             "tags": [],
+                #             "classTitle": "kiwi",
+                #             "points": {
+                #                 "exterior": [
+                #                     [
+                #                         250,
+                #                         216
+                #                     ],
+                #                   ...
+                #                     [
+                #                         278,
+                #                         212
+                #                     ]
+                #                 ],
+                #                 "interior": []
+                #             }
+                #         },
+                #         {
+                #             "id": 56656279,
+                #             "classId": 122356,
+                #             "description": "",
+                #             "geometryType": "polygon",
+                #             "labelerLogin": "alex",
+                #             "createdAt": "2021-10-15T13:22:58.177Z",
+                #             "updatedAt": "2021-10-15T13:22:58.177Z",
+                #             "tags": [],
+                #             "classTitle": "kiwi",
+                #             "points": {
+                #                 "exterior": [
+                #                     [
+                #                         554,
+                #                         581
+                #                     ],
+                #                   ...
+                #                     [
+                #                         560,
+                #                         587
+                #                     ]
+                #                 ],
+                #                 "interior": []
+                #             }
+                #         }
+                #     ]
+                # }
+
+                ann = sly.Annotation.from_json(ann_info.annotation, meta)
+
+                # Create mapping. Let's check 'kiwi' classes and skip 'lemon' classes.
+                mapping = {}
+                for label in ann.labels:
+                    if label.obj_class.name not in mapping:
+                        if label.obj_class.name == 'lemon':
+                            mapping[label.obj_class] = None
+                        else:
+                            new_obj_class = sly.ObjClass(label.obj_class.name, Bitmap)
+                            mapping[label.obj_class] = new_obj_class
+                nonoverlap_ann = ann.to_nonoverlapping_masks(mapping)
+                print(json.dumps(nonoverlap_ann.to_json(), indent=4))
+
+                # Output: {
+                #     "description": "",
+                #     "size": {
+                #         "height": 800,
+                #         "width": 1067
+                #     },
+                #     "tags": [],
+                #     "objects": [
+                #         {
+                #             "classTitle": "kiwi",
+                #             "description": "",
+                #             "tags": [],
+                #             "bitmap": {
+                #                 "origin": [
+                #                     187,
+                #                     396
+                #                 ],
+                #                 "data": "eJwBLALT/YlQTkcNChoKAAAADUlIRFIAAACuAAAAzgEDAAAAnTar9wAAAAZQTFRFAAAA...
+                #             },
+                #             "shape": "bitmap",
+                #             "geometryType": "bitmap"
+                #         },
+                #         {
+                #             "classTitle": "kiwi",
+                #             "description": "",
+                #             "tags": [],
+                #             "bitmap": {
+                #                 "origin": [
+                #                     365,
+                #                     385
+                #                 ],
+                #                 "data": "eJwB4gEd/olQTkcNChoKAAAADUlIRFIAAACbAAAAwgEDAAAAZC4i8AAAAAZQTFRFAAAA...
+                #             },
+                #             "shape": "bitmap",
+                #             "geometryType": "bitmap"
+                #         },
+                #         {
+                #             "classTitle": "kiwi",
+                #             "description": "",
+                #             "tags": [],
+                #             "bitmap": {
+                #                 "origin": [
+                #                     469,
+                #                     506
+                #                 ],
+                #                 "data": "eJwBHgLh/YlQTkcNChoKAAAADUlIRFIAAAC1AAAArQEDAAAAzBisHAAAAAZQTFRFAAAA...
+                #             },
+                #             "shape": "bitmap",
+                #             "geometryType": "bitmap"
+                #         }
+                #     ],
+                #     "customBigData": {}
+                # }
         """
         common_img = np.zeros(self.img_size, np.int32)  # size is (h, w)
         for idx, lbl in enumerate(self.labels, start=1):
@@ -2208,8 +2262,8 @@ class Annotation:
         :type palette: Available palettes are WEB or ADAPTIVE, optional
         :param colors: Number of colors to use for the ADAPTIVE palette.
         :type colors: int, optional
-        :return: :class:`None<None>`
-        :rtype: :class:`NoneType<NoneType>`
+        :returns: None
+        :rtype: None
         """
         mask = np.zeros((self.img_size[0], self.img_size[1], 3), dtype=np.uint8)
         for label in self.labels:
@@ -2222,7 +2276,14 @@ class Annotation:
         im.save(mask_path)
 
     def add_bg_object(self, bg_obj_class: ObjClass):
-        """add_bg_object"""
+        """
+        Add background object to the annotation.
+
+        :param bg_obj_class: Background object class.
+        :type bg_obj_class: :class:`~supervisely.annotation.obj_class.ObjClass`
+        :returns: New instance of Annotation object
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
+        """
         if bg_obj_class not in [label.obj_class for label in self.labels]:
             bg_geometry = Rectangle.from_size(self.img_size)
             bg_geometry = bg_geometry.convert(new_geometry=bg_obj_class.geometry_type)[0]
@@ -2240,133 +2301,141 @@ class Annotation:
         """
         Convert Annotation classes by joining labels with same object classes to one label. Applies to Bitmap only.
 
-        :return: New instance of Annotation
-        :rtype: :class:`Annotation<Annotation>`
+        :returns: New instance of Annotation object
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                import os
+                from dotenv import load_dotenv
 
-            # Get image annotation from API
-            project_id = 7473
-            image_id = 2223200
-            meta_json = api.project.get_meta(project_id)
-            meta = sly.ProjectMeta.from_json(meta_json)
-            ann_info = api.annotation.download(image_id)
-            print(json.dumps(ann_info.annotation, indent=4))
+                import supervisely as sly
 
-            # Output: {
-            #     "description": "",
-            #     "tags": [],
-            #     "size": {
-            #         "height": 800,
-            #         "width": 1067
-            #     },
-            #     "objects": [
-            #         {
-            #             "id": 57388829,
-            #             "classId": 121405,
-            #             "description": "",
-            #             "geometryType": "bitmap",
-            #             "labelerLogin": "alex",
-            #             "createdAt": "2022-01-02T08:06:05.183Z",
-            #             "updatedAt": "2022-01-02T08:07:12.219Z",
-            #             "tags": [],
-            #             "classTitle": "kiwi",
-            #             "bitmap": {
-            #                 "data": "eJyNlWs4lHkYxv/z8qp5NZuYSZes1KZm6CDSTuP0mh2ZWYdmULakdBUzkRqRrDG8M1vZZg8W...,
-            #                 "origin": [
-            #                     481,
-            #                     543
-            #                 ]
-            #             }
-            #         },
-            #         {
-            #             "id": 57388831,
-            #             "classId": 121404,
-            #             "description": "",
-            #             "geometryType": "bitmap",
-            #             "labelerLogin": "alex",
-            #             "createdAt": "2022-01-02T08:06:59.133Z",
-            #             "updatedAt": "2022-01-02T08:07:12.219Z",
-            #             "tags": [],
-            #             "classTitle": "lemon",
-            #             "bitmap": {
-            #                 "data": "eJwdV388k/sXfzwmz3TVNm3l94z5saQoXFSG+c26tM1GYjWUISWKK201SchvIcq30tX2rD...,
-            #                 "origin": [
-            #                     523,
-            #                     119
-            #                 ]
-            #             }
-            #         },
-            #         {
-            #             "id": 57388832,
-            #             "classId": 121405,
-            #             "description": "",
-            #             "geometryType": "bitmap",
-            #             "labelerLogin": "alex",
-            #             "createdAt": "2022-01-02T08:07:12.104Z",
-            #             "updatedAt": "2022-01-02T08:07:12.104Z",
-            #             "tags": [],
-            #             "classTitle": "kiwi",
-            #             "bitmap": {
-            #                 "data": "eJw1VglQU8kWTWISHzH6AzwwIEsSCBr2AApBloAJhB0eCEIYDJFN2WHACC7sRghbIAiIMuKj...,
-            #                 "origin": [
-            #                     773,
-            #                     391
-            #                 ]
-            #             }
-            #         }
-            #     ]
-            # }
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            ann = sly.Annotation.from_json(ann_info.annotation, meta)
-            segm_ann = ann.to_segmentation_task()
-            print(json.dumps(segm_ann.to_json(), indent=4))
+                api = sly.Api.from_env()
 
-            # Output: {
-            #     "description": "",
-            #     "size": {
-            #         "height": 800,
-            #         "width": 1067
-            #     },
-            #     "tags": [],
-            #     "objects": [
-            #         {
-            #             "classTitle": "kiwi",
-            #             "description": "",
-            #             "tags": [],
-            #             "bitmap": {
-            #                 "origin": [
-            #                     481,
-            #                     391
-            #                 ],
-            #                 "data": "eJwBagSV+4lQTkcNChoKAAAADUlIRFIAAAHpAAABOQEDAAAAjj5K+wAAAAZQTFRFAAAA...
-            #             },
-            #             "shape": "bitmap",
-            #             "geometryType": "bitmap"
-            #         },
-            #         {
-            #             "classTitle": "lemon",
-            #             "description": "",
-            #             "tags": [],
-            #             "bitmap": {
-            #                 "origin": [
-            #                     523,
-            #                     119
-            #                 ],
-            #                 "data": "eJwBOAPH/IlQTkcNChoKAAAADUlIRFIAAAEsAAABCQEDAAAAFNKIswAAAAZQTFRFAAAA...
-            #             },
-            #             "shape": "bitmap",
-            #             "geometryType": "bitmap"
-            #         }
-            #     ],
-            #     "customBigData": {}
-            # }
+                # Get image annotation from API
+                project_id = 7473
+                image_id = 2223200
+                meta_json = api.project.get_meta(project_id)
+                meta = sly.ProjectMeta.from_json(meta_json)
+                ann_info = api.annotation.download(image_id)
+                print(json.dumps(ann_info.annotation, indent=4))
+
+                # Output: {
+                #     "description": "",
+                #     "tags": [],
+                #     "size": {
+                #         "height": 800,
+                #         "width": 1067
+                #     },
+                #     "objects": [
+                #         {
+                #             "id": 57388829,
+                #             "classId": 121405,
+                #             "description": "",
+                #             "geometryType": "bitmap",
+                #             "labelerLogin": "alex",
+                #             "createdAt": "2022-01-02T08:06:05.183Z",
+                #             "updatedAt": "2022-01-02T08:07:12.219Z",
+                #             "tags": [],
+                #             "classTitle": "kiwi",
+                #             "bitmap": {
+                #                 "data": "eJyNlWs4lHkYxv/z8qp5NZuYSZes1KZm6CDSTuP0mh2ZWYdmULakdBUzkRqRrDG8M1vZZg8W...,
+                #                 "origin": [
+                #                     481,
+                #                     543
+                #                 ]
+                #             }
+                #         },
+                #         {
+                #             "id": 57388831,
+                #             "classId": 121404,
+                #             "description": "",
+                #             "geometryType": "bitmap",
+                #             "labelerLogin": "alex",
+                #             "createdAt": "2022-01-02T08:06:59.133Z",
+                #             "updatedAt": "2022-01-02T08:07:12.219Z",
+                #             "tags": [],
+                #             "classTitle": "lemon",
+                #             "bitmap": {
+                #                 "data": "eJwdV388k/sXfzwmz3TVNm3l94z5saQoXFSG+c26tM1GYjWUISWKK201SchvIcq30tX2rD...,
+                #                 "origin": [
+                #                     523,
+                #                     119
+                #                 ]
+                #             }
+                #         },
+                #         {
+                #             "id": 57388832,
+                #             "classId": 121405,
+                #             "description": "",
+                #             "geometryType": "bitmap",
+                #             "labelerLogin": "alex",
+                #             "createdAt": "2022-01-02T08:07:12.104Z",
+                #             "updatedAt": "2022-01-02T08:07:12.104Z",
+                #             "tags": [],
+                #             "classTitle": "kiwi",
+                #             "bitmap": {
+                #                 "data": "eJw1VglQU8kWTWISHzH6AzwwIEsSCBr2AApBloAJhB0eCEIYDJFN2WHACC7sRghbIAiIMuKj...,
+                #                 "origin": [
+                #                     773,
+                #                     391
+                #                 ]
+                #             }
+                #         }
+                #     ]
+                # }
+
+                ann = sly.Annotation.from_json(ann_info.annotation, meta)
+                segm_ann = ann.to_segmentation_task()
+                print(json.dumps(segm_ann.to_json(), indent=4))
+
+                # Output: {
+                #     "description": "",
+                #     "size": {
+                #         "height": 800,
+                #         "width": 1067
+                #     },
+                #     "tags": [],
+                #     "objects": [
+                #         {
+                #             "classTitle": "kiwi",
+                #             "description": "",
+                #             "tags": [],
+                #             "bitmap": {
+                #                 "origin": [
+                #                     481,
+                #                     391
+                #                 ],
+                #                 "data": "eJwBagSV+4lQTkcNChoKAAAADUlIRFIAAAHpAAABOQEDAAAAjj5K+wAAAAZQTFRFAAAA...
+                #             },
+                #             "shape": "bitmap",
+                #             "geometryType": "bitmap"
+                #         },
+                #         {
+                #             "classTitle": "lemon",
+                #             "description": "",
+                #             "tags": [],
+                #             "bitmap": {
+                #                 "origin": [
+                #                     523,
+                #                     119
+                #                 ],
+                #                 "data": "eJwBOAPH/IlQTkcNChoKAAAADUlIRFIAAAEsAAABCQEDAAAAFNKIswAAAAZQTFRFAAAA...
+                #             },
+                #             "shape": "bitmap",
+                #             "geometryType": "bitmap"
+                #         }
+                #     ],
+                #     "customBigData": {}
+                # }
         """
         class_mask = {}
         for label in self.labels:
@@ -2385,232 +2454,242 @@ class Annotation:
         Convert Annotation classes geometries according to mapping dict and checking nonoverlapping masks.
         Converting possible only to Bitmap or Rectangle.
 
-        :return: New instance of Annotation
-        :rtype: :class:`Annotation<Annotation>`
+        :param mapping: Mapping between source and target object classes.
+        :type mapping: Dict[:class:`~supervisely.annotation.obj_class.ObjClass`, :class:`~supervisely.annotation.obj_class.ObjClass`]
+        :returns: New instance of Annotation object
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                import os
+                from dotenv import load_dotenv
 
-            # Get image annotation from API
-            project_id = 7548
-            image_id = 2254942
-            meta_json = api.project.get_meta(project_id)
-            meta = sly.ProjectMeta.from_json(meta_json)
-            ann_info = api.annotation.download(image_id)
-            print(json.dumps(ann_info.annotation, indent=4))
+                import supervisely as sly
 
-            # Output: {
-            #     "description": "",
-            #     "tags": [],
-            #     "size": {
-            #         "height": 800,
-            #         "width": 1067
-            #     },
-            #     "objects": [
-            #         {
-            #             "id": 56656282,
-            #             "classId": 122357,
-            #             "description": "",
-            #             "geometryType": "bitmap",
-            #             "labelerLogin": "alex",
-            #             "createdAt": "2021-10-15T11:01:40.805Z",
-            #             "updatedAt": "2021-10-15T11:01:40.805Z",
-            #             "tags": [],
-            #             "classTitle": "lemon",
-            #             "bitmap": {
-            #                 "data": "eJwBuwJE/YlQTkcNChoKAAAADUlIRFIAAAE3AAAApgEDAAAAhaFaIwAAAAZQTFRFAAAA...,
-            #                 "origin": [
-            #                     589,
-            #                     372
-            #                 ]
-            #             }
-            #         },
-            #         {
-            #             "id": 56656281,
-            #             "classId": 122356,
-            #             "description": "",
-            #             "geometryType": "polygon",
-            #             "labelerLogin": "alex",
-            #             "createdAt": "2021-10-15T13:22:58.178Z",
-            #             "updatedAt": "2021-10-15T13:22:58.178Z",
-            #             "tags": [],
-            #             "classTitle": "kiwi",
-            #             "points": {
-            #                 "exterior": [
-            #                     [
-            #                         719,
-            #                         115
-            #                     ],
-            #                   ...
-            #                     [
-            #                         732,
-            #                         123
-            #                     ]
-            #                 ],
-            #                 "interior": []
-            #             }
-            #         },
-            #         {
-            #             "id": 56656280,
-            #             "classId": 122356,
-            #             "description": "",
-            #             "geometryType": "polygon",
-            #             "labelerLogin": "alex",
-            #             "createdAt": "2021-10-15T13:22:58.178Z",
-            #             "updatedAt": "2021-10-15T13:22:58.178Z",
-            #             "tags": [],
-            #             "classTitle": "kiwi",
-            #             "points": {
-            #                 "exterior": [
-            #                     [
-            #                         250,
-            #                         216
-            #                     ],
-            #                   ...
-            #                     [
-            #                         278,
-            #                         212
-            #                     ]
-            #                 ],
-            #                 "interior": []
-            #             }
-            #         },
-            #         {
-            #             "id": 56656279,
-            #             "classId": 122356,
-            #             "description": "",
-            #             "geometryType": "polygon",
-            #             "labelerLogin": "alex",
-            #             "createdAt": "2021-10-15T13:22:58.177Z",
-            #             "updatedAt": "2021-10-15T13:22:58.177Z",
-            #             "tags": [],
-            #             "classTitle": "kiwi",
-            #             "points": {
-            #                 "exterior": [
-            #                     [
-            #                         554,
-            #                         581
-            #                     ],
-            #                   ...
-            #                     [
-            #                         560,
-            #                         587
-            #                     ]
-            #                 ],
-            #                 "interior": []
-            #             }
-            #         }
-            #     ]
-            # }
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+                api = sly.Api.from_env()
 
-            # Create mapping for classes converting. Let's convert classes to Rectangle.
-            mapping = {}
-            for label in ann.labels:
-                if label.obj_class.name not in mapping:
-                    new_obj_class = sly.ObjClass(label.obj_class.name, Rectangle)
-                    mapping[label.obj_class] = new_obj_class
+                # Get image annotation from API
+                project_id = 7548
+                image_id = 2254942
+                meta_json = api.project.get_meta(project_id)
+                meta = sly.ProjectMeta.from_json(meta_json)
+                ann_info = api.annotation.download(image_id)
+                print(json.dumps(ann_info.annotation, indent=4))
 
-            det_ann = ann.to_detection_task(mapping)
-            print(json.dumps(det_ann.to_json(), indent=4))
+                # Output: {
+                #     "description": "",
+                #     "tags": [],
+                #     "size": {
+                #         "height": 800,
+                #         "width": 1067
+                #     },
+                #     "objects": [
+                #         {
+                #             "id": 56656282,
+                #             "classId": 122357,
+                #             "description": "",
+                #             "geometryType": "bitmap",
+                #             "labelerLogin": "alex",
+                #             "createdAt": "2021-10-15T11:01:40.805Z",
+                #             "updatedAt": "2021-10-15T11:01:40.805Z",
+                #             "tags": [],
+                #             "classTitle": "lemon",
+                #             "bitmap": {
+                #                 "data": "eJwBuwJE/YlQTkcNChoKAAAADUlIRFIAAAE3AAAApgEDAAAAhaFaIwAAAAZQTFRFAAAA...,
+                #                 "origin": [
+                #                     589,
+                #                     372
+                #                 ]
+                #             }
+                #         },
+                #         {
+                #             "id": 56656281,
+                #             "classId": 122356,
+                #             "description": "",
+                #             "geometryType": "polygon",
+                #             "labelerLogin": "alex",
+                #             "createdAt": "2021-10-15T13:22:58.178Z",
+                #             "updatedAt": "2021-10-15T13:22:58.178Z",
+                #             "tags": [],
+                #             "classTitle": "kiwi",
+                #             "points": {
+                #                 "exterior": [
+                #                     [
+                #                         719,
+                #                         115
+                #                     ],
+                #                   ...
+                #                     [
+                #                         732,
+                #                         123
+                #                     ]
+                #                 ],
+                #                 "interior": []
+                #             }
+                #         },
+                #         {
+                #             "id": 56656280,
+                #             "classId": 122356,
+                #             "description": "",
+                #             "geometryType": "polygon",
+                #             "labelerLogin": "alex",
+                #             "createdAt": "2021-10-15T13:22:58.178Z",
+                #             "updatedAt": "2021-10-15T13:22:58.178Z",
+                #             "tags": [],
+                #             "classTitle": "kiwi",
+                #             "points": {
+                #                 "exterior": [
+                #                     [
+                #                         250,
+                #                         216
+                #                     ],
+                #                   ...
+                #                     [
+                #                         278,
+                #                         212
+                #                     ]
+                #                 ],
+                #                 "interior": []
+                #             }
+                #         },
+                #         {
+                #             "id": 56656279,
+                #             "classId": 122356,
+                #             "description": "",
+                #             "geometryType": "polygon",
+                #             "labelerLogin": "alex",
+                #             "createdAt": "2021-10-15T13:22:58.177Z",
+                #             "updatedAt": "2021-10-15T13:22:58.177Z",
+                #             "tags": [],
+                #             "classTitle": "kiwi",
+                #             "points": {
+                #                 "exterior": [
+                #                     [
+                #                         554,
+                #                         581
+                #                     ],
+                #                   ...
+                #                     [
+                #                         560,
+                #                         587
+                #                     ]
+                #                 ],
+                #                 "interior": []
+                #             }
+                #         }
+                #     ]
+                # }
 
-            # Output: {
-            #     "description": "",
-            #     "size": {
-            #         "height": 800,
-            #         "width": 1067
-            #     },
-            #     "tags": [],
-            #     "objects": [
-            #         {
-            #             "classTitle": "lemon",
-            #             "description": "",
-            #             "tags": [],
-            #             "points": {
-            #                 "exterior": [
-            #                     [
-            #                         589,
-            #                         372
-            #                     ],
-            #                     [
-            #                         899,
-            #                         537
-            #                     ]
-            #                 ],
-            #                 "interior": []
-            #             },
-            #             "geometryType": "rectangle",
-            #             "shape": "rectangle"
-            #         },
-            #         {
-            #             "classTitle": "kiwi",
-            #             "description": "",
-            #             "tags": [],
-            #             "points": {
-            #                 "exterior": [
-            #                     [
-            #                         612,
-            #                         110
-            #                     ],
-            #                     [
-            #                         765,
-            #                         282
-            #                     ]
-            #                 ],
-            #                 "interior": []
-            #             },
-            #             "geometryType": "rectangle",
-            #             "shape": "rectangle"
-            #         },
-            #         {
-            #             "classTitle": "kiwi",
-            #             "description": "",
-            #             "tags": [],
-            #             "points": {
-            #                 "exterior": [
-            #                     [
-            #                         196,
-            #                         212
-            #                     ],
-            #                     [
-            #                         352,
-            #                         380
-            #                     ]
-            #                 ],
-            #                 "interior": []
-            #             },
-            #             "geometryType": "rectangle",
-            #             "shape": "rectangle"
-            #         },
-            #         {
-            #             "classTitle": "kiwi",
-            #             "description": "",
-            #             "tags": [],
-            #             "points": {
-            #                 "exterior": [
-            #                     [
-            #                         425,
-            #                         561
-            #                     ],
-            #                     [
-            #                         576,
-            #                         705
-            #                     ]
-            #                 ],
-            #                 "interior": []
-            #             },
-            #             "geometryType": "rectangle",
-            #             "shape": "rectangle"
-            #         }
-            #     ],
-            #     "customBigData": {}
-            # }
+                ann = sly.Annotation.from_json(ann_info.annotation, meta)
+
+                # Create mapping for classes converting. Let's convert classes to Rectangle.
+                mapping = {}
+                for label in ann.labels:
+                    if label.obj_class.name not in mapping:
+                        new_obj_class = sly.ObjClass(label.obj_class.name, Rectangle)
+                        mapping[label.obj_class] = new_obj_class
+
+                det_ann = ann.to_detection_task(mapping)
+                print(json.dumps(det_ann.to_json(), indent=4))
+
+                # Output: {
+                #     "description": "",
+                #     "size": {
+                #         "height": 800,
+                #         "width": 1067
+                #     },
+                #     "tags": [],
+                #     "objects": [
+                #         {
+                #             "classTitle": "lemon",
+                #             "description": "",
+                #             "tags": [],
+                #             "points": {
+                #                 "exterior": [
+                #                     [
+                #                         589,
+                #                         372
+                #                     ],
+                #                     [
+                #                         899,
+                #                         537
+                #                     ]
+                #                 ],
+                #                 "interior": []
+                #             },
+                #             "geometryType": "rectangle",
+                #             "shape": "rectangle"
+                #         },
+                #         {
+                #             "classTitle": "kiwi",
+                #             "description": "",
+                #             "tags": [],
+                #             "points": {
+                #                 "exterior": [
+                #                     [
+                #                         612,
+                #                         110
+                #                     ],
+                #                     [
+                #                         765,
+                #                         282
+                #                     ]
+                #                 ],
+                #                 "interior": []
+                #             },
+                #             "geometryType": "rectangle",
+                #             "shape": "rectangle"
+                #         },
+                #         {
+                #             "classTitle": "kiwi",
+                #             "description": "",
+                #             "tags": [],
+                #             "points": {
+                #                 "exterior": [
+                #                     [
+                #                         196,
+                #                         212
+                #                     ],
+                #                     [
+                #                         352,
+                #                         380
+                #                     ]
+                #                 ],
+                #                 "interior": []
+                #             },
+                #             "geometryType": "rectangle",
+                #             "shape": "rectangle"
+                #         },
+                #         {
+                #             "classTitle": "kiwi",
+                #             "description": "",
+                #             "tags": [],
+                #             "points": {
+                #                 "exterior": [
+                #                     [
+                #                         425,
+                #                         561
+                #                     ],
+                #                     [
+                #                         576,
+                #                         705
+                #                     ]
+                #                 ],
+                #                 "interior": []
+                #             },
+                #             "geometryType": "rectangle",
+                #             "shape": "rectangle"
+                #         }
+                #     ],
+                #     "customBigData": {}
+                # }
         """
         aux_mapping = mapping.copy()
 
@@ -2657,8 +2736,8 @@ class Annotation:
 
         :param class_to_index: Dict matching class name to index.
         :type class_to_index: dict
-        :return: SegmentationMapsOnImage, otherwise :class:`None`
-        :rtype: :class:`SegmentationMapsOnImage` or :class:`NoneType`
+        :returns: SegmentationMapsOnImage, otherwise None
+        :rtype: :class:`SegmentationMapsOnImage` or None
         """
         try:
             from imgaug.augmentables.segmaps import SegmentationMapsOnImage
@@ -2689,8 +2768,8 @@ class Annotation:
         """
         Convert current annotation objects boxes to BoundingBoxesOnImage format.
 
-        :return: BoundingBoxesOnImage, otherwise :class:`None`
-        :rtype: :class:`BoundingBoxesOnImage` or :class:`NoneType`
+        :returns: BoundingBoxesOnImage, otherwise None
+        :rtype: :class:`BoundingBoxesOnImage` or None
         """
         try:
             from imgaug.augmentables.bbs import BoundingBox, BoundingBoxesOnImage
@@ -2739,11 +2818,11 @@ class Annotation:
         :param index_to_class: Dictionary specifying index match of class name.
         :type index_to_class: Dict[int, str], optional
         :param meta: ProjectMeta.
-        :type meta: ProjectMeta, optional
-        :raises: :class:`ValueError`, if ia_boxes or ia_masks and meta is None
-        :raises: :class:`KeyError`, if processed ObjClass not found in meta
-        :return: Annotation object
-        :rtype: :class:`Annotation<Annotation>`
+        :type meta: :class:`~supervisely.project.project_meta.ProjectMeta`, optional
+        :raises ValueError: if ia_boxes or ia_masks and meta is None
+        :raises KeyError: if processed :class:`~supervisely.annotation.obj_class.ObjClass` not found in meta
+        :returns: Annotation object
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
         """
         if ((ia_boxes is not None) or (ia_masks is not None)) and meta is None:
             raise ValueError("Project meta has to be provided")
@@ -2783,7 +2862,7 @@ class Annotation:
         Check whether annotation contains labels or tags, or not.
 
         :returns: True if annotation is empty, False otherwise.
-        :rtype: :class:`bool`
+        :rtype: bool
         """
         if len(self.labels) == 0 and len(self.img_tags) == 0:
             return True
@@ -2796,127 +2875,135 @@ class Annotation:
 
         :param keep_classes: List with classes names.
         :type keep_classes: List[str]
-        :return: New instance of Annotation
-        :rtype: :class:`Annotation<Annotation>`
+        :returns: New instance of Annotation object
+        :rtype: :class:`~supervisely.annotation.annotation.Annotation`
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            address = 'https://app.supervisely.com/'
-            token = 'Your Supervisely API Token'
-            api = sly.Api(address, token)
+                import os
+                from dotenv import load_dotenv
 
-            # Get image annotation from API
-            project_id = 7473
-            image_id = 2223200
-            meta_json = api.project.get_meta(project_id)
-            meta = sly.ProjectMeta.from_json(meta_json)
-            ann_info = api.annotation.download(image_id)
-            print(json.dumps(ann_info.annotation, indent=4))
+                import supervisely as sly
 
-            # Output: {
-            #     "description": "",
-            #     "tags": [],
-            #     "size": {
-            #         "height": 800,
-            #         "width": 1067
-            #     },
-            #     "objects": [
-            #         {
-            #             "id": 57388829,
-            #             "classId": 121405,
-            #             "description": "",
-            #             "geometryType": "bitmap",
-            #             "labelerLogin": "alex",
-            #             "createdAt": "2022-01-02T08:06:05.183Z",
-            #             "updatedAt": "2022-01-02T08:07:12.219Z",
-            #             "tags": [],
-            #             "classTitle": "kiwi",
-            #             "bitmap": {
-            #                 "data": "eJyNlWs4lHkYxv/z8qp5NZuYSZes1KZm6CDSTuP0mh2ZWYdmULakdBUzkRqRrDG8M1vZZg8WIy...,
-            #                 "origin": [
-            #                     481,
-            #                     543
-            #                 ]
-            #             }
-            #         },
-            #         {
-            #             "id": 57388831,
-            #             "classId": 121404,
-            #             "description": "",
-            #             "geometryType": "bitmap",
-            #             "labelerLogin": "alex",
-            #             "createdAt": "2022-01-02T08:06:59.133Z",
-            #             "updatedAt": "2022-01-02T08:07:12.219Z",
-            #             "tags": [],
-            #             "classTitle": "lemon",
-            #             "bitmap": {
-            #                 "data": "eJwdV388k/sXfzwmz3TVNm3l94z5saQoXFSG+c26tM1GYjWUISWKK201SchvIcq30tX2rDuTdE...,
-            #                 "origin": [
-            #                     523,
-            #                     119
-            #                 ]
-            #             }
-            #         },
-            #         {
-            #             "id": 57388832,
-            #             "classId": 121405,
-            #             "description": "",
-            #             "geometryType": "bitmap",
-            #             "labelerLogin": "alex",
-            #             "createdAt": "2022-01-02T08:07:12.104Z",
-            #             "updatedAt": "2022-01-02T08:07:12.104Z",
-            #             "tags": [],
-            #             "classTitle": "kiwi",
-            #             "bitmap": {
-            #                 "data": "eJw1VglQU8kWTWISHzH6AzwwIEsSCBr2AApBloAJhB0eCEIYDJFN2WHACC7sRghbIAiIMuKj...,
-            #                 "origin": [
-            #                     773,
-            #                     391
-            #                 ]
-            #             }
-            #         }
-            #     ]
-            # }
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+                api = sly.Api.from_env()
 
-            # Let's filter 'lemon' class
-            keep_classes = ['lemon']
-            filter_ann = ann.filter_labels_by_classes(keep_classes)
-            print(json.dumps(filter_ann.to_json(), indent=4))
+                # Get image annotation from API
+                project_id = 7473
+                image_id = 2223200
+                meta_json = api.project.get_meta(project_id)
+                meta = sly.ProjectMeta.from_json(meta_json)
+                ann_info = api.annotation.download(image_id)
+                print(json.dumps(ann_info.annotation, indent=4))
 
-            # Output: {
-            #     "description": "",
-            #     "size": {
-            #         "height": 800,
-            #         "width": 1067
-            #     },
-            #     "tags": [],
-            #     "objects": [
-            #         {
-            #             "classTitle": "lemon",
-            #             "description": "",
-            #             "tags": [],
-            #             "bitmap": {
-            #                 "origin": [
-            #                     523,
-            #                     119
-            #                 ],
-            #                 "data": "eJwBOAPH/IlQTkcNChoKAAAADUlIRFIAAAEsAAABCQEDAAAAFNKIswAAAAZQTFRFAAAA...,
-            #             },
-            #             "shape": "bitmap",
-            #             "geometryType": "bitmap",
-            #             "labelerLogin": "alex",
-            #             "updatedAt": "2022-01-02T08:07:12.219Z",
-            #             "createdAt": "2022-01-02T08:06:59.133Z",
-            #             "id": 57388831,
-            #             "classId": 121404
-            #         }
-            #     ],
-            #     "customBigData": {}
-            # }
+                # Output: {
+                #     "description": "",
+                #     "tags": [],
+                #     "size": {
+                #         "height": 800,
+                #         "width": 1067
+                #     },
+                #     "objects": [
+                #         {
+                #             "id": 57388829,
+                #             "classId": 121405,
+                #             "description": "",
+                #             "geometryType": "bitmap",
+                #             "labelerLogin": "alex",
+                #             "createdAt": "2022-01-02T08:06:05.183Z",
+                #             "updatedAt": "2022-01-02T08:07:12.219Z",
+                #             "tags": [],
+                #             "classTitle": "kiwi",
+                #             "bitmap": {
+                #                 "data": "eJyNlWs4lHkYxv/z8qp5NZuYSZes1KZm6CDSTuP0mh2ZWYdmULakdBUzkRqRrDG8M1vZZg8WIy...,
+                #                 "origin": [
+                #                     481,
+                #                     543
+                #                 ]
+                #             }
+                #         },
+                #         {
+                #             "id": 57388831,
+                #             "classId": 121404,
+                #             "description": "",
+                #             "geometryType": "bitmap",
+                #             "labelerLogin": "alex",
+                #             "createdAt": "2022-01-02T08:06:59.133Z",
+                #             "updatedAt": "2022-01-02T08:07:12.219Z",
+                #             "tags": [],
+                #             "classTitle": "lemon",
+                #             "bitmap": {
+                #                 "data": "eJwdV388k/sXfzwmz3TVNm3l94z5saQoXFSG+c26tM1GYjWUISWKK201SchvIcq30tX2rDuTdE...,
+                #                 "origin": [
+                #                     523,
+                #                     119
+                #                 ]
+                #             }
+                #         },
+                #         {
+                #             "id": 57388832,
+                #             "classId": 121405,
+                #             "description": "",
+                #             "geometryType": "bitmap",
+                #             "labelerLogin": "alex",
+                #             "createdAt": "2022-01-02T08:07:12.104Z",
+                #             "updatedAt": "2022-01-02T08:07:12.104Z",
+                #             "tags": [],
+                #             "classTitle": "kiwi",
+                #             "bitmap": {
+                #                 "data": "eJw1VglQU8kWTWISHzH6AzwwIEsSCBr2AApBloAJhB0eCEIYDJFN2WHACC7sRghbIAiIMuKj...,
+                #                 "origin": [
+                #                     773,
+                #                     391
+                #                 ]
+                #             }
+                #         }
+                #     ]
+                # }
+
+                ann = sly.Annotation.from_json(ann_info.annotation, meta)
+
+                # Let's filter 'lemon' class
+                keep_classes = ['lemon']
+                filter_ann = ann.filter_labels_by_classes(keep_classes)
+                print(json.dumps(filter_ann.to_json(), indent=4))
+
+                # Output: {
+                #     "description": "",
+                #     "size": {
+                #         "height": 800,
+                #         "width": 1067
+                #     },
+                #     "tags": [],
+                #     "objects": [
+                #         {
+                #             "classTitle": "lemon",
+                #             "description": "",
+                #             "tags": [],
+                #             "bitmap": {
+                #                 "origin": [
+                #                     523,
+                #                     119
+                #                 ],
+                #                 "data": "eJwBOAPH/IlQTkcNChoKAAAADUlIRFIAAAEsAAABCQEDAAAAFNKIswAAAAZQTFRFAAAA...,
+                #             },
+                #             "shape": "bitmap",
+                #             "geometryType": "bitmap",
+                #             "labelerLogin": "alex",
+                #             "updatedAt": "2022-01-02T08:07:12.219Z",
+                #             "createdAt": "2022-01-02T08:06:59.133Z",
+                #             "id": 57388831,
+                #             "classId": 121404
+                #         }
+                #     ],
+                #     "customBigData": {}
+                # }
         """
         new_labels = []
         for lbl in self.labels:
@@ -2927,8 +3014,8 @@ class Annotation:
     def get_bindings(self) -> Dict[str, List[Label]]:
         """Returns dictionary with bindings keys as keys and list of labels as values.
 
-        :return: Dictionary with bindings keys as keys and list of labels as values.
-        :rtype: Dict[str, List[Label]]
+        :returns: Dictionary with bindings keys as keys and list of labels as values.
+        :rtype: Dict[str, List[:class:`~supervisely.annotation.label.Label`]]
         """
         d = defaultdict(list)
         for label in self.labels:
@@ -2951,9 +3038,9 @@ class Annotation:
         However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
 
         :param data: Label in json format.
-        :type data: :class:`dict`
-        :return: Json data with coordinates converted to pixel coordinate system.
-        :rtype: :class:`dict`
+        :type data: dict
+        :returns: Json data with coordinates converted to pixel coordinate system.
+        :rtype: dict
         """
         data = deepcopy(data)  # Avoid modifying the original data
         image_size = [
@@ -2984,8 +3071,8 @@ class Annotation:
 
         :param data: Label in json format.
         :type data: dict
-        :return: Json data with coordinates converted to subpixel coordinate system.
-        :rtype: :class:`dict`
+        :returns: Json data with coordinates converted to subpixel coordinate system.
+        :rtype: dict
         """
         data = deepcopy(data)  # Avoid modifying the original data
         new_labels = []
@@ -3009,8 +3096,8 @@ class Annotation:
     #     which means that the coordinates of the geometry can have decimal values representing fractions of a pixel.
     #     However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
 
-    #     :return: New instance of Annotation with labels in subpixel precision.
-    #     :rtype: :class:`Annotation<Annotation>`
+    #     :returns: New instance of Annotation with labels in subpixel precision.
+    #     :rtype: :class:`~supervisely.annotation.annotation.Annotation`
     #     """
     #     new_ann = self.clone()
     #     new_labels = [label._to_subpixel_coordinate_system() for label in new_ann.labels]
@@ -3039,44 +3126,42 @@ class Annotation:
         :type last_label_id: int, optional
         :param coco_captions: COCO captions in dictionary or list format to append new captions.
         :type coco_captions: Union[Dict, List], optional
-        :return: Tuple with list of COCO objects and list of COCO captions.
-        :rtype: :class:`tuple`
+        :returns: Tuple with list of COCO objects and list of COCO captions.
+        :rtype: tuple
 
+        :Usage Example:
 
-        :Usage example:
+            .. code-block:: python
 
-         .. code-block:: python
+                import supervisely as sly
 
-            import supervisely as sly
+                coco_instances = dict(
+                    info=dict(
+                        description="COCO dataset converted from Supervisely",
+                        url="None",
+                        version=str(1.0),
+                        year=2025,
+                        contributor="Supervisely",
+                        date_created="2025-01-01 00:00:00",
+                    ),
+                    licenses=[dict(url="None", id=0, name="None")],
+                    images=[],
+                    annotations=[],
+                    categories=get_categories_from_meta(meta),  # [{"supercategory": "lemon", "id": 1, "name": "lemon"}, ...]
+                )
 
+                ann = sly.Annotation.from_json(ann_json, meta)
+                image_id = 11
+                label_id = 222
+                class_mapping = {obj_cls.name: idx for idx, obj_cls in enumerate(meta.obj_classes)}
 
-            coco_instances = dict(
-                info=dict(
-                    description="COCO dataset converted from Supervisely",
-                    url="None",
-                    version=str(1.0),
-                    year=2025,
-                    contributor="Supervisely",
-                    date_created="2025-01-01 00:00:00",
-                ),
-                licenses=[dict(url="None", id=0, name="None")],
-                images=[],
-                annotations=[],
-                categories=get_categories_from_meta(meta),  # [{"supercategory": "lemon", "id": 1, "name": "lemon"}, ...]
-            )
+                curr_coco_ann, _ = ann.to_coco(image_id, class_mapping, coco_instances, label_id)
+                # or
+                # curr_coco_ann, _ = ann.to_coco(image_id, class_mapping, label_id=label_id)
+                # coco_instances["annotations"].extend(curr_coco_ann)
 
-            ann = sly.Annotation.from_json(ann_json, meta)
-            image_id = 11
-            label_id = 222
-            class_mapping = {obj_cls.name: idx for idx, obj_cls in enumerate(meta.obj_classes)}
-
-            curr_coco_ann, _ = ann.to_coco(image_id, class_mapping, coco_instances, label_id)
-            # or
-            # curr_coco_ann, _ = ann.to_coco(image_id, class_mapping, label_id=label_id)
-            # coco_instances["annotations"].extend(curr_coco_ann)
-
-            label_id += len(curr_coco_ann)
-            image_id += 1
+                label_id += len(curr_coco_ann)
+                image_id += 1
         """
 
         from supervisely.convert.image.coco.coco_helper import sly_ann_to_coco
@@ -3104,19 +3189,18 @@ class Annotation:
         :type class_names: List[str]
         :param task_type: Task type, one of "detection", "segmentation", "pose".
         :type task_type: str
-        :return: List of objects in YOLO format.
-        :rtype: :class:`list`
+        :returns: List of objects in YOLO format.
+        :rtype: list
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import supervisely as sly
 
-            ann = sly.Annotation.from_json(ann_json, meta)
-            class_names = [obj_cls.name for obj_cls in meta.obj_classes]
-
-            yolo_lines = ann.to_yolo(class_names, task_type="segmentation")
+                ann = sly.Annotation.from_json(ann_json, meta)
+                class_names = [obj_cls.name for obj_cls in meta.obj_classes]
+                yolo_lines = ann.to_yolo(class_names, task_type="segmentation")
         """
 
         from supervisely.convert.image.yolo.yolo_helper import sly_ann_to_yolo
@@ -3130,22 +3214,20 @@ class Annotation:
         """
         Convert Supervisely annotation to Pascal VOC format annotation ("annotations" field).
 
-        :param ann: Supervisely annotation.
-        :type ann: :class:`Annotation<supervisely.annotation.annotation.Annotation>`
         :param image_name: Image name.
-        :type image_name: :class:`str`
-        :return: Tuple with xml tree and instance and class masks in PIL.Image format.
-        :rtype: :class:`Tuple`
+        :type image_name: str
+        :returns: Tuple with xml tree and instance and class masks in PIL.Image format.
+        :rtype: Tuple[List, List]
 
-        :Usage example:
+        :Usage Example:
 
-        .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
-            from supervisely.convert.image.pascal_voc.pascal_voc_helper import sly_ann_to_pascal_voc
+                import supervisely as sly
+                from supervisely.convert.image.pascal_voc.pascal_voc_helper import sly_ann_to_pascal_voc
 
-            ann = sly.Annotation.from_json(ann_json, meta)
-            xml_tree, instance_mask, class_mask = sly_ann_to_pascal_voc(ann, image_name)
+                ann = sly.Annotation.from_json(ann_json, meta)
+                xml_tree, instance_mask, class_mask = sly_ann_to_pascal_voc(ann, image_name)
         """
 
         from supervisely.convert.image.pascal_voc.pascal_voc_helper import (

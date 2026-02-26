@@ -12,6 +12,8 @@ CONF_THRES = 0.05
 
 
 class InstanceSegmentationBenchmark(ObjectDetectionBenchmark):
+    """Benchmark for instance segmentation models (inference, evaluation, visualization)."""
+
     visualizer_cls = InstanceSegmentationVisualizer
 
     @property

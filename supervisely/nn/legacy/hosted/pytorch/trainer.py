@@ -37,6 +37,8 @@ def _check_all_pixels_have_segmentation_class(targets):
 
 
 class PytorchSegmentationTrainer(SuperviselyModelTrainer):
+    """Legacy PyTorch semantic segmentation trainer: trains model, saves checkpoints, reports metrics."""
+
     @staticmethod
     def get_default_config():
         return {
@@ -60,6 +62,16 @@ class PytorchSegmentationTrainer(SuperviselyModelTrainer):
         }
 
     def __init__(self, model_factory_fn, optimization_loss_fn, training_metrics_dict=None, default_model_config=None):
+        """
+        :param model_factory_fn: Model factory.
+        :type model_factory_fn: Callable
+        :param optimization_loss_fn: Loss function.
+        :type optimization_loss_fn: Callable
+        :param training_metrics_dict: Optional metrics.
+        :type training_metrics_dict: dict
+        :param default_model_config: Optional model config.
+        :type default_model_config: dict
+        """
         default_config = PytorchSegmentationTrainer.get_default_config()
         default_config[CUSTOM_MODEL_CONFIG].update(default_model_config if default_model_config is not None else {})
 

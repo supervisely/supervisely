@@ -5,11 +5,14 @@ from supervisely.app.widgets import Button, Card, Container, DeployModel, Text
 
 
 class ModelSelector:
+    """Predict app step: deploy or connect to a model via DeployModel widget."""
+
     title = "Model"
     description = "Connect to deployed model or deploy new model"
     lock_message = "Select previous step to unlock"
 
     def __init__(self, api: Api, team_id: int):
+        """:param api: Supervisely API. :param team_id: Team ID for models."""
         # Init Step
         self.api = api
         self.team_id = team_id
