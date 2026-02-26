@@ -73,7 +73,7 @@ class LyftConverter(PointcloudConverter):
         try:
             from lyft_dataset_sdk.lyftdataset import LyftDataset as Lyft
         except ImportError:
-            logger.warn(
+            logger.warning(
                 'Install "lyft_dataset_sdk" python package to import datasets in LYFT format.'
             )
             return False
@@ -119,7 +119,9 @@ class LyftConverter(PointcloudConverter):
             scene_name = scene["name"]
             sample_datas = lyft_helper.extract_data_from_scene(lyft, scene)
             if sample_datas is None:
-                logger.warning(f"Failed to extract sample data from scene: {scene['name']}.")
+                logger.warning(
+                    f"Failed to extract sample data from scene: {scene['name']}."
+                )
                 continue
             for sample_data in sample_datas:
                 item_path = sample_data["lidar_path"]

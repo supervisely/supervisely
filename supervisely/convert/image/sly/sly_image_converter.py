@@ -1,5 +1,5 @@
 import os
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 import supervisely.convert.image.sly.sly_image_helper as sly_image_helper
 from supervisely import (
@@ -88,15 +88,29 @@ class SLYImageConverter(ImageConverter):
     def validate_format(self) -> bool:
         if self.upload_as_links and self._supports_links:
             self._download_remote_ann_files()
-        if self.read_sly_project(self._input_data):
+
+        def _masks_format_filter(d):
+            semantic_masks_path = os.path.join(d, "obj_class_to_semantic_color.json")
+            machine_masks_path = os.path.join(d, "obj_class_to_machine_color.json")
+            if os.path.exists(semantic_masks_path):
+                return True
+            elif os.path.exists(machine_masks_path):
+                return True
+            return False
+
+        masks_dirs = [d for d in dirs_filter(self._input_data, _masks_format_filter)]
+
+        if self.read_sly_project(self._input_data, dirs_to_skip=masks_dirs):
             return True
 
-        if self.read_sly_dataset(self._input_data):
+        if self.read_sly_dataset(self._input_data, dirs_to_skip=masks_dirs):
             return True
 
         detected_ann_cnt = 0
         images_list, ann_dict, img_meta_dict = [], {}, {}
         for root, _, files in os.walk(self._input_data):
+            if any(os.path.abspath(root).startswith(d) for d in masks_dirs):
+                continue
             for file in files:
                 full_path = os.path.join(root, file)
                 dir_name = os.path.basename(root)
@@ -175,14 +189,16 @@ class SLYImageConverter(ImageConverter):
             logger.warning(f"Failed to convert annotation: {repr(e)}")
             return item.create_empty_annotation()
 
-    def read_sly_project(self, input_data: str) -> bool:
+    def read_sly_project(self, input_data: str, dirs_to_skip: Optional[List[str]] = None) -> bool:
         try:
             self._items = []
             project = {}
             ds_cnt = 0
             self._meta = None
             logger.debug("Trying to find Supervisely project format in the input data")
-            project_dirs = [d for d in find_project_dirs(input_data)]
+            project_dirs = [os.path.abspath(d) for d in find_project_dirs(input_data)]
+            if dirs_to_skip:
+                project_dirs = [d for d in project_dirs if d not in dirs_to_skip]
             if len(project_dirs) > 1:
                 logger.info("Found multiple possible Supervisely projects in the input data")
             elif len(project_dirs) == 1:
@@ -203,6 +219,11 @@ class SLYImageConverter(ImageConverter):
                     ds_items = []
                     for name in dataset.get_items_names():
                         img_path, ann_path = dataset.get_item_paths(name)
+                        if not os.path.exists(img_path) or not self.is_image(img_path):
+                            logger.debug(
+                                f"Image file {img_path} does not exist or is not a valid image, skipping"
+                            )
+                            continue
                         meta_path = dataset.get_item_meta_path(name)
                         item = self.Item(img_path)
                         if file_exists(ann_path):
@@ -236,7 +257,7 @@ class SLYImageConverter(ImageConverter):
             logger.debug(f"Not a Supervisely project: {repr(e)}")
             return False
 
-    def read_sly_dataset(self, input_data: str) -> bool:
+    def read_sly_dataset(self, input_data: str, dirs_to_skip: Optional[List[str]] = None) -> bool:
         try:
             self._items = []
             project = {}
@@ -245,6 +266,8 @@ class SLYImageConverter(ImageConverter):
             logger.debug("Trying to read Supervisely datasets")
 
             def _check_function(path):
+                if any(path.startswith(d) for d in dirs_to_skip):
+                    return False
                 try:
                     dataset_ds = Dataset(path, OpenMode.READ)
                     return len(dataset_ds.get_items_names()) > 0
@@ -258,6 +281,11 @@ class SLYImageConverter(ImageConverter):
                 ds_items = []
                 for name in dataset_fs.get_items_names():
                     img_path, ann_path = dataset_fs.get_item_paths(name)
+                    if not os.path.exists(img_path) or not self.is_image(img_path):
+                        logger.debug(
+                            f"Image file {img_path} does not exist or is not a valid image, skipping"
+                        )
+                        continue
                     meta_path = dataset_fs.get_item_meta_path(name)
                     item = self.Item(img_path)
                     if file_exists(ann_path):

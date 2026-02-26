@@ -68,11 +68,11 @@ class DICOMConverter(VolumeConverter):
         self._items = []
         for dicom_id, dicom_paths in series_infos.items():
             if len(dicom_paths) == 0:
-                logger.warn(f"Empty serie {dicom_id}, serie will be skipped")
+                logger.warning(f"Empty serie {dicom_id}, serie will be skipped")
                 continue
             item_path = dicom_paths[0]
             if get_extension(path=item_path) is None:
-                logger.warn(
+                logger.warning(
                     f"Can not recognize file extension {item_path}, serie will be skipped"
                 )
                 continue

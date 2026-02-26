@@ -3,13 +3,13 @@ from typing import Any, Dict, List, Optional, Tuple
 from uuid import uuid4
 
 import numpy as np
-
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.json_geometries_map import GET_GEOMETRY_FROM_STR
 from supervisely.annotation.label import Label
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.tag import Tag
 from supervisely.annotation.tag_meta import TagMeta, TagValueType
+from supervisely.convert.image.image_helper import validate_image_bounds
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.geometry.geometry import Geometry
 from supervisely.geometry.point_location import row_col_list_to_points
@@ -17,7 +17,6 @@ from supervisely.geometry.polygon import Polygon
 from supervisely.geometry.rectangle import Rectangle
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
-from supervisely.convert.image.image_helper import validate_image_bounds
 
 POSSIBLE_SHAPE_TYPES = ["polygonlabels", "rectanglelabels", "brushlabels"]
 POSSIBLE_TAGS_TYPES = ["choices"]
@@ -116,7 +115,7 @@ def convert_geometry_to_sly(
         geometry = convert_func(coords, h, w)
         return geometry
     except Exception as e:
-        logger.warn(f"Failed to convert geometry: {shape_type}. Reason: {repr(e)}")
+        logger.warning(f"Failed to convert geometry: {shape_type}. Reason: {repr(e)}")
         return None
 
 
@@ -153,7 +152,7 @@ def _get_or_create_tag_or_cls(meta: ProjectMeta, name: str, geometry_name: Optio
     if is_tag and item.value_type != item_type or not is_tag and item.geometry_type != item_type:
         new_name = generate_new_name_for_meta(meta, name, item_type, is_tag=is_tag)
         if new_name != name:
-            logger.warn(
+            logger.warning(
                 f"Type mismatch for {'tag' if is_tag else 'class'} '{name}'. Renamed to '{new_name}'"
             )
             item = TagMeta(new_name, item_type) if is_tag else ObjClass(new_name, item_type)

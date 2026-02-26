@@ -90,7 +90,9 @@ class MultiViewImageConverter(ImageConverter):
                     existing_names, name, with_ext=True, extend_used_names=True
                 )
                 if new_name != name:
-                    logger.warn(f"Image '{name}' already exists. Renamed to '{new_name}'.")
+                    logger.warning(
+                        f"Image '{name}' already exists. Renamed to '{new_name}'."
+                    )
                     os.rename(image, os.path.join(group_path, new_name))
                     image = os.path.join(group_path, new_name)
                 if self._upload_as_links:

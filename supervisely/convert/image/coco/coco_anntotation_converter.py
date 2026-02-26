@@ -93,7 +93,7 @@ class FastCOCOConverter(COCOConverter, ImageConverter):
         self._meta = meta
         if len(warnings) > 0:
             for warning, failed_items in warnings.items():
-                logger.warn(f"{warning}: {failed_items}")
+                logger.warning(f"{warning}: {failed_items}")
         return detected_ann_cnt > 0
 
     def to_supervisely(
@@ -152,7 +152,7 @@ class FastCOCOConverter(COCOConverter, ImageConverter):
                 if existing_image is None:
                     continue
                 if item.shape != (existing_image.height, existing_image.width):
-                    logger.warn(
+                    logger.warning(
                         f"Image '{item.name}' has different shapes in COCO annotation and Supervisely."
                     )
                     continue
