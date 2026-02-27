@@ -122,6 +122,21 @@ RUN rm -rf /var/lib/dpkg/status \
     /var/lib/dpkg/status.d \
     /var/lib/dpkg/info
 
+# strip runtime tools
+RUN rm -f \
+    /usr/bin/apt \
+    /usr/bin/apt-get \
+    /usr/bin/apt-cache \
+    /usr/bin/apt-mark \
+    /usr/bin/apt-key \
+    /usr/bin/dpkg \
+    /usr/bin/dpkg-deb \
+    /usr/bin/dpkg-query \
+    /usr/bin/dpkg-divert \
+    /usr/bin/git \
+    /usr/bin/curl \
+    /usr/bin/wget
+
 RUN /opt/venv/bin/python -m pip install --no-cache-dir --upgrade \
     setuptools==78.1.1 \
     wheel==0.46.2 \
