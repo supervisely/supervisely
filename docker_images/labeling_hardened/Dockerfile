@@ -36,8 +36,8 @@ RUN pip install imutils==0.5.4 loguru==0.7.0
 RUN pip install git+https://github.com/supervisely/supervisely.git@hardened-docker-images
 
 RUN pip install --upgrade \
-  "protobuf>=6.33.5" \
-  "jaraco.context>=6.1.0" \
+  "protobuf==6.33.5" \
+  "jaraco.context==6.1.0" \
   wheel==0.46.2 \
   && rm -rf \
   /opt/venv/lib/python3.10/site-packages/setuptools/_vendor/jaraco.context* \
@@ -51,3 +51,5 @@ FROM supervisely/py-sdk-hardened:${tag_ref_name} AS runtime
 # Copy Python environment from builder
 COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
+
+RUN /usr/local/bin/strip-venv-packagers
