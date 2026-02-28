@@ -588,18 +588,18 @@ class PredictAppGui:
                             logger.info("Prediction stopped by user.")
                             raise StopIteration("Stopped by user.")
                         frames_predictions.append(prediction)
-                    all_predictictions.extend(frames_predictions)
-                    if tracking:
-                        prediction_video_annotation: VideoAnnotation = VideoAnnotation.from_json(
-                            session.final_result["video_ann"],
-                            project_meta=self.model_api.get_model_meta(),
-                        )
-                    else:
-                        prediction_video_annotation = video_annotation_from_predictions(
-                            frames_predictions,
-                            project_meta,
-                            frame_size=(src_video_info.frame_height, src_video_info.frame_width),
-                        )
+                all_predictictions.extend(frames_predictions)
+                if tracking:
+                    prediction_video_annotation: VideoAnnotation = VideoAnnotation.from_json(
+                        session.final_result["video_ann"],
+                        project_meta=self.model_api.get_model_meta(),
+                    )
+                else:
+                    prediction_video_annotation = video_annotation_from_predictions(
+                        frames_predictions,
+                        self.model_api.get_model_meta(),
+                        frame_size=(src_video_info.frame_height, src_video_info.frame_width),
+                    )
                 if prediction_video_annotation is None:
                     logger.warning(
                         f"No predictions were made for video {src_video_info.name} [id: {src_video_info.id}]"
