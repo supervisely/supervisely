@@ -737,6 +737,8 @@ class SetupTests(unittest.TestCase):
 
     def test_06_tracking(self):
         """Test installation with 'tracking' option for all Python versions."""
+        if sys.platform == "darwin":
+            self.skipTest("Skipping [tracking] extra on macOS (faiss-gpu is not available)")
         print(f"\n{'#'*80}")
         print(f"# TEST 06: TRACKING")
         print(f"{'#'*80}\n")
