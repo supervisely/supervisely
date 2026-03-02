@@ -116,7 +116,7 @@ class LiveTraining:
             'training_paused': self._is_paused,
             'ready_to_predict': self.ready_to_predict,
             'initial_iters': self.initial_iters,
-            f'{self.evaluator.metric_name}_EMA': self.evaluator.ema_value if self.evaluator else None
+            'model_quality': self.evaluator.ema_value if self.evaluator else None
         }
 
     def run(self):
