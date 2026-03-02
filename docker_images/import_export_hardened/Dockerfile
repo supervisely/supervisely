@@ -25,12 +25,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   libsm6 \
   libxext6 \
   && rm -rf /var/lib/apt/lists/*
-
+  
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 RUN pip install pip==26.0.1
-RUN pip install setuptools==78.1.1 wheel==0.46.2
+RUN pip install setuptools==80.10.1 wheel==0.46.2
 
 # RUN pip install --upgrade supervisely==$tag_ref_name
 # todo: remove; test only
@@ -55,9 +55,9 @@ RUN pip install pylibjpeg-libjpeg==2.1.0
 RUN pip install pillow-avif-plugin==1.4.3
 RUN pip install pillow-heif==0.18.0
 RUN pip install tifffile==2023.7.10
-# RUN pip install pymupdf==1.22.5
+RUN pip install pymupdf==1.22.5
 RUN pip install nibabel==5.2.1
-# RUN pip install bagpy==0.5
+RUN pip install bagpy==0.5
 RUN pip install imagecodecs==2024.6.1
 RUN pip install lyft-dataset-sdk==0.0.8
 RUN pip install matplotlib==3.8.4
@@ -66,13 +66,16 @@ RUN pip install nuscenes-devkit==1.1.11 --no-deps
 RUN pip install lxml==5.2.2
 RUN pip install scikit-image==0.23.2
 
-RUN pip install --upgrade \
-  "protobuf==6.33.5" \
-  "jaraco.context==6.1.0" \
-  wheel==0.46.2 \
-  && rm -rf \
-  /opt/venv/lib/python3.10/site-packages/setuptools/_vendor/jaraco.context* \
-  /opt/venv/lib/python3.10/site-packages/setuptools/_vendor/wheel*
+# strip installer tooling from the venv
+RUN rm -rf \
+  /opt/venv/lib/python3.10/site-packages/pip* \
+  /opt/venv/lib/python3.10/site-packages/wheel* \
+  /opt/venv/bin/pip \
+  /opt/venv/bin/pip3 \
+  /opt/venv/bin/pip3.* \
+  /opt/venv/bin/easy_install \
+  /opt/venv/bin/easy_install-* \
+  /opt/venv/bin/wheel
 
 # ============================================================================
 # STAGE 2: Runtime Stage (Hardened)
@@ -82,5 +85,3 @@ FROM supervisely/py-sdk-hardened:${tag_ref_name} AS runtime
 # Copy Python environment from builder
 COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
-
-RUN /usr/local/bin/strip-venv-packagers

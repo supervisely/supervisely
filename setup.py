@@ -106,7 +106,7 @@ INSTALL_REQUIRES = [
     "jsonpatch>=1.32, <2.0",
     "MarkupSafe>=2.1.1, <3.0.0",
     "arel>=0.2.0, <1.0.0",
-    "tqdm>=4.62.3, <5.0.0",
+    "tqdm>=4.66.3, <5.0.0",
     "pandas>=1.1.3, <=2.3.3",
     "async_asgi_testclient",
     "PyYAML>=5.4.0",
@@ -128,7 +128,7 @@ INSTALL_REQUIRES = [
     "aiofiles",
     "httpx[http2]==0.27.2",
     "debugpy",
-    "setuptools<81.0.0",
+    "setuptools>=80.10.1, <81.0.0",
 ]
 
 ALT_INSTALL_REQUIRES = {
@@ -246,7 +246,7 @@ setup(
             "jsonpatch>=1.32, <2.0",
             "MarkupSafe>=2.1.1, <3.0.0",
             "arel>=0.2.0, <1.0.0",
-            "tqdm>=4.62.3, <5.0.0",
+            "tqdm>=4.66.3, <5.0.0",
             "pandas>=1.1.3, <=2.3.3",
         ],
         "docs": [
