@@ -46,13 +46,10 @@ jobs:
       - name: pip-audit scan
         run: |
           mkdir -p audit_logs
-          docker run --rm -v "$PWD/audit_logs:/work" \
+          if ! docker run --rm -v "$PWD/audit_logs:/work" \
             "supervisely/${{ matrix.image_name }}:${{ github.event.inputs.tag_version }}" \
-            sh -lc "/opt/venv/bin/python -m pip_audit --format json > /work/pip_audit.json"
-
-          PIP_AUDIT_COUNT="$(python3 docker_images/pip_audit_summary.py audit_logs/pip_audit.json)"
-          if [[ "$PIP_AUDIT_COUNT" -gt 0 ]]; then
-            echo "pip-audit found vulnerabilities: COUNT=$PIP_AUDIT_COUNT" >&2
+            sh -lc "/opt/venv/bin/python -m pip_audit --format json > /work/pip_audit.json"; then
+            echo "pip-audit found vulnerabilities" >&2
             exit 1
           fi
 
