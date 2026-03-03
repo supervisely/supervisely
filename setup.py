@@ -239,10 +239,9 @@ setup(
             "matplotlib>=3.3.2, <4.0.0",
             "pascal-voc-writer>=0.1.4, <1.0.0",
             "scipy>=1.8.0, <2.0.0",
-            "pandas>=1.1.3, <=2.3.3",
             "ruamel.yaml==0.17.21",
         ],
-        "apps": [
+        "apps": [  # todo: discuss, all app reqs are duplicated in base requires.
             "uvicorn[standard]>=0.18.2, <1.0.0",
             "fastapi>=0.129.0, <1.0.0; python_version >= '3.10'",
             "fastapi<0.129.0; python_version < '3.10'",
