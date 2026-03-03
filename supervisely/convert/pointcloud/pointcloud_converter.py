@@ -98,7 +98,23 @@ class PointcloudConverter(BaseConverter):
 
         meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)
 
-        existing_pointcloud_names = set([pcd.name for pcd in api.pointcloud.get_list(dataset_id)])
+        existing_pcd_infos = api.pointcloud.get_list(dataset_id)
+        existing_pointcloud_names = set([pcd.name for pcd in existing_pcd_infos])
+        used_related_image_names: Set[str] = set()
+        try:
+            existing_pcd_ids = [pcd.id for pcd in existing_pcd_infos]
+            for pcd_ids_batch in batched(existing_pcd_ids, batch_size=1000):
+                related_images = api.pointcloud.get_list_related_images_batch(
+                    dataset_id, pcd_ids_batch
+                )
+                for related_image in related_images:
+                    related_image_name = related_image.get(ApiField.NAME)
+                    if related_image_name is not None:
+                        used_related_image_names.add(related_image_name)
+        except Exception as e:
+            logger.debug(
+                f"Failed to fetch existing related image names for dataset ID:{dataset_id}: {repr(e)}"
+            )
 
         if log_progress:
             progress, progress_cb = self.get_progress(self.items_count, "Uploading pointclouds...")
@@ -110,7 +126,6 @@ class PointcloudConverter(BaseConverter):
             upload_fn = api.pointcloud.upload_links
 
         key_id_map = KeyIdMap()
-        used_related_image_names: Set[str] = set()
         for batch in batched(self._items, batch_size=batch_size):
             item_names = []
             item_paths = []

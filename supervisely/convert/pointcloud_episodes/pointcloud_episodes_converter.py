@@ -122,7 +122,8 @@ class PointcloudEpisodeConverter(BaseConverter):
 
         meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)
 
-        existing_names = set([pcde.name for pcde in api.pointcloud_episode.get_list(dataset_id)])
+        existing_pcde_infos = api.pointcloud_episode.get_list(dataset_id)
+        existing_names = set([pcde.name for pcde in existing_pcde_infos])
 
         if log_progress:
             progress, progress_cb = self.get_progress(
@@ -135,6 +136,20 @@ class PointcloudEpisodeConverter(BaseConverter):
         pcl_to_rimg_figures: Dict[int, Dict[str, List[Dict]]] = {}
         pcl_to_hash_to_id: Dict[int, Dict[str, int]] = {}
         used_related_image_names: Set[str] = set()
+        try:
+            existing_pcde_ids = [pcde.id for pcde in existing_pcde_infos]
+            for pcde_ids_batch in batched(existing_pcde_ids, batch_size=1000):
+                related_images = api.pointcloud.get_list_related_images_batch(
+                    dataset_id, pcde_ids_batch
+                )
+                for related_image in related_images:
+                    related_image_name = related_image.get(ApiField.NAME)
+                    if related_image_name is not None:
+                        used_related_image_names.add(related_image_name)
+        except Exception as e:
+            logger.debug(
+                f"Failed to fetch existing related image names for dataset ID:{dataset_id}: {repr(e)}"
+            )
         key_id_map = KeyIdMap()
         for batch in batched(self._items, batch_size=batch_size):
             item_names = []
