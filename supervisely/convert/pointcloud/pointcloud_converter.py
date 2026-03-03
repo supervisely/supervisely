@@ -103,7 +103,7 @@ class PointcloudConverter(BaseConverter):
         used_related_image_names: Set[str] = set()
         try:
             existing_pcd_ids = [pcd.id for pcd in existing_pcd_infos]
-            for pcd_ids_batch in batched(existing_pcd_ids, batch_size=1000):
+            for pcd_ids_batch in batched(existing_pcd_ids, batch_size=200):
                 related_images = api.pointcloud.get_list_related_images_batch(
                     dataset_id, pcd_ids_batch
                 )
