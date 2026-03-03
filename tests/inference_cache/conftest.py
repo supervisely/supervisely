@@ -1,11 +1,10 @@
-from pathlib import Path
-from unittest import mock
-
 import pytest
-from utils import create_img
+import mock
+from pathlib import Path
 
 import supervisely as sly
 from supervisely.nn.inference import cache
+from utils import create_img
 
 
 @pytest.fixture(scope="function")

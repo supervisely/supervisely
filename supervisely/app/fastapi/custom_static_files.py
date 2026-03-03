@@ -1,14 +1,13 @@
 import os
 import typing
-from pathlib import Path
 
-from fastapi import HTTPException, status
+from pathlib import Path
 from fastapi.staticfiles import StaticFiles
+from fastapi import HTTPException, status
 from starlette.datastructures import Headers
 from starlette.responses import FileResponse, Response, StreamingResponse
 from starlette.staticfiles import NotModifiedResponse
 from starlette.types import Scope
-
 from supervisely.video.video import ALLOWED_VIDEO_EXTENSIONS
 
 PathLike = typing.Union[str, "os.PathLike[str]"]

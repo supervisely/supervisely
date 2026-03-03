@@ -317,7 +317,7 @@ setup(
             "numpy>=1.19, <2.0.0",
         ],
         "agent": [
-            "protobuf>=6.33.5,<7.0.0",
+            "protobuf>=3.19.5, <=3.20.3",
         ],
         "versioning": [
             "pyarrow>=17.0.0, <=22.0.0",
