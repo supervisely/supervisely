@@ -18,13 +18,14 @@ IMAGE_TAR="$LOG_DIR/image.tar"
 
 mkdir -p "$LOG_DIR"
 
-echo "Building image with buildctl..."
-buildctl build \
-  --frontend dockerfile.v0 \
-  --local context="$IMAGE_DIR" \
-  --local dockerfile="$IMAGE_DIR" \
-  --opt build-arg:tag_ref_name="$TAG_REF" \
-  --output type=docker,name="$IMAGE_REF",dest="$IMAGE_TAR"
+# echo "Building image with buildctl..."
+# buildctl build \
+#   --frontend dockerfile.v0 \
+#   --local context="$IMAGE_DIR" \
+#   --local dockerfile="$IMAGE_DIR" \
+#   --opt build-arg:tag_ref_name="$TAG_REF" \
+#   --output type=docker,name="$IMAGE_REF",dest="$IMAGE_TAR"
+docker build --platform linux/amd64 -t "$IMAGE_REF" "$IMAGE_DIR" --build-arg tag_ref_name="$TAG_REF"
 
 docker load -i "$IMAGE_TAR"
 
