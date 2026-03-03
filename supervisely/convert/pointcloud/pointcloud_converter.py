@@ -98,7 +98,7 @@ class PointcloudConverter(BaseConverter):
 
         meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)
 
-        existing_names = set([pcd.name for pcd in api.pointcloud.get_list(dataset_id)])
+        existing_pointcloud_names = set([pcd.name for pcd in api.pointcloud.get_list(dataset_id)])
 
         if log_progress:
             progress, progress_cb = self.get_progress(self.items_count, "Uploading pointclouds...")
@@ -110,13 +110,14 @@ class PointcloudConverter(BaseConverter):
             upload_fn = api.pointcloud.upload_links
 
         key_id_map = KeyIdMap()
+        used_related_image_names: Set[str] = set()
         for batch in batched(self._items, batch_size=batch_size):
             item_names = []
             item_paths = []
             anns = []
             for item in batch:
                 item.name = generate_free_name(
-                    existing_names, item.name, with_ext=True, extend_used_names=True
+                    existing_pointcloud_names, item.name, with_ext=True, extend_used_names=True
                 )
                 item_names.append(item.name)
                 if self.upload_as_links:
@@ -163,9 +164,16 @@ class PointcloudConverter(BaseConverter):
                         else:
                             camera_names.append(meta_json[ApiField.META]["deviceId"])
 
+                        related_image_name = generate_free_name(
+                            used_related_image_names,
+                            meta_json[ApiField.NAME],
+                            with_ext=True,
+                            extend_used_names=True,
+                        )
+
                         rimage_dict = {
                             ApiField.ENTITY_ID: pcd_id,
-                            ApiField.NAME: meta_json[ApiField.NAME],
+                            ApiField.NAME: related_image_name,
                             ApiField.META: meta_json[ApiField.META],
                         }
                         link = None
