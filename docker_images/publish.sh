@@ -14,7 +14,7 @@ TAG_REF="$3"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOG_DIR="$SCRIPT_DIR/vuln_logs"
-IMAGE_TAR="$LOG_DIR/image.tar"
+# IMAGE_TAR="$LOG_DIR/image.tar"
 
 mkdir -p "$LOG_DIR"
 
@@ -27,7 +27,7 @@ mkdir -p "$LOG_DIR"
 #   --output type=docker,name="$IMAGE_REF",dest="$IMAGE_TAR"
 docker build --platform linux/amd64 -t "$IMAGE_REF" "$IMAGE_DIR" --build-arg tag_ref_name="$TAG_REF"
 
-docker load -i "$IMAGE_TAR"
+# docker load -i "$IMAGE_TAR"
 
 echo "Running pip-audit scan for vulnerabilities..."
 if ! docker run --rm -v "$LOG_DIR:/work" "$IMAGE_REF" \
@@ -57,7 +57,7 @@ if ! docker run --rm \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v "$LOG_DIR:/work" \
   goodwithtech/dockle:latest --exit-code 1 --exit-level FATAL \
-  --accept-file '.*settings\.py$' \
+  -af settings.py \
   --format json --output /work/dockle_report.json "$IMAGE_REF"; then
   echo "Dockle found FATAL findings" >&2
   echo "Check $LOG_DIR/dockle_report.json for details." >&2

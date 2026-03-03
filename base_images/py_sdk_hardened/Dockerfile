@@ -19,7 +19,7 @@ RUN apt-get update \
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-RUN pip install pip==26.0.1
+RUN pip install --upgrade pip==26.0.1
 RUN pip install setuptools==80.10.1 wheel==0.46.2 pillow==12.1.1
 RUN pip install pip-audit==2.7.3
 
@@ -45,17 +45,19 @@ RUN sh -c 'set -eu && \
     echo "ERROR: Failed to install supervisely==$tag_ref_name after $MAX_ATTEMPTS attempts" >&2 && \
     exit 1'
 
-# todo: remove; tests only
+# todo: remove; tests only -------------------------------------
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         git \
     && rm -rf /var/lib/apt/lists/*
 RUN pip install git+https://github.com/supervisely/supervisely.git@hardened-docker-images
+RUN pip install pillow==12.1.1 wheel==0.46.2
+# ---------------------------------------------------------------
 
 # strip installer tooling from the venv
 RUN rm -rf \
-    /opt/venv/lib/python3.10/site-packages/pip* \
     /opt/venv/lib/python3.10/site-packages/wheel* \
+    /opt/venv/lib/python3.10/site-packages/setuptools/_vendor/wheel* \
     /opt/venv/bin/pip \
     /opt/venv/bin/pip3 \
     /opt/venv/bin/pip3.* \
@@ -66,7 +68,7 @@ RUN rm -rf \
 # ============================================================================
 # STAGE 2: Runtime Stage (Hardened)
 # ============================================================================
-FROM python:3.10-slim-bookworm as runtime
+FROM python:3.10-slim-bookworm AS runtime
 
 ENV LANG=C.UTF-8 \
     PYTHONDONTWRITEBYTECODE=1 \

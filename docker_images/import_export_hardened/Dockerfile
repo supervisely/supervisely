@@ -70,6 +70,7 @@ RUN pip install scikit-image==0.23.2
 RUN rm -rf \
   /opt/venv/lib/python3.10/site-packages/pip* \
   /opt/venv/lib/python3.10/site-packages/wheel* \
+  /opt/venv/lib/python3.10/site-packages/setuptools/_vendor/wheel* \
   /opt/venv/bin/pip \
   /opt/venv/bin/pip3 \
   /opt/venv/bin/pip3.* \
