@@ -5,6 +5,7 @@ import supervisely.convert.image.sly.sly_image_helper as helper
 from supervisely import (
     Annotation,
     Api,
+    ImageInfo,
     Label,
     Project,
     ProjectMeta,
@@ -51,7 +52,20 @@ class FastSlyImageConverter(SLYImageConverter, ImageConverter):
                         item.set_shape((h, w))
                         self._items.append(item)
                         detected_ann_cnt += 1
-                elif self.is_image(full_path):
+                    elif helper.is_image_info(ann_json):
+                        image_name = ann_json.get("name")
+                        for item in self._items:
+                            if item.name == image_name:
+                                break
+                        if item.shape != (ann_json.get("height"), ann_json.get("width")):
+                            logger.warning(
+                                f"Mismatch between image shape in annotation and image info JSON. Skipping image info.",
+                                extra={"image_name": image_name},
+                            )
+                            continue
+                        item.custom_data["image_info"] = ann_json
+
+                elif self.is_image(full_path) or ext in helper.nondefault_image_exts:
                     self._items = []
                     return False
 
@@ -103,6 +117,68 @@ class FastSlyImageConverter(SLYImageConverter, ImageConverter):
         meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)
 
         existing_images = {img_info.name: img_info for img_info in api.image.get_list(dataset_id)}
+
+        # * Upload non-existing images with hashes from image info json
+        image_infos = {}
+        for item in self._items:
+            image_info = item.custom_data.get("image_info")
+            if image_info is None:
+                continue
+            image_info = ImageInfo(**image_info)
+            if image_info.name in existing_images:
+                if (
+                    image_info.id == existing_images[image_info.name].id
+                    and image_info.hash == existing_images[image_info.name].hash
+                ):
+                    continue
+                else:
+                    logger.warning(
+                        f"Image '{image_info.name}' already exists in the dataset but has different id or hash. "
+                        f"Annotation cannot be uploaded for this image. Please, check the dataset and annotation files."
+                    )
+                    continue
+            image_infos[item.name] = image_info
+
+        if image_infos:
+            hashes = [image_info.hash for image_info in image_infos.values()]
+            existing_hashes = api.image.check_existing_hashes(hashes=hashes)
+            missing_hashes = set(hashes) - set(existing_hashes)
+            missing_hash_cnt = len(missing_hashes)
+            if not existing_hashes:
+                logger.warning(
+                    "None of the images from image info JSON exist on the server. "
+                    "Cannot upload images from image info JSON."
+                )
+            elif existing_hashes and missing_hash_cnt > 0:
+                logger.warning(
+                    "Some images from image info JSON already exist on the server, but some are missing. "
+                    "Only images with existing hashes will be uploaded.",
+                    extra={
+                        "existing hash count": len(existing_hashes),
+                        "missing hash count": missing_hash_cnt,
+                    },
+                )
+            image_infos = {
+                name: info for name, info in image_infos.items() if info.hash in existing_hashes
+            }
+
+            if log_progress:
+                progress, progress_cb = self.get_progress(
+                    len(image_infos), "Uploading images from image infos..."
+                )
+            else:
+                progress_cb = None
+
+            uploaded_infos = api.image.upload_hashes(
+                dataset_id=dataset_id,
+                names=list(image_infos.keys()),
+                hashes=[image_info.hash for image_info in image_infos.values()],
+                metas=[image_info.meta for image_info in image_infos.values()],
+                progress_cb=progress_cb,
+            )
+            uploaded_name_to_info = {info.name: info for info in uploaded_infos}
+            existing_images.update(uploaded_name_to_info)
+
         if len(existing_images) == 0:
             raise RuntimeError(
                 "Not found images in the dataset. "
@@ -123,8 +199,9 @@ class FastSlyImageConverter(SLYImageConverter, ImageConverter):
                 existing_image = existing_images.get(item.name)
                 if existing_image is None:
                     continue
+
                 if item.shape != (existing_image.height, existing_image.width):
-                    logger.warn(
+                    logger.warning(
                         f"Image '{item.name}' has different shapes in JSON file and server."
                     )
                     continue
