@@ -46,7 +46,6 @@ RUN sh -c 'set -eu && \
     exit 1'
 
 # todo: remove; tests only
-# RUN pip install --upgrade supervisely[apps,aug,agent,versioning]==$tag_ref_name
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         git \
@@ -76,7 +75,7 @@ ENV LANG=C.UTF-8 \
 COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# python3 symlink
+# python=python3 symlink
 RUN ln -sf /usr/local/bin/python3 /usr/local/bin/python \
     && ln -sf /usr/local/bin/python3 /usr/bin/python
 
