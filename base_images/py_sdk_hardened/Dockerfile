@@ -1,7 +1,7 @@
 # ============================================================================
 # STAGE 1: Builder Stage
 # ============================================================================
-FROM python:3.10-slim-bookworm AS builder
+FROM dhi.io/python:3.12 AS builder
 
 ENV LANG=C.UTF-8 \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -56,8 +56,8 @@ RUN pip install pillow==12.1.1 wheel==0.46.2
 
 # strip installer tooling from the venv
 RUN rm -rf \
-    /opt/venv/lib/python3.10/site-packages/wheel* \
-    /opt/venv/lib/python3.10/site-packages/setuptools/_vendor/wheel* \
+    /opt/venv/lib/python3.12/site-packages/wheel* \
+    /opt/venv/lib/python3.12/site-packages/setuptools/_vendor/wheel* \
     /opt/venv/bin/pip \
     /opt/venv/bin/pip3 \
     /opt/venv/bin/pip3.* \
@@ -68,7 +68,7 @@ RUN rm -rf \
 # ============================================================================
 # STAGE 2: Runtime Stage (Hardened)
 # ============================================================================
-FROM python:3.10-slim-bookworm AS runtime
+FROM dhi.io/python:3.12 AS runtime
 
 ENV LANG=C.UTF-8 \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -113,9 +113,9 @@ RUN rm -rf /var/lib/dpkg/status \
 
 # remove packaging tooling
 RUN rm -rf \
-    /usr/local/lib/python3.10/site-packages/pip* \
-    /usr/local/lib/python3.10/site-packages/setuptools* \
-    /usr/local/lib/python3.10/site-packages/wheel* \
-    /usr/local/lib/python3.10/site-packages/pkg_resources* \
-    /usr/local/lib/python3.10/site-packages/_distutils* \
-    /usr/local/lib/python3.10/site-packages/distutils-precedence.pth
+    /usr/local/lib/python3.12/site-packages/pip* \
+    /usr/local/lib/python3.12/site-packages/setuptools* \
+    /usr/local/lib/python3.12/site-packages/wheel* \
+    /usr/local/lib/python3.12/site-packages/pkg_resources* \
+    /usr/local/lib/python3.12/site-packages/_distutils* \
+    /usr/local/lib/python3.12/site-packages/distutils-precedence.pth
