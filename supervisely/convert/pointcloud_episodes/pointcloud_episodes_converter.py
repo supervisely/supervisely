@@ -1,7 +1,8 @@
-import imghdr
 import os
 from typing import Dict, List, Optional, Set, Tuple, Union
 from uuid import UUID
+
+import magic
 
 from supervisely import (
     Api,
@@ -291,7 +292,7 @@ class PointcloudEpisodeConverter(BaseConverter):
                     continue
 
                 ext = get_file_ext(full_path)
-                recognized_ext = imghdr.what(full_path)
+                recognized_ext = self._get_image_subtype(full_path)
                 if file.endswith(".figures.json"):
                     rimg_fig_dict[file] = full_path
                 elif ext == ".json":
@@ -345,3 +346,13 @@ class PointcloudEpisodeConverter(BaseConverter):
         self._frame_count = len(self._frame_pointcloud_map)
 
         return items, only_modality_items, unsupported_exts
+
+    @staticmethod
+    def _get_image_subtype(path: str) -> Optional[str]:
+        try:
+            mime_type = magic.from_file(path, mime=True)
+        except Exception:
+            return None
+        if mime_type.startswith("image/"):
+            return mime_type.split("/", 1)[1]
+        return None

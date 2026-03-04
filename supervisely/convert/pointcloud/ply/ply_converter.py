@@ -1,6 +1,7 @@
-import imghdr
 import os
 from typing import List
+
+import magic
 
 import supervisely.convert.pointcloud.ply.ply_helper as ply_helper
 from supervisely import PointcloudAnnotation, ProjectMeta, logger
@@ -33,7 +34,7 @@ class PlyConverter(PointcloudConverter):
                     ply_list.append(full_path)
                 elif ext ==  self.ann_ext:
                     ann_dict[file] = full_path
-                elif imghdr.what(full_path):
+                elif self._is_image_file(full_path):
                     rimg_dict[file] = full_path
                     if ext not in used_img_ext:
                         used_img_ext.append(ext)
@@ -69,3 +70,10 @@ class PlyConverter(PointcloudConverter):
     ) -> PointcloudAnnotation:
         """Convert to Supervisely format."""
         return item.create_empty_annotation()
+
+    @staticmethod
+    def _is_image_file(path: str) -> bool:
+        try:
+            return magic.from_file(path, mime=True).startswith("image/")
+        except Exception:
+            return False

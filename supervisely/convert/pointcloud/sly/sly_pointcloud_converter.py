@@ -1,6 +1,7 @@
-import imghdr
 import os
 from typing import List
+
+import magic
 
 import supervisely.convert.pointcloud.sly.sly_pointcloud_helper as helpers
 from supervisely import PointcloudAnnotation, ProjectMeta, logger
@@ -75,7 +76,7 @@ class SLYPointcloudConverter(PointcloudConverter):
                         rimg_ann_dict[file] = full_path
                     else:
                         ann_dict[file] = full_path
-                elif imghdr.what(full_path) or (self.upload_as_links and is_valid_ext(ext)):
+                elif self._is_image_file(full_path) or (self.upload_as_links and is_valid_ext(ext)):
                     if dir_name not in rimg_dict:
                         rimg_dict[dir_name] = []
                     rimg_dict[dir_name].append(full_path)
@@ -142,3 +143,10 @@ class SLYPointcloudConverter(PointcloudConverter):
         except Exception as e:
             logger.warning(f"Failed to convert annotation: {repr(e)}")
             return item.create_empty_annotation()
+
+    @staticmethod
+    def _is_image_file(path: str) -> bool:
+        try:
+            return magic.from_file(path, mime=True).startswith("image/")
+        except Exception:
+            return False

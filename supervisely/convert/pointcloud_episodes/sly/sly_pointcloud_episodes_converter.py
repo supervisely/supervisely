@@ -1,5 +1,6 @@
-import imghdr
 import os
+
+import magic
 
 import supervisely.convert.pointcloud_episodes.sly.sly_pointcloud_episodes_helper as sly_episodes_helper
 from supervisely import PointcloudEpisodeAnnotation, ProjectMeta, logger
@@ -47,6 +48,16 @@ class SLYPointcloudEpisodesConverter(PointcloudEpisodeConverter):
         except Exception:
             return False
 
+    @staticmethod
+    def _get_image_subtype(path: str):
+        try:
+            mime_type = magic.from_file(path, mime=True)
+        except Exception:
+            return None
+        if mime_type.startswith("image/"):
+            return mime_type.split("/", 1)[1]
+        return None
+
     def validate_format(self) -> bool:
         sly_ann_detected = False
         ann_path = None
@@ -71,7 +82,7 @@ class SLYPointcloudEpisodesConverter(PointcloudEpisodeConverter):
                     continue
 
                 ext = get_file_ext(full_path)
-                recognized_ext = imghdr.what(full_path)
+                recognized_ext = self._get_image_subtype(full_path)
                 if file in JUNK_FILES:
                     continue
                 elif ext == self.ann_ext:
