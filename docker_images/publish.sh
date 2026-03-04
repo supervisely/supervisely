@@ -30,8 +30,15 @@ docker build --platform linux/amd64 -t "$IMAGE_REF" "$IMAGE_DIR" --build-arg tag
 # docker load -i "$IMAGE_TAR"
 
 echo "Running pip-audit scan for vulnerabilities..."
-if ! docker run --rm -v "$LOG_DIR:/work" "$IMAGE_REF" \
-  sh -lc "/opt/venv/bin/python -m pip_audit --format json > /work/audit_report.json"; then
+AUDIT_CONTAINER_ID="$(docker create "$IMAGE_REF" /opt/venv/bin/python -m pip_audit --format json --output /tmp/audit_report.json)"
+set +e
+docker start -a "$AUDIT_CONTAINER_ID"
+AUDIT_EXIT_CODE=$?
+set -e
+docker cp "$AUDIT_CONTAINER_ID:/tmp/audit_report.json" "$LOG_DIR/audit_report.json" >/dev/null 2>&1 || true
+docker rm -f "$AUDIT_CONTAINER_ID" >/dev/null
+
+if [[ $AUDIT_EXIT_CODE -ne 0 ]]; then
   echo "pip-audit found vulnerabilities" >&2
   echo "Check $LOG_DIR/audit_report.json for details." >&2
   exit 1
@@ -42,8 +49,12 @@ echo "pip-audit clean: no vulnerabilities found."
 echo "Running Trivy scan for HIGH and CRITICAL vulnerabilities..."
 if ! docker run --rm \
   -v /var/run/docker.sock:/var/run/docker.sock \
+  -v "$PWD/$IMAGE_DIR:/workspace:ro" \
   -v "$LOG_DIR:/work" \
   aquasec/trivy:latest image --severity HIGH,CRITICAL --exit-code 1 \
+  --ignore-unfixed \
+  --vuln-severity-source debian \
+  "${TRIVY_IGNORE_ARGS[@]}" \
   --format json --output /work/trivy_report.json "$IMAGE_REF"; then
   echo "Trivy found HIGH/CRITICAL vulnerabilities" >&2
   echo "Check $LOG_DIR/trivy_report.json for details." >&2

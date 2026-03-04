@@ -36,7 +36,7 @@ class SetupTests(unittest.TestCase):
     ]
 
     # Python versions to test (can be overridden by command line argument)
-    PYTHON_VERSIONS = ["3.8", "3.9", "3.10", "3.11", "3.12", "3.14"]
+    PYTHON_VERSIONS = ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
 
     # Filtered versions for testing (set by command line arguments)
     TEST_VERSIONS = None
@@ -324,7 +324,7 @@ class SetupTests(unittest.TestCase):
 
         if not cls.available_pythons:
             raise RuntimeError(
-                "No Python versions found! Please install Python 3.8-3.12 using pyenv or system package manager"
+                "No Python versions found! Please install Python 3.8-3.14 using pyenv or system package manager"
             )
 
         print(f"\n{'='*80}")
@@ -825,7 +825,7 @@ Examples:
         "--python-versions",
         nargs="+",
         metavar="VERSION",
-        help="Python versions to test (e.g., 3.8 3.9 3.10 3.11 3.12 3.14)",
+        help="Python versions to test (e.g., 3.8 3.9 3.10 3.11 3.12 3.13 3.14)",
     )
 
     # Parse known args to allow unittest args to pass through
