@@ -14,17 +14,19 @@ from supervisely.api.module_api import ApiField, ModuleApiBase
 from supervisely.api.project_api import ProjectInfo
 from supervisely.io import json
 from supervisely.io.fs import remove_dir, silent_remove
-from supervisely.project.versioning.schema_fields import VersionSchemaField
+from supervisely.project.copy import copy_project
 from supervisely.project.versioning.common import (
     DEFAULT_IMAGE_SCHEMA_VERSION,
     DEFAULT_VIDEO_SCHEMA_VERSION,
     DEFAULT_VOLUME_SCHEMA_VERSION,
+    HIDDEN_WORKSPACE_NAME,
 )
+from supervisely.project.versioning.schema_fields import VersionSchemaField
 
 
 class VersionInfo(NamedTuple):
     """
-    Object with image parameters from Supervisely that describes the version of the project.
+    Object with parameters from Supervisely that describes the version of the project.
     """
 
     id: int
@@ -236,6 +238,7 @@ class DataVersion(ModuleApiBase):
         project_info: Union[ProjectInfo, int],
         version_title: Optional[str] = None,
         version_description: Optional[str] = None,
+        instant_access: bool = False,
     ) -> int:
         """
         Create a new project version.
@@ -249,6 +252,8 @@ class DataVersion(ModuleApiBase):
         :type version_title: Optional[str]
         :param version_description: Version description
         :type version_description: Optional[str]
+        :param instant_access: Instant access flag that creates clone of the project to hidden workspace making version data available immediately. This option can be used to
+        :type instant_access: bool
         :returns: Version ID
         :rtype: int
         """
@@ -276,6 +281,13 @@ class DataVersion(ModuleApiBase):
         if version_id is None and commit_token is None:
             return latest
         try:
+            workspace_id = self.get_or_create_versions_workspace(team_id=project_info.team_id)
+            cloned_project_id = copy_project(
+                api=self._api,
+                src_project_info=project_info,
+                dst_workspace_id=workspace_id,
+                dst_project_name=project_info.name + f"_version_{version_id}_backup",
+            )
             file_info = self._compress_and_upload(path)
             self.versions[version_id] = {
                 "path": path,
@@ -292,6 +304,7 @@ class DataVersion(ModuleApiBase):
                 file_info.id,
                 title=version_title,
                 description=version_description,
+                instant_access_project_id=cloned_project_id if instant_access else None,
             )
             return version_id
         except Exception as e:
@@ -311,6 +324,7 @@ class DataVersion(ModuleApiBase):
         file_id: int,
         title: Optional[str] = None,
         description: Optional[str] = None,
+        instant_access_project_id: Optional[int] = None,
     ):
         """
         Commit project version.
@@ -330,6 +344,8 @@ class DataVersion(ModuleApiBase):
         :type title: Optional[str]
         :param description: Version description
         :type description: Optional[str]
+        :param instant_access_project_id: ID of the cloned project that will be used for instant access to version data.
+        :type instant_access_project_id: Optional[int]
         :returns: None
         """
         body = {
@@ -338,6 +354,8 @@ class DataVersion(ModuleApiBase):
             ApiField.PROJECT_UPDATED_AT: updated_at,
             ApiField.TEAM_FILE_ID: file_id,
         }
+        if instant_access_project_id is not None:
+            body[ApiField.INSTANT_ACCESS_PROJECT_ID] = instant_access_project_id
         if title:
             body[ApiField.TITLE] = title
         if description:
@@ -492,6 +510,51 @@ class DataVersion(ModuleApiBase):
             skip_missed=skip_missed_entities,
         )
         return new_project_info
+
+    def get_or_create_versions_workspace(self, team_id: int, description: str = "") -> int:
+        """
+        Get or create a hidden workspace for storing instant access project versions for a team.
+
+        :param team_id: Team ID
+        :type team_id: int
+        :returns: Workspace ID
+        :rtype: int
+        """
+        workspace_info = self._api.workspace.get_info_by_name(team_id, HIDDEN_WORKSPACE_NAME)
+
+        if workspace_info is not None:
+            return workspace_info.id
+
+        new_workspace = self._api.workspace.create(
+            team_id=team_id,
+            name=HIDDEN_WORKSPACE_NAME,
+            description=description,
+            hidden=True,
+        )
+        return new_workspace.id
+
+    def update_description(self, project_id: int, version_id: int, description: str):
+        """
+        Update version description.
+
+        :param project_id: Project ID
+        :type project_id: int
+        :param version_id: Version ID
+        :type version_id: int
+        :param description: New description
+        :type description: str
+        :returns: None
+        """
+
+        body = {
+            ApiField.ID: version_id,
+            ApiField.PROJECT_ID: project_id,
+            ApiField.DESCRIPTION: description,
+        }
+        response = self._api.post("projects.versions.update-description", body)
+        update_info = response.json()
+        if not update_info.get("success"):
+            raise RuntimeError("Failed to update version description")
 
     def _create_warning_system_file(self):
         """
