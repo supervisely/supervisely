@@ -183,8 +183,9 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
         self,
         team_id: int,
         name: str,
-        description: Optional[str] = "",
-        change_name_if_conflict: Optional[bool] = False,
+        description: str = "",
+        change_name_if_conflict: bool = False,
+        hidden: bool = False,
     ) -> WorkspaceInfo:
         """
         Create a new Workspace with the given name in the given Team.
@@ -194,9 +195,11 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
         :param name: Workspace Name.
         :type name: str
         :param description: Workspace description.
-        :type description: str, optional
+        :type description: str
         :param change_name_if_conflict: Checks if given name already exists and adds suffix to the end of the name.
-        :type change_name_if_conflict: bool, optional
+        :type change_name_if_conflict: bool
+        :param hidden: Whether the workspace should be hidden or not.
+        :type hidden: bool
         :returns: Information about Workspace.
         :rtype: :class:`~supervisely.api.workspace_api.WorkspaceInfo`
 
@@ -238,7 +241,11 @@ class WorkspaceApi(ModuleApi, UpdateableModule):
                 ApiField.DESCRIPTION: description,
             },
         )
-        return self._convert_json_info(response.json())
+        workspace_info = self._convert_json_info(response.json())
+        if hidden:
+            self.change_visibility(workspace_info.id, visible=False)
+
+        return workspace_info
 
     def _get_update_method(self):
         """ """

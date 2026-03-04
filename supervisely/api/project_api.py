@@ -719,6 +719,11 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         description: Optional[str] = "",
         change_name_if_conflict: Optional[bool] = False,
         readme: Optional[str] = None,
+        settings: Optional[Dict] = None,
+        custom_data: Optional[Dict] = None,
+        created_at: Optional[str] = None,
+        updated_at: Optional[str] = None,
+        created_by: Optional[int] = None,
     ) -> ProjectInfo:
         """
         Create Project with given name in the given Workspace ID.
@@ -735,6 +740,16 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type change_name_if_conflict: bool, optional
         :param readme: Project readme.
         :type readme: str, optional
+        :param settings: Optional project settings dict.
+        :type settings: dict, optional
+        :param custom_data: Optional custom metadata dict.
+        :type custom_data: dict, optional
+        :param created_at: Optional ISO-8601 timestamp to set as creation time.
+        :type created_at: str, optional
+        :param updated_at: Optional ISO-8601 timestamp to set as last-update time.
+        :type updated_at: str, optional
+        :param created_by: Optional user ID to record as the project creator.
+        :type created_by: int, optional
         :returns: ProjectInfo object with information about the Project.
         :rtype: :class:`~supervisely.api.project_api.ProjectInfo`
 
@@ -789,7 +804,25 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         }
         if readme is not None:
             payload[ApiField.README] = readme
-        response = self._api.post("projects.add", payload)
+        if settings is not None:
+            payload[ApiField.SETTINGS] = settings
+        if custom_data is not None:
+            payload[ApiField.CUSTOM_DATA] = custom_data
+        if created_at is not None:
+            payload[ApiField.CREATED_AT] = created_at
+        if updated_at is not None:
+            payload[ApiField.UPDATED_AT] = updated_at
+        if created_by is not None:
+            payload[ApiField.CREATED_BY_ID[0][0]] = created_by
+        try:
+            response = self._api.post("projects.add", payload)
+        except Exception as e:
+            if "Some users not found in team" in str(e):
+                raise ValueError(
+                    "Unable to create a project. Project creator is not a member of the destination team."
+                ) from e
+            else:
+                raise e
         return self._convert_json_info(response.json())
 
     def _get_update_method(self):
