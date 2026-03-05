@@ -20,8 +20,7 @@ RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 RUN pip install --upgrade pip==26.0.1
-RUN pip install setuptools==80.10.1 wheel==0.46.2 pillow==12.1.1
-RUN pip install pip-audit==2.7.3
+RUN pip install setuptools==80.10.1 wheel==0.46.2 pillow==12.1.1 pip-audit==2.7.3
 
 ARG tag_ref_name
 
