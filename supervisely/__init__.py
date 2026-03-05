@@ -1,11 +1,15 @@
 # coding: utf-8
 # isort: skip_file
-import pkg_resources  # isort: skip
 import os
 
 try:
-    __version__ = pkg_resources.require("supervisely")[0].version
-except TypeError as e:
+    from importlib.metadata import PackageNotFoundError, version
+except ImportError:  # pragma: no cover
+    from importlib_metadata import PackageNotFoundError, version
+
+try:
+    __version__ = version("supervisely")
+except (PackageNotFoundError, TypeError):
     __version__ = "development"
 
 

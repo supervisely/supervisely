@@ -3,7 +3,10 @@ import re
 import subprocess
 
 import requests
-from pkg_resources import DistributionNotFound, get_distribution
+try:
+    from importlib.metadata import PackageNotFoundError, distribution
+except ImportError:  # pragma: no cover
+    from importlib_metadata import PackageNotFoundError, distribution
 from setuptools import find_packages, setup
 
 # @TODO: change manifest location
@@ -84,6 +87,7 @@ INSTALL_REQUIRES = [
     "PTable>=0.9.2, <1.0.0",
     "pillow>=5.4.1, <=12.1.1",
     "python-json-logger>=0.1.11, <=3.0.1",
+    "packaging>=20.0",
     "requests>=2.27.1, <3.0.0",
     "requests-toolbelt>=0.9.1",  # , <1.0.0
     "Shapely>=1.7.1, <=2.1.2",
@@ -152,9 +156,9 @@ def check_alternative_installation(install_require, alternative_install_requires
     for alternative_install_require in alternative_install_requires:
         try:
             alternative_pkg_name = re.split(r"[ !<>=]", alternative_install_require)[0]
-            get_distribution(alternative_pkg_name)
+            distribution(alternative_pkg_name)
             return str(alternative_install_require)
-        except DistributionNotFound:
+        except PackageNotFoundError:
             continue
 
     return str(install_require)
