@@ -2,6 +2,7 @@ from typing import List, Tuple
 
 from supervisely.annotation.annotation import Annotation
 from supervisely.api.image_api import ImageInfo
+from supervisely.api.module_api import ApiField
 from supervisely.sly_logger import logger
 from supervisely.nn.benchmark.base_visualizer import BaseVisMetrics
 from supervisely.nn.benchmark.visualization.widgets import GalleryWidget, MarkdownWidget
@@ -111,6 +112,8 @@ class ExplorePredictions(BaseVisMetrics):
             ds_to_names.setdefault(ds_name, []).append(img_name)
 
         for ds_name, img_names in ds_to_names.items():
+            if len(img_names) == 0:
+                continue
             ds_info = self._get_dataset_info(project_id, ds_name)
             if ds_info is None:
                 logger.warning(
@@ -121,7 +124,9 @@ class ExplorePredictions(BaseVisMetrics):
 
             infos = api.image.get_list(
                 ds_info.id,
-                filters=[{"field": "name", "operator": "in", "value": img_names}],
+                filters=[
+                    {ApiField.FIELD: ApiField.NAME, ApiField.OPERATOR: "in", ApiField.VALUE: img_names}
+                ],
                 force_metadata_for_links=False,
             )
             if len(infos) == 0:
