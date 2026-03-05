@@ -2,7 +2,6 @@ from typing import List, Tuple
 
 from supervisely.annotation.annotation import Annotation
 from supervisely.api.image_api import ImageInfo
-from supervisely.api.module_api import ApiField
 from supervisely.nn.benchmark.base_visualizer import BaseVisMetrics
 from supervisely.nn.benchmark.visualization.widgets import GalleryWidget, MarkdownWidget
 from supervisely.project.project_meta import ProjectMeta
@@ -43,45 +42,65 @@ class ExplorePredictions(BaseVisMetrics):
         images = []
         annotations = []
         metas = [self.eval_results[0].gt_project_meta]
-        skip_tags_filtering = []
-        api = self.eval_results[0].api
+        skip_tags_filtering = [True]
         min_conf = float("inf")
-        names = None
-        ds_name = None
-        for idx, eval_res in enumerate(self.eval_results):
-            if idx == 0:
-                dataset_info = eval_res.gt_dataset_infos[0]
-                image_infos = api.image.get_list(dataset_info.id, limit=5, force_metadata_for_links=False)
-                ds_name = dataset_info.name
-                images_ids = [image_info.id for image_info in image_infos]
-                names = [image_info.name for image_info in image_infos]
-                images.append(image_infos)
-                anns = api.annotation.download_batch(dataset_info.id, images_ids, force_metadata_for_links=False)
-                annotations.append(anns)
-                skip_tags_filtering.append(True)
+        sample_names = self._get_evaluated_image_names(limit=5)
+        if len(sample_names) == 0:
+            raise RuntimeError("Failed to prepare sample gallery: no evaluated images were found.")
+
+        gt_eval_res = self.eval_results[0]
+        gt_map = self._get_project_images_by_names(gt_eval_res.gt_project_id, sample_names)
+        column_maps = [gt_map]
+
+        for eval_res in self.eval_results:
             metas.append(eval_res.pred_project_meta)
-            assert ds_name is not None, "Failed to get GT dataset name for gallery"
-
-            dataset_info = api.dataset.get_info_by_name(eval_res.pred_project_id, ds_name)
-
-            assert names is not None, "Failed to get GT image names for gallery"
-            image_infos = eval_res.api.image.get_list(
-                dataset_info.id,
-                filters=[
-                    {ApiField.FIELD: ApiField.NAME, ApiField.OPERATOR: "in", ApiField.VALUE: names}
-                ],
-                force_metadata_for_links=False,
-            )
-            images_ids = [image_info.id for image_info in image_infos]
-            images.append(image_infos)
-            anns = eval_res.api.annotation.download_batch(dataset_info.id, images_ids, force_metadata_for_links=False)
-            annotations.append(anns)
+            pred_map = self._get_project_images_by_names(eval_res.pred_project_id, sample_names)
+            column_maps.append(pred_map)
             skip_tags_filtering.append(False)
             min_conf = min(min_conf, eval_res.mp.conf_threshold)
 
-        images = list(i for x in zip(*images) for i in x)
-        annotations = list(i for x in zip(*annotations) for i in x)
+        common_names = [name for name in sample_names if all(name in col_map for col_map in column_maps)]
+        if len(common_names) == 0:
+            raise RuntimeError(
+                "Failed to prepare sample gallery: no common evaluated images were found "
+                "across GT and prediction projects."
+            )
+
+        for name in common_names:
+            for col_map in column_maps:
+                image_info, ann_info = col_map[name]
+                images.append(image_info)
+                annotations.append(ann_info)
         return images, annotations, metas, skip_tags_filtering, min_conf
+
+    def _get_evaluated_image_names(self, limit: int = None) -> List[str]:
+        names = sorted({img["file_name"] for img in self.eval_results[0].coco_gt.imgs.values()})
+        if limit is not None:
+            return names[:limit]
+        return names
+
+    def _get_project_images_by_names(self, project_id: int, image_names: List[str]):
+        api = self.eval_results[0].api
+        image_names_set = set(image_names)
+        result = {}
+
+        for ds in api.dataset.get_list(project_id, recursive=True):
+            image_infos = api.image.get_list(ds.id, force_metadata_for_links=False)
+            image_infos = [info for info in image_infos if info.name in image_names_set]
+            if len(image_infos) == 0:
+                continue
+
+            image_ids = [info.id for info in image_infos]
+            ann_infos = api.annotation.download_batch(
+                ds.id, image_ids, force_metadata_for_links=False
+            )
+            ann_infos_by_id = {ann.image_id: ann for ann in ann_infos}
+
+            for image_info in image_infos:
+                ann_info = ann_infos_by_id.get(image_info.id)
+                if ann_info is not None and image_info.name not in result:
+                    result[image_info.name] = (image_info, ann_info)
+        return result
 
     def get_click_data_explore_all(self) -> dict:
         res = {}
@@ -99,36 +118,26 @@ class ExplorePredictions(BaseVisMetrics):
         explore["title"] = "Explore all predictions"
 
         images_ids = []
-        api = self.eval_results[0].api
         min_conf = float("inf")
-        names = None
-        ds_names = None
-        for idx, eval_res in enumerate(self.eval_results):
-            if idx == 0:
-                dataset_infos = eval_res.gt_dataset_infos
-                ds_names = [ds.name for ds in dataset_infos]
-                current_images_ids = []
-                current_images_names = []
-                for ds in dataset_infos:
-                    image_infos = api.image.get_list(ds.id, force_metadata_for_links=False)
-                    image_infos = sorted(image_infos, key=lambda x: x.name)
-                    current_images_names.extend([image_info.name for image_info in image_infos])
-                    current_images_ids.extend([image_info.id for image_info in image_infos])
-                images_ids.append(current_images_ids)
-                names = current_images_names
+        all_names = self._get_evaluated_image_names()
 
-            dataset_infos = api.dataset.get_list(eval_res.pred_project_id)
-            dataset_infos = [ds for ds in dataset_infos if ds.name in ds_names]
-            dataset_infos = sorted(dataset_infos, key=lambda x: ds_names.index(x.name))
-            current_images_infos = []
-            for ds in dataset_infos:
-                image_infos = api.image.get_list(ds.id, force_metadata_for_links=False)
-                image_infos = [image_info for image_info in image_infos if image_info.name in names]
-                current_images_infos.extend(image_infos)
-            current_images_infos = sorted(current_images_infos, key=lambda x: names.index(x.name))
-            images_ids.append([image_info.id for image_info in current_images_infos])
-
+        gt_eval_res = self.eval_results[0]
+        gt_map = self._get_project_images_by_names(gt_eval_res.gt_project_id, all_names)
+        pred_maps = []
+        for eval_res in self.eval_results:
+            pred_maps.append(self._get_project_images_by_names(eval_res.pred_project_id, all_names))
             min_conf = min(min_conf, eval_res.mp.conf_threshold)
+
+        column_maps = [gt_map] + pred_maps
+        common_names = [name for name in all_names if all(name in col_map for col_map in column_maps)]
+        if len(common_names) == 0:
+            raise RuntimeError(
+                "Failed to build explore data: no common evaluated images were found "
+                "across GT and prediction projects."
+            )
+
+        for col_map in column_maps:
+            images_ids.append([col_map[name][0].id for name in common_names])
 
         explore["imagesIds"] = list(i for x in zip(*images_ids) for i in x)
         explore["filters"] = [{"type": "tag", "tagId": "confidence", "value": [min_conf, 1]}]
