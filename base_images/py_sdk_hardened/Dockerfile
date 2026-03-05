@@ -115,9 +115,9 @@ RUN rm -rf /var/lib/dpkg/status \
 
 # remove packaging tooling
 RUN rm -rf \
-    /usr/local/lib/python3.12/site-packages/pip* \
-    /usr/local/lib/python3.12/site-packages/setuptools* \
-    /usr/local/lib/python3.12/site-packages/wheel* \
-    /usr/local/lib/python3.12/site-packages/pkg_resources* \
-    /usr/local/lib/python3.12/site-packages/_distutils* \
-    /usr/local/lib/python3.12/site-packages/distutils-precedence.pth
+    /usr/local/lib/python3.14/site-packages/pip* \
+    /usr/local/lib/python3.14/site-packages/setuptools* \
+    /usr/local/lib/python3.14/site-packages/wheel* \
+    /usr/local/lib/python3.14/site-packages/pkg_resources* \
+    /usr/local/lib/python3.14/site-packages/_distutils* \
+    /usr/local/lib/python3.14/site-packages/distutils-precedence.pth
