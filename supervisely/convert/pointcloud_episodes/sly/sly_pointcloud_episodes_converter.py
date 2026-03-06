@@ -1,7 +1,5 @@
 import os
 
-import magic
-
 import supervisely.convert.pointcloud_episodes.sly.sly_pointcloud_episodes_helper as sly_episodes_helper
 from supervisely import PointcloudEpisodeAnnotation, ProjectMeta, logger
 from supervisely.convert.base_converter import AvailablePointcloudEpisodesConverters

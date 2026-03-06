@@ -1,8 +1,6 @@
 import os
 from typing import List
 
-import magic
-
 import supervisely.convert.pointcloud.ply.ply_helper as ply_helper
 from supervisely import PointcloudAnnotation, ProjectMeta, logger
 from supervisely.convert.base_converter import AvailablePointcloudConverters
