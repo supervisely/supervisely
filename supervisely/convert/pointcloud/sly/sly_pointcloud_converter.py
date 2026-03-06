@@ -143,10 +143,3 @@ class SLYPointcloudConverter(PointcloudConverter):
         except Exception as e:
             logger.warning(f"Failed to convert annotation: {repr(e)}")
             return item.create_empty_annotation()
-
-    @staticmethod
-    def _is_image_file(path: str) -> bool:
-        try:
-            return magic.from_file(path, mime=True).startswith("image/")
-        except Exception:
-            return False

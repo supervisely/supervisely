@@ -70,10 +70,3 @@ class PlyConverter(PointcloudConverter):
     ) -> PointcloudAnnotation:
         """Convert to Supervisely format."""
         return item.create_empty_annotation()
-
-    @staticmethod
-    def _is_image_file(path: str) -> bool:
-        try:
-            return magic.from_file(path, mime=True).startswith("image/")
-        except Exception:
-            return False

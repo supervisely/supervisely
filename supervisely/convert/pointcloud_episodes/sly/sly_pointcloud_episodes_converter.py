@@ -48,16 +48,6 @@ class SLYPointcloudEpisodesConverter(PointcloudEpisodeConverter):
         except Exception:
             return False
 
-    @staticmethod
-    def _get_image_subtype(path: str):
-        try:
-            mime_type = magic.from_file(path, mime=True)
-        except Exception:
-            return None
-        if mime_type.startswith("image/"):
-            return mime_type.split("/", 1)[1]
-        return None
-
     def validate_format(self) -> bool:
         sly_ann_detected = False
         ann_path = None
