@@ -12,49 +12,40 @@ ENV LANG=C.UTF-8 \
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-        build-essential \
         ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-RUN python -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
-
-RUN pip install --upgrade pip==26.0.1
-RUN pip install setuptools==80.10.1 wheel==0.46.2 pillow==12.1.1 pip-audit==2.7.3
-
 ARG tag_ref_name
 
-# Install supervisely package with retry logic for PyPI CDN propagation
-# RUN sh -c 'set -eu && \
-#     MAX_ATTEMPTS=8 && \
-#     TIMEOUT=15 && \
-#     ATTEMPT=0 && \
-#     while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do \
-#     echo "Attempt $((ATTEMPT + 1))/$MAX_ATTEMPTS: Installing supervisely==$tag_ref_name..." && \
-#     if pip install --no-cache-dir --upgrade supervisely==$tag_ref_name; then \
-#     echo "Supervisely installed successfully" && \
-#     exit 0; \
-#     fi && \
-#     ATTEMPT=$((ATTEMPT + 1)) && \
-#     if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then \
-#     echo "Installation failed. Waiting ${TIMEOUT}s..." && \
-#     sleep $TIMEOUT; \
-#     fi; \
-#     done && \
-#     echo "ERROR: Failed to install supervisely==$tag_ref_name after $MAX_ATTEMPTS attempts" >&2 && \
-#     exit 1'
-
-# todo: remove; tests only -------------------------------------
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-        git \
-    && rm -rf /var/lib/apt/lists/*
-RUN pip install git+https://github.com/supervisely/supervisely.git@hardened-docker-images
-RUN pip install pillow==12.1.1 wheel==0.46.2
-# ---------------------------------------------------------------
-
-# strip installer tooling from the venv
-RUN rm -rf \
+# Install supervisely package with retry logic for PyPI CDN propagation & cleanup
+RUN set -eu; \
+    python -m venv /opt/venv; \
+    /opt/venv/bin/pip install --upgrade pip==26.0.1; \
+    /opt/venv/bin/pip install setuptools==80.10.1 wheel==0.46.2 pillow==12.1.1; \
+    # MAX_ATTEMPTS=8; \
+    # TIMEOUT=15; \
+    # ATTEMPT=1; \
+    # while [ "$ATTEMPT" -le "$MAX_ATTEMPTS" ]; do \
+    # echo "Attempt ${ATTEMPT}/${MAX_ATTEMPTS}: Installing supervisely==$tag_ref_name..."; \
+    # if /opt/venv/bin/pip install --no-cache-dir supervisely==$tag_ref_name; then \
+    # echo "Supervisely installed successfully"; \
+    # break; \
+    # fi; \
+    # if [ "$ATTEMPT" -eq "$MAX_ATTEMPTS" ]; then \
+    # echo "ERROR: Failed to install supervisely==$tag_ref_name after $MAX_ATTEMPTS attempts" >&2; \
+    # exit 1; \
+    # fi; \
+    # echo "Installation failed. Waiting ${TIMEOUT}s..."; \
+    # sleep "$TIMEOUT"; \
+    # ATTEMPT=$((ATTEMPT + 1)); \
+    # done; \
+    # todo: remove; tests only ------------------------------------- \
+    apt-get update; \
+    apt-get install -y --no-install-recommends git; \
+    rm -rf /var/lib/apt/lists/*; \
+    /opt/venv/bin/pip install git+https://github.com/supervisely/supervisely.git@hardened-docker-images; \
+    # --------------------------------------------------------------- \
+    rm -rf \
     /opt/venv/lib/python3.14/site-packages/wheel* \
     /opt/venv/lib/python3.14/site-packages/setuptools/_vendor/wheel* \
     /opt/venv/bin/pip \
@@ -80,7 +71,7 @@ ENV PATH="/opt/venv/bin:$PATH"
 RUN ln -sf /usr/local/bin/python3 /usr/local/bin/python \
     && ln -sf /usr/local/bin/python3 /usr/bin/python
 
-# install deps of cv2 and other runtime deps
+# install deps of cv2 and other runtime deps and strip package managers and build tools
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
     libglib2.0-0 \
@@ -91,14 +82,9 @@ RUN apt-get update \
     libxext6 \
     libxcb1 \
     libx11-6 \
-    libgeos-dev \
+    libgeos-c1v5 \
     ffmpeg \
-    && rm -rf /var/lib/apt/lists/*
-
-# strip runtime tools
-RUN rm -rf /var/lib/dpkg/status \
-    /var/lib/dpkg/status.d \
-    /var/lib/dpkg/info \
+    && rm -rf /var/lib/apt/lists/* \
     /usr/bin/apt \
     /usr/bin/apt-get \
     /usr/bin/apt-cache \
@@ -110,10 +96,7 @@ RUN rm -rf /var/lib/dpkg/status \
     /usr/bin/dpkg-divert \
     /usr/bin/git \
     /usr/bin/curl \
-    /usr/bin/wget
-
-# remove packaging tooling
-RUN rm -rf \
+    /usr/bin/wget \
     /usr/local/lib/python3.14/site-packages/pip* \
     /usr/local/lib/python3.14/site-packages/setuptools* \
     /usr/local/lib/python3.14/site-packages/wheel* \

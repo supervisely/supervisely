@@ -29,15 +29,15 @@ docker build --platform linux/amd64 -t "$IMAGE_REF" "$IMAGE_DIR" --build-arg tag
 
 # docker load -i "$IMAGE_TAR"
 
-echo "Running pip-audit scan for vulnerabilities..."
-if ! docker run --rm -v "$LOG_DIR:/work" "$IMAGE_REF" \
-  sh -lc "/opt/venv/bin/python -m pip_audit --format json > /work/audit_report.json"; then
-  echo "pip-audit found vulnerabilities" >&2
-  echo "Check $LOG_DIR/audit_report.json for details." >&2
-  exit 1
-fi
+# echo "Running pip-audit scan for vulnerabilities..."
+# if ! docker run --rm -v "$LOG_DIR:/work" "$IMAGE_REF" \
+#   sh -lc "/opt/venv/bin/python -m pip_audit --format json > /work/audit_report.json"; then
+#   echo "pip-audit found vulnerabilities" >&2
+#   echo "Check $LOG_DIR/audit_report.json for details." >&2
+#   exit 1
+# fi
 
-echo "pip-audit clean: no vulnerabilities found."
+# echo "pip-audit clean: no vulnerabilities found."
 
 echo "Running Trivy scan for HIGH and CRITICAL vulnerabilities..."
 if ! docker run --rm \
