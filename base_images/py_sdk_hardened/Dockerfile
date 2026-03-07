@@ -67,12 +67,11 @@ ENV LANG=C.UTF-8 \
 COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# python=python3 symlink
+# python symlinks for convenience
 RUN ln -sf /usr/local/bin/python3 /usr/local/bin/python \
-    && ln -sf /usr/local/bin/python3 /usr/bin/python
-
-# install deps of cv2 and other runtime deps and strip package managers and build tools
-RUN apt-get update \
+    && ln -sf /usr/local/bin/python3 /usr/bin/python \
+    # install deps of cv2 and other runtime deps
+    && apt-get update \
     && apt-get install -y --no-install-recommends \
     libglib2.0-0 \
     libgl1 \
@@ -84,6 +83,7 @@ RUN apt-get update \
     libx11-6 \
     libgeos-c1v5 \
     ffmpeg \
+    # cleanup package managers and build tools to minimize attack surface
     && rm -rf /var/lib/apt/lists/* \
     /usr/bin/apt \
     /usr/bin/apt-get \
