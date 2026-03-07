@@ -172,7 +172,7 @@ def create_debug_task(
     :type update_status: bool
     :param project_id: Project ID to filter existing debug tasks. Creates a new task if no match is found. Default is None.
     :type project_id: Optional[int]
-    :return: The task details.
+    :returns: The task details.
     :rtype: Dict[str, Any]
     """
     team_id = team_id or sly_env.team_id()
@@ -258,17 +258,23 @@ def enable_advanced_debug(
     :type only_for_development: bool
     :param project_id: Project ID to filter existing debug tasks. Creates a new task if no match is found. Default is None.
     :type project_id: Optional[int]
-    :return: The task ID of the debug task or None if the debugging was not started.
+    :returns: The task ID of the debug task or None if the debugging was not started.
     :rtype: Optional[int]
 
-    :Usage example:
+    :Usage Example:
 
         .. code-block:: python
 
+            import os
+            from dotenv import load_dotenv
+
             import supervisely as sly
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
+
             api = sly.Api.from_env()
 
             # Ensure that the TEAM_ID environment variable is set.

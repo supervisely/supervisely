@@ -23,40 +23,7 @@ from supervisely.geometry.rectangle import Rectangle
 
 
 class VectorGeometry(Geometry):
-    """
-    VectorGeometry is a base class of geometry for a single :class:`Label<supervisely.annotation.label.Label>`. :class:`VectorGeometry<VectorGeometry>` class object is immutable.
-
-    :param exterior: Exterior coordinates, object contour is defined with these points (used for :class:`Polygon<supervisely.geometry.polygon.Polygon>`).
-    :type exterior: List[PointLocation], List[List[int, int]], List[Tuple[int, int]
-    :param interior: Interior coordinates, object holes is defined with these points (used for :class:`Polygon<supervisely.geometry.polygon.Polygon>`).
-    :type interior: List[List[PointLocation]], List[List[List[int, int]]], List[List[Tuple[int, int]]]
-    :param sly_id: VectorGeometry ID in Supervisely server.
-    :type sly_id: int, optional
-    :param class_id: ID of :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>` to which VectorGeometry belongs.
-    :type class_id: int, optional
-    :param labeler_login: Login of the user who created VectorGeometry.
-    :type labeler_login: str, optional
-    :param updated_at: Date and Time when VectorGeometry was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
-    :type updated_at: str, optional
-    :param created_at: Date and Time when VectorGeometry was created. Date Format is the same as in "updated_at" parameter.
-    :type created_at: str, optional
-    :raises: :class:`TypeError`, if exterior or interior parameters are not a list of PointLocation objects
-
-    :Usage example:
-
-     .. code-block:: python
-
-        import supervisely as sly
-
-        exterior = [sly.PointLocation(730, 2104), sly.PointLocation(2479, 402), sly.PointLocation(3746, 1646)]
-        # or exterior = [[730, 2104], [2479, 402], [3746, 1646]]
-        # or exterior = [(730, 2104), (2479, 402), (3746, 1646)]
-        interior = [[sly.PointLocation(1907, 1255), sly.PointLocation(2468, 875), sly.PointLocation(2679, 1577)]]
-        # or interior = [[[730, 2104], [2479, 402], [3746, 1646]]]
-        # or interior = [[(730, 2104), (2479, 402), (3746, 1646)]]
-
-        figure = sly.Polygon(exterior, interior)
-    """
+    """Base class for vector geometries (polygon, polyline) defined by exterior/interior contours. Immutable."""
 
     def __init__(
         self,
@@ -72,6 +39,40 @@ class VectorGeometry(Geometry):
         updated_at: Optional[str] = None,
         created_at: Optional[str] = None,
     ):
+        """
+        VectorGeometry is a base class of geometry for a single :class:`~supervisely.annotation.label.Label`. :class:`~supervisely.geometry.vector_geometry.VectorGeometry` object is immutable.
+
+        :param exterior: Exterior coordinates, object contour is defined with these points (used for :class:`~supervisely.geometry.polygon.Polygon`).
+        :type exterior: List[:class:`~supervisely.geometry.point_location.PointLocation`], List[List[int, int]], List[Tuple[int, int]
+        :param interior: Interior coordinates, object holes is defined with these points (used for :class:`~supervisely.geometry.polygon.Polygon`).
+        :type interior: List[List[:class:`~supervisely.geometry.point_location.PointLocation`]], List[List[List[int, int]]], List[List[Tuple[int, int]]]
+        :param sly_id: VectorGeometry ID in Supervisely server.
+        :type sly_id: int, optional
+        :param class_id: ID of :class:`~supervisely.project.obj_class.ObjClass` to which VectorGeometry belongs.
+        :type class_id: int, optional
+        :param labeler_login: Login of the user who created VectorGeometry.
+        :type labeler_login: str, optional
+        :param updated_at: Date and Time when VectorGeometry was modified last. Date Format: Year:Month:Day:Hour:Minute:Seconds. Example: '2021-01-22T19:37:50.158Z'.
+        :type updated_at: str, optional
+        :param created_at: Date and Time when VectorGeometry was created. Date Format is the same as in "updated_at" parameter.
+        :type created_at: str, optional
+        :raises TypeError: if exterior or interior parameters are not a list of :class:`~supervisely.geometry.point_location.PointLocation` objects
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+
+                exterior = [sly.PointLocation(730, 2104), sly.PointLocation(2479, 402), sly.PointLocation(3746, 1646)]
+                # or exterior = [[730, 2104], [2479, 402], [3746, 1646]]
+                # or exterior = [(730, 2104), (2479, 402), (3746, 1646)]
+                interior = [[sly.PointLocation(1907, 1255), sly.PointLocation(2468, 875), sly.PointLocation(2679, 1577)]]
+                # or interior = [[[730, 2104], [2479, 402], [3746, 1646]]]
+                # or interior = [[(730, 2104), (2479, 402), (3746, 1646)]]
+
+                figure = sly.Polygon(exterior, interior)
+        """
         result_exterior = []
         if not isinstance(exterior, list):
             raise TypeError('Argument "exterior" must be a list of coordinates')
@@ -121,30 +122,31 @@ class VectorGeometry(Geometry):
         """
         Convert the VectorGeometry to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
-        :return: Json format as a dict
-        :rtype: :class:`dict`
-        :Usage example:
+        :returns: Json format as a dict
+        :rtype: dict
 
-         .. code-block:: python
+        :Usage Example:
 
-            figure_json = figure.to_json()
-            print(figure_json)
-            # Output: {
-            #    "points": {
-            #        "exterior": [
-            #            [2104, 730],
-            #            [402, 2479],
-            #            [1646, 3746]
-            #        ],
-            #        "interior": [
-            #            [
-            #                [1255, 1907],
-            #                [875, 2468],
-            #                [1577, 2679]
-            #            ]
-            #        ]
-            #    }
-            # }
+            .. code-block:: python
+
+                figure_json = figure.to_json()
+                print(figure_json)
+                # Output: {
+                #    "points": {
+                #        "exterior": [
+                #            [2104, 730],
+                #            [402, 2479],
+                #            [1646, 3746]
+                #        ],
+                #        "interior": [
+                #            [
+                #                [1255, 1907],
+                #                [875, 2468],
+                #                [1577, 2679]
+                #            ]
+                #        ]
+                #    }
+                # }
         """
         packed_obj = {
             POINTS: {
@@ -164,13 +166,14 @@ class VectorGeometry(Geometry):
         """
         VectorGeometry exterior points.
 
-        :return: VectorGeometry exterior points
-        :rtype: :class:`List[PointLocation]<supervisely.geometry.point_location.PointLocation>`
-        :Usage example:
+        :returns: VectorGeometry exterior points
+        :rtype: List[:class:`~supervisely.geometry.point_location.PointLocation`]
 
-         .. code-block:: python
+        :Usage Example:
 
-            exterior = figure.exterior
+            .. code-block:: python
+
+                exterior = figure.exterior
         """
         return deepcopy(self._exterior)
 
@@ -179,18 +182,18 @@ class VectorGeometry(Geometry):
         """
         Converts exterior attribute of VectorGeometry to numpy array.
 
-        :return: Numpy array
-        :rtype: :class:`np.ndarray`
+        :returns: Numpy array
+        :rtype: np.ndarray
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            print(figure.exterior_np)
-            # Output:
-            # [[ 730 2104]
-            #  [2479  402]
-            #  [3746 1646]]
+                print(figure.exterior_np)
+                # Output:
+                # [[ 730 2104]
+                #  [2479  402]
+                #  [3746 1646]]
         """
         return np.array(points_to_row_col_list(self._exterior), dtype=np.int64)
 
@@ -199,13 +202,14 @@ class VectorGeometry(Geometry):
         """
         VectorGeometry interior points.
 
-        :return: VectorGeometry interior points
-        :rtype: :class:`List[List[PointLocation]]<supervisely.geometry.point_location.PointLocation>`
-        :Usage example:
+        :returns: VectorGeometry interior points
+        :rtype: List[List[:class:`~supervisely.geometry.point_location.PointLocation`]]
 
-         .. code-block:: python
+        :Usage Example:
 
-            interior = figure.interior
+            .. code-block:: python
+
+                interior = figure.interior
         """
         return deepcopy(self._interior)
 
@@ -214,18 +218,18 @@ class VectorGeometry(Geometry):
         """
         Converts interior attribute of VectorGeometry to numpy array.
 
-        :return: Numpy array
-        :rtype: :class:`List[np.ndarray]`
+        :returns: Numpy array
+        :rtype: List[np.ndarray]
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            print(figure.interior_np)
-            # Output:
-            # [array([[1907, 1255],
-            #        [2468,  875],
-            #        [2679, 1577]])]
+                print(figure.interior_np)
+                # Output:
+                # [array([[1907, 1255],
+                #        [2468,  875],
+                #        [2679, 1577]])]
         """
         return [np.array(points_to_row_col_list(i), dtype=np.int64) for i in self._interior]
 
@@ -244,17 +248,17 @@ class VectorGeometry(Geometry):
         :type in_size: Tuple[int, int]
         :param out_size: Desired output image size (height, width) to which belongs VectorGeometry.
         :type out_size: Tuple[int, int]
-        :return: VectorGeometry object
-        :rtype: :class:`VectorGeometry<VectorGeometry>`
+        :returns: Resized VectorGeometry.
+        :rtype: :class:`~supervisely.geometry.vector_geometry.VectorGeometry`
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            # Remember that VectorGeometry class object is immutable, and we need to assign new instance of VectorGeometry to a new variable
-            in_height, in_width = 300, 400
-            out_height, out_width = 600, 800
-            resize_figure = figure.resize((in_height, in_width), (out_height, out_width))
+                # Remember that VectorGeometry class object is immutable, and we need to assign new instance of VectorGeometry to a new variable
+                in_height, in_width = 300, 400
+                out_height, out_width = 600, 800
+                resize_figure = figure.resize((in_height, in_width), (out_height, out_width))
         """
         return self._transform(lambda p: p.resize(in_size, out_size))
 
@@ -264,15 +268,15 @@ class VectorGeometry(Geometry):
 
         :param factor: Scale parameter.
         :type factor: float
-        :return: VectorGeometry object
-        :rtype: :class:`VectorGeometry<VectorGeometry>`
+        :returns: Scaled VectorGeometry.
+        :rtype: :class:`~supervisely.geometry.vector_geometry.VectorGeometry`
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            # Remember that VectorGeometry class object is immutable, and we need to assign new instance of VectorGeometry to a new variable
-            scale_figure = figure.scale(0.75)
+                # Remember that VectorGeometry class object is immutable, and we need to assign new instance of VectorGeometry to a new variable
+                scale_figure = figure.scale(0.75)
         """
         return self._transform(lambda p: p.scale(factor))
 
@@ -284,15 +288,15 @@ class VectorGeometry(Geometry):
         :type drow: int
         :param dcol: Vertical shift.
         :type dcol: int
-        :return: VectorGeometry object
-        :rtype: :class:`VectorGeometry<VectorGeometry>`
+        :returns: Translated VectorGeometry.
+        :rtype: :class:`~supervisely.geometry.vector_geometry.VectorGeometry`
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            # Remember that VectorGeometry class object is immutable, and we need to assign new instance of VectorGeometry to a new variable
-            translate_figure = figure.translate(150, 250)
+                # Remember that VectorGeometry class object is immutable, and we need to assign new instance of VectorGeometry to a new variable
+                translate_figure = figure.translate(150, 250)
         """
         return self._transform(lambda p: p.translate(drow, dcol))
 
@@ -300,21 +304,21 @@ class VectorGeometry(Geometry):
         """
         Rotates current VectorGeometry.
 
-        :param rotator: ImageRotator object for rotate.
-        :type rotator: ImageRotator
-        :return: VectorGeometry object
-        :rtype: :class:`VectorGeometry<VectorGeometry>`
+        :param rotator: ImageRotator for rotate.
+        :type rotator: :class:`~supervisely.geometry.image_rotator.ImageRotator`
+        :returns: Rotated VectorGeometry.
+        :rtype: :class:`~supervisely.geometry.vector_geometry.VectorGeometry`
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            from supervisely.geometry.image_rotator import ImageRotator
+                from supervisely.geometry.image_rotator import ImageRotator
 
-            # Remember that VectorGeometry class object is immutable, and we need to assign new instance of VectorGeometry to a new variable
-            height, width = 300, 400
-            rotator = ImageRotator((height, width), 25)
-            rotate_figure = figure.rotate(rotator)
+                # Remember that VectorGeometry class object is immutable, and we need to assign new instance of VectorGeometry to a new variable
+                height, width = 300, 400
+                rotator = ImageRotator((height, width), 25)
+                rotate_figure = figure.rotate(rotator)
 
         """
         return self._transform(lambda p: p.rotate(rotator))
@@ -325,16 +329,16 @@ class VectorGeometry(Geometry):
 
         :param img_size: Input image size (height, width) to which belongs VectorGeometry.
         :type img_size: Tuple[int, int]
-        :return: VectorGeometry object
-        :rtype: :class:`VectorGeometry<VectorGeometry>`
+        :returns: Flipped VectorGeometry in horizontal.
+        :rtype: :class:`~supervisely.geometry.vector_geometry.VectorGeometry`
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            # Remember that VectorGeometry class object is immutable, and we need to assign new instance of VectorGeometry to a new variable
-            height, width = 300, 400
-            fliplr_figure = figure.fliplr((height, width))
+                # Remember that VectorGeometry class object is immutable, and we need to assign new instance of VectorGeometry to a new variable
+                height, width = 300, 400
+                fliplr_figure = figure.fliplr((height, width))
         """
         return self._transform(lambda p: p.fliplr(img_size))
 
@@ -344,16 +348,16 @@ class VectorGeometry(Geometry):
 
         :param img_size: Input image size (height, width) to which belongs VectorGeometry.
         :type img_size: Tuple[int, int]
-        :return: VectorGeometry object
-        :rtype: :class:`VectorGeometry<VectorGeometry>`
+        :returns: Flipped VectorGeometry in vertical.
+        :rtype: :class:`~supervisely.geometry.vector_geometry.VectorGeometry`
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            # Remember that VectorGeometry class object is immutable, and we need to assign new instance of VectorGeometry to a new variable
-            height, width = 300, 400
-            flipud_figure = figure.flipud((height, width))
+                # Remember that VectorGeometry class object is immutable, and we need to assign new instance of VectorGeometry to a new variable
+                height, width = 300, 400
+                flipud_figure = figure.flipud((height, width))
         """
         return self._transform(lambda p: p.flipud(img_size))
 
@@ -361,14 +365,14 @@ class VectorGeometry(Geometry):
         """
         Creates Rectangle object from current VectorGeometry.
 
-        :return: Rectangle object
-        :rtype: :class:`Rectangle<supervisely.geometry.rectangle.Rectangle>`
+        :returns: Rectangle from VectorGeometry.
+        :rtype: :class:`~supervisely.geometry.rectangle.Rectangle`
 
         :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            rectangle = figure.to_bbox()
+                rectangle = figure.to_bbox()
         """
         exterior_np = self.exterior_np
         rows, cols = exterior_np[:, 0], exterior_np[:, 1]
@@ -383,7 +387,7 @@ class VectorGeometry(Geometry):
         """
         :param bitmap: np.ndarray
         :param color: [R, G, B]
-        :param thickness: used only in Polyline and Point
+        :param thickness: used only in Polyline and Point.
         """
         self._draw_contour_impl(bitmap, color, thickness, config=config)
 

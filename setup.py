@@ -3,10 +3,7 @@ import re
 import subprocess
 
 import requests
-try:
-    from importlib.metadata import PackageNotFoundError, distribution
-except ImportError:  # pragma: no cover
-    from importlib_metadata import PackageNotFoundError, distribution
+from importlib.metadata import PackageNotFoundError, distribution
 from setuptools import find_packages, setup
 
 # @TODO: change manifest location
@@ -261,13 +258,9 @@ setup(
             "pandas>=1.1.3, <=2.3.3",
         ],
         "docs": [
-            "sphinx==4.4.0",
-            "jinja2==3.1.6",
-            "sphinx-immaterial==0.4.0",
-            "sphinx-copybutton==0.4.0",
-            "sphinx-autodoc-typehints==1.15.3",
-            "sphinxcontrib-details-directive==0.1.0",
-            "myst-parser==0.18.0",
+            "sphinx==9.1.0",
+            "sphinx-immaterial==0.13.9",
+            "myst-parser==5.0.0",
         ],
         "sdk-no-usages": [
             "grpcio>=1.53.2, <2.0.0",

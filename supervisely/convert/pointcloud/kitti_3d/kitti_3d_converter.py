@@ -22,6 +22,8 @@ from supervisely.pointcloud_annotation.pointcloud_object_collection import (
 
 
 class KITTI3DConverter(PointcloudConverter):
+    """Imports KITTI 3D object detection format (.bin pointclouds, .txt labels, calib) into Supervisely point cloud project."""
+
     def __str__(self) -> str:
         return AvailablePointcloudConverters.KITTI3D
 

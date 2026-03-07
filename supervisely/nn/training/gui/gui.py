@@ -47,7 +47,7 @@ class StepFlow:
         """
         Initializes the step manager.
 
-        :param stepper: Stepper object for step navigation
+        :param stepper: :class:`~supervisely.app.widgets.stepper.stepper.Stepper` object for step navigation
         :param app_options: Application options
         """
         self.stepper = stepper
@@ -76,7 +76,7 @@ class StepFlow:
         :param validation_text: Widget for displaying validation text (optional)
         :param validation_func: Validation function (optional)
         :param position: Step position in the sequence (starting from 0)
-        :return: Current StepFlow object for method chaining
+        :returns: Current StepFlow object for method chaining
         """
         self.steps[name] = {
             "card": card,
@@ -105,7 +105,7 @@ class StepFlow:
 
         :param step_name: Current step name
         :param next_steps: List of names of the next steps
-        :return: Current StepFlow object for method chaining
+        :returns: Current StepFlow object for method chaining
         """
         if step_name in self.steps:
             self.steps[step_name]["next_steps"] = next_steps
@@ -120,7 +120,7 @@ class StepFlow:
         :param step_name: Step name
         :param actions: List of functions to execute
         :param is_reselect: True if these are actions for reselection, otherwise False
-        :return: Current StepFlow object for method chaining
+        :returns: Current StepFlow object for method chaining
         """
         if step_name in self.steps:
             key = "on_reselect_click" if is_reselect else "on_select_click"
@@ -131,7 +131,7 @@ class StepFlow:
         """
         Creates wrappers for all steps based on established dependencies.
 
-        :return: Dictionary with created wrappers by step name
+        :returns: Dictionary with created wrappers by step name
         """
         valid_sequence = [s for s in self.step_sequence if s is not None and s in self.steps]
 
@@ -208,7 +208,7 @@ class StepFlow:
         """
         Performs the complete setup of the step system.
 
-        :return: Dictionary with created wrappers by step name
+        :returns: Dictionary with created wrappers by step name
         """
         wrappers = self.build_wrappers()
         self.setup_button_handlers()
@@ -216,22 +216,7 @@ class StepFlow:
 
 
 class TrainGUI:
-    """
-    A class representing the GUI for training workflows.
-
-    This class sets up and manages GUI components such as project selection,
-    train/validation split selection, model selection, hyperparameters selection,
-    and the training process.
-
-    :param framework_name: Name of the ML framework being used.
-    :type framework_name: str
-    :param models: List of available models.
-    :type models: list
-    :param hyperparameters: Hyperparameters for training.
-    :type hyperparameters: dict
-    :param app_options: Application options for customization.
-    :type app_options: dict, optional
-    """
+    """GUI for training workflows: project, split, model, hyperparameters, and training process."""
 
     def __init__(
         self,
@@ -240,6 +225,15 @@ class TrainGUI:
         hyperparameters: dict,
         app_options: dict = None,
     ):
+        """:param framework_name: Name of the ML framework being used.
+        :type framework_name: str
+        :param models: List of available models.
+        :type models: list
+        :param hyperparameters: Hyperparameters for training.
+        :type hyperparameters: dict
+        :param app_options: Application options for customization.
+        :type app_options: dict, optional
+        """
         self._api = Api.from_env()
         if is_production():
             self.task_id = sly_env.task_id()

@@ -11,33 +11,32 @@ def get_labeling_tool_url(dataset_id, pointcloud_id):
     :type dataset_id: int
     :param pointcloud_id: Point cloud ID in Supervisely.
     :type pointcloud_id: int
-    :return: URL for the labeling tool with the specified dataset ID and point cloud ID
+    :returns: URL for the labeling tool with the specified dataset ID and point cloud ID
     :rtype: str
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import os
-        from dotenv import load_dotenv
+        .. code-block:: python
 
-        import supervisely as sly
+            import os
+            from dotenv import load_dotenv
 
-        # Load secrets and create API object from .env file (recommended)
-        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-        if sly.is_development():
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-        api = sly.Api.from_env()
+            import supervisely as sly
 
-        # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-        pointcloud_id = 19373403
-        pcd_info = api.pointcloud_episodes.get_info_by_id(pointcloud_id)
-        url = sly.pointcloud_episodes.get_labeling_tool_url(pcd_info.dataset_id, pcd_info.id)
+            api = sly.Api.from_env()
 
-        print(url)
-        # Output:
-        # https://app.supervisely.com/app/point-clouds-tracking/?datasetId=55875&pointCloudId=19373403
+            pointcloud_id = 19373403
+            pcd_info = api.pointcloud_episodes.get_info_by_id(pointcloud_id)
+            url = sly.pointcloud_episodes.get_labeling_tool_url(pcd_info.dataset_id, pcd_info.id)
+
+            print(url)
+            # Output:
+            # https://app.supervisely.com/app/point-clouds-tracking/?datasetId=55875&pointCloudId=19373403
     """
 
     res = f"/app/point-clouds-tracking/?datasetId={dataset_id}&pointCloudId={pointcloud_id}"
@@ -54,42 +53,41 @@ def get_labeling_tool_link(url, name="open in labeling tool"):
     :type url: str
     :param name: Name of the link, default is "open in labeling tool".
     :type name: str
-    :return: HTML link to the labeling tool with the specified URL and name.
+    :returns: HTML link to the labeling tool with the specified URL and name.
     :rtype: str
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import os
-        from dotenv import load_dotenv
+        .. code-block:: python
 
-        import supervisely as sly
+            import os
+            from dotenv import load_dotenv
 
-        # Load secrets and create API object from .env file (recommended)
-        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-        if sly.is_development():
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-        api = sly.Api.from_env()
+            import supervisely as sly
 
-        # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-        pointcloud_id = 19373403
-        pcd_info = api.pointcloud.get_info_by_id(pointcloud_id)
-        url = sly.pointcloud.get_labeling_tool_url(pcd_info.dataset_id, pcd_info.id)
-        name = "my link"
+            api = sly.Api.from_env()
 
-        link = sly.pointcloud.get_labeling_tool_link(url, name)
+            pointcloud_id = 19373403
+            pcd_info = api.pointcloud_episodes.get_info_by_id(pointcloud_id)
+            url = sly.pointcloud_episodes.get_labeling_tool_url(pcd_info.dataset_id, pcd_info.id)
+            name = "my link"
 
-        print(link)
-        # Output:
-        # <a
-        #     href="https://app.supervisely.com/app/point-clouds/?datasetId=55875&pointCloudId=19373403"
-        #     rel="noopener noreferrer"
-        #     target="_blank"
-        # >
-        #     my link<i class="zmdi zmdi-open-in-new" style="margin-left: 5px"></i>
-        # </a>
+            link = sly.pointcloud_episodes.get_labeling_tool_link(url, name)
+
+            print(link)
+            # Output:
+            # <a
+            #     href="https://app.supervisely.com/app/point-clouds/?datasetId=55875&pointCloudId=19373403"
+            #     rel="noopener noreferrer"
+            #     target="_blank"
+            # >
+            #     my link<i class="zmdi zmdi-open-in-new" style="margin-left: 5px"></i>
+            # </a>
     """
 
     return f'<a href="{url}" rel="noopener noreferrer" target="_blank">{name}<i class="zmdi zmdi-open-in-new" style="margin-left: 5px"></i></a>'

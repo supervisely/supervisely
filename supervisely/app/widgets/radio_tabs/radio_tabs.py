@@ -8,16 +8,29 @@ from supervisely.app.widgets import Widget
 
 
 class RadioTabs(Widget):
+    """Tabs-like widget that switches between panes and notifies on selection changes."""
+
     class Routes:
+        """Callback route names used by the widget frontend to notify Python."""
+
         VALUE_CHANGED = "value_changed_cb"
 
     class RadioTabPane:
+        """One selectable tab pane (title + content widget + optional subtitle)."""
+
         def __init__(
             self,
             title: str,
             content: Widget,
             subtitle: Optional[str] = "",
         ):
+            """:param title: Tab title.
+            :type title: str
+            :param content: Widget to display when tab is active.
+            :type content: Widget
+            :param subtitle: Optional subtitle.
+            :type subtitle: str, optional
+            """
             self.title = title
             self.subtitle = subtitle
             self.name = title  # identifier corresponding to the active tab
@@ -30,6 +43,16 @@ class RadioTabs(Widget):
         descriptions: Optional[List[str]] = None,
         widget_id=None,
     ):
+        """:param titles: List of tab titles (unique, max 10).
+        :type titles: List[str]
+        :param contents: List of widgets, one per tab.
+        :type contents: List[Widget]
+        :param descriptions: Optional descriptions per tab.
+        :type descriptions: List[str], optional
+        :param widget_id: Unique widget identifier.
+
+        :raises ValueError: If titles/contents lengths differ, or titles not unique.
+        """
         if len(titles) != len(contents):
             raise ValueError(
                 "titles length must be equal to contents length in RadioTabs widget."

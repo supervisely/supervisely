@@ -20,6 +20,8 @@ NESTED_DATASETS = "datasets"
 
 
 class MultiViewVideoConverter(VideoConverter):
+    """Imports multi-view video project structure (nested datasets, videos per view) into Supervisely video project."""
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._supports_links = True

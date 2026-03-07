@@ -16,7 +16,11 @@ from supervisely.app.widgets import Widget
 
 
 class ElementButton(Widget):
+    """Button widget based on Element UI styling that can be updated (text/loading/disabled) from Python."""
+
     class Routes:
+        """Callback route names used by the widget frontend to notify Python."""
+
         BUTTON_CLICKED = "button_clicked_cb"
 
     def __init__(
@@ -29,6 +33,18 @@ class ElementButton(Widget):
         plain: bool = False,
         widget_id: str = None,
     ):
+        """
+        :param text: Text to display on the button.
+        :type text: str
+        :param button_type: Button type: "primary", "info", "warning", "danger", "success".
+        :type button_type: Literal["primary", "info", "warning", "danger", "success"]
+        :param button_size: Button size: "mini", "small", or "large".
+        :type button_size: Literal["mini", "small", "large"], optional
+        :param plain: If True, use plain (outline) style.
+        :type plain: bool
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         self._widget_routes = {}
 
         self._text = text

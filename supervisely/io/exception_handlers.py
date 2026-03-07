@@ -18,12 +18,21 @@ from supervisely.sly_logger import EventType, logger
 
 
 class HandleException:
+    """
+    Base wrapper for an exception enriched with a user-facing error code, title and message.
+
+    Used by :class:`ErrorHandler` to present consistent errors in UI (DialogWindowError) and logs.
+    """
     def __init__(
         self,
         exception: Exception,
         stack: List[traceback.FrameSummary] = None,
         **kwargs,
     ):
+        """:param exception: Original exception.
+        :param stack: Optional traceback frame list. Inferred from exception if None.
+        :param kwargs: code, title, message for user-facing error.
+        """
         self.exception = exception
         self.stack = stack or read_stack_from_exception(self.exception)
         self.code = kwargs.get("code")
@@ -96,9 +105,15 @@ class HandleException:
 
 
 class ErrorHandler:
+    """
+    Namespaced collection of typed error wrappers used to convert raw exceptions into user-facing messages.
+    """
     class APP:
+        """Errors originating from app/runtime logic (UI, files, archives, etc.)."""
         class UnsupportedShapes(HandleException):
+            """Raised when project classes contain unsupported geometry shapes."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
+                """See :class:`~supervisely.io.exception_handlers.HandleException` for params."""
                 self.code = 1001
                 self.title = "Unsupported class shapes"
                 self.message = exception.args[0]
@@ -112,7 +127,9 @@ class ErrorHandler:
                 )
 
         class UnsupportedArchiveFormat(HandleException):
+            """Raised when an input archive has an unsupported format."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
+                """See :class:`~supervisely.io.exception_handlers.HandleException` for params."""
                 self.code = 1002
                 self.title = "Unsupported archive format"
                 self.message = "The given archive format is not supported."
@@ -126,7 +143,9 @@ class ErrorHandler:
                 )
 
         class UnicodeDecodeError(HandleException):
+            """Raised when reading a text file fails due to encoding issues."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
+                """See :class:`~supervisely.io.exception_handlers.HandleException` for params."""
                 self.code = 1003
                 self.title = "Unicode decode error"
                 self.message = (
@@ -143,9 +162,11 @@ class ErrorHandler:
                 )
 
         class CallUndeployedModelError(HandleException):
+            """Raised when an inference request is made to a model that is not deployed/serving."""
             def __init__(
                 self, exception: Exception, stack: List[traceback.FrameSummary] = None, **kwargs
             ):
+                """See :class:`~supervisely.io.exception_handlers.HandleException` for params."""
                 self.code = 1004
                 self.title = "Call undeployed model error"
                 self.message = str(exception.args[0])
@@ -158,7 +179,9 @@ class ErrorHandler:
                 )
 
         class FailedToReadArchive(HandleException):
+            """Raised when an archive cannot be read (corrupted or unsupported content)."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
+                """See :class:`~supervisely.io.exception_handlers.HandleException` for params."""
                 self.code = 1005
                 self.title = "Failed to read archive"
                 self.message = (
@@ -175,7 +198,9 @@ class ErrorHandler:
                 )
 
         class FailedToUnpackArchive(HandleException):
+            """Raised when an archive cannot be unpacked (corrupted or unsupported content)."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
+                """See :class:`~supervisely.io.exception_handlers.HandleException` for params."""
                 self.code = 1006
                 self.title = "Failed to unpack archive"
                 self.message = (
@@ -192,8 +217,11 @@ class ErrorHandler:
                 )
 
     class API:
+        """Errors originating from Supervisely API requests and server-side constraints."""
         class TeamFilesFileNotFound(HandleException):
+            """Raised when a requested Team Files path does not exist."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
+                """See :class:`~supervisely.io.exception_handlers.HandleException` for params."""
                 self.code = 2001
                 self.title = "Requested file was not found in Team Files"
                 self.message = (
@@ -210,7 +238,9 @@ class ErrorHandler:
                 )
 
         class TaskSendRequestError(HandleException):
+            """Raised when the app cannot send a request to a running task/session."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
+                """See :class:`~supervisely.io.exception_handlers.HandleException` for params."""
                 self.code = 2002
                 self.title = "Task send request error. Check the logs for more information."
                 self.message = (
@@ -229,7 +259,9 @@ class ErrorHandler:
                 )
 
         class FileSizeTooLarge(HandleException):
+            """Raised when uploading a file exceeds the plan/file size limits."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
+                """See :class:`~supervisely.io.exception_handlers.HandleException` for params."""
                 self.code = 2003
                 self.title = "File size limit exceeded"
                 self.message = "The given file size is too large "
@@ -247,7 +279,9 @@ class ErrorHandler:
                 )
 
         class ImageFilesSizeTooLarge(HandleException):
+            """Raised when uploading an image exceeds size limits."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
+                """See :class:`~supervisely.io.exception_handlers.HandleException` for params."""
                 self.code = 2004
                 self.title = "Image files size limit exceeded"
                 self.message = (
@@ -263,7 +297,9 @@ class ErrorHandler:
                 )
 
         class VideoFilesSizeTooLarge(HandleException):
+            """Raised when uploading a video exceeds size limits."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
+                """See :class:`~supervisely.io.exception_handlers.HandleException` for params."""
                 self.code = 2005
                 self.title = "Video files size limit exceeded"
                 self.message = "The given video file size is too large (more than 300 MB) for Community Edition."
@@ -277,7 +313,9 @@ class ErrorHandler:
                 )
 
         class VolumeFilesSizeTooLarge(HandleException):
+            """Raised when uploading a volume exceeds size limits."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
+                """See :class:`~supervisely.io.exception_handlers.HandleException` for params."""
                 self.code = 2006
                 self.title = "Volume files size limit exceeded"
                 self.message = "The given volume file size is too large (more than 150 MB) for Community Edition."
@@ -291,7 +329,9 @@ class ErrorHandler:
                 )
 
         class OutOfMemory(HandleException):
+            """Raised when an operation fails due to OOM (CPU or GPU) on the agent machine."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
+                """See :class:`~supervisely.io.exception_handlers.HandleException` for params."""
                 device_prefix = (
                     "GPU memory"
                     if any([s in exception.args[0] for s in ["CUDA", "cuda", "GPU"]])
@@ -310,7 +350,9 @@ class ErrorHandler:
                 )
 
         class DockerRuntimeError(HandleException):
+            """Raised when agent-side Docker runtime is unavailable or malfunctioning."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
+                """See :class:`~supervisely.io.exception_handlers.HandleException` for params."""
                 self.code = 2008
                 self.title = "Docker runtime error"
                 self.message = (
@@ -327,7 +369,9 @@ class ErrorHandler:
                 )
 
         class AppSetFieldError(HandleException):
+            """Raised when updating app/task fields via API fails (often due to connectivity)."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
+                """See :class:`~supervisely.io.exception_handlers.HandleException` for params."""
                 self.code = 2009
                 self.title = "App set field error. Check the logs for more information."
                 self.message = (
@@ -346,7 +390,9 @@ class ErrorHandler:
                 )
 
         class TeamFilesDirectoryDownloadError(HandleException):
+            """Raised when downloading a Team Files directory fails."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
+                """See :class:`~supervisely.io.exception_handlers.HandleException` for params."""
                 self.code = 2010
                 self.title = "Team files directory download error"
                 self.message = "Make sure that the directory exists in the team files, the files are not corrupted, and try again."
@@ -360,7 +406,9 @@ class ErrorHandler:
                 )
 
         class PointcloudsUploadError(HandleException):
+            """Raised when point cloud upload API fails."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
+                """See :class:`~supervisely.io.exception_handlers.HandleException` for params."""
                 self.code = 2011
                 self.title = "Pointclouds uploading error"
                 self.message = exception.args[0]
@@ -374,7 +422,9 @@ class ErrorHandler:
                 )
 
         class AnnotationUploadError(HandleException):
+            """Raised when annotation upload API fails."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
+                """See :class:`~supervisely.io.exception_handlers.HandleException` for params."""
                 self.code = 2012
                 self.title = "Annotation uploading error"
                 self.message = exception.args[0]
@@ -388,7 +438,9 @@ class ErrorHandler:
                 )
 
         class AnnotationNotFound(HandleException):
+            """Raised when annotation file(s) are not found for upload/download."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
+                """See :class:`~supervisely.io.exception_handlers.HandleException` for params."""
                 self.code = 2013
                 self.title = "Annotation not found"
                 self.message = "Please, check that the annotation(s) exists by the given path."
@@ -402,7 +454,9 @@ class ErrorHandler:
                 )
 
         class ServerOverload(HandleException):
+            """Raised for transient server overload conditions; suggests retry later."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
+                """See :class:`~supervisely.io.exception_handlers.HandleException` for params."""
                 self.code = 2014
                 self.title = "High load on the server"
                 self.message = "Sorry, the server is overloaded. Please, try again later."
@@ -416,7 +470,9 @@ class ErrorHandler:
                 )
 
         class ProjectNotFound(HandleException):
+            """Raised when a project cannot be accessed (missing/archived/permissions)."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
+                """See :class:`~supervisely.io.exception_handlers.HandleException` for params."""
                 self.code = 2015
                 self.title = "Project not found"
                 self.message = "Please, check that the project exists, not archived and you have enough permissions to access it"
@@ -430,7 +486,9 @@ class ErrorHandler:
                 )
 
         class DatasetNotFound(HandleException):
+            """Raised when a dataset cannot be accessed (missing/archived/permissions)."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
+                """See :class:`~supervisely.io.exception_handlers.HandleException` for params."""
                 self.code = 2016
                 self.title = "Dataset not found"
                 self.message = "Please, check that the dataset exists, not archived and you have enough permissions to access it."
@@ -444,7 +502,9 @@ class ErrorHandler:
                 )
 
         class TaskFinished(HandleException):
+            """Raised when attempting to operate on a task that has already finished."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
+                """See :class:`~supervisely.io.exception_handlers.HandleException` for params."""
                 self.code = 2017
                 self.title = "Task finished"
                 self.message = "The task is already finished. Please, check the task's logs for more information."
@@ -458,7 +518,9 @@ class ErrorHandler:
                 )
 
         class PaymentRequired(HandleException):
+            """Raised when plan usage limits are reached and an upgrade is required."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
+                """See :class:`~supervisely.io.exception_handlers.HandleException` for params."""
                 self.code = 2018
                 self.title = "Usage limits reached"
                 self.message = "Your plan usage exceeded. Please, upgrade plan to continue: https://supervisely.com/pricing/"
@@ -472,7 +534,9 @@ class ErrorHandler:
                 )
 
         class FreePlanImagesUploadLinksError(HandleException):
+            """Raised when trying to upload remote images on a non-PRO plan."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
+                """See :class:`~supervisely.io.exception_handlers.HandleException` for params."""
                 self.code = 2019
                 self.title = "Upload remote images is only available for PRO teams"
                 self.message = (
@@ -488,7 +552,9 @@ class ErrorHandler:
                 )
 
         class FreePlanVideosUploadsLinkError(HandleException):
+            """Raised when trying to upload remote videos on a non-PRO plan."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
+                """See :class:`~supervisely.io.exception_handlers.HandleException` for params."""
                 self.code = 2020
                 self.title = "Upload remote videos is only available for PRO teams"
                 self.message = (
@@ -504,8 +570,11 @@ class ErrorHandler:
                 )
 
     class SDK:
+        """Errors produced by SDK-side parsing, conversion and local project structure checks."""
         class ProjectStructureError(HandleException):
+            """Raised when a local project structure is invalid or incomplete."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
+                """See :class:`~supervisely.io.exception_handlers.HandleException` for params."""
                 self.code = 3001
                 self.title = "Project structure error"
                 self.message = "Please, check the project structure and try again."
@@ -519,7 +588,9 @@ class ErrorHandler:
                 )
 
         class ConversionNotImplemented(HandleException):
+            """Raised when a requested geometry conversion is not implemented."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
+                """See :class:`~supervisely.io.exception_handlers.HandleException` for params."""
                 self.code = 3002
                 self.title = "Not implemented error"
                 self.message = (
@@ -536,7 +607,9 @@ class ErrorHandler:
                 )
 
         class JsonAnnotationReadError(HandleException):
+            """Raised when reading an annotation JSON fails (invalid JSON or schema)."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
+                """See :class:`~supervisely.io.exception_handlers.HandleException` for params."""
                 self.code = 3003
                 self.title = "JSON annotation read error"
                 self.message = (
@@ -552,7 +625,9 @@ class ErrorHandler:
                 )
 
         class LabelFromJsonFailed(HandleException):
+            """Raised when deserializing a Label from JSON fails."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
+                """See :class:`~supervisely.io.exception_handlers.HandleException` for params."""
                 self.code = 3004
                 self.title = "Label deserialize error"
                 self.message = exception.args[0]
@@ -566,7 +641,9 @@ class ErrorHandler:
                 )
 
         class FileNameTooLong(HandleException):
+            """Raised when file system operations fail due to excessively long file names."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
+                """See :class:`~supervisely.io.exception_handlers.HandleException` for params."""
                 self.code = 3005
                 self.title = "File name too long"
                 self.message = f"Please, check name of items: {exception.args[0]}"
@@ -580,7 +657,9 @@ class ErrorHandler:
                 )
 
         class AnnotationFromJsonFailed(HandleException):
+            """Raised when deserializing an Annotation from JSON fails."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
+                """See :class:`~supervisely.io.exception_handlers.HandleException` for params."""
                 self.code = 3005
                 self.title = "Annotation deserialize error"
                 self.message = exception.args[0]
@@ -594,6 +673,7 @@ class ErrorHandler:
                 )
 
     class AgentDocker:
+        """Errors related to Docker operations performed by an Agent."""
         @classmethod
         def parse_docker_exception(cls, docker_exception: Exception) -> str:
             default_msg = str(docker_exception)
@@ -607,7 +687,9 @@ class ErrorHandler:
             return default_msg
 
         class ImageNotFound(HandleException):
+            """Raised when a required Docker image cannot be found/pulled by the agent."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
+                """See :class:`~supervisely.io.exception_handlers.HandleException` for params."""
                 self.code = 4001
                 self.title = "Docker image not found"
                 self.message = ErrorHandler.AgentDocker.parse_docker_exception(exception)
@@ -621,7 +703,9 @@ class ErrorHandler:
                 )
 
         class NetworkNotFound(HandleException):
+            """Raised when a required Docker network is missing or was deleted."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
+                """See :class:`~supervisely.io.exception_handlers.HandleException` for params."""
                 self.code = 4002
                 self.title = "Docker image not found"
                 self.message = ErrorHandler.AgentDocker.parse_docker_exception(exception)
@@ -645,8 +729,11 @@ class ErrorHandler:
                 )
 
     class Agent:
+        """Errors caused by Agent runtime issues (auth, memory limits, etc.)."""
         class AgentError(HandleException):
+            """Raised for general agent-side failures."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
+                """See :class:`~supervisely.io.exception_handlers.HandleException` for params."""
                 self.code = 5001
                 self.title = "Agent issue"
                 self.message = (
@@ -663,7 +750,9 @@ class ErrorHandler:
                 )
 
         class MemoryExceeded(HandleException):
+            """Raised when the task process is killed due to high memory usage (e.g. exit 137)."""
             def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
+                """See :class:`~supervisely.io.exception_handlers.HandleException` for params."""
                 self.code = 5002
                 self.title = "Process terminated due to high memory usage"
                 self.message = (
@@ -784,25 +873,27 @@ def handle_exception(exception: Exception) -> Union[HandleException, None]:
 
     :param exception: Exception to be handled.
     :type exception: Exception
-    :return: Instance of the ErrorHandler class or None.
-    :rtype: Union[ErrorHandler, None]
-    :Usage example:
+    :returns: Instance of the :class:`~supervisely.io.exception_handlers.ErrorHandler` class or None.
+    :rtype: Union[:class:`~supervisely.io.exception_handlers.ErrorHandler`, None]
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        try:
-            # Some code that may raise an exception.
-        except Exception as e:
-            exception_handler = sly.handle_exception(e)
-            if exception_handler:
-                # You may raise the exception using the raise_error() method.
-                # Or use other approaches for handling the exception (e.g. logging, printing to console, etc.)
-                exception_handler.raise_error()
-            else:
-                # If the pattern is not found, the exception is raised as usual.
-                raise
+            import supervisely as sly
+
+            try:
+                # Code that may raise an exception.
+                raise Exception("Test exception")
+            except Exception as e:
+                exception_handler = sly.handle_exception(e)
+                if exception_handler:
+                    # You may raise the exception using the raise_error() method.
+                    # Or use other approaches for handling the exception (e.g. logging, printing to console, etc.)
+                    exception_handler.raise_error()
+                else:
+                    # If the pattern is not found, the exception is raised as usual.
+                    raise
     """
     # Extracting the stack trace.
     stack = read_stack_from_exception(exception)
@@ -827,28 +918,32 @@ def handle_exception(exception: Exception) -> Union[HandleException, None]:
 
 
 def handle_exceptions(func: Optional[Callable] = None, has_ui: bool = True) -> Callable:
-    """Decorator for handling exceptions, which tries to find a matching pattern for known errors.
+    """
+    Decorator for handling exceptions, which tries to find a matching pattern for known errors.
     If the pattern is found, the exception is handled according to the specified handler.
     Otherwise, the exception is raised as usual.
 
     :param func: Function to be decorated.
     :type func: Callable
-    :return: Decorated function.
+    :returns: Decorated function.
     :rtype: Callable
-    :Usage example:
 
-     .. code-block:: python
+    :Usage Example:
 
-        import supervisely as sly
+        .. code-block:: python
 
-        @sly.handle_exceptions
-        def my_func():
-            # Some code that may raise an exception.
+            import supervisely as sly
 
-        # call with argument `has_ui=False` if you don't want to raise a DialogWindowError
-        @sly.handle_exceptions(has_ui=False)
-        def my_func():
-            # Some code that may raise an exception.
+            @sly.handle_exceptions
+            def my_func():
+                # Some code that may raise an exception.
+                raise Exception("Test exception")
+
+            # call with argument `has_ui=False` if you don't want to raise a DialogWindowError
+            @sly.handle_exceptions(has_ui=False)
+            def my_func():
+                # Some code that may raise an exception.
+                raise Exception("Test exception")
     """
 
     f = None

@@ -4,6 +4,7 @@ import itertools
 from collections import defaultdict
 from copy import deepcopy
 from pathlib import Path
+
 import numpy as np
 
 from supervisely.metric.common import safe_ratio
@@ -142,6 +143,8 @@ def _get_annotation_for_bbox(img: np.ndarray, roi: Rectangle, model) -> Annotati
 
 
 class InferenceModeBase:
+    """Base class for legacy hosted inference modes (inference + post-processing strategy)."""
+
     @staticmethod
     def mode_name():
         raise NotImplementedError()
@@ -156,12 +159,18 @@ class InferenceModeBase:
         }
 
     def __init__(self, config: dict, in_meta: ProjectMeta, model: SingleImageInferenceBase):
+        """
+        :param config: Mode config.
+        :type config: dict
+        :param in_meta: Input project meta.
+        :type in_meta: ProjectMeta
+        :param model: SingleImageInferenceBase instance.
+        :type model: SingleImageInferenceBase
+        """
         validation_schema_path = (
-            Path(__file__).resolve().parent
-            / 'inference_modes_schemas'
-            / '{}.json'.format(self.mode_name())
+            Path(__file__).parent / "inference_modes_schemas" / f"{self.mode_name()}.json"
         )
-        MultiTypeValidator(validation_schema_path).val(INFERENCE_MODE_CONFIG, config)
+        MultiTypeValidator(str(validation_schema_path)).val(INFERENCE_MODE_CONFIG, config)
         self._config = deepcopy(config)
         self._out_meta = in_meta
         self._model = model
@@ -216,6 +225,8 @@ class InferenceModeBase:
 
 
 class InfModeFullImage(InferenceModeBase):
+    """Inference mode that runs the model on the full image in a single pass."""
+
     @staticmethod
     def mode_name():
         return 'full_image'
@@ -246,6 +257,8 @@ class InfModeFullImage(InferenceModeBase):
 
 
 class InfModeRoi(InferenceModeBase):
+    """Inference mode that runs inference within a single ROI and maps results back."""
+
     @staticmethod
     def mode_name():
         return 'roi'
@@ -267,6 +280,7 @@ class InfModeRoi(InferenceModeBase):
         return config
 
     def __init__(self, config: dict, in_meta: ProjectMeta, model: SingleImageInferenceBase):
+        """See InferenceModeBase for params."""
         super().__init__(config, in_meta, model)
         self._intermediate_bbox_class = _maybe_make_intermediate_bbox_class(self._config)
         if self._intermediate_bbox_class is not None:
@@ -292,6 +306,8 @@ class InfModeRoi(InferenceModeBase):
 
 
 class InfModeBboxes(InferenceModeBase):
+    """Inference mode that runs inference on a set of bounding box ROIs and merges results."""
+
     @staticmethod
     def mode_name():
         return 'bboxes'
@@ -314,6 +330,7 @@ class InfModeBboxes(InferenceModeBase):
         return config
 
     def __init__(self, config: dict, in_meta: ProjectMeta, model: SingleImageInferenceBase):
+        """See InferenceModeBase for params."""
         super().__init__(config, in_meta, model)
 
         # If saving the bounding boxes on which inference was called is requested, create separate classes
@@ -377,7 +394,10 @@ class InfModeBboxes(InferenceModeBase):
 
 
 class InfModeSlidinglWindowBase(InferenceModeBase):
+    """Base class for sliding-window inference (tile image into windows and merge predictions)."""
+
     def __init__(self, config: dict, in_meta: ProjectMeta, model: SingleImageInferenceBase):
+        """See InferenceModeBase for params."""
         super().__init__(config, in_meta, model)
 
         window_shape = (self._config[WINDOW][HEIGHT], self._config[WINDOW][WIDTH])
@@ -409,6 +429,8 @@ class InfModeSlidinglWindowBase(InferenceModeBase):
 
 # This only makes sense for image segmentation that return per-pixel class probabilities.
 class InfModeSlidingWindowSegmentation(InfModeSlidinglWindowBase):
+    """Sliding-window inference mode for segmentation models."""
+
     @staticmethod
     def mode_name():
         return 'sliding_window'
@@ -461,6 +483,8 @@ class InfModeSlidingWindowSegmentation(InfModeSlidinglWindowBase):
 
 
 class InfModeSlidingWindowDetection(InfModeSlidinglWindowBase):
+    """Sliding-window inference mode for detection models (optionally with NMS)."""
+
     @staticmethod
     def mode_name():
         return 'sliding_window_det'
@@ -555,6 +579,8 @@ class InfModeSlidingWindowDetection(InfModeSlidinglWindowBase):
 
 
 class InferenceModeFactory:
+    """Factory for constructing inference mode instances from config."""
+
     mapping = {inference_mode_cls.mode_name(): inference_mode_cls
                for inference_mode_cls in [InfModeFullImage,
                                           InfModeRoi,

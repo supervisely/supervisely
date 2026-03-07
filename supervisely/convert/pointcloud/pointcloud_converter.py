@@ -26,10 +26,14 @@ CONVERTIBLE_EXTENSIONS = [".bin"]
 
 
 class PointcloudConverter(BaseConverter):
+    """Base converter for pointcloud projects (uploads pointclouds, annotations, and optional related images)."""
+
     allowed_exts = ALLOWED_POINTCLOUD_EXTENSIONS + CONVERTIBLE_EXTENSIONS
     modality = "pointclouds"
 
     class Item(BaseConverter.BaseItem):
+        """Base pointcloud item: path + optional annotation data and related images bundle."""
+
         def __init__(
             self,
             item_path,
@@ -37,6 +41,16 @@ class PointcloudConverter(BaseConverter):
             related_images: Optional[list] = None,
             custom_data: Optional[dict] = None,
         ):
+            """
+            :param item_path: Path to pointcloud file.
+            :type item_path: str
+            :param ann_data: Annotation path or data.
+            :type ann_data: str, optional
+            :param related_images: List of related image tuples.
+            :type related_images: list, optional
+            :param custom_data: Extra per-item data.
+            :type custom_data: dict, optional
+            """
             self._name: str = None
             self._path = item_path
             self._ann_data = ann_data
@@ -84,7 +98,23 @@ class PointcloudConverter(BaseConverter):
 
         meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)
 
-        existing_names = set([pcd.name for pcd in api.pointcloud.get_list(dataset_id)])
+        existing_pcd_infos = api.pointcloud.get_list(dataset_id)
+        existing_pointcloud_names = set([pcd.name for pcd in existing_pcd_infos])
+        used_related_image_names: Set[str] = set()
+        try:
+            existing_pcd_ids = [pcd.id for pcd in existing_pcd_infos]
+            for pcd_ids_batch in batched(existing_pcd_ids, batch_size=200):
+                related_images = api.pointcloud.get_list_related_images_batch(
+                    dataset_id, pcd_ids_batch
+                )
+                for related_image in related_images:
+                    related_image_name = related_image.get(ApiField.NAME)
+                    if related_image_name is not None:
+                        used_related_image_names.add(related_image_name)
+        except Exception as e:
+            logger.debug(
+                f"Failed to fetch existing related image names for dataset ID:{dataset_id}: {repr(e)}"
+            )
 
         if log_progress:
             progress, progress_cb = self.get_progress(self.items_count, "Uploading pointclouds...")
@@ -102,7 +132,7 @@ class PointcloudConverter(BaseConverter):
             anns = []
             for item in batch:
                 item.name = generate_free_name(
-                    existing_names, item.name, with_ext=True, extend_used_names=True
+                    existing_pointcloud_names, item.name, with_ext=True, extend_used_names=True
                 )
                 item_names.append(item.name)
                 if self.upload_as_links:
@@ -149,9 +179,16 @@ class PointcloudConverter(BaseConverter):
                         else:
                             camera_names.append(meta_json[ApiField.META]["deviceId"])
 
+                        related_image_name = generate_free_name(
+                            used_related_image_names,
+                            meta_json[ApiField.NAME],
+                            with_ext=True,
+                            extend_used_names=True,
+                        )
+
                         rimage_dict = {
                             ApiField.ENTITY_ID: pcd_id,
-                            ApiField.NAME: meta_json[ApiField.NAME],
+                            ApiField.NAME: related_image_name,
                             ApiField.META: meta_json[ApiField.META],
                         }
                         link = None

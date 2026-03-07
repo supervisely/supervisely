@@ -10,7 +10,12 @@ from supervisely.io import fs as sly_fs
 
 # stateless object
 class FSCache:
+    """Base filesystem-backed cache that stores objects under a hash-derived directory layout."""
+
     def __init__(self, name, storage_root):
+        """:param name: Cache name/identifier.
+        :param storage_root: Root directory for cached objects.
+        """
         self._name = name
         self._storage_root = storage_root
 
@@ -122,6 +127,8 @@ class FSCache:
 
 # class ImageStorage(FSStorage):
 class FileCache(FSCache):
+    """Filesystem cache for file objects (stores single files with preserved extension)."""
+
     def _storage_obj_exists(self, st_path, suffix):
         if not suffix:
             raise ValueError("Storage {}. File ext is empty.".format(self._name))
@@ -161,6 +168,8 @@ class FileCache(FSCache):
 
 
 class NNCache(FSCache):
+    """Filesystem cache for directory-based objects (e.g., neural network model folders)."""
+
     def _storage_obj_exists(self, st_path, suffix):
         if suffix:
             raise ValueError("Storage {}. Unexpected suffix for NN dir.".format(self._name))
@@ -180,6 +189,8 @@ class NNCache(FSCache):
 
 
 class EmptyCache(FSCache):
+    """No-op cache implementation (always misses and does not store data)."""
+
     def _storage_obj_exists(self, st_path, suffix):
         return False
 

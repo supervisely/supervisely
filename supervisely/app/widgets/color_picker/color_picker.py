@@ -5,29 +5,12 @@ from supervisely.app.widgets import Empty, Widget
 
 
 class ColorPicker(Widget):
-    """ColorPicker is a color selector supporting multiple color formats.
-
-    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/input/colorpicker>`_
-        (including screenshots and examples).
-
-    :param show_alpha: if True, alpha channel will be shown
-    :type show_alpha: bool
-    :param color_format: color format, one of: hex, hsl, hsv, rgb
-    :type color_format: Literal["hex", "hsl", "hsv", "rgb"]
-    :param compact: if True, compact mode will be enabled
-    :type compact: bool
-    :param widget_id: An identifier of the widget.
-    :type widget_id: str, optional
-
-    :Usage example:
-    .. code-block:: python
-
-        from supervisely.app.widgets import ColorPicker
-
-        color_picker = ColorPicker(color_format="rgb")
+    """Color selector supporting multiple formats (hex, rgb, etc.).
+    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/input/colorpicker>`_.
     """
 
     class Routes:
+        """Route name constants for this widget."""
         VALUE_CHANGED = "value_changed"
 
     def __init__(
@@ -37,6 +20,25 @@ class ColorPicker(Widget):
         compact: Optional[bool] = False,
         widget_id: Optional[str] = None,
     ):
+        """
+        :param show_alpha: if True, alpha channel will be shown
+        :type show_alpha: bool, optional
+        :param color_format: color format, one of: hex, hsl, hsv, rgb
+        :type color_format: Literal["hex", "hsl", "hsv", "rgb"]
+        :param compact: if True, compact mode will be enabled
+        :type compact: bool, optional
+        :param widget_id: An identifier of the widget.
+        :type widget_id: str, optional
+        :raises TypeError: if color_format is not one of hex, hsl, hsv, rgb
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                from supervisely.app.widgets import ColorPicker
+
+                color_picker = ColorPicker(color_format="rgb")
+        """
         self._show_alpha = show_alpha
         self._color_format = color_format
         self._changes_handled = False
@@ -67,7 +69,7 @@ class ColorPicker(Widget):
             - color_format: color format, one of: hex, hsl, hsv, rgb
             - compact: if True, compact mode will be enabled
 
-        :return: dictionary with widget data
+        :returns: dictionary with widget data
         :rtype: Dict[str, Union[bool, str]]
         """
         return {
@@ -82,7 +84,7 @@ class ColorPicker(Widget):
         Dictionary contains the following fields:
             - color: current color
 
-        :return: dictionary with widget state
+        :returns: dictionary with widget state
         :rtype: Dict[str, Union[str, List[int]]]
         """
         return {"color": self._color}
@@ -90,7 +92,7 @@ class ColorPicker(Widget):
     def get_value(self) -> Union[str, List[int]]:
         """Returns current color.
 
-        :return: current color
+        :returns: current color
         :rtype: Union[str, List[int]]
         """
         return StateJson()[self.widget_id]["color"]
@@ -124,7 +126,7 @@ class ColorPicker(Widget):
     def is_show_alpha_enabled(self) -> bool:
         """Returns True if alpha channel is shown, False otherwise.
 
-        :return: True if alpha channel is shown, False otherwise
+        :returns: True if alpha channel is shown, False otherwise
         :rtype: bool
         """
         return DataJson()[self.widget_id]["show_alpha"]
@@ -144,7 +146,7 @@ class ColorPicker(Widget):
     def get_color_format(self) -> Literal["hex", "hsl", "hsv", "rgb"]:
         """Returns current color format.
 
-        :return: current color format
+        :returns: current color format
         :rtype: Literal["hex", "hsl", "hsv", "rgb"]
         """
         return DataJson()[self.widget_id]["color_format"]
@@ -164,7 +166,7 @@ class ColorPicker(Widget):
 
         :param func: function that will be called when color is changed
         :type func: Callable[[Union[str, List[int]]], Any]
-        :return: decorated function
+        :returns: decorated function
         :rtype: Callable[[], None]
         """
         route_path = self.get_route_path(ColorPicker.Routes.VALUE_CHANGED)

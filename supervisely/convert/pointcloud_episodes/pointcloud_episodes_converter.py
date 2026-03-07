@@ -24,10 +24,14 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
 class PointcloudEpisodeConverter(BaseConverter):
+    """Base converter for pointcloud episodes (frame-indexed pointclouds + a shared episode annotation)."""
+
     allowed_exts = ALLOWED_POINTCLOUD_EXTENSIONS
     modality = "pointcloud episodes"
 
     class Item(BaseConverter.BaseItem):
+        """Base pointcloud-episode item with frame index and optional related images bundle."""
+
         def __init__(
             self,
             item_path,
@@ -36,6 +40,18 @@ class PointcloudEpisodeConverter(BaseConverter):
             related_images: Optional[list] = None,
             custom_data: Optional[dict] = None,
         ):
+            """
+            :param item_path: Path to frame pointcloud.
+            :type item_path: str
+            :param frame_number: Frame index in episode.
+            :type frame_number: int
+            :param ann_data: Annotation path.
+            :type ann_data: str, optional
+            :param related_images: Related images list.
+            :type related_images: list, optional
+            :param custom_data: Extra data.
+            :type custom_data: dict, optional
+            """
             self._name: str = None
             self._path = item_path
             self._frame_number = frame_number
@@ -68,6 +84,7 @@ class PointcloudEpisodeConverter(BaseConverter):
         upload_as_links: bool = False,
         remote_files_map: Optional[Dict[str, str]] = None,
     ):
+        """See :class:`~supervisely.convert.base_converter.BaseConverter` for params."""
         super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
         self._annotation = None
         self._frame_pointcloud_map = None
@@ -106,7 +123,8 @@ class PointcloudEpisodeConverter(BaseConverter):
 
         meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)
 
-        existing_names = set([pcde.name for pcde in api.pointcloud_episode.get_list(dataset_id)])
+        existing_pcde_infos = api.pointcloud_episode.get_list(dataset_id)
+        existing_names = set([pcde.name for pcde in existing_pcde_infos])
 
         if log_progress:
             progress, progress_cb = self.get_progress(
@@ -118,6 +136,21 @@ class PointcloudEpisodeConverter(BaseConverter):
         frame_to_pointcloud_ids: Dict[int, int] = {}
         pcl_to_rimg_figures: Dict[int, Dict[str, List[Dict]]] = {}
         pcl_to_hash_to_id: Dict[int, Dict[str, int]] = {}
+        used_related_image_names: Set[str] = set()
+        try:
+            existing_pcde_ids = [pcde.id for pcde in existing_pcde_infos]
+            for pcde_ids_batch in batched(existing_pcde_ids, batch_size=200):
+                related_images = api.pointcloud.get_list_related_images_batch(
+                    dataset_id, pcde_ids_batch
+                )
+                for related_image in related_images:
+                    related_image_name = related_image.get(ApiField.NAME)
+                    if related_image_name is not None:
+                        used_related_image_names.add(related_image_name)
+        except Exception as e:
+            logger.debug(
+                f"Failed to fetch existing related image names for dataset ID:{dataset_id}: {repr(e)}"
+            )
         key_id_map = KeyIdMap()
         for batch in batched(self._items, batch_size=batch_size):
             item_names = []
@@ -167,10 +200,16 @@ class PointcloudEpisodeConverter(BaseConverter):
                                 camera_names.append(f"CAM_{str(img_ind).zfill(2)}")
                             else:
                                 camera_names.append(meta_json[ApiField.META]["deviceId"])
+                            related_image_name = generate_free_name(
+                                used_related_image_names,
+                                meta_json[ApiField.NAME],
+                                with_ext=True,
+                                extend_used_names=True,
+                            )
                             rimg_infos.append(
                                 {
                                     ApiField.ENTITY_ID: pcd_id,
-                                    ApiField.NAME: meta_json[ApiField.NAME],
+                                    ApiField.NAME: related_image_name,
                                     ApiField.HASH: img_hash,
                                     ApiField.META: meta_json[ApiField.META],
                                 }

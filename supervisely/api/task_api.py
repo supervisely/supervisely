@@ -1,5 +1,5 @@
 # coding: utf-8
-"""api for working with tasks"""
+"""Create, monitor, and manage Supervisely tasks."""
 
 import json
 import os
@@ -34,9 +34,7 @@ from supervisely.io.fs import (
 
 
 class KubernetesSettings(BaseModel):
-    """
-    KubernetesSettings for application resource limits and requests.
-    """
+    """Application resource limits and requests (CPUs, memory, GPU, storage) for tasks."""
 
     use_health_check: Optional[bool] = Field(None, alias="useHealthCheck")
     request_cpus: Optional[int] = Field(None, alias="requestCpus")
@@ -56,41 +54,16 @@ class KubernetesSettings(BaseModel):
 
 
 class TaskFinishedWithError(Exception):
-    """TaskFinishedWithError"""
+    """Raised when a task finishes in an error state while waiting/polling."""
 
     pass
 
 
 class TaskApi(ModuleApiBase, ModuleWithStatus):
-    """
-    API for working with Tasks. :class:`TaskApi<TaskApi>` object is immutable.
-
-    :param api: API connection to the server.
-    :type api: Api
-    :Usage example:
-
-     .. code-block:: python
-
-        import os
-        from dotenv import load_dotenv
-
-        import supervisely as sly
-
-        # Load secrets and create API object from .env file (recommended)
-        # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-        if sly.is_development():
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-        api = sly.Api.from_env()
-
-        # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
-
-        task_id = 121230
-        task_info = api.task.get_info_by_id(task_id)
-    """
+    """API for working with tasks."""
 
     class RestartPolicy(StrEnum):
-        """RestartPolicy"""
+        """Task restart policy used for app deployments."""
 
         NEVER = "never"
         """"""
@@ -98,7 +71,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         """"""
 
     class PluginTaskType(StrEnum):
-        """PluginTaskType"""
+        """Task type for plugin-based tasks (train/inference/smarttool/etc.)."""
 
         TRAIN = "train"
         """"""
@@ -112,7 +85,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         """"""
 
     class Status(StrEnum):
-        """Status"""
+        """Task lifecycle status values returned by the API."""
 
         QUEUED = "queued"
         """Application is queued for execution"""
@@ -132,6 +105,18 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         """Application has been stopped"""
 
     def __init__(self, api):
+        """
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
+        :type api: :class:`~supervisely.api.api.Api`
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+                api = sly.Api.from_env()
+                task_info = api.task.get_info_by_id(task_id)
+        """
         ModuleApiBase.__init__(self, api)
         ModuleWithStatus.__init__(self)
 
@@ -139,55 +124,60 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         self, workspace_id: int, filters: Optional[List[Dict[str, str]]] = None
     ) -> List[NamedTuple]:
         """
-        List of Tasks in the given Workspace.
+        List of Application Tasks in the given Workspace.
 
         :param workspace_id: Workspace ID.
         :type workspace_id: int
         :param filters: List of params to sort output Projects.
         :type filters: List[dict], optional
-        :return: List of Tasks with information for the given Workspace.
+        :returns: List of Tasks with information for the given Workspace.
         :rtype: :class:`List[NamedTuple]`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            workspace_id = 23821
+                import os
+                from dotenv import load_dotenv
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            task_infos = api.task.get_list(workspace_id)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            task_infos_filter = api.task.get_list(23821, filters=[{'field': 'id', 'operator': '=', 'value': 121230}])
-            print(task_infos_filter)
-            # Output: [
-            #     {
-            #         "id": 121230,
-            #         "type": "clone",
-            #         "status": "finished",
-            #         "startedAt": "2019-12-19T12:13:09.702Z",
-            #         "finishedAt": "2019-12-19T12:13:09.701Z",
-            #         "meta": {
-            #             "input": {
-            #                 "model": {
-            #                     "id": 1849
-            #                 },
-            #                 "isExternal": true,
-            #                 "pluginVersionId": 84479
-            #             },
-            #             "output": {
-            #                 "model": {
-            #                     "id": 12380
-            #                 },
-            #                 "pluginVersionId": 84479
-            #             }
-            #         },
-            #         "description": ""
-            #     }
-            # ]
+                api = sly.Api.from_env()
+
+                workspace_id = 23821
+                task_infos = api.task.get_list(workspace_id)
+                task_infos_filter = api.task.get_list(23821, filters=[{'field': 'id', 'operator': '=', 'value': 121230}])
+                print(task_infos_filter)
+                # Output: [
+                #     {
+                #         "id": 121230,
+                #         "type": "clone",
+                #         "status": "finished",
+                #         "startedAt": "2019-12-19T12:13:09.702Z",
+                #         "finishedAt": "2019-12-19T12:13:09.701Z",
+                #         "meta": {
+                #             "input": {
+                #                 "model": {
+                #                     "id": 1849
+                #                 },
+                #                 "isExternal": true,
+                #                 "pluginVersionId": 84479
+                #             },
+                #             "output": {
+                #                 "model": {
+                #                     "id": 12380
+                #                 },
+                #                 "pluginVersionId": 84479
+                #             }
+                #         },
+                #         "description": ""
+                #     }
+                # ]
         """
         return self.get_list_all_pages(
             "tasks.list",
@@ -196,100 +186,112 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
 
     def get_info_by_id(self, id: int) -> NamedTuple:
         """
-        Get Task information by ID.
+        Get Application Task information by ID.
 
         :param id: Task ID in Supervisely.
         :type id: int
-        :return: Information about Task.
+        :returns: Information about Task.
         :rtype: :class:`NamedTuple`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            task_id = 121230
+                import os
+                from dotenv import load_dotenv
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            task_info = api.task.get_info_by_id(task_id)
-            print(task_info)
-            # Output: {
-            #     "id": 121230,
-            #     "workspaceId": 23821,
-            #     "description": "",
-            #     "type": "clone",
-            #     "status": "finished",
-            #     "startedAt": "2019-12-19T12:13:09.702Z",
-            #     "finishedAt": "2019-12-19T12:13:09.701Z",
-            #     "userId": 16154,
-            #     "meta": {
-            #         "app": {
-            #             "id": 10370,
-            #             "name": "Auto Import",
-            #             "version": "test-branch",
-            #             "isBranch": true,
-            #         },
-            #         "input": {
-            #             "model": {
-            #                 "id": 1849
-            #             },
-            #             "isExternal": true,
-            #             "pluginVersionId": 84479
-            #         },
-            #         "output": {
-            #             "model": {
-            #                 "id": 12380
-            #             },
-            #             "pluginVersionId": 84479
-            #         }
-            #     },
-            #     "settings": {},
-            #     "agentName": null,
-            #     "userLogin": "alexxx",
-            #     "teamId": 16087,
-            #     "agentId": null
-            # }
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                task_id = 121230
+                task_info = api.task.get_info_by_id(task_id)
+                print(task_info)
+                # Output: {
+                #     "id": 121230,
+                #     "workspaceId": 23821,
+                #     "description": "",
+                #     "type": "clone",
+                #     "status": "finished",
+                #     "startedAt": "2019-12-19T12:13:09.702Z",
+                #     "finishedAt": "2019-12-19T12:13:09.701Z",
+                #     "userId": 16154,
+                #     "meta": {
+                #         "app": {
+                #             "id": 10370,
+                #             "name": "Auto Import",
+                #             "version": "test-branch",
+                #             "isBranch": true,
+                #         },
+                #         "input": {
+                #             "model": {
+                #                 "id": 1849
+                #             },
+                #             "isExternal": true,
+                #             "pluginVersionId": 84479
+                #         },
+                #         "output": {
+                #             "model": {
+                #                 "id": 12380
+                #             },
+                #             "pluginVersionId": 84479
+                #         }
+                #     },
+                #     "settings": {},
+                #     "agentName": null,
+                #     "userLogin": "alexxx",
+                #     "teamId": 16087,
+                #     "agentId": null
+                # }
         """
         return self._get_info_by_id(id, "tasks.info")
 
     def get_status(self, task_id: int) -> Status:
         """
-        Check status of Task by ID.
+        Check status of Application Task by ID.
 
-        :param id: Task ID in Supervisely.
-        :type id: int
-        :return: Status object
+        :param task_id: Task ID in Supervisely.
+        :type task_id: int
+        :returns: Status object
         :rtype: :class:`Status`
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            task_id = 121230
+                import os
+                from dotenv import load_dotenv
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            task_status = api.task.get_status(task_id)
-            print(task_status)
-            # Output: finished
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                task_id = 121230
+                task_status = api.task.get_status(task_id)
+                print(task_status)
+                # Output: finished
         """
         status_str = self.get_info_by_id(task_id)[ApiField.STATUS]  # @TODO: convert json to tuple
         return self.Status(status_str)
 
     def raise_for_status(self, status: Status) -> None:
         """
-        Raise error if Task status is ERROR.
+        Raise error if Application Task status is ERROR.
 
         :param status: Status object.
         :type status: Status
-        :return: None
-        :rtype: :class:`NoneType`
+        :returns: None
+        :rtype: None
         """
         if status is self.Status.ERROR:
             raise TaskFinishedWithError(f"Task finished with status {str(self.Status.ERROR)}")
@@ -302,7 +304,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         wait_attempt_timeout_sec: Optional[int] = None,
     ):
         """
-        Awaiting achievement by given Task of a given status.
+        Awaiting achievement by given Application Task of a given status.
 
         :param id: Task ID in Supervisely.
         :type id: int
@@ -312,8 +314,8 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         :type wait_attempts: int, optional
         :param wait_attempt_timeout_sec: Number of seconds for intervals between attempts(raise error if waiting time exceeded).
         :type wait_attempt_timeout_sec: int, optional
-        :return: True if the desired status is reached, False otherwise
-        :rtype: :class:`bool`
+        :returns: True if the desired status is reached, False otherwise
+        :rtype: bool
         """
         wait_attempts = wait_attempts or self.MAX_WAIT_ATTEMPTS
         effective_wait_timeout = wait_attempt_timeout_sec or self.WAIT_ATTEMPT_TIMEOUT_SEC
@@ -334,36 +336,42 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
 
     def get_context(self, id: int) -> Dict:
         """
-        Get context information by task ID.
+        Get context information by Application Task ID.
 
         :param id: Task ID in Supervisely.
         :type id: int
-        :return: Context information in dict format
-        :rtype: :class:`dict`
-        :Usage example:
+        :returns: Context information in dict format
+        :rtype: dict
 
-         .. code-block:: python
+        :Usage Example:
 
-            import supervisely as sly
+            .. code-block:: python
 
-            task_id = 121230
+                import os
+                from dotenv import load_dotenv
 
-            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
-            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            context = api.task.get_context(task_id)
-            print(context)
-            # Output: {
-            #     "team": {
-            #         "id": 16087,
-            #         "name": "alexxx"
-            #     },
-            #     "workspace": {
-            #         "id": 23821,
-            #         "name": "my_super_workspace"
-            #     }
-            # }
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                task_id = 121230
+                context = api.task.get_context(task_id)
+                print(context)
+                # Output: {
+                #     "team": {
+                #         "id": 16087,
+                #         "name": "alexxx"
+                #     },
+                #     "workspace": {
+                #         "id": 23821,
+                #         "name": "my_super_workspace"
+                #     }
+                # }
         """
         response = self._api.post("GetTaskContext", {ApiField.ID: id})
         return response.json()
@@ -392,7 +400,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         kubernetes_settings: Optional[Union[KubernetesSettings, Dict[str, Any]]] = None,
         multi_user_session: bool = False,
     ) -> Dict[str, Any]:
-        """Starts the application task on the agent.
+        """Starts the Application Task on the agent.
 
         :param agent_id: Agent ID. Can be obtained from TeamCluster page in UI.
         :type agent_id: int
@@ -428,40 +436,50 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             with specified workspace_id.
         :type limit_by_workspace: bool, optional
         :param kubernetes_settings: Kubernetes settings for the application.
-        :type kubernetes_settings: Union[KubernetesSettings, Dict[str, Any]], optional
+        :type kubernetes_settings: Union[:class:`~supervisely.api.task_api.KubernetesSettings`, Dict[str, Any]], optional
         :param multi_user_session: If True, the application session will be created as multi-user.
                                    In this case, multiple users will be able to connect to the same application session.
                                    All users will have separate application states.
                                    Available only for applications that support multi-user sessions.
         :type multi_user_session: bool, default is False
-        :return: Task information in JSON format.
+        :returns: Task information in JSON format.
         :rtype: Dict[str, Any]
 
-        :Usage example:
+        :Usage Example:
 
-         .. code-block:: python
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            app_slug = "supervisely-ecosystem/export-to-supervisely-format"
-            module_id = api.app.get_ecosystem_module_id(app_slug)
-            module_info = api.app.get_ecosystem_module_info(module_id)
+                import supervisely as sly
 
-            project_id = 12345
-            agent_id = 12345
-            workspace_id = 12345
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-            params = module_info.get_arguments(images_project=project_id)
+                api = sly.Api.from_env()
 
-            session = api.app.start(
-                agent_id=agent_id,
-                module_id=module_id,
-                workspace_id=workspace_id,
-                task_name="Prepare download link",
-                params=params,
-                app_version="dninja",
-                is_branch=True,
-            )
+                app_slug = "supervisely-ecosystem/export-to-supervisely-format"
+                module_id = api.app.get_ecosystem_module_id(app_slug)
+                module_info = api.app.get_ecosystem_module_info(module_id)
+
+                project_id = 12345
+                agent_id = 12345
+                workspace_id = 12345
+
+                params = module_info.get_arguments(images_project=project_id)
+
+                session = api.app.start(
+                    agent_id=agent_id,
+                    module_id=module_id,
+                    workspace_id=workspace_id,
+                    task_name="Prepare download link",
+                    params=params,
+                    app_version="dninja",
+                    is_branch=True,
+                )
         """
         if app_id is not None and module_id is not None:
             raise ValueError("Only one of the arguments (app_id or module_id) have to be defined")
@@ -868,28 +886,30 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         :type description: Optional[str]
         :param show_logs: If True, the link to the task logs will be displayed in the task output.
         :type show_logs: Optional[bool], default True
-        :return: Response JSON.
+        :returns: Response JSON.
         :rtype: Dict
-        :Usage example:
 
-         .. code-block:: python
+        :Usage Example:
 
-            import os
-            from dotenv import load_dotenv
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            if sly.is_development():
-               load_dotenv(os.path.expanduser("~/supervisely.env"))
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            task_id = 12345
-            title = "Something went wrong"
-            description = "Please check the task logs"
-            show_logs = True
-            api.task.set_output_error(task_id, title, description, show_logs)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                task_id = 12345
+                title = "Something went wrong"
+                description = "Please check the task logs"
+                show_logs = True
+                api.task.set_output_error(task_id, title, description, show_logs)
         """
 
         output = {
@@ -935,32 +955,34 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         :type description: Optional[str]
         :param show_logs: If True, the link to the task logs will be displayed in the task output.
         :type show_logs: Optional[bool], default False
-        :param zmdi_icon: Icon class name from Material Design Icons (ZMDI).
+        :param zmdi_icon: Icon class name from Material Design Icons set (ZMDI).
         :type zmdi_icon: Optional[str], default "zmdi-comment-alt-text"
         :param icon_color: Icon color in HEX format.
         :type icon_color: Optional[str], default "#33c94c" (nearest Duron Jolly Green)
         :param background_color: Background color in HEX format.
         :type background_color: Optional[str], default "#d9f7e4" (Cosmic Latte)
-        :return: Response JSON.
+        :returns: Response JSON.
         :rtype: Dict
-        :Usage example:
 
-        .. code-block:: python
+        :Usage Example:
 
-            import os
-            from dotenv import load_dotenv
+            .. code-block:: python
 
-            import supervisely as sly
+                import os
+                from dotenv import load_dotenv
 
-            # Load secrets and create API object from .env file (recommended)
-            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
-            if sly.is_development():
-            load_dotenv(os.path.expanduser("~/supervisely.env"))
-            api = sly.Api.from_env()
+                import supervisely as sly
 
-            task_id = 12345
-            title = "Task is finished"
-            api.task.set_output_text(task_id, title)
+                # Load secrets and create API object from .env file (recommended)
+                # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                task_id = 12345
+                title = "Task is finished"
+                api.task.set_output_text(task_id, title)
         """
 
         output = {
@@ -1013,61 +1035,48 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
 
         :param task_id: Task ID in Supervisely.
         :type task_id: int
-        :param experiment_info: Experiment info from TrainApp.
+        :param experiment_info: Experiment info from :class:`~supervisely.nn.training.train_app.TrainApp`. See class :class:`~supervisely.nn.experiments.ExperimentInfo`.
         :type experiment_info: dict
-        :return: None
-        :rtype: :class:`NoneType`
+        :returns: Server response JSON.
+        :rtype: dict
 
-        Example of experiment_info:
+        :Usage Example:
 
-            experiment_info = {
-                'experiment_name': '247 Lemons RT-DETRv2-M',
-                'framework_name': 'RT-DETRv2',
-                'model_name': 'RT-DETRv2-M',
-                'task_type': 'object detection',
-                'project_id': 76,
-                'project_version': {'id': 222, 'version': 4},
-                'task_id': 247,
-                'model_files': {'config': 'model_config.yml'},
-                'checkpoints': ['checkpoints/best.pth', 'checkpoints/checkpoint0025.pth', 'checkpoints/checkpoint0050.pth', 'checkpoints/last.pth'],
-                'best_checkpoint': 'best.pth',
-                'export': {'ONNXRuntime': 'export/best.onnx'},
-                'app_state': 'app_state.json',
-                'model_meta': 'model_meta.json',
-                'train_val_split': 'train_val_split.json',
-                'train_size': 4,
-                'val_size': 2,
-                'train_collection_id': 530,
-                'val_collection_id': 531,
-                'hyperparameters': 'hyperparameters.yaml',
-                'hyperparameters_id': 45234,
-                'artifacts_dir': '/experiments/76_Lemons/247_RT-DETRv2/',
-                'datetime': '2025-01-22 18:13:43',
-                'experiment_report_id': 87654,
-                'evaluation_report_id': 12961,
-                'evaluation_report_link': 'https://app.supervisely.com/model-benchmark?id=12961',
-                'evaluation_metrics': {
-                    'mAP': 0.994059405940594,
-                    'AP50': 1.0, 'AP75': 1.0,
-                    'f1': 0.9944444444444445,
-                    'precision': 0.9944444444444445,
-                    'recall': 0.9944444444444445,
-                    'iou': 0.9726227736959404,
-                    'classification_accuracy': 1.0,
-                    'calibration_score': 0.8935745942476048,
-                    'f1_optimal_conf': 0.500377893447876,
-                    'expected_calibration_error': 0.10642540575239527,
-                    'maximum_calibration_error': 0.499622106552124
-                },
-                'primary_metric': 'mAP'
-                'logs': {
-                    'type': 'tensorboard',
-                    'link': '/experiments/76_Lemons/247_RT-DETRv2/logs/'
-                },
-                # These fields are present only in task_info
-                'project_preview': 'https://app.supervisely.com/...',
-                'has_report': True,
-            }
+            .. code-block:: python
+
+                experiment_info = {
+                    "experiment_name": "247 Lemons RT-DETRv2-M",
+                    "framework_name": "RT-DETRv2",
+                    "model_name": "RT-DETRv2-M",
+                    "task_type": "object detection",
+                    "project_id": 76,
+                    "project_version": {"id": 222, "version": 4},
+                    "task_id": 247,
+                    "model_files": {"config": "model_config.yml"},
+                    "checkpoints": [
+                        "checkpoints/best.pth",
+                        "checkpoints/checkpoint0025.pth",
+                        "checkpoints/checkpoint0050.pth",
+                        "checkpoints/last.pth",
+                    ],
+                    "best_checkpoint": "best.pth",
+                    "export": {"ONNXRuntime": "export/best.onnx"},
+                    "app_state": "app_state.json",
+                    "model_meta": "model_meta.json",
+                    "train_val_split": "train_val_split.json",
+                    "train_size": 4,
+                    "val_size": 2,
+                    "train_collection_id": 530,
+                    "val_collection_id": 531,
+                    "hyperparameters": "hyperparameters.yaml",
+                    "artifacts_dir": "/experiments/76_Lemons/247_RT-DETRv2/",
+                    "datetime": "2025-01-22 18:13:43",
+                    "evaluation_report_id": 12961,
+                    "evaluation_report_link": "https://app.supervisely.com/model-benchmark?id=12961",
+                    "evaluation_metrics": {"mAP": 0.994, "AP50": 1.0, "AP75": 1.0},  # and other metrics
+                    "primary_metric": "mAP",
+                    "logs": {"type": "tensorboard", "link": "/experiments/76_Lemons/247_RT-DETRv2/logs/"},
+                }
         """
         output = {
             ApiField.EXPERIMENT: {ApiField.DATA: {**experiment_info}},
@@ -1083,7 +1092,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
 
         :param task_id: Task ID in Supervisely.
         :type task_id: int
-        :return: True if the task is running, False otherwise.
+        :returns: True if the task is running, False otherwise.
         :rtype: bool
         """
         try:
@@ -1098,7 +1107,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
 
         :param task_id: Task ID in Supervisely.
         :type task_id: int
-        :return: True if the task is ready, False otherwise.
+        :returns: True if the task is ready, False otherwise.
         :rtype: bool
         """
         try:

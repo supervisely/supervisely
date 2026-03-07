@@ -6,8 +6,7 @@ from supervisely.annotation.tag_meta_collection import TagMetaCollection
 
 
 class TagMetaMapper:
-    """
-    """
+    """Strategy interface for mapping a source :class:`~supervisely.annotation.tag_meta.TagMeta` to a destination one."""
 
     def map(self, src: TagMeta) -> TagMeta:
         """
@@ -16,18 +15,23 @@ class TagMetaMapper:
 
 
 class RenamingTagMetaMapper(TagMetaMapper):
-    """
-    This is a class for renaming TagMeta in given TagMetaCollection
-    """
+    """Map tag metas by renaming their names using a :class:`~supervisely.annotation.renamer.Renamer`."""
 
     def __init__(self, dest_tag_meta_dict: TagMetaCollection, renamer: Renamer):
+        """
+        :param dest_tag_meta_dict: :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection` object to map to.
+        :type dest_tag_meta_dict: :class:`~supervisely.annotation.tag_meta_collection.TagMetaCollection`
+        :param renamer: :class:`~supervisely.annotation.renamer.Renamer` object to use for renaming.
+        :type renamer: :class:`~supervisely.annotation.renamer.Renamer`
+        """
         self._dest_tag_meta_dict = dest_tag_meta_dict
         self._renamer = renamer
 
     def map(self, src: TagMeta) -> TagMeta:
         """
         The function map rename TagMeta in given collection
-        :return: TagMeta
+        :returns: TagMeta object
+        :rtype: :class:`~supervisely.annotation.tag_meta.TagMeta`
         """
         dest_name = self._renamer.rename(src.name)
         return self._dest_tag_meta_dict.get(dest_name, None) if (dest_name is not None) else None
@@ -36,7 +40,8 @@ class RenamingTagMetaMapper(TagMetaMapper):
 def make_renamed_tags(tags: TagCollection, tag_meta_mapper: TagMetaMapper, skip_missing=True) -> TagCollection:
     """
     The function make_renamed_tags rename tags names in given collection and return new collection
-    :return: TagCollection
+    :returns: TagCollection object
+    :rtype: :class:`~supervisely.annotation.tag_collection.TagCollection`
     """
     renamed_tags = []
     for tag in tags:

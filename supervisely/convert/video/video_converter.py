@@ -28,11 +28,15 @@ from supervisely.video.video import ALLOWED_VIDEO_EXTENSIONS, get_info
 
 
 class VideoConverter(BaseConverter):
+    """Base converter for video projects (uploads videos and optional video annotations to Supervisely)."""
+
     allowed_exts = ALLOWED_VIDEO_EXTENSIONS + [".mpg"]
     base_video_extension = ".mp4"
     modality = "videos"
 
     class Item(BaseConverter.BaseItem):
+        """Video item with cached shape/frame count and optional annotation/meta for upload."""
+
         def __init__(
             self,
             item_path,
@@ -42,6 +46,20 @@ class VideoConverter(BaseConverter):
             frame_count=None,
             metadata=None,
         ):
+            """
+            :param item_path: Path to video file.
+            :type item_path: str
+            :param ann_data: Annotation path or data.
+            :type ann_data: str, optional
+            :param shape: (height, width). Inferred from video if None.
+            :type shape: tuple, optional
+            :param custom_data: Extra data.
+            :type custom_data: dict, optional
+            :param frame_count: Frame count. Inferred if None.
+            :type frame_count: int, optional
+            :param metadata: Optional metadata path.
+            :type metadata: str, optional
+            """
             self._path = item_path
             self._name: str = None
             self._ann_data = ann_data
@@ -103,6 +121,7 @@ class VideoConverter(BaseConverter):
         upload_as_links: bool,
         remote_files_map: Optional[Dict[str, str]] = None,
     ):
+        """See :class:`~supervisely.convert.base_converter.BaseConverter` for params."""
         super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
         self._key_id_map: KeyIdMap = None
 

@@ -1,5 +1,7 @@
 # coding: utf-8
-"""deploy pretrained and custom models"""
+"""
+Deploy and manage model serving applications.
+"""
 
 from __future__ import annotations
 
@@ -24,6 +26,15 @@ from supervisely.sly_logger import logger
 
 
 def get_runtime(runtime: Optional[str] = None):
+    """
+    Normalize runtime name/alias to :class:`~supervisely.nn.utils.RuntimeType`.
+
+    :param runtime: Runtime string or alias (e.g. ``'onnx'``, ``'onnxruntime'``, ``'tensorrt'``).
+    :type runtime: str, optional
+    :returns: Runtime enum value or None.
+    :rtype: :class:`~supervisely.nn.utils.RuntimeType` or None
+    :raises ValueError: If runtime is not supported.
+    """
     from supervisely.nn.utils import RuntimeType
 
     if runtime is None:
@@ -52,9 +63,24 @@ def get_runtime(runtime: Optional[str] = None):
 
 
 class DeployApi:
-    """ """
+    """
+    API for deploying models and controlling serving apps.
+
+    This class is used internally by :class:`~supervisely.api.nn.neural_network_api.NeuralNetworkApi`,
+    but it can also be used directly for advanced deployment workflows.
+
+    Key capabilities:
+
+    - deploy a pretrained model into a new serving task,
+    - deploy a custom checkpoint (from team files or experiment artifacts),
+    - load/replace model inside an existing serving task.
+    """
 
     def __init__(self, api: "Api"):
+        """
+        :param api: :class:`~supervisely.api.api.Api` object to use for API connection.
+        :type api: :class:`~supervisely.api.api.Api`
+        """
         self._api = api
 
     def load_pretrained_model(
@@ -143,8 +169,8 @@ class DeployApi:
 
         :param session_id: Task ID of the serving App.
         :type session_id: int
-        :param experiment_info: an :class:`ExperimentInfo` object.
-        :type experiment_info: ExperimentInfo
+        :param experiment_info: Experiment info from :class:`~supervisely.nn.training.train_app.TrainApp`.
+        :type experiment_info: :class:`~supervisely.nn.experiments.ExperimentInfo`
         :param checkpoint_name: Checkpoint name (with file extension) to deploy, e.g. "best.pt".
             If not provided, checkpoint will be chosen automatically, depending on the app version.
         :type checkpoint_name: Optional[str]
@@ -183,7 +209,7 @@ class DeployApi:
         :type public: bool
         :param gpu: If True, find an agent with GPU.
         :type gpu: bool
-        :return: Agent ID
+        :returns: Agent ID
         :rtype: int
         """
         if team_id is None:
@@ -232,9 +258,9 @@ class DeployApi:
         :type agent_id: Optional[int]
         :param app: App name or App module ID in Supervisely.
         :type app: Union[str, int]
-        :param kwargs: Additional parameters to start the task. See Api.task.start() for more details.
+        :param kwargs: Additional parameters to start the task. See :meth:`~supervisely.api.task_api.TaskApi.start` for more details.
         :type kwargs: Dict[str, Any]
-        :return: Task Info
+        :returns: Task Info
         :rtype: Dict[str, Any]
         :raises ValueError: if no serving apps found for the app name or multiple serving apps found for the app name.
         """
@@ -333,9 +359,9 @@ class DeployApi:
         :type workspace_id: Optional[int]
         :param agent_id: Agent ID. If not provided, will be found automatically.
         :type agent_id: Optional[int]
-        :param kwargs: Additional parameters to start the task. See Api.task.start() for more details.
+        :param kwargs: Additional parameters to start the task. See :meth:`~supervisely.api.task_api.TaskApi.start` for more details.
         :type kwargs: Dict[str, Any]
-        :return: Task Info
+        :returns: Task Info
         :rtype: Dict[str, Any]
         :raises ValueError: if validations fail.
         """
@@ -384,9 +410,9 @@ class DeployApi:
         :type workspace_id: Optional[int]
         :param agent_id: Agent ID. If not provided, will be found automatically.
         :type agent_id: Optional[int]
-        :param kwargs: Additional parameters to start the task. See Api.task.start() for more details.
+        :param kwargs: Additional parameters to start the task. See :meth:`~supervisely.api.task_api.TaskApi.start` for more details.
         :type kwargs: Dict[str, Any]
-        :return: Task Info
+        :returns: Task Info
         :rtype: Dict[str, Any]
         :raises ValueError: if validations fail.
         """
@@ -443,8 +469,8 @@ class DeployApi:
         """
         Deploy a custom model based on the training session.
 
-        :param experiment_info: an :class:`ExperimentInfo` object.
-        :type experiment_info: ExperimentInfo
+        :param experiment_info: Experiment info from :class:`~supervisely.nn.training.train_app.TrainApp`.
+        :type experiment_info: :class:`~supervisely.nn.experiments.ExperimentInfo`
         :param checkpoint_name: Checkpoint name (with file extension) to deploy, e.g. "best.pt".
             If not provided, the best checkpoint will be chosen.
         :type checkpoint_name: Optional[str]
@@ -452,9 +478,9 @@ class DeployApi:
         :type device: Optional[str]
         :param timeout: Timeout in seconds (default is 100). The maximum time to wait for the serving app to be ready.
         :type timeout: Optional[int]
-        :param kwargs: Additional parameters to start the task. See Api.task.start() for more details.
+        :param kwargs: Additional parameters to start the task. See :meth:`~supervisely.api.task_api.TaskApi.start` for more details.
         :type kwargs: Dict[str, Any]
-        :return: Task Info
+        :returns: Task Info
         :rtype: Dict[str, Any]
         :raises ValueError: if validations fail.
         """
@@ -507,9 +533,9 @@ class DeployApi:
         :type app_name: Optional[str]
         :param module_id: Module ID in Supervisely.
         :type module_id: Optional[int]
-        :param kwargs: Additional parameters to start the task. See Api.task.start() for more details.
+        :param kwargs: Additional parameters to start the task. See :meth:`~supervisely.api.task_api.TaskApi.start` for more details.
         :type kwargs: Dict[str, Any]
-        :return: Task Info
+        :returns: Task Info
         :rtype: Dict[str, Any]
         """
         if app_name is None and module_id is None:
@@ -559,15 +585,41 @@ class DeployApi:
         logger.info("Model loaded successfully")
 
     def find_serving_app_by_framework(self, framework: str):
+        """
+        Find the serving app by framework.
+
+        :param framework: Framework name.
+        :type framework: str
+        :returns: Serving app info
+        :rtype: Dict[str, Any]
+        """
         modules = find_apps_by_framework(self._api, framework, ["serve"])
         if not modules:
             return None
         return modules[0]
 
     def find_serving_app_by_slug(self, slug: str) -> int:
+        """
+        Find the serving app by slug.
+
+        :param slug: Slug of the serving app.
+        :type slug: str
+        :returns: Serving app ID
+        :rtype: int
+        """
         return self._api.app.get_ecosystem_module_id(slug)
 
     def get_serving_app_by_train_app(self, app_name: Optional[str] = None, module_id: int = None):
+        """
+        Get the serving app by train app.
+
+        :param app_name: App name in Supervisely.
+        :type app_name: Optional[str]
+        :param module_id: Module ID in Supervisely.
+        :type module_id: int
+        :returns: Serving app info
+        :rtype: Dict[str, Any]
+        """
         if app_name is None and module_id is None:
             raise ValueError("Either app_name or module_id must be provided.")
         if app_name is not None:
@@ -597,7 +649,7 @@ class DeployApi:
 
         :param task_id: Task ID of the serving App.
         :type task_id: int
-        :return: Deploy Info
+        :returns: Deploy Info
         :rtype: Dict[str, Any]
         """
         return self._api.task.send_request(task_id, "get_deploy_info", data={}, raise_error=True)
@@ -767,6 +819,16 @@ class DeployApi:
             raise ValueError(f"Unknown checkpoint format: '{checkpoint_path}'")
 
     def wait(self, model_id, target: Literal["started", "deployed"] = "started", timeout=5 * 60):
+        """
+        Wait for the model to be started or deployed.
+
+        :param model_id: Model ID.
+        :type model_id: int
+        :param target: Target status.
+        :type target: Literal["started", "deployed"]
+        :param timeout: Timeout in seconds.
+        :type timeout: int
+        """
         t = time.monotonic()
         method = "is_alive" if target == "started" else "is_ready"
         while time.monotonic() - t < timeout:

@@ -1,16 +1,12 @@
 # coding: utf-8
 # isort: skip_file
 import os
-
-try:
-    from importlib.metadata import PackageNotFoundError, version
-except ImportError:  # pragma: no cover
-    from importlib_metadata import PackageNotFoundError, version
+from importlib.metadata import PackageNotFoundError, version
 
 try:
     __version__ = version("supervisely")
-except (PackageNotFoundError, TypeError):
-    __version__ = "development"
+except PackageNotFoundError:
+    __version__ = "0.0.0.dev0" # "development"
 
 
 class _ApiProtoNotAvailable:

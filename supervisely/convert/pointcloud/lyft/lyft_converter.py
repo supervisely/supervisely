@@ -32,7 +32,10 @@ from supervisely.pointcloud_annotation.pointcloud_tag import PointcloudTag
 
 
 class LyftConverter(PointcloudConverter):
+    """Converter for Lyft Lidar datasets (bin pointclouds + scene-based cuboid annotations)."""
+
     class Item(PointcloudConverter.Item):
+        """Lyft pointcloud item with the source scene name for dataset grouping."""
 
         def __init__(
             self,
@@ -42,6 +45,7 @@ class LyftConverter(PointcloudConverter):
             custom_data: dict = None,
             scene_name: str = None,
         ):
+            """See PointcloudConverter.Item. :param scene_name: Source scene name."""
             super().__init__(item_path, ann_data, related_images, custom_data)
             self._type = "point_cloud"
             self._scene_name = scene_name
@@ -53,6 +57,7 @@ class LyftConverter(PointcloudConverter):
         upload_as_links: bool,
         remote_files_map: Optional[Dict[str, str]] = None,
     ):
+        """See :class:`~supervisely.convert.base_converter.BaseConverter` for params."""
         super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
         self._is_pcd_episode = False
         self._lyft = None
@@ -144,12 +149,16 @@ class LyftConverter(PointcloudConverter):
         """
         Converts a point cloud item and its annotations to the supervisely formats.
 
-        Args:
-            item (PointcloudConverter.Item): The point cloud item to convert.
-            meta (ProjectMeta): The project meta.
-
-        Returns:
-            PointcloudAnnotation: The converted point cloud annotation.
+        :param item: The point cloud item to convert.
+        :type item: :class:`~supervisely.convert.pointcloud.pointcloud_converter.PointcloudConverter.Item`
+        :param meta: The project meta.
+        :type meta: :class:`~supervisely.project.project_meta.ProjectMeta`
+        :param renamed_classes: The renamed classes.
+        :type renamed_classes: dict
+        :param renamed_tags: The renamed tags.
+        :type renamed_tags: dict
+        :returns: The converted point cloud annotation.
+        :rtype: :class:`~supervisely.pointcloud_annotation.pointcloud_annotation.PointcloudAnnotation`
         """
         import open3d as o3d  # pylint: disable=import-error
 

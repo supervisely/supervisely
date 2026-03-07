@@ -11,6 +11,8 @@ from supervisely.nn.benchmark.visualization.widgets import (
 
 
 class Speedtest(SemanticSegmVisMetric):
+    """Inference speed and FPS tables/charts for semantic segmentation reports."""
+
 
     def is_empty(self) -> bool:
         return self.eval_result.speedtest_info is None

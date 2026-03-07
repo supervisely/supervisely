@@ -9,6 +9,8 @@ from supervisely.project.versioning.schema_fields import VersionSchemaField
 
 @dataclass(frozen=True)
 class VideoSnapshotSchema:
+    """Defines PyArrow schemas for video project snapshot tables (datasets, videos)."""
+
     schema_version: str
 
     def datasets_schema(self, pa_module):

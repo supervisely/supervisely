@@ -2,7 +2,7 @@ import datetime
 import tempfile
 import threading
 from pathlib import Path
-from typing import Any, Dict, List, Literal
+from typing import Any, Dict, List, Literal, Optional
 
 import pandas as pd
 
@@ -31,8 +31,10 @@ from supervisely.nn.model.model_api import ModelAPI
 
 
 class DeployModel(Widget):
+    """UI widget to deploy or connect to a model and return a ready-to-use :class:`~supervisely.nn.model.model_api.ModelAPI`."""
 
     class DeployMode:
+        """Strategy interface for different deployment sources (connect, pretrained, custom)."""
 
         def deploy(self, agent_id: int = None) -> ModelAPI:
             raise NotImplementedError("This method should be implemented in subclasses.")
@@ -48,8 +50,10 @@ class DeployModel(Widget):
             raise NotImplementedError("This property should be implemented in subclasses.")
 
     class Connect(DeployMode):
+        """Deploy mode that connects to an already deployed model session."""
 
         class COLUMN:
+            """Column names for the deployed sessions table."""
             SESSION_ID = "Session ID"
             APP_NAME = "App Name"
             FRAMEWORK = "Framework"
@@ -63,6 +67,10 @@ class DeployModel(Widget):
         ]
 
         def __init__(self, deploy_model: "DeployModel"):
+            """
+            :param deploy_model: Parent DeployModel widget.
+            :type deploy_model: DeployModel, optional
+            """
             self.api = deploy_model.api
             self.team_id = deploy_model.team_id
             self._cache = deploy_model._cache
@@ -142,8 +150,10 @@ class DeployModel(Widget):
             self.sessions_table.select_row_by_value(str(self.COLUMN.SESSION_ID), session_id)
 
     class Pretrained(DeployMode):
+        """Deploy mode that deploys a pretrained model from the ecosystem model catalog."""
         class COLUMN:
             # TODO: columns are the same as in EcosystemModelSelector, make a common base class
+            """Column names for the pretrained model selector table."""
             FRAMEWORK = "Framework"
             MODEL_NAME = "Model"
             TASK_TYPE = "Task Type"
@@ -160,6 +170,10 @@ class DeployModel(Widget):
         ]
 
         def __init__(self, deploy_model: "DeployModel"):
+            """
+            :param deploy_model: Parent DeployModel widget.
+            :type deploy_model: DeployModel, optional
+            """
             self.api = deploy_model.api
             self.team_id = deploy_model.team_id
             self._cache = deploy_model._cache
@@ -197,7 +211,12 @@ class DeployModel(Widget):
             return model_api
 
     class Custom(DeployMode):
+        """Deploy mode that deploys a model from a user experiment checkpoint."""
         def __init__(self, deploy_model: "DeployModel"):
+            """
+            :param deploy_model: Parent DeployModel widget.
+            :type deploy_model: DeployModel, optional
+            """
             self.api = deploy_model.api
             self.team_id = deploy_model.team_id
             self._cache = deploy_model._cache
@@ -270,6 +289,7 @@ class DeployModel(Widget):
                 raise ValueError("Invalid data format for loading custom model.")
 
     class MODE:
+        """Supported deployment modes for the widget."""
         CONNECT = "connect"
         PRETRAINED = "pretrained"
         CUSTOM = "custom"
@@ -286,8 +306,18 @@ class DeployModel(Widget):
         api: Api = None,
         team_id: int = None,
         modes: List[Literal["connect", "pretrained", "custom"]] = None,
-        widget_id: str = None,
+        widget_id: Optional[str] = None,
     ):
+        """
+        :param api: Supervisely API instance. Defaults to Api.from_env().
+        :type api: :class:`~supervisely.api.api.Api`, optional
+        :param team_id: Team ID. Defaults to env.team_id().
+        :type team_id: int, optional
+        :param modes: List of deployment modes: "connect", "pretrained", "custom".
+        :type modes: List[Literal["connect", "pretrained", "custom"]], optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         self.modes: Dict[str, DeployModel.DeployMode] = {}
         if modes is None:
             modes = self.MODES.copy()

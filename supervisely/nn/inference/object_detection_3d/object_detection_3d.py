@@ -19,6 +19,8 @@ from supervisely.sly_logger import logger
 
 
 class ObjectDetection3D(Inference):
+    """Base class for 3D object detection on point clouds; outputs Cuboid3d geometries."""
+
     def get_info(self) -> dict:
         info = super().get_info()
         info["task type"] = "object detection 3d"

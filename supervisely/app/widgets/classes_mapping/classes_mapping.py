@@ -39,12 +39,22 @@ type_to_shape_text = {
 
 
 class ClassesMapping(Widget):
+    """Widget for mapping source ObjClasses to target ObjClasses with geometry compatibility checks."""
+
     def __init__(
         self,
         classes: Optional[Union[List[ObjClass], ObjClassCollection]] = [],
         empty_notification: Optional[NotificationBox] = None,
         widget_id: Optional[str] = None,
     ):
+        """
+        :param classes: List of ObjClass instances or ObjClassCollection.
+        :type classes: Optional[Union[List[ObjClass], ObjClassCollection]]
+        :param empty_notification: Widget to show when no classes.
+        :type empty_notification: NotificationBox, optional
+        :param widget_id: Unique widget identifier.
+        :type widget_id: str, optional
+        """
         if empty_notification is None:
             empty_notification = NotificationBox(
                 title="No classes",

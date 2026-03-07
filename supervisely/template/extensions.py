@@ -11,6 +11,8 @@ from jinja2.nodes import CallBlock
 
 
 class MarkdownExtension(Extension):
+    """Jinja2 extension that renders a `{% markdown %}` block to HTML using Python-Markdown."""
+
     EXTENSIONS = [
         "admonition",
         "attr_list",
@@ -42,6 +44,10 @@ class MarkdownExtension(Extension):
     tags = set(["markdown"])
 
     def __init__(self, environment):
+        """
+        :param environment: Jinja2 Environment.
+        :type environment: jinja2.Environment
+        """
         super(MarkdownExtension, self).__init__(environment)
         if markdown is None:
             raise ImportError("markdown library is required for MarkdownExtension but is not installed.")
@@ -67,6 +73,8 @@ class MarkdownExtension(Extension):
 
 
 class AutoSidebarExtension(Extension):
+    """Jinja2 extension that injects an autosidebar placeholder into the rendered HTML."""
+
     tags = {"autosidebar"}
 
     def parse(self, parser):

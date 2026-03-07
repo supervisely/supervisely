@@ -37,37 +37,44 @@ def fliplr(img: np.ndarray, ann: Annotation) -> Tuple[np.ndarray, Annotation]:
     """
     Flips an Image and Annotation around vertical axis.
 
-    :param img: Image in numpy format, :class:`RGB`.
+    :param img: RGB image in numpy format.
     :type img: np.ndarray
-    :param ann: Annotation object.
-    :type ann: Annotation
-    :raises: :class:`RuntimeError` if Image shape does not match img_size in Annotation
-    :return: Tuple containing flipped Image and Annotation
-    :rtype: :class:`Tuple[np.ndarray, Annotation]`
+    :param ann: Input annotation.
+    :type ann: :class:`~supervisely.annotation.annotation.Annotation`
+    :raises RuntimeError: if image shape does not match img_size in annotation.
+    :returns: Tuple containing flipped image and annotation.
+    :rtype: Tuple[np.ndarray, Annotation]
+
     :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
-        from supervisely.aug.aug import fliplr
+            import os
+            from dotenv import load_dotenv
 
-        address = 'https://app.supervisely.com/'
-        token = 'Your Supervisely API Token'
-        api = sly.Api(address, token)
+            import supervisely as sly
+            from supervisely.aug.aug import fliplr
 
-        # Download image and annotation from API
-        project_id = 116501
-        image_id = 193940171
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-        meta_json = api.project.get_meta(project_id)
-        meta = sly.ProjectMeta.from_json(meta_json)
+            api = sly.Api.from_env()
 
-        image_np = api.image.download_np(image_id) # <class 'numpy.ndarray'>
-        ann_info = api.annotation.download(image_id)
-        ann = sly.Annotation.from_json(ann_info.annotation, meta)
+            # Download image and annotation from API
+            project_id = 116501
+            image_id = 193940171
 
-        # Flip image and annotation
-        flip_image_np, flip_ann = fliplr(image_np, ann)
+            meta_json = api.project.get_meta(project_id)
+            meta = sly.ProjectMeta.from_json(meta_json)
+
+            image_np = api.image.download_np(image_id) # <class 'numpy.ndarray'>
+            ann_info = api.annotation.download(image_id)
+            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+
+            # Flip image and annotation
+            flip_image_np, flip_ann = fliplr(image_np, ann)
     """
     _validate_image_annotation_shape(img, ann)
     res_img = sly_image.fliplr(img)
@@ -79,37 +86,44 @@ def flipud(img: np.ndarray, ann: Annotation) -> Tuple[np.ndarray, Annotation]:
     """
     Flips an Image and Annotation around horizontal axis.
 
-    :param img: Image in numpy format, :class:`RGB`.
+    :param img: RGB image in numpy format.
     :type img: np.ndarray
-    :param ann: Annotation object.
-    :type ann: Annotation
-    :raises: :class:`RuntimeError` if Image shape does not match img_size in Annotation
-    :return: Tuple containing flipped Image and Annotation
-    :rtype: :class:`Tuple[np.ndarray, Annotation]`
+    :param ann: Input annotation.
+    :type ann: :class:`~supervisely.annotation.annotation.Annotation`
+    :raises RuntimeError: if image shape does not match img_size in annotation.
+    :returns: Tuple containing flipped image and annotation.
+    :rtype: Tuple[np.ndarray, Annotation]
+
     :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
-        from supervisely.aug.aug import flipud
+            import os
+            from dotenv import load_dotenv
 
-        address = 'https://app.supervisely.com/'
-        token = 'Your Supervisely API Token'
-        api = sly.Api(address, token)
+            import supervisely as sly
+            from supervisely.aug.aug import flipud
 
-        # Download image and annotation from API
-        project_id = 116501
-        image_id = 193940171
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-        meta_json = api.project.get_meta(project_id)
-        meta = sly.ProjectMeta.from_json(meta_json)
+            api = sly.Api.from_env()
 
-        image_np = api.image.download_np(image_id) # <class 'numpy.ndarray'>
-        ann_info = api.annotation.download(image_id)
-        ann = sly.Annotation.from_json(ann_info.annotation, meta)
+            # Download image and annotation from API
+            project_id = 116501
+            image_id = 193940171
 
-        # Flip image and annotation
-        flip_image_np, flip_ann = flipud(image_np, ann)
+            meta_json = api.project.get_meta(project_id)
+            meta = sly.ProjectMeta.from_json(meta_json)
+
+            image_np = api.image.download_np(image_id) # <class 'numpy.ndarray'>
+            ann_info = api.annotation.download(image_id)
+            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+
+            # Flip image and annotation
+            flip_image_np, flip_ann = flipud(image_np, ann)
     """
     _validate_image_annotation_shape(img, ann)
     res_img = sly_image.flipud(img)
@@ -129,10 +143,10 @@ def crop(
     """
     Crops an Image and Annotation from all sides with a given values.
 
-    :param img: Image in numpy format, :class:`RGB`.
+    :param img: RGB image in numpy format.
     :type img: np.ndarray
-    :param ann: Annotation object.
-    :type ann: Annotation
+    :param ann: Input annotation.
+    :type ann: :class:`~supervisely.annotation.annotation.Annotation`
     :param top_pad: Top padding in pixels.
     :type top_pad: int, optional
     :param left_pad: Left padding in pixels.
@@ -141,37 +155,44 @@ def crop(
     :type bottom_pad: int, optional
     :param right_pad: Right padding in pixels.
     :type right_pad: int, optional
-    :raises: :class:`RuntimeError` if Image shape does not match img_size in Annotation
-    :return: Tuple containing cropped Image and Annotation
-    :rtype: :class:`Tuple[np.ndarray, Annotation]`
+    :raises RuntimeError: if image shape does not match img_size in annotation.
+    :returns: Tuple containing cropped image and annotation.
+    :rtype: Tuple[np.ndarray, :class:`~supervisely.annotation.annotation.Annotation`]
+
     :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
-        from supervisely.aug.aug import crop
+            import os
+            from dotenv import load_dotenv
 
-        address = 'https://app.supervisely.com/'
-        token = 'Your Supervisely API Token'
-        api = sly.Api(address, token)
+            import supervisely as sly
+            from supervisely.aug.aug import crop
 
-        # Download image and annotation from API
-        project_id = 116501
-        image_id = 193940171
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-        meta_json = api.project.get_meta(project_id)
-        meta = sly.ProjectMeta.from_json(meta_json)
+            api = sly.Api.from_env()
 
-        image_np = api.image.download_np(image_id) # <class 'numpy.ndarray'>
-        print(image_np.shape)
-        # Output: (800, 1067, 3)
+            # Download image and annotation from API
+            project_id = 116501
+            image_id = 193940171
 
-        ann_info = api.annotation.download(image_id)
-        ann = sly.Annotation.from_json(ann_info.annotation, meta)
+            meta_json = api.project.get_meta(project_id)
+            meta = sly.ProjectMeta.from_json(meta_json)
 
-        crop_image_np, crop_ann = crop(image_np, ann, top_pad=50, left_pad=100, bottom_pad=50, right_pad=100)
-        print(crop_image_np.shape)
-        # Output: (700, 867, 3)
+            image_np = api.image.download_np(image_id) # <class 'numpy.ndarray'>
+            print(image_np.shape)
+            # Output: (800, 1067, 3)
+
+            ann_info = api.annotation.download(image_id)
+            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+
+            crop_image_np, crop_ann = crop(image_np, ann, top_pad=50, left_pad=100, bottom_pad=50, right_pad=100)
+            print(crop_image_np.shape)
+            # Output: (700, 867, 3)
     """
     _validate_image_annotation_shape(img, ann)
     height, width = img.shape[:2]
@@ -193,10 +214,10 @@ def crop_fraction(
     """
     Crops an Image and Annotation from all sides with the given fraction values.
 
-    :param img: Image in numpy format, :class:`RGB`.
+    :param img: RGB image in numpy format.
     :type img: np.ndarray
-    :param ann: Annotation object.
-    :type ann: Annotation
+    :param ann: Input annotation.
+    :type ann: :class:`~supervisely.annotation.annotation.Annotation`
     :param top: Top padding in pixels.
     :type top: int, optional
     :param left: Left padding in pixels.
@@ -205,37 +226,44 @@ def crop_fraction(
     :type bottom: int, optional
     :param right: Right padding in pixels.
     :type right: int, optional
-    :raises: :class:`ValueError` if fraction values not between 0 and 1
-    :return: Tuple containing cropped Image and Annotation
-    :rtype: :class:`Tuple[np.ndarray, Annotation]`
+    :raises ValueError: if fraction values not between 0 and 1
+    :returns: Tuple containing cropped image and annotation.
+    :rtype: Tuple[np.ndarray, :class:`~supervisely.annotation.annotation.Annotation`]
+
     :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
-        from supervisely.aug.aug import crop_fraction
+            import os
+            from dotenv import load_dotenv
 
-        address = 'https://app.supervisely.com/'
-        token = 'Your Supervisely API Token'
-        api = sly.Api(address, token)
+            import supervisely as sly
+            from supervisely.aug.aug import crop_fraction
 
-        # Download image and annotation from API
-        project_id = 116501
-        image_id = 193940171
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-        meta_json = api.project.get_meta(project_id)
-        meta = sly.ProjectMeta.from_json(meta_json)
+            api = sly.Api.from_env()
 
-        image_np = api.image.download_np(image_id) # <class 'numpy.ndarray'>
-        print(image_np.shape)
-        # Output: (800, 1067, 3)
+            # Download image and annotation from API
+            project_id = 116501
+            image_id = 193940171
 
-        ann_info = api.annotation.download(image_id)
-        ann = sly.Annotation.from_json(ann_info.annotation, meta)
+            meta_json = api.project.get_meta(project_id)
+            meta = sly.ProjectMeta.from_json(meta_json)
 
-        crop_image_np, crop_ann = crop_fraction(image_np, ann, top=0.1, left=0.2, bottom=0.1, right=0.2)
-        print(crop_image_np.shape)
-        # Output: (640, 641, 3)
+            image_np = api.image.download_np(image_id) # <class 'numpy.ndarray'>
+            print(image_np.shape)
+            # Output: (800, 1067, 3)
+
+            ann_info = api.annotation.download(image_id)
+            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+
+            crop_image_np, crop_ann = crop_fraction(image_np, ann, top=0.1, left=0.2, bottom=0.1, right=0.2)
+            print(crop_image_np.shape)
+            # Output: (640, 641, 3)
     """
     _validate_image_annotation_shape(img, ann)
     if not all(0 <= pad < 1 for pad in (top, left, right, bottom)):
@@ -261,45 +289,52 @@ def random_crop(
     """
     Crops an Image and Annotation at a random location.
 
-    :param img: Image in numpy format, :class:`RGB`.
+    :param img: RGB image in numpy format.
     :type img: np.ndarray
-    :param ann: Annotation object.
-    :type ann: Annotation
+    :param ann: Input annotation.
+    :type ann: :class:`~supervisely.annotation.annotation.Annotation`
     :param height: Desired height of output crop.
     :type height: int, optional
     :param width: Desired width of output crop.
     :type width: int, optional
-    :raises: :class:`RuntimeError` if Image shape does not match img_size in Annotation
-    :return: Tuple containing cropped Image and Annotation
-    :rtype: :class:`Tuple[np.ndarray, Annotation]`
+    :raises RuntimeError: if image shape does not match img_size in annotation.
+    :returns: Tuple containing cropped image and annotation.
+    :rtype: Tuple[np.ndarray, :class:`~supervisely.annotation.annotation.Annotation`]
+
     :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
-        from supervisely.aug.aug import random_crop
+            import os
+            from dotenv import load_dotenv
 
-        address = 'https://app.supervisely.com/'
-        token = 'Your Supervisely API Token'
-        api = sly.Api(address, token)
+            import supervisely as sly
+            from supervisely.aug.aug import random_crop
 
-        # Download image and annotation from API
-        project_id = 116501
-        image_id = 193940171
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-        meta_json = api.project.get_meta(project_id)
-        meta = sly.ProjectMeta.from_json(meta_json)
+            api = sly.Api.from_env()
 
-        image_np = api.image.download_np(image_id) # <class 'numpy.ndarray'>
-        print(image_np.shape)
-        # Output: (800, 1067, 3)
+            # Download image and annotation from API
+            project_id = 116501
+            image_id = 193940171
 
-        ann_info = api.annotation.download(image_id)
-        ann = sly.Annotation.from_json(ann_info.annotation, meta)
+            meta_json = api.project.get_meta(project_id)
+            meta = sly.ProjectMeta.from_json(meta_json)
 
-        crop_image_np, crop_ann = random_crop(image_np, ann, height=500, width=700)
-        print(crop_image_np.shape)
-        # Output: (500, 700, 3)
+            image_np = api.image.download_np(image_id) # <class 'numpy.ndarray'>
+            print(image_np.shape)
+            # Output: (800, 1067, 3)
+
+            ann_info = api.annotation.download(image_id)
+            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+
+            crop_image_np, crop_ann = random_crop(image_np, ann, height=500, width=700)
+            print(crop_image_np.shape)
+            # Output: (500, 700, 3)
     """
     _validate_image_annotation_shape(img, ann)
     img_height, img_width = img.shape[:2]
@@ -331,45 +366,53 @@ def random_crop_fraction(
     """
     Crops an Image and Annotation at a random location with random size in a given interval.
 
-    :param img: Image in numpy format, :class:`RGB`.
+    :param img: RGB image in numpy format.
     :type img: np.ndarray
-    :param ann: Annotation object.
-    :type ann: Annotation
+    :param ann: Input annotation.
+    :type ann: :class:`~supervisely.annotation.annotation.Annotation`
     :param height_fraction_range: Range of relative values [0, 1] to select output height from.
     :type height_fraction_range: Tuple[float, float]
     :param width_fraction_range: Range of relative values [0, 1] to select output width from.
     :type width_fraction_range: Tuple[float, float]
-    :raises: :class:`RuntimeError` if Image shape does not match img_size in Annotation
-    :return: Tuple containing cropped Image and Annotation
-    :rtype: :class:`Tuple[np.ndarray, Annotation]`
+    :raises RuntimeError: if image shape does not match img_size in annotation.
+    :returns: Tuple containing cropped image and annotation.
+    :rtype: Tuple[np.ndarray, :class:`~supervisely.annotation.annotation.Annotation`]
+
     :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
-        from supervisely.aug.aug import random_crop_fraction
 
-        address = 'https://app.supervisely.com/'
-        token = 'Your Supervisely API Token'
-        api = sly.Api(address, token)
+            import os
+            from dotenv import load_dotenv
 
-        # Download image and annotation from API
-        project_id = 116501
-        image_id = 193940171
+            import supervisely as sly
+            from supervisely.aug.aug import random_crop_fraction
 
-        meta_json = api.project.get_meta(project_id)
-        meta = sly.ProjectMeta.from_json(meta_json)
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-        image_np = api.image.download_np(image_id) # <class 'numpy.ndarray'>
-        print(image_np.shape)
-        # Output: (800, 1067, 3)
+            api = sly.Api.from_env()
 
-        ann_info = api.annotation.download(image_id)
-        ann = sly.Annotation.from_json(ann_info.annotation, meta)
+            # Download image and annotation from API
+            project_id = 116501
+            image_id = 193940171
 
-        crop_image_np, crop_ann = random_crop_fraction(image_np, ann, height_fraction_range=(0.1, 0.8), width_fraction_range=(0.1, 0.8))
-        print(crop_image_np.shape)
-        # Output: (486, 585, 3)
+            meta_json = api.project.get_meta(project_id)
+            meta = sly.ProjectMeta.from_json(meta_json)
+
+            image_np = api.image.download_np(image_id) # <class 'numpy.ndarray'>
+            print(image_np.shape)
+            # Output: (800, 1067, 3)
+
+            ann_info = api.annotation.download(image_id)
+            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+
+            crop_image_np, crop_ann = random_crop_fraction(image_np, ann, height_fraction_range=(0.1, 0.8), width_fraction_range=(0.1, 0.8))
+            print(crop_image_np.shape)
+            # Output: (486, 585, 3)
     """
     _validate_image_annotation_shape(img, ann)
     img_height, img_width = img.shape[:2]
@@ -447,48 +490,54 @@ def instance_crop(
     """
     Crops objects of specified classes from Image and Annotation with configurable padding.
 
-    :param img: Image in numpy format, :class:`RGB`.
+    :param img: RGB image in numpy format.
     :type img: np.ndarray
-    :param ann: Annotation object.
-    :type ann: Annotation
+    :param ann: Input annotation.
+    :type ann: :class:`~supervisely.annotation.annotation.Annotation`
     :param class_title: Name of class to crop.
     :type class_title: str
-    :param save_other_classes_in_crop: If True saves non-target classes in each cropped Annotation, otherwise don't.
+    :param save_other_classes_in_crop: If True saves non-target classes in each cropped :class:`~supervisely.annotation.annotation.Annotation`, otherwise don't.
     :type save_other_classes_in_crop: bool, optional
     :param padding_config: Dict with padding.
     :type padding_config: dict, optional
-    :raises: :class:`ValueError` if padding size format is incorrect
-    :return: List of cropped (image numpy array, Annotation) pairs
-    :rtype: :class:`List[Tuple[np.ndarray, Annotation]]`
+    :raises ValueError: if padding size format is incorrect
+    :returns: List of cropped (image numpy array, annotation) pairs
+    :rtype: List[Tuple[np.ndarray, :class:`~supervisely.annotation.annotation.Annotation`]]
 
     :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
-        from supervisely.aug.aug import instance_crop
+            import os
+            from dotenv import load_dotenv
 
-        address = 'https://app.supervisely.com/'
-        token = 'Your Supervisely API Token'
-        api = sly.Api(address, token)
+            import supervisely as sly
+            from supervisely.aug.aug import instance_crop
 
-        # Download image and annotation from API
-        project_id = 116501
-        image_id = 193940171
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-        meta_json = api.project.get_meta(project_id)
-        meta = sly.ProjectMeta.from_json(meta_json)
+            api = sly.Api.from_env()
 
-        image_np = api.image.download_np(image_id) # <class 'numpy.ndarray'>
-        print(image_np.shape)
-        # Output: (800, 1067, 3)
+            # Download image and annotation from API
+            project_id = 116501
+            image_id = 193940171
 
-        ann_info = api.annotation.download(image_id)
-        ann = sly.Annotation.from_json(ann_info.annotation, meta)
+            meta_json = api.project.get_meta(project_id)
+            meta = sly.ProjectMeta.from_json(meta_json)
 
-        result = instance_crop(image_np, ann, 'kiwi', True, {'top': '20px', 'left': '50px', 'bottom': '700px', 'right': '1000px'})
-        for crop_image_np, crop_ann in result:
-            print(crop_image_np.shape)
+            image_np = api.image.download_np(image_id) # <class 'numpy.ndarray'>
+            print(image_np.shape)
+            # Output: (800, 1067, 3)
+
+            ann_info = api.annotation.download(image_id)
+            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+
+            result = instance_crop(image_np, ann, 'kiwi', True, {'top': '20px', 'left': '50px', 'bottom': '700px', 'right': '1000px'})
+            for crop_image_np, crop_ann in result:
+                print(crop_image_np.shape)
             # Output: (270, 635, 3)
             #         (426, 345, 3)
     """
@@ -532,46 +581,52 @@ def resize(
     """
     Resizes an input Image and Annotation to a given size.
 
-    :param img: Image in numpy format, :class:`RGB`.
+    :param img: RGB image in numpy format.
     :type img: np.ndarray
-    :param ann: Annotation object.
-    :type ann: Annotation
+    :param ann: Input annotation.
+    :type ann: :class:`~supervisely.annotation.annotation.Annotation`
     :param size: Desired size (height, width) in pixels or -1.
     :type size: Tuple[int, int]
-    :param skip_empty_masks: If True, skips resizing of empty masks in Annotation.
+    :param skip_empty_masks: If True, skips resizing of empty masks in :class:`~supervisely.annotation.annotation.Annotation`.
     :type skip_empty_masks: bool, optional
-    :raises: :class:`RuntimeError` if Image shape does not match img_size in Annotation
-    :return: Tuple containing resized Image and Annotation
-    :rtype: :class:`Tuple[np.ndarray, Annotation]`
+    :raises RuntimeError: if image shape does not match img_size in annotation.
+    :returns: Tuple containing resized image and annotation.
+    :rtype: Tuple[np.ndarray, :class:`~supervisely.annotation.annotation.Annotation`]
 
     :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
-        from supervisely.aug.aug import resize
+            import os
+            from dotenv import load_dotenv
 
-        address = 'https://app.supervisely.com/'
-        token = 'Your Supervisely API Token'
-        api = sly.Api(address, token)
+            import supervisely as sly
+            from supervisely.aug.aug import resize
 
-        # Download image and annotation from API
-        project_id = 116501
-        image_id = 193940171
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-        meta_json = api.project.get_meta(project_id)
-        meta = sly.ProjectMeta.from_json(meta_json)
+            api = sly.Api.from_env()
 
-        image_np = api.image.download_np(image_id) # <class 'numpy.ndarray'>
-        print(image_np.shape)
-        # Output: (800, 1067, 3)
+            # Download image and annotation from API
+            project_id = 116501
+            image_id = 193940171
 
-        ann_info = api.annotation.download(image_id)
-        ann = sly.Annotation.from_json(ann_info.annotation, meta)
+            meta_json = api.project.get_meta(project_id)
+            meta = sly.ProjectMeta.from_json(meta_json)
 
-        resize_image_np, resize_ann = resize(image_np, ann, (600, -1))
-        print(resize_image_np.shape)
-        # Output: (600, 800, 3)
+            image_np = api.image.download_np(image_id) # <class 'numpy.ndarray'>
+            print(image_np.shape)
+            # Output: (800, 1067, 3)
+
+            ann_info = api.annotation.download(image_id)
+            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+
+            resize_image_np, resize_ann = resize(image_np, ann, (600, -1))
+            print(resize_image_np.shape)
+            # Output: (600, 800, 3)
     """
     _validate_image_annotation_shape(img, ann)
     height = take_with_default(size[0], -1)  # For backward capability
@@ -595,48 +650,54 @@ def scale(
     """
     Scales an input Image and Annotation to a given size.
 
-    :param img: Image in numpy format, :class:`RGB`.
+    :param img: RGB image in numpy format.
     :type img: np.ndarray
-    :param ann: Annotation object.
-    :type ann: Annotation
+    :param ann: Input annotation.
+    :type ann: :class:`~supervisely.annotation.annotation.Annotation`
     :param frow: Desired height scale height value.
     :type frow: float, optional
     :param fcol: Desired width scale height value.
     :type fcol: float, optional
     :param f: Desired height and width scale values in one(positive).
     :type f: float, optional
-    :raises: :class:`RuntimeError` if Image shape does not match img_size in Annotation
-    :return: Tuple containing scaled Image and Annotation
-    :rtype: :class:`Tuple[np.ndarray, Annotation]`
+    :raises RuntimeError: if image shape does not match img_size in annotation.
+    :returns: Tuple containing scaled image and annotation.
+    :rtype: Tuple[np.ndarray, :class:`~supervisely.annotation.annotation.Annotation`]
 
     :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
-        from supervisely.aug.aug import scale
+            import os
+            from dotenv import load_dotenv
 
-        address = 'https://app.supervisely.com/'
-        token = 'Your Supervisely API Token'
-        api = sly.Api(address, token)
+            import supervisely as sly
+            from supervisely.aug.aug import scale
 
-        # Download image and annotation from API
-        project_id = 116501
-        image_id = 193940171
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-        meta_json = api.project.get_meta(project_id)
-        meta = sly.ProjectMeta.from_json(meta_json)
+            api = sly.Api.from_env()
 
-        image_np = api.image.download_np(image_id) # <class 'numpy.ndarray'>
-        print(image_np.shape)
-        # Output: (800, 1067, 3)
+            # Download image and annotation from API
+            project_id = 116501
+            image_id = 193940171
 
-        ann_info = api.annotation.download(193940171)
-        ann = sly.Annotation.from_json(ann_info.annotation, meta)
+            meta_json = api.project.get_meta(project_id)
+            meta = sly.ProjectMeta.from_json(meta_json)
 
-        scale_image_np, scale_ann = scale(image_np, ann, frow=0.7, fcol=0.8)
-        print(scale_image_np.shape)
-        # Output: (560, 854, 3)
+            image_np = api.image.download_np(image_id) # <class 'numpy.ndarray'>
+            print(image_np.shape)
+            # Output: (800, 1067, 3)
+
+            ann_info = api.annotation.download(193940171)
+            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+
+            scale_image_np, scale_ann = scale(image_np, ann, frow=0.7, fcol=0.8)
+            print(scale_image_np.shape)
+            # Output: (560, 854, 3)
     """
     _validate_image_annotation_shape(img, ann)
     new_size = sly_image.restore_proportional_size(in_size=ann.img_size, frow=frow, fcol=fcol, f=f)
@@ -647,6 +708,8 @@ def scale(
 
 # Rotate
 class RotationModes:
+    """Enum-like class for rotation behavior: KEEP (pad to fit) or CROP."""
+
     KEEP = "keep"
     CROP = "crop"
 
@@ -660,46 +723,52 @@ def rotate(
     """
     Rotates an Image and Annotation by random angle.
 
-    :param img: Image in numpy format, :class:`RGB`.
+    :param img: RGB image in numpy format.
     :type img: np.ndarray
-    :param ann: Annotation object.
-    :type ann: Annotation
+    :param ann: Input annotation.
+    :type ann: :class:`~supervisely.annotation.annotation.Annotation`
     :param degrees: Rotation angle.
     :type degrees: int
     :param mode: One of RotateMode enum values.
-    :type mode: RotationModes, optional
-    :raises: :class:`RuntimeError` if Image shape does not match img_size in Annotation
-    :return: Tuple containing rotated Image and Annotation
-    :rtype: :class:`Tuple[np.ndarray, Annotation]`
+    :type mode: :class:`~supervisely.aug.aug.RotationModes`, optional
+    :raises RuntimeError: if image shape does not match img_size in annotation.
+    :returns: Tuple containing rotated image and annotation.
+    :rtype: Tuple[np.ndarray, :class:`~supervisely.annotation.annotation.Annotation`]
 
     :Usage Example:
 
-     .. code-block:: python
+        .. code-block:: python
 
-        import supervisely as sly
-        from supervisely.aug.aug import rotate
+            import os
+            from dotenv import load_dotenv
 
-        address = 'https://app.supervisely.com/'
-        token = 'Your Supervisely API Token'
-        api = sly.Api(address, token)
+            import supervisely as sly
+            from supervisely.aug.aug import rotate
 
-        # Download image and annotation from API
-        project_id = 116501
-        image_id = 193940171
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            if sly.is_development():
+                load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-        meta_json = api.project.get_meta(project_id)
-        meta = sly.ProjectMeta.from_json(meta_json)
+            api = sly.Api.from_env()
 
-        image_np = api.image.download_np(image_id) # <class 'numpy.ndarray'>
-        print(image_np.shape)
-        # Output: (800, 1067, 3)
+            # Download image and annotation from API
+            project_id = 116501
+            image_id = 193940171
 
-        ann_info = api.annotation.download(image_id)
-        ann = sly.Annotation.from_json(ann_info.annotation, meta)
+            meta_json = api.project.get_meta(project_id)
+            meta = sly.ProjectMeta.from_json(meta_json)
 
-        rotate_image_np, rotate_ann = rotate(image_np, ann, 30)
-        print(rotate_image_np.shape)
-        # Output: (1231, 1326, 3)
+            image_np = api.image.download_np(image_id) # <class 'numpy.ndarray'>
+            print(image_np.shape)
+            # Output: (800, 1067, 3)
+
+            ann_info = api.annotation.download(image_id)
+            ann = sly.Annotation.from_json(ann_info.annotation, meta)
+
+            rotate_image_np, rotate_ann = rotate(image_np, ann, 30)
+            print(rotate_image_np.shape)
+            # Output: (1231, 1326, 3)
     """
     _validate_image_annotation_shape(img, ann)
     rotator = ImageRotator(img.shape[:2], degrees)

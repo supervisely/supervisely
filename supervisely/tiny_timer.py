@@ -2,6 +2,8 @@ import time
 
 
 class TinyTimer:
+    """Lightweight timer for measuring elapsed time since creation."""
+
     def __init__(self):
         self.t = time.time()
 
