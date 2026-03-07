@@ -287,6 +287,7 @@ class DataVersion(ModuleApiBase):
                 src_project_info=project_info,
                 dst_workspace_id=workspace_id,
                 dst_project_name=project_info.name + f"_version_{version_id}_backup",
+                read_only=instant_access,
             )
             file_info = self._compress_and_upload(path)
             self.versions[version_id] = {
@@ -355,7 +356,7 @@ class DataVersion(ModuleApiBase):
             ApiField.TEAM_FILE_ID: file_id,
         }
         if instant_access_project_id is not None:
-            body[ApiField.INSTANT_ACCESS_PROJECT_ID] = instant_access_project_id
+            body[ApiField.READ_ONLY_PROJECT_ID] = instant_access_project_id
         if title:
             body[ApiField.TITLE] = title
         if description:
@@ -441,6 +442,7 @@ class DataVersion(ModuleApiBase):
         version_id: Optional[int] = None,
         version_num: Optional[int] = None,
         skip_missed_entities: bool = False,
+        instant_access: bool = False,
     ) -> ProjectInfo:
         """
         Restore project to a specific version.
@@ -454,6 +456,8 @@ class DataVersion(ModuleApiBase):
         :type version_num: Optional[int]
         :param skip_missed_entities: Skip missed Images
         :type skip_missed_entities: bool, default False
+        :param instant_access: Restore version from the project snapshot that was created for instant access.
+        :type instant_access: bool, default False
         :returns: Project info object of the restored project
         :rtype: :class:`~supervisely.api.project_api.ProjectInfo` or None
         """
@@ -475,21 +479,6 @@ class DataVersion(ModuleApiBase):
             if str(version_id) not in self.versions:
                 raise ValueError(f"Version {version_id} does not exist")
             version_num = self.versions[str(version_id)]["number"]
-        # updated_at = self.versions[str(version_id)]["updated_at"]
-        backup_files = self.versions[str(version_id)]["path"]
-
-        # turn off this check for now (treating this as a project clone operation)
-        # if updated_at == self.project_info.updated_at:
-        #     logger.warning(
-        #         f"Project is already on version {version_num} with the same updated_at timestamp"
-        #     )
-        #     return
-
-        if backup_files is None:
-            logger.warning(
-                f"Project can't be restored to version {version_num} because it doesn't have restore point."
-            )
-            return
 
         dst_project_name = self.PROJECT_NAME_TEMPLATE.format(
             project_name=self.project_info.name, version_num=version_num
@@ -500,15 +489,60 @@ class DataVersion(ModuleApiBase):
             version_id=version_id,
         )
 
-        bin_io = self._download_and_extract(backup_files)
-        new_project_info = self.project_cls.upload_bin(
-            self._api,
-            bin_io,
-            workspace_id=self.project_info.workspace_id,
-            project_name=dst_project_name,
-            project_description=dst_project_desc,
-            skip_missed=skip_missed_entities,
-        )
+        if instant_access:
+            version_info = self._api.project.version.get_info_by_id(version_id)
+            if version_info is None:
+                logger.warning(
+                    f"Project can't be restored to version {version_num} because it doesn't have restore point."
+                )
+                return None
+            instant_access_project_id = version_info.get(ApiField.READ_ONLY_PROJECT_ID)
+            if instant_access_project_id is None:
+                logger.warning(
+                    f"Project can't be restored to version {version_num} with instant access because it doesn't have an instant access snapshot."
+                )
+                return None
+            instant_access_project_info = self._api.project.get_info_by_id(
+                instant_access_project_id
+            )
+            if instant_access_project_info is None:
+                logger.warning(
+                    f"Project can't be restored to version {version_num} with instant access because the snapshot project is not available."
+                )
+                return None
+            new_project_info = copy_project(
+                api=self._api,
+                src_project_info=instant_access_project_info,
+                dst_workspace_id=project_info.workspace_id,
+                dst_project_name=dst_project_name + " instant access snapshot",
+                dst_project_description=dst_project_desc + " (Instant Access Snapshot)",
+            )
+        else:
+            # updated_at = self.versions[str(version_id)]["updated_at"]
+            backup_files = self.versions[str(version_id)]["path"]
+
+            # turn off this check for now (treating this as a project clone operation)
+            # if updated_at == self.project_info.updated_at:
+            #     logger.warning(
+            #         f"Project is already on version {version_num} with the same updated_at timestamp"
+            #     )
+            #     return
+
+            if backup_files is None:
+                logger.warning(
+                    f"Project can't be restored to version {version_num} because it doesn't have restore point."
+                )
+                return
+
+            bin_io = self._download_and_extract(backup_files)
+            new_project_info = self.project_cls.upload_bin(
+                self._api,
+                bin_io,
+                workspace_id=self.project_info.workspace_id,
+                project_name=dst_project_name,
+                project_description=dst_project_desc,
+                skip_missed=skip_missed_entities,
+            )
         return new_project_info
 
     def get_or_create_versions_workspace(self, team_id: int, description: str = "") -> int:

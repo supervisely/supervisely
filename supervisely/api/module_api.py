@@ -721,7 +721,9 @@ class ApiField:
     """"""
     SINGLE_SESSION_MODE = "singleSessionMode"
     """"""
-    INSTANT_ACCESS_PROJECT_ID = "instantAccessProjectId"
+    READ_ONLY_PROJECT_ID = "readOnlyProjectId"
+    """"""
+    IS_READ_ONLY_PROJECT = "isReadOnlyProject"
 
 
 def _get_single_item(items):

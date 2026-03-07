@@ -724,6 +724,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         created_at: Optional[str] = None,
         updated_at: Optional[str] = None,
         created_by: Optional[int] = None,
+        read_only: Optional[bool] = None,
     ) -> ProjectInfo:
         """
         Create Project with given name in the given Workspace ID.
@@ -750,6 +751,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type updated_at: str, optional
         :param created_by: Optional user ID to record as the project creator.
         :type created_by: int, optional
+        :param read_only: Optional flag to set the project as read-only. Works only with image and video projects. If set to True, the project will be created with read-only settings, and users will not be able to modify annotations in this project. Default is False.
+        :type read_only: bool, optional
         :returns: ProjectInfo object with information about the Project.
         :rtype: :class:`~supervisely.api.project_api.ProjectInfo`
 
@@ -814,6 +817,12 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             payload[ApiField.UPDATED_AT] = updated_at
         if created_by is not None:
             payload[ApiField.CREATED_BY_ID[0][0]] = created_by
+
+        if type in [ProjectType.IMAGES, ProjectType.VIDEOS] and read_only is True:
+            if ApiField.SETTINGS not in payload:
+                payload[ApiField.SETTINGS] = {}
+            payload[ApiField.SETTINGS][ApiField.IS_READ_ONLY_PROJECT] = read_only
+
         try:
             response = self._api.post("projects.add", payload)
         except Exception as e:
@@ -1536,15 +1545,24 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             raise ProjectNotFound(f"Project with id={id} not found")
         return info.settings
 
-    def update_settings(self, id: int, settings: Dict[str, str]) -> None:
+    def update_settings(
+        self, id: int, settings: Dict[str, str], merge_with_current: bool = False
+    ) -> None:
         """
-        Updates project wuth given project settings by id.
+        Updates project with given project settings by id.
 
         :param id: Project ID
         :type id: int
         :param settings: Project settings
         :type settings: Dict[str, str]
+        :param merge_with_current: If True, merges the new settings with the current settings. If False, replaces the current settings.
+            **ATTENTION**: Will overwrite fields with the same keys in the current settings if they are present in the new settings, otherwise will keep current fields.
+        :type merge_with_current: bool, optional
         """
+        if merge_with_current:
+            current_settings = self.get_settings(id)
+            current_settings.update(settings)
+            settings = current_settings
         self._api.post("projects.settings.update", {ApiField.ID: id, ApiField.SETTINGS: settings})
 
     def download_images_tags(
@@ -3056,3 +3074,16 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         custom_data["import_history"]["tasks"].append(data)
 
         self.edit_info(id, custom_data=custom_data)
+
+    def set_read_only(self, id: int, enable: bool = True) -> None:
+        """
+        Set or unset read-only status for the project.
+
+        :param id: Project ID
+        :type id: int
+        :param enable: If True, sets the project to read-only. If False, unsets the read-only status.
+        :type enable: bool
+        :returns: None
+        :rtype: None
+        """
+        self.update_settings(id, {ApiField.IS_READ_ONLY_PROJECT: enable}, merge_with_current=True)
