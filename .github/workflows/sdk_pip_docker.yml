@@ -131,6 +131,20 @@ jobs:
         if: steps.tag_check.outputs.exists == 'true'
         run: echo "Image $IMAGE_NAME:$RELEASE_VERSION already exists - skipping build."
 
+  base-py-sdk-hardened:
+    name: Build base-py-sdk-hardened
+    needs: publish-pypi
+    uses: ./.github/workflows/build_base_py_sdk_hardened.yml
+    with:
+      tag_version: ${{ github.ref_name }}
+
+  base-py-cuda-hardened:
+    name: Build base-py-cuda-hardened
+    needs: publish-pypi
+    uses: ./.github/workflows/build_base_py_cuda_hardened.yml
+    with:
+      tag_version: ${{ github.ref_name }}
+
   collaboration:
     name: Build collaboration
     needs: base-py-sdk

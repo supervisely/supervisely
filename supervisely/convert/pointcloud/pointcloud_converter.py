@@ -1,8 +1,8 @@
-import imghdr
 import os
 from typing import Dict, List, Optional, Set, Tuple
 from uuid import UUID
 
+import magic
 import numpy as np
 
 from supervisely import (
@@ -305,7 +305,7 @@ class PointcloudConverter(BaseConverter):
                         for p in [dir_name, parent_dir_name]
                     ) or dir_name.endswith("_pcd"):
                         rimg_ann_dict[file] = full_path
-                elif imghdr.what(full_path):
+                elif self._is_image_file(full_path):
                     dir_name = os.path.basename(root)
                     if dir_name not in rimg_dict:
                         rimg_dict[dir_name] = []
@@ -425,3 +425,10 @@ class PointcloudConverter(BaseConverter):
         pc = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(points))
         pc.colors = o3d.utility.Vector3dVector(intensity_fake_rgb)
         o3d.io.write_point_cloud(pcd_file, pc)
+
+    @staticmethod
+    def _is_image_file(path: str) -> bool:
+        try:
+            return magic.from_file(path, mime=True).startswith("image/")
+        except Exception:
+            return False
