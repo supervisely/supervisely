@@ -11,7 +11,6 @@ from typing import List, Optional, Tuple, Union
 import cv2
 import nrrd
 import numpy as np
-from packaging.version import parse as parse_version
 from PIL import Image as PILImage
 from PIL import ImageDraw, ImageFile, ImageFont
 from packaging.version import Version
