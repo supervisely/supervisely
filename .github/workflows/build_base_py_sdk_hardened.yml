@@ -35,8 +35,8 @@ jobs:
             --frontend dockerfile.v0 \
             --local context=${{ github.workspace }} \
             --local dockerfile=${{ github.workspace }}/base_images/py_sdk_hardened \
-            --opt build-arg:tag_ref_name=$TAG_VERSION \
-            --output type=image,name=docker.io/supervisely/base-py-sdk-hardened:$TAG_VERSION,push=true \
+            --opt build-arg:tag_ref_name=${{ env.TAG_VERSION }} \
+            --output type=docker,name=${{ env.IMAGE_NAME }}:${{ env.TAG_VERSION }},dest=image.tar \
             --export-cache type=registry,ref=docker.io/supervisely/base-py-sdk-hardened:buildcache,mode=max \
             --import-cache type=registry,ref=docker.io/supervisely/base-py-sdk-hardened:buildcache
 
