@@ -140,7 +140,7 @@ jobs:
 
   base-py-cuda-hardened:
     name: Build base-py-cuda-hardened
-    needs: publish-pypi
+    needs: base-py-sdk-hardened
     uses: ./.github/workflows/build_base_py_cuda_hardened.yml
     with:
       tag_version: ${{ github.ref_name }}
