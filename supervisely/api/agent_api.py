@@ -113,7 +113,7 @@ class AgentApi(ModuleApi, ModuleWithStatus):
         ModuleWithStatus.__init__(self)
 
     def get_list(
-        self, team_id: int, filters: Optional[List[Dict[str, str]]] = None
+        self, team_id: int, filters: Optional[List[Dict[str, str]]] = None, with_gpu_info: bool = False
     ) -> List[NamedTuple]:
         """
         List of all agents in the given Team.
@@ -122,6 +122,8 @@ class AgentApi(ModuleApi, ModuleWithStatus):
         :type team_id: int
         :param filters: List of params to sort output Agents.
         :type filters: List[dict], optional
+        :param with_gpu_info: Include GPU information in the response.
+        :type with_gpu_info: bool, optional
         :returns: List of agents with information. See :meth:`~supervisely.api.agent_api.AgentApi.info_sequence`.
         :rtype: List[NamedTuple]
 
@@ -146,7 +148,11 @@ class AgentApi(ModuleApi, ModuleWithStatus):
 
                 filter_agents = api.agent.get_list(team_id, filters=[{ 'field': 'name', 'operator': '=', 'value': 'Gorgeous Chicken' }])
         """
-        return self.get_list_all_pages("agents.list", {"teamId": team_id, "filter": filters or []})
+        payload = {"teamId": team_id, "filter": filters or []}
+        if with_gpu_info:
+            payload[ApiField.EXTRA_FIELDS] = [ApiField.GPU_INFO]
+        
+        return self.get_list_all_pages("agents.list", payload)
 
     def get_list_available(
         self,

@@ -20,6 +20,8 @@ from supervisely.project.versioning.common import (
     DEFAULT_VIDEO_SCHEMA_VERSION,
     DEFAULT_VOLUME_SCHEMA_VERSION,
     HIDDEN_WORKSPACE_NAME,
+    PREVIEW_NAME_SUFFIX,
+    PREVIEW_DESCRIPTION_SUFFIX,
 )
 from supervisely.project.versioning.schema_fields import VersionSchemaField
 
@@ -41,6 +43,7 @@ class VersionInfo(NamedTuple):
     project_updated_at: str
     team_id: int
     name: str
+    preview_project_id: Optional[int] = None
 
 
 class DataVersion(ModuleApiBase):
@@ -160,6 +163,34 @@ class DataVersion(ModuleApiBase):
             data[ApiField.FILTER] = filters
 
         return self.get_list_all_pages("projects.versions.list", data)
+    
+    def get_info_by_id(self, project_id: int, version_id: int) -> Optional[VersionInfo]:
+        """
+        Get project version information by version ID.
+
+        :param project_id: Project ID
+        :type project_id: int
+        :param version_id: Version ID
+        :type version_id: int
+        :returns: Project version information
+        :rtype: Optional[:class:`~supervisely.project.data_version.VersionInfo`]
+        """
+        versions = self.get_list(project_id, filters=[{ApiField.FIELD: ApiField.ID, ApiField.OPERATOR: "=", ApiField.VALUE: version_id}])
+        return versions[0] if versions else None
+    
+    def get_info_by_number(self, project_id: int, version_num: int) -> Optional[VersionInfo]:
+        """
+        Get project version information by version number.
+
+        :param project_id: Project ID
+        :type project_id: int
+        :param version_num: Version number
+        :type version_num: int
+        :returns: Project version information
+        :rtype: Optional[:class:`~supervisely.project.data_version.VersionInfo`]
+        """
+        versions = self.get_list(project_id, filters=[{ApiField.FIELD: ApiField.VERSION, ApiField.OPERATOR: "=", ApiField.VALUE: version_num}])
+        return versions[0] if versions else None
 
     def get_id_by_number(self, project_id: int, version_num: int) -> int:
         """
@@ -238,7 +269,7 @@ class DataVersion(ModuleApiBase):
         project_info: Union[ProjectInfo, int],
         version_title: Optional[str] = None,
         version_description: Optional[str] = None,
-        instant_access: bool = False,
+        enable_preview: bool = False,
     ) -> int:
         """
         Create a new project version.
@@ -252,8 +283,8 @@ class DataVersion(ModuleApiBase):
         :type version_title: Optional[str]
         :param version_description: Version description
         :type version_description: Optional[str]
-        :param instant_access: Instant access flag that creates clone of the project to hidden workspace making version data available immediately. This option can be used to
-        :type instant_access: bool
+        :param enable_preview: Enable preview flag that creates clone of the project to hidden workspace making version data available immediately. This option can be used to
+        :type enable_preview: bool
         :returns: Version ID
         :rtype: int
         """
@@ -281,14 +312,15 @@ class DataVersion(ModuleApiBase):
         if version_id is None and commit_token is None:
             return latest
         try:
-            workspace_id = self.get_or_create_versions_workspace(team_id=project_info.team_id)
-            cloned_project_id = copy_project(
-                api=self._api,
-                src_project_info=project_info,
-                dst_workspace_id=workspace_id,
-                dst_project_name=project_info.name + f"_version_{version_id}_backup",
-                read_only=instant_access,
-            )
+            if enable_preview:
+                workspace_id = self.get_or_create_versions_workspace(team_id=project_info.team_id)
+                cloned_project_id = copy_project(
+                    api=self._api,
+                    src_project_info=project_info,
+                    dst_workspace_id=workspace_id,
+                    dst_project_name=project_info.name + f"_version_{version_id}_backup",
+                    read_only=enable_preview,
+                )
             file_info = self._compress_and_upload(path)
             self.versions[version_id] = {
                 "path": path,
@@ -305,7 +337,7 @@ class DataVersion(ModuleApiBase):
                 file_info.id,
                 title=version_title,
                 description=version_description,
-                instant_access_project_id=cloned_project_id if instant_access else None,
+                preview_project_id=cloned_project_id if enable_preview else None,
             )
             return version_id
         except Exception as e:
@@ -325,7 +357,7 @@ class DataVersion(ModuleApiBase):
         file_id: int,
         title: Optional[str] = None,
         description: Optional[str] = None,
-        instant_access_project_id: Optional[int] = None,
+        preview_project_id: Optional[int] = None,
     ):
         """
         Commit project version.
@@ -345,24 +377,24 @@ class DataVersion(ModuleApiBase):
         :type title: Optional[str]
         :param description: Version description
         :type description: Optional[str]
-        :param instant_access_project_id: ID of the cloned project that will be used for instant access to version data.
-        :type instant_access_project_id: Optional[int]
+        :param preview_project_id: ID of the cloned project that will be used to preview version data.
+        :type preview_project_id: Optional[int]
         :returns: None
         """
-        body = {
+        payload = {
             ApiField.ID: version_id,
             ApiField.COMMIT_TOKEN: commit_token,
             ApiField.PROJECT_UPDATED_AT: updated_at,
             ApiField.TEAM_FILE_ID: file_id,
         }
-        if instant_access_project_id is not None:
-            body[ApiField.READ_ONLY_PROJECT_ID] = instant_access_project_id
+        if preview_project_id is not None:
+            payload[ApiField.PREVIEW_PROJECT_ID] = preview_project_id
         if title:
-            body[ApiField.TITLE] = title
+            payload[ApiField.TITLE] = title
         if description:
-            body[ApiField.DESCRIPTION] = description
+            payload[ApiField.DESCRIPTION] = description
 
-        response = self._api.post("projects.versions.commit", body)
+        response = self._api.post("projects.versions.commit", payload)
         commit_info = response.json()
         if not commit_info.get("success"):
             raise RuntimeError("Failed to commit version")
@@ -442,7 +474,9 @@ class DataVersion(ModuleApiBase):
         version_id: Optional[int] = None,
         version_num: Optional[int] = None,
         skip_missed_entities: bool = False,
-        instant_access: bool = False,
+        workspace_id: Optional[int] = None,
+        project_name: Optional[str] = None,
+        project_description: Optional[str] = None,
     ) -> ProjectInfo:
         """
         Restore project to a specific version.
@@ -456,8 +490,12 @@ class DataVersion(ModuleApiBase):
         :type version_num: Optional[int]
         :param skip_missed_entities: Skip missed Images
         :type skip_missed_entities: bool, default False
-        :param instant_access: Restore version from the project snapshot that was created for instant access.
-        :type instant_access: bool, default False
+        :param workspace_id: Workspace ID where the restored project will be created. If None, the project will be restored to the same workspace.
+        :type workspace_id: Optional[int]
+        :param project_name: Name of the restored project. If None, a default name will be used.
+        :type project_name: Optional[str]
+        :param project_description: Description of the restored project. If None, a default description will be used.
+        :type project_description: Optional[str]
         :returns: Project info object of the restored project
         :rtype: :class:`~supervisely.api.project_api.ProjectInfo` or None
         """
@@ -480,77 +518,57 @@ class DataVersion(ModuleApiBase):
                 raise ValueError(f"Version {version_id} does not exist")
             version_num = self.versions[str(version_id)]["number"]
 
-        dst_project_name = self.PROJECT_NAME_TEMPLATE.format(
-            project_name=self.project_info.name, version_num=version_num
-        )
-        dst_project_desc = self.PROJECT_DESC_TEMPLATE.format(
-            version_num=version_num,
-            project_id=self.project_info.id,
-            version_id=version_id,
-        )
-
-        if instant_access:
-            version_info = self._api.project.version.get_info_by_id(version_id)
-            if version_info is None:
-                logger.warning(
-                    f"Project can't be restored to version {version_num} because it doesn't have restore point."
-                )
-                return None
-            instant_access_project_id = version_info.get(ApiField.READ_ONLY_PROJECT_ID)
-            if instant_access_project_id is None:
-                logger.warning(
-                    f"Project can't be restored to version {version_num} with instant access because it doesn't have an instant access snapshot."
-                )
-                return None
-            instant_access_project_info = self._api.project.get_info_by_id(
-                instant_access_project_id
-            )
-            if instant_access_project_info is None:
-                logger.warning(
-                    f"Project can't be restored to version {version_num} with instant access because the snapshot project is not available."
-                )
-                return None
-            new_project_info = copy_project(
-                api=self._api,
-                src_project_info=instant_access_project_info,
-                dst_workspace_id=project_info.workspace_id,
-                dst_project_name=dst_project_name + " instant access snapshot",
-                dst_project_description=dst_project_desc + " (Instant Access Snapshot)",
+        if project_name is None:
+            dst_project_name = self.PROJECT_NAME_TEMPLATE.format(
+                project_name=self.project_info.name, version_num=version_num
             )
         else:
-            # updated_at = self.versions[str(version_id)]["updated_at"]
-            backup_files = self.versions[str(version_id)]["path"]
-
-            # turn off this check for now (treating this as a project clone operation)
-            # if updated_at == self.project_info.updated_at:
-            #     logger.warning(
-            #         f"Project is already on version {version_num} with the same updated_at timestamp"
-            #     )
-            #     return
-
-            if backup_files is None:
-                logger.warning(
-                    f"Project can't be restored to version {version_num} because it doesn't have restore point."
-                )
-                return
-
-            bin_io = self._download_and_extract(backup_files)
-            new_project_info = self.project_cls.upload_bin(
-                self._api,
-                bin_io,
-                workspace_id=self.project_info.workspace_id,
-                project_name=dst_project_name,
-                project_description=dst_project_desc,
-                skip_missed=skip_missed_entities,
+            dst_project_name = project_name
+        
+        if project_description is None:
+            dst_project_desc = self.PROJECT_DESC_TEMPLATE.format(
+                version_num=version_num,
+                project_id=self.project_info.id,
+                version_id=version_id,
             )
+        else:
+            dst_project_desc = project_description
+
+        # updated_at = self.versions[str(version_id)]["updated_at"]
+        backup_files = self.versions[str(version_id)]["path"]
+
+        # turn off this check for now (treating this as a project clone operation)
+        # if updated_at == self.project_info.updated_at:
+        #     logger.warning(
+        #         f"Project is already on version {version_num} with the same updated_at timestamp"
+        #     )
+        #     return
+
+        if backup_files is None:
+            logger.warning(
+                f"Project can't be restored to version {version_num} because it doesn't have restore point."
+            )
+            return
+
+        bin_io = self._download_and_extract(backup_files)
+        new_project_info = self.project_cls.upload_bin(
+            self._api,
+            bin_io,
+            workspace_id=self.project_info.workspace_id if workspace_id is None else workspace_id,
+            project_name=dst_project_name,
+            project_description=dst_project_desc,
+            skip_missed=skip_missed_entities,
+        )
         return new_project_info
 
     def get_or_create_versions_workspace(self, team_id: int, description: str = "") -> int:
         """
-        Get or create a hidden workspace for storing instant access project versions for a team.
+        Get or create a hidden workspace for storing preview project versions for a team.
 
         :param team_id: Team ID
         :type team_id: int
+        :param description: Workspace description
+        :type description: str
         :returns: Workspace ID
         :rtype: int
         """
@@ -567,28 +585,77 @@ class DataVersion(ModuleApiBase):
         )
         return new_workspace.id
 
-    def update_description(self, project_id: int, version_id: int, description: str):
+    def update(self, version_id: int, name: Optional[str] = None, description: Optional[str] = None, preview_project_id: Optional[int] = None):
         """
-        Update version description.
+        Update version information such as name, description or link preview project to the version.
+
+        ATTENTION: Do not use this parameter to link a regular project as it can cause issues with version data consistency. This parameter is intended to link a cloned project in the hidden workspace that is created when enabling preview for the version.
+
+        :param version_id: Version ID
+        :type version_id: int
+        :param name: New name
+        :type name: Optional[str]
+        :param description: New description
+        :type description: Optional[str]
+        :param preview_project_id: Preview project ID to link to the version. This project will be used to preview version data. 
+        :type preview_project_id: Optional[int]
+        :returns: None
+        :rtype: None
+        """
+        if name is None and description is None and preview_project_id is None:
+            raise ValueError("At least one of name, description or preview_project_id must be provided")
+
+        payload = {
+            ApiField.ID: version_id,
+        }
+        if name is not None:
+            payload[ApiField.NAME] = name
+        if description is not None:
+            payload[ApiField.DESCRIPTION] = description
+        if preview_project_id is not None:
+            payload[ApiField.PREVIEW_PROJECT_ID] = preview_project_id
+        response = self._api.post("projects.versions.update", payload)
+        update_info = response.json()
+        if not update_info.get("success"):
+            raise RuntimeError("Failed to update version information")
+
+    def enable_preview(self, project_id: int, version_id: int, overwrite: bool = False) -> ProjectInfo:
+        """
+        Enable preview for the version by creating a snapshot project and linking it to the version.
+        If the snapshot project already exists and overwrite is False, returns the existing snapshot project ID. 
+        
+        ATTENTION: This method works only for committed versions with successfully uploaded version data. 
 
         :param project_id: Project ID
         :type project_id: int
         :param version_id: Version ID
         :type version_id: int
-        :param description: New description
-        :type description: str
-        :returns: None
+        :param overwrite: Whether to overwrite existing snapshot project if it exists
+        :type overwrite: bool
+        :returns: Preview snapshot project information
+        :rtype: ProjectInfo
         """
+        version_info = self.get_info_by_id(project_id, version_id)
+        project_info = self._api.project.get_info_by_id(project_id)
+        if version_info is None:
+            raise ValueError(f"Version with ID {version_id} does not exist")
 
-        body = {
-            ApiField.ID: version_id,
-            ApiField.PROJECT_ID: project_id,
-            ApiField.DESCRIPTION: description,
-        }
-        response = self._api.post("projects.versions.update-description", body)
-        update_info = response.json()
-        if not update_info.get("success"):
-            raise RuntimeError("Failed to update version description")
+        
+        if version_info.preview_project_id is not None and not overwrite:
+            logger.info(f"Preview snapshot project with ID {version_info.preview_project_id} already exists for version {version_id}. Returning existing snapshot project information.")
+            return self._api.project.get_info_by_id(version_info.preview_project_id)
+        
+        preview_project_info = self.restore(
+            project_info=project_info,
+            version_id=version_id,
+            workspace_id=self.get_or_create_versions_workspace(team_id=project_info.team_id),
+            project_name=project_info.name + PREVIEW_NAME_SUFFIX,
+            project_description=project_info.description + PREVIEW_DESCRIPTION_SUFFIX,
+        )
+
+        self.update(version_id, preview_project_id=preview_project_info.id)
+
+        return preview_project_info
 
     def _create_warning_system_file(self):
         """
