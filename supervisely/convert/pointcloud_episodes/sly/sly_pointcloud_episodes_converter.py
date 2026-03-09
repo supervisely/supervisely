@@ -1,4 +1,3 @@
-import imghdr
 import os
 
 import supervisely.convert.pointcloud_episodes.sly.sly_pointcloud_episodes_helper as sly_episodes_helper
@@ -72,7 +71,7 @@ class SLYPointcloudEpisodesConverter(PointcloudEpisodeConverter):
                     continue
 
                 ext = get_file_ext(full_path)
-                recognized_ext = imghdr.what(full_path)
+                recognized_ext = self._get_image_subtype(full_path)
                 if file in JUNK_FILES:
                     continue
                 elif ext == self.ann_ext:
