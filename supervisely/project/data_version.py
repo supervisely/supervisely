@@ -11,7 +11,7 @@ import zstd
 
 from supervisely._utils import logger
 from supervisely.api.module_api import ApiField, ModuleApiBase
-from supervisely.api.project_api import ProjectInfo
+from supervisely.api.project_api import ProjectInfo, ProjectType
 from supervisely.io import json
 from supervisely.io.fs import remove_dir, silent_remove
 from supervisely.project.copy import copy_project
@@ -313,14 +313,19 @@ class DataVersion(ModuleApiBase):
             return latest
         try:
             if enable_preview:
-                workspace_id = self.get_or_create_versions_workspace(team_id=project_info.team_id)
-                cloned_project_id = copy_project(
-                    api=self._api,
-                    src_project_info=project_info,
-                    dst_workspace_id=workspace_id,
-                    dst_project_name=project_info.name + f"_version_{version_id}_backup",
-                    read_only=enable_preview,
-                )
+                if project_info.type in [ProjectType.VIDEOS.value, ProjectType.IMAGES.value]:
+                    workspace_id = self.get_or_create_versions_workspace(team_id=project_info.team_id)
+                    cloned_project_id = copy_project(
+                        api=self._api,
+                        src_project_info=project_info,
+                        dst_workspace_id=workspace_id,
+                        dst_project_name=project_info.name + f"_version_{version_id}_backup",
+                        read_only=enable_preview,
+                    )
+                else:
+                    logger.warning(f"Preview is not supported for project type {project_info.type}. Creating version without preview.")
+                    cloned_project_id = None
+                    enable_preview = False
             file_info = self._compress_and_upload(path)
             self.versions[version_id] = {
                 "path": path,
@@ -328,6 +333,8 @@ class DataVersion(ModuleApiBase):
                 "previous": latest,
                 "number": int(self.versions[str(latest)]["number"]) + 1 if latest else 1,
             }
+            if enable_preview and cloned_project_id is not None:
+                self.versions[version_id]["preview"] = cloned_project_id
             self.versions["latest"] = version_id
             self.set_map(project_info, initialize=False)
             self.commit(
@@ -590,6 +597,7 @@ class DataVersion(ModuleApiBase):
         Update version information such as name, description or link preview project to the version.
 
         ATTENTION: Do not use this parameter to link a regular project as it can cause issues with version data consistency. This parameter is intended to link a cloned project in the hidden workspace that is created when enabling preview for the version.
+        Only versions of projects with types VIDEO and IMAGE are supported for preview.
 
         :param version_id: Version ID
         :type version_id: int
@@ -597,7 +605,7 @@ class DataVersion(ModuleApiBase):
         :type name: Optional[str]
         :param description: New description
         :type description: Optional[str]
-        :param preview_project_id: Preview project ID to link to the version. This project will be used to preview version data. 
+        :param preview_project_id: Preview project ID to link to the version. This project will be used to preview version data. Only versions of projects with types VIDEO and IMAGE are supported for preview.
         :type preview_project_id: Optional[int]
         :returns: None
         :rtype: None
@@ -637,6 +645,9 @@ class DataVersion(ModuleApiBase):
         """
         version_info = self.get_info_by_id(project_id, version_id)
         project_info = self._api.project.get_info_by_id(project_id)
+        if project_info.type not in [ProjectType.VIDEOS.value, ProjectType.IMAGES.value]:
+            raise ValueError(f"Preview is not supported for project type {project_info.type}")
+        
         if version_info is None:
             raise ValueError(f"Version with ID {version_id} does not exist")
 
