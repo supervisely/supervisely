@@ -22,29 +22,23 @@ RUN set -eu; \
     python -m venv /opt/venv; \
     /opt/venv/bin/pip install --upgrade pip==26.0.1; \
     /opt/venv/bin/pip install setuptools==80.10.1 wheel==0.46.2 pillow==12.1.1; \
-    # MAX_ATTEMPTS=8; \
-    # TIMEOUT=15; \
-    # ATTEMPT=1; \
-    # while [ "$ATTEMPT" -le "$MAX_ATTEMPTS" ]; do \
-    # echo "Attempt ${ATTEMPT}/${MAX_ATTEMPTS}: Installing supervisely==$tag_ref_name..."; \
-    # if /opt/venv/bin/pip install --no-cache-dir supervisely==$tag_ref_name; then \
-    # echo "Supervisely installed successfully"; \
-    # break; \
-    # fi; \
-    # if [ "$ATTEMPT" -eq "$MAX_ATTEMPTS" ]; then \
-    # echo "ERROR: Failed to install supervisely==$tag_ref_name after $MAX_ATTEMPTS attempts" >&2; \
-    # exit 1; \
-    # fi; \
-    # echo "Installation failed. Waiting ${TIMEOUT}s..."; \
-    # sleep "$TIMEOUT"; \
-    # ATTEMPT=$((ATTEMPT + 1)); \
-    # done; \
-    # todo: remove; tests only ------------------------------------- \
-    apt-get update; \
-    apt-get install -y --no-install-recommends git; \
-    rm -rf /var/lib/apt/lists/*; \
-    /opt/venv/bin/pip install git+https://github.com/supervisely/supervisely.git@hardened-docker-images; \
-    # --------------------------------------------------------------- \
+    MAX_ATTEMPTS=8; \
+    TIMEOUT=15; \
+    ATTEMPT=1; \
+    while [ "$ATTEMPT" -le "$MAX_ATTEMPTS" ]; do \
+    echo "Attempt ${ATTEMPT}/${MAX_ATTEMPTS}: Installing supervisely==$tag_ref_name..."; \
+    if /opt/venv/bin/pip install --no-cache-dir supervisely==$tag_ref_name; then \
+    echo "Supervisely installed successfully"; \
+    break; \
+    fi; \
+    if [ "$ATTEMPT" -eq "$MAX_ATTEMPTS" ]; then \
+    echo "ERROR: Failed to install supervisely==$tag_ref_name after $MAX_ATTEMPTS attempts" >&2; \
+    exit 1; \
+    fi; \
+    echo "Installation failed. Waiting ${TIMEOUT}s..."; \
+    sleep "$TIMEOUT"; \
+    ATTEMPT=$((ATTEMPT + 1)); \
+    done; \
     rm -rf \
     /opt/venv/lib/python3.14/site-packages/wheel* \
     /opt/venv/lib/python3.14/site-packages/setuptools/_vendor/wheel* \
