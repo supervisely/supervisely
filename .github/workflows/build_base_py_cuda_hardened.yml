@@ -40,14 +40,11 @@ jobs:
             --export-cache type=registry,ref=docker.io/supervisely/base-py-cuda-hardened:buildcache,mode=max \
             --import-cache type=registry,ref=docker.io/supervisely/base-py-cuda-hardened:buildcache
 
-      - name: Activate hardened venv
-        run: |
-          . $HOME/.venv_hardened/bin/activate
-
       - name: pip-audit scan
         run: |
           mkdir -p audit_logs
           syft -q "docker-archive:image.tar" -o json > audit_logs/syft-image.json
+          . $HOME/.venv_hardened/bin/activate
           python3 - << 'PY'
           import json
           from pathlib import Path
