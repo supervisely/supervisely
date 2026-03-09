@@ -8,7 +8,7 @@ FROM nvidia/cuda:12.8.0-runtime-ubuntu22.04 AS cuda
 # ============================================================================
 # STAGE 2: Runtime Stage (Hardened + CUDA)
 # ============================================================================
-FROM supervisely/py-sdk-hardened:${tag_ref_name} AS runtime
+FROM supervisely/base-py-sdk-hardened:${tag_ref_name} AS runtime
 
 COPY --from=cuda /usr/local/cuda-12.8/targets/x86_64-linux/lib/libcudart.so* /usr/lib/
 COPY --from=cuda /usr/local/cuda-12.8/targets/x86_64-linux/lib/libcublas.so* /usr/lib/
