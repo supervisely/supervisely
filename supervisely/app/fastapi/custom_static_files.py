@@ -1,34 +1,20 @@
 import os
 import typing
 
-from importlib.metadata import PackageNotFoundError, version as package_version
 from pathlib import Path
 from fastapi.staticfiles import StaticFiles
 from fastapi import HTTPException, status
-from packaging.version import parse
 from starlette.datastructures import Headers
 from starlette.responses import FileResponse, Response, StreamingResponse
 from starlette.staticfiles import NotModifiedResponse
 from starlette.types import Scope
 from supervisely.video.video import ALLOWED_VIDEO_EXTENSIONS
 
-try:
-    _starlette_version = package_version("starlette")
-except PackageNotFoundError:
-    _starlette_version = "0"
-
-if parse(_starlette_version) > parse("0.48.0"):
-    INVALID_RANGE_STATUS_CODE = getattr(
-        status,
-        "HTTP_416_RANGE_NOT_SATISFIABLE",
-        status.HTTP_416_REQUESTED_RANGE_NOT_SATISFIABLE,
-    )
-else:
-    INVALID_RANGE_STATUS_CODE = getattr(
-        status,
-        "HTTP_416_REQUESTED_RANGE_NOT_SATISFIABLE",
-        status.HTTP_416_RANGE_NOT_SATISFIABLE,
-    )
+INVALID_RANGE_STATUS_CODE = getattr(status, "HTTP_416_RANGE_NOT_SATISFIABLE", None)
+if INVALID_RANGE_STATUS_CODE is None:
+    INVALID_RANGE_STATUS_CODE = getattr(status, "HTTP_416_REQUESTED_RANGE_NOT_SATISFIABLE", None)
+if INVALID_RANGE_STATUS_CODE is None:
+    raise AttributeError("No compatible HTTP 416 status code constant found in fastapi.status")
 
 
 PathLike = typing.Union[str, "os.PathLike[str]"]
