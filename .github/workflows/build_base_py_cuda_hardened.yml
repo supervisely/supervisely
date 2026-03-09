@@ -40,17 +40,9 @@ jobs:
             --export-cache type=registry,ref=docker.io/supervisely/base-py-cuda-hardened:buildcache,mode=max \
             --import-cache type=registry,ref=docker.io/supervisely/base-py-cuda-hardened:buildcache
 
-      - name: Install scanning tools
-        env:
-          DOCKLE_VERSION: 0.4.15
-          SYFT_VERSION: v1.4.1
+      - name: Activate hardened venv
         run: |
-          mkdir -p "$HOME/.local/bin"
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          python3 -m pip install --user pip-audit==2.7.3
-          wget -qO- "https://github.com/goodwithtech/dockle/releases/download/v${DOCKLE_VERSION}/dockle_${DOCKLE_VERSION}_Linux-64bit.tar.gz" | tar -xz -C "$HOME/.local/bin" dockle
-          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b "$HOME/.local/bin" "$SYFT_VERSION"
-          sudo apt-get update && sudo apt-get install -y --no-install-recommends skopeo && sudo rm -rf /var/lib/apt/lists/*
+          source /opt/.venv_hardened/bin/activate
 
       - name: pip-audit scan
         run: |
