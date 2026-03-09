@@ -42,7 +42,7 @@ jobs:
 
       - name: Activate hardened venv
         run: |
-          source /opt/.venv_hardened/bin/activate
+          . $HOME/.venv_hardened/bin/activate
 
       - name: pip-audit scan
         run: |
