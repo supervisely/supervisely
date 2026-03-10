@@ -2,6 +2,11 @@
    ReorderTable widget styles
    ===================================================================== */
 
+/* Hide the label text that el-checkbox renders when :label is used for array v-model */
+.sly-reorder-wrap .el-checkbox__label {
+  display: none;
+}
+
 /* ── Outer wrapper: table on left, action panel on right ─────────── */
 .sly-reorder-wrap {
   display: flex;
