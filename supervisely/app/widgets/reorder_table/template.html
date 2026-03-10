@@ -8,5 +8,7 @@
   :page.sync="state.{{{widget.widget_id}}}.page"
   :page-size.sync="state.{{{widget.widget_id}}}.pageSize"
   :selected-positions.sync="state.{{{widget.widget_id}}}.selectedPositions"
+  {% if widget._changes_handled == true %}
   @order-changed="post('/{{{widget.widget_id}}}/order_changed_cb')"
+  {% endif %}
 ></reorder-table>

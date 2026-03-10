@@ -57,7 +57,7 @@ class ReorderTable(Widget):
         self._data = [list(row) for row in data]
         self._page_size = max(1, int(page_size))
         self._order: List[int] = list(range(len(self._data)))
-        self._order_changed_handled = False
+        self._changes_handled = False
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -168,7 +168,7 @@ class ReorderTable(Widget):
         """
         route_path = self.get_route_path(ReorderTable.Routes.ORDER_CHANGED)
         server = self._sly_app.get_server()
-        self._order_changed_handled = True
+        self._changes_handled = True
 
         @server.post(route_path)
         def _order_changed_handler():
