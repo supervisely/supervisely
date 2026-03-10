@@ -33,6 +33,7 @@ from supervisely._utils import (
     abs_url,
     compare_dicts,
     compress_image_url,
+    deep_merge_dicts,
     get_unix_timestamp,
     is_development,
 )
@@ -1553,16 +1554,15 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         :param id: Project ID
         :type id: int
-        :param settings: Project settings
+        :param settings: Project settings to apply.
         :type settings: Dict[str, str]
-        :param merge_with_current: If True, merges the new settings with the current settings. If False, replaces the current settings.
-            **ATTENTION**: Will overwrite fields with the same keys in the current settings if they are present in the new settings, otherwise will keep current fields.
+        :param merge_with_current: If True, deep-merges the new settings with the current settings.
+            If False, replaces the current settings entirely.
         :type merge_with_current: bool, optional
         """
         if merge_with_current:
             current_settings = self.get_settings(id)
-            current_settings.update(settings)
-            settings = current_settings
+            settings = deep_merge_dicts(current_settings, settings)
         self._api.post("projects.settings.update", {ApiField.ID: id, ApiField.SETTINGS: settings})
 
     def download_images_tags(
@@ -3086,4 +3086,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :returns: None
         :rtype: None
         """
-        self.update_settings(id, {ApiField.IS_READ_ONLY_PROJECT: enable}, merge_with_current=True)
+        self.update_settings(
+            id,
+            {ApiField.ADVANCED_SETTINGS: {ApiField.IS_READ_ONLY_PROJECT: enable}},
+            merge_with_current=True,
+        )

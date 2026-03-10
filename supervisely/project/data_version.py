@@ -163,7 +163,7 @@ class DataVersion(ModuleApiBase):
             data[ApiField.FILTER] = filters
 
         return self.get_list_all_pages("projects.versions.list", data)
-    
+
     def get_info_by_id(self, project_id: int, version_id: int) -> Optional[VersionInfo]:
         """
         Get project version information by version ID.
@@ -175,9 +175,14 @@ class DataVersion(ModuleApiBase):
         :returns: Project version information
         :rtype: Optional[:class:`~supervisely.project.data_version.VersionInfo`]
         """
-        versions = self.get_list(project_id, filters=[{ApiField.FIELD: ApiField.ID, ApiField.OPERATOR: "=", ApiField.VALUE: version_id}])
+        versions = self.get_list(
+            project_id,
+            filters=[
+                {ApiField.FIELD: ApiField.ID, ApiField.OPERATOR: "=", ApiField.VALUE: version_id}
+            ],
+        )
         return versions[0] if versions else None
-    
+
     def get_info_by_number(self, project_id: int, version_num: int) -> Optional[VersionInfo]:
         """
         Get project version information by version number.
@@ -189,7 +194,16 @@ class DataVersion(ModuleApiBase):
         :returns: Project version information
         :rtype: Optional[:class:`~supervisely.project.data_version.VersionInfo`]
         """
-        versions = self.get_list(project_id, filters=[{ApiField.FIELD: ApiField.VERSION, ApiField.OPERATOR: "=", ApiField.VALUE: version_num}])
+        versions = self.get_list(
+            project_id,
+            filters=[
+                {
+                    ApiField.FIELD: ApiField.VERSION,
+                    ApiField.OPERATOR: "=",
+                    ApiField.VALUE: version_num,
+                }
+            ],
+        )
         return versions[0] if versions else None
 
     def get_id_by_number(self, project_id: int, version_num: int) -> int:
@@ -314,8 +328,10 @@ class DataVersion(ModuleApiBase):
         try:
             if enable_preview:
                 if project_info.type in [ProjectType.VIDEOS.value, ProjectType.IMAGES.value]:
-                    workspace_id = self.get_or_create_versions_workspace(team_id=project_info.team_id)
-                    cloned_project_id = copy_project(
+                    workspace_id = self.get_or_create_versions_workspace(
+                        team_id=project_info.team_id
+                    )
+                    cloned_project_info = copy_project(
                         api=self._api,
                         src_project_info=project_info,
                         dst_workspace_id=workspace_id,
@@ -323,8 +339,10 @@ class DataVersion(ModuleApiBase):
                         read_only=enable_preview,
                     )
                 else:
-                    logger.warning(f"Preview is not supported for project type {project_info.type}. Creating version without preview.")
-                    cloned_project_id = None
+                    logger.warning(
+                        f"Preview is not supported for project type {project_info.type}. Creating version without preview."
+                    )
+                    cloned_project_info = None
                     enable_preview = False
             file_info = self._compress_and_upload(path)
             self.versions[version_id] = {
@@ -333,8 +351,8 @@ class DataVersion(ModuleApiBase):
                 "previous": latest,
                 "number": int(self.versions[str(latest)]["number"]) + 1 if latest else 1,
             }
-            if enable_preview and cloned_project_id is not None:
-                self.versions[version_id]["preview"] = cloned_project_id
+            if enable_preview and cloned_project_info is not None:
+                self.versions[version_id]["preview"] = cloned_project_info.id
             self.versions["latest"] = version_id
             self.set_map(project_info, initialize=False)
             self.commit(
@@ -344,7 +362,7 @@ class DataVersion(ModuleApiBase):
                 file_info.id,
                 title=version_title,
                 description=version_description,
-                preview_project_id=cloned_project_id if enable_preview else None,
+                preview_project_id=cloned_project_info.id if enable_preview else None,
             )
             return version_id
         except Exception as e:
@@ -531,7 +549,7 @@ class DataVersion(ModuleApiBase):
             )
         else:
             dst_project_name = project_name
-        
+
         if project_description is None:
             dst_project_desc = self.PROJECT_DESC_TEMPLATE.format(
                 version_num=version_num,
@@ -592,7 +610,13 @@ class DataVersion(ModuleApiBase):
         )
         return new_workspace.id
 
-    def update(self, version_id: int, name: Optional[str] = None, description: Optional[str] = None, preview_project_id: Optional[int] = None):
+    def update(
+        self,
+        version_id: int,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+        preview_project_id: Optional[int] = None,
+    ):
         """
         Update version information such as name, description or link preview project to the version.
 
@@ -611,7 +635,9 @@ class DataVersion(ModuleApiBase):
         :rtype: None
         """
         if name is None and description is None and preview_project_id is None:
-            raise ValueError("At least one of name, description or preview_project_id must be provided")
+            raise ValueError(
+                "At least one of name, description or preview_project_id must be provided"
+            )
 
         payload = {
             ApiField.ID: version_id,
@@ -627,12 +653,14 @@ class DataVersion(ModuleApiBase):
         if not update_info.get("success"):
             raise RuntimeError("Failed to update version information")
 
-    def enable_preview(self, project_id: int, version_id: int, overwrite: bool = False) -> ProjectInfo:
+    def enable_preview(
+        self, project_id: int, version_id: int, overwrite: bool = False
+    ) -> ProjectInfo:
         """
         Enable preview for the version by creating a snapshot project and linking it to the version.
-        If the snapshot project already exists and overwrite is False, returns the existing snapshot project ID. 
-        
-        ATTENTION: This method works only for committed versions with successfully uploaded version data. 
+        If the snapshot project already exists and overwrite is False, returns the existing snapshot project ID.
+
+        ATTENTION: This method works only for committed versions with successfully uploaded version data.
 
         :param project_id: Project ID
         :type project_id: int
@@ -647,15 +675,16 @@ class DataVersion(ModuleApiBase):
         project_info = self._api.project.get_info_by_id(project_id)
         if project_info.type not in [ProjectType.VIDEOS.value, ProjectType.IMAGES.value]:
             raise ValueError(f"Preview is not supported for project type {project_info.type}")
-        
+
         if version_info is None:
             raise ValueError(f"Version with ID {version_id} does not exist")
 
-        
         if version_info.preview_project_id is not None and not overwrite:
-            logger.info(f"Preview snapshot project with ID {version_info.preview_project_id} already exists for version {version_id}. Returning existing snapshot project information.")
+            logger.info(
+                f"Preview snapshot project with ID {version_info.preview_project_id} already exists for version {version_id}. Returning existing snapshot project information."
+            )
             return self._api.project.get_info_by_id(version_info.preview_project_id)
-        
+
         preview_project_info = self.restore(
             project_info=project_info,
             version_id=version_id,

@@ -64,7 +64,9 @@ class CreatedDataset:
         )
 
 
-def images_get_list(api: sly.Api, dataset_id: int, image_ids: Optional[List[int]] = None) -> List[sly.ImageInfo]:
+def images_get_list(
+    api: sly.Api, dataset_id: int, image_ids: Optional[List[int]] = None
+) -> List[sly.ImageInfo]:
     """Fetch image infos for a dataset, requesting only the fields needed for copying.
 
     Kept in ``copy.py`` because it uses a hand-picked subset of ``ApiField``
@@ -558,7 +560,7 @@ def copy_project(
         )
         created_project = _replace_project(api, old_project, created_project)
 
-    if read_only and project_type in [sly.ProjectType.IMAGE, sly.ProjectType.VIDEO]:
+    if read_only and project_type in [sly.ProjectType.IMAGES.value, sly.ProjectType.VIDEOS.value]:
         api.project.set_read_only(
             created_project.id,
             enable=True,
