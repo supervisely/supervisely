@@ -8,40 +8,29 @@ from supervisely.app.widgets_context import JinjaWidgets
 
 class ReorderTable(Widget):
     """Table widget that lets users reorder rows via drag-and-drop, multi-select,
-    and action buttons (top / up / set-to-position / down / bottom).
+    and a floating action panel (Top / Up / Set to # / Down / Bottom).
+    Read about it in `Developer Portal <https://developer.supervisely.com/app-development/widgets/tables/reordertable>`_.
 
-    Features
-    --------
-    * Any number of custom columns supplied as plain strings.
-    * Data supplied as a list of lists (one inner list per row).
-    * Server-side pagination with an in-widget editable page-size control.
-    * Each row shows its **original** 1-based position badge; if the item has
-      been moved a second badge shows the **current** position.
-    * Multi-row selection via checkboxes (including select-all on the current
-      page).
-    * Drag-and-drop reordering within the visible page.
-    * Floating action panel that appears when at least one row is selected:
-      ``Top``, ``Up``, ``Set to # <input>``, ``Down``, ``Bottom``, ``Deselect``.
+    :Usage example:
 
-    Usage Example
-    -------------
-    .. code-block:: python
+        .. code-block:: python
 
-        from supervisely.app.widgets import ReorderTable
+            from supervisely.app.widgets import ReorderTable
 
-        table = ReorderTable(
-            columns=["Name", "Score"],
-            data=[["Alice", 95], ["Bob", 87], ["Carol", 92]],
-            page_size=10,
-        )
+            table = ReorderTable(
+                columns=["Name", "Score"],
+                data=[["Alice", 95], ["Bob", 87], ["Carol", 92]],
+                page_size=10,
+            )
 
-        @table.order_changed
-        def handle_reorder(order: list):
-            # order is a list of 0-based original row indices in the new order
-            print("New order:", order)
+            @table.order_changed
+            def handle_reorder(order: list):
+                print("New order:", order)
     """
 
     class Routes:
+        """Callback route names used by the widget frontend to notify Python."""
+
         ORDER_CHANGED = "order_changed_cb"
 
     def __init__(
@@ -52,14 +41,13 @@ class ReorderTable(Widget):
         widget_id: Optional[str] = None,
     ):
         """
-        :param columns: Column header names shown in the table.
+        :param columns: Column header names.
         :type columns: List[str]
-        :param data: Row data; each element is a list of cell values (one per column).
-            Defaults to an empty table.
+        :param data: Row data; each inner list is one row of cell values.
         :type data: List[List], optional
-        :param page_size: Initial number of rows displayed per page.
+        :param page_size: Number of rows per page.
         :type page_size: int, optional
-        :param widget_id: Unique widget identifier (auto-generated if omitted).
+        :param widget_id: Unique widget identifier.
         :type widget_id: str, optional
         """
         if data is None:
@@ -70,29 +58,18 @@ class ReorderTable(Widget):
         self._page_size = max(1, int(page_size))
         self._order: List[int] = list(range(len(self._data)))
         self._order_changed_handled = False
-        self._order_changed_cb: Optional[Callable[[List[int]], None]] = None
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
-        # Register the Vue component script (de-duplicated by class name).
         script_path = "./sly/css/app/widgets/reorder_table/script.js"
         JinjaWidgets().context["__widget_scripts__"][self.__class__.__name__] = script_path
 
-        # Register backend route.
-        route_path = self.get_route_path(ReorderTable.Routes.ORDER_CHANGED)
-        server = self._sly_app.get_server()
-
-        @server.post(route_path)
-        def _order_changed_handler():
-            self._order = list(StateJson()[self.widget_id].get("order", self._order))
-            if self._order_changed_handled and self._order_changed_cb is not None:
-                self._order_changed_cb(list(self._order))
-
-    # ------------------------------------------------------------------ #
-    #  Widget data / state                                                 #
-    # ------------------------------------------------------------------ #
-
     def get_json_data(self) -> Dict[str, Any]:
+        """Returns dictionary with widget data.
+
+        :returns: Dictionary with ``columns``, ``rows`` and ``total`` fields.
+        :rtype: Dict[str, Any]
+        """
         return {
             "columns": self._columns,
             "rows": self._data,
@@ -100,6 +77,11 @@ class ReorderTable(Widget):
         }
 
     def get_json_state(self) -> Dict[str, Any]:
+        """Returns dictionary with widget state.
+
+        :returns: Dictionary with ``order``, ``page``, ``pageSize`` and ``selectedPositions`` fields.
+        :rtype: Dict[str, Any]
+        """
         return {
             "order": list(self._order),
             "page": 1,
@@ -107,21 +89,16 @@ class ReorderTable(Widget):
             "selectedPositions": [],
         }
 
-    # ------------------------------------------------------------------ #
-    #  Public API                                                          #
-    # ------------------------------------------------------------------ #
-
     def get_order(self) -> List[int]:
-        """Return the current row order as a list of 0-based original row indices.
+        """Returns the current row order as a list of 0-based original row indices.
 
-        :returns: Current order list; index *i* contains the original 0-based
-            row index that is now at position *i*.
+        :returns: Current order; position *i* holds the original 0-based row index.
         :rtype: List[int]
         """
         return list(self._order)
 
     def get_reordered_data(self) -> List[List]:
-        """Return all data rows arranged in the current user-defined order.
+        """Returns all rows arranged in the current user-defined order.
 
         :returns: Reordered rows.
         :rtype: List[List]
@@ -129,9 +106,7 @@ class ReorderTable(Widget):
         return [self._data[i] for i in self._order]
 
     def set_data(self, columns: List[str], data: List[List]) -> None:
-        """Replace the table contents and reset the order to the identity permutation.
-
-        Broadcasts changes to all connected frontends immediately.
+        """Replaces the table contents and resets the order to the identity permutation.
 
         :param columns: New column header names.
         :type columns: List[str]
@@ -161,10 +136,7 @@ class ReorderTable(Widget):
         StateJson().send_changes()
 
     def reset_order(self) -> None:
-        """Reset the row order to the original (identity) permutation.
-
-        Broadcasts changes to all connected frontends immediately.
-        """
+        """Resets the row order to the original (identity) permutation."""
         self._order = list(range(len(self._data)))
         StateJson()[self.widget_id].update(
             {
@@ -175,27 +147,32 @@ class ReorderTable(Widget):
         )
         StateJson().send_changes()
 
-    # ------------------------------------------------------------------ #
-    #  Event decorator                                                     #
-    # ------------------------------------------------------------------ #
-
     def order_changed(self, func: Callable[[List[int]], None]) -> Callable:
         """Decorator that registers a callback invoked whenever the row order changes.
 
         The callback receives one argument: the new order as a list of 0-based
-        original row indices (same value as :py:meth:`get_order`).
+        original row indices (same value returned by :py:meth:`get_order`).
 
-        .. code-block:: python
-
-            @table.order_changed
-            def on_reorder(order):
-                print("Reordered:", order)
-
-        :param func: Callback function.
+        :param func: Callback function accepting a single ``List[int]`` argument.
         :type func: Callable[[List[int]], None]
-        :returns: The original function (unchanged).
+        :returns: The original function unchanged.
         :rtype: Callable
+
+        :Usage example:
+
+            .. code-block:: python
+
+                @table.order_changed
+                def on_reorder(order):
+                    print("Reordered:", order)
         """
+        route_path = self.get_route_path(ReorderTable.Routes.ORDER_CHANGED)
+        server = self._sly_app.get_server()
         self._order_changed_handled = True
-        self._order_changed_cb = func
+
+        @server.post(route_path)
+        def _order_changed_handler():
+            self._order = list(StateJson()[self.widget_id].get("order", self._order))
+            func(list(self._order))
+
         return func
