@@ -1,0 +1,390 @@
+/* =====================================================================
+   ReorderTable widget styles
+   ===================================================================== */
+
+/* ── Outer wrapper: table on left, action panel on right ─────────── */
+.sly-reorder-wrap {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  position: relative;
+}
+
+/* ── Main table panel ────────────────────────────────────────────── */
+.sly-reorder-table {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid #dce1e7;
+  border-radius: 8px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.sly-rt-wrapper {
+  overflow-x: auto;
+}
+
+.sly-rt-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  color: #333;
+}
+
+/* ── Table header ────────────────────────────────────────────────── */
+.sly-rt-th {
+  padding: 9px 12px;
+  text-align: left;
+  background: #f8f9fa;
+  color: #5a6872;
+  font-weight: 600;
+  font-size: 12px;
+  border-bottom: 2px solid #dce1e7;
+  white-space: nowrap;
+}
+
+/* ── Column widths ───────────────────────────────────────────────── */
+.sly-rt-cb-col {
+  width: 36px;
+  min-width: 36px;
+}
+
+.sly-rt-drag-col {
+  width: 28px;
+  min-width: 28px;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+.sly-rt-order-col {
+  white-space: nowrap;
+  min-width: 80px;
+}
+
+/* ── Table body ──────────────────────────────────────────────────── */
+.sly-rt-td {
+  padding: 8px 12px;
+  border-bottom: 1px solid #f0f3f5;
+  vertical-align: middle;
+}
+
+.sly-rt-row {
+  transition: background 0.1s;
+  cursor: default;
+  user-select: none;
+}
+
+.sly-rt-row:hover {
+  background: #f5f7fa;
+}
+
+.sly-rt-row-selected {
+  background: #e8f0fe !important;
+}
+
+/* Drop-zone indicator: bright top border on the target row */
+.sly-rt-row-dragover {
+  border-top: 2px solid #4070ff !important;
+  background: #eef2ff !important;
+}
+
+/* ── Drag handle ─────────────────────────────────────────────────── */
+.sly-rt-drag-handle {
+  cursor: grab;
+  color: #aab4be;
+  font-size: 16px;
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 4px;
+  border-radius: 3px;
+  transition: color 0.1s;
+}
+
+.sly-rt-drag-handle:hover {
+  color: #4070ff;
+  background: #eef2ff;
+}
+
+/* ── Order badges ────────────────────────────────────────────────── */
+.sly-rt-orig-badge {
+  display: inline-block;
+  background: #f0f3f5;
+  color: #5a6872;
+  border-radius: 4px;
+  padding: 1px 7px;
+  font-family: monospace;
+  font-size: 12px;
+  font-weight: 600;
+  min-width: 24px;
+  text-align: center;
+}
+
+.sly-rt-new-badge {
+  display: inline-block;
+  background: #dbeafe;
+  color: #1d4ed8;
+  border-radius: 4px;
+  padding: 1px 7px;
+  font-family: monospace;
+  font-size: 12px;
+  font-weight: 600;
+  margin-left: 5px;
+}
+
+/* ── Empty state ─────────────────────────────────────────────────── */
+.sly-rt-empty {
+  padding: 36px 12px;
+  text-align: center;
+  color: #9aa8b4;
+  font-size: 13px;
+}
+
+/* ── Pagination footer ───────────────────────────────────────────── */
+.sly-rt-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: #f8f9fa;
+  border-top: 1px solid #dce1e7;
+  font-size: 13px;
+  color: #5a6872;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sly-rt-page-size-ctrl {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sly-rt-footer-label {
+  color: #5a6872;
+}
+
+.sly-rt-pagesize-val {
+  font-weight: 700;
+  color: #2b5bd7;
+  cursor: pointer;
+  border-bottom: 1px dashed #2b5bd7;
+  padding: 0 2px;
+  transition: color 0.1s;
+}
+
+.sly-rt-pagesize-val:hover {
+  color: #1a3fa8;
+}
+
+.sly-rt-pagesize-input {
+  width: 58px;
+  border: 1px solid #c0ccda;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 13px;
+  color: #333;
+  outline: none;
+}
+
+.sly-rt-pagesize-input:focus {
+  border-color: #4070ff;
+  box-shadow: 0 0 0 2px rgba(64, 112, 255, 0.15);
+}
+
+.sly-rt-pagination {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.sly-rt-range-label {
+  margin-right: 8px;
+  color: #5a6872;
+  white-space: nowrap;
+}
+
+.sly-rt-pg-btn {
+  background: none;
+  border: 1px solid #dce1e7;
+  border-radius: 4px;
+  padding: 3px 7px;
+  cursor: pointer;
+  color: #5a6872;
+  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.1s;
+  line-height: 1;
+}
+
+.sly-rt-pg-btn:hover:not([disabled]) {
+  background: #eef2ff;
+  border-color: #4070ff;
+  color: #4070ff;
+}
+
+.sly-rt-pg-btn[disabled] {
+  opacity: 0.32;
+  cursor: default;
+}
+
+.sly-rt-page-label {
+  padding: 0 10px;
+  font-weight: 500;
+  white-space: nowrap;
+  color: #333;
+}
+
+/* ── Floating action panel ───────────────────────────────────────── */
+.sly-rt-action-panel {
+  flex-shrink: 0;
+  width: 152px;
+  background: #fff;
+  border: 1px solid #dce1e7;
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.10);
+  padding: 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  /* Stick to top of viewport when user scrolls */
+  position: sticky;
+  top: 16px;
+  align-self: flex-start;
+}
+
+.sly-rt-ap-title {
+  font-size: 11px;
+  color: #8a97a4;
+  font-weight: 700;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.sly-rt-ap-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid #dce1e7;
+  border-radius: 5px;
+  background: #fff;
+  color: #333;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.1s;
+  width: 100%;
+  text-align: left;
+}
+
+.sly-rt-ap-btn:hover {
+  background: #eef2ff;
+  border-color: #4070ff;
+  color: #2b5bd7;
+}
+
+.sly-rt-ap-btn-secondary {
+  background: #f5f7fa;
+  color: #5a6872;
+  border-color: #c8d0d8;
+}
+
+.sly-rt-ap-btn-secondary:hover {
+  background: #eef2ff;
+  border-color: #4070ff;
+  color: #2b5bd7;
+}
+
+.sly-rt-ap-btn-deselect {
+  background: #fff5f5;
+  color: #c0392b;
+  border-color: #f5c6c6;
+}
+
+.sly-rt-ap-btn-deselect:hover {
+  background: #ffe0e0;
+  border-color: #e04040;
+  color: #c0392b;
+}
+
+.sly-rt-ap-setto {
+  width: 100%;
+}
+
+.sly-rt-ap-setto-form {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.sly-rt-setto-input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid #c0ccda;
+  border-radius: 4px;
+  padding: 4px 6px;
+  font-size: 12px;
+  color: #333;
+  outline: none;
+  width: 100%;
+}
+
+.sly-rt-setto-input:focus {
+  border-color: #4070ff;
+  box-shadow: 0 0 0 2px rgba(64, 112, 255, 0.15);
+}
+
+.sly-rt-ap-btn-confirm {
+  padding: 4px 7px;
+  background: #eef2ff;
+  border: 1px solid #4070ff;
+  border-radius: 4px;
+  color: #2b5bd7;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  transition: all 0.1s;
+}
+
+.sly-rt-ap-btn-confirm:hover {
+  background: #4070ff;
+  color: #fff;
+}
+
+.sly-rt-ap-btn-cancel {
+  padding: 4px 7px;
+  background: #fff5f5;
+  border: 1px solid #f5c6c6;
+  border-radius: 4px;
+  color: #c0392b;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  transition: all 0.1s;
+}
+
+.sly-rt-ap-btn-cancel:hover {
+  background: #e04040;
+  border-color: #e04040;
+  color: #fff;
+}
+
+.sly-rt-ap-divider {
+  height: 1px;
+  background: #e8ecf0;
+  margin: 2px 0;
+}
+
+/* ── Panel reveal / hide transition ─────────────────────────────── */
+.sly-rt-slide-enter-active,
+.sly-rt-slide-leave-active {
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.sly-rt-slide-enter,
+.sly-rt-slide-leave-to {
+  opacity: 0;
+  transform: translateX(10px);
+}
