@@ -76,6 +76,7 @@ from supervisely.io.fs_cache import FileCache
 from supervisely.io.json import dump_json_file, dump_json_file_async, load_json_file
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import ProjectType
+from supervisely.project.versioning.common import CUSTOM_DATA_VERSION_RESTORE_KEY
 from supervisely.sly_logger import logger
 from supervisely.task.progress import tqdm_sly
 
@@ -3862,7 +3863,7 @@ class Project:
         )
         custom_data = new_project_info.custom_data
         version_num = project_info.version.get("version", None) if project_info.version else 0
-        custom_data["restored_from"] = {
+        custom_data[CUSTOM_DATA_VERSION_RESTORE_KEY] = {
             "project_id": project_info.id,
             "version_num": version_num + 1 if version_num is not None else "Unable to determine",
         }

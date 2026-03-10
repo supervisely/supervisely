@@ -16,7 +16,8 @@ PREVIEW_DESCRIPTION_TEMPLATE = (
     "Preview for version {version_num}. "
     "Source project ID: {project_id}, version ID: {version_id}"
 )
-
+CUSTOM_DATA_VERSION_PREVIEW_KEY = "version_preview_meta"
+CUSTOM_DATA_VERSION_RESTORE_KEY = "restored_from"
 
 def get_video_snapshot_schema(schema_version: str) -> VideoSnapshotSchema:
     schema = _VIDEO_SCHEMAS.get(schema_version)

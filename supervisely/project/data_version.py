@@ -16,6 +16,7 @@ from supervisely.io import json
 from supervisely.io.fs import remove_dir, silent_remove
 from supervisely.project.copy import copy_project
 from supervisely.project.versioning.common import (
+    CUSTOM_DATA_VERSION_PREVIEW_KEY,
     DEFAULT_IMAGE_SCHEMA_VERSION,
     DEFAULT_VIDEO_SCHEMA_VERSION,
     DEFAULT_VOLUME_SCHEMA_VERSION,
@@ -330,28 +331,29 @@ class DataVersion(ModuleApiBase):
         try:
             if enable_preview:
                 if project_info.type in [ProjectType.VIDEOS.value, ProjectType.IMAGES.value]:
-                    workspace_id = self.get_or_create_versions_workspace(
-                        team_id=project_info.team_id
-                    )
-                    cloned_project_info = copy_project(
-                        api=self._api,
-                        src_project_info=project_info,
-                        dst_workspace_id=workspace_id,
-                        dst_project_name=PREVIEW_NAME_TEMPLATE.format(
-                            project_name=project_info.name, version_num=version_num
-                        ),
-                        dst_project_description=PREVIEW_DESCRIPTION_TEMPLATE.format(
-                            project_id=project_info.id,
-                            version_num=version_num,
-                            version_id=version_id,
-                        ),
-                        read_only=enable_preview,
+
+                    # cloned_project_info = copy_project(
+                    #     api=self._api,
+                    #     src_project_info=project_info,
+                    #     dst_workspace_id=workspace_id,
+                    #     dst_project_name=PREVIEW_NAME_TEMPLATE.format(
+                    #         project_name=project_info.name, version_num=version_num
+                    #     ),
+                    #     dst_project_description=PREVIEW_DESCRIPTION_TEMPLATE.format(
+                    #         project_id=project_info.id,
+                    #         version_num=version_num,
+                    #         version_id=version_id,
+                    #     ),
+                    #     read_only=enable_preview,
+                    # )
+                    preview_project_info = self.enable_preview(
+                        project=project_info, version_id=version_id
                     )
                 else:
                     logger.warning(
                         f"Preview is not supported for project type {project_info.type}. Creating version without preview."
                     )
-                    cloned_project_info = None
+                    preview_project_info = None
                     enable_preview = False
             file_info = self._compress_and_upload(path)
             self.versions[version_id] = {
@@ -360,8 +362,8 @@ class DataVersion(ModuleApiBase):
                 "previous": latest,
                 "number": version_num,
             }
-            if enable_preview and cloned_project_info is not None:
-                self.versions[version_id]["preview"] = cloned_project_info.id
+            if enable_preview and preview_project_info is not None:
+                self.versions[version_id]["preview"] = preview_project_info.id
             self.versions["latest"] = version_id
             self.set_map(project_info, initialize=False)
             self.commit(
@@ -371,7 +373,7 @@ class DataVersion(ModuleApiBase):
                 file_info.id,
                 title=version_title,
                 description=version_description,
-                preview_project_id=cloned_project_info.id if enable_preview else None,
+                preview_project_id=preview_project_info.id if enable_preview else None,
             )
             return version_id
         except Exception as e:
@@ -714,6 +716,14 @@ class DataVersion(ModuleApiBase):
             project_description=PREVIEW_DESCRIPTION_TEMPLATE.format(
                 version_num=version_info.version, project_id=project_info.id, version_id=version_id
             ),
+        )
+        custom_data = preview_project_info.custom_data
+        if custom_data is None:
+            custom_data = self._api.project.get_custom_data(preview_project_info.id) or {}
+        custom_data[CUSTOM_DATA_VERSION_PREVIEW_KEY] = version_info._asdict()
+
+        self._api.project.update_custom_data(
+            id=preview_project_info.id, data=custom_data, silent=True
         )
         self.update(version_id, preview_project_id=preview_project_info.id)
         self._api.project.set_read_only(preview_project_info.id, True)
