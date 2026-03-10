@@ -20,8 +20,8 @@ from supervisely.project.versioning.common import (
     DEFAULT_VIDEO_SCHEMA_VERSION,
     DEFAULT_VOLUME_SCHEMA_VERSION,
     HIDDEN_WORKSPACE_NAME,
-    PREVIEW_NAME_SUFFIX,
-    PREVIEW_DESCRIPTION_SUFFIX,
+    PREVIEW_DESCRIPTION_TEMPLATE,
+    PREVIEW_NAME_TEMPLATE,
 )
 from supervisely.project.versioning.schema_fields import VersionSchemaField
 
@@ -93,6 +93,7 @@ class DataVersion(ModuleApiBase):
             ApiField.PROJECT_UPDATED_AT,
             ApiField.TEAM_ID,
             ApiField.NAME,
+            ApiField.PREVIEW_PROJECT_ID,
         ]
 
     @staticmethod
@@ -318,6 +319,7 @@ class DataVersion(ModuleApiBase):
         self.initialize(project_info)
         path = self._generate_save_path()
         latest = self._get_latest_id()
+        version_num = int(self.versions[str(latest)]["number"]) + 1 if latest else 1
         try:
             version_id, commit_token = self.reserve(project_info.id)
         except Exception as e:
@@ -335,7 +337,14 @@ class DataVersion(ModuleApiBase):
                         api=self._api,
                         src_project_info=project_info,
                         dst_workspace_id=workspace_id,
-                        dst_project_name=project_info.name + f"_version_{version_id}_backup",
+                        dst_project_name=PREVIEW_NAME_TEMPLATE.format(
+                            project_name=project_info.name, version_num=version_num
+                        ),
+                        dst_project_description=PREVIEW_DESCRIPTION_TEMPLATE.format(
+                            project_id=project_info.id,
+                            version_num=version_num,
+                            version_id=version_id,
+                        ),
                         read_only=enable_preview,
                     )
                 else:
@@ -349,7 +358,7 @@ class DataVersion(ModuleApiBase):
                 "path": path,
                 "updated_at": project_info.updated_at,
                 "previous": latest,
-                "number": int(self.versions[str(latest)]["number"]) + 1 if latest else 1,
+                "number": version_num,
             }
             if enable_preview and cloned_project_info is not None:
                 self.versions[version_id]["preview"] = cloned_project_info.id
@@ -654,7 +663,7 @@ class DataVersion(ModuleApiBase):
             raise RuntimeError("Failed to update version information")
 
     def enable_preview(
-        self, project_id: int, version_id: int, overwrite: bool = False
+        self, project: Union[int, ProjectInfo], version_id: int, overwrite: bool = False
     ) -> ProjectInfo:
         """
         Enable preview for the version by creating a snapshot project and linking it to the version.
@@ -662,8 +671,8 @@ class DataVersion(ModuleApiBase):
 
         ATTENTION: This method works only for committed versions with successfully uploaded version data.
 
-        :param project_id: Project ID
-        :type project_id: int
+        :param project: Project ID or ProjectInfo object
+        :type project: Union[int, ProjectInfo]
         :param version_id: Version ID
         :type version_id: int
         :param overwrite: Whether to overwrite existing snapshot project if it exists
@@ -671,10 +680,20 @@ class DataVersion(ModuleApiBase):
         :returns: Preview snapshot project information
         :rtype: ProjectInfo
         """
-        version_info = self.get_info_by_id(project_id, version_id)
-        project_info = self._api.project.get_info_by_id(project_id)
+        if isinstance(project, int):
+            project_id = project
+            project_info = self._api.project.get_info_by_id(project_id)
+        elif isinstance(project, ProjectInfo):
+            project_id = project.id
+            project_info = project
+
+        else:
+            raise ValueError(f"Invalid object type: {type(project)}. Must be int or ProjectInfo.")
+
         if project_info.type not in [ProjectType.VIDEOS.value, ProjectType.IMAGES.value]:
             raise ValueError(f"Preview is not supported for project type {project_info.type}")
+
+        version_info = self.get_info_by_id(project_id, version_id)
 
         if version_info is None:
             raise ValueError(f"Version with ID {version_id} does not exist")
@@ -689,11 +708,15 @@ class DataVersion(ModuleApiBase):
             project_info=project_info,
             version_id=version_id,
             workspace_id=self.get_or_create_versions_workspace(team_id=project_info.team_id),
-            project_name=project_info.name + PREVIEW_NAME_SUFFIX,
-            project_description=project_info.description + PREVIEW_DESCRIPTION_SUFFIX,
+            project_name=PREVIEW_NAME_TEMPLATE.format(
+                project_name=project_info.name, version_num=version_info.version
+            ),
+            project_description=PREVIEW_DESCRIPTION_TEMPLATE.format(
+                version_num=version_info.version, project_id=project_info.id, version_id=version_id
+            ),
         )
-
         self.update(version_id, preview_project_id=preview_project_info.id)
+        self._api.project.set_read_only(preview_project_info.id, True)
 
         return preview_project_info
 

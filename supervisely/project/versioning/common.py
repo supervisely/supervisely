@@ -11,8 +11,11 @@ DEFAULT_IMAGE_SCHEMA_VERSION = "v1.0.0"
 DEFAULT_VOLUME_SCHEMA_VERSION = "v2.0.0"
 DEFAULT_VIDEO_SCHEMA_VERSION = "v2.0.0"
 HIDDEN_WORKSPACE_NAME = "[Do Not Modify] Instant Versions Storage"
-PREVIEW_NAME_SUFFIX = " (Preview)"
-PREVIEW_DESCRIPTION_SUFFIX = " (Preview Snapshot)"
+PREVIEW_NAME_TEMPLATE = "{project_name}, preview for ver. {version_num}"
+PREVIEW_DESCRIPTION_TEMPLATE = (
+    "Preview for version {version_num}. "
+    "Source project ID: {project_id}, version ID: {version_id}"
+)
 
 
 def get_video_snapshot_schema(schema_version: str) -> VideoSnapshotSchema:

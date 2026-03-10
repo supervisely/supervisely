@@ -427,6 +427,7 @@ def copy_project(
     existing_projects: Optional[List[sly.ProjectInfo]] = None,
     datasets_tree: Optional[Dict] = None,
     dst_project_name: Optional[str] = None,
+    dst_project_description: Optional[str] = None,
     read_only: bool = False,
 ) -> sly.ProjectInfo:
     """Copy a project into a workspace or into an existing project/dataset.
@@ -467,6 +468,9 @@ def copy_project(
     :param dst_project_name: Optional custom name for the destination project.
         By default, the source project name is used (with automatic renaming if needed based on ``conflict_mode``).
     :type dst_project_name: str, optional
+    :param dst_project_description: Optional custom description for the destination project.
+        By default, the source project description is used.
+    :type dst_project_description: str, optional
     :param read_only: Optional flag to set the project as read-only. Works only with image and video projects. If set to True, the project will be created with read-only settings, and users will not be able to modify annotations in this project. Default is False.
     :type read_only: bool, optional
     :returns: List of :class:`CreatedDataset` objects, one per created dataset.
@@ -516,7 +520,11 @@ def copy_project(
         workspace_id=dst_workspace_id,
         name=src_project_info.name if dst_project_name is None else dst_project_name,
         type=src_project_info.type,
-        description=src_project_info.description,
+        description=(
+            src_project_info.description
+            if dst_project_description is None
+            else dst_project_description
+        ),
         settings=src_project_info.settings,
         custom_data=src_project_info.custom_data,
         readme=src_project_info.readme,
