@@ -55,3 +55,6 @@ panda.deb
 
 /test*.py
 .python-version
+
+docker_images/vuln_logs/*
+test_results
