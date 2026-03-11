@@ -1,7 +1,10 @@
 # coding: utf-8
 # isort: skip_file
 import os
+import warnings
 from importlib.metadata import PackageNotFoundError, version
+
+warnings.filterwarnings("ignore", category=SyntaxWarning)
 
 try:
     __version__ = version("supervisely")
