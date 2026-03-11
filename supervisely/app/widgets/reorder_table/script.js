@@ -47,8 +47,6 @@ Vue.component('reorder-table', {
               '    selectedArr.indexOf(item.globalPos) !== -1 ? \'sly-rt-row-selected\' : \'\',' +
               '    dragOverPos === item.globalPos ? \'sly-rt-row-dragover\' : \'\'' +
               '  ]"' +
-              '  draggable="true"' +
-              '  @dragstart="onDragStart($event, item)"' +
               '  @dragover.prevent="onDragOver($event, item)"' +
               '  @dragleave="onDragLeave($event)"' +
               '  @drop.prevent="onDrop($event, item)"' +
@@ -64,9 +62,14 @@ Vue.component('reorder-table', {
                   '/>' +
                 '</td>' +
 
-                // Drag handle cell
+                // Drag handle cell — only this element is draggable
                 '<td class="sly-rt-td sly-rt-drag-col">' +
-                  '<span class="sly-rt-drag-handle" title="Drag to reorder">' +
+                  '<span' +
+                  '  draggable="true"' +
+                  '  class="sly-rt-drag-handle"' +
+                  '  title="Drag to reorder"' +
+                  '  @dragstart="onDragStart($event, item)"' +
+                  '>' +
                     '<i class="zmdi zmdi-menu"></i>' +
                   '</span>' +
                 '</td>' +
