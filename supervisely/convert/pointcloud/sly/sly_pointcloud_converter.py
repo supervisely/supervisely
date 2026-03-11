@@ -1,4 +1,3 @@
-import imghdr
 import os
 from typing import List
 
@@ -76,7 +75,7 @@ class SLYPointcloudConverter(PointcloudConverter):
                         rimg_ann_dict[file] = full_path
                     else:
                         ann_dict[file] = full_path
-                elif imghdr.what(full_path) or (self.upload_as_links and is_valid_ext(ext)):
+                elif self._is_image_file(full_path) or (self.upload_as_links and is_valid_ext(ext)):
                     if dir_name not in rimg_dict:
                         rimg_dict[dir_name] = []
                     rimg_dict[dir_name].append(full_path)

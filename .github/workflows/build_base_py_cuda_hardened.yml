@@ -1,0 +1,123 @@
+# https://hub.docker.com/r/supervisely/base-py-cuda-hardened
+name: Build base-py-cuda-hardened Docker
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag_version:
+        description: "Docker Image Tag (without 'v')"
+        required: true
+        type: string
+        default: ""
+  workflow_call:
+    inputs:
+      tag_version:
+        description: "Docker Image Tag (without 'v')"
+        required: true
+        type: string
+
+jobs:
+  deploy:
+    runs-on: gha-runner-supervisely
+    env:
+      IMAGE_NAME: base-py-cuda-hardened
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      - name: Write Tag to ENV variable
+        run: |
+          TAG_VERSION="${{ inputs.tag_version }}"
+          echo "TAG_VERSION=${TAG_VERSION#v}" >> "$GITHUB_ENV"
+
+      - name: Build image archive for checks
+        run: |
+          buildctl build \
+            --frontend dockerfile.v0 \
+            --local context=${{ github.workspace }} \
+            --local dockerfile=${{ github.workspace }}/base_images/py_cuda_hardened \
+            --opt build-arg:tag_ref_name=${{ env.TAG_VERSION }} \
+            --output type=docker,name=docker.io/supervisely/${{ env.IMAGE_NAME }}:${{ env.TAG_VERSION }},dest=image.tar \
+            --export-cache type=registry,ref=docker.io/supervisely/${{ env.IMAGE_NAME }}:buildcache,mode=max \
+            --import-cache type=registry,ref=docker.io/supervisely/${{ env.IMAGE_NAME }}:buildcache
+
+      - name: pip-audit scan
+        run: |
+          mkdir -p audit_logs
+          syft -q "docker-archive:image.tar" -o json > audit_logs/syft-image.json
+          . $HOME/.venv_hardened/bin/activate
+          python3 - << 'PY'
+          import json
+          from pathlib import Path
+
+          syft_path = Path("audit_logs/syft-image.json")
+          output_path = Path("audit_logs/image_python_requirements.txt")
+
+          data = json.loads(syft_path.read_text())
+          artifacts = data.get("artifacts", [])
+
+          packages = {}
+          for artifact in artifacts:
+              purl = artifact.get("purl", "")
+              name = artifact.get("name")
+              version = artifact.get("version")
+              if not name or not version:
+                  continue
+              if purl.startswith("pkg:pypi/"):
+                  packages[name.lower()] = version
+
+          lines = [f"{name}=={packages[name]}" for name in sorted(packages)]
+          output_path.write_text("\n".join(lines) + ("\n" if lines else ""))
+          PY
+
+          if [ -s audit_logs/image_python_requirements.txt ]; then
+            python3 -m pip_audit \
+              -r audit_logs/image_python_requirements.txt \
+              --no-deps \
+              --disable-pip \
+              --format json > audit_logs/pip_audit.json
+          else
+            echo "[]" > audit_logs/pip_audit.json
+          fi
+
+      - name: Dockle scan on archive
+        run: |
+          mkdir -p dockle_logs
+          dockle --exit-code 1 --exit-level FATAL --input image.tar -af settings.py --format json --output dockle_logs/${IMAGE_NAME}.json
+
+      - name: Generate SBOM (SPDX JSON)
+        run: |
+          mkdir -p sbom_logs
+          syft -q "docker-archive:image.tar" -o "spdx-json=sbom_logs/${IMAGE_NAME}-sbom.json"
+
+      - name: Push scanned image archive
+        run: |
+          if [ -n "${{ secrets.DOCKERHUB_USERNAME }}" ] && [ -n "${{ secrets.DOCKERHUB_TOKEN }}" ]; then
+            skopeo copy \
+              --dest-creds "${{ secrets.DOCKERHUB_USERNAME }}:${{ secrets.DOCKERHUB_TOKEN }}" \
+              docker-archive:image.tar \
+              docker://docker.io/supervisely/${{ env.IMAGE_NAME }}:$TAG_VERSION
+          else
+            skopeo copy \
+              docker-archive:image.tar \
+              docker://docker.io/supervisely/${{ env.IMAGE_NAME }}:$TAG_VERSION
+          fi
+
+      - name: Upload pip-audit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: pip-audit-${{ env.IMAGE_NAME }}
+          path: audit_logs/pip_audit.json
+
+      - name: Upload Dockle report
+        uses: actions/upload-artifact@v4
+        with:
+          name: dockle-${{ env.IMAGE_NAME }}
+          path: dockle_logs/${{ env.IMAGE_NAME }}.json
+
+      - name: Upload SBOM report
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-${{ env.IMAGE_NAME }}
+          path: sbom_logs/${{ env.IMAGE_NAME }}-sbom.json
