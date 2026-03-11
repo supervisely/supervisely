@@ -126,10 +126,9 @@ class SelectCudaDevice(Widget):
                 devices = dict(
                     sorted(devices.items(), key=lambda item: item[1]["free"], reverse=True)
                 )
+            return devices
         except Exception as e:
             logger.warning(repr(e))
-        finally:
-            return devices
 
     def get_json_data(self) -> Dict:
         """Get the JSON data of the widget.

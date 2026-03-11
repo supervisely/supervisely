@@ -178,9 +178,7 @@ def available_after_shutdown(app: FastAPI):
             except Exception as ex:
                 traceback.print_exc()
                 sly.logger.warning(f"Cannot dump files for offline usage, reason: {ex}")
-
-            finally:
-                return template_response
+            return template_response
 
         return wrapper
 
