@@ -6,6 +6,17 @@ Vue.component('reorder-table', {
       // ── Main table panel ─────────────────────────────────────────────
       '<div class="sly-reorder-table">' +
 
+        // Search bar
+        '<div class="sly-rt-search-bar">' +
+          '<el-input' +
+          '  v-model="searchQuery"' +
+          '  placeholder="Search..."' +
+          '  prefix-icon="el-icon-search"' +
+          '  clearable' +
+          '  size="small"' +
+          '/>' +
+        '</div>' +
+
         '<div class="sly-rt-wrapper">' +
           '<table class="sly-rt-table">' +
 
@@ -197,6 +208,9 @@ Vue.component('reorder-table', {
       localPage:        this.page              || 1,
       localPageSize:    this.pageSize          || 10,
       selectedArr:      this.selectedPositions ? this.selectedPositions.slice() : [],
+      searchQuery:      '',
+      debouncedQuery:   '',
+      searchTimer:      null,
       dragOverPos:      null,
       isDragging:       false,
       dragItem:         null,
@@ -209,28 +223,48 @@ Vue.component('reorder-table', {
 
   // ── Computed ─────────────────────────────────────────────────────────
   computed: {
+    // Positions (indices into localOrder) that match the current search query.
+    // When no query is set, all positions are included.
+    filteredOrder: function() {
+      var self = this;
+      if (!self.debouncedQuery || !self.debouncedQuery.trim()) {
+        return self.localOrder.map(function(_, i) { return i; });
+      }
+      var q = self.debouncedQuery.trim().toLowerCase();
+      return self.localOrder.reduce(function(acc, origIdx, localPos) {
+        var row = self.rows[origIdx] || [];
+        var matches = row.some(function(cell) {
+          return String(cell).toLowerCase().indexOf(q) !== -1;
+        });
+        if (matches) acc.push(localPos);
+        return acc;
+      }, []);
+    },
     totalPages: function() {
-      return Math.max(1, Math.ceil(this.localOrder.length / this.localPageSize));
+      return Math.max(1, Math.ceil(this.filteredOrder.length / this.localPageSize));
     },
     pageStart: function() {
       return (this.localPage - 1) * this.localPageSize;
     },
     pageEnd: function() {
-      return Math.min(this.pageStart + this.localPageSize, this.localOrder.length);
+      return Math.min(this.pageStart + this.localPageSize, this.filteredOrder.length);
     },
     rangeLabel: function() {
-      if (this.localOrder.length === 0) return '0 items';
-      return (this.pageStart + 1) + '\u2013' + this.pageEnd + ' of ' + this.localOrder.length;
+      if (this.filteredOrder.length === 0) {
+        return this.debouncedQuery ? '0 results' : '0 items';
+      }
+      return (this.pageStart + 1) + '\u2013' + this.pageEnd + ' of ' + this.filteredOrder.length;
     },
     pageItems: function() {
       var self = this;
       if (!self.rows || !self.localOrder) return [];
-      return self.localOrder.slice(self.pageStart, self.pageEnd).map(function(origIdx, pagePos) {
+      return self.filteredOrder.slice(self.pageStart, self.pageEnd).map(function(localPos, pagePos) {
+        var origIdx = self.localOrder[localPos];
         return {
           origIdx:    origIdx,
           origPos:    origIdx + 1,
-          currentPos: self.pageStart + pagePos + 1,
-          globalPos:  self.pageStart + pagePos,
+          currentPos: localPos + 1,
+          globalPos:  localPos,
           row:        self.rows[origIdx] || [],
           pagePos:    pagePos,
         };
@@ -270,6 +304,15 @@ Vue.component('reorder-table', {
     },
     selectedPositions: function(val) {
       this.selectedArr = val ? val.slice() : [];
+    },
+    // Debounce search: wait 300ms after typing stops before filtering
+    searchQuery: function(val) {
+      var self = this;
+      if (self.searchTimer) clearTimeout(self.searchTimer);
+      self.searchTimer = setTimeout(function() {
+        self.debouncedQuery = val;
+        self.localPage = 1;
+      }, 300);
     },
     // Focus set-to input whenever the form becomes visible
     showSetTo: function(val) {

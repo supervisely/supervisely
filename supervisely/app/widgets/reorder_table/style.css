@@ -25,6 +25,21 @@
   overflow: hidden;
 }
 
+/* ── Search bar ──────────────────────────────────────────────────── */
+.sly-rt-search-bar {
+  padding: 8px 12px;
+  border-bottom: 1px solid #dce1e7;
+  background: #f8f9fa;
+}
+
+.sly-rt-search-bar .el-input {
+  max-width: 280px;
+}
+
+.sly-rt-search-bar .el-input__inner {
+  background: #fff;
+}
+
 .sly-rt-wrapper {
   overflow-x: auto;
 }
