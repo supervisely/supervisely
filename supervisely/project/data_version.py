@@ -329,6 +329,26 @@ class DataVersion(ModuleApiBase):
         if version_id is None and commit_token is None:
             return latest
         try:
+
+            file_info = self._compress_and_upload(path)
+            self.versions[version_id] = {
+                "path": path,
+                "updated_at": project_info.updated_at,
+                "previous": latest,
+                "number": version_num,
+            }
+            # if enable_preview and preview_project_info is not None:
+            #     self.versions[version_id]["preview"] = preview_project_info.id
+            self.versions["latest"] = version_id
+            self.set_map(project_info, initialize=False)
+            self.commit(
+                version_id,
+                commit_token,
+                project_info.updated_at,
+                file_info.id,
+                title=version_title,
+                description=version_description,
+            )
             if enable_preview:
                 if project_info.type in [ProjectType.VIDEOS.value, ProjectType.IMAGES.value]:
 
@@ -349,32 +369,13 @@ class DataVersion(ModuleApiBase):
                     preview_project_info = self.enable_preview(
                         project=project_info, version_id=version_id
                     )
+                    self.update(version_id, preview_project_id=preview_project_info.id)
+                    self.versions[str(version_id)]["preview"] = preview_project_info.id
+                    self.set_map(project_info, initialize=False)
                 else:
                     logger.warning(
                         f"Preview is not supported for project type {project_info.type}. Creating version without preview."
                     )
-                    preview_project_info = None
-                    enable_preview = False
-            file_info = self._compress_and_upload(path)
-            self.versions[version_id] = {
-                "path": path,
-                "updated_at": project_info.updated_at,
-                "previous": latest,
-                "number": version_num,
-            }
-            if enable_preview and preview_project_info is not None:
-                self.versions[version_id]["preview"] = preview_project_info.id
-            self.versions["latest"] = version_id
-            self.set_map(project_info, initialize=False)
-            self.commit(
-                version_id,
-                commit_token,
-                project_info.updated_at,
-                file_info.id,
-                title=version_title,
-                description=version_description,
-                preview_project_id=preview_project_info.id if enable_preview else None,
-            )
             return version_id
         except Exception as e:
             if self.cancel_reservation(version_id, commit_token):
