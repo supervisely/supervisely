@@ -2,9 +2,9 @@ import importlib.metadata
 import os
 import re
 import subprocess
+from importlib.metadata import PackageNotFoundError, distribution
 
 import requests
-from importlib.metadata import PackageNotFoundError, distribution
 from setuptools import find_packages, setup
 
 # @TODO: change manifest location
@@ -81,7 +81,7 @@ INSTALL_REQUIRES = [
     "cachetools>=4.2.3, <=5.5.0",
     "numpy>=1.19, <=2.3.3",
     "opencv-python>=4.6.0.66, <5.0.0.0",
-    "PTable>=0.9.2, <1.0.0",
+    "prettytable>=3.8.0, <4.0.0",
     "pillow>=5.4.1, <=12.1.1",
     "python-json-logger>=0.1.11, <=3.0.1",
     "packaging>=20.0",
@@ -258,7 +258,7 @@ setup(
             "pandas>=1.1.3, <=2.3.3",
         ],
         "docs": [
-            "sphinx==9.1.0",
+            "sphinx==8.2.3",
             "sphinx-immaterial==0.13.9",
             "myst-parser==5.0.0",
         ],
