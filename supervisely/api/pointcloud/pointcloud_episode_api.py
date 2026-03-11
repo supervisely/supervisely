@@ -2,7 +2,7 @@
 
 """Download, upload, and manage point cloud episodes in Supervisely."""
 
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 from supervisely._utils import batched
 from supervisely.api.module_api import ApiField
@@ -175,6 +175,46 @@ class PointcloudEpisodeApi(PointcloudApi):
             return None
         max_frame = max(frames)
         return max_frame
+
+    def update_frames_order(self, dataset_id: int, ids: List[int]) -> None:
+        """
+        Update order of frames in a point cloud episode dataset.
+
+        Pass a full list of point cloud IDs (`ids`) in the target order.
+
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param ids: Full list of point cloud IDs in the new order.
+        :type ids: List[int]
+        :returns: None
+        :rtype: None
+
+        :Usage Example:
+
+            .. code-block:: python
+
+                import os
+                from dotenv import load_dotenv
+
+                import supervisely as sly
+
+                if sly.is_development():
+                    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+                api = sly.Api.from_env()
+
+                dataset_id = 1815
+                ids = [101, 205, 309]
+                api.pointcloud_episode.update_frames_order(dataset_id, ids)
+        """
+
+        self._api.post(
+            "point-clouds.episodes.frames.update-order",
+            {
+                ApiField.DATASET_ID: dataset_id,
+                ApiField.IDS: ids,
+            },
+        )
 
     def _upload_bulk_add(
         self,
