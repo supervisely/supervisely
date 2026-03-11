@@ -83,7 +83,9 @@ Vue.component('reorder-table', {
                 '</td>' +
 
                 // Data cells
-                '<td v-for="(cell, ci) in item.row" :key="ci" class="sly-rt-td sly-rt-data-col">{{ cell }}</td>' +
+                '<td v-for="(cell, ci) in item.row" :key="ci" class="sly-rt-td sly-rt-data-col">' +
+                  '<input type="text" readonly tabindex="-1" :value="String(cell)" class="sly-rt-cell-txt" />' +
+                '</td>' +
               '</tr>' +
 
               // Empty state

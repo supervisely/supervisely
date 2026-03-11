@@ -91,7 +91,51 @@
 .sly-rt-row {
   transition: background 0.1s;
   cursor: default;
+}
+
+/* Block selection only on non-content columns */
+.sly-rt-cb-col,
+.sly-rt-drag-col,
+.sly-rt-order-col {
   user-select: none;
+}
+
+/* Cell content is rendered in a readonly input so text selection always works
+   regardless of any parent user-select:none in the app CSS bundle */
+.sly-rt-cell-txt {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  width: 100%;
+  font-size: 13px;
+  font-family: inherit;
+  color: #333;
+  cursor: text;
+}
+
+/* Cell text rendered as a readonly input so text selection always works
+   regardless of any parent user-select:none from the app CSS bundle */
+.sly-rt-cell-txt {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  width: 100%;
+  font-size: 13px;
+  font-family: inherit;
+  color: #333;
+  cursor: text;
+  pointer-events: auto;
+}
+
+.sly-rt-row-selected .sly-rt-cell-txt {
+  background: transparent !important;
+  color: inherit;
 }
 
 .sly-rt-row:hover {
