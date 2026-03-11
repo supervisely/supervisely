@@ -95,6 +95,7 @@ class ReorderTable(Widget):
         :returns: Current order; position *i* holds the original 0-based row index.
         :rtype: List[int]
         """
+        self._order = list(StateJson()[self.widget_id].get("order", self._order))
         return list(self._order)
 
     def get_reordered_data(self) -> List[List]:
@@ -103,7 +104,25 @@ class ReorderTable(Widget):
         :returns: Reordered rows.
         :rtype: List[List]
         """
+        self._order = list(StateJson()[self.widget_id].get("order", self._order))
         return [self._data[i] for i in self._order]
+
+    def get_column_data(self, column_name: str) -> List[Any]:
+        """Returns values from a single column in the current row order.
+
+        :param column_name: Name of the column to retrieve.
+        :type column_name: str
+        :returns: List of cell values for the given column in the current order.
+        :rtype: List[Any]
+        :raises ValueError: If ``column_name`` is not found in the table columns.
+        """
+        if column_name not in self._columns:
+            raise ValueError(
+                f"Column '{column_name}' not found. Available columns: {self._columns}"
+            )
+        self._order = list(StateJson()[self.widget_id].get("order", self._order))
+        col_idx = self._columns.index(column_name)
+        return [self._data[i][col_idx] for i in self._order]
 
     def set_data(self, columns: List[str], data: List[List]) -> None:
         """Replaces the table contents and resets the order to the identity permutation.
