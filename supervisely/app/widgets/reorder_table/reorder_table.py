@@ -55,6 +55,7 @@ class ReorderTable(Widget):
 
         self._columns = list(columns)
         self._data = [list(row) for row in data]
+        self._validate_data(self._columns, self._data)
         self._page_size = max(1, int(page_size))
         self._order: List[int] = list(range(len(self._data)))
         self._changes_handled = False
@@ -63,6 +64,15 @@ class ReorderTable(Widget):
 
         script_path = "./sly/css/app/widgets/reorder_table/script.js"
         JinjaWidgets().context["__widget_scripts__"][self.__class__.__name__] = script_path
+
+    @staticmethod
+    def _validate_data(columns: List[str], data: List[List]) -> None:
+        expected = len(columns)
+        for idx, row in enumerate(data):
+            if len(row) != expected:
+                raise ValueError(
+                    f"Row {idx} has {len(row)} cells but expected {expected} (number of columns)"
+                )
 
     def get_json_data(self) -> Dict[str, Any]:
         """Returns dictionary with widget data.
@@ -134,6 +144,7 @@ class ReorderTable(Widget):
         """
         self._columns = list(columns)
         self._data = [list(row) for row in data]
+        self._validate_data(self._columns, self._data)
         self._order = list(range(len(self._data)))
 
         DataJson()[self.widget_id].update(

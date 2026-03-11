@@ -311,7 +311,7 @@ Vue.component('reorder-table', {
       if (self.searchTimer) clearTimeout(self.searchTimer);
       self.searchTimer = setTimeout(function() {
         self.debouncedQuery = val;
-        self.localPage = 1;
+        self.goPage(1);
       }, 300);
     },
     // Focus set-to input whenever the form becomes visible
@@ -590,11 +590,8 @@ Vue.component('reorder-table', {
       this.localPageSize = val;
       this.editingPageSize = false;
       this.$emit('update:pageSize', val);
-      // Clamp current page if it now exceeds the new total
-      var newTotalPages = Math.max(1, Math.ceil(this.localOrder.length / val));
-      if (this.localPage > newTotalPages) {
-        this.goPage(newTotalPages);
-      }
+      // Re-clamp using totalPages, which is derived from filteredOrder (not localOrder)
+      this.goPage(this.localPage);
     },
   },
 });
