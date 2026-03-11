@@ -19,6 +19,8 @@ on:
 jobs:
   deploy:
     runs-on: gha-runner-supervisely
+    env:
+      IMAGE_NAME: base-py-cuda-hardened
 
     steps:
       - name: Checkout Repository
@@ -36,9 +38,9 @@ jobs:
             --local context=${{ github.workspace }} \
             --local dockerfile=${{ github.workspace }}/base_images/py_cuda_hardened \
             --opt build-arg:tag_ref_name=${{ env.TAG_VERSION }} \
-            --output type=docker,name=${{ env.IMAGE_NAME }}:${{ env.TAG_VERSION }},dest=image.tar \
-            --export-cache type=registry,ref=docker.io/supervisely/base-py-cuda-hardened:buildcache,mode=max \
-            --import-cache type=registry,ref=docker.io/supervisely/base-py-cuda-hardened:buildcache
+            --output type=docker,name=docker.io/supervisely/${{ env.IMAGE_NAME }}:${{ env.TAG_VERSION }},dest=image.tar \
+            --export-cache type=registry,ref=docker.io/supervisely/${{ env.IMAGE_NAME }}:buildcache,mode=max \
+            --import-cache type=registry,ref=docker.io/supervisely/${{ env.IMAGE_NAME }}:buildcache
 
       - name: pip-audit scan
         run: |
@@ -82,12 +84,12 @@ jobs:
       - name: Dockle scan on archive
         run: |
           mkdir -p dockle_logs
-          dockle --exit-code 1 --exit-level FATAL --input image.tar -af settings.py --format json --output dockle_logs/${IMAGE_NAME_SAFE}.json
+          dockle --exit-code 1 --exit-level FATAL --input image.tar -af settings.py --format json --output dockle_logs/${IMAGE_NAME}.json
 
       - name: Generate SBOM (SPDX JSON)
         run: |
           mkdir -p sbom_logs
-          syft -q "docker-archive:image.tar" -o "spdx-json=sbom_logs/${IMAGE_NAME_SAFE}-sbom.json"
+          syft -q "docker-archive:image.tar" -o "spdx-json=sbom_logs/${IMAGE_NAME}-sbom.json"
 
       - name: Push scanned image archive
         run: |
@@ -95,27 +97,27 @@ jobs:
             skopeo copy \
               --dest-creds "${{ secrets.DOCKERHUB_USERNAME }}:${{ secrets.DOCKERHUB_TOKEN }}" \
               docker-archive:image.tar \
-              docker://docker.io/supervisely/base-py-cuda-hardened:$TAG_VERSION
+              docker://docker.io/supervisely/${{ env.IMAGE_NAME }}:$TAG_VERSION
           else
             skopeo copy \
               docker-archive:image.tar \
-              docker://docker.io/supervisely/base-py-cuda-hardened:$TAG_VERSION
+              docker://docker.io/supervisely/${{ env.IMAGE_NAME }}:$TAG_VERSION
           fi
 
       - name: Upload pip-audit report
         uses: actions/upload-artifact@v4
         with:
-          name: pip-audit-${{ env.IMAGE_NAME_SAFE }}
+          name: pip-audit-${{ env.IMAGE_NAME }}
           path: audit_logs/pip_audit.json
 
       - name: Upload Dockle report
         uses: actions/upload-artifact@v4
         with:
-          name: dockle-${{ env.IMAGE_NAME_SAFE }}
-          path: dockle_logs/${{ env.IMAGE_NAME_SAFE }}.json
+          name: dockle-${{ env.IMAGE_NAME }}
+          path: dockle_logs/${{ env.IMAGE_NAME }}.json
 
       - name: Upload SBOM report
         uses: actions/upload-artifact@v4
         with:
-          name: sbom-${{ env.IMAGE_NAME_SAFE }}
-          path: sbom_logs/${{ env.IMAGE_NAME_SAFE }}-sbom.json
+          name: sbom-${{ env.IMAGE_NAME }}
+          path: sbom_logs/${{ env.IMAGE_NAME }}-sbom.json
