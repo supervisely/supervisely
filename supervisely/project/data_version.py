@@ -16,13 +16,13 @@ from supervisely.io import json
 from supervisely.io.fs import remove_dir, silent_remove
 from supervisely.project.copy import copy_project
 from supervisely.project.versioning.common import (
-    CUSTOM_DATA_VERSION_PREVIEW_KEY,
     DEFAULT_IMAGE_SCHEMA_VERSION,
     DEFAULT_VIDEO_SCHEMA_VERSION,
     DEFAULT_VOLUME_SCHEMA_VERSION,
     HIDDEN_WORKSPACE_NAME,
     PREVIEW_DESCRIPTION_TEMPLATE,
     PREVIEW_NAME_TEMPLATE,
+    update_custom_data_for_version_preview,
 )
 from supervisely.project.versioning.schema_fields import VersionSchemaField
 
@@ -73,6 +73,7 @@ class DataVersion(ModuleApiBase):
         self.versions_path = None
         self.versions = None
         self._batch_size = None
+        self._local_binary_path = None
 
     @staticmethod
     def info_sequence():
@@ -330,7 +331,8 @@ class DataVersion(ModuleApiBase):
             return latest
         try:
 
-            file_info = self._compress_and_upload(path)
+            file_info = self._compress_and_upload(path, preserve_local_binary=enable_preview)
+
             self.versions[version_id] = {
                 "path": path,
                 "updated_at": project_info.updated_at,
@@ -367,9 +369,13 @@ class DataVersion(ModuleApiBase):
                     #     read_only=enable_preview,
                     # )
                     preview_project_info = self.enable_preview(
-                        project=project_info, version_id=version_id
+                        project=project_info,
+                        version_id=version_id,
+                        local_binary_path=self._local_binary_path,
                     )
-                    self.update(version_id, preview_project_id=preview_project_info.id)
+                    if self._local_binary_path is not None:
+                        remove_dir(os.path.dirname(self._local_binary_path))
+                        self._local_binary_path = None
                     self.versions[str(version_id)]["preview"] = preview_project_info.id
                     self.set_map(project_info, initialize=False)
                 else:
@@ -514,6 +520,7 @@ class DataVersion(ModuleApiBase):
         workspace_id: Optional[int] = None,
         project_name: Optional[str] = None,
         project_description: Optional[str] = None,
+        local_binary_path: Optional[str] = None,
     ) -> ProjectInfo:
         """
         Restore project to a specific version.
@@ -533,6 +540,8 @@ class DataVersion(ModuleApiBase):
         :type project_name: Optional[str]
         :param project_description: Description of the restored project. If None, a default description will be used.
         :type project_description: Optional[str]
+        :param local_binary_path: Path to the local binary file to restore from. If None, will download from the server.
+        :type local_binary_path: Optional[str]
         :returns: Project info object of the restored project
         :rtype: :class:`~supervisely.api.project_api.ProjectInfo` or None
         """
@@ -587,7 +596,12 @@ class DataVersion(ModuleApiBase):
             )
             return
 
-        bin_io = self._download_and_extract(backup_files)
+        if local_binary_path is not None:
+            with open(local_binary_path, "rb") as f:
+                bin_io = io.BytesIO(f.read())
+        else:
+            bin_io = self._download_and_extract(backup_files)
+
         new_project_info = self.project_cls.upload_bin(
             self._api,
             bin_io,
@@ -666,7 +680,11 @@ class DataVersion(ModuleApiBase):
             raise RuntimeError("Failed to update version information")
 
     def enable_preview(
-        self, project: Union[int, ProjectInfo], version_id: int, overwrite: bool = False
+        self,
+        project: Union[int, ProjectInfo],
+        version_id: int,
+        overwrite: bool = False,
+        local_binary_path: Optional[str] = None,
     ) -> ProjectInfo:
         """
         Enable preview for the version by creating a snapshot project and linking it to the version.
@@ -674,22 +692,24 @@ class DataVersion(ModuleApiBase):
 
         ATTENTION: This method works only for committed versions with successfully uploaded version data.
 
-        :param project: Project ID or ProjectInfo object
+        :param project: Source project ID or ProjectInfo object
         :type project: Union[int, ProjectInfo]
         :param version_id: Version ID
         :type version_id: int
         :param overwrite: Whether to overwrite existing snapshot project if it exists
         :type overwrite: bool
+        :param local_binary_path: Path to a local version.bin file to use instead of downloading from server.
+        :type local_binary_path: Optional[str]
         :returns: Preview snapshot project information
         :rtype: ProjectInfo
         """
+
         if isinstance(project, int):
             project_id = project
             project_info = self._api.project.get_info_by_id(project_id)
         elif isinstance(project, ProjectInfo):
             project_id = project.id
             project_info = project
-
         else:
             raise ValueError(f"Invalid object type: {type(project)}. Must be int or ProjectInfo.")
 
@@ -700,6 +720,10 @@ class DataVersion(ModuleApiBase):
 
         if version_info is None:
             raise ValueError(f"Version with ID {version_id} does not exist")
+
+        logger.info(
+            f"Enabling preview for version ID: {version_id} of project ID: {project_info.id} with overwrite={overwrite}"
+        )
 
         if version_info.preview_project_id is not None and not overwrite:
             logger.info(
@@ -717,12 +741,20 @@ class DataVersion(ModuleApiBase):
             project_description=PREVIEW_DESCRIPTION_TEMPLATE.format(
                 version_num=version_info.version, project_id=project_info.id, version_id=version_id
             ),
+            local_binary_path=local_binary_path,
         )
         custom_data = preview_project_info.custom_data
         if custom_data is None:
             custom_data = self._api.project.get_custom_data(preview_project_info.id) or {}
-        custom_data[CUSTOM_DATA_VERSION_PREVIEW_KEY] = version_info._asdict()
 
+        # refresh project info to get updated_at timestamp after restore
+        preview_project_info = self._api.project.get_info_by_id(preview_project_info.id)
+        custom_data = update_custom_data_for_version_preview(
+            custom_data=custom_data,
+            version_id=version_id,
+            source_project_id=project_info.id,
+            preview_created_at=preview_project_info.updated_at,
+        )
         self._api.project.update_custom_data(
             id=preview_project_info.id, data=custom_data, silent=True
         )
@@ -806,29 +838,40 @@ class DataVersion(ModuleApiBase):
             return None
         return latest
 
-    def _compress_and_upload(self, path: str) -> dict:
+    def _compress_and_upload(self, path: str, preserve_local_binary: bool = False) -> dict:
         """
-        Save project in binary format in archive to the Team Files.
+        Save project in compressed binary format to the Team Files.
         Binary file name: version.bin
 
-        :param changes: Changes between current and previous version
-        :type changes: bool
+        :param path: Destination path where the version archive will be saved in the Team Files
+        :type path: str
+        :param preserve_local_binary: Whether to preserve the local copy of the binary version.
+            If False, the local copy will be deleted after uploading.
+        :type preserve_local_binary: bool
         :returns: File info
         :rtype: dict
         """
         temp_dir = tempfile.mkdtemp()
         data = None
+        version_bin_path = None
         try:
             data = self.project_cls.download_bin(
                 self._api, self.project_info.id, batch_size=self._batch_size, return_bytesio=True
             )
-            info = tarfile.TarInfo(name="version.bin")
-            data.seek(0, io.SEEK_END)
-            info.size = data.tell()
-            data.seek(0)
-            zst_archive_path = os.path.join(temp_dir, "download.tar.zst")
 
-            # Stream-decompress and stream-read tar to avoid loading the whole archive in memory.
+            version_bin_path = os.path.join(temp_dir, "version.bin")
+            data.seek(0)
+            with open(version_bin_path, "wb") as f:
+                f.write(data.read())
+
+            # Set the path for future use if preserve_local_binary is True
+            if preserve_local_binary:
+                self._local_binary_path = version_bin_path
+
+            zst_archive_path = os.path.join(temp_dir, "download.tar.zst")
+            file_size = os.path.getsize(version_bin_path)
+
+            # Stream compress from file to avoid loading whole archive in memory
             try:
                 cctx = zstd.ZstdCompressor()
                 with open(zst_archive_path, "wb") as zst_f:
@@ -838,12 +881,18 @@ class DataVersion(ModuleApiBase):
                         stream = cctx.stream_writer(zst_f)
                     with stream as compressor:
                         with tarfile.open(fileobj=compressor, mode="w|") as tar:
-                            tar.addfile(tarinfo=info, fileobj=data)
+                            info = tarfile.TarInfo(name="version.bin")
+                            info.size = file_size
+                            with open(version_bin_path, "rb") as f:
+                                tar.addfile(tarinfo=info, fileobj=f)
             except Exception:
                 # Fallback: build tar in memory + one-shot compress
                 tar_data = io.BytesIO()
                 with tarfile.open(fileobj=tar_data, mode="w") as tar:
-                    tar.addfile(tarinfo=info, fileobj=data)
+                    info = tarfile.TarInfo(name="version.bin")
+                    info.size = file_size
+                    with open(version_bin_path, "rb") as f:
+                        tar.addfile(tarinfo=info, fileobj=f)
                 tar_data.seek(0)
                 with open(zst_archive_path, "wb") as zst_f:
                     zst_f.write(zstd.compress(tar_data.read()))
@@ -856,4 +905,5 @@ class DataVersion(ModuleApiBase):
                     data.close()
                 except Exception:
                     pass
-            remove_dir(temp_dir)
+            if not preserve_local_binary:
+                remove_dir(temp_dir)
