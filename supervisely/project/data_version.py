@@ -22,7 +22,7 @@ from supervisely.project.versioning.common import (
     HIDDEN_WORKSPACE_NAME,
     PREVIEW_DESCRIPTION_TEMPLATE,
     PREVIEW_NAME_TEMPLATE,
-    update_custom_data_for_version_preview,
+    update_custom_data_with_version_preview,
 )
 from supervisely.project.versioning.schema_fields import VersionSchemaField
 
@@ -747,9 +747,11 @@ class DataVersion(ModuleApiBase):
         if custom_data is None:
             custom_data = self._api.project.get_custom_data(preview_project_info.id) or {}
 
+        self.update(version_id, preview_project_id=preview_project_info.id)
+        self._api.project.set_read_only(preview_project_info.id, True)
         # refresh project info to get updated_at timestamp after restore
         preview_project_info = self._api.project.get_info_by_id(preview_project_info.id)
-        custom_data = update_custom_data_for_version_preview(
+        custom_data = update_custom_data_with_version_preview(
             custom_data=custom_data,
             version_id=version_id,
             source_project_id=project_info.id,
@@ -758,8 +760,6 @@ class DataVersion(ModuleApiBase):
         self._api.project.update_custom_data(
             id=preview_project_info.id, data=custom_data, silent=True
         )
-        self.update(version_id, preview_project_id=preview_project_info.id)
-        self._api.project.set_read_only(preview_project_info.id, True)
 
         return preview_project_info
 

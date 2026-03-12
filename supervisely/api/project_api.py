@@ -1551,7 +1551,6 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         id: int,
         settings: Dict[str, str],
         merge_with_current: bool = False,
-        silent: bool = False,
     ) -> None:
         """
         Updates project with given project settings by id.
@@ -1563,16 +1562,11 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param merge_with_current: If True, deep-merges the new settings with the current settings.
             If False, replaces the current settings entirely.
         :type merge_with_current: bool, optional
-        :param silent: Determines whether the ``updatedAt`` timestamp should be updated or not.
-            If False, ``updatedAt`` will be updated.
-        :type silent: bool, optional
         """
         if merge_with_current:
             current_settings = self.get_settings(id)
             settings = deep_merge_dicts(current_settings, settings)
         payload = {ApiField.ID: id, ApiField.SETTINGS: settings}
-        if silent:
-            payload[ApiField.SILENT] = True
         self._api.post("projects.settings.update", payload)
 
     def download_images_tags(
@@ -3100,5 +3094,4 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             id,
             {ApiField.ADVANCED_SETTINGS: {ApiField.IS_READ_ONLY_PROJECT: enable}},
             merge_with_current=True,
-            silent=True,
         )

@@ -34,7 +34,7 @@ def get_volume_snapshot_schema(schema_version: str) -> VolumeSnapshotSchema:
     return schema
 
 
-def update_custom_data_for_version_preview(
+def update_custom_data_with_version_preview(
     custom_data: dict, version_id: int, source_project_id: int, preview_created_at: str
 ) -> dict:
     """Update custom data for version preview project with the information about the version and preview project.
