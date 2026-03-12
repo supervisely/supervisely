@@ -90,16 +90,6 @@ class ExplorePredictions(BaseVisMetrics):
             return keys[:limit]
         return keys
 
-    def _get_dataset_info(self, project_id: int, dataset_name: str):
-        api = self.eval_results[0].api
-        ds_info = api.dataset.get_info_by_name(project_id, dataset_name)
-        if ds_info is not None:
-            return ds_info
-        for ds in api.dataset.get_list(project_id, recursive=True):
-            if ds.name == dataset_name:
-                return ds
-        return None
-
     def _get_project_items_by_keys(self, project_id: int, keys: List[Tuple[str, str]]):
         """
         Build mapping (dataset_name, image_name) -> (ImageInfo, AnnotationInfo) for given project.
@@ -111,10 +101,27 @@ class ExplorePredictions(BaseVisMetrics):
         for ds_name, img_name in keys:
             ds_to_names.setdefault(ds_name, []).append(img_name)
 
+        datasets = api.dataset.get_list(project_id, recursive=True)
+        by_id = {ds.id: ds for ds in datasets}
+        path_by_id = {}
+
+        def get_path(ds):
+            existing = path_by_id.get(ds.id)
+            if existing is not None:
+                return existing
+            if ds.parent_id is None:
+                path = ds.name
+            else:
+                parent = by_id.get(ds.parent_id)
+                path = ds.name if parent is None else f"{get_path(parent)}/{ds.name}"
+            path_by_id[ds.id] = path
+            return path
+
+        ds_path_map = {get_path(ds): ds for ds in datasets}
         for ds_name, img_names in ds_to_names.items():
             if len(img_names) == 0:
                 continue
-            ds_info = self._get_dataset_info(project_id, ds_name)
+            ds_info = ds_path_map.get(ds_name)
             if ds_info is None:
                 logger.warning(
                     f"Dataset '{ds_name}' not found in project {project_id}. Skipping.",
@@ -155,7 +162,6 @@ class ExplorePredictions(BaseVisMetrics):
         res["layoutTemplate"] = [None, None, None]
 
         res["layoutTemplate"] = [{"skipObjectTagsFiltering": True, "columnTitle": "Ground Truth"}]
-        # for i in range(len(self.eval_results)):
         for idx, eval_res in enumerate(self.eval_results, 1):
             res["layoutTemplate"].append({"columnTitle": f"[{idx}] {eval_res.name}"})
 
