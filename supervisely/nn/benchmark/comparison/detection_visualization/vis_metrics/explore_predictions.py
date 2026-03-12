@@ -1,7 +1,5 @@
 from typing import List, Tuple
 
-import requests
-
 from supervisely.annotation.annotation import Annotation
 from supervisely.api.image_api import ImageInfo
 from supervisely.api.module_api import ApiField
