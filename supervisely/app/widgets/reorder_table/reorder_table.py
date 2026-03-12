@@ -38,6 +38,7 @@ class ReorderTable(Widget):
         columns: List[str],
         data: Optional[List[List]] = None,
         page_size: int = 10,
+        content_top_right: Optional[Widget] = None,
         widget_id: Optional[str] = None,
     ):
         """
@@ -47,6 +48,8 @@ class ReorderTable(Widget):
         :type data: List[List], optional
         :param page_size: Number of rows per page.
         :type page_size: int, optional
+        :param content_top_right: Widget to render in the top-right corner of the table header.
+        :type content_top_right: Widget, optional
         :param widget_id: Unique widget identifier.
         :type widget_id: str, optional
         """
@@ -59,6 +62,7 @@ class ReorderTable(Widget):
         self._page_size = max(1, int(page_size))
         self._order: List[int] = list(range(len(self._data)))
         self._changes_handled = False
+        self._content_top_right = content_top_right
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 

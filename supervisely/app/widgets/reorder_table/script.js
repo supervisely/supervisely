@@ -15,6 +15,7 @@ Vue.component('reorder-table', {
           '  clearable' +
           '  size="small"' +
           '/>' +
+          '<div class="sly-rt-top-right"><slot name="top-right"></slot></div>' +
         '</div>' +
 
         '<div class="sly-rt-wrapper">' +

@@ -11,4 +11,10 @@
   {% if widget._changes_handled == true %}
   @order-changed="post('/{{{widget.widget_id}}}/order_changed_cb')"
   {% endif %}
-></reorder-table>
+>
+  {% if widget._content_top_right is not none %}
+  <template slot="top-right">
+    {{{widget._content_top_right}}}
+  </template>
+  {% endif %}
+</reorder-table>
