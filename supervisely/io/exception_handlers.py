@@ -569,6 +569,25 @@ class ErrorHandler:
                     message=self.message,
                 )
 
+        class LabelingInterfaceNotAvailable(HandleException):
+            """Raised when project labeling interface requires a package unavailable for current team."""
+            def __init__(self, exception: Exception, stack: List[traceback.FrameSummary] = None):
+                """See :class:`~supervisely.io.exception_handlers.HandleException` for params."""
+                self.code = 2021
+                self.title = "Labeling Interface is available only in the videos MAX package"
+                self.message = (
+                    "The selected labeling interface is unavailable in your current package. "
+                    "Please, switch to a supported labeling interface in project settings or upgrade your package."
+                )
+
+                super().__init__(
+                    exception,
+                    stack,
+                    code=self.code,
+                    title=self.title,
+                    message=self.message,
+                )
+
     class SDK:
         """Errors produced by SDK-side parsing, conversion and local project structure checks."""
         class ProjectStructureError(HandleException):
@@ -787,6 +806,7 @@ ERROR_PATTERNS = {
         r".*Payment\ Required.*": ErrorHandler.API.PaymentRequired,
         r".*images\.bulk\.add.*only\ available\ for\ PRO\ teams": ErrorHandler.API.FreePlanImagesUploadLinksError,
         r".*videos\.bulk\.add.*only\ available\ for\ PRO\ teams": ErrorHandler.API.FreePlanVideosUploadsLinkError,
+        r".*Labeling Interface is available only in the .* MAX package.*": ErrorHandler.API.LabelingInterfaceNotAvailable,
     },
     RuntimeError: {
         r".*Label\.from_json.*": ErrorHandler.SDK.LabelFromJsonFailed,
