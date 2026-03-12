@@ -134,60 +134,21 @@ class ExplorePredictions(BaseVisMetrics):
             return cache[cache_key]
 
         ds_info = None
-
-        # Fast path for "plain" dataset names (top-level or inside provided parent_id on server side).
         if "/" not in dataset_name:
-            try:
-                ds_info = api.dataset.get_info_by_name(project_id, dataset_name)
-            except requests.exceptions.HTTPError:
-                logger.warning(
-                    "Failed to resolve dataset by name via API (HTTP error). Falling back to listing.",
-                    exc_info=True,
-                    extra={"project_id": project_id, "dataset_name": dataset_name},
-                )
-                ds_info = None
-            except Exception:
-                logger.warning(
-                    "Failed to resolve dataset by name via API. Falling back to listing.",
-                    exc_info=True,
-                    extra={"project_id": project_id, "dataset_name": dataset_name},
-                )
-                ds_info = None
+            ds_info = api.dataset.get_info_by_name(project_id, dataset_name)
             if ds_info is not None:
                 cache[cache_key] = ds_info
                 return ds_info
 
-        # Path-aware resolve for nested datasets: "parent/child/...".
         if "/" in dataset_name:
-            try:
-                ds_info = self._get_dataset_info_by_path(project_id, dataset_name)
-            except Exception:
-                logger.warning(
-                    "Failed to resolve nested dataset by path. Falling back to recursive listing.",
-                    exc_info=True,
-                    extra={"project_id": project_id, "dataset_path": dataset_name},
-                )
-                ds_info = None
+            ds_info = self._get_dataset_info_by_path(project_id, dataset_name)
             if ds_info is not None:
                 cache[cache_key] = ds_info
                 return ds_info
 
-        # Fallback: list datasets and try matching by name or by full path (if provided by server).
-        try:
-            datasets = api.dataset.get_list(project_id, recursive=True)
-        except Exception:
-            logger.warning(
-                "Failed to list project datasets recursively while resolving dataset.",
-                exc_info=True,
-                extra={"project_id": project_id, "dataset_name": dataset_name},
-            )
-            datasets = []
+        datasets = api.dataset.get_list(project_id, recursive=True)
         for ds in datasets:
             if ds.name == dataset_name:
-                cache[cache_key] = ds
-                return ds
-            ds_path = getattr(ds, "path", None)
-            if ds_path is not None and ds_path == dataset_name:
                 cache[cache_key] = ds
                 return ds
 
