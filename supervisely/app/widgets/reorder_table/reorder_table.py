@@ -181,6 +181,15 @@ class ReorderTable(Widget):
         )
         StateJson().send_changes()
 
+    def is_order_changed(self) -> bool:
+        """Returns whether the current row order differs from the original order.
+
+        :returns: ``True`` if rows were reordered, otherwise ``False``.
+        :rtype: bool
+        """
+        return self.get_order() != list(range(len(self._data)))
+
+
     def order_changed(self, func: Callable[[List[int]], None]) -> Callable:
         """Decorator that registers a callback invoked whenever the row order changes.
 
