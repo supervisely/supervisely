@@ -141,7 +141,7 @@ from supervisely.worker_api.chunking import (
 try:
     import supervisely.worker_proto.worker_api_pb2 as api_proto
 except Exception as e:
-    api_proto = _ApiProtoNotAvailable(import_error=e)
+    api_proto = _ApiProtoNotAvailable(e)
 
 
 from supervisely.api.api import Api, UserSession, ApiContext
