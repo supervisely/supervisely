@@ -90,69 +90,6 @@ class ExplorePredictions(BaseVisMetrics):
             return keys[:limit]
         return keys
 
-    def _get_dataset_info_by_path(self, project_id: int, dataset_path: str):
-        """
-        Resolve nested dataset by path like "parent/child/...".
-        Returns DatasetInfo-like object or None.
-        """
-        api = self.eval_results[0].api
-        parts = [p for p in dataset_path.split("/") if p]
-        if len(parts) == 0:
-            return None
-
-        parent_id = None
-        resolved = None
-        for part in parts:
-            cache = getattr(self, "_datasets_children_cache", None)
-            if cache is None:
-                cache = {}
-                setattr(self, "_datasets_children_cache", cache)
-            cache_key = (project_id, parent_id)
-            if cache_key not in cache:
-                cache[cache_key] = api.dataset.get_list(
-                    project_id,
-                    parent_id=parent_id,
-                    recursive=False,
-                )
-            children = cache[cache_key]
-            resolved = next((ds for ds in children if ds.name == part), None)
-            if resolved is None:
-                return None
-            parent_id = resolved.id
-        return resolved
-
-    def _get_dataset_info(self, project_id: int, dataset_name: str):
-        api = self.eval_results[0].api
-        cache = getattr(self, "_dataset_info_cache", None)
-        if cache is None:
-            cache = {}
-            setattr(self, "_dataset_info_cache", cache)
-        cache_key = (project_id, dataset_name)
-        if cache_key in cache:
-            return cache[cache_key]
-
-        ds_info = None
-        if "/" not in dataset_name:
-            ds_info = api.dataset.get_info_by_name(project_id, dataset_name)
-            if ds_info is not None:
-                cache[cache_key] = ds_info
-                return ds_info
-
-        if "/" in dataset_name:
-            ds_info = self._get_dataset_info_by_path(project_id, dataset_name)
-            if ds_info is not None:
-                cache[cache_key] = ds_info
-                return ds_info
-
-        datasets = api.dataset.get_list(project_id, recursive=True)
-        for ds in datasets:
-            if ds.name == dataset_name:
-                cache[cache_key] = ds
-                return ds
-
-        cache[cache_key] = None
-        return None
-
     def _get_project_items_by_keys(self, project_id: int, keys: List[Tuple[str, str]]):
         """
         Build mapping (dataset_name, image_name) -> (ImageInfo, AnnotationInfo) for given project.
@@ -164,10 +101,28 @@ class ExplorePredictions(BaseVisMetrics):
         for ds_name, img_name in keys:
             ds_to_names.setdefault(ds_name, []).append(img_name)
 
+        # Build dataset path->info map once per call, no caching on self.
+        datasets = api.dataset.get_list(project_id, recursive=True)
+        by_id = {ds.id: ds for ds in datasets}
+        path_by_id = {}
+
+        def get_path(ds):
+            existing = path_by_id.get(ds.id)
+            if existing is not None:
+                return existing
+            if ds.parent_id is None:
+                path = ds.name
+            else:
+                parent = by_id.get(ds.parent_id)
+                path = ds.name if parent is None else f"{get_path(parent)}/{ds.name}"
+            path_by_id[ds.id] = path
+            return path
+
+        ds_path_map = {get_path(ds): ds for ds in datasets}
         for ds_name, img_names in ds_to_names.items():
             if len(img_names) == 0:
                 continue
-            ds_info = self._get_dataset_info(project_id, ds_name)
+            ds_info = ds_path_map.get(ds_name)
             if ds_info is None:
                 logger.warning(
                     f"Dataset '{ds_name}' not found in project {project_id}. Skipping.",
