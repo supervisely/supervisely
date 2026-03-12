@@ -16,12 +16,12 @@ class _ApiProtoNotAvailable:
 
     def __getattr__(self, name):
         from supervisely.app.v1.constants import PROTOBUF_REQUIRED_ERROR
-        extra = None
-        if self.import_exception is not None:
-            extra = {"original import error": repr(self.import_exception)}
-        raise ImportError(
-            f"Cannot access `api_proto.{name}` : " + PROTOBUF_REQUIRED_ERROR, extra=extra
+        from supervisely.sly_logger import logger
+
+        logger.warning(
+            "Protobuf import failed.", extra={"error message": repr(self.import_exception)}
         )
+        raise ImportError(f"Cannot access `api_proto.{name}` : " + PROTOBUF_REQUIRED_ERROR)
 
     def __bool__(self):
         return False
