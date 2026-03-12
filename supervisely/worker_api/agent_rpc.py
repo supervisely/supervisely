@@ -35,7 +35,7 @@ def download_image_from_remote(agent_api, image_hash, src_node_token, logger):
     except Exception as e:
         from supervisely.app.v1.constants import PROTOBUF_REQUIRED_ERROR
 
-        raise ImportError(PROTOBUF_REQUIRED_ERROR) from e
+        raise ImportError(PROTOBUF_REQUIRED_ERROR, extra={"original import error": repr(e)}) from e
 
     resp = agent_api.get_stream_with_data(
         'DownloadImages',
@@ -54,7 +54,7 @@ def download_data_from_remote(agent_api, req_id, logger):
     except Exception as e:
         from supervisely.app.v1.constants import PROTOBUF_REQUIRED_ERROR
 
-        raise ImportError(PROTOBUF_REQUIRED_ERROR) from e
+        raise ImportError(PROTOBUF_REQUIRED_ERROR, extra={"original import error": repr(e)}) from e
 
     resp = agent_api.get_stream_with_data('GetGeneralEventData', api_proto.Chunk, api_proto.Empty(),
                                           addit_headers={'x-request-id': req_id})
@@ -74,7 +74,7 @@ def send_from_memory_generator(out_bytes, chunk_size):
     except Exception as e:
         from supervisely.app.v1.constants import PROTOBUF_REQUIRED_ERROR
 
-        raise ImportError(PROTOBUF_REQUIRED_ERROR) from e
+        raise ImportError(PROTOBUF_REQUIRED_ERROR, extra={"original import error": repr(e)}) from e
 
     for bytes_chunk in batched(out_bytes, chunk_size):
         yield api_proto.Chunk(buffer=bytes_chunk, total_size=len(out_bytes))

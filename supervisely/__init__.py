@@ -11,16 +11,17 @@ except PackageNotFoundError:
 
 class _ApiProtoNotAvailable:
     """Placeholder class that raises an error when accessing any attribute"""
-    def __init__(self, import_error=None):
-        self.import_error = import_error
+    def __init__(self, import_exception=None):
+        self.import_exception: Exception = import_exception
 
     def __getattr__(self, name):
         from supervisely.app.v1.constants import PROTOBUF_REQUIRED_ERROR
-        if self.import_error is not None:
-            raise ImportError(
-                f"Cannot access `api_proto.{name}` : " + PROTOBUF_REQUIRED_ERROR
-            ) from self.import_error
-        raise ImportError(f"Cannot access `api_proto.{name}` : " + PROTOBUF_REQUIRED_ERROR)
+        extra = None
+        if self.import_exception is not None:
+            extra = {"original import error": repr(self.import_exception)}
+        raise ImportError(
+            f"Cannot access `api_proto.{name}` : " + PROTOBUF_REQUIRED_ERROR, extra=extra
+        )
 
     def __bool__(self):
         return False

@@ -152,7 +152,9 @@ class AgentRPCServicerBase:
         except Exception as e:
             from supervisely.app.v1.constants import PROTOBUF_REQUIRED_ERROR
 
-            raise ImportError(PROTOBUF_REQUIRED_ERROR) from e
+            raise ImportError(
+                PROTOBUF_REQUIRED_ERROR, extra={"original import error": repr(e)}
+            ) from e
 
         self.logger.trace('Will send output data.', extra={REQUEST_ID: req_id})
         out_bytes = json.dumps(out_msg).encode('utf-8')
@@ -209,7 +211,9 @@ class AgentRPCServicerBase:
         except Exception as e:
             from supervisely.app.v1.constants import PROTOBUF_REQUIRED_ERROR
 
-            raise ImportError(PROTOBUF_REQUIRED_ERROR) from e
+            raise ImportError(
+                PROTOBUF_REQUIRED_ERROR, extra={"original import error": repr(e)}
+            ) from e
 
         def seq_inf_wrapped():
             function_wrapper(self._sequential_final_processing)  # exit if raised

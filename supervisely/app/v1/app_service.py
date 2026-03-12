@@ -417,7 +417,9 @@ class AppService:
         except Exception as e:
             from supervisely.app.v1.constants import PROTOBUF_REQUIRED_ERROR
 
-            raise ImportError(PROTOBUF_REQUIRED_ERROR) from e
+            raise ImportError(
+                PROTOBUF_REQUIRED_ERROR, extra={"original import error": repr(e)}
+            ) from e
 
         if initial_events is not None:
             for event_obj in initial_events:
@@ -536,12 +538,7 @@ class AppService:
             self._error = error
 
     def send_response(self, request_id, data):
-        try:
-            from supervisely.worker_proto import worker_api_pb2 as api_proto
-        except Exception as e:
-            from supervisely.app.v1.constants import PROTOBUF_REQUIRED_ERROR
-
-            raise ImportError(PROTOBUF_REQUIRED_ERROR) from e
+        from supervisely.worker_proto import worker_api_pb2 as api_proto
 
         out_bytes = json.dumps(data).encode("utf-8")
         self.api.put_stream_with_data(
