@@ -1,5 +1,7 @@
 from typing import List, Tuple
 
+import requests
+
 from supervisely.annotation.annotation import Annotation
 from supervisely.api.image_api import ImageInfo
 from supervisely.api.module_api import ApiField
@@ -90,14 +92,106 @@ class ExplorePredictions(BaseVisMetrics):
             return keys[:limit]
         return keys
 
+    def _get_dataset_info_by_path(self, project_id: int, dataset_path: str):
+        """
+        Resolve nested dataset by path like "parent/child/...".
+        Returns DatasetInfo-like object or None.
+        """
+        api = self.eval_results[0].api
+        parts = [p for p in dataset_path.split("/") if p]
+        if len(parts) == 0:
+            return None
+
+        parent_id = None
+        resolved = None
+        for part in parts:
+            cache = getattr(self, "_datasets_children_cache", None)
+            if cache is None:
+                cache = {}
+                setattr(self, "_datasets_children_cache", cache)
+            cache_key = (project_id, parent_id)
+            if cache_key not in cache:
+                cache[cache_key] = api.dataset.get_list(
+                    project_id,
+                    parent_id=parent_id,
+                    recursive=False,
+                )
+            children = cache[cache_key]
+            resolved = next((ds for ds in children if ds.name == part), None)
+            if resolved is None:
+                return None
+            parent_id = resolved.id
+        return resolved
+
     def _get_dataset_info(self, project_id: int, dataset_name: str):
         api = self.eval_results[0].api
-        ds_info = api.dataset.get_info_by_name(project_id, dataset_name)
-        if ds_info is not None:
-            return ds_info
-        for ds in api.dataset.get_list(project_id, recursive=True):
+        cache = getattr(self, "_dataset_info_cache", None)
+        if cache is None:
+            cache = {}
+            setattr(self, "_dataset_info_cache", cache)
+        cache_key = (project_id, dataset_name)
+        if cache_key in cache:
+            return cache[cache_key]
+
+        ds_info = None
+
+        # Fast path for "plain" dataset names (top-level or inside provided parent_id on server side).
+        if "/" not in dataset_name:
+            try:
+                ds_info = api.dataset.get_info_by_name(project_id, dataset_name)
+            except requests.exceptions.HTTPError:
+                logger.warning(
+                    "Failed to resolve dataset by name via API (HTTP error). Falling back to listing.",
+                    exc_info=True,
+                    extra={"project_id": project_id, "dataset_name": dataset_name},
+                )
+                ds_info = None
+            except Exception:
+                logger.warning(
+                    "Failed to resolve dataset by name via API. Falling back to listing.",
+                    exc_info=True,
+                    extra={"project_id": project_id, "dataset_name": dataset_name},
+                )
+                ds_info = None
+            if ds_info is not None:
+                cache[cache_key] = ds_info
+                return ds_info
+
+        # Path-aware resolve for nested datasets: "parent/child/...".
+        if "/" in dataset_name:
+            try:
+                ds_info = self._get_dataset_info_by_path(project_id, dataset_name)
+            except Exception:
+                logger.warning(
+                    "Failed to resolve nested dataset by path. Falling back to recursive listing.",
+                    exc_info=True,
+                    extra={"project_id": project_id, "dataset_path": dataset_name},
+                )
+                ds_info = None
+            if ds_info is not None:
+                cache[cache_key] = ds_info
+                return ds_info
+
+        # Fallback: list datasets and try matching by name or by full path (if provided by server).
+        try:
+            datasets = api.dataset.get_list(project_id, recursive=True)
+        except Exception:
+            logger.warning(
+                "Failed to list project datasets recursively while resolving dataset.",
+                exc_info=True,
+                extra={"project_id": project_id, "dataset_name": dataset_name},
+            )
+            datasets = []
+        for ds in datasets:
             if ds.name == dataset_name:
+                cache[cache_key] = ds
                 return ds
+            ds_path = getattr(ds, "path", None)
+            if ds_path is not None and ds_path == dataset_name:
+                cache[cache_key] = ds
+                return ds
+
+        cache[cache_key] = None
         return None
 
     def _get_project_items_by_keys(self, project_id: int, keys: List[Tuple[str, str]]):
