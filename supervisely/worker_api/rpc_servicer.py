@@ -151,9 +151,7 @@ class AgentRPCServicerBase:
             from supervisely.worker_proto import worker_api_pb2 as api_proto
         except Exception as e:
             from supervisely.app.v1.constants import PROTOBUF_REQUIRED_ERROR
-            from supervisely import logger
 
-            logger.warning("Protobuf import failed.", extra={"error message": str(e)})
             raise ImportError(PROTOBUF_REQUIRED_ERROR) from e
 
         self.logger.trace('Will send output data.', extra={REQUEST_ID: req_id})
@@ -210,10 +208,9 @@ class AgentRPCServicerBase:
             from supervisely.worker_proto import worker_api_pb2 as api_proto
         except Exception as e:
             from supervisely.app.v1.constants import PROTOBUF_REQUIRED_ERROR
-            from supervisely import logger
 
-            logger.warning("Protobuf import failed.", extra={"error message": str(e)})
             raise ImportError(PROTOBUF_REQUIRED_ERROR) from e
+
         def seq_inf_wrapped():
             function_wrapper(self._sequential_final_processing)  # exit if raised
 

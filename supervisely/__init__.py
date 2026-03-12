@@ -11,16 +11,10 @@ except PackageNotFoundError:
 
 class _ApiProtoNotAvailable:
     """Placeholder class that raises an error when accessing any attribute"""
-    def __init__(self, import_exception=None):
-        self.import_exception: Exception = import_exception
 
     def __getattr__(self, name):
         from supervisely.app.v1.constants import PROTOBUF_REQUIRED_ERROR
-        from supervisely.sly_logger import logger
 
-        logger.warning(
-            "Protobuf import failed.", extra={"error message": repr(self.import_exception)}
-        )
         raise ImportError(f"Cannot access `api_proto.{name}` : " + PROTOBUF_REQUIRED_ERROR)
 
     def __bool__(self):
@@ -140,8 +134,8 @@ from supervisely.worker_api.chunking import (
 # Otherwise, we use a placeholder that raises an error when accessed
 try:
     import supervisely.worker_proto.worker_api_pb2 as api_proto
-except Exception as e:
-    api_proto = _ApiProtoNotAvailable(e)
+except Exception:
+    api_proto = _ApiProtoNotAvailable()
 
 
 from supervisely.api.api import Api, UserSession, ApiContext

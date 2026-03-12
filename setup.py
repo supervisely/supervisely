@@ -1,4 +1,3 @@
-import importlib.metadata
 import os
 import re
 import subprocess
