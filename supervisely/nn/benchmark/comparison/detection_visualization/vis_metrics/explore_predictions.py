@@ -101,7 +101,6 @@ class ExplorePredictions(BaseVisMetrics):
         for ds_name, img_name in keys:
             ds_to_names.setdefault(ds_name, []).append(img_name)
 
-        # Build dataset path->info map once per call, no caching on self.
         datasets = api.dataset.get_list(project_id, recursive=True)
         by_id = {ds.id: ds for ds in datasets}
         path_by_id = {}
@@ -163,7 +162,6 @@ class ExplorePredictions(BaseVisMetrics):
         res["layoutTemplate"] = [None, None, None]
 
         res["layoutTemplate"] = [{"skipObjectTagsFiltering": True, "columnTitle": "Ground Truth"}]
-        # for i in range(len(self.eval_results)):
         for idx, eval_res in enumerate(self.eval_results, 1):
             res["layoutTemplate"].append({"columnTitle": f"[{idx}] {eval_res.name}"})
 
