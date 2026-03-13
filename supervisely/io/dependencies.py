@@ -22,7 +22,7 @@ def check_version(
         current = importlib.metadata.version(package)  # get version string from package name
     except importlib.metadata.PackageNotFoundError as e:
         if hard:
-            raise ModuleNotFoundError(f"{current} package is required but not installed") from e
+            raise ModuleNotFoundError(f"{package} package is required but not installed") from e
         else:
             return False
 
