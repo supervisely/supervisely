@@ -806,7 +806,7 @@ ERROR_PATTERNS = {
         r".*Payment\ Required.*": ErrorHandler.API.PaymentRequired,
         r".*images\.bulk\.add.*only\ available\ for\ PRO\ teams": ErrorHandler.API.FreePlanImagesUploadLinksError,
         r".*videos\.bulk\.add.*only\ available\ for\ PRO\ teams": ErrorHandler.API.FreePlanVideosUploadsLinkError,
-        r".*Labeling Interface is available only in the .* MAX package.*": ErrorHandler.API.LabelingInterfaceNotAvailable,
+        r".*projects\.settings\.update.*The\ Labeling\ Interface\ is\ available\ only.*MAX\ package.*": ErrorHandler.API.LabelingInterfaceNotAvailable,
     },
     RuntimeError: {
         r".*Label\.from_json.*": ErrorHandler.SDK.LabelFromJsonFailed,
